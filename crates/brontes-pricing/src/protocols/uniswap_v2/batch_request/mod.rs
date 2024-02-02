@@ -3,7 +3,6 @@ use std::sync::Arc;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
-use eyre::anyhow;
 use futures::TryFutureExt;
 use reth_rpc_types::{CallInput, CallRequest};
 
@@ -98,8 +97,8 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
 }
 
 pub async fn get_amm_data_batch_request<M: TracingProvider>(
-    amms: &mut [UniswapV2Pool],
-    middleware: Arc<M>,
+    _amms: &mut [UniswapV2Pool],
+    _middleware: Arc<M>,
 ) -> Result<(), AmmError> {
     // tracing::info!("getting data for {} AMMs", amms.len());
     //
@@ -162,8 +161,8 @@ pub async fn get_amm_data_batch_request<M: TracingProvider>(
 }
 
 pub async fn get_v2_pool_data_batch_request<M: TracingProvider>(
-    pool: &mut UniswapV2Pool,
-    middleware: Arc<M>,
+    _pool: &mut UniswapV2Pool,
+    _middleware: Arc<M>,
 ) -> Result<(), AmmError> {
     // tracing::info!(?pool.address, "getting pool data");
     // let constructor_args =

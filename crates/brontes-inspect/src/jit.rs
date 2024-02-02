@@ -7,17 +7,16 @@ use alloy_primitives::{Address, B256};
 use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    mev::{Bundle, JitLiquidity, MevType, TokenProfit, TokenProfits},
+    db::dex::PriceAt,
+    mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    pair::Pair,
-    GasDetails, ToFloatNearest,
+    GasDetails, ToFloatNearest, TxInfo,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::Rational;
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, BundleHeader, Inspector,
-    MetadataCombined,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, MetadataCombined,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -49,7 +48,13 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
-                |PossibleJit { eoa, frontrun_tx, backrun_tx, mev_executor_contract, victims }| {
+                |PossibleJit {
+                     eoa: _,
+                     frontrun_tx,
+                     backrun_tx,
+                     mev_executor_contract,
+                     victims,
+                 }| {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
@@ -71,10 +76,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     if searcher_actions.is_empty() {
                         return None
                     }
-                    let gas = [
-                        tree.get_gas_details(frontrun_tx).cloned().unwrap(),
-                        tree.get_gas_details(backrun_tx).cloned().unwrap(),
-                    ];
+
+                    let info = [tree.get_tx_info(frontrun_tx)?, tree.get_tx_info(backrun_tx)?];
 
                     if victims
                         .iter()
@@ -85,44 +88,33 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         return None
                     }
 
-                    // grab all victim swaps dropping swaps that don't touch addresses with
-                    let (victims, victim_actions): (Vec<B256>, Vec<Vec<Actions>>) = victims
+                    let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            (
-                                victim,
-                                tree.collect(*victim, |node| {
-                                    (
-                                        node.data.is_swap(),
-                                        node.subactions.iter().any(|action| action.is_swap()),
-                                    )
-                                }),
-                            )
+                            tree.collect(*victim, |node| {
+                                (
+                                    node.data.is_swap(),
+                                    node.subactions.iter().any(|action| action.is_swap()),
+                                )
+                            })
                         })
-                        .unzip();
+                        .collect_vec();
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
                         return None
                     }
 
-                    let victim_gas = victims
-                        .iter()
-                        .map(|victim| tree.get_gas_details(*victim).cloned().unwrap())
-                        .collect::<Vec<_>>();
-
-                    let idxs = tree.get_root(backrun_tx).unwrap().get_block_position();
+                    let victim_info = victims
+                        .into_iter()
+                        .map(|v| tree.get_tx_info(v).unwrap())
+                        .collect_vec();
 
                     self.calculate_jit(
-                        eoa,
-                        mev_executor_contract,
+                        info,
                         metadata.clone(),
-                        idxs,
-                        [frontrun_tx, backrun_tx],
-                        gas,
                         searcher_actions,
-                        victims,
                         victim_actions,
-                        victim_gas,
+                        victim_info,
                     )
                 },
             )
@@ -134,25 +126,21 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
-        eoa: Address,
-        mev_addr: Address,
+        info: [TxInfo; 2],
         metadata: Arc<MetadataCombined>,
-        back_jit_idx: usize,
-        txes: [B256; 2],
-        searcher_gas_details: [GasDetails; 2],
         searcher_actions: Vec<Vec<Actions>>,
         // victim
-        victim_txs: Vec<B256>,
         victim_actions: Vec<Vec<Actions>>,
-        victim_gas: Vec<GasDetails>,
+        victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
-        let deltas = self.inner.calculate_token_deltas(
+        let _deltas = self.inner.calculate_token_deltas(
             &[searcher_actions.clone(), victim_actions.clone()]
                 .into_iter()
                 .flatten()
                 .collect::<Vec<Vec<_>>>(),
         );
 
+        // grab all mints and burns
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
             Vec<Option<NormalizedBurn>>,
@@ -177,61 +165,39 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        let jit_fee = self.get_collect_amount(back_jit_idx, fee_collect, metadata.clone());
+        let jit_fee =
+            self.get_collect_amount(info[1].tx_index as usize, fee_collect, metadata.clone());
 
         let mint = self.get_total_pricing(
-            back_jit_idx,
+            info[1].tx_index as usize,
             mints
                 .iter()
                 .map(|mint| (mint.token.iter().map(|t| t.address), mint.amount.iter())),
             metadata.clone(),
         );
 
-        let bribe = self.get_bribes(metadata.clone(), searcher_gas_details);
+        let (hashes, gas_details): (Vec<_>, Vec<_>) = info
+            .into_iter()
+            .map(|info| info.split_to_storage_info())
+            .unzip();
 
+        let (victim_hashes, victim_gas_details): (Vec<_>, Vec<_>) = victim_info
+            .into_iter()
+            .map(|info| info.split_to_storage_info())
+            .unzip();
+
+        let bribe = self.get_bribes(metadata.clone(), &gas_details);
         let profit = jit_fee - mint - &bribe;
 
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(back_jit_idx, &deltas, metadata.clone(), false)?;
-
-        let mev_profit_collector = self.inner.profit_collectors(&addr_usd_deltas);
-
-        let token_profits = TokenProfits {
-            profits: mev_profit_collector
-                .iter()
-                .filter_map(|address| deltas.get(address).map(|d| (address, d)))
-                .flat_map(|(address, delta)| {
-                    delta.iter().map(|(token, amount)| {
-                        let usd_value = metadata
-                            .dex_quotes
-                            .price_at_or_before(Pair(*token, self.inner.quote), back_jit_idx)
-                            .unwrap_or(Rational::ZERO)
-                            .to_float()
-                            * amount.clone().to_float();
-                        TokenProfit {
-                            profit_collector: *address,
-                            token: *token,
-                            amount: amount.clone().to_float(),
-                            usd_value,
-                        }
-                    })
-                })
-                .collect(),
-        };
-
-        let header = BundleHeader {
-            tx_index: back_jit_idx as u64,
-            block_number: metadata.block_num,
-            tx_hash: txes[0],
-            eoa,
-            mev_contract: mev_addr,
-            mev_profit_collector: vec![mev_addr],
-            mev_type: MevType::Jit,
-            profit_usd: profit.to_float(),
-            token_profits,
-            bribe_usd: bribe.to_float(),
-        };
+        let header = self.inner.build_bundle_header(
+            &info[1],
+            profit.to_float(),
+            PriceAt::After,
+            &searcher_actions,
+            &gas_details,
+            metadata,
+            MevType::Jit,
+        );
 
         let victim_swaps = victim_actions
             .iter()
@@ -245,15 +211,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect();
 
         let jit_details = JitLiquidity {
-            frontrun_mint_tx_hash: txes[0],
-            frontrun_mint_gas_details: searcher_gas_details[0],
+            frontrun_mint_tx_hash: hashes[0],
+            frontrun_mint_gas_details: gas_details[0],
             frontrun_mints: mints,
-            victim_swaps_tx_hashes: victim_txs.clone(),
+            victim_swaps_tx_hashes: victim_hashes.clone(),
             victim_swaps,
-            victim_swaps_gas_details_tx_hashes: victim_txs.clone(),
-            victim_swaps_gas_details: victim_gas,
-            backrun_burn_tx_hash: txes[1],
-            backrun_burn_gas_details: searcher_gas_details[1],
+            victim_swaps_gas_details_tx_hashes: victim_hashes,
+            victim_swaps_gas_details: victim_gas_details,
+            backrun_burn_tx_hash: hashes[1],
+            backrun_burn_gas_details: gas_details[1],
             backrun_burns: burns,
         };
 
@@ -351,8 +317,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         set.into_iter().collect()
     }
 
-    fn get_bribes(&self, price: Arc<MetadataCombined>, gas: [GasDetails; 2]) -> Rational {
-        let bribe = gas.into_iter().map(|gas| gas.gas_paid()).sum::<u128>();
+    fn get_bribes(&self, price: Arc<MetadataCombined>, gas: &Vec<GasDetails>) -> Rational {
+        let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
     }
@@ -401,7 +367,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         token
             .zip(amount)
             .filter_map(|(token, amount)| {
-                Some(self.inner.get_dex_usd_price(idx, token, metadata.clone())? * amount)
+                Some(
+                    self.inner
+                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())?
+                        * amount,
+                )
             })
             .sum::<Rational>()
     }
@@ -409,15 +379,14 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
 #[cfg(test)]
 mod tests {
+    use alloy_primitives::hex;
     use serial_test::serial;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,
     };
-    //TODO: Found another JIT sandwich:
-    // 0xcca2c7f24d153ea698f6db11f46eae63d71790d244ca123b7a612b81ba7cfa56
-    // Test it
+
     #[tokio::test]
     #[serial]
     async fn test_jit() {
@@ -429,6 +398,23 @@ mod tests {
             .with_block(18539312)
             .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-68.34);
+
+        test_utils.run_inspector(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_only_jit() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("11a88cf8d0cab67c146709eae4803a65af4b7f70fba6d4b657c25b853a57b0f7").into(),
+                hex!("0424da7217b8d10b07fc31bca18558861ce8156597746f29d88813594330f6a0").into(),
+                hex!("7c8fd39012a2c25668096307c65a29f53c2398b30369c3ec45cbd75c4e16cc83").into(),
+            ])
+            .with_gas_paid_usd(92.65)
+            .with_expected_profit_usd(743.31);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }

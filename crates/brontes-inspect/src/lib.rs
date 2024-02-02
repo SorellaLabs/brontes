@@ -102,7 +102,7 @@ use atomic_backrun::AtomicBackrunInspector;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
     db::{cex::CexExchange, metadata::MetadataCombined},
-    mev::{Bundle, BundleData, BundleHeader},
+    mev::{Bundle, BundleData},
     normalized_actions::Actions,
     tree::BlockTree,
 };
