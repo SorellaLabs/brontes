@@ -52,16 +52,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
         Self { mark_as_finished, metadata_fetcher, classifier, parser, db, collection_future: None }
     }
 
-
     pub fn get_shutdown(&self) -> Arc<AtomicBool> {
         self.mark_as_finished.clone()
     }
 
-
     pub fn is_collecting_state(&self) -> bool {
         self.collection_future.is_some()
     }
-
 
     pub fn fetch_state_for(&mut self, block: u64) {
         let execute_fut = self.parser.execute(block);
@@ -75,6 +72,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
 
     pub fn range_finished(&self) {
         self.mark_as_finished.store(true, SeqCst);
+
     }
 }
 
@@ -85,6 +83,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        if self.mark_as_finished.load(SeqCst) {
+            return Poll::Ready(None);
+        }
+
         if let Some(mut collection_future) = self.collection_future.take() {
             match collection_future.poll_unpin(cx) {
                 Poll::Ready(Ok(tree)) => {
@@ -99,10 +101,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
                     self.collection_future = Some(collection_future);
                 }
             }
-        }
-
-        if self.metadata_fetcher.is_finished() {
-            return Poll::Ready(None)
         }
 
         self.metadata_fetcher.poll_next_unpin(cx)
