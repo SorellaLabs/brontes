@@ -10,7 +10,7 @@ use super::{Mev, MevType};
 use crate::ClickhouseVecGasDetails;
 #[allow(unused_imports)]
 use crate::{
-    display::utils::{display_sandwich, print_mev_type_header},
+    display::utils::display_sandwich,
     normalized_actions::{
         ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedSwap, NormalizedBurn,
         NormalizedLiquidation, NormalizedMint, NormalizedSwap,

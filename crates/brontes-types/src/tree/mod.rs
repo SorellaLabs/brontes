@@ -128,6 +128,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
+    //TODO: (Will) Write the docs for this
     pub fn collect_all<F>(&self, call: F) -> HashMap<B256, Vec<V>>
     where
         F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,

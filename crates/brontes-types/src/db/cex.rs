@@ -165,6 +165,17 @@ impl CexPriceMap {
             })
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
     }
+
+    /// Retrieves a CEX quote for a given token pair directly or via an
+    /// intermediary
+    pub fn get_quote_direct_or_via_intermediary(
+        &self,
+        pair: &Pair,
+        exchange: &CexExchange,
+    ) -> Option<CexQuote> {
+        self.get_quote(pair, exchange)
+            .or_else(|| self.get_quote_via_intermediary(pair, exchange))
+    }
 }
 //TODO: Joe remove the extra string for token_0 it should just be
 // base_token_addr
