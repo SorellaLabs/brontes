@@ -454,7 +454,7 @@ compressed_table!(
         compressed_value: LibmdbxCexPriceMap
         },
         Init {
-            init_size: Some(200000),
+            init_size: Some(50_000),
             init_method: Clickhouse
         },
         CLI {
@@ -473,7 +473,7 @@ compressed_table!(
             compressed_value: LibmdbxMetadataInner
         },
         Init {
-            init_size: Some(200000),
+            init_size: Some(50_000),
             init_method: Clickhouse
         },
         CLI {
