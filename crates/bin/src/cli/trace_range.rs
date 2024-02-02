@@ -74,7 +74,7 @@ impl TraceArgs {
                 while let Some(_) = handles.next().await {
                     if handles.len() % 50 == 0 {
                         let rem = handles.len() as f64;
-                        tracing::info!("tracing {:.4}% done", (total_chunks - rem) / total_chunks * 100 );
+                        tracing::info!("tracing {:.4}% done", (total_chunks - rem) / total_chunks * 100.0 );
                     }
                 }
             })
