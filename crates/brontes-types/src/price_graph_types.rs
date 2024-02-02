@@ -11,7 +11,7 @@ use crate::Protocol;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SubGraphEdge {
     pub info:                   PoolPairInfoDirection,
     pub distance_to_start_node: u8,
@@ -40,7 +40,7 @@ impl SubGraphEdge {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
     pub dex_type:  Protocol,
