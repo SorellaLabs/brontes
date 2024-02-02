@@ -156,8 +156,12 @@ pub struct StatArbPnl {
 
 impl fmt::Display for StatArbPnl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "    - Maker: {}", self.maker_profit.clone().to_float())?;
-        write!(f, "    - Taker: {}", self.taker_profit.clone().to_float())?;
+        write!(
+            f,
+            "    - Maker: {}\n     - Taker: {}",
+            self.maker_profit.clone().to_float(),
+            self.taker_profit.clone().to_float()
+        )?;
 
         Ok(())
     }
