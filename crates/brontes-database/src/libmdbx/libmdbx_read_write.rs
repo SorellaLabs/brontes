@@ -19,13 +19,11 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
 };
-use eyre::{anyhow, eyre};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::{info, warn};
 
-use super::types::dex_price::decompose_key;
 use crate::{
     libmdbx::{
         tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
@@ -43,6 +41,107 @@ pub struct LibmdbxReadWriter(pub Libmdbx);
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
+    }
+
+    #[cfg(not(feature = "local"))]
+    pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
+        let tx = self.0.ro_tx()?;
+
+        let mut cex_cur = tx.new_cursor::<CexPrice>()?;
+        let mut meta_cur = tx.new_cursor::<Metadata>()?;
+
+        let (cex_pass, meta_pass) = rayon::join(
+            || {
+                let mut i = start_block - 1;
+                for entry in cex_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+            || {
+                let mut i = start_block - 1;
+                for entry in meta_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+        );
+
+        return Ok(cex_pass == Some(true) && meta_pass == Some(true))
+    }
+
+    // local also needs to have tx traces
+    #[cfg(feature = "local")]
+    pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
+        let tx = self.0.ro_tx()?;
+
+        let mut cex_cur = tx.new_cursor::<CexPrice>()?;
+        let mut meta_cur = tx.new_cursor::<Metadata>()?;
+
+        let (cex_pass, meta_pass) = rayon::join(
+            || {
+                let mut i = start_block - 1;
+                for entry in cex_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+            || {
+                let mut i = start_block - 1;
+                for entry in meta_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+        );
+
+        // local part
+        let mut trace_cur = tx.new_cursor::<TxTraces>()?;
+
+        let mut res = true;
+        let mut i = start_block - 1;
+        for entry in trace_cur.walk_range(start_block..=end_block) {
+            for entry in meta_cur.walk_range(start_block..=end_block)? {
+                if let Ok(field) = entry {
+                    if i + 1 != field.0 {
+                        res = false;
+                    }
+                    i += 1;
+                } else {
+                    res = false;
+                }
+            }
+        }
+
+        return Ok(cex_pass == Some(true) && meta_pass == Some(true) && res)
     }
 
     pub fn has_dex_pricing_for_range(
