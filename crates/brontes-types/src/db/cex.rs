@@ -12,10 +12,10 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-
 use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
+use derive_more::Display;
 use malachite::{
     num::{
         arithmetic::traits::ReciprocalAssign, basic::traits::One, conversion::traits::FromSciString,
@@ -165,8 +165,20 @@ impl CexPriceMap {
             })
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
     }
-}
 
+    /// Retrieves a CEX quote for a given token pair directly or via an
+    /// intermediary
+    pub fn get_quote_direct_or_via_intermediary(
+        &self,
+        pair: &Pair,
+        exchange: &CexExchange,
+    ) -> Option<CexQuote> {
+        self.get_quote(pair, exchange)
+            .or_else(|| self.get_quote_via_intermediary(pair, exchange))
+    }
+}
+//TODO: Joe remove the extra string for token_0 it should just be
+// base_token_addr
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -284,6 +296,7 @@ impl MulAssign for CexQuote {
 
 #[derive(
     Copy,
+    Display,
     Debug,
     Clone,
     Default,
