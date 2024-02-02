@@ -1,11 +1,10 @@
 use core::panic;
 use std::{collections::VecDeque, pin::Pin, task::Poll};
 
-use brontes_database::{clickhouse::Clickhouse, libmdbx::types::dex_price};
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
+use brontes_database::clickhouse::Clickhouse;
+use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer};
 use brontes_types::{
     db::{
-        dex::DexQuotes,
         metadata::{MetadataCombined, MetadataNoDex},
         traits::{LibmdbxReader, LibmdbxWriter},
     },
@@ -13,11 +12,9 @@ use brontes_types::{
     traits::TracingProvider,
     BlockTree,
 };
-use eyre::eyre;
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::error;
 
 use super::dex_pricing::WaitingForPricerFuture;
 

@@ -10,7 +10,7 @@ use std::{
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::Clickhouse;
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
+use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer};
 use brontes_types::{
     db::{
         metadata::MetadataCombined,
@@ -21,7 +21,7 @@ use brontes_types::{
     BlockTree,
 };
 use eyre::eyre;
-use futures::{executor, stream::Buffered, Future, FutureExt, Stream, StreamExt};
+use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::info;
