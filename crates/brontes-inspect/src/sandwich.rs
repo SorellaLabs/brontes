@@ -403,7 +403,7 @@ fn get_possible_sandwich_duplicate_contracts(
                 let (prev_tx_hash, frontrun_eoa) = o.get_mut();
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
-                    if possible_victims.is_empty() {
+                    if frontrun_victims.is_empty() {
                         continue
                     }
                     match possible_sandwiches.entry(root.head.data.get_to_address()) {
