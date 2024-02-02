@@ -158,7 +158,7 @@ impl fmt::Display for StatArbPnl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "    - Maker: {}\n     - Taker: {}",
+            "\n     - Maker: {}\n     - Taker: {}",
             self.maker_profit.clone().to_float(),
             self.taker_profit.clone().to_float()
         )?;
