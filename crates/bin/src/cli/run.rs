@@ -35,7 +35,7 @@ pub struct RunArgs {
     pub quote_asset:       String,
     /// inspectors wanted for the run. If empty will run all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors_to_run: Option<Vec<Inspectors>>,
+    pub inspectors: Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Kraken", "Bybit", "Kucoin"], value_delimiter = ',')]
     pub cex_exchanges:     Option<Vec<String>>,
