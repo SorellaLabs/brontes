@@ -72,7 +72,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
 
     pub fn range_finished(&self) {
         self.mark_as_finished.store(true, SeqCst);
-
     }
 }
 
@@ -83,8 +82,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if self.mark_as_finished.load(SeqCst) {
-            return Poll::Ready(None);
+        if self.mark_as_finished.load(SeqCst) && self.metadata_fetcher.is_finished() {
+            return Poll::Ready(None)
         }
 
         if let Some(mut collection_future) = self.collection_future.take() {
