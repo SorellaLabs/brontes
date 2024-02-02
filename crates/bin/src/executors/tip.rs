@@ -1,32 +1,18 @@
 use std::{
-    collections::HashMap,
     pin::Pin,
-    sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
 };
 
 use alloy_primitives::Address;
-use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReader, LibmdbxWriter},
-};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{
-    db::metadata::{MetadataCombined, MetadataNoDex},
-    normalized_actions::Actions,
-    tree::BlockTree,
-};
-use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, StreamExt};
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
-use tokio::sync::mpsc::UnboundedReceiver;
+use brontes_types::{db::metadata::MetadataCombined, normalized_actions::Actions, tree::BlockTree};
+use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
+use reth_tasks::shutdown::GracefulShutdown;
 use tracing::{debug, info};
 
-use super::shared::{
-    inserts::process_results, metadata::MetadataFetcher, state_collector::StateCollector,
-};
+use super::shared::{inserts::process_results, state_collector::StateCollector};
 
 pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     current_block:      u64,
@@ -40,8 +26,8 @@ pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
 impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> {
     pub fn new(
         current_block: u64,
-        quote_asset: Address,
-        mut state_collector: StateCollector<T, DB>,
+        _quote_asset: Address,
+        state_collector: StateCollector<T, DB>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static Box<dyn Inspector>],

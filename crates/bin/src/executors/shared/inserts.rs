@@ -7,7 +7,7 @@ use brontes_inspect::{
 };
 use brontes_types::{
     db::metadata::MetadataCombined,
-    mev::{Bundle, MevBlock, PossibleMevCollection},
+    mev::{Bundle, MevBlock},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -19,7 +19,7 @@ pub async fn process_results<DB: LibmdbxWriter>(
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<MetadataCombined>,
 ) {
-    let ComposerResults { block_details, mev_details, possible_mev_txes } =
+    let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
     if let Err(e) = db.write_dex_quotes(metadata.block_num.clone(), metadata.dex_quotes.clone()) {
