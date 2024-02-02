@@ -454,7 +454,7 @@ compressed_table!(
         compressed_value: LibmdbxCexPriceMap
         },
         Init {
-            init_size: Some(50_000),
+            init_size: Some(10_000),
             init_method: Clickhouse
         },
         CLI {
