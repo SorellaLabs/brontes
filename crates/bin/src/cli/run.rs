@@ -9,6 +9,7 @@ use brontes_database::{
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
+use eyre::anyhow;
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
 
@@ -23,22 +24,25 @@ use crate::{
 pub struct RunArgs {
     /// Start Block
     #[arg(long, short)]
-    pub start_block:       u64,
+    pub start_block:     u64,
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
-    pub end_block:         Option<u64>,
+    pub end_block:       Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
-    pub max_tasks:         Option<u64>,
+    pub max_tasks:       Option<u64>,
     /// Optional quote asset, if omitted it will default to USDC
     #[arg(long, short, default_value = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")]
-    pub quote_asset:       String,
+    pub quote_asset:     String,
     /// inspectors wanted for the run. If empty will run all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors: Option<Vec<Inspectors>>,
+    pub inspectors:      Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Kraken", "Bybit", "Kucoin"], value_delimiter = ',')]
-    pub cex_exchanges:     Option<Vec<String>>,
+    pub cex_exchanges:   Option<Vec<String>>,
+    /// If we should run dex pricing, even if we have the stored dex prices.
+    #[arg(long, short, default_values = false)]
+    pub run_dex_pricing: bool,
 }
 impl RunArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
@@ -60,8 +64,25 @@ impl RunArgs {
         );
 
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
-        let clickhouse = static_object(Clickhouse::default());
 
+        // verify block range validity
+        if let Some(end_block) = self.end_block {
+            if !libmdbx.valid_range_state(self.start_block, end_block)? {
+                return Err(eyre::eyre!(
+                    "do not have all the libmdbx state to run the given block range. please init \
+                     this range first before trying to run"
+                ))
+            }
+        }
+
+        // check to make sure that we have the dex-prices for the range
+        if !self.run_dex_pricing {
+            if self.end_block.is_none() {
+                return Err(eyre::eyre!("need end block if we aren't running the dex pricing"))
+            }
+        }
+
+        let clickhouse = static_object(Clickhouse::default());
         let inspectors =
             init_inspectors(quote_asset, libmdbx, self.inspectors_to_run, self.cex_exchanges);
 
