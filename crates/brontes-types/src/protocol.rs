@@ -61,6 +61,7 @@ to_byte!(
         SushiSwapV2,
         UniswapV3,
         SushiSwapV3,
+        PancakeSwapV3,
         CurveCryptoSwap,
         AaveV2,
         AaveV3,
