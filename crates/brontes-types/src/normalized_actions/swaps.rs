@@ -63,11 +63,11 @@ impl Display for NormalizedSwap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Swapped: {} of {} for {} of {} on {}",
+            "Swapped: {} {} for {} {} on {}",
             self.amount_in.clone().to_float().to_string().red(),
-            self.token_in.symbol,
+            self.token_in.symbol.bold(),
             &self.amount_out.clone().to_float().to_string().green(),
-            self.token_out.symbol,
+            self.token_out.symbol.bold(),
             self.protocol.to_string().bold()
         )
     }
