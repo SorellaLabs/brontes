@@ -11,8 +11,6 @@ use super::{
 };
 use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
-const MAX_ITER_BEFORE_RUNDOWN: usize = 15;
-
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
 /// subgraphs, which are essential for pricing tokens on DEXs.
@@ -141,7 +139,7 @@ impl SubgraphVerifier {
             self.pending_subgraphs
                 .get_mut(&pair)?
                 .add_extension(frayed_end_extensions),
-            self.pending_subgraphs.get_mut(&pair)?.iters == MAX_ITER_BEFORE_RUNDOWN,
+                true
         ))
     }
 
@@ -165,8 +163,8 @@ impl SubgraphVerifier {
                     .entry(pair)
                     .or_default()
                     .get_nodes_to_ignore();
-                //
-                // // all results that should be pruned from our main graph.
+
+                //  all results that should be pruned from our main graph.
                 let removals = result
                     .removals
                     .clone()

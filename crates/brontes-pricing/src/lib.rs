@@ -468,27 +468,30 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         }
 
         let mut recusing = Vec::new();
-        new_state.into_iter().for_each(|(pair, block, edges)| {
-            // add regularly
-            if !edges.is_empty() {
-                let Some((id, need_state, force_rundown)) =
+        new_state
+            .into_iter()
+            .for_each(|(pair, block, missing_paths)| {
+                let edges = missing_paths.into_iter().flatten().unique().collect_vec();
+                // add regularly
+                if !edges.is_empty() {
+                    let Some((id, need_state, force_rundown)) =
                     self.add_subgraph(pair, block, edges, true)
                 else {
                     return;
                 };
-                if force_rundown {
-                    self.rundown(pair, block);
+                    if force_rundown {
+                        self.rundown(pair, block);
+                        return
+                    }
+
+                    if !need_state {
+                        recusing.push((block, id, pair))
+                    }
                     return
                 }
 
-                if !need_state {
-                    recusing.push((block, id, pair))
-                }
-                return
-            }
-
-            self.rundown(pair, block);
-        });
+                self.rundown(pair, block);
+            });
 
         self.try_verify_subgraph(recusing);
     }
@@ -505,6 +508,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 vec![(pair, block, ignores.iter().copied().collect(), vec![])],
             )
             .remove(0);
+            let edges = edges.into_iter().flatten().unique().collect_vec();
 
             if edges.is_empty() {
                 if popped.is_none() {
@@ -897,25 +901,27 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
 fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>,
-) -> Vec<(Pair, u64, Vec<SubGraphEdge>)> {
+) -> Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>)> {
     pairs
         .into_par_iter()
-        .flat_map(|(pair, block, ignore, frayed_ends)| {
+        .map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return vec![(pair, block, graph.create_subgraph(block, pair, ignore, 100, 5))]
+                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 5)])
             }
 
-            frayed_ends
-                .into_iter()
-                .zip(vec![pair.0].into_iter().cycle())
-                .map(|(end, start)| {
-                    (
-                        pair,
-                        block,
-                        graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0, 10),
-                    )
-                })
-                .collect_vec()
+            (
+                pair,
+                block,
+                frayed_ends
+                    .into_iter()
+                    .zip(vec![pair.0].into_iter().cycle())
+                    .collect_vec()
+                    .into_par_iter()
+                    .map(|(end, start)| {
+                        graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0, 12)
+                    })
+                    .collect::<Vec<_>>(),
+            )
         })
         .collect::<Vec<_>>()
 }
