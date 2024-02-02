@@ -602,7 +602,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
 
         for pool_info in self
             .graph_manager
-            .create_subgraph_mut(block, pair, 100)
+            .create_subgraph_mut(block, pair, 100, 5)
             .into_iter()
         {
             let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
@@ -902,14 +902,18 @@ fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
         .into_par_iter()
         .flat_map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return vec![(pair, block, graph.create_subgraph(block, pair, ignore, 100))]
+                return vec![(pair, block, graph.create_subgraph(block, pair, ignore, 100, 5))]
             }
 
             frayed_ends
                 .into_iter()
                 .zip(vec![pair.0].into_iter().cycle())
                 .map(|(end, start)| {
-                    (pair, block, graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0))
+                    (
+                        pair,
+                        block,
+                        graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0, 10),
+                    )
                 })
                 .collect_vec()
         })
@@ -975,7 +979,7 @@ fn queue_loading_returns<DB: LibmdbxWriter + LibmdbxReader>(
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100);
+        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100, 5);
         (subgraph, pair, trigger_update.block)
     }))
 }
