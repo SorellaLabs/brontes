@@ -475,10 +475,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 // add regularly
                 if !edges.is_empty() {
                     let Some((id, need_state, force_rundown)) =
-                    self.add_subgraph(pair, block, edges, true)
-                else {
-                    return;
-                };
+                        self.add_subgraph(pair, block, edges, true)
+                    else {
+                        return;
+                    };
                     if force_rundown {
                         self.rundown(pair, block);
                         return
@@ -906,7 +906,7 @@ fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
         .into_par_iter()
         .map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 5)])
+                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)])
             }
 
             (
