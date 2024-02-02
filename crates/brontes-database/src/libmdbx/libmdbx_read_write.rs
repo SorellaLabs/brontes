@@ -7,7 +7,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         cex::CexPriceMap,
-        dex::{DexQuoteWithIndex, DexQuotes},
+        dex::{DexPrices, DexQuoteWithIndex, DexQuotes},
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -19,11 +19,13 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
 };
+use eyre::{anyhow, eyre};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::{info, warn};
 
+use super::types::dex_price::decompose_key;
 use crate::{
     libmdbx::{
         tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
@@ -41,6 +43,25 @@ pub struct LibmdbxReadWriter(pub Libmdbx);
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
+    }
+
+    pub fn has_dex_pricing_for_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<bool> {
+        let start_key = make_key(start_block, 0);
+        let end_key = make_key(end_block, u16::MAX);
+        let tx = self.0.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<DexPrice>()?;
+        for entry in cursor.walk_range(start_key..=end_key)? {
+            if entry.is_err() {
+                return Ok(false)
+            }
+        }
+
+        Ok(true)
     }
 }
 
@@ -119,22 +140,32 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 .unwrap_or_default()
         };
 
-        let dex_quotes = Vec::new();
-        let key_range = make_filter_key_range(block_num);
-        let _db_dex_quotes = tx
-            .cursor_read::<DexPrice>()?
-            .walk_range(key_range.0..key_range.1)?
-            .flat_map(|inner| {
-                if let Ok((key, _val)) = inner.map(|row| (row.0, row.1)) {
-                    //dex_quotes.push(Default::default());
-                    Some(key)
-                } else {
-                    None
+        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let (start_range, end_range) = make_filter_key_range(block_num);
+
+        tx.cursor_read::<DexPrice>()?
+            .walk_range(start_range..end_range)?
+            .for_each(|inner| {
+                if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
+                    for _ in dex_quotes.len()..=val.tx_idx as usize {
+                        dex_quotes.push(None);
+                    }
+
+                    let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
+
+                    if let Some(tx) = tx.as_mut() {
+                        for (pair, price) in val.quote {
+                            tx.insert(pair, price);
+                        }
+                    } else {
+                        let mut tx_pairs = HashMap::default();
+                        for (pair, price) in val.quote {
+                            tx_pairs.insert(pair, price);
+                        }
+                        *tx = Some(tx_pairs);
+                    }
                 }
-            })
-            .collect::<Vec<_>>();
-        //.get::<DexPrice>(block_num)?
-        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+            });
 
         Ok(MetadataCombined {
             db:         MetadataNoDex {
