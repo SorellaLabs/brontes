@@ -519,7 +519,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 if !need_state {
                     self.try_verify_subgraph(vec![(block, id, pair)]);
                 }
-                break;
+                break
             }
         }
     }
