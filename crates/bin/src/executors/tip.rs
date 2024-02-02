@@ -20,33 +20,29 @@ use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, info};
 
-use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
+use super::{
+    dex_pricing::WaitingForPricerFuture, shared::metadata::MetadataFetcher, utils::process_results,
+};
 
-type CollectionFut<'a> =
-    Pin<Box<dyn Future<Output = (MetadataNoDex, BlockTree<Actions>)> + Send + 'a>>;
 
-pub struct TipInspector<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    current_block:     u64,
-    parser:            &'inspector Parser<'inspector, T, DB>,
-    classifier:        &'inspector Classifier<'inspector, T, DB>,
-    clickhouse:        &'inspector Clickhouse,
-    database:          &'static DB,
-    inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
-    pricer:            WaitingForPricerFuture<T, DB>,
-    // pending future data
-    classifier_future: Option<CollectionFut<'inspector>>,
-    composer_future:   FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'inspector>>>,
+pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+    current_block: u64,
+    dex_pricing_shutdown_signal: Arc<AtomicBool>,
+    metadata_fetcher: Option<MetadataFetcher<T, DB>>,
+    parser: &'static Parser<'static, T, DB>,
+    classifier: &'static Classifier<'static, T, DB>,
+    database: &'static DB,
+    inspectors: &'static [&'static Box<dyn Inspector>],
+    processing_future: Option<Pin<Box<dyn Future<Output = ()> +Send + 'static>>,
 }
 
-impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
-    TipInspector<'inspector, T, DB>
-{
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> {
     pub fn new(
-        parser: &'inspector Parser<'inspector, T, DB>,
-        clickhouse: &'inspector Clickhouse,
+        parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
-        classifier: &'inspector Classifier<'_, T, DB>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
+        classifier: &'static Classifier<'_, T, DB>,
+        inspectors: &'static [&'static Box<dyn Inspector>],
+        fetcher: MetadataFetcher<T, DB>,
         current_block: u64,
         task_executor: TaskExecutor,
         rx: UnboundedReceiver<DexPriceMsg>,
@@ -66,11 +62,9 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
             HashMap::new(),
         );
         Self {
-            pricer: WaitingForPricerFuture::new(pricer, task_executor),
             inspectors,
             current_block,
             parser,
-            clickhouse,
             composer_future: FuturesUnordered::new(),
             database,
             classifier,
@@ -170,7 +164,7 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<'_, T, DB> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
