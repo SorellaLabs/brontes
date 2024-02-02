@@ -16,7 +16,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use futures::{Future, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::info;

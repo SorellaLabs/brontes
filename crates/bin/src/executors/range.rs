@@ -1,44 +1,22 @@
 use std::{
-    collections::HashMap,
-    fs::File,
-    io::Write,
     pin::Pin,
-    sync::{
-        atomic::{AtomicBool, Ordering::SeqCst},
-        Arc,
-    },
     task::{Context, Poll},
 };
 
 use alloy_primitives::Address;
-use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReader, LibmdbxWriter},
-};
+use brontes_core::decoding::TracingProvider;
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
     db::metadata::{MetadataCombined, MetadataNoDex},
-    mev::PossibleMevCollection,
     normalized_actions::Actions,
-    structured_trace::TxTrace,
     tree::BlockTree,
 };
-use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, StreamExt};
-use reth_primitives::Header;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
-use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, info};
+use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
+use reth_tasks::shutdown::GracefulShutdown;
+use tracing::info;
 
-use super::shared::{
-    inserts::process_results,
-    metadata::MetadataFetcher,
-    state_collector::{self, StateCollector},
-};
-use crate::TipInspector;
+use super::shared::{inserts::process_results, state_collector::StateCollector};
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
@@ -59,7 +37,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
     RangeExecutorWithPricing<T, DB>
 {
     pub fn new(
-        quote_asset: Address,
+        _quote_asset: Address,
         batch_id: u64,
         start_block: u64,
         end_block: u64,
