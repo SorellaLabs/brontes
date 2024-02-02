@@ -1,20 +1,38 @@
 use std::collections::HashMap;
 
-use brontes_types::db::{
-    cex::{CexExchange, CexPriceMap, CexQuote},
-    redefined_types::{
-        malachite::Redefined_Rational,
-        primitives::{Redefined_Address, Redefined_Pair},
+use brontes_types::{
+    db::{
+        cex::{CexExchange, CexPriceMap, CexQuote},
+        redefined_types::{
+            malachite::Redefined_Rational,
+            primitives::{Redefined_Address, Redefined_Pair},
+        },
     },
+    pair::Pair,
 };
+use itertools::Itertools;
 use redefined::{Redefined, RedefinedConvert};
 
 #[derive(
     Debug, Clone, serde::Serialize, rkyv::Serialize, rkyv::Deserialize, rkyv::Archive, Redefined,
 )]
 #[redefined(CexPriceMap)]
+#[redefined_attr(
+    to_source = "CexPriceMap(self.map.into_iter().collect::<HashMap<_,_>>().to_source())",
+    from_source = "LibmdbxCexPriceMap::new(src.0)"
+)]
 #[archive(check_bytes)]
-pub struct LibmdbxCexPriceMap(pub HashMap<CexExchange, HashMap<Redefined_Pair, LibmdbxCexQuote>>);
+pub struct LibmdbxCexPriceMap {
+    /// RKYV cant seem to hadle a map where the value is a collection
+    pub map: Vec<(CexExchange, HashMap<Redefined_Pair, LibmdbxCexQuote>)>,
+}
+
+impl LibmdbxCexPriceMap {
+    fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
+        let srd = HashMap::from_source(map);
+        Self { map: srd.into_iter().collect_vec() }
+    }
+}
 
 #[derive(
     Debug,

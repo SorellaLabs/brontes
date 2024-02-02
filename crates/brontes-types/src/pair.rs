@@ -1,16 +1,38 @@
-use std::str::FromStr;
+use std::{hash::Hash, str::FromStr};
 
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use reth_db::table::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+/// Pair has a custom hash impl that will always make sure the pair is ordered
+/// before hashing aswell as on equals
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Pair(pub Address, pub Address);
+
+impl Hash for Pair {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let this = self.ordered();
+        this.0.hash(state);
+        this.1.hash(state);
+    }
+}
+
+impl Eq for Pair {}
+
+impl PartialEq for Pair {
+    fn eq(&self, other: &Self) -> bool {
+        self.ordered().0 == other.ordered().0 && self.ordered().1 == other.ordered().1
+    }
+}
 
 impl Pair {
     pub fn flip(self) -> Self {
         Pair(self.1, self.0)
+    }
+
+    pub fn eq_unordered(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
     }
 
     pub fn has_base_edge(&self, addr: Address) -> bool {

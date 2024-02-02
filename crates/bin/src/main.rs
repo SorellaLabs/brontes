@@ -38,13 +38,12 @@ fn run() -> eyre::Result<()> {
         Commands::Init(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::QueryDb(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::AddToDb(command) => runner::run_command_until_exit(|_| command.execute()),
+        Commands::TraceRange(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
     }
 }
 
 fn init_tracing() {
-    // all lower level logging directives include higher level ones (Trace includes
-    // all, Debug includes all but Trace, ...)
-    let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
+    let verbosity_level = Level::INFO;
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
     let layers = vec![brontes_tracing::stdout(directive)];
 

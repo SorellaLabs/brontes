@@ -1,21 +1,15 @@
-use std::{collections::HashMap, fmt::Debug, str::FromStr, sync::Arc};
+use std::fmt::Debug;
 
-use alloy_primitives::{Address, Log, U256};
-use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
-use brontes_types::{normalized_actions::Actions, pair::Pair, serde_primitives::address_string};
-use bytes::BufMut;
-use malachite::{num::basic::traits::Zero, Rational};
-use reth_codecs::derive_arbitrary;
-use serde::{Deserialize, Serialize};
-use serde_with::DisplayFromStr;
-use tracing::{error, warn};
+use alloy_primitives::{Address, Log};
+use brontes_types::{normalized_actions::Actions, pair::Pair};
+use malachite::Rational;
 
 use crate::{
     errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
     AutomatedMarketMaker, Protocol,
 };
 
-pub(crate) trait ProtocolState: Debug {
+pub trait ProtocolState: Debug {
     fn price(&self, base: Address) -> Result<Rational, ArithmeticError>;
     fn tvl(&self, base: Address) -> (Rational, Rational);
 }
@@ -32,7 +26,8 @@ impl ProtocolState for PoolState {
 
 #[derive(Clone)]
 pub struct PoolState {
-    variant: PoolVariants,
+    variant:         PoolVariants,
+    pub last_update: u64,
 }
 impl Debug for PoolState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -41,13 +36,14 @@ impl Debug for PoolState {
             .field("pair", &self.pair())
             .field("tvl 0", &self.get_tvl(self.pair().0).0)
             .field("tvl 1", &self.get_tvl(self.pair().0).1)
+            .field("block", &self.last_update)
             .finish()
     }
 }
 
 impl PoolState {
-    pub fn new(variant: PoolVariants) -> Self {
-        Self { variant }
+    pub fn new(variant: PoolVariants, last_update: u64) -> Self {
+        Self { variant, last_update }
     }
 
     pub fn pair(&self) -> Pair {
@@ -65,6 +61,7 @@ impl PoolState {
     }
 
     pub fn increment_state(&mut self, state: PoolUpdate) {
+        self.last_update = state.block;
         self.variant.increment_state(state.logs);
     }
 

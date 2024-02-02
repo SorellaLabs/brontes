@@ -113,7 +113,7 @@ pub struct LibmdbxLog {
 #[redefined_attr(to_source = "LogData::new_unchecked(self.topics.into_iter().map(Into::into).\
                               collect(), self.data.into())")]
 pub struct LibmdbxLogData {
-    #[redefined_attr(func = "src.topics().into_iter().map(|t| t.clone().into()).collect()")]
+    #[redefined(func = "src.topics().into_iter().map(|t| t.clone().into()).collect()")]
     pub topics: Vec<Redefined_FixedBytes<32>>,
     pub data:   Redefined_Alloy_Bytes,
 }

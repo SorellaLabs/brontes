@@ -7,8 +7,10 @@ use statrs::statistics::Statistics;
 use tracing::error;
 pub mod node;
 pub mod root;
+pub mod tx_info;
 pub use node::*;
 pub use root::*;
+pub use tx_info::*;
 
 use crate::{db::metadata::MetadataNoDex, normalized_actions::NormalizedAction};
 
@@ -28,6 +30,13 @@ impl<V: NormalizedAction> BlockTree<V> {
             priority_fee_std_dev: 0.0,
             avg_priority_fee: 0.0,
         }
+    }
+
+    pub fn get_tx_info(&self, tx_hash: B256) -> Option<TxInfo> {
+        self.tx_roots
+            .par_iter()
+            .find_any(|r| r.tx_hash == tx_hash)
+            .map(|root| root.get_tx_info(self.header.number))
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
@@ -61,7 +70,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         if self.tx_roots.is_empty() {
             error!(block = self.header.number, "The block tree is empty");
             self.tx_roots.iter_mut().for_each(|root| root.finalize());
-            return;
+            return
         }
 
         // Initialize accumulator for total priority fee and vector of priority fees
@@ -119,6 +128,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
+    //TODO: (Will) Write the docs for this
     pub fn collect_all<F>(&self, call: F) -> HashMap<B256, Vec<V>>
     where
         F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,

@@ -1,50 +1,80 @@
-use core::panic;
 use std::{
-    cmp::{max, Ordering},
+    cmp::Ordering,
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap, HashSet,
+        BinaryHeap, HashMap, HashSet, VecDeque,
     },
     hash::Hash,
-    ops::{Deref, DerefMut},
-    time::SystemTime,
 };
 
 use alloy_primitives::Address;
+use brontes_types::price_graph_types::*;
 use itertools::Itertools;
 use malachite::{
     num::{
-        arithmetic::traits::{Abs, Reciprocal, ReciprocalAssign},
+        arithmetic::traits::Reciprocal,
         basic::traits::{One, Zero},
     },
     Rational,
 };
 use petgraph::{
     algo::connected_components,
-    data::{Build, DataMap},
-    graph::{self, DiGraph, UnGraph},
+    graph::{DiGraph, EdgeReference, Edges},
     prelude::*,
-    visit::{
-        Bfs, Data, GraphBase, IntoEdgeReferences, IntoEdges, IntoNeighbors, VisitMap, Visitable,
-    },
-    Graph,
+    visit::{IntoEdgeReferences, IntoEdges, VisitMap, Visitable},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use serde::{Deserialize, Serialize};
-use tracing::{error, warn};
+use tracing::error;
 
-use crate::{
-    price_graph_types::*,
-    types::{PoolState, ProtocolState},
-    Pair, Protocol,
-};
+use crate::{types::ProtocolState, AllPairGraph, Pair};
 
-/// PairSubGraph is a sub-graph that is made from the k-shortest paths for a
-/// given Pair. This allows for running more complex search algorithms on the
-/// graph and using weighted TVL to make sure that the calculated price is the
-/// most correct.
+pub struct VerificationOutcome {
+    pub should_requery: bool,
+    pub removals:       HashMap<Pair, HashSet<BadEdge>>,
+    pub frayed_ends:    Vec<Address>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub struct BadEdge {
+    pub pair:         Pair,
+    pub pool_address: Address,
+    // the edge of the pool that we calculated the liquidity for.
+    pub edge_liq:     Address,
+    pub liquidity:    Rational,
+}
+
+#[derive(Debug, Default)]
+struct BfsArgs {
+    pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub remove_all:    HashSet<Pair>,
+}
+
+const MIN_LIQUIDITY_USDC: u128 = 15_000;
+
+/// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
+/// and optimize the pricing of a particular token pair in a decentralized
+/// exchange environment. It extracts relevant paths from a larger token graph,
+/// focusing on the most efficient paths between the pair of interest.
+///
+/// This struct is initialized with a specific token pair and their associated
+/// edges, creating a directed graph where edges represent liquidity pools and
+/// paths between tokens. The graph is tailored to efficiently compute the
+/// best price for the given pair, leveraging algorithms that factor in the
+/// total value locked and other relevant metrics.
+///
+/// The subgraph dynamically adapts to changes in the DEX, such as the
+/// addition or removal of liquidity pools, to maintain accuracy in pricing.
+/// It can identify and prune any unreliable or outdated information, such as
+/// pools no longer active or offering sufficient liquidity.
+///
+/// The subgraph also plays a key role in verification processes, analyzing
+/// and validating the state of the pools it comprises. This includes
+/// ensuring the integrity and reliability of each pool's data within the
+/// subgraph and recalculating prices based on up-to-date and verified
+/// information.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
+    pair:           Pair,
     graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
     token_to_index: HashMap<Address, u16>,
 
@@ -93,7 +123,45 @@ impl PairSubGraph {
         let comp = connected_components(&graph);
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
-        Self { graph, start_node, end_node, token_to_index }
+        Self { pair, graph, start_node, end_node, token_to_index }
+    }
+
+    pub fn extend_subgraph(&mut self, edges: Vec<SubGraphEdge>) {
+        let mut connections: HashMap<(u16, u16), Vec<SubGraphEdge>> = HashMap::new();
+
+        for edge in edges {
+            let token_0 = edge.token_0;
+            let token_1 = edge.token_1;
+
+            // fetch the node or create node it if it doesn't exist
+            let addr0 = *self
+                .token_to_index
+                .entry(token_0)
+                .or_insert_with(|| self.graph.add_node(()).index().try_into().unwrap());
+
+            // fetch the node or create node it if it doesn't exist
+            let addr1 = *self
+                .token_to_index
+                .entry(token_1)
+                .or_insert_with(|| self.graph.add_node(()).index().try_into().unwrap());
+
+            // based on the direction. insert properly
+            if edge.token_0_in {
+                connections.entry((addr0, addr1)).or_default().push(edge);
+            } else {
+                connections.entry((addr1, addr0)).or_default().push(edge);
+            }
+        }
+        self.graph.extend_with_edges(
+            connections
+                .into_par_iter()
+                .map(|((n0, n1), v)| (n0, n1, v))
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    pub fn get_unordered_pair(&self) -> Pair {
+        self.pair
     }
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
@@ -132,8 +200,11 @@ impl PairSubGraph {
         let t1 = edge_info.token_1;
 
         // tokens have to already be in the graph for this edge to be added
-        let node0 = (*self.token_to_index.get(&t0).unwrap()).into();
-        let node1 = (*self.token_to_index.get(&t1).unwrap()).into();
+        let Some(n0) = self.token_to_index.get(&t0) else { return false };
+        let Some(n1) = self.token_to_index.get(&t1) else { return false };
+
+        let node0 = (*n0).into();
+        let node1 = (*n1).into();
 
         if let Some(edge) = self.graph.find_edge(node0, node1) {
             return add_edge(&mut self.graph, edge, edge_info, true)
@@ -141,19 +212,23 @@ impl PairSubGraph {
             return add_edge(&mut self.graph, edge, edge_info, false)
         } else {
             // find the edge with shortest path
-            let to_start = self
+            let Some(to_start) = self
                 .graph
                 .edges(node0)
                 .map(|e| e.weight().first().unwrap().distance_to_start_node)
                 .min_by(|e0, e1| e0.cmp(e1))
-                .unwrap();
+            else {
+                return false
+            };
 
-            let to_end = self
+            let Some(to_end) = self
                 .graph
                 .edges(node1)
                 .map(|e| e.weight().first().unwrap().distance_to_end_node)
                 .min_by(|e0, e1| e0.cmp(e1))
-                .unwrap();
+            else {
+                return false
+            };
 
             if !(to_start <= 1 && to_end <= 1) {
                 return false
@@ -169,6 +244,236 @@ impl PairSubGraph {
             self.graph.add_edge(node1, node0, vec![new_edge1]);
         }
         true
+    }
+
+    pub fn verify_subgraph<T: ProtocolState>(
+        &mut self,
+        start: Address,
+        state: HashMap<Address, T>,
+        _all_pair_graph: &AllPairGraph,
+    ) -> VerificationOutcome {
+        if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
+            .is_none()
+        {
+            tracing::error!("invalid subgraph was given");
+        }
+
+        let result = self.run_bfs_with_liquidity_params(start, &state);
+
+        self.prune_subgraph(&result.removal_state);
+
+        let disjoint =
+            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
+                .is_none();
+
+        tracing::debug!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
+
+        let frayed_ends = disjoint
+            .then(|| self.disjoint_furthest_nodes())
+            .unwrap_or_default();
+
+        // if we not disjoint, do a bad pool check.
+        VerificationOutcome {
+            should_requery: disjoint,
+            removals: result.removal_state,
+            frayed_ends,
+        }
+    }
+
+    fn run_bfs_with_liquidity_params<T: ProtocolState>(
+        &self,
+        start: Address,
+        state: &HashMap<Address, T>,
+    ) -> BfsArgs {
+        self.bfs_with_price(start, |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
+            let mut pxw = Rational::ZERO;
+            let mut weight = Rational::ZERO;
+
+            let node_weights = edge.weight();
+            if node_weights.len() == 0 {
+                tracing::error!("found a node with no weight");
+            }
+
+            for info in node_weights {
+                let Some(pool_state) = state.get(&info.pool_addr) else {
+                    continue;
+                };
+                let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing))
+                else {
+                    continue;
+                };
+
+                let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
+                let liq0 = prev_price.clone().reciprocal() * &t0;
+
+                let pair = Pair(info.token_0, info.token_1);
+                // check if below liquidity and that if we remove we don't make the graph
+                // disjoint.
+                if liq0 < Rational::from(MIN_LIQUIDITY_USDC) {
+                    let bad_edge = BadEdge {
+                        pair,
+                        pool_address: info.pool_addr,
+                        edge_liq: info.get_quote_token(),
+                        liquidity: liq0.clone(),
+                    };
+
+                    removal_map
+                        .removal_state
+                        .entry(pair)
+                        .or_default()
+                        .insert(bad_edge);
+                } else {
+                    let t0xt1 = &t0 * &t1;
+                    pxw += pool_price * &t0xt1;
+                    weight += t0xt1;
+                }
+            }
+
+            if weight == Rational::ZERO {
+                return None
+            }
+
+            let local_weighted_price = pxw / weight;
+
+            Some(local_weighted_price)
+        })
+    }
+
+    fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, HashSet<BadEdge>>) {
+        removal_state.into_iter().for_each(|(k, v)| {
+            let Some(n0) = self.token_to_index.get(&k.0) else {
+                tracing::error!("no token 0 in token to index");
+                return
+            };
+            let Some(n1) = self.token_to_index.get(&k.1) else {
+                tracing::error!("no token 1 in token to index");
+                return
+            };
+            let n0 = *n0;
+            let n1 = *n1;
+
+            let Some((e, dir)) = self.graph.find_edge_undirected(n0.into(), n1.into()) else {
+                tracing::error!("no edge found");
+                return
+            };
+
+            let bad_edge_to_pool = v.into_iter().map(|edge| edge.pool_address).collect_vec();
+
+            let mut weights = self.graph.remove_edge(e).unwrap();
+            weights.retain(|node| !bad_edge_to_pool.contains(&node.pool_addr));
+            if !weights.is_empty() {
+                match dir {
+                    Direction::Incoming => {
+                        self.graph.add_edge(n1.into(), n0.into(), weights);
+                    }
+                    Direction::Outgoing => {
+                        self.graph.add_edge(n0.into(), n1.into(), weights);
+                    }
+                }
+            }
+        });
+    }
+
+    fn next_edges_directed<'a>(
+        &'a self,
+        node: u16,
+        outgoing: bool,
+    ) -> Edges<'a, Vec<SubGraphEdge>, Directed, u16> {
+        if outgoing {
+            self.graph.edges_directed(node.into(), Direction::Outgoing)
+        } else {
+            self.graph.edges_directed(node.into(), Direction::Incoming)
+        }
+    }
+
+    fn bfs_with_price<R: Default>(
+        &self,
+        start: Address,
+        mut collect_data_fn: impl for<'a> FnMut(
+            bool,
+            EdgeReference<'a, Vec<SubGraphEdge>, u16>,
+            &'a Rational,
+            &'a mut R,
+        ) -> Option<Rational>,
+    ) -> R {
+        let mut result = R::default();
+        let mut visited = HashSet::new();
+        let mut visit_next = VecDeque::new();
+
+        let Some(start) = self.token_to_index.get(&start) else {
+            error!(?start, "no start node for bfs with price");
+            return R::default()
+        };
+
+        let direction = *start == self.start_node;
+
+        visit_next.extend(
+            self.next_edges_directed(*start, direction)
+                .zip(vec![Rational::ONE].into_iter().cycle()),
+        );
+
+        while let Some((next_edge, prev_price)) = visit_next.pop_front() {
+            let id = next_edge.id();
+            if visited.contains(&id) {
+                continue
+            }
+            visited.insert(id);
+
+            if let Some(price) = collect_data_fn(direction, next_edge, &prev_price, &mut result) {
+                let new_price = &prev_price * price;
+
+                let next_node = if direction { next_edge.target() } else { next_edge.source() };
+
+                visit_next.extend(
+                    self.next_edges_directed(next_node.index() as u16, direction)
+                        .zip(vec![new_price].into_iter().cycle()),
+                );
+            }
+        }
+
+        result
+    }
+
+    /// given a dijsoint graph. finds the point at which the disjointness
+    /// occurred.
+    fn disjoint_furthest_nodes(&self) -> Vec<Address> {
+        let mut frayed_ends = Vec::new();
+        let mut visited = HashSet::new();
+        let mut visit_next = VecDeque::new();
+
+        visit_next.extend(
+            self.graph
+                .edges_directed(self.end_node.into(), Direction::Incoming),
+        );
+
+        while let Some(next_edge) = visit_next.pop_front() {
+            let id = next_edge.id();
+            if visited.contains(&id) {
+                continue
+            }
+            visited.insert(id);
+
+            let next_edges = self
+                .graph
+                .edges_directed(next_edge.source(), Direction::Incoming)
+                .collect_vec();
+
+            if next_edges.is_empty() {
+                let node = next_edge.target().index() as u16;
+                frayed_ends.push(
+                    *self
+                        .token_to_index
+                        .iter()
+                        .find(|(_, idx)| **idx == node)
+                        .unwrap()
+                        .0,
+                );
+                continue
+            }
+            visit_next.extend(next_edges);
+        }
+
+        frayed_ends
     }
 }
 
@@ -241,61 +546,27 @@ where
                 continue
             }
 
+            let mut pxw = Rational::ZERO;
+            let mut weight = Rational::ZERO;
+            let mut token_0_am = Rational::ZERO;
+            let mut token_1_am = Rational::ZERO;
+
             // calculate tvl of pool using the start token as the quote
             let edge_weight = edge.weight();
-            let edge_len = edge_weight.len();
-
-            let mut outliers = Vec::with_capacity(edge_len);
-            let mut outlier_p = Rational::ZERO;
-            let mut not_outliers = Vec::with_capacity(edge_len);
-            let mut not_outlier_p = Rational::ZERO;
 
             for info in edge_weight {
                 let Some(pool_state) = state.get(&info.pool_addr) else {
                     continue;
                 };
 
-                // returns is t1  / t0
                 let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
                     continue;
                 };
 
-                //  hacky method of splitting outliers from each_other. this assumes
-                //  that the outliers fit into two distinct sets.
-                //  for each entry, check the average price of the first set and if it is to far
-                //  away put into other set. then after all state has been gone through. take
-                // the longer set
-                if not_outlier_p == Rational::ZERO {
-                    not_outlier_p = pool_price.clone();
-                    not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                } else if ((&not_outlier_p / Rational::from(not_outliers.len())) - &pool_price)
-                    .abs()
-                    > (&not_outlier_p / Rational::from(not_outliers.len())) / Rational::from(4)
-                {
-                    if outlier_p == Rational::ZERO {
-                        outlier_p = pool_price.clone();
-                        outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                    } else {
-                        outlier_p += pool_price.clone();
-                        outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                    }
-                } else {
-                    not_outlier_p += pool_price.clone();
-                    not_outliers.push((pool_price, pool_state.tvl(info.get_base_token())));
-                }
-            }
+                let (t0, t1) = pool_state.tvl(info.get_base_token());
 
-            let set = if outliers.len() > not_outliers.len() { outliers } else { not_outliers };
-
-            let mut pxw = Rational::ZERO;
-            let mut weight = Rational::ZERO;
-            let mut token_0_am = Rational::ZERO;
-            let mut token_1_am = Rational::ZERO;
-
-            for (pool_price, (t0, t1)) in set {
-                // we only weight by the first token
                 let t0xt1 = &t0 * &t1;
-                pxw += (pool_price * &t0xt1);
+                pxw += pool_price * &t0xt1;
                 weight += t0xt1;
 
                 token_0_am += t0;
@@ -307,11 +578,9 @@ where
             }
 
             let local_weighted_price = pxw / weight;
-
-            let token_0_priced = token_0_am * &price;
+            let token_0_priced = token_0_am * price.clone().reciprocal();
             let new_price = &price * local_weighted_price;
-            let token_1_priced = token_1_am * &new_price;
-
+            let token_1_priced = token_1_am * new_price.clone().reciprocal();
             let tvl = token_0_priced + token_1_priced;
             let next_score = &node_score + tvl.reciprocal();
 
@@ -389,9 +658,13 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 
 #[cfg(test)]
 pub mod test {
-    use alloy_primitives::Address;
+    use alloy_primitives::{hex, Address};
+    use brontes_types::constants::USDC_ADDRESS;
+    use futures::StreamExt;
+    use serial_test::serial;
 
     use super::*;
+    use crate::test_utils::PricingTestUtils;
 
     #[derive(Debug)]
     struct MockPoolState {
@@ -489,5 +762,18 @@ pub mod test {
         let price = graph.fetch_price(&state_map).unwrap();
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn price_price_graph_for_shit() {
+        let utils = PricingTestUtils::new(USDC_ADDRESS);
+        let mut pricer = utils
+            .setup_dex_pricer_for_tx(
+                hex!("ebabf4a04fede867f7f681e30b4f5a79451e9d9e5bd1e50b4b455df8355571b6").into(),
+            )
+            .await
+            .unwrap();
+        pricer.next().await;
     }
 }

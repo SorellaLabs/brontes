@@ -15,7 +15,7 @@ use sorella_db_databases::{
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::{db::token_info::TokenInfoWithAddress, mev::StatArbDetails, Protocol};
+use crate::{db::token_info::TokenInfoWithAddress, mev::StatArbDetails, Protocol, ToFloatNearest};
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedSwapWithFee {
@@ -55,7 +55,6 @@ impl NormalizedSwap {
     /// Calculates the rate for a given DEX swap
 
     pub fn swap_rate(&self) -> Rational {
-        // Choose the calculation method based on your standard representation
         &self.amount_in / &self.amount_out
     }
 }
@@ -64,13 +63,12 @@ impl Display for NormalizedSwap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "   -{}: {} of {} for {} of {} on {}",
-            "Swapped".bold(),
-            self.amount_in.to_string(),
-            self.token_in.to_string(),
-            self.amount_out.to_string(),
-            self.token_out.to_string(),
-            self.pool.to_string()
+            "Swapped: {} {} for {} {} on {}",
+            self.amount_in.clone().to_float().to_string().red(),
+            self.token_in.symbol.bold(),
+            &self.amount_out.clone().to_float().to_string().green(),
+            self.token_out.symbol.bold(),
+            self.protocol.to_string().bold()
         )
     }
 }
