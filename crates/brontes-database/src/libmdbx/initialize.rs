@@ -14,7 +14,6 @@ use super::{tables::Tables, types::LibmdbxData, Libmdbx};
 use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
 
 const DEFAULT_START_BLOCK: u64 = 0;
-const INNER_CHUNK_SIZE: usize = 10_000;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
     libmdbx:    Arc<Libmdbx>,
@@ -102,51 +101,43 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
+
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
+            let clickhouse = self.clickhouse.clone();
+            let libmdbx = self.libmdbx.clone();
+
             async move {
-                iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| {
-                    let mut range = range.collect_vec();
-                    let start = range.remove(0);
-                    let end = range.pop().unwrap();
-                    let clickhouse = self.clickhouse.clone();
-                    let libmdbx = self.libmdbx.clone();
-                    async move {
-                        let data =
-                            clickhouse
-                            .inner()
-                            .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
-                            .await;
+                let data = clickhouse
+                    .inner()
+                    .query_many::<D>(
+                        T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
+                        &(start, end),
+                    )
+                    .await;
 
-                        match data {
-                            Ok(d) => libmdbx.write_table(&d)?,
-                            Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
-                            }
-                        }
-                        Ok::<(), eyre::Report>(())
+                match data {
+                    Ok(d) => libmdbx.write_table(&d)?,
+                    Err(e) => {
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
                     }
+                }
 
-                }).unordered_buffer_map(5, |item| {
-                    tokio::spawn(item)
-                })
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?;
+                let num = {
+                    let mut n = num_chunks.lock().unwrap();
+                    *n -= 1;
+                    n.clone() + 1
+                };
 
-            let num = {
-                let mut n = num_chunks.lock().unwrap();
-                *n -= 1;
-                n.clone() + 1
-            };
+                info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
 
-            info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
-
-            Ok::<(), eyre::Report>(())
-        }})).buffer_unordered(5).collect::<Vec<_>>().await.into_iter()
+                Ok::<(), eyre::Report>(())
+            }
+        }))
+        .unordered_buffer_map(5, |fut| tokio::spawn(fut))
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
