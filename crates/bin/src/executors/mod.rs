@@ -4,6 +4,7 @@ mod error;
 mod range;
 mod tip;
 mod utils;
+mod shared;
 
 use std::{
     pin::Pin,
