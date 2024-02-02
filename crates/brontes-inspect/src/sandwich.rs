@@ -6,6 +6,7 @@ use std::{
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
+    db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, TxInfo},
@@ -216,6 +217,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let gas_used = metadata.get_gas_price_usd(gas_used);
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,
+            PriceAt::After,
             &searcher_actions,
             metadata.clone(),
         )?;
@@ -225,6 +227,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let header = self.inner.build_bundle_header(
             &possible_front_runs_info[0],
             profit_usd,
+            PriceAt::After,
             &searcher_actions,
             &possible_front_runs_info
                 .iter()

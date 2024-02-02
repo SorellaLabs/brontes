@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
+    db::dex::PriceAt,
     mev::{AtomicBackrun, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
     tree::BlockTree,
@@ -76,9 +77,12 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         self.is_possible_arb(swaps)?;
 
-        let rev_usd =
-            self.inner
-                .get_dex_revenue_usd(info.tx_index, &searcher_actions, metadata.clone())?;
+        let rev_usd = self.inner.get_dex_revenue_usd(
+            info.tx_index,
+            PriceAt::Lowest,
+            &searcher_actions,
+            metadata.clone(),
+        )?;
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
@@ -92,6 +96,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let header = self.inner.build_bundle_header(
             &info,
             (rev_usd - &gas_used_usd).to_float(),
+            PriceAt::Lowest,
             &searcher_actions,
             &vec![info.gas_details],
             metadata,
