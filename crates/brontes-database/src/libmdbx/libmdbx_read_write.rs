@@ -56,6 +56,7 @@ impl LibmdbxReadWriter {
                 for entry in cex_cur.walk_range(start_block..=end_block).ok()? {
                     if let Ok(field) = entry {
                         if i + 1 != field.0 {
+                            tracing::error!(block = i, "missing cex price for block");
                             return Some(false)
                         }
                         i += 1;
@@ -70,6 +71,7 @@ impl LibmdbxReadWriter {
                 for entry in meta_cur.walk_range(start_block..=end_block).ok()? {
                     if let Ok(field) = entry {
                         if i + 1 != field.0 {
+                            tracing::error!(block = i, "missing metadata for block");
                             return Some(false)
                         }
                         i += 1;
