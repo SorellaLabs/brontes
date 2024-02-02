@@ -3,10 +3,7 @@ use std::fmt;
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
-use crate::{
-    db::cex,
-    mev::{Bundle, BundleData, MevType},
-};
+use crate::mev::{Bundle, BundleData, MevType};
 
 pub fn print_mev_type_header(mev_type: MevType, f: &mut fmt::Formatter) -> fmt::Result {
     match mev_type {

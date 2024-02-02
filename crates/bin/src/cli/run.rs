@@ -59,10 +59,7 @@ impl RunArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect(
-            "No
-        BRONTES_DB_PATH in .env",
-        );
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
 
