@@ -20,7 +20,7 @@ use brontes_types::{
 };
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
-use tracing::info;
+use tracing::debug;
 
 use super::metadata::MetadataFetcher;
 
@@ -61,7 +61,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
         self.collection_future = Some(Box::pin(async {
             let (traces, header) = execute_fut.await?.ok_or_else(|| eyre!("no traces found"))?;
 
-            info!("Got {} traces + header", traces.len());
+            debug!("Got {} traces + header", traces.len());
             Ok(self.classifier.build_block_tree(traces, header).await)
         }));
     }
