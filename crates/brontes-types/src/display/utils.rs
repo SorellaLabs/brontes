@@ -182,7 +182,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             /\__/ / || (_| | |_       | | | | |  | |_) |
             \____/ \__\__,_|\__|      \_| |_/_|  |_.__/ 
                                                         
-        ""#};
+        "#};
 
     for line in ascii_header.lines() {
         writeln!(f, "{}", line.purple())?;
