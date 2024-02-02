@@ -103,7 +103,8 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
                     Some((tree, meta)) => {
                         self.on_price_finish(tree, meta);
                     }
-                    None => return Poll::Ready(()),
+                    None if self.insert_futures.is_empty() => return Poll::Ready(()),
+                    _ => {}
                 }
             }
 
