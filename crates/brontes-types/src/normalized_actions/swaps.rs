@@ -55,8 +55,7 @@ impl NormalizedSwap {
     /// Calculates the rate for a given DEX swap
 
     pub fn swap_rate(&self) -> Rational {
-        // Choose the calculation method based on your standard representation
-        &self.amount_in / &self.amount_out
+        &self.amount_out / &self.amount_in
     }
 }
 
