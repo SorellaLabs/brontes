@@ -13,6 +13,7 @@ use brontes_types::{
         pool_creation_block::PoolsToAddresses,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
+        traits::{LibmdbxReader, LibmdbxWriter},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
@@ -23,7 +24,6 @@ use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::{info, warn};
 
-use super::{Libmdbx, LibmdbxReader, LibmdbxWriter};
 use crate::{
     libmdbx::{
         tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
@@ -31,6 +31,7 @@ use crate::{
             dex_price::{make_filter_key_range, make_key},
             LibmdbxData,
         },
+        Libmdbx,
     },
     AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
@@ -225,7 +226,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
         let tx = self.0.ro_tx()?;
         let subgraphs = tx
-            .get::<SubGraphs>(pair)?
+            .get::<SubGraphs>(pair.ordered())?
             .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
 
         // load the latest version of the sub graph relative to the block. if the
@@ -244,8 +245,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             }
             last = Some((pair, update))
         }
-
-        unreachable!()
+        last.ok_or_else(|| eyre::eyre!("no pair found"))
     }
 
     fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>> {
@@ -309,7 +309,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair.ordered())? {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
             let data = SubGraphsData::new(pair, entry);

@@ -2,6 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
 use brontes_types::{
+    db::dex::PriceAt,
     mev::{Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     pair::Pair,
@@ -88,12 +89,14 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .filter_map(|liq| {
                 let repaid_debt_usd = self.inner.calculate_dex_usd_amount(
                     info.tx_index as usize,
+                    PriceAt::After,
                     liq.debt_asset.address,
                     &liq.covered_debt,
                     &metadata,
                 )?;
                 let collected_collateral = self.inner.calculate_dex_usd_amount(
                     info.tx_index as usize,
+                    PriceAt::After,
                     liq.collateral_asset.address,
                     &liq.liquidated_collateral,
                     &metadata,
@@ -104,6 +107,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let rev_usd = self.inner.get_dex_revenue_usd(
             info.tx_index,
+            PriceAt::After,
             &vec![actions.clone()],
             metadata.clone(),
         )? + liq_profit;
@@ -115,6 +119,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let header = self.inner.build_bundle_header(
             &info,
             profit_usd,
+            PriceAt::After,
             &vec![actions],
             &vec![info.gas_details],
             metadata,

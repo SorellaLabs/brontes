@@ -1,44 +1,87 @@
 use std::{
-    cmp::{max, Ordering},
-    collections::{
-        hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap, HashSet,
-    },
-    hash::Hash,
+    cmp::max,
+    collections::{HashMap, HashSet},
+    ops::{Deref, DerefMut},
     time::SystemTime,
 };
 
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, tree::Node};
+use brontes_types::pair::Pair;
 use itertools::Itertools;
-use petgraph::{
-    data::DataMap,
-    graph::{self, UnGraph},
-    prelude::*,
-    visit::{Bfs, GraphBase, IntoEdges, IntoNeighbors, VisitMap, Visitable},
-    Graph,
-};
+use petgraph::{graph::UnGraph, prelude::*};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use super::yens::yen;
 use crate::{PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
-/// All known pairs represented in the graph. All sub-graphs are generated off
-/// of a k-shortest-path algorithm that is ran on this graph
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EdgeWithInsertBlock {
+    pub inner:        PoolPairInformation,
+    pub insert_block: u64,
+}
+
+impl EdgeWithInsertBlock {
+    pub fn new(
+        pool_addr: Address,
+        dex: Protocol,
+        token0: Address,
+        token1: Address,
+        block_added: u64,
+    ) -> Self {
+        Self {
+            inner:        PoolPairInformation::new(pool_addr, dex, token0, token1),
+            insert_block: block_added,
+        }
+    }
+}
+
+impl Deref for EdgeWithInsertBlock {
+    type Target = PoolPairInformation;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for EdgeWithInsertBlock {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+/// [`AllPairGraph`] Represents the interconnected network of token pairs in
+/// decentralized exchanges (DEXs), crucial for the BrontesBatchPricer system's
+/// ability to analyze and calculate token prices.
+///
+/// [`AllPairGraph`] forms a graph structure where each node represents a token
+/// and each edge a connection between tokens, typically through a liquidity
+/// pool. This structure allows for efficient navigation and identification of
+/// trading routes, and for determining the relative prices of tokens.
+///
+/// The graph is dynamic, adapting to the ever-changing landscape of the DEX
+/// environment. It incorporates new tokens and pools as they emerge, and
+/// adjusts or removes connections when changes in liquidity or pool validity
+/// occur. This ensures that the representation of the token network remains
+/// accurate and current.
+///
+/// The ability to assess the number of connections a token has, as well as to
+/// identify paths for trading between any two tokens, is fundamental to the
+/// system. It enables the evaluation of liquidity and trading opportunities.
+/// The graph also provides the capability to exclude certain paths or
+/// connections, catering to scenarios where specific routes might
+/// be temporarily infeasible or less desirable.
 #[derive(Debug, Clone)]
 pub struct AllPairGraph {
-    graph:          UnGraph<(), Vec<PoolPairInformation>, usize>,
+    graph:          UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
     token_to_index: HashMap<Address, usize>,
 }
 
 impl AllPairGraph {
     pub fn init_from_hashmap(all_pool_data: HashMap<(Address, Protocol), Pair>) -> Self {
-        let mut graph = UnGraph::<(), Vec<PoolPairInformation>, usize>::default();
+        let mut graph = UnGraph::<(), Vec<EdgeWithInsertBlock>, usize>::default();
 
         let mut token_to_index = HashMap::new();
-        let mut connections: HashMap<(usize, usize), Vec<PoolPairInformation>> = HashMap::new();
+        let mut connections: HashMap<(usize, usize), Vec<EdgeWithInsertBlock>> = HashMap::new();
 
         let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in all_pool_data {
@@ -57,7 +100,7 @@ impl AllPairGraph {
                 .entry(ordered_pair.1)
                 .or_insert_with(|| graph.add_node(()).index());
 
-            let info = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
+            let info = EdgeWithInsertBlock::new(pool_addr, dex, pair.0, pair.1, 0);
             connections.entry((addr0, addr1)).or_default().push(info);
         }
 
@@ -86,6 +129,16 @@ impl AllPairGraph {
         Self { graph, token_to_index }
     }
 
+    pub fn edge_count(&self, n0: Address, n1: Address) -> usize {
+        let Some(n0) = self.token_to_index.get(&n0) else { return 0 };
+        let Some(n1) = self.token_to_index.get(&n1) else { return 0 };
+        let n0 = *n0;
+        let n1 = *n1;
+
+        let Some(edge) = self.graph.find_edge(n0.into(), n1.into()) else { return 0 };
+        self.graph.edge_weight(edge).unwrap().len()
+    }
+
     pub fn remove_empty_address(
         &mut self,
         pool_pair: Pair,
@@ -110,8 +163,8 @@ impl AllPairGraph {
         Some((bad_pool.pool_addr, bad_pool.dex_type, pool_pair))
     }
 
-    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: Protocol) {
-        let pool_pair = PoolPairInformation::new(pool_addr, dex, pair.0, pair.1);
+    pub fn add_node(&mut self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {
+        let pool_pair = EdgeWithInsertBlock::new(pool_addr, dex, pair.0, pair.1, block);
 
         let node_0 = *self
             .token_to_index
@@ -128,13 +181,38 @@ impl AllPairGraph {
             pools.push(pool_pair);
             self.graph.update_edge(node_0.into(), node_1.into(), pools);
         } else {
-            let mut pair = vec![pool_pair];
+            let pair = vec![pool_pair];
 
             self.graph.add_edge(node_0.into(), node_1.into(), pair);
         }
     }
 
-    pub fn get_paths(&self, pair: Pair) -> Vec<Vec<Vec<SubGraphEdge>>> {
+    pub(super) fn is_only_edge(&self, node: &Address) -> bool {
+        let node = *self.token_to_index.get(node).unwrap();
+        self.graph.edges(node.into()).collect_vec().len() == 1
+    }
+
+    pub(super) fn is_only_edge_ignoring(&self, node: &Address, ignore: &HashSet<Pair>) -> bool {
+        let node = *self.token_to_index.get(node).unwrap();
+        self.graph
+            .edges(node.into())
+            .filter(|edge| {
+                let item = edge.weight().first().unwrap();
+                let pair = Pair(item.token_0, item.token_1).ordered();
+                !ignore.contains(&pair)
+            })
+            .collect_vec()
+            .len()
+            <= 1
+    }
+
+    pub fn get_paths_ignoring(
+        &self,
+        pair: Pair,
+        ignore: &HashSet<Pair>,
+        block: u64,
+        connectivity_wight: usize,
+    ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
             return vec![]
@@ -157,10 +235,23 @@ impl AllPairGraph {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
                 let edges = self.graph.edges(cur_node).collect_vec();
                 let edge_len = edges.len() as isize;
-                let weight = max(1, 1000_isize - edge_len);
+                let weight = max(1, connectivity_wight as isize - edge_len);
 
                 edges
                     .into_iter()
+                    .filter(|f| {
+                        if f.weight().iter().all(|e| e.insert_block > block) {
+                            return false
+                        }
+
+                        f.weight()
+                            .into_iter()
+                            .map(|edge| {
+                                let created_pair = Pair(edge.token_0, edge.token_1).ordered();
+                                !ignore.contains(&created_pair)
+                            })
+                            .all(|a| a)
+                    })
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
                     .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
                     .map(|n| (n.index(), weight))
@@ -169,9 +260,10 @@ impl AllPairGraph {
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
             4,
+            10_000,
         )
         .into_iter()
-        .map(|(mut nodes, _)| {
+        .map(|(nodes, _)| {
             let path_length = nodes.len();
             nodes
                 .into_iter()
@@ -188,10 +280,18 @@ impl AllPairGraph {
                         .unwrap()
                         .clone()
                         .into_iter()
+                        .filter(|info| info.insert_block <= block)
                         .map(|info| {
+                            let created_pair = Pair(info.token_0, info.token_1).ordered();
+                            if ignore.contains(&created_pair) {
+                                tracing::error!("ignore pair found in result");
+                            }
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
-                                PoolPairInfoDirection { info, token_0_in: node0 == index },
+                                PoolPairInfoDirection {
+                                    info:       *info,
+                                    token_0_in: node0 == index,
+                                },
                                 i as u8,
                                 (path_length - i) as u8,
                             )
@@ -201,6 +301,16 @@ impl AllPairGraph {
                 .collect_vec()
         })
         .collect_vec()
+    }
+
+    pub fn get_paths(
+        &self,
+        pair: Pair,
+        block: u64,
+        connectivity_wight: usize,
+    ) -> Vec<Vec<Vec<SubGraphEdge>>> {
+        let ignore = HashSet::new();
+        self.get_paths_ignoring(pair, &ignore, block, connectivity_wight)
     }
 
     pub fn get_all_known_addresses(&self) -> Vec<Address> {
