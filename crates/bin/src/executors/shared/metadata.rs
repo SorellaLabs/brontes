@@ -47,22 +47,13 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
         }
     }
 
-    pub fn running_pricing(&self) -> bool {
-        self.dex_pricer_stream.is_some()
-    }
-
-    pub fn get_price_channel(&mut self) -> Option<UnboundedReceiver<DexPriceMsg>> {
-        self.no_price_chan.take()
-    }
-
-    pub fn into_tip_mode(
-        &mut self,
-        pricer: BrontesBatchPricer<T, DB>,
-        clickhouse: &'static Clickhouse,
-        exector: TaskExecutor,
-    ) {
-        self.clickhouse = Some(clickhouse);
-        self.dex_pricer_stream = Some(WaitingForPricerFuture::new(pricer, exector));
+    pub fn is_finished(&self) -> bool {
+        self.result_buf.is_empty()
+            && self
+                .dex_pricer_stream
+                .as_ref()
+                .map(|stream| stream.is_done())
+                .unwrap_or(true)
     }
 
     fn clear_no_price_chan(&mut self) {
