@@ -6,6 +6,7 @@ use brontes_database::{
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
 };
 use brontes_metrics::PoirotMetricsListener;
+use brontes_types::unordered_buffer_map::BrontesStreamExt;
 use clap::Parser;
 use futures::{stream::FuturesUnordered, StreamExt};
 use itertools::Itertools;
@@ -54,30 +55,20 @@ impl TraceArgs {
         let chunk_size = (self.end_block - self.start_block) / max_tasks + 1;
 
         let mut handles = FuturesUnordered::new();
-        for chunk in &(self.start_block..self.end_block)
-            .into_iter()
-            .chunks(chunk_size as usize)
-        {
-            let chunk = chunk.collect::<Vec<_>>();
-            let spawner = ctx.task_executor.clone();
-            for i in chunk {
-                handles.push(async move {
-                    let _ = parser.execute(i).await;
-                });
-            }
-        }
 
-        let total_chunks = handles.len() as f64;
+        let amount = (self.end_block - self.start_block) as f64;
 
-        ctx.task_executor
-            .spawn_critical("completion", async move {
-                while let Some(_) = handles.next().await {
-                    if handles.len() % 50 == 0 {
-                        let rem = handles.len() as f64;
-                        tracing::info!("tracing {:.4}% done", (total_chunks - rem) / total_chunks * 100.0 );
-                    }
+        futures::stream::iter(self.start_block..self.end_block)
+            .unordered_buffer_map(10_000, |i| {
+                if i % 5000 == 0 {
+                    tracing::info!(
+                        "tracing {:.2}% done",
+                        (i - self.start_block) as f64 / amount * 100.0
+                    );
                 }
+                parser.execute(i)
             })
+            .collect()
             .await;
 
         Ok(())
