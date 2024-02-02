@@ -82,13 +82,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if self.mark_as_finished.load(SeqCst)
-            && self.metadata_fetcher.is_finished()
-            && self.collection_future.is_none()
-        {
-            return Poll::Ready(None)
-        }
-
         if let Some(mut collection_future) = self.collection_future.take() {
             match collection_future.poll_unpin(cx) {
                 Poll::Ready(Ok(tree)) => {
@@ -103,6 +96,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
                     self.collection_future = Some(collection_future);
                 }
             }
+        }
+
+        if self.mark_as_finished.load(SeqCst)
+            && self.metadata_fetcher.is_finished()
+            && self.collection_future.is_none()
+        {
+            return Poll::Ready(None)
         }
 
         self.metadata_fetcher.poll_next_unpin(cx)
