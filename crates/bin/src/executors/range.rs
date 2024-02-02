@@ -10,6 +10,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
@@ -32,10 +33,10 @@ use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info};
 
-use super::{
-    dex_pricing::WaitingForPricerFuture,
-    shared::{metadata::MetadataFetcher, state_collector::StateCollector},
-    utils::process_results,
+use super::shared::{
+    inserts::process_results,
+    metadata::MetadataFetcher,
+    state_collector::{self, StateCollector},
 };
 use crate::TipInspector;
 
@@ -43,9 +44,6 @@ type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
 
 pub struct RangeExecutorWithPricing<T: TracingProvider + Clone, DB: LibmdbxWriter + LibmdbxReader> {
-    parser:     &'static Parser<'static, T, DB>,
-    classifier: &'static Classifier<'static, T, DB>,
-
     collector:      StateCollector<T, DB>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 
@@ -58,54 +56,20 @@ pub struct RangeExecutorWithPricing<T: TracingProvider + Clone, DB: LibmdbxWrite
 }
 
 impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
-    RangeExecutorWithPricing<'static, T, DB>
+    RangeExecutorWithPricing<T, DB>
 {
     pub fn new(
-        quote_asset: alloy_primitives::Address,
+        quote_asset: Address,
         batch_id: u64,
         start_block: u64,
         end_block: u64,
-        parser: &'static Parser<'static, T, DB>,
+        state_collector: StateCollector<T, DB>,
         libmdbx: &'static DB,
         inspectors: &'static [&'static Box<dyn Inspector>],
-        task_executor: TaskExecutor,
-        classifier: &'static Classifier<'static, T, DB>,
-        rx: UnboundedReceiver<DexPriceMsg>,
     ) -> Self {
-        let finished = Arc::new(AtomicBool::new(false));
-        let pairs = libmdbx.protocols_created_before(start_block).unwrap();
-
-        let rest_pairs = libmdbx
-            .protocols_created_range(start_block + 1, end_block)
-            .unwrap()
-            .into_iter()
-            .flat_map(|(_, pools)| {
-                pools
-                    .into_iter()
-                    .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
-                    .collect::<Vec<_>>()
-            })
-            .collect::<HashMap<_, _>>();
-
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), libmdbx);
-
-        let pricer = BrontesBatchPricer::new(
-            finished.clone(),
-            quote_asset,
-            pair_graph,
-            rx,
-            parser.get_tracer(),
-            start_block,
-            rest_pairs,
-        );
-        let fetcher = MetadataFetcher::new(None, Some(pricer), None);
-        let state_collector = StateCollector::new(finished, fetcher, classifier, parser, libmdbx);
-
         Self {
             collector: state_collector,
             insert_futures: FuturesUnordered::default(),
-            parser,
-            classifier,
             current_block: start_block,
             end_block,
             batch_id,
@@ -133,7 +97,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
         info!(target:"brontes","dex pricing finished");
-        self.processing_futures.push(Box::pin(process_results(
+        self.insert_futures.push(Box::pin(process_results(
             self.libmdbx,
             self.inspectors,
             tree.into(),
@@ -151,7 +115,8 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
         let mut work = 256;
         loop {
             if !self.collector.is_collecting_state() && self.current_block != self.end_block {
-                self.collector.fetch_state_for(self.current_block);
+                let block = self.current_block;
+                self.collector.fetch_state_for(block);
                 self.current_block += 1;
             }
 
@@ -165,7 +130,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
             }
 
             // poll insertion
-            while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
+            while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {}
 
             // mark complete if we are done with the range
             if self.current_block == self.end_block

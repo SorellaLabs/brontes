@@ -8,15 +8,22 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::{decoding::Parser, LibmdbxReader, LibmdbxWriter};
+use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    db::metadata::MetadataCombined, normalized_actions::Actions, traits::TracingProvider, BlockTree,
+    db::{
+        metadata::MetadataCombined,
+        traits::{LibmdbxReader, LibmdbxWriter},
+    },
+    normalized_actions::Actions,
+    traits::TracingProvider,
+    BlockTree,
 };
 use eyre::eyre;
-use futures::{executor, stream::Buffered, Stream, StreamExt};
+use futures::{executor, stream::Buffered, Future, FutureExt, Stream, StreamExt};
 use reth_tasks::TaskExecutor;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::info;
 
 use super::metadata::MetadataFetcher;
@@ -72,14 +79,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
     }
 
     pub fn fetch_state_for(&mut self, block: u64) {
-        self.collection_future = Some(Box::pin(async move {
-            let (traces, header) = parser
-                .execute(block)
-                .await?
-                .ok_or_else(|| eyre!("no traces for block {block}"))?;
+        let execute_fut = self.parser.execute(block);
+        self.collection_future = Some(Box::pin(async {
+            let (traces, header) = execute_fut.await?.ok_or_else(|| eyre!("no traces found"))?;
 
             info!("Got {} traces + header", traces.len());
-            Ok(classifier.build_block_tree(traces, header).await)
+            Ok(self.classifier.build_block_tree(traces, header).await)
         }));
     }
 
@@ -95,13 +100,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if let Some(collection_future) = self.collection_future.take() {
-            match collection_future.poll_unpin() {
+        if let Some(mut collection_future) = self.collection_future.take() {
+            match collection_future.poll_unpin(cx) {
                 Poll::Ready(Ok(tree)) => {
-                    self.metadata_fetcher.load_metadata_for_tree(tree, self.db);
+                    let db = self.db;
+                    self.metadata_fetcher.load_metadata_for_tree(tree, db);
                 }
                 Poll::Ready(Err(e)) => {
-                    tracing::error!(error = e, "state collector");
+                    tracing::error!(error = %e, "state collector");
                     return Poll::Ready(None)
                 }
                 Poll::Pending => {

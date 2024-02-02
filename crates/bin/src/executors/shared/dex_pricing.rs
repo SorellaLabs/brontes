@@ -16,7 +16,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use futures::{Stream, StreamExt};
+use futures::{Future, Stream, StreamExt};
 use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::info;
@@ -86,7 +86,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
                     return Poll::Ready(None)
                 };
 
-                if block_number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
+                if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
                     tree.label_private_txes(&meta);
                 }
 
