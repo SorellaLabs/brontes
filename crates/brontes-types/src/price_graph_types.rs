@@ -40,7 +40,7 @@ impl SubGraphEdge {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq,  Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
     pub dex_type:  Protocol,
