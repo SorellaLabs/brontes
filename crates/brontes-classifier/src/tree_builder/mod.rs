@@ -342,7 +342,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                     if self.libmdbx.try_get_token_info(addr).unwrap().is_none() {
                         load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
                     }
-                    let token_info = self.libmdbx.try_get_token_info(addr).unwrap().unwrap();
+
+                    let Some(token_info) = self.libmdbx.try_get_token_info(addr).unwrap() else {
+                        return (vec![], Actions::Unclassified(trace))
+                    };
 
                     return (
                         vec![],

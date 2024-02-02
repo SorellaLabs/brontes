@@ -1,3 +1,5 @@
+use brontes_macros::{action_dispatch, discovery_dispatch};
+
 pub mod uniswap;
 pub use uniswap::*;
 
@@ -12,7 +14,9 @@ pub use balancer::*;
 
 pub mod aave;
 pub use aave::*;
-use brontes_macros::{action_dispatch, discovery_dispatch};
+
+pub mod pancakeswap;
+pub use pancakeswap::*;
 
 discovery_dispatch!(
     DiscoveryProtocols,
@@ -21,6 +25,7 @@ discovery_dispatch!(
     UniswapV2Decoder,
     UniswapV3Decoder,
     BalancerV1Decoder,
+    PancakeSwapV3Decoder,
     CurveV1MetapoolBaseDecoder,
     CurveV1MetapoolMetaDecoder,
     CurveV2MetapoolBaseDecoder,
@@ -47,6 +52,10 @@ action_dispatch!(
     SushiSwapV3mintCall,
     SushiSwapV3burnCall,
     SushiSwapV3collectCall,
+    PancakeSwapV3swapCall,
+    PancakeSwapV3mintCall,
+    PancakeSwapV3burnCall,
+    PancakeSwapV3collectCall,
     UniswapXexecuteCall,
     CurveCryptoSwapexchange_0Call,
     CurveCryptoSwapexchange_1Call,

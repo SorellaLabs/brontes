@@ -3,6 +3,10 @@ use std::{
     fs::File,
     io::Write,
     pin::Pin,
+    sync::{
+        atomic::{AtomicBool, Ordering::SeqCst},
+        Arc,
+    },
     task::{Context, Poll},
 };
 
@@ -39,9 +43,10 @@ pub struct RangeExecutorWithPricing<
 > {
     parser:     &'db Parser<'db, T, DB>,
     classifier: &'db Classifier<'db, T, DB>,
+    finished:   Arc<AtomicBool>,
 
     collection_future: Option<CollectionFut<'db>>,
-    pricer:            WaitingForPricerFuture<T>,
+    pricer:            WaitingForPricerFuture<T, DB>,
 
     processing_futures:
         FuturesUnordered<Pin<Box<dyn Future<Output = PossibleMevCollection> + Send + 'db>>>,
@@ -71,6 +76,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         classifier: &'db Classifier<'db, T, DB>,
         rx: UnboundedReceiver<DexPriceMsg>,
     ) -> Self {
+        let finished = Arc::new(AtomicBool::new(false));
         let pairs = libmdbx.protocols_created_before(start_block).unwrap();
 
         let rest_pairs = libmdbx
@@ -85,18 +91,10 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
             })
             .collect::<HashMap<_, _>>();
 
-        let pair_graph = GraphManager::init_from_db_state(
-            pairs,
-            HashMap::default(),
-            Box::new(|block, pair| libmdbx.try_load_pair_before(block, pair).ok()),
-            Box::new(|block, pair, edges| {
-                if libmdbx.save_pair_at(block, pair, edges).is_err() {
-                    error!("failed to save subgraph to db");
-                }
-            }),
-        );
+        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), libmdbx);
 
         let pricer = BrontesBatchPricer::new(
+            finished.clone(),
             quote_asset,
             pair_graph,
             rx,
@@ -108,6 +106,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
         let pricer = WaitingForPricerFuture::new(pricer, task_executor);
 
         Self {
+            finished,
             collection_future: None,
             processing_futures: FuturesUnordered::default(),
             parser,
@@ -177,7 +176,7 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
             let block_number = header.number;
             let mut tree = classifier.build_block_tree(traces, header).await;
             if block_number < START_OF_CHAINBOUND_MEMPOOL_DATA {
-                return (tree, meta);
+                return (tree, meta)
             }
             tree.label_private_txes(&meta);
             (tree, meta)
@@ -186,10 +185,10 @@ impl<'db, T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
 
     fn start_next_block(&mut self) {
         let parser = self.parser.execute(self.current_block);
-        let meta = self
-            .libmdbx
-            .get_metadata_no_dex_price(self.current_block)
-            .unwrap();
+        let Ok(meta) = self.libmdbx.get_metadata_no_dex_price(self.current_block) else {
+            error!(?self.current_block, "failed to load metadata for block");
+            return
+        };
 
         let fut = Box::pin(parser.then(|x| {
             let (traces, header) = x.unwrap().unwrap();
@@ -251,7 +250,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
             // could take multiple polls until the pricing is done for the final
             // block.
             if self.pricer.pending_trees.len() <= 1 && self.current_block == self.end_block {
-                self.classifier.close();
+                self.finished.store(true, SeqCst);
             }
             // poll insertion
             while let Poll::Ready(Some(missed_arbs)) = self.processing_futures.poll_next_unpin(cx) {

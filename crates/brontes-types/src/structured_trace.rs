@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use alloy_primitives::{Address, Log};
 use redefined::{self_convert_redefined, RedefinedConvert};
 use reth_primitives::{Bytes, B256};
@@ -159,6 +161,8 @@ impl TransactionTraceWithLogs {
             Action::Call(call) => {
                 // Assuming SCP_MAIN_CEX_DEX_BOT is of type Address and is correctly imported
                 call.to == SCP_MAIN_CEX_DEX_BOT
+                    || call.to
+                        == Address::from_str("0xfbEedCFe378866DaB6abbaFd8B2986F5C1768737").unwrap()
                     || (call.input.len() >= 4 && &call.input[0..4] == EXECUTE_FFS_YO.as_ref())
             }
             _ => false,
