@@ -1,13 +1,13 @@
 use core::panic;
 use std::{collections::VecDeque, pin::Pin, task::Poll};
 
-use brontes_core::{LibmdbxReader, LibmdbxWriter};
 use brontes_database::{clickhouse::Clickhouse, libmdbx::types::dex_price};
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
     db::{
         dex::DexQuotes,
         metadata::{MetadataCombined, MetadataNoDex},
+        traits::{LibmdbxReader, LibmdbxWriter},
     },
     normalized_actions::Actions,
     traits::TracingProvider,
@@ -20,7 +20,6 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::error;
 
 use super::dex_pricing::WaitingForPricerFuture;
-use crate::executors::dex_pricing::WaitingForPricerFuture;
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
@@ -30,7 +29,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader
     /// being terrible on memory
     no_price_chan:      Option<UnboundedReceiver<DexPriceMsg>>,
     clickhouse_futures: FuturesOrdered<
-        Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, MetadataNoDex)> + Send + Sync>>,
+        Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, MetadataNoDex)> + Send>>,
     >,
 
     result_buf: VecDeque<(BlockTree<Actions>, MetadataCombined)>,
@@ -81,7 +80,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
         self.clear_no_price_chan();
         // pull directly from libmdbx
         if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
-            let meta = libmdbx.get_metadata(block)?;
+            let Ok(meta) = libmdbx.get_metadata(block) else {
+                tracing::error!(?block, "failed to load metadata from libmdbx");
+                return
+            };
             self.result_buf.push_back((tree, meta));
         // need to pull the metadata from clickhouse
         } else if let Some(clickhouse) = self.clickhouse {
@@ -92,7 +94,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
             self.clickhouse_futures.push_back(future);
         // don't need to pull from clickhouse, means we are running pricing
         } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
-            let meta = libmdbx.get_metadata_no_dex(block)?;
+            let Ok(meta) = libmdbx.get_metadata_no_dex_price(block) else {
+                tracing::error!(?block, "failed to load metadata from libmdbx");
+                return
+            };
             pricer.add_pending_inspection(block, tree, meta);
         } else {
             panic!("metadata fetcher not setup properly")
@@ -112,14 +117,16 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataF
         if let Some(res) = self.result_buf.pop_front() {
             return Poll::Ready(Some(res))
         }
-        if let Some(pricer) = self.dex_pricer_stream.as_mut() {
+        if let Some(mut pricer) = self.dex_pricer_stream.take() {
             while let Poll::Ready(Some((block, tree, meta))) =
                 self.clickhouse_futures.poll_next_unpin(cx)
             {
                 pricer.add_pending_inspection(block, tree, meta)
             }
 
-            return pricer.poll_next_unpin(cx)
+            let res = pricer.poll_next_unpin(cx);
+            self.dex_pricer_stream = Some(pricer);
+            return res
         }
 
         return std::task::Poll::Pending

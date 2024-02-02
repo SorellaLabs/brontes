@@ -14,20 +14,23 @@ use brontes_database::{
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{db::metadata::MetadataNoDex, normalized_actions::Actions, tree::BlockTree};
-use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
-use reth_tasks::TaskExecutor;
-use tokio::sync::{futures, mpsc::UnboundedReceiver};
+use brontes_types::{
+    db::metadata::{MetadataCombined, MetadataNoDex},
+    normalized_actions::Actions,
+    tree::BlockTree,
+};
+use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, StreamExt};
+use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, info};
 
 use super::shared::{
-    inserts::process_results,
-    metadata::MetadataFetcher,
-    state_collector::{collect_all_state, StateCollector},
+    inserts::process_results, metadata::MetadataFetcher, state_collector::StateCollector,
 };
 
 pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     current_block:      u64,
+    parser:             &'static Parser<'static, T, DB>,
     state_collector:    StateCollector<T, DB>,
     database:           &'static DB,
     inspectors:         &'static [&'static Box<dyn Inspector>],
@@ -39,55 +42,37 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         current_block: u64,
         quote_asset: Address,
         mut state_collector: StateCollector<T, DB>,
+        parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
-        clickhouse: &'static Clickhouse,
         inspectors: &'static [&'static Box<dyn Inspector>],
-        task_executor: TaskExecutor,
     ) -> Self {
-        // put into pricing mode if not already
-        if !state_collector.is_running_pricing() {
-            let pairs = database.protocols_created_before(current_block).unwrap();
-            let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), database);
-
-            let price_chan = state_collector.get_price_channel();
-
-            let pricer = BrontesBatchPricer::new(
-                state_collector.get_shutdown(),
-                quote_asset,
-                pair_graph,
-                price_chan,
-                parser.get_tracer(),
-                current_block,
-                HashMap::new(),
-            );
-            state_collector.into_tip_mode(pricer, clickhouse, task_executor);
-        }
-
         Self {
             state_collector,
             inspectors,
             current_block,
+            parser,
             processing_futures: FuturesUnordered::new(),
             database,
         }
     }
 
-    fn start_collection(&mut self) {
-        info!(block_number = self.current_block, "starting data collection");
-        self.processing_future = Some(Box::pin(
-            collect_all_state(
-                self.current_block,
-                self.database,
-                self.metadata_fetcher.take().unwrap(),
-                self.parser,
-                self.classifier,
-            )
-            .map(|res| async move {
-                let (fetcher, tree, metadata) = res?;
-                process_results(self.database, self.inspectors, tree, metadata).await;
-                fetcher
-            }),
-        ));
+    pub async fn run_until_graceful_shutdown(self, shutdown: GracefulShutdown) {
+        let tip = self;
+        pin_mut!(tip, shutdown);
+
+        let mut graceful_guard = None;
+        tokio::select! {
+            _= &mut tip => {
+
+            },
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+            },
+        }
+
+        while let Some(_) = tip.processing_futures.next().await {}
+
+        drop(graceful_guard);
     }
 
     #[cfg(not(feature = "local"))]
@@ -133,6 +118,16 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
             }
         }
     }
+
+    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
+        info!(target:"brontes","dex pricing finished");
+        self.processing_futures.push(Box::pin(process_results(
+            self.database,
+            self.inspectors,
+            tree.into(),
+            meta.into(),
+        )));
+    }
 }
 
 impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<T, DB> {
@@ -142,21 +137,16 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspec
         #[cfg(not(feature = "local"))]
         {
             if self.start_block_inspector() {
-                self.state_collector.fetch_state_for(self.current_block);
+                let block = self.current_block;
+                self.state_collector.fetch_state_for(block);
             }
-            if let Some(mut future) = self.processing_future.take() {
-                if let Poll::Ready(res) = future.poll_unpin(cx) {
-                    match res {
-                        Ok(fetcher) => self.metadata_fetcher = Some(fetcher),
-                        Err(e) => {
-                            tracing::error!(error = e, "tip inspector ran into a error");
-                            return Poll::Ready(())
-                        }
-                    }
-                } else {
-                    self.processing_future = Some(future);
+            if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
+                match item {
+                    Some((tree, meta)) => self.on_price_finish(tree, meta),
+                    None => return Poll::Ready(()),
                 }
             }
+            while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
         }
 
         Poll::Pending
