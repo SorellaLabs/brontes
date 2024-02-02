@@ -8,8 +8,8 @@ use brontes_database::{
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::unordered_buffer_map::BrontesStreamExt;
 use clap::Parser;
-use futures::{stream::FuturesUnordered, StreamExt};
-use itertools::Itertools;
+use futures::{StreamExt};
+
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, static_object};
@@ -65,7 +65,7 @@ impl TraceArgs {
                 }
                 parser.execute(i)
             })
-            .map(|res| ())
+            .map(|_res| ())
             .collect::<Vec<_>>()
             .await;
 
