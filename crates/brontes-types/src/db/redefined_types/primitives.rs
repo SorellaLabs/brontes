@@ -30,7 +30,7 @@ UInt
 #[redefined(Uint)]
 #[redefined_attr(to_source = "Uint::from_limbs(self.limbs)")]
 pub struct Redefined_Uint<const BITS: usize, const LIMBS: usize> {
-    #[redefined_attr(func = "src.into_limbs()")]
+    #[redefined(func = "src.into_limbs()")]
     limbs: [u64; LIMBS],
 }
 
@@ -39,7 +39,7 @@ impl<const BITS: usize, const LIMBS: usize> serde::Serialize for Redefined_Uint<
     where
         S: serde::Serializer,
     {
-        let this: Uint<BITS, LIMBS> = self.to_source();
+        let this = self.to_source();
         this.serialize(serializer)
     }
 }
@@ -105,7 +105,7 @@ impl<const N: usize> serde::Serialize for Redefined_FixedBytes<N> {
     where
         S: serde::Serializer,
     {
-        let this: FixedBytes<N> = self.to_source();
+        let this = self.to_source();
         this.serialize(serializer)
     }
 }
@@ -131,7 +131,7 @@ impl<const N: usize> FromStr for Redefined_FixedBytes<N> {
 
 impl<const N: usize> fmt::Display for Redefined_FixedBytes<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let this: FixedBytes<N> = self.to_source();
+        let this = self.to_source();
         this.fmt(f)
     }
 }
