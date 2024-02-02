@@ -147,7 +147,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         swap: &NormalizedSwap,
         metadata: &MetadataCombined,
     ) -> Option<Vec<(CexExchange, Rational, bool)>> {
-        let pair = Pair(swap.token_in.address, swap.token_out.address).ordered();
+        let pair = Pair(swap.token_out.address, swap.token_in.address).ordered();
         let quotes = self
             .cex_exchanges
             .iter()
