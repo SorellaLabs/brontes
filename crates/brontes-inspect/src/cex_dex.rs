@@ -1,3 +1,46 @@
+//! This module implements the `CexDexInspector`, a specialized inspector
+//! designed to detect arbitrage opportunities between centralized
+//! exchanges (CEXs) and decentralized exchanges (DEXs).
+//!
+//! ## Overview
+//!
+//! A Cex-Dex arbitrage occurs when a trader exploits the price difference
+//! between a CEX and a DEX. The trader buys an undervalued asset on the DEX and
+//! sells it on the CEX.
+//!
+//!
+//! ## Methodology
+//!
+//! The `CexDexInspector` systematically identifies arbitrage opportunities
+//! between CEXs and DEXs by analyzing transactions containing swap actions.
+//!
+//! ### Step 1: Collect Transactions
+//! All transactions containing swap actions are collected from the block tree
+//! using `collect_all`.
+//!
+//! ### Step 2: Detect Arbitrage Opportunities
+//! For each transaction with swaps, the inspector:
+//!   - Retrieves CEX quotes for the swapped tokens for each exchange with
+//!     `cex_quotes_for_swap`.
+//!   - Calculates PnL post Cex & Dex fee and identifies arbitrage legs with
+//!     `detect_cex_dex_opportunity`, considering both direct and intermediary
+//!     token quotes.
+//!   - Assembles `PossibleCexDexLeg` instances, for each swap, containing the
+//!     swap action and the potential arbitrage legs i.e the different
+//!     arbitrages that can be done for each exchange.
+//!
+//! ### Step 3: Profit Calculation and Gas Accounting
+//! The inspector filters for the most profitable arbitrage path per swap i.e
+//! for a given swap it gets the exchange with the highest profit
+//! through `filter_most_profitable_leg`. It then gets the total potential
+//! profit, and accounts for gas costs with `gas_accounting` to calculate the
+//! transactions final PnL.
+//!
+//! ### Step 4: Validation and Bundle Construction
+//! Arbitrage opportunities are validated and false positives minimized in
+//! `filter_possible_cex_dex`. Valid opportunities are bundled into
+//! `BundleData::CexDex` instances.
+
 use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
@@ -25,6 +68,14 @@ pub struct CexDexInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
+    /// Constructs a new `CexDexInspector`.
+    ///
+    /// # Arguments
+    ///
+    /// * `quote` - The address of the quote asset
+    /// * `db` - Database reader to our local libmdbx database
+    /// * `cex_exchanges` - List of centralized exchanges to consider for
+    ///   arbitrage.
     pub fn new(quote: Address, db: &'db DB, cex_exchanges: &Vec<CexExchange>) -> Self {
         Self {
             inner:         SharedInspectorUtils::new(quote, db),
@@ -35,22 +86,39 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
 
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
+    /// Processes the block tree to find CEX-DEX arbitrage
+    /// opportunities. This is the entry point for the inspection process,
+    /// identifying transactions that include swap actions.
+    ///
+    /// # Arguments
+    /// * `tree` - A shared reference to the block tree.
+    /// * `meta_data` - Shared metadata struct containing:
+    ///     - `cex_quotes` - CEX quotes
+    ///     - `dex_quotes` - DEX quotes
+    ///     - `private_flow` - Set of private transactions that were not seen in
+    ///       the mempool
+    ///     - `relay & p2p_timestamp` - When the block was first sent to a relay
+    ///       & when it was first seen in the p2p network
+    ///
+    ///
+    /// # Returns
+    /// A vector of `Bundle` instances representing classified CEX-DEX arbitrage
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<MetadataCombined>,
     ) -> Vec<Bundle> {
-        // Get all normalized swaps by tx
-        let intersting_state = tree.collect_all(|node| {
+        let swap_txes = tree.collect_all(|node| {
             (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
         });
 
-        intersting_state
+        swap_txes
             .into_par_iter()
             .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx)?;
 
+                // For each swap in the transaction, detect potential CEX-DEX
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
                     .into_iter()
                     .filter_map(|action| {
@@ -88,6 +156,17 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
 }
 
 impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
+    /// Detects potential CEX-DEX arbitrage opportunities for a given swap.
+    ///
+    /// # Arguments
+    ///
+    /// * `swap` - The swap action to analyze.
+    /// * `metadata` - Combined metadata for additional context in analysis.
+    ///
+    /// # Returns
+    ///
+    /// An option containing a `PossibleCexDexLeg` if an opportunity is found,
+    /// otherwise `None`.
     pub fn detect_cex_dex_opportunity(
         &self,
         swap: &NormalizedSwap,
@@ -105,6 +184,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         Some(PossibleCexDexLeg { swap: swap.clone(), possible_legs })
     }
 
+    /// For a given swap & CEX quote, calculates the potential profit from
+    /// buying on DEX and selling on CEX. This function also accounts for CEX
+    /// trading fees.
     fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
@@ -149,12 +231,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         })
     }
 
-    /// Gets the Cex quote for a Dex swap by exchange
-    /// Retrieves CEX quotes for a DEX swap, grouped by exchange.
-    /// If the quote is not found for a given exchange, it will try to find a
-    /// quote via an intermediary token. Direct quotes are marked as
-    /// `true`, intermediary quotes are marked as `false`. Which allows us to
-    /// account for the additional fees.
+    /// Retrieves CEX quotes for a DEX swap, analyzing both direct and
+    /// intermediary token pathways.
+    ///
+    /// It attempts to retrieve quotes for the pair of tokens involved in the
+    /// swap from each CEX specified in the inspector's configuration. If a
+    /// direct quote is unavailable for a given exchange, the function seeks
+    /// a quote via an intermediary token.
+    ///
+    /// Direct quotes are marked as `true`, indicating a single trade. Indirect
+    /// quotes are marked as `false`, indicating two trades are required to
+    /// complete the swap on the CEX. This distinction is needed so we can
+    /// account for CEX trading fees.
     fn cex_quotes_for_swap(
         &self,
         swap: &NormalizedSwap,
@@ -195,6 +283,22 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         }
     }
 
+    /// Accounts for gas costs in the calculation of potential arbitrage
+    /// profits. This function calculates the final pnl for the transaction by
+    /// subtracting gas costs from the total potential arbitrage profits.
+    ///
+    /// # Arguments
+    /// * `swaps_with_profit_by_exchange` - A vector of `PossibleCexDexLeg`
+    ///   instances to be analyzed.
+    /// * `gas_details` - Details of the gas costs associated with the
+    ///   transaction.
+    /// * `metadata` - Shared metadata providing additional context and price
+    ///   data.
+    ///
+    /// # Returns
+    /// A `PossibleCexDex` instance representing the finalized arbitrage
+    /// opportunity after accounting for gas costs.
+
     fn gas_accounting(
         &self,
         swaps_with_profit_by_exchange: Vec<PossibleCexDexLeg>,
@@ -232,6 +336,16 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         PossibleCexDex { swaps, arb_details, gas_details: gas_details.clone(), pnl }
     }
 
+    /// Filters and validates identified CEX-DEX arbitrage opportunities to
+    /// minimize false positives.
+    ///
+    /// # Arguments
+    /// * `possible_cex_dex` - The arbitrage opportunity being validated.
+    /// * `info` - Transaction info providing additional context for validation.
+    ///
+    /// # Returns
+    /// An option containing `BundleData::CexDex` if a valid opportunity is
+    /// identified, otherwise `None`.
     fn filter_possible_cex_dex(
         &self,
         possible_cex_dex: &PossibleCexDex,
@@ -243,6 +357,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         // A cex-dex bot will never be verified, so if the top level call is classified
         // this is false positive
+        //TODO: This isn't always true, see https://etherscan.io/tx/0x823d500353bdb668616bd19bc60e404600e1d7ed298fbffc3ee7a19209518850
         let is_unclassified_action = info.is_classifed;
 
         if (has_positive_pnl || possible_cex_dex.gas_details.coinbase_transfer.is_some())
@@ -287,6 +402,8 @@ pub struct PossibleCexDexLeg {
     pub possible_legs: Vec<ExchangeLeg>,
 }
 
+/// Filters the most profitable exchange to execute the arbitrage on from a set
+/// of potential exchanges for a given swap.
 impl PossibleCexDexLeg {
     pub fn filter_most_profitable_leg(&self) -> Option<ExchangeLeg> {
         self.possible_legs
