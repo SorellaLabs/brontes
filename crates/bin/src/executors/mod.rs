@@ -19,7 +19,6 @@ use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use itertools::Itertools;
-use malachite::num::conversion::traits::WrappingInto;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::{TaskExecutor, TaskSpawnerExt};
 pub use tip::TipInspector;
