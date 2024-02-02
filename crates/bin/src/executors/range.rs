@@ -115,6 +115,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
                 && self.insert_futures.is_empty()
                 && !self.collector.is_collecting_state()
             {
+                tracing::info!("finished");
                 self.collector.range_finished();
             }
 
