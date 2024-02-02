@@ -8,21 +8,10 @@ pub mod uniswap_v3_math;
 use std::{future::Future, sync::Arc};
 
 use alloy_primitives::{Address, Log, U256};
-use alloy_sol_types::SolCall;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
 pub use brontes_types::{queries::make_call_request, Protocol};
 use malachite::Rational;
-use reth_codecs::{impl_compact_for_bytes, Compact};
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
-use reth_primitives::BufMut;
-use reth_rpc_types::{CallInput, CallRequest};
-use rkyv::Deserialize as rkyv_Deserialize;
-use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{self, DbRow};
 use tracing::error;
 
 use crate::{
@@ -72,7 +61,7 @@ impl LoadState for Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV2(pool)),
+                    PoolState::new(crate::types::PoolVariants::UniswapV2(pool), block_number),
                     res,
                 ))
             }
@@ -96,7 +85,7 @@ impl LoadState for Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV3(pool)),
+                    PoolState::new(crate::types::PoolVariants::UniswapV3(pool), block_number),
                     res,
                 ))
             }

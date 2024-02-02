@@ -9,13 +9,9 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
-use malachite::{
-    num::{arithmetic::traits::Pow, logic::traits::BitConvertible},
-    Natural, Rational,
-};
+use malachite::{num::arithmetic::traits::Pow, Natural, Rational};
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
-use tracing::{error, info};
 
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
@@ -69,7 +65,7 @@ impl AutomatedMarketMaker for UniswapV2Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError> {
+    fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
         todo!()
     }
 
@@ -257,9 +253,9 @@ impl UniswapV2Pool {
     }
 
     pub async fn new_from_log<M: TracingProvider>(
-        log: Log,
-        fee: u32,
-        middleware: Arc<M>,
+        _log: Log,
+        _fee: u32,
+        _middleware: Arc<M>,
     ) -> Result<Self, AmmError> {
         // let event_signature = log.topics[0];
         //
@@ -273,7 +269,7 @@ impl UniswapV2Pool {
         todo!()
     }
 
-    pub fn new_empty_pool_from_log(log: Log) -> Result<Self, EventLogError> {
+    pub fn new_empty_pool_from_log(_log: Log) -> Result<Self, EventLogError> {
         // let event_signature = log.topics[0];
         //
         // if event_signature == PAIR_CREATED_EVENT_SIGNATURE {

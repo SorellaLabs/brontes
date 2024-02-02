@@ -79,7 +79,10 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         let block_range_chunks = if let Some((s, e)) = block_range {
             (s..e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
+            #[cfg(not(feature = "local"))]
             let end_block = self.tracer.best_block_number()?;
+            #[cfg(feature = "local")]
+            let end_block = self.tracer.best_block_number().await?;
 
             (DEFAULT_START_BLOCK..end_block).chunks(
                 T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),

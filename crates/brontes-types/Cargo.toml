@@ -24,7 +24,6 @@ tracing.workspace = true
 # async
 rayon.workspace = true
 tokio = { workspace = true, features = ["full"] }
-paste = "1.0.14"
 futures.workspace = true
 
 # numbers
@@ -59,6 +58,7 @@ bytes.workspace = true
 colored.workspace = true
 indoc = "2"
 zstd = "0.13"
+paste = "1.0.14"
 pin-project = "1.1.4"
 
 # stats

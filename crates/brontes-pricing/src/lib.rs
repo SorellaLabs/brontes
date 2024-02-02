@@ -1,72 +1,98 @@
-#![allow(unused)]
-#![feature(noop_waker)]
+//! [`BrontesBatchPricer`] calculates and track the prices of tokens
+//! on decentralized exchanges on a per-transaction basis. It builds and
+//! maintains a main token graph which is used to derive smaller subgraphs used
+//! to price tokens relative to a defined quote token.
+//!
+//! ## Core Functionality
+//!
+//! ### Subgraph Utilization
+//! The system leverages subgraphs, which are smaller, focused graph structures
+//! extracted from the larger token graph. Subgraphs are built when a classified
+//! event occurs on a token. When this occurs a subgraph is made for the pair if
+//! one doesn't already exist. This allows for fast computation of a tokens
+//! price. These subgraphs constantly update with new blocks, updating their
+//! nodes and edges to reflect new liquidity pools,  By focusing on relevant
+//! portions of the graph, the system enhances performance and accuracy in price
+//! calculations.
+//!
+//! ### Graph Management
+//! The system adds new pools to the token graph as they appear in new blocks,
+//! ensuring that all valid trading paths are represented.
+//!
+//! ### Lazy Loading
+//! New pools and their states are fetched as required, optimizing resource
+//! usage and performance.
+
+mod graphs;
 pub mod protocols;
 pub mod types;
-use brontes_types::db::token_info::TokenInfoWithAddress;
-use malachite::num::basic::traits::Zero;
+use std::sync::atomic::Ordering::SeqCst;
 
 #[cfg(test)]
 pub mod test_utils;
 
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
 };
 
-use alloy_primitives::{Address, U256};
+use alloy_primitives::Address;
+pub use brontes_types::price_graph_types::{
+    PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
+};
 use brontes_types::{
-    normalized_actions::{Actions, NormalizedAction, NormalizedSwap},
+    db::{
+        dex::{DexPrices, DexQuotes},
+        token_info::TokenInfoWithAddress,
+        traits::{LibmdbxReader, LibmdbxWriter},
+    },
+    normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     traits::TracingProvider,
 };
-pub use graphs::{AllPairGraph, GraphManager};
-use malachite::Rational;
-pub use price_graph_types::{
-    PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
+use futures::{Stream, StreamExt};
+pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
+use itertools::Itertools;
+use malachite::{
+    num::basic::traits::{One, Zero},
+    Rational,
 };
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
-
-mod graphs;
-mod price_graph_types;
-
-use brontes_types::db::dex::DexQuotes;
-use futures::{Future, Stream, StreamExt};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, trace};
+use tracing::error;
 use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
 
 use crate::types::PoolState;
 
 /// # Brontes Batch Pricer
-/// ## Reasoning
-/// We create a token graph in order to provide the price of any
-/// token in a wanted quote token. This allows us to see delta between
-/// centralized and decentralized prices which allows us to classify
 ///
-/// ## Implementation
-/// The Brontes Batch pricer runs on a block by block basis, This process is as
-/// followed:
+/// [`BrontesBatchPricer`] establishes a token graph for pricing tokens against
+/// a chosen quote token, highlighting differences between centralized and
+/// decentralized exchange prices.
 ///
-/// 1) On a new highest block received from the update channel. All new pools
-/// are added to the token graph as there are now valid paths.
+/// ## Workflow
+/// The system operates on a block-by-block basis as follows:
 ///
-/// 2) All new pools touched are loaded by the lazy loader.
+/// 1) Incorporates new pools into the token graph with each new highest block
+/// from the update channel.
 ///
-/// 3) State transitions on all pools are put into the state buffer.
+/// 2) Uses a lazy loader to fetch data for all newly involved pools.
 ///
-/// 4) Once lazy loading for the block is complete, all state transitions are
-/// applied in order, when a transition is applied, the price is added into the
-/// state map.
+/// 3) Collects and buffers state transitions of all pools.
 ///
-/// 5) Once state transitions are all applied and we have our formatted data.
-/// The data is returned and the pricer continues onto the next block.
-pub struct BrontesBatchPricer<T: TracingProvider> {
+/// 4) After completing lazy loading, applies state transitions sequentially,
+/// updating the price in the state map.
+///
+/// 5) Processes and returns formatted data from the applied state transitions
+/// before proceeding to the next block.
+pub struct BrontesBatchPricer<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
+    finished:        Arc<AtomicBool>,
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
@@ -82,7 +108,8 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
     new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
-    graph_manager:   GraphManager,
+    /// manages all graph related items
+    graph_manager:   GraphManager<DB>,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
     dex_quotes:      HashMap<u64, DexQuotes>,
@@ -91,16 +118,18 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     overlap_update:  Option<PoolUpdate>,
 }
 
-impl<T: TracingProvider> BrontesBatchPricer<T> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn new(
+        finished: Arc<AtomicBool>,
         quote_asset: Address,
-        graph_manager: GraphManager,
+        graph_manager: GraphManager<DB>,
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
         new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     ) -> Self {
         Self {
+            finished,
             new_graph_pairs,
             quote_asset,
             buffer: StateBuffer::new(),
@@ -114,6 +143,19 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
     }
 
+    /// Handles pool updates for the BrontesBatchPricer system.
+    ///
+    /// This function processes a vector of `PoolUpdate` messages, updating the
+    /// current block tracking and incorporating new pools into the graph
+    /// manager. It filters updates to identify and add new pools, using
+    /// details such as address, protocol, and pair. The function also
+    /// manages state transitions and pools, buffering state changes by
+    /// block number and adding subgraphs for new pools if they don't
+    /// already exist in the graph manager.
+    ///
+    /// Essentially, it ensures the graph manager remains synchronized with the
+    /// latest block data, maintaining the integrity and accuracy of
+    /// the decentralized exchange pricing mechanism.
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
             return
@@ -124,102 +166,58 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.current_block = msg.block;
             }
         }
-
-        // only add a new pool to the graph when we have a update for it. this will help
-        // us avoid dead pools in the graph;
-        let new_pools = updates
+        // insert new pools accessed on this block.
+        updates
             .iter()
             .filter_map(|update| {
                 let (protocol, pair) = self.new_graph_pairs.remove(&update.get_pool_address())?;
-                Some((update.get_pool_address(), protocol, pair))
+                Some((update.get_pool_address(), protocol, pair, update.block))
             })
-            .for_each(|(pool_addr, protocol, pair)| {
-                self.graph_manager.add_pool(pair, pool_addr, protocol);
+            .for_each(|(pool_addr, protocol, pair, block)| {
+                self.graph_manager
+                    .add_pool(pair, pool_addr, protocol, block);
             });
 
-        let (state, pools) =
-            graph_search_par(&self.graph_manager, self.quote_asset, self.current_block, updates);
+        let (state, pools) = graph_search_par(&self.graph_manager, self.quote_asset, updates);
 
-        state
-            .into_iter()
-            .filter_map(|s| s)
-            .flatten()
-            .for_each(|(addr, update)| {
-                let block = update.block;
-                self.buffer
-                    .updates
-                    .entry(block)
-                    .or_default()
-                    .push_back((addr, update));
-            });
+        state.into_iter().flatten().for_each(|(addr, update)| {
+            let block = update.block;
+            self.buffer
+                .updates
+                .entry(block)
+                .or_default()
+                .push_back((addr, update));
+        });
 
         pools
             .into_iter()
-            .filter_map(|s| s)
             .flatten()
-            .for_each(|(pool_infos, graph_edges, pair)| {
+            .unique_by(|(_, p, _)| *p)
+            .for_each(|(graph_edges, pair, block)| {
                 if graph_edges.is_empty() {
+                    error!(?pair, "new pool has no graph edges");
                     return
                 }
-                for pool_info in pool_infos {
-                    let lazy_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-                    // load exchange only if its not loaded already
-                    if !(self.graph_manager.has_state(&pool_info.pool_addr) || lazy_loading) {
-                        self.lazy_loader.lazy_load_exchange(
-                            pair,
-                            Pair(pool_info.token_0, pool_info.token_1),
-                            pool_info.pool_addr,
-                            self.current_block,
-                            pool_info.dex_type,
-                        )
-                    } else if lazy_loading {
-                        self.lazy_loader
-                            .add_protocol_parent(pool_info.pool_addr, pair);
-                    }
+
+                if self.graph_manager.has_subgraph(pair) {
+                    error!(?pair, "already have pairs");
+                    return
                 }
 
-                self.graph_manager.add_subgraph(pair, graph_edges);
-            })
+                self.add_subgraph(pair, block, graph_edges, false);
+            });
     }
 
-    /// because we already have a state update for this pair in the buffer, we
-    /// don't wanna create another one
-    fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
-        if pair.0 == pair.1 {
-            return
+    fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
+        if pool_pair.0 == pool_pair.1 {
+            return Some(Rational::ONE)
         }
-
-        for pool_info in self.graph_manager.create_subpool(block, pair).into_iter() {
-            let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-            // load exchange only if its not loaded already
-            if !(self.graph_manager.has_state(&pool_info.pool_addr) || is_loading) {
-                self.lazy_loader.lazy_load_exchange(
-                    pair,
-                    Pair(pool_info.token_0, pool_info.token_1),
-                    pool_info.pool_addr,
-                    block,
-                    pool_info.dex_type,
-                );
-            } else if is_loading {
-                self.lazy_loader
-                    .add_protocol_parent(pool_info.pool_addr, pair)
-            }
-        }
+        self.graph_manager.get_price(pool_pair)
     }
 
     /// For a given block number and tx idx, finds the path to the following
     /// tokens and inserts the data into dex_quotes.
-    fn store_dex_price(&mut self, block: u64, tx_idx: u64, pool_pair: Pair) {
-        if pool_pair.0 == pool_pair.1 {
-            return
-        }
-
-        // query graph for all keys needed to properly query price for a given pair
-        let Some(price) = self.graph_manager.get_price(pool_pair) else {
-            error!(?pool_pair, "no price from graph manager");
-            return
-        };
-
+    fn store_dex_price(&mut self, block: u64, tx_idx: u64, pool_pair: Pair, prices: DexPrices) {
         // insert the pool keys into the price map
         match self.dex_quotes.entry(block) {
             Entry::Occupied(mut quotes) => {
@@ -232,10 +230,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 let tx = q.0.get_mut(tx_idx as usize).unwrap();
 
                 if let Some(tx) = tx.as_mut() {
-                    tx.insert(pool_pair, price);
+                    tx.insert(pool_pair, prices);
                 } else {
                     let mut tx_pairs = HashMap::default();
-                    tx_pairs.insert(pool_pair, price);
+                    tx_pairs.insert(pool_pair, prices);
                     *tx = Some(tx_pairs)
                 }
             }
@@ -247,7 +245,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 // insert
                 let mut map = HashMap::new();
-                map.insert(pool_pair, price);
+                map.insert(pool_pair, prices);
 
                 let entry = vec.get_mut(tx_idx as usize).unwrap();
                 *entry = Some(map);
@@ -271,9 +269,21 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         // generate all variants of the price that might be used in the inspectors
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
+        let Some(price0) = self.get_dex_price(pair0) else {
+            error!(?pair0, "no price for token");
+            return
+        };
 
-        self.store_dex_price(block, tx_idx, pair0);
-        self.store_dex_price(block, tx_idx, pair1);
+        let Some(price1) = self.get_dex_price(pair1) else {
+            error!(?pair1, "no price for token");
+            return
+        };
+
+        let price0 = DexPrices { post_state: price0.clone(), pre_state: price0 };
+        let price1 = DexPrices { post_state: price1.clone(), pre_state: price1 };
+
+        self.store_dex_price(block, tx_idx, pair0, price0);
+        self.store_dex_price(block, tx_idx, pair1, price1);
     }
 
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
@@ -283,19 +293,334 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             error!(?addr, "failed to get pair for pool");
             return;
         };
-        self.graph_manager.update_state(addr, msg);
 
         // add price post state
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-        self.store_dex_price(block, tx_idx, pair0);
-        self.store_dex_price(block, tx_idx, pair1);
+        let Some(price0_pre) = self.get_dex_price(pair0) else {
+            error!(?pair0, "no price for token");
+            return
+        };
+        let Some(price1_pre) = self.get_dex_price(pair1) else {
+            error!(?pair1, "no price for token");
+            return
+        };
+        self.graph_manager.update_state(addr, msg);
+
+        let Some(price0_post) = self.get_dex_price(pair0) else {
+            error!(?pair0, "no price for token");
+            return
+        };
+        let Some(price1_post) = self.get_dex_price(pair1) else {
+            error!(?pair1, "no price for token");
+            return
+        };
+
+        self.store_dex_price(
+            block,
+            tx_idx,
+            pair0,
+            DexPrices { pre_state: price0_pre, post_state: price0_post },
+        );
+
+        self.store_dex_price(
+            block,
+            tx_idx,
+            pair1,
+            DexPrices { pre_state: price1_pre, post_state: price1_post },
+        );
     }
 
     fn can_progress(&self) -> bool {
-        self.lazy_loader.requests_for_block(&self.completed_block) == 0
+        self.lazy_loader.can_progress(&self.completed_block)
             && self.completed_block < self.current_block
+    }
+
+    /// Processes the result of lazy pool state loading. It updates the graph
+    /// state or handles errors.
+    ///
+    /// # Behavior
+    /// If the pool state is successfully loaded, the function updates the graph
+    /// manager with the new state. If the pool was initialized in the
+    /// current block and the load result indicates an error, an override is set
+    /// to prevent invalid state application. It then triggers subgraph
+    /// verification for relevant pairs. In case of a load error, it handles
+    /// the error by calling `on_state_load_error`.
+    ///
+    /// # Usage
+    /// This function is used within the system to handle the outcomes of
+    /// asynchronous pool state loading operations, ensuring the graph remains
+    /// accurate and up-to-date.
+    fn on_pool_resolve(&mut self, state: LazyResult) {
+        let LazyResult { block, state, load_result } = state;
+
+        if let Some(state) = state {
+            let addr = state.address();
+
+            self.graph_manager.new_state(addr, state);
+
+            // pool was initialized this block. lets set the override to avoid invalid state
+            if !load_result.is_ok() {
+                self.buffer.overrides.entry(block).or_default().insert(addr);
+            }
+        } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
+            load_result
+        {
+            self.on_state_load_error(pool_pair, pool_address, block, dependent_pairs);
+        }
+    }
+
+    fn on_state_load_error(
+        &mut self,
+        pool_pair: Pair,
+        pool_address: Address,
+        block: u64,
+        dependent_pairs: Vec<Pair>,
+    ) {
+        dependent_pairs.into_iter().for_each(|parent_pair| {
+            let (re_query, bad_state) =
+                self.graph_manager
+                    .bad_pool_state(parent_pair, pool_pair, pool_address);
+
+            if re_query {
+                self.re_queue_bad_pair(parent_pair, block);
+            }
+            if let Some((address, protocol, pair)) = bad_state {
+                self.new_graph_pairs.insert(address, (protocol, pair));
+            }
+        });
+    }
+
+    /// Attempts to verify subgraphs for a given set of pairs and handles the
+    /// verification results.
+    ///
+    /// # Behavior
+    /// The function triggers subgraph verification for each provided pair and
+    /// block number combination. On successful verification, it prunes bad
+    /// edges from the subgraph and updates the graph manager with the verified
+    /// subgraph. If verification fails, it prunes bad edges and prepares
+    /// the failed pair for requery. After processing the verification
+    /// results, it requeues any pairs that need to be reverified due to failed
+    /// verification.
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair)>) {
+        let requery = self
+            .graph_manager
+            .verify_subgraph(pairs, self.quote_asset)
+            .into_iter()
+            .filter_map(|result| match result {
+                VerificationResults::Passed(passed) => {
+                    passed.prune_state.into_iter().for_each(|(_, bad_edges)| {
+                        for bad_edge in bad_edges {
+                            if let Some((addr, protocol, pair)) = self
+                                .graph_manager
+                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
+                            {
+                                self.new_graph_pairs.insert(addr, (protocol, pair));
+                            }
+                        }
+                    });
+                    self.graph_manager
+                        .add_verified_subgraph(passed.pair, passed.subgraph);
+
+                    None
+                }
+                VerificationResults::Failed(failed) => {
+                    failed.prune_state.into_iter().for_each(|(_, bad_edges)| {
+                        for bad_edge in bad_edges {
+                            if let Some((addr, protocol, pair)) = self
+                                .graph_manager
+                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
+                            {
+                                self.new_graph_pairs.insert(addr, (protocol, pair));
+                            }
+                        }
+                    });
+
+                    Some((failed.pair, failed.block, failed.ignore_state, failed.frayed_ends))
+                }
+            })
+            .collect_vec();
+
+        self.requery_bad_state_par(requery);
+    }
+
+    /// Requeries the state of subgraphs for given pairs that encountered issues
+    /// during verification.
+    ///
+    /// # Behavior
+    /// This function is invoked when subgraph verification fails for certain
+    /// pairs. It reattempts to construct valid subgraphs by: 1. Requerying
+    /// the state for each pair and block number, considering any ignored pairs
+    /// during the graph construction. 2. Adding newly constructed subgraphs
+    /// if they are non-empty, or recursively removing problematic pairs and
+    /// requerying if necessary. 3. In cases where no valid paths are found
+    /// after requery, it escalates the verification by analyzing alternative
+    /// paths or pairs.
+    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>) {
+        if pairs.is_empty() {
+            return
+        }
+
+        let new_state = par_state_query(&self.graph_manager, pairs);
+        if new_state.is_empty() {
+            tracing::error!("requery bad state returned nothing");
+        }
+
+        let mut recusing = Vec::new();
+        new_state.into_iter().for_each(|(pair, block, edges)| {
+            // add regularly
+            if !edges.is_empty() {
+                let Some((id, need_state, force_rundown)) =
+                    self.add_subgraph(pair, block, edges, true)
+                else {
+                    return;
+                };
+                if force_rundown {
+                    self.rundown(pair, block);
+                    return
+                }
+
+                if !need_state {
+                    recusing.push((block, id, pair))
+                }
+                return
+            }
+
+            self.rundown(pair, block);
+        });
+
+        self.try_verify_subgraph(recusing);
+    }
+
+    fn rundown(&mut self, pair: Pair, block: u64) {
+        let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
+            return
+        };
+
+        loop {
+            let popped = ignores.pop();
+            let (pair, block, edges) = par_state_query(
+                &self.graph_manager,
+                vec![(pair, block, ignores.iter().copied().collect(), vec![])],
+            )
+            .remove(0);
+
+            if edges.is_empty() {
+                if popped.is_none() {
+                    break
+                }
+                continue
+            } else {
+                let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
+                    return;
+                };
+
+                if !need_state {
+                    self.try_verify_subgraph(vec![(block, id, pair)]);
+                }
+                break;
+            }
+        }
+    }
+
+    /// Adds a subgraph for verification based on the given pair, block, and
+    /// edges.
+    ///
+    /// # Behavior
+    /// This function is responsible for initializing the process of verifying a
+    /// new subgraph. It involves: 1. Adding the subgraph to the
+    /// verification queue with the necessary edges and state. 2. Initiating
+    /// lazy loading for the exchange pools involved in the subgraph if they are
+    /// not already being loaded. 3. Adding the pool as a dependent to an
+    /// ongoing load operation if it's already in progress.
+    ///
+    /// The function returns a boolean indicating whether any lazy loading was
+    /// triggered during its execution. This function ensures that all necessary
+    /// pool states are loaded and ready for accurate subgraph verification.
+    fn add_subgraph(
+        &mut self,
+        pair: Pair,
+        block: u64,
+        edges: Vec<SubGraphEdge>,
+        frayed_ext: bool,
+    ) -> Option<(Option<u64>, bool, bool)> {
+        let (needed_state, id, force_rundown) = if frayed_ext {
+            let (need, id, force_rundown) = self
+                .graph_manager
+                .add_frayed_end_extension(pair, block, edges)?;
+            (need, Some(id), force_rundown)
+        } else {
+            (
+                self.graph_manager
+                    .add_subgraph_for_verification(pair, block, edges),
+                None,
+                false,
+            )
+        };
+
+        let mut triggered = false;
+        // because we run these state fetches in parallel, we come across the issue
+        // where in block N we have a path, it however doesn't get verified so we go to
+        // query more state. however the new path it takes goes through a pool that is
+        // being inited with state from block N + I, when we go to calculate the price
+        // the state will be off thus giving us a incorrect price
+        for pool_info in needed_state {
+            let is_lazy_loading =
+                if let Some(blocks) = self.lazy_loader.is_loading_block(&pool_info.pool_addr) {
+                    blocks.contains(&block)
+                } else {
+                    false
+                };
+
+            if !is_lazy_loading {
+                self.lazy_loader.lazy_load_exchange(
+                    pair,
+                    Pair(pool_info.token_0, pool_info.token_1),
+                    id,
+                    pool_info.pool_addr,
+                    block,
+                    pool_info.dex_type,
+                );
+                triggered = true;
+            } else {
+                self.lazy_loader
+                    .add_protocol_parent(block, id, pool_info.pool_addr, pair);
+                triggered = true;
+            }
+        }
+
+        Some((id, triggered, force_rundown))
+    }
+
+    /// because we already have a state update for this pair in the buffer, we
+    /// don't wanna create another one
+    fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
+        if pair.0 == pair.1 {
+            return
+        }
+
+        for pool_info in self
+            .graph_manager
+            .create_subgraph_mut(block, pair, 100)
+            .into_iter()
+        {
+            let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
+            // load exchange only if its not loaded already
+            if is_loading {
+                self.lazy_loader
+                    .add_protocol_parent(block, None, pool_info.pool_addr, pair)
+            } else {
+                self.lazy_loader.lazy_load_exchange(
+                    pair,
+                    Pair(pool_info.token_0, pool_info.token_1),
+                    None,
+                    pool_info.pool_addr,
+                    block,
+                    pool_info.dex_type,
+                )
+            }
+        }
     }
 
     // called when we try to progress to the next block
@@ -305,6 +630,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if !self.can_progress() {
             return None
         }
+
+        self.graph_manager.finalize_block(self.completed_block);
 
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
@@ -337,53 +664,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
 
-        debug!(
-            block_number = self.completed_block,
-            dex_quotes_length = res.0.len(),
-            "got dex quotes"
-        );
-
         self.completed_block += 1;
 
         // add new nodes to pair graph
         Some((block, res))
-    }
-
-    fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult { block, state, load_result } = state;
-
-        if let Some(state) = state {
-            let addr = state.address();
-
-            self.graph_manager
-                .new_state(self.completed_block, addr, state);
-
-            // pool was initialized this block. lets set the override to avoid invalid state
-            if !load_result.is_ok() {
-                self.buffer.overrides.entry(block).or_default().insert(addr);
-            }
-        } else if let LoadResult::Err { pool_address, pool_pair, block } = load_result {
-            self.on_state_load_error(pool_pair, pool_address, block);
-        }
-    }
-
-    fn on_state_load_error(&mut self, pool_pair: Pair, pool_address: Address, block: u64) {
-        self.lazy_loader
-            .remove_protocol_parents(&pool_address)
-            .into_iter()
-            .for_each(|parent_pair| {
-                let (re_query, bad_state) =
-                    self.graph_manager
-                        .bad_pool_state(parent_pair, pool_pair, pool_address);
-
-                if re_query {
-                    self.re_queue_bad_pair(parent_pair, block);
-                }
-
-                if let Some((address, protocol, pair)) = bad_state {
-                    self.new_graph_pairs.insert(address, (protocol, pair));
-                }
-            });
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
@@ -391,7 +675,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return None
         }
 
-        trace!(?self.completed_block,"getting ready to calc dex prices");
+        self.graph_manager.finalize_block(self.completed_block);
+
         // if all block requests are complete, lets apply all the state transitions we
         // had for the given block which will allow us to generate all pricing
         let (buffer, overrides) = (
@@ -420,8 +705,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
 
-        debug!(dex_quotes = res.0.len(), "got dex quotes");
-
         self.completed_block += 1;
 
         Some((block, res))
@@ -436,24 +719,25 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             self.on_pool_resolve(state)
         }
 
-        // check if we can progress to the next block.
-        let block_prices = self.try_resolve_block();
-        if block_prices.is_some() {
-            return Some(Poll::Ready(block_prices))
-        }
+        let pairs = self.lazy_loader.pairs_to_verify();
+        self.try_verify_subgraph(pairs);
 
-        None
+        // check if we can progress to the next block.
+        self.try_resolve_block()
+            .map(|prices| Poll::Ready(Some(prices)))
     }
 }
 
-impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
+    for BrontesBatchPricer<T, DB>
+{
     type Item = (u64, DexQuotes);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        /// loop is very heavy, low amount of work needed
+        // loop is very heavy, low amount of work needed
         let mut work = 128;
         loop {
             if let Some(new_prices) = self.poll_state_processing(cx) {
@@ -467,7 +751,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
                         DexPriceMsg::DiscoveredPool(
                             DiscoveredPool { protocol, tokens, pool_address },
-                            block,
+                            _block,
                         ) => {
                             if tokens.len() == 2 {
                                 self.new_graph_pairs
@@ -492,7 +776,11 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         }
                     }
                     Poll::Ready(None) => {
-                        if self.lazy_loader.is_empty() && block_updates.is_empty() {
+                        if self.lazy_loader.is_empty()
+                            && self.lazy_loader.can_progress(&self.completed_block)
+                            && block_updates.is_empty()
+                            && self.finished.load(SeqCst)
+                        {
                             return Poll::Ready(self.on_close())
                         } else {
                             break
@@ -505,6 +793,13 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                     self.on_pool_resolve(state)
                 }
+            }
+
+            if self.lazy_loader.is_empty()
+                && self.lazy_loader.can_progress(&self.completed_block)
+                && self.finished.load(SeqCst)
+            {
+                return Poll::Ready(self.on_close())
             }
 
             self.on_pool_updates(block_updates);
@@ -548,19 +843,15 @@ impl StateBuffer {
     }
 }
 
-pub struct AllPairFindRequests {
-    updates: Vec<PoolUpdate>,
-}
-
 /// Makes a swap for initializing a virtual pool with the quote token.
 /// this swap is empty such that we don't effect the state
 const fn make_fake_swap(pair: Pair) -> Actions {
-    let mut t_in = TokenInfoWithAddress {
+    let t_in = TokenInfoWithAddress {
         inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
         address: pair.0,
     };
 
-    let mut t_out = TokenInfoWithAddress {
+    let t_out = TokenInfoWithAddress {
         inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
         address: pair.1,
     };
@@ -578,46 +869,68 @@ const fn make_fake_swap(pair: Pair) -> Actions {
     })
 }
 
-fn graph_search_par(
-    graph: &GraphManager,
+fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
     quote: Address,
-    block: u64,
     updates: Vec<PoolUpdate>,
-) -> (
-    Vec<Option<Vec<(Address, PoolUpdate)>>>,
-    Vec<Option<Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>>>,
-) {
+) -> (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>) {
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
         .map(|msg| {
             let pair = msg.get_pair(quote).unwrap();
-            if graph.has_subgraph(pair) {
-                let addr = msg.get_pool_address();
-                (Some(vec![(addr, msg)]), None)
-            } else {
-                let (state, path) = on_new_pool_pair(graph, quote, block, msg);
-                (Some(state), Some(path))
-            }
+            let pair0 = Pair(pair.0, quote);
+            let pair1 = Pair(pair.1, quote);
+
+            let (state, path) = on_new_pool_pair(
+                graph,
+                msg,
+                (!graph.has_subgraph(pair0)).then_some(pair0),
+                (!graph.has_subgraph(pair1)).then_some(pair1),
+            );
+            (state, path)
         })
         .unzip();
 
     (state, pools)
 }
-fn on_new_pool_pair(
-    graph: &GraphManager,
-    quote: Address,
-    block: u64,
+
+fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
+    pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>,
+) -> Vec<(Pair, u64, Vec<SubGraphEdge>)> {
+    pairs
+        .into_par_iter()
+        .flat_map(|(pair, block, ignore, frayed_ends)| {
+            if frayed_ends.is_empty() {
+                return vec![(pair, block, graph.create_subgraph(block, pair, ignore, 100))]
+            }
+
+            frayed_ends
+                .into_iter()
+                .zip(vec![pair.0].into_iter().cycle())
+                .map(|(end, start)| {
+                    (pair, block, graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0))
+                })
+                .collect_vec()
+        })
+        .collect::<Vec<_>>()
+}
+
+fn on_new_pool_pair<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
     msg: PoolUpdate,
-) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair)>) {
-    let pair = msg.get_pair(quote).unwrap();
+    pair0: Option<Pair>,
+    pair1: Option<Pair>,
+) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>) {
+    let block = msg.block;
 
     let mut buf_pending = Vec::new();
     let mut path_pending = Vec::new();
-    // add pool pair
-    if let Some((buf, path)) = queue_loading_returns(graph, block, pair, msg.clone()) {
-        buf_pending.push(buf);
-        path_pending.push(path);
-    }
+
+    // add default pair to buffer to make sure that we price all pairs and apply the
+    // state diff. we don't wan't to actually do a graph search for this pair
+    // though.
+    buf_pending.push((msg.get_pool_address(), msg.clone()));
 
     // we add support for fetching the pair as well as each individual token with
     // the given quote asset
@@ -627,43 +940,48 @@ fn on_new_pool_pair(
     trigger_update.logs = vec![];
 
     // add first pair
-    let pair0 = Pair(pair.0, quote);
-    trigger_update.action = make_fake_swap(pair0);
-    if let Some((buf, path)) = queue_loading_returns(graph, block, pair0, trigger_update.clone()) {
-        buf_pending.push(buf);
-        path_pending.push(path);
+    if let Some(pair0) = pair0 {
+        trigger_update.action = make_fake_swap(pair0);
+        if let Some((buf, path)) =
+            queue_loading_returns(graph, block, pair0, trigger_update.clone())
+        {
+            buf_pending.push(buf);
+            path_pending.push(path);
+        }
     }
 
     // add second direction
-    let pair1 = Pair(pair.1, quote);
-    trigger_update.action = make_fake_swap(pair1);
-
-    if let Some((buf, path)) = queue_loading_returns(graph, block, pair1, trigger_update.clone()) {
-        buf_pending.push(buf);
-        path_pending.push(path);
+    if let Some(pair1) = pair1 {
+        trigger_update.action = make_fake_swap(pair1);
+        if let Some((buf, path)) =
+            queue_loading_returns(graph, block, pair1, trigger_update.clone())
+        {
+            buf_pending.push(buf);
+            path_pending.push(path);
+        }
     }
 
     (buf_pending, path_pending)
 }
 
-fn queue_loading_returns(
-    graph: &GraphManager,
+fn queue_loading_returns<DB: LibmdbxWriter + LibmdbxReader>(
+    graph: &GraphManager<DB>,
     block: u64,
     pair: Pair,
     trigger_update: PoolUpdate,
-) -> Option<((Address, PoolUpdate), (Vec<PoolPairInfoDirection>, Vec<SubGraphEdge>, Pair))> {
+) -> Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64))> {
     if pair.0 == pair.1 {
         return None
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-        let (state, subgraph) = graph.crate_subpool_multithread(block, pair);
-        (state, subgraph, pair)
+        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100);
+        (subgraph, pair, trigger_update.block)
     }))
 }
 
 #[cfg(feature = "testing")]
-impl<T: TracingProvider> BrontesBatchPricer<T> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn get_lazy_loader(&mut self) -> &mut LazyExchangeLoader<T> {
         &mut self.lazy_loader
     }
@@ -690,25 +1008,4 @@ pub mod test {
 
     pub const USDC_ADDRESS: Address =
         Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
-
-    #[tokio::test]
-    pub async fn test_buffer_result() {
-        let block = 18500647;
-        let pricing_utils = PricingTestUtils::new(USDC_ADDRESS);
-
-        let (mut dex_pricer, mut tree) = pricing_utils
-            .setup_dex_pricer_for_block(block)
-            .await
-            .unwrap();
-
-        let noop_waker = Waker::noop();
-        let mut cx = Context::from_waker(&noop_waker);
-
-        // query all of the state we need to load into the lazy loader
-        {
-            let pinned = Pin::new(&mut dex_pricer);
-            let res = pinned.poll_next(&mut cx);
-            assert!(res.is_pending());
-        }
-    }
 }

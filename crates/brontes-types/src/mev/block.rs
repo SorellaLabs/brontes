@@ -112,8 +112,8 @@ impl fmt::Display for MevBlock {
         }
 
         writeln!(f, "\n{}: {}", "Missed Mev".bold().red().underline(), self.possible_mev)?;
-        // Footer
-        writeln!(f, "{:-<72}", "")
+
+        Ok(())
     }
 }
 
@@ -234,8 +234,11 @@ impl fmt::Display for PossibleMevTriggers {
 }
 
 impl PossibleMevTriggers {
+    //TODO: Currently we don't check for private transactions because there are too
+    // many of them we might revisit this once we integrate blocknative so we
+    // have a more comprehensive coverage
     pub fn was_triggered(&self) -> bool {
-        self.is_private || self.coinbase_transfer || self.high_priority_fee
+        self.coinbase_transfer || self.high_priority_fee
     }
 }
 

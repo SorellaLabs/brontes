@@ -3,9 +3,8 @@
 
 use std::{path::Path, sync::Arc};
 
-pub mod traits;
+pub use brontes_types::db::traits::{LibmdbxReader, LibmdbxWriter};
 use brontes_types::traits::TracingProvider;
-pub use traits::*;
 pub mod initialize;
 mod libmdbx_read_write;
 use eyre::Context;

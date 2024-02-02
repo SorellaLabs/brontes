@@ -1,7 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use alloy_primitives::{Address, BlockNumber, U256};
-use ethers::providers::Middleware;
+use alloy_primitives::U256;
 
 use super::{bit_math, error::UniswapV3MathError};
 
