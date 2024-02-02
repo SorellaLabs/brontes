@@ -9,11 +9,13 @@ use brontes_types::{
     },
     structured_trace::{DecodedCallData, TransactionTraceWithLogs, TxTrace},
 };
-use redefined::{Redefined, RedefinedConvert};
+use redefined::{redefined_remote, Redefined, RedefinedConvert};
 use reth_rpc_types::trace::parity::{
     Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction, RewardType,
     SelfdestructAction, TraceOutput, TransactionTrace,
 };
+use rkyv::{Deserialize as rkyvDeserialize, Serialize as rkyvSerialize};
+use serde::{Deserialize as serdeDeserialize, Serialize as serdeSerialize};
 use serde_with::serde_as;
 
 #[serde_as]
@@ -23,10 +25,10 @@ use serde_with::serde_as;
     Clone,
     Redefined,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
 )]
 #[archive(check_bytes)]
@@ -40,10 +42,10 @@ pub struct LibmdbxTxTracesInner {
     Clone,
     Redefined,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
 )]
 #[archive(check_bytes)]
@@ -63,10 +65,10 @@ pub struct LibmdbxTxTrace {
     Clone,
     Redefined,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
 )]
 #[archive(check_bytes)]
@@ -84,10 +86,10 @@ pub struct LibmdbxTransactionTraceWithLogs {
     Clone,
     Redefined,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
 )]
 #[archive(check_bytes)]
@@ -102,10 +104,10 @@ pub struct LibmdbxLog {
     Clone,
     Redefined,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
 )]
 #[archive(check_bytes)]
@@ -123,10 +125,10 @@ pub struct LibmdbxLogData {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -145,10 +147,10 @@ pub struct LibmdbxTransactionTrace {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -166,10 +168,10 @@ pub enum LibmdbxAction {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -189,10 +191,10 @@ pub struct LibmdbxCallAction {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -210,10 +212,10 @@ pub struct LibmdbxCreateAction {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -230,10 +232,10 @@ pub struct LibmdbxSelfdestructAction {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -250,10 +252,10 @@ pub struct LibmdbxRewardAction {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -269,10 +271,10 @@ pub enum LibmdbxRewardType {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -291,10 +293,10 @@ pub enum LibmdbxCallType {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -310,10 +312,10 @@ pub enum LibmdbxTraceOutput {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -329,10 +331,10 @@ pub struct LibmdbxCallOutput {
     Debug,
     Eq,
     PartialEq,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
+    serdeSerialize,
+    serdeDeserialize,
+    rkyvSerialize,
+    rkyvDeserialize,
     rkyv::Archive,
     Redefined,
 )]
@@ -343,5 +345,3 @@ pub struct LibmdbxCreateOutput {
     pub code:     Redefined_Alloy_Bytes,
     pub gas_used: Redefined_U64,
 }
-
-//  Libmdbx
