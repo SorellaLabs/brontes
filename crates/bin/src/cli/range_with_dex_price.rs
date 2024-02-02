@@ -29,8 +29,8 @@ pub struct RangeWithDexPrice {
     /// Optional Max Tasks, if omitted it will default to 50% of the number of
     /// physical cores on your machine
     pub max_tasks:         Option<u64>,
-    /// Optional quote asset, if omitted it will default to USDC
-    #[arg(long, short, default_value = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")]
+    /// Optional quote asset, if omitted it will default to USDT
+    #[arg(long, short, default_value = "0xdac17f958d2ee523a2206206994597c13d831ec7")]
     pub quote_asset:       String,
     /// how big the batch size should be
     #[arg(long, short, default_value = "500")]
