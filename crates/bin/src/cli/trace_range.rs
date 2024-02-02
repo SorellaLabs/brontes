@@ -61,11 +61,11 @@ impl TraceArgs {
             let chunk = chunk.collect::<Vec<_>>();
             let spawner = ctx.task_executor.clone();
 
-            handles.push(spawner.spawn(async move {
-                for i in chunk {
+            handles.push(for i in chunk {
+                spawner.spawn(async move {
                     let _ = parser.execute(i).await;
-                }
-            }));
+                })
+            });
         }
 
         let total_chunks = handles.len() as f64;
