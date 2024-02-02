@@ -106,7 +106,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
     }
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
-        info!(target:"brontes","dex pricing finished");
+        info!(target:"brontes","Completed DEX pricing");
         self.processing_futures.push(Box::pin(process_results(
             self.database,
             self.inspectors,
