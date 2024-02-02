@@ -213,7 +213,7 @@ impl SubgraphVerifier {
                             .iter()
                             .map(|e| Pair(e.token_0, e.token_1))
                             .collect::<HashSet<_>>();
-                        tracing::info!(
+                        tracing::debug!(
                             ?pair,
                             "connected with {:#?}",
                             ignored
