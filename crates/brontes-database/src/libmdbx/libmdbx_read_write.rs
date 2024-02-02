@@ -243,7 +243,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let (start_range, end_range) = make_filter_key_range(block_num);
 
         tx.cursor_read::<DexPrice>()?
-            .walk_range(start_range..end_range)?
+            .walk_range(start_range..=end_range)?
             .for_each(|inner| {
                 if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
                     for _ in dex_quotes.len()..=val.tx_idx as usize {
