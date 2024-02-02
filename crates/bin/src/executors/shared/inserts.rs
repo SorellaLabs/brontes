@@ -27,7 +27,6 @@ pub async fn process_results<DB: LibmdbxWriter>(
     }
 
     insert_mev_results(db, block_details, mev_details);
-    possible_mev_txes
 }
 
 fn insert_mev_results<DB: LibmdbxWriter>(
