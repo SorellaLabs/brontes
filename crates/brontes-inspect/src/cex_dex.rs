@@ -128,15 +128,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let (maker_profit, taker_profit) = if exchange_cex_price.2 {
             (
-                (&delta_price * &swap.amount_out - &swap.amount_out * fees.0) * &token_price,
-                (delta_price * &swap.amount_out - &swap.amount_out * fees.1) * &token_price,
+                (&delta_price * (&swap.amount_out - &swap.amount_out * fees.0)) * &token_price,
+                (delta_price * (&swap.amount_out - &swap.amount_out * fees.1)) * &token_price,
             )
         } else {
             (
                 // Indirect pair pays twice the fee
-                (&delta_price * &swap.amount_out - &swap.amount_out * fees.0 * Rational::TWO)
+                (&delta_price * (&swap.amount_out - &swap.amount_out * fees.0 * Rational::TWO))
                     * &token_price,
-                (delta_price * &swap.amount_out - &swap.amount_out * fees.1 * Rational::TWO)
+                (delta_price * (&swap.amount_out - &swap.amount_out * fees.1 * Rational::TWO))
                     * &token_price,
             )
         };
