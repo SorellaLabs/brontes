@@ -7,7 +7,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         cex::CexPriceMap,
-        dex::{DexQuoteWithIndex, DexQuotes},
+        dex::{DexPrices, DexQuoteWithIndex, DexQuotes},
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -41,6 +41,126 @@ pub struct LibmdbxReadWriter(pub Libmdbx);
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
+    }
+
+    #[cfg(not(feature = "local"))]
+    pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
+        let tx = self.0.ro_tx()?;
+
+        let mut cex_cur = tx.new_cursor::<CexPrice>()?;
+        let mut meta_cur = tx.new_cursor::<Metadata>()?;
+
+        let (cex_pass, meta_pass) = rayon::join(
+            || {
+                let mut i = start_block - 1;
+                for entry in cex_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+            || {
+                let mut i = start_block - 1;
+                for entry in meta_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+        );
+
+        return Ok(cex_pass == Some(true) && meta_pass == Some(true))
+    }
+
+    // local also needs to have tx traces
+    #[cfg(feature = "local")]
+    pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
+        let tx = self.0.ro_tx()?;
+
+        let mut cex_cur = tx.new_cursor::<CexPrice>()?;
+        let mut meta_cur = tx.new_cursor::<Metadata>()?;
+
+        let (cex_pass, meta_pass) = rayon::join(
+            || {
+                let mut i = start_block - 1;
+                for entry in cex_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+            || {
+                let mut i = start_block - 1;
+                for entry in meta_cur.walk_range(start_block..=end_block).ok()? {
+                    if let Ok(field) = entry {
+                        if i + 1 != field.0 {
+                            return Some(false)
+                        }
+                        i += 1;
+                    } else {
+                        return Some(false)
+                    }
+                }
+                Some(true)
+            },
+        );
+
+        // local part
+        let mut trace_cur = tx.new_cursor::<TxTraces>()?;
+
+        let mut res = true;
+        let mut i = start_block - 1;
+        for entry in trace_cur.walk_range(start_block..=end_block) {
+            for entry in meta_cur.walk_range(start_block..=end_block)? {
+                if let Ok(field) = entry {
+                    if i + 1 != field.0 {
+                        res = false;
+                    }
+                    i += 1;
+                } else {
+                    res = false;
+                }
+            }
+        }
+
+        return Ok(cex_pass == Some(true) && meta_pass == Some(true) && res)
+    }
+
+    pub fn has_dex_pricing_for_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<bool> {
+        let start_key = make_key(start_block, 0);
+        let end_key = make_key(end_block, u16::MAX);
+        let tx = self.0.ro_tx()?;
+
+        let mut cursor = tx.cursor_read::<DexPrice>()?;
+        for entry in cursor.walk_range(start_key..=end_key)? {
+            if entry.is_err() {
+                return Ok(false)
+            }
+        }
+
+        Ok(true)
     }
 }
 
@@ -119,22 +239,32 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 .unwrap_or_default()
         };
 
-        let dex_quotes = Vec::new();
-        let key_range = make_filter_key_range(block_num);
-        let _db_dex_quotes = tx
-            .cursor_read::<DexPrice>()?
-            .walk_range(key_range.0..key_range.1)?
-            .flat_map(|inner| {
-                if let Ok((key, _val)) = inner.map(|row| (row.0, row.1)) {
-                    //dex_quotes.push(Default::default());
-                    Some(key)
-                } else {
-                    None
+        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let (start_range, end_range) = make_filter_key_range(block_num);
+
+        tx.cursor_read::<DexPrice>()?
+            .walk_range(start_range..=end_range)?
+            .for_each(|inner| {
+                if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
+                    for _ in dex_quotes.len()..=val.tx_idx as usize {
+                        dex_quotes.push(None);
+                    }
+
+                    let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
+
+                    if let Some(tx) = tx.as_mut() {
+                        for (pair, price) in val.quote {
+                            tx.insert(pair, price);
+                        }
+                    } else {
+                        let mut tx_pairs = HashMap::default();
+                        for (pair, price) in val.quote {
+                            tx_pairs.insert(pair, price);
+                        }
+                        *tx = Some(tx_pairs);
+                    }
                 }
-            })
-            .collect::<Vec<_>>();
-        //.get::<DexPrice>(block_num)?
-        //.ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+            });
 
         Ok(MetadataCombined {
             db:         MetadataNoDex {
@@ -229,22 +359,26 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .get::<SubGraphs>(pair.ordered())?
             .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
 
-        // load the latest version of the sub graph relative to the block. if the
-        // sub graph is the last entry in the vector, we return an error as we cannot
-        // grantee that we have a run from last update to request block
-        let last_block = *subgraphs.0.keys().max().unwrap();
-        if block > last_block {
-            eyre::bail!("possible missing state");
+        // if we have dex prices for a block then we have a subgraph for the block
+        let (start_key, end_key) = make_filter_key_range(block);
+        if tx
+            .new_cursor::<DexPrice>()?
+            .walk_range(start_key..=end_key)?
+            .into_iter()
+            .all(|f| f.is_err())
+        {
+            return Err(eyre::eyre!("subgraph not inited at this block range"))
         }
 
         let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
 
         for (cur_block, update) in subgraphs.0 {
             if cur_block > block {
-                return last.ok_or_else(|| eyre::eyre!("no subgraph found"))
+                break
             }
             last = Some((pair, update))
         }
+
         last.ok_or_else(|| eyre::eyre!("no pair found"))
     }
 
