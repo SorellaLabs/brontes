@@ -12,10 +12,10 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-
 use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
+use derive_more::Display;
 use malachite::{
     num::{
         arithmetic::traits::ReciprocalAssign, basic::traits::One, conversion::traits::FromSciString,
@@ -285,6 +285,7 @@ impl MulAssign for CexQuote {
 
 #[derive(
     Copy,
+    Display,
     Debug,
     Clone,
     Default,
