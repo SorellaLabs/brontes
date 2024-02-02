@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::cex::CexExchange,
+    db::{cex::CexExchange, dex::PriceAt},
     mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails, StatArbPnl},
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
@@ -77,6 +77,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 let header = self.inner.build_bundle_header(
                     &tx_info,
                     possible_cex_dex.pnl.taker_profit.clone().to_float(),
+                    PriceAt::After,
                     &vec![possible_cex_dex.get_swaps()],
                     &vec![tx_info.gas_details],
                     meta_data.clone(),
