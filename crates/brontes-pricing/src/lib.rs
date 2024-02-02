@@ -779,31 +779,22 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                             }
                         }
                     }
-                    Poll::Ready(None) => {
+                    Poll::Ready(None) | Poll::Pending => {
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
                             return Poll::Ready(self.on_close())
-                        } else {
-                            break
                         }
+                        break
                     }
-                    Poll::Pending => break,
                 }
 
                 // we poll here to continuously progress state fetches as they are slow
                 if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                     self.on_pool_resolve(state)
                 }
-            }
-
-            if self.lazy_loader.is_empty()
-                && self.lazy_loader.can_progress(&self.completed_block)
-                && self.finished.load(SeqCst)
-            {
-                return Poll::Ready(self.on_close())
             }
 
             self.on_pool_updates(block_updates);
