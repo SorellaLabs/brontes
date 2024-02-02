@@ -189,7 +189,9 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
+        format_bribe(bundle.header.bribe_usd)
+            .to_string()
+            .bright_red()
     )?;
 
     Ok(())
@@ -238,7 +240,9 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
+        format_bribe(bundle.header.bribe_usd)
+            .to_string()
+            .bright_red()
     )?;
 
     Ok(())
@@ -302,7 +306,9 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
+        format_bribe(bundle.header.bribe_usd)
+            .to_string()
+            .bright_red()
     )?;
     Ok(())
 }
@@ -377,7 +383,9 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
         f,
         " - {}: {}",
         "Bribe (USD)".bright_white(),
-        format_bribe(bundle.header.bribe_usd).to_string().bright_red()
+        format_bribe(bundle.header.bribe_usd)
+            .to_string()
+            .bright_red()
     )?;
 
     Ok(())
