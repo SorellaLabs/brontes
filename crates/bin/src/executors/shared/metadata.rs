@@ -54,6 +54,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
                 .as_ref()
                 .map(|stream| stream.is_done())
                 .unwrap_or(true)
+            && self.clickhouse_futures.is_empty()
     }
 
     fn clear_no_price_chan(&mut self) {

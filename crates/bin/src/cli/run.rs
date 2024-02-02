@@ -83,7 +83,7 @@ impl RunArgs {
             }
         }
 
-        let clickhouse = (self.end_block.is_some()).then(|| static_object(Clickhouse::default()));
+        let clickhouse = (self.end_block.is_none()).then(|| static_object(Clickhouse::default()));
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 
         let tracer = get_tracing_provider(&Path::new(&db_path), max_tasks, task_executor.clone());
