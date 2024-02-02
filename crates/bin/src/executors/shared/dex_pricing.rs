@@ -7,6 +7,7 @@ use std::{
 use brontes_core::decoding::TracingProvider;
 use brontes_pricing::BrontesBatchPricer;
 use brontes_types::{
+    constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
     db::{
         dex::DexQuotes,
         metadata::{MetadataCombined, MetadataNoDex},
@@ -81,11 +82,16 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
             if let Some((block, prices)) = inner {
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
-                let Some((tree, meta)) = self.pending_trees.remove(&block) else {
+                let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None)
                 };
 
+                if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
+                    tree.label_private_txes(&meta);
+                }
+
                 let finalized_meta = meta.into_finalized_metadata(prices);
+
                 return Poll::Ready(Some((tree, finalized_meta)))
             } else {
                 // means we have completed chunks
