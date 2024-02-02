@@ -1,5 +1,5 @@
 use core::panic;
-use std::{collections::VecDeque, pin::Pin, task::Poll};
+use std::{collections::VecDeque, pin::Pin, sync::atomic::AtomicBool, task::Poll};
 
 use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer};
@@ -72,9 +72,11 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return
             };
+            tracing::debug!(?block, "caching result buf");
             self.result_buf.push_back((tree, meta));
         // need to pull the metadata from clickhouse
         } else if let Some(clickhouse) = self.clickhouse {
+            tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
                 let meta = clickhouse.get_metadata(block).await;
                 (block, tree, meta)
@@ -86,6 +88,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return
             };
+            tracing::debug!(?block, "waiting for dex price");
             pricer.add_pending_inspection(block, tree, meta);
         } else {
             panic!("metadata fetcher not setup properly")
