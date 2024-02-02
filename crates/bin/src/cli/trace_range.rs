@@ -69,12 +69,16 @@ impl TraceArgs {
 
         let total_chunks = handles.len() as f64;
 
-        while let Some(_) = handles.next().await {
-            if handles.len() % 50 == 0 {
-                let rem = handles.len() as f64;
-                tracing::info!("tracing {:.4}% done", (total_chunks - rem) / total_chunks);
-            }
-        }
+        ctx.task_executor
+            .spawn_critical("completion", async move {
+                while let Some(_) = handles.next().await {
+                    if handles.len() % 50 == 0 {
+                        let rem = handles.len() as f64;
+                        tracing::info!("tracing {:.4}% done", (total_chunks - rem) / total_chunks * 100 );
+                    }
+                }
+            })
+            .await;
 
         Ok(())
     }
