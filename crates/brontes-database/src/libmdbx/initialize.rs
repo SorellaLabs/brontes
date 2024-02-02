@@ -134,7 +134,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 Ok::<(), eyre::Report>(())
             }
         }))
-        .unordered_buffer_map(5, |fut| tokio::spawn(fut))
+        .unordered_buffer_map(2, |fut| tokio::spawn(fut))
         .collect::<Vec<_>>()
         .await
         .into_iter()
