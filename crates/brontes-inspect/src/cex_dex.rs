@@ -120,7 +120,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .db
             .cex_quotes
             .get_quote_direct_or_via_intermediary(
-                &Pair(swap.token_in.address, self.inner.quote),
+                &Pair(self.inner.quote, swap.token_in.address),
                 &exchange_cex_price.0,
             )?
             .price
