@@ -13,25 +13,21 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter},
+    libmdbx::{LibmdbxReader, LibmdbxWriter},
 };
 use brontes_inspect::Inspector;
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use futures::{executor, pin_mut, stream::FuturesUnordered, Future, FutureExt, StreamExt};
+use brontes_pricing::{BrontesBatchPricer, GraphManager};
+use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor, TaskSpawnerExt};
+use reth_tasks::{TaskExecutor, TaskSpawnerExt};
 pub use tip::TipInspector;
-use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver},
-    task::JoinHandle,
-};
-use tracing::info;
+use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
 use self::shared::{
     dex_pricing::WaitingForPricerFuture, metadata::MetadataFetcher, state_collector::StateCollector,
 };
-use crate::{cli::static_object, executors::shared::state_collector};
+use crate::cli::static_object;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
@@ -192,7 +188,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
     }
 
     pub async fn build(self, executor: TaskExecutor) -> Brontes {
-        let mut futures = FuturesUnordered::new();
+        let futures = FuturesUnordered::new();
         if let Some(end_block) = self.end_block {
             (&self)
                 .build_range_executors(executor.clone(), end_block)

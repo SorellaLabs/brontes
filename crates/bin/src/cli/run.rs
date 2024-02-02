@@ -1,6 +1,5 @@
 use std::{env, path::Path};
 
-use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::{
     clickhouse::Clickhouse,
@@ -9,15 +8,13 @@ use brontes_database::{
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
-use eyre::anyhow;
 use tokio::sync::mpsc::unbounded_channel;
-use tracing::info;
 
 use super::{determine_max_tasks, get_env_vars, static_object};
 use crate::{
     cli::{get_tracing_provider, init_inspectors},
     runner::CliContext,
-    Brontes, BrontesRunConfig,
+    BrontesRunConfig,
 };
 
 #[derive(Debug, Parser)]
