@@ -148,7 +148,7 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
 
     // Victim Section
     writeln!(f, "\n{}\n", "Victim Transactions".bright_yellow().underline())?;
-    for (i, ((tx_hashes, swaps), gas_details)) in jit_sandwich_data
+    for (_i, ((tx_hashes, swaps), gas_details)) in jit_sandwich_data
         .victim_swaps_tx_hashes
         .iter()
         .zip(jit_sandwich_data.victim_swaps.iter())
