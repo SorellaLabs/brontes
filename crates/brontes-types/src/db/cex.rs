@@ -166,7 +166,8 @@ impl CexPriceMap {
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
     }
 }
-
+//TODO: Joe remove the extra string for token_0 it should just be
+// base_token_addr
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
