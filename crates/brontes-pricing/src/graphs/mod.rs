@@ -139,6 +139,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         let ordered_pair = pair.ordered();
 
         if let Ok((pair, edges)) = self.db.try_load_pair_before(block, ordered_pair) {
+            info!("db load");
             return self
                 .subgraph_verifier
                 .create_new_subgraph(pair, block, edges, &self.graph_state)
