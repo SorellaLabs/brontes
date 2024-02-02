@@ -15,7 +15,7 @@ use malachite::{
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
 
@@ -190,7 +190,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         if quotes.is_empty() {
             None
         } else {
-            info!("CEX quotes found for pair: {}, {} at exchanges: {:?}", pair.0, pair.1, quotes);
+            debug!("CEX quotes found for pair: {}, {} at exchanges: {:?}", pair.0, pair.1, quotes);
             Some(quotes)
         }
     }
