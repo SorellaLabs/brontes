@@ -82,7 +82,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if self.mark_as_finished.load(SeqCst) && self.metadata_fetcher.is_finished() {
+        if self.mark_as_finished.load(SeqCst)
+            && self.metadata_fetcher.is_finished()
+            && self.collection_future.is_none()
+        {
             return Poll::Ready(None)
         }
 
