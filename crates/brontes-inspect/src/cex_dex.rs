@@ -97,8 +97,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let possible_legs: Vec<ExchangeLeg> = cex_prices
             .into_iter()
-            .map(|(exchange, price, is_direct_pair)| {
-                self.profit_classifier(swap, (exchange, price, is_direct_pair))
+            .filter_map(|(exchange, price, is_direct_pair)| {
+                self.profit_classifier(swap, (exchange, price, is_direct_pair), metadata)
             })
             .collect();
 
@@ -109,31 +109,44 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         exchange_cex_price: (CexExchange, Rational, bool),
-    ) -> ExchangeLeg {
+        metadata: &MetadataCombined,
+    ) -> Option<ExchangeLeg> {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let delta_price = &exchange_cex_price.1 - swap.swap_rate();
         let fees = exchange_cex_price.0.fees();
 
+        let token_price = metadata
+            .db
+            .cex_quotes
+            .get_quote_direct_or_via_intermediary(
+                &Pair(swap.token_out.address, self.inner.quote),
+                &exchange_cex_price.0,
+            )?
+            .price
+            .0;
+
         let (maker_profit, taker_profit) = if exchange_cex_price.2 {
             (
-                &delta_price * &swap.amount_out - &swap.amount_out * fees.0,
-                delta_price * &swap.amount_out - &swap.amount_out * fees.1,
+                &delta_price * &swap.amount_out - &swap.amount_out * fees.0 * &token_price,
+                delta_price * &swap.amount_out - &swap.amount_out * fees.1 * &token_price,
             )
         } else {
             (
                 // Indirect pair pays twice the fee
-                &delta_price * &swap.amount_out - &swap.amount_out * fees.0 * Rational::TWO,
-                delta_price * &swap.amount_out - &swap.amount_out * fees.1 * Rational::TWO,
+                &delta_price * &swap.amount_out
+                    - &swap.amount_out * fees.0 * Rational::TWO * &token_price,
+                delta_price * &swap.amount_out
+                    - &swap.amount_out * fees.1 * Rational::TWO * &token_price,
             )
         };
 
-        ExchangeLeg {
+        Some(ExchangeLeg {
             exchange:  exchange_cex_price.0,
             cex_price: exchange_cex_price.1,
             pnl:       StatArbPnl { maker_profit, taker_profit },
             is_direct: exchange_cex_price.2,
-        }
+        })
     }
 
     /// Gets the Cex quote for a Dex swap by exchange
