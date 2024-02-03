@@ -65,6 +65,7 @@ impl RunArgs {
 
         // verify block range validity
         if let Some(end_block) = self.end_block {
+            tracing::info!("verifying libmdbx state for block range");
             if !libmdbx.valid_range_state(self.start_block, end_block)? {
                 return Err(eyre::eyre!(
                     "do not have all the libmdbx state to run the given block range. please init \
