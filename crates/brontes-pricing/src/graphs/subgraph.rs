@@ -46,7 +46,6 @@ pub struct BadEdge {
 #[derive(Debug, Default)]
 struct BfsArgs {
     pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
-    pub remove_all:    HashSet<Pair>,
 }
 
 const MIN_LIQUIDITY_USDC: u128 = 15_000;
@@ -578,9 +577,9 @@ where
             }
 
             let local_weighted_price = pxw / weight;
-            let token_0_priced = token_0_am * price.clone().reciprocal();
+            let token_0_priced = token_0_am * &price;
             let new_price = &price * local_weighted_price;
-            let token_1_priced = token_1_am * new_price.clone().reciprocal();
+            let token_1_priced = token_1_am * &new_price;
             let tvl = token_0_priced + token_1_priced;
             let next_score = &node_score + tvl.reciprocal();
 
