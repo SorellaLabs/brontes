@@ -79,7 +79,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let rev_usd = self.inner.get_dex_revenue_usd(
             info.tx_index,
-            PriceAt::Lowest,
+            PriceAt::Average,
             &searcher_actions,
             metadata.clone(),
         )?;
@@ -96,7 +96,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let header = self.inner.build_bundle_header(
             &info,
             (rev_usd - &gas_used_usd).to_float(),
-            PriceAt::Lowest,
+            PriceAt::Average,
             &searcher_actions,
             &vec![info.gas_details],
             metadata,
