@@ -60,6 +60,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .or_insert_with(HashMap::default);
                     apply_entry(swap.token_out.address, adjusted_out, entry_from);
                 }
+            }
         }
 
         // Prunes proxy contracts that receive and immediately send, like router
