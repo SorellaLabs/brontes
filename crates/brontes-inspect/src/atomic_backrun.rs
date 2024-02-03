@@ -124,6 +124,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             let mid = swaps[0].token_out.address;
             let mid1 = swaps[1].token_in.address;
             let end = swaps[1].token_out.address;
+
             if !(start == end && mid == mid1) {
                 return None
             }
