@@ -138,7 +138,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
-        let _all_actions = searcher_actions.clone();
+        let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
             .iter()
@@ -156,6 +156,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .collect_vec()
             })
             .collect_vec();
+
         //TODO: Check later if this method correctly identifies an incorrect middle
         // frontrun that is unrelated
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions) {
@@ -218,7 +219,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,
             PriceAt::After,
-            &searcher_actions,
+            &all_actions,
             metadata.clone(),
         )?;
 
@@ -228,7 +229,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &possible_front_runs_info[0],
             profit_usd,
             PriceAt::After,
-            &searcher_actions,
+            &all_actions,
             &possible_front_runs_info
                 .iter()
                 .chain(vec![backrun_info].iter())
