@@ -251,7 +251,7 @@ impl ClassifierTestUtils {
             trees.push(tree);
         }
 
-        let mut (ctr, pricer) = self
+        let (ctr, mut pricer) = self
             .init_dex_pricer(start_block, Some(end_block), quote_asset, rx)
             .await?;
 
@@ -294,7 +294,7 @@ impl ClassifierTestUtils {
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
-        let mut (ctr, pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         let tree = classifier.build_block_tree(traces, header).await;
         ctr.store(true,SeqCst);
 
