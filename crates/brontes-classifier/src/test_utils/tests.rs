@@ -21,7 +21,8 @@ use brontes_pricing::{
     BrontesBatchPricer, GraphManager, Protocol,
 };
 use brontes_types::{
-    db::{dex::DexQuotes, token_info::TokenInfoWithAddress},
+    db::{dex::DexQuotes, token_info::TokenInfoWithAddress, traits::LibmdbxWriter},
+
     structured_trace::TraceActions,
     tree::{BlockTree, Node},
 };
@@ -201,6 +202,7 @@ impl ClassifierTestUtils {
             drop(classifier);
 
             if let Some((p_block, pricing)) = pricer.next().await {
+                self.libmdbx.write_dex_quotes(p_block, pricing.clone()).unwrap();
                 pricing
             } else {
                 return Err(ClassifierTestUtilsError::DexPricingError)
@@ -267,7 +269,7 @@ impl ClassifierTestUtils {
                 possible_price.push(m.dex_quotes);
             } else {
                 failed = true;
-                break;
+                break
             }
         }
 
@@ -282,7 +284,8 @@ impl ClassifierTestUtils {
 
             let mut prices = Vec::new();
 
-            while let Some((_, quotes)) = pricer.next().await {
+            while let Some((block, quotes)) = pricer.next().await {
+                self.libmdbx.write_dex_quotes(block, quotes.clone()).unwrap();
                 prices.push(quotes);
             }
             prices
@@ -328,6 +331,7 @@ impl ClassifierTestUtils {
         drop(classifier);
 
         if let Some((p_block, pricing)) = pricer.next().await {
+            self.libmdbx.write_dex_quotes(p_block, pricing.clone()).unwrap();
             assert!(p_block == block, "got pricing for the wrong block");
             Ok((tree, pricing))
         } else {
