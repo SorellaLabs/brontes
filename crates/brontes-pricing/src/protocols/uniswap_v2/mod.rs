@@ -3,14 +3,14 @@ pub mod factory;
 
 use std::sync::Arc;
 
-use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
+use alloy_primitives::{Address, FixedBytes, Log, B256};
 use alloy_rlp::{RlpDecodable, RlpEncodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
 use malachite::{num::arithmetic::traits::Pow, Natural, Rational};
-use num_bigfloat::BigFloat;
+
 use serde::{Deserialize, Serialize};
 
 use self::batch_request::get_v2_pool_data;
