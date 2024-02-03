@@ -292,7 +292,12 @@ impl InspectorTestUtils {
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
 
         let bundle = results.remove(0);
-        assert!(bundle.header.mev_type == config.expected_mev_type, "got wrong composed type");
+        assert!(
+            bundle.header.mev_type == config.expected_mev_type,
+            "got wrong composed type {} != {}",
+            bundle.header.mev_type,
+            config.expected_mev_type
+        );
 
         if let Some(specific_state_tests) = specific_state_tests {
             specific_state_tests(&bundle);
