@@ -123,10 +123,9 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             let start = swaps[0].token_in.address;
             let end = swaps[1].token_out.address;
 
-            if start != end  {
+            if start != end {
                 return None
             }
-
         } else {
             let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
             swaps.iter().for_each(|swap| {
