@@ -2,9 +2,8 @@ use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
 use brontes_types::{
-    classified_mev::{Bundle, MevType},
-    db::{dex::DexQuotes, metadata::MetadataCombined},
-    mev::{BundleData, MevType},
+    db::{cex::CexExchange, dex::DexQuotes, metadata::MetadataCombined},
+    mev::{Bundle, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -123,9 +122,11 @@ impl InspectorTestUtils {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config
-            .expected_mev_type
-            .init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+        let inspector = config.expected_mev_type.init_inspector(
+            self.quote_address,
+            self.classifier_inspector.libmdbx,
+            &vec![CexExchange::Binance],
+        );
 
         let results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
@@ -181,9 +182,11 @@ impl InspectorTestUtils {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config
-            .expected_mev_type
-            .init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+        let inspector = config.expected_mev_type.init_inspector(
+            self.quote_address,
+            self.classifier_inspector.libmdbx,
+            &vec![CexExchange::Binance],
+        );
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev {:#?}", results);
@@ -263,7 +266,13 @@ impl InspectorTestUtils {
         let inspector = config
             .inspectors
             .into_iter()
-            .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
+            .map(|i| {
+                i.init_inspector(
+                    self.quote_address,
+                    self.classifier_inspector.libmdbx,
+                    &vec![CexExchange::Binance],
+                )
+            })
             .collect::<Vec<_>>();
 
         let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
@@ -283,7 +292,12 @@ impl InspectorTestUtils {
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
 
         let bundle = results.remove(0);
-        assert!(bundle.header.mev_type == config.expected_mev_type, "got wrong composed type");
+        assert!(
+            bundle.header.mev_type == config.expected_mev_type,
+            "got wrong composed type {} != {}",
+            bundle.header.mev_type,
+            config.expected_mev_type
+        );
 
         if let Some(specific_state_tests) = specific_state_tests {
             specific_state_tests(&bundle);
