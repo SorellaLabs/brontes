@@ -1,4 +1,8 @@
-use std::{collections::HashMap, ops::Deref};
+use std::{
+    collections::HashMap,
+    ops::Deref,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use alloy_primitives::{Address, TxHash};
 use brontes_core::{
@@ -14,7 +18,7 @@ use brontes_pricing::{
     BrontesBatchPricer, GraphManager, Protocol,
 };
 use brontes_types::{
-    db::dex::DexQuotes,
+    db::{dex::DexQuotes, token_info::TokenInfoWithAddress},
     structured_trace::TraceActions,
     tree::{BlockTree, Node},
 };
@@ -48,6 +52,10 @@ impl ClassifierTestUtils {
         Self { classifier, trace_loader, dex_pricing_receiver: rx }
     }
 
+    pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
+        self.libmdbx.try_get_token_info(address).unwrap().unwrap()
+    }
+
     pub fn new_with_rt(handle: Handle) -> Self {
         let trace_loader = TraceLoader::new_with_rt(handle);
         let (tx, rx) = unbounded_channel();
@@ -62,18 +70,16 @@ impl ClassifierTestUtils {
         end_block: Option<u64>,
         quote_asset: Address,
         rx: UnboundedReceiver<DexPriceMsg>,
-    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>>, ClassifierTestUtilsError> {
+    ) -> Result<
+        BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+        ClassifierTestUtilsError,
+    > {
         let pairs = self
             .libmdbx
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(
-            pairs,
-            HashMap::default(),
-            Box::new(|_, _| None),
-            Box::new(|_, _, _| {}),
-        );
+        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
@@ -92,6 +98,7 @@ impl ClassifierTestUtils {
         };
 
         Ok(BrontesBatchPricer::new(
+            Arc::new(AtomicBool::new(false)),
             quote_asset,
             pair_graph,
             rx,
@@ -338,7 +345,7 @@ impl ClassifierTestUtils {
         self.libmdbx
             .0
             .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData { address, classifier_name: protocol },
+                AddressToProtocolData { key: address, value: protocol },
             ])?;
 
         let TxTracesWithHeaderAnd { trace, block, .. } =

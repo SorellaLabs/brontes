@@ -461,19 +461,27 @@ mod tests {
         let mut cex_map = HashMap::new();
         cex_map.insert(
             eth_usdc.ordered(),
-            vec![CexQuote {
+            CexQuote {
                 price: (eth_cex.clone(), eth_cex),
                 token0: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
                 ..Default::default()
-            }],
+            },
         );
+        let mut outer = HashMap::new();
+        outer.insert(CexExchange::Binance, cex_map);
 
-        let cex_quotes = CexPriceMap(cex_map);
+        let cex_quotes = CexPriceMap(outer);
 
         let metadata = MetadataCombined {
             dex_quotes: brontes_types::db::dex::DexQuotes(vec![Some({
                 let mut map = HashMap::new();
-                map.insert(eth_usdc, eth_price.clone());
+                map.insert(
+                    eth_usdc,
+                    brontes_types::db::dex::DexPrices {
+                        pre_state:  eth_price.clone(),
+                        post_state: eth_price.clone(),
+                    },
+                );
                 map
             })]),
             db:         brontes_types::db::metadata::MetadataNoDex {

@@ -21,7 +21,7 @@ use super::shared::{inserts::process_results, state_collector::StateCollector};
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
 
-pub struct RangeExecutorWithPricing<T: TracingProvider + Clone, DB: LibmdbxWriter + LibmdbxReader> {
+pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     collector:      StateCollector<T, DB>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 
@@ -33,9 +33,7 @@ pub struct RangeExecutorWithPricing<T: TracingProvider + Clone, DB: LibmdbxWrite
     inspectors: &'static [&'static Box<dyn Inspector>],
 }
 
-impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
-    RangeExecutorWithPricing<T, DB>
-{
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
     pub fn new(
         _quote_asset: Address,
         batch_id: u64,
@@ -84,7 +82,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
     }
 }
 
-impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future
     for RangeExecutorWithPricing<T, DB>
 {
     type Output = ();
