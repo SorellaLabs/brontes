@@ -138,7 +138,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
-        let _all_actions = searcher_actions.clone();
+        let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
             .iter()
@@ -156,6 +156,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .collect_vec()
             })
             .collect_vec();
+
         //TODO: Check later if this method correctly identifies an incorrect middle
         // frontrun that is unrelated
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions) {
@@ -218,7 +219,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,
             PriceAt::After,
-            &searcher_actions,
+            &all_actions,
             metadata.clone(),
         )?;
 
@@ -228,7 +229,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &possible_front_runs_info[0],
             profit_usd,
             PriceAt::After,
-            &searcher_actions,
+            &all_actions,
             &possible_front_runs_info
                 .iter()
                 .chain(vec![backrun_info].iter())
@@ -332,24 +333,23 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
                 // Get's prev tx hash for this sender & replaces it with the current tx hash
                 let prev_tx_hash = o.insert(root.tx_hash);
                 if let Some(frontrun_victims) = possible_victims.remove(&prev_tx_hash) {
-                    if frontrun_victims.is_empty() {
-                        continue
-                    }
-                    match possible_sandwiches.entry(root.head.address) {
-                        Entry::Vacant(e) => {
-                            e.insert(PossibleSandwich {
-                                eoa:                   root.head.address,
-                                possible_frontruns:    vec![prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
-                                mev_executor_contract: root.head.data.get_to_address(),
-                                victims:               vec![frontrun_victims],
-                            });
-                        }
-                        Entry::Occupied(mut o) => {
-                            let sandwich = o.get_mut();
-                            sandwich.possible_frontruns.push(prev_tx_hash);
-                            sandwich.possible_backrun = root.tx_hash;
-                            sandwich.victims.push(frontrun_victims);
+                    if !frontrun_victims.is_empty() {
+                        match possible_sandwiches.entry(root.head.address) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleSandwich {
+                                    eoa:                   root.head.address,
+                                    possible_frontruns:    vec![prev_tx_hash],
+                                    possible_backrun:      root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               vec![frontrun_victims],
+                                });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.possible_frontruns.push(prev_tx_hash);
+                                sandwich.possible_backrun = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
+                            }
                         }
                     }
                 }
@@ -403,24 +403,23 @@ fn get_possible_sandwich_duplicate_contracts(
                 let (prev_tx_hash, frontrun_eoa) = o.get_mut();
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
-                    if frontrun_victims.is_empty() {
-                        continue
-                    }
-                    match possible_sandwiches.entry(root.head.data.get_to_address()) {
-                        Entry::Vacant(e) => {
-                            e.insert(PossibleSandwich {
-                                eoa:                   *frontrun_eoa,
-                                possible_frontruns:    vec![*prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
-                                mev_executor_contract: root.head.data.get_to_address(),
-                                victims:               vec![frontrun_victims],
-                            });
-                        }
-                        Entry::Occupied(mut o) => {
-                            let sandwich = o.get_mut();
-                            sandwich.possible_frontruns.push(*prev_tx_hash);
-                            sandwich.possible_backrun = root.tx_hash;
-                            sandwich.victims.push(frontrun_victims);
+                    if !frontrun_victims.is_empty() {
+                        match possible_sandwiches.entry(root.head.data.get_to_address()) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleSandwich {
+                                    eoa:                   *frontrun_eoa,
+                                    possible_frontruns:    vec![*prev_tx_hash],
+                                    possible_backrun:      root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               vec![frontrun_victims],
+                                });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.possible_frontruns.push(*prev_tx_hash);
+                                sandwich.possible_backrun = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
+                            }
                         }
                     }
                 }
