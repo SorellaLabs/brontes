@@ -124,11 +124,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             let mid = swaps[0].token_out.address;
             let mid1 = swaps[1].token_in.address;
             let end = swaps[1].token_out.address;
-            // if not triangular or more than 2 unique tokens, then return.
-            // mid != mid1 looks weird. However it is needed as some transactions such as
-            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
-            // newer token version
-            if !(start == end && mid == mid1 || (start != end || mid != mid1)) || start == mid {
+            if !(start == end && mid == mid1) {
                 return None
             }
         } else {
