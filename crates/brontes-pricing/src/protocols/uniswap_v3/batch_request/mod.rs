@@ -7,7 +7,7 @@ use futures::join;
 use reth_rpc_types::{CallInput, CallRequest};
 
 use super::{IErc20, UniswapV3Pool};
-use crate::{errors::AmmError, protocols::make_call_request, AutomatedMarketMaker};
+use crate::{errors::AmmError, protocols::make_call_request};
 sol!(
     IGetUniswapV3PoolDataBatchRequest,
     "./src/protocols/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequestABI.json"

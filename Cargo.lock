@@ -1742,6 +1742,7 @@ dependencies = [
  "auto_impl",
  "brontes-classifier",
  "brontes-core",
+ "brontes-database",
  "brontes-inspect",
  "brontes-pricing",
  "brontes-types",
