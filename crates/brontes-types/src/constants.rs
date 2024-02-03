@@ -30,3 +30,10 @@ pub const SCP_MAIN_CEX_DEX_BOT: Address =
     Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C"));
 
 pub const EXECUTE_FFS_YO: Bytes = Bytes::from_static(&[0x78, 0xe1, 0x11, 0xf6]);
+
+// Known routers to ignore for Atomic Backruns
+pub const UNI_UNIVERSAL_ROUTER: Address =
+    Address::new(hex!("3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD"));
+pub const UNI_V2_ROUTER_V2: Address =
+    Address::new(hex!("7a250d5630B4cF539739dF2C5dAcb4c659F2488D"));
+pub const ONE_INCH: Address = Address::new(hex!("1111111254EEB25477B68fb85Ed929f73A960582"));
