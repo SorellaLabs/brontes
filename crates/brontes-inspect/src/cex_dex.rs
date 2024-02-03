@@ -419,4 +419,3 @@ pub struct ExchangeLeg {
     pub pnl:       StatArbPnl,
     pub is_direct: bool,
 }
-

@@ -1,7 +1,10 @@
 use std::{
     collections::HashMap,
     ops::Deref,
-    sync::{atomic::{Ordering::SeqCst, AtomicBool}, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering::SeqCst},
+        Arc,
+    },
 };
 
 use alloy_primitives::{Address, TxHash};
@@ -96,18 +99,20 @@ impl ClassifierTestUtils {
         } else {
             HashMap::new()
         };
-        let ctr = 
-            Arc::new(AtomicBool::new(false));
+        let ctr = Arc::new(AtomicBool::new(false));
 
-        Ok((ctr.clone(), BrontesBatchPricer::new(
-            ctr,
-            quote_asset,
-            pair_graph,
-            rx,
-            self.get_provider(),
-            block,
-            created_pools,
-        )))
+        Ok((
+            ctr.clone(),
+            BrontesBatchPricer::new(
+                ctr,
+                quote_asset,
+                pair_graph,
+                rx,
+                self.get_provider(),
+                block,
+                created_pools,
+            ),
+        ))
     }
 
     pub fn get_pricing_receiver(&mut self) -> &mut UnboundedReceiver<DexPriceMsg> {
@@ -183,21 +188,25 @@ impl ClassifierTestUtils {
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
-
-        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         let tree = classifier.build_block_tree(vec![trace], header).await;
-        classifier.close();
 
-        ctr.store(true,SeqCst);
-        // triggers close
-        drop(classifier);
-
-        if let Some((p_block, pricing)) = pricer.next().await {
-            assert!(p_block == block, "got pricing for the wrong block");
-            Ok((tree, pricing))
+        let price = if let Ok(m) = self.libmdbx.get_metadata(block) {
+            m.dex_quotes
         } else {
-            Err(ClassifierTestUtilsError::DexPricingError)
-        }
+            let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+            classifier.close();
+
+            ctr.store(true, SeqCst);
+            // triggers close
+            drop(classifier);
+
+            if let Some((p_block, pricing)) = pricer.next().await {
+                pricing
+            } else {
+                return Err(ClassifierTestUtilsError::DexPricingError)
+            }
+        };
+        Ok((tree, price))
     }
 
     pub async fn build_tree_txes(
@@ -251,19 +260,35 @@ impl ClassifierTestUtils {
             trees.push(tree);
         }
 
-        let (ctr, mut pricer) = self
-            .init_dex_pricer(start_block, Some(end_block), quote_asset, rx)
-            .await?;
-
-        classifier.close();
-        ctr.store(true,SeqCst);
-        drop(classifier);
-
-        let mut prices = Vec::new();
-
-        while let Some((_, quotes)) = pricer.next().await {
-            prices.push(quotes);
+        let mut possible_price = Vec::new();
+        let mut failed = false;
+        for block in start_block..=end_block {
+            if let Ok(m) = self.libmdbx.get_metadata(block) {
+                possible_price.push(m.dex_quotes);
+            } else {
+                failed = true;
+                break;
+            }
         }
+
+        let prices = if failed {
+            let (ctr, mut pricer) = self
+                .init_dex_pricer(start_block, Some(end_block), quote_asset, rx)
+                .await?;
+
+            classifier.close();
+            ctr.store(true, SeqCst);
+            drop(classifier);
+
+            let mut prices = Vec::new();
+
+            while let Some((_, quotes)) = pricer.next().await {
+                prices.push(quotes);
+            }
+            prices
+        } else {
+            possible_price
+        };
 
         Ok(trees.into_iter().zip(prices.into_iter()).collect())
     }
@@ -296,7 +321,7 @@ impl ClassifierTestUtils {
 
         let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         let tree = classifier.build_block_tree(traces, header).await;
-        ctr.store(true,SeqCst);
+        ctr.store(true, SeqCst);
 
         classifier.close();
         // triggers close
