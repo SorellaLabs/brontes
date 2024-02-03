@@ -22,7 +22,6 @@ use brontes_pricing::{
 };
 use brontes_types::{
     db::{dex::DexQuotes, token_info::TokenInfoWithAddress, traits::LibmdbxWriter},
-
     structured_trace::TraceActions,
     tree::{BlockTree, Node},
 };
@@ -191,9 +190,12 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header).await;
 
-        let price = if let Ok(m) = self.libmdbx.get_metadata(block) {
+        let mut price = if let Ok(m) = self.libmdbx.get_metadata(block) {
             m.dex_quotes
         } else {
+            DexQuotes(vec![])
+        };
+        price = if price.0.is_empty() {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
 
@@ -202,12 +204,17 @@ impl ClassifierTestUtils {
             drop(classifier);
 
             if let Some((p_block, pricing)) = pricer.next().await {
-                self.libmdbx.write_dex_quotes(p_block, pricing.clone()).unwrap();
+                self.libmdbx
+                    .write_dex_quotes(p_block, pricing.clone())
+                    .unwrap();
                 pricing
             } else {
                 return Err(ClassifierTestUtilsError::DexPricingError)
             }
+        } else {
+            price
         };
+
         Ok((tree, price))
     }
 
@@ -266,6 +273,10 @@ impl ClassifierTestUtils {
         let mut failed = false;
         for block in start_block..=end_block {
             if let Ok(m) = self.libmdbx.get_metadata(block) {
+                if m.dex_quotes.0.is_empty() {
+                    failed = true;
+                    break;
+                }
                 possible_price.push(m.dex_quotes);
             } else {
                 failed = true;
@@ -285,7 +296,9 @@ impl ClassifierTestUtils {
             let mut prices = Vec::new();
 
             while let Some((block, quotes)) = pricer.next().await {
-                self.libmdbx.write_dex_quotes(block, quotes.clone()).unwrap();
+                self.libmdbx
+                    .write_dex_quotes(block, quotes.clone())
+                    .unwrap();
                 prices.push(quotes);
             }
             prices
@@ -321,22 +334,34 @@ impl ClassifierTestUtils {
 
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
-
-        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         let tree = classifier.build_block_tree(traces, header).await;
-        ctr.store(true, SeqCst);
 
-        classifier.close();
-        // triggers close
-        drop(classifier);
-
-        if let Some((p_block, pricing)) = pricer.next().await {
-            self.libmdbx.write_dex_quotes(p_block, pricing.clone()).unwrap();
-            assert!(p_block == block, "got pricing for the wrong block");
-            Ok((tree, pricing))
+        let mut price = if let Ok(m) = self.libmdbx.get_metadata(block) {
+            m.dex_quotes
         } else {
-            Err(ClassifierTestUtilsError::DexPricingError)
-        }
+            DexQuotes(vec![])
+        };
+        price = if price.0.is_empty() {
+            let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+            ctr.store(true, SeqCst);
+
+            classifier.close();
+            // triggers close
+            drop(classifier);
+
+            if let Some((p_block, pricing)) = pricer.next().await {
+                self.libmdbx
+                    .write_dex_quotes(p_block, pricing.clone())
+                    .unwrap();
+                assert!(p_block == block, "got pricing for the wrong block");
+                pricing
+            } else {
+                return Err(ClassifierTestUtilsError::DexPricingError)
+            }
+        } else {
+            price
+        };
+        Ok((tree, price))
     }
 
     pub async fn contains_action(
