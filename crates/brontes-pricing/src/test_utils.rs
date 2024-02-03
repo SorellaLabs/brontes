@@ -1,10 +1,17 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
+use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
+use brontes_types::{
+    db::traits::LibmdbxReader, normalized_actions::Actions, traits::TracingProvider,
+    tree::BlockTree,
+};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -26,19 +33,16 @@ impl PricingTestUtils {
         block: u64,
         end_block: Option<u64>,
         rx: UnboundedReceiver<DexPriceMsg>,
-    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>>, PricingTestError> {
+    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>, PricingTestError>
+    {
         let pairs = self
             .tracer
             .libmdbx
             .protocols_created_before(block)
             .map_err(|_| PricingTestError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(
-            pairs,
-            HashMap::default(),
-            Box::new(|_, _| None),
-            Box::new(|_, _, _| {}),
-        );
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, HashMap::default(), self.tracer.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.tracer
@@ -57,6 +61,7 @@ impl PricingTestUtils {
             HashMap::new()
         };
         Ok(BrontesBatchPricer::new(
+            Arc::new(AtomicBool::new(false)),
             self.quote_address,
             pair_graph,
             rx,
@@ -71,7 +76,10 @@ impl PricingTestUtils {
     pub async fn setup_dex_pricer_for_block(
         &self,
         block: u64,
-    ) -> PricingResult<(BrontesBatchPricer<Box<dyn TracingProvider>>, BlockTree<Actions>)> {
+    ) -> PricingResult<(
+        BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+        BlockTree<Actions>,
+    )> {
         let BlockTracesWithHeaderAnd { traces, header, .. } =
             self.tracer.get_block_traces_with_header(block).await?;
 
@@ -86,7 +94,8 @@ impl PricingTestUtils {
     pub async fn setup_dex_pricer_for_tx(
         &self,
         tx_hash: TxHash,
-    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>>, PricingTestError> {
+    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>, PricingTestError>
+    {
         let TxTracesWithHeaderAnd { trace, header, block, .. } =
             self.tracer.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();

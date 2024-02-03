@@ -6,7 +6,7 @@ use crate::structured_trace::TxTrace;
 
 #[async_trait::async_trait]
 #[auto_impl::auto_impl(Box)]
-pub trait TracingProvider: Send + Sync + Clone + 'static {
+pub trait TracingProvider: Send + Sync + 'static {
     async fn eth_call(
         &self,
         request: CallRequest,
