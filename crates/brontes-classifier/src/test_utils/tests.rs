@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     ops::Deref,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{atomic::{Ordering::SeqCst, AtomicBool}, Arc},
 };
 
 use alloy_primitives::{Address, TxHash};
@@ -71,7 +71,7 @@ impl ClassifierTestUtils {
         quote_asset: Address,
         rx: UnboundedReceiver<DexPriceMsg>,
     ) -> Result<
-        BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+        (Arc<AtomicBool>, BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>),
         ClassifierTestUtilsError,
     > {
         let pairs = self
@@ -96,16 +96,18 @@ impl ClassifierTestUtils {
         } else {
             HashMap::new()
         };
+        let ctr = 
+            Arc::new(AtomicBool::new(false));
 
-        Ok(BrontesBatchPricer::new(
-            Arc::new(AtomicBool::new(false)),
+        Ok((ctr.clone(), BrontesBatchPricer::new(
+            ctr,
             quote_asset,
             pair_graph,
             rx,
             self.get_provider(),
             block,
             created_pools,
-        ))
+        )))
     }
 
     pub fn get_pricing_receiver(&mut self) -> &mut UnboundedReceiver<DexPriceMsg> {
@@ -182,9 +184,11 @@ impl ClassifierTestUtils {
 
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
-        let mut pricer = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         let tree = classifier.build_block_tree(vec![trace], header).await;
         classifier.close();
+
+        ctr.store(true,SeqCst);
         // triggers close
         drop(classifier);
 
@@ -247,11 +251,12 @@ impl ClassifierTestUtils {
             trees.push(tree);
         }
 
-        let mut pricer = self
+        let mut (ctr, pricer) = self
             .init_dex_pricer(start_block, Some(end_block), quote_asset, rx)
             .await?;
 
         classifier.close();
+        ctr.store(true,SeqCst);
         drop(classifier);
 
         let mut prices = Vec::new();
@@ -289,8 +294,9 @@ impl ClassifierTestUtils {
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
-        let mut pricer = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        let mut (ctr, pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         let tree = classifier.build_block_tree(traces, header).await;
+        ctr.store(true,SeqCst);
 
         classifier.close();
         // triggers close
