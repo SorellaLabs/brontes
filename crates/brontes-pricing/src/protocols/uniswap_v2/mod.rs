@@ -10,7 +10,6 @@ use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
 use malachite::{num::arithmetic::traits::Pow, Natural, Rational};
-
 use serde::{Deserialize, Serialize};
 
 use self::batch_request::get_v2_pool_data;
