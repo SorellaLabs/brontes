@@ -7,7 +7,9 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         cex::CexPriceMap,
-        dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
+        dex::{
+            decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
+        },
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -22,15 +24,18 @@ use brontes_types::{
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
+use reth_libmdbx::RO;
 use tracing::{info, warn};
 
+use super::cursor::CompressedCursor;
 use crate::{
     libmdbx::{
         tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
         types::LibmdbxData,
         Libmdbx,
     },
-    AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
+    AddressToProtocol, AddressToTokens, CompressedTable, PoolCreationBlocks, SubGraphs,
+    TokenDecimals, TxTraces,
 };
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -42,105 +47,20 @@ impl LibmdbxReadWriter {
 
     #[cfg(not(feature = "local"))]
     pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
-        let tx = self.0.ro_tx()?;
-
-        let mut cex_cur = tx.new_cursor::<CexPrice>()?;
-        let mut meta_cur = tx.new_cursor::<Metadata>()?;
-
-        let (cex_pass, meta_pass) = rayon::join(
-            || {
-                let mut i = start_block - 1;
-                for entry in cex_cur.walk_range(start_block..=end_block).ok()? {
-                    if let Ok(field) = entry {
-                        if i + 1 != field.0 {
-                            tracing::error!(block = i, "missing cex price for block");
-                            return Some(false)
-                        }
-                        i += 1;
-                    } else {
-                        return Some(false)
-                    }
-                }
-                Some(true)
-            },
-            || {
-                let mut i = start_block - 1;
-                for entry in meta_cur.walk_range(start_block..=end_block).ok()? {
-                    if let Ok(field) = entry {
-                        if i + 1 != field.0 {
-                            tracing::error!(block = i, "missing metadata for block");
-                            return Some(false)
-                        }
-                        i += 1;
-                    } else {
-                        return Some(false)
-                    }
-                }
-                Some(true)
-            },
-        );
-
-        return Ok(cex_pass == Some(true) && meta_pass == Some(true))
+        self.validate_metadata_and_cex(start_block, end_block)
     }
 
     // local also needs to have tx traces
     #[cfg(feature = "local")]
     pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
-        let tx = self.0.ro_tx()?;
-
-        let mut cex_cur = tx.new_cursor::<CexPrice>()?;
-        let mut meta_cur = tx.new_cursor::<Metadata>()?;
-
-        let (cex_pass, meta_pass) = rayon::join(
-            || {
-                let mut i = start_block - 1;
-                for entry in cex_cur.walk_range(start_block..=end_block).ok()? {
-                    if let Ok(field) = entry {
-                        if i + 1 != field.0 {
-                            return Some(false)
-                        }
-                        i += 1;
-                    } else {
-                        return Some(false)
-                    }
-                }
-                Some(true)
-            },
-            || {
-                let mut i = start_block - 1;
-                for entry in meta_cur.walk_range(start_block..=end_block).ok()? {
-                    if let Ok(field) = entry {
-                        if i + 1 != field.0 {
-                            return Some(false)
-                        }
-                        i += 1;
-                    } else {
-                        return Some(false)
-                    }
-                }
-                Some(true)
-            },
-        );
+        let meta_and_cex_pass = self.validate_metadata_and_cex(start_block, end_block)?;
 
         // local part
         let mut trace_cur = tx.new_cursor::<TxTraces>()?;
+        let mut res =
+            self.validate_range("tx traces", trace_cur, start_block, end_block, |b| *b)?;
 
-        let mut res = true;
-        let mut i = start_block - 1;
-        for entry in trace_cur.walk_range(start_block..=end_block) {
-            for entry in meta_cur.walk_range(start_block..=end_block)? {
-                if let Ok(field) = entry {
-                    if i + 1 != field.0 {
-                        res = false;
-                    }
-                    i += 1;
-                } else {
-                    res = false;
-                }
-            }
-        }
-
-        return Ok(cex_pass == Some(true) && meta_pass == Some(true) && res)
+        return Ok(meta_and_cex_pass && res)
     }
 
     pub fn has_dex_pricing_for_range(
@@ -151,15 +71,116 @@ impl LibmdbxReadWriter {
         let start_key = make_key(start_block, 0);
         let end_key = make_key(end_block, u16::MAX);
         let tx = self.0.ro_tx()?;
+        let cursor = tx.cursor_read::<DexPrice>()?;
+        self.validate_range("dex pricing", cursor, start_key, end_key, |key| decompose_key(*key).0)
+            .map_err(|e| {
+                tracing::error!("please run range with flag `--run-dex-pricing`");
+                e
+            })
+    }
 
-        let mut cursor = tx.cursor_read::<DexPrice>()?;
-        for entry in cursor.walk_range(start_key..=end_key)? {
-            if entry.is_err() {
-                return Ok(false)
-            }
+    fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
+        let tx = self.0.ro_tx()?;
+
+        let cex_cur = tx.new_cursor::<CexPrice>()?;
+        let meta_cur = tx.new_cursor::<Metadata>()?;
+
+        let (cex_pass, meta_pass) = rayon::join(
+            || self.validate_range("cex pricing", cex_cur, start_block, end_block, |b| *b),
+            || self.validate_range("metadata", meta_cur, start_block, end_block, |b| *b),
+        );
+        let (cex_pass, meta_pass) = (cex_pass?, meta_pass?);
+
+        return Ok(cex_pass && meta_pass)
+    }
+
+    fn validate_range<T: CompressedTable>(
+        &self,
+        table_name: &str,
+        mut cursor: CompressedCursor<T, RO>,
+        start_key: T::Key,
+        end_key: T::Key,
+        decode_key: impl Fn(&T::Key) -> u64,
+    ) -> eyre::Result<bool>
+    where
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        T::Key: Clone,
+    {
+        let range = decode_key(&end_key) - decode_key(&start_key);
+        let mut res = true;
+        let mut missing = Vec::new();
+        let mut cur_block = decode_key(&start_key);
+        let cur = cursor.walk_range(start_key.clone()..=end_key.clone())?;
+        let mut peek_cur = cur.peekable();
+        if peek_cur.peek().is_none() {
+            tracing::error!("missing entire block range for table {}", table_name);
+            return Err(eyre::eyre!("no data for entire range"))
         }
 
-        Ok(true)
+        for entry in peek_cur {
+            if cur_block % 1000 == 0 {
+                tracing::info!(
+                    "{} validation {:.2}% completed",
+                    table_name,
+                    (cur_block - decode_key(&start_key)) as f64 / (range as f64) * 100.0
+                );
+            }
+
+            if let Ok(field) = entry {
+                if cur_block != decode_key(&field.0) {
+                    missing.push(cur_block);
+                    res = false;
+                }
+            } else {
+                missing.push(cur_block);
+                res = false
+            }
+            cur_block += 1;
+        }
+
+        if cur_block - 1 != decode_key(&end_key) {
+            res = false
+        }
+
+        if !res {
+            // put into block ranges so printout is less spammy.
+            let mut i = 0usize;
+            let mut ranges = vec![vec![]];
+            let mut prev = 0;
+
+            for mb in missing {
+                // new range
+                let prev_block = if prev == 0 { mb } else { prev + 1 };
+
+                if prev_block != mb {
+                    if i != 0 {
+                        i += 1;
+                    }
+                    let entry = vec![mb];
+                    ranges.push(entry);
+                // extend prev range
+                } else {
+                    ranges.get_mut(i).unwrap().push(mb);
+                }
+                prev = mb;
+            }
+
+            let mut missing_ranges = ranges
+                .into_iter()
+                .filter_map(|range| {
+                    let start = range.first()?;
+                    let end = range.last()?;
+                    Some(format!("{}-{}", start, end))
+                })
+                .fold(String::new(), |acc, x| acc + "\n" + &x);
+
+            if cur_block - 1 != decode_key(&end_key) {
+                missing_ranges += &format!("\n{}-{}", cur_block - 1, decode_key(&end_key));
+            }
+
+            tracing::error!("missing {} for blocks: {}", table_name, missing_ranges);
+        }
+        Ok(res)
     }
 }
 
