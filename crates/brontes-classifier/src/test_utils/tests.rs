@@ -309,7 +309,7 @@ impl ClassifierTestUtils {
         Ok(trees.into_iter().zip(prices.into_iter()).collect())
     }
 
-    pub async fn build_tree_block(
+    pub async fn build_block_tree(
         &self,
         block: u64,
     ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
@@ -322,7 +322,7 @@ impl ClassifierTestUtils {
         Ok(tree)
     }
 
-    pub async fn build_tree_block_with_pricing(
+    pub async fn build_block_tree_with_pricing(
         &self,
         block: u64,
         quote_asset: Address,
