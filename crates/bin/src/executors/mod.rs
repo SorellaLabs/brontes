@@ -17,10 +17,10 @@ use brontes_database::{
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
-use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
+use futures::{stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::{TaskExecutor, TaskSpawnerExt};
+use reth_tasks::TaskExecutor;
 pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
@@ -108,7 +108,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
 
             executors.push(RangeExecutorWithPricing::new(
                 self.quote_asset,
-                batch_id as u64,
                 start_block,
                 end_block,
                 state_collector,
