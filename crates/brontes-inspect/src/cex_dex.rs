@@ -135,7 +135,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     possible_cex_dex_by_exchange,
                     &tx_info.gas_details,
                     metadata.clone(),
-                );
+                )?;
 
                 let cex_dex =
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
@@ -305,7 +305,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         swaps_with_profit_by_exchange: Vec<PossibleCexDexLeg>,
         gas_details: &GasDetails,
         metadata: Arc<MetadataCombined>,
-    ) -> PossibleCexDex {
+    ) -> Option<PossibleCexDex> {
         let mut swaps = Vec::new();
         let mut arb_details = Vec::new();
         let mut total_arb_pre_gas = StatArbPnl::default();
@@ -327,6 +327,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 }
             });
 
+        if swaps.is_empty() {
+            return None
+        }
+
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid());
 
         let pnl = StatArbPnl {
@@ -334,7 +338,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             taker_profit: total_arb_pre_gas.taker_profit - gas_cost,
         };
 
-        PossibleCexDex { swaps, arb_details, gas_details: gas_details.clone(), pnl }
+        Some(PossibleCexDex { swaps, arb_details, gas_details: gas_details.clone(), pnl })
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
