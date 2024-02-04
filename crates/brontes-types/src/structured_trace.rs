@@ -181,13 +181,6 @@ impl TxTrace {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
-#[redefined(Log)]
-pub struct LogRedefined {
-    pub address: AddressRedefined,
-    pub data:    LogDataRedefined,
-}
-
 redefined_remote!(
     #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
     [
@@ -203,7 +196,28 @@ redefined_remote!(
     [CallType] : "alloy-rpc-types"
 );
 
-redefined_remote!(
-    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [LogData] : "alloy-primitives"
-);
+#[derive(
+    Debug, Default, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined,
+)]
+#[redefined(Log)]
+#[redefined_attr(
+    to_source = "Log {address: self.address.into(), data: self.data.into()}",
+    from_source = "LogRedefined {address: src.address.into(), data: src.data.into()}"
+)]
+pub struct LogRedefined {
+    pub address: AddressRedefined,
+    pub data:    LogDataRedefined,
+}
+
+#[derive(
+    Debug, Default, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined,
+)]
+#[redefined(LogData)]
+#[redefined_attr(
+    to_source = "LogData::new_unchecked(self.topics.to_source(), self.data.to_source())"
+)]
+pub struct LogDataRedefined {
+    #[redefined(func = "src.topics().to_vec().into()")]
+    topics:   Vec<B256Redefined>,
+    pub data: BytesRedefined,
+}
