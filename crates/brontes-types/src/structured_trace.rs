@@ -124,6 +124,7 @@ self_convert_redefined!(DecodedParams);
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
+    #[redefined(func = "self.logs")]
     pub logs:         Vec<Log>,
     /// the msg.sender of the trace. This allows us to properly deal with
     /// delegate calls and the headache they cause when it comes to proxies
