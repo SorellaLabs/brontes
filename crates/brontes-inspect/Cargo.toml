@@ -89,6 +89,7 @@ rayon.workspace = true
 walkdir = "2.4.0"
 convert_case = "0.6.0"
 quote = "1.0.35"
+dotenv.workspace =true
 brontes-database.workspace = true
 serde.workspace = true
 toml = "0.8.9"
