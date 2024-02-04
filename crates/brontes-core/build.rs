@@ -20,7 +20,7 @@ pub struct TokenInfoWithAddressToml {
 }
 fn insert_manually_defined_entries() {
     // don't run on local
-    dotenv::dotenv().unwrap();
+    let _ = dotenv::dotenv();
     let Ok(brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
 
     let Ok(libmdbx) = LibmdbxReadWriter::init_db(brontes_db_endpoint, None) else { return };
@@ -59,7 +59,6 @@ fn insert_manually_defined_entries() {
             libmdbx
                 .insert_pool(init_block, token_addr, token_addrs, protocol)
                 .unwrap();
-            // not reaching here
         }
     }
 }
