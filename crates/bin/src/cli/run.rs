@@ -41,12 +41,13 @@ pub struct RunArgs {
     #[arg(long, short, value_delimiter = ',')]
     pub inspectors:      Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
-    #[arg(long, short, default_values = &["Binance", "Coinbase", "OKX", "Bybit", "Kucoin"], value_delimiter = ',')]
+    #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
     pub cex_exchanges:   Option<Vec<String>>,
     /// If we should run dex pricing, even if we have the stored dex prices.
     #[arg(long, short, default_value = "false")]
     pub run_dex_pricing: bool,
 }
+
 impl RunArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         // Fetch required environment variables.
