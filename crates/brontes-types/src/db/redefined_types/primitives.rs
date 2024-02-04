@@ -1,9 +1,12 @@
-use std::{hash::Hash, str::FromStr};
+use std::{hash::Hash, str::FromStr, sync::atomic::AtomicPtr};
 
 use alloy_primitives::{hex, Address, Bytes, FixedBytes, Uint};
 use derive_more::{Deref, DerefMut, From, Index, IndexMut, IntoIterator};
 use redefined::{redefined_remote, Redefined, RedefinedConvert};
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use rkyv::{
+    ser::Serializer as rSerializer, Archive, Archived, Deserialize as rDeserialize, Fallible,
+    Serialize as rSerialize, SerializeUnsized,
+};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 // Uint
@@ -19,6 +22,12 @@ impl<const BITS: usize, const LIMBS: usize> Serialize for UintRedefined<BITS, LI
     {
         let this: Uint<BITS, LIMBS> = (*self).into();
         this.serialize(serializer)
+    }
+}
+
+impl<const BITS: usize, const LIMBS: usize> Default for UintRedefined<BITS, LIMBS> {
+    fn default() -> Self {
+        Uint::default().into()
     }
 }
 
@@ -86,12 +95,19 @@ impl<const N: usize> PartialEq for ArchivedFixedBytesRedefined<N> {
     }
 }
 
+impl<const N: usize> Default for FixedBytesRedefined<N> {
+    fn default() -> Self {
+        FixedBytesRedefined([0; N])
+    }
+}
+
 /// Address
 /// Haven't implemented macro stuff yet
 #[derive(
     Debug,
     Clone,
     Copy,
+    Default,
     PartialEq,
     Eq,
     PartialOrd,
@@ -123,7 +139,7 @@ impl FromStr for AddressRedefined {
     }
 }
 
-/// Bytes
+/// alloy_primitivies::Bytes
 /// Have not implements parsing 'Bytes::bytes' yet
 #[derive(
     Debug,
@@ -131,11 +147,11 @@ impl FromStr for AddressRedefined {
     PartialEq,
     Eq,
     Hash,
-    Serialize,
-    Deserialize,
-    rSerialize,
-    rDeserialize,
-    Archive,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
     Redefined,
 )]
 #[redefined(Bytes)]
