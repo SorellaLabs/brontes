@@ -53,8 +53,9 @@ impl LibmdbxReadWriter {
             || self.validate_range("cex pricing", cex_cur, start_block, end_block),
             || self.validate_range("metadata", meta_cur, start_block, end_block),
         );
+        let (cex_pass, meta_pass) = (cex_pass?, meta_pass?);
 
-        return Ok(cex_pass == Some(true) && meta_pass == Some(true))
+        return Ok(cex_pass && meta_pass)
     }
 
     fn validate_range<T: CompressedTable>(
@@ -63,7 +64,7 @@ impl LibmdbxReadWriter {
         mut cursor: CompressedCursor<T, RO>,
         start_block: u64,
         end_block: u64,
-    ) -> Option<bool>
+    ) -> eyre::Result<bool>
     where
         T: CompressedTable<Key = u64>,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -73,7 +74,7 @@ impl LibmdbxReadWriter {
         let mut res = true;
         let mut missing = Vec::new();
         let mut i = if start_block != 0 { start_block - 1 } else { start_block };
-        for entry in cursor.walk_range(start_block..=end_block).ok()? {
+        for entry in cursor.walk_range(start_block..=end_block)? {
             if i % 1000 == 0 {
                 tracing::info!(
                     "{} validation {:.2}% completed",
@@ -81,6 +82,7 @@ impl LibmdbxReadWriter {
                     (blocks_to_validate - i) as f64 / (blocks_to_validate as f64) * 100.0
                 );
             }
+
             if let Ok(field) = entry {
                 if i + 1 != field.0 {
                     missing.push(i + 1);
@@ -94,7 +96,7 @@ impl LibmdbxReadWriter {
         if !res {
             tracing::error!("missing {} for blocks: {:#?}", table_name, missing);
         }
-        Some(res)
+        Ok(res)
     }
 
     #[cfg(not(feature = "local"))]
