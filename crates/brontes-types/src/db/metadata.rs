@@ -63,7 +63,7 @@ impl MetadataCombined {
             self.dex_quotes
                 .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), self.dex_quotes.0.len())
                 .map(|price| price.post_state)
-                .unwrap_or_default()
+                .unwrap()
         } else {
             self.eth_prices.clone()
         };
