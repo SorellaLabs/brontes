@@ -197,6 +197,24 @@ redefined_remote!(
 );
 
 redefined_remote!(
-    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
+    #[derive(Default, Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
     [Log, LogData] : "alloy-primitives"
 );
+
+#[test]
+fn t() {
+    let value: LogRedefined = Default::default();
+
+    // let k: Log = unsafe { std::mem::transmute(t) };
+
+    // let kf = LogDataRedefined::default();
+    // let p: LogData = unsafe { std::mem::transmute(kf) };
+
+    let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
+
+    let archived = unsafe { rkyv::archived_root::<LogRedefined>(&bytes[..]) };
+    let deserialized: LogRedefined = archived.deserialize(&mut rkyv::Infallible).unwrap();
+    assert_eq!(deserialized, value);
+
+    // let k: Log = t.into();
+}

@@ -89,12 +89,19 @@ impl<const N: usize> PartialEq for ArchivedFixedBytesRedefined<N> {
     }
 }
 
+impl<const N: usize> Default for FixedBytesRedefined<N> {
+    fn default() -> Self {
+        FixedBytesRedefined([0; N])
+    }
+}
+
 /// Address
 /// Haven't implemented macro stuff yet
 #[derive(
     Debug,
     Clone,
     Copy,
+    Default,
     PartialEq,
     Eq,
     PartialOrd,
@@ -133,7 +140,7 @@ impl FromStr for AddressRedefined {
 #[redefined_attr(transmute)]
 pub struct BytesRedefined(pub bytes::Bytes);
 
-type ArchivedBytesRedefined = Vec<u8>;
+pub type ArchivedBytesRedefined = Vec<u8>;
 
 pub struct ResolverForBytesRedefined;
 
