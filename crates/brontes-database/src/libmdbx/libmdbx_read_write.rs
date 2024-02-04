@@ -151,12 +151,35 @@ impl LibmdbxReadWriter {
         if !res {
             // put into block ranges so printout is less spammy.
 
-            // let mut i = 0;
-            // let mut ranges = Vec::new();
-            // let mut prev = s
-            // for i
+            let mut i = 0usize;
+            let mut ranges = vec![vec![]];
+            let mut prev = 0;
 
-            tracing::error!("missing {} for blocks: {:#?}", table_name, missing);
+            for mb in missing {
+                // new range
+                if prev + 1 != mb {
+                    if i != 0 {
+                        i += 1;
+                    }
+                    let entry = vec![mb];
+                    ranges.push(entry);
+                // extend prev range
+                } else {
+                    ranges.get_mut(i).unwrap().push(mb);
+                }
+                prev = mb;
+            }
+
+            let missing_ranges = ranges
+                .into_iter()
+                .filter_map(|range| {
+                    let start = range.first()?;
+                    let end = range.last()?;
+                    Some(format!("{}-{}", start, end))
+                })
+                .fold(String::new(), |acc, x| acc + "\n" + &x);
+
+            tracing::error!("missing {} for blocks: {}", table_name, missing_ranges);
         }
         Ok(res)
     }
