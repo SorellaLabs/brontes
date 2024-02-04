@@ -185,14 +185,16 @@ impl<V: NormalizedAction> Node<V> {
         let lower_has_better_collect = self
             .inner
             .iter_mut()
-            .map(|i| i.modify_node_spans(find, modify))
-            .collect::<Vec<bool>>();
+            .map(|n| n.modify_node_spans(find, modify))
+            .collect::<Vec<_>>();
 
-        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
+        // take the collection of nodes that where false and apply modify to that
+        // collection
 
+        let all_lower_better = lower_has_better_collect.into_iter().all(|t| t);
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
-        if !lower_has_better {
+        if !all_lower_better {
             modify(&mut self.inner);
         }
 
