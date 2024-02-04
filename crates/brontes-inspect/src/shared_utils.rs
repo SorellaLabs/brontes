@@ -37,7 +37,6 @@ type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
     pub(crate) fn calculate_token_deltas(&self, actions: &Vec<Vec<Actions>>) -> SwapTokenDeltas {
-        let mut transfers = Vec::new();
         // Address and there token delta's
         let mut deltas = HashMap::new();
 
@@ -61,10 +60,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .or_insert_with(HashMap::default);
                     apply_entry(swap.token_out.address, adjusted_out, entry_from);
                 }
-
-            // If there is a transfer, push to the given transfer addresses.
-            } else if let Actions::Transfer(transfer) = action {
-                transfers.push(transfer);
             }
         }
 

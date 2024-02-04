@@ -430,9 +430,11 @@ pub mod test {
 
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
+        db::token_info::TokenInfoWithAddress,
         normalized_actions::{Actions, NormalizedLiquidation},
         Protocol,
     };
+    use malachite::Rational;
     use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;
@@ -454,12 +456,18 @@ pub mod test {
                     .any(|action| action.is_swap() || action.is_transfer()),
             )
         });
-        let mut swaps: HashMap<Address, HashSet<U256>> = HashMap::default();
+        let mut swaps: HashMap<TokenInfoWithAddress, HashSet<Rational>> = HashMap::default();
 
         for i in &swap {
             if let Actions::Swap(s) = i {
-                swaps.entry(s.token_in).or_default().insert(s.amount_in);
-                swaps.entry(s.token_out).or_default().insert(s.amount_out);
+                swaps
+                    .entry(s.token_in.clone())
+                    .or_default()
+                    .insert(s.amount_in.clone());
+                swaps
+                    .entry(s.token_out.clone())
+                    .or_default()
+                    .insert(s.amount_out.clone());
             }
         }
 
@@ -481,11 +489,13 @@ pub mod test {
 
         let eq_action = Actions::Liquidation(NormalizedLiquidation {
             protocol:              Protocol::AaveV3,
-            liquidated_collateral: U256::from(165516722u64),
-            covered_debt:          U256::from(63857746423u64),
+            liquidated_collateral: Rational::from_signeds(165516722, 100000000),
+            covered_debt:          Rational::from_signeds(63857746423_i64, 1000000),
             debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
-            debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
-            collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
+            debt_asset:            classifier_utils
+                .get_token_info(Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))),
+            collateral_asset:      classifier_utils
+                .get_token_info(Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))),
             liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
             pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
             trace_index:           6,

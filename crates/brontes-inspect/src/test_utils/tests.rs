@@ -1,19 +1,40 @@
+//! Provides a set of utilities and helpers for testing inspectors within the
+//! `brontes-inspect` crate. This includes functions for creating transaction
+//! trees, applying pricing information, and running inspectors with various
+//! configurations to assert expected MEV (Miner Extractable Value) outcomes.
+//!
+//! ## Key Components
+//!
+//! - `InspectorTestUtils`: A struct providing methods to facilitate the testing
+//!   of inspectors.
+//! - `InspectorTxRunConfig`: Configuration struct for running single
+//!   opportunity tests with inspectors.
+//! - `ComposerRunConfig`: Configuration struct for running composition tests
+//!   across multiple inspectors.
+//! - `InspectorTestUtilsError`: Enum defining possible error types that can
+//!   occur during test execution.
+//!
+//! ## Usage
+//!
+//! Test utilities are primarily used in the context of unit and integration
+//! tests to verify the correctness of inspector implementations. They allow for
+//! detailed configuration of test scenarios, including specifying transaction
+//! hashes, blocks, expected profits, and gas usage, among other parameters.
+
 use alloy_primitives::{hex, Address, FixedBytes, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
+pub use brontes_types::constants::*;
 use brontes_types::{
-    classified_mev::{Bundle, MevType},
-    db::{dex::DexQuotes, metadata::MetadataCombined},
-    mev::{BundleData, MevType},
+    constants::*,
+    db::{cex::CexExchange, dex::DexQuotes, metadata::MetadataCombined},
+    mev::{Bundle, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };
 use thiserror::Error;
 
 use crate::{composer::compose_mev_results, Inspectors};
-
-pub const USDC_ADDRESS: Address =
-    Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
 
 /// Inspector Specific testing functionality
 pub struct InspectorTestUtils {
@@ -59,22 +80,22 @@ impl InspectorTestUtils {
         Ok(trees.remove(0))
     }
 
-    async fn get_tree_block(
+    async fn get_block_tree(
         &self,
         block: u64,
     ) -> Result<BlockTree<Actions>, InspectorTestUtilsError> {
         self.classifier_inspector
-            .build_tree_block(block)
+            .build_block_tree(block)
             .await
             .map_err(Into::into)
     }
 
-    async fn get_tree_block_with_pricing(
+    async fn get_block_tree_with_pricing(
         &self,
         block: u64,
     ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
         self.classifier_inspector
-            .build_tree_block_with_pricing(block, self.quote_address)
+            .build_block_tree_with_pricing(block, self.quote_address)
             .await
             .map_err(Into::into)
     }
@@ -95,13 +116,13 @@ impl InspectorTestUtils {
             } else {
                 self.get_tree_txes(tx_hashes).await?
             }
-        } else if let Some(block) = config.mev_block {
+        } else if let Some(block) = config.block {
             if config.calculate_dex_prices {
-                let (tree, prices) = self.get_tree_block_with_pricing(block).await?;
+                let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
                 quotes = Some(prices);
                 tree
             } else {
-                self.get_tree_block(block).await?
+                self.get_block_tree(block).await?
             }
         } else {
             return Err(err())
@@ -123,9 +144,11 @@ impl InspectorTestUtils {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config
-            .expected_mev_type
-            .init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+        let inspector = config.expected_mev_type.init_inspector(
+            self.quote_address,
+            self.classifier_inspector.libmdbx,
+            &vec![CexExchange::Binance],
+        );
 
         let results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
@@ -153,13 +176,13 @@ impl InspectorTestUtils {
             } else {
                 self.get_tree_txes(tx_hashes).await?
             }
-        } else if let Some(block) = config.mev_block {
+        } else if let Some(block) = config.block {
             if config.calculate_dex_prices {
-                let (tree, prices) = self.get_tree_block_with_pricing(block).await?;
+                let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
                 quotes = Some(prices);
                 tree
             } else {
-                self.get_tree_block(block).await?
+                self.get_block_tree(block).await?
             }
         } else {
             return Err(err())
@@ -181,9 +204,11 @@ impl InspectorTestUtils {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config
-            .expected_mev_type
-            .init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+        let inspector = config.expected_mev_type.init_inspector(
+            self.quote_address,
+            self.classifier_inspector.libmdbx,
+            &vec![CexExchange::Binance],
+        );
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev {:#?}", results);
@@ -232,13 +257,13 @@ impl InspectorTestUtils {
             } else {
                 self.get_tree_txes(tx_hashes).await?
             }
-        } else if let Some(block) = config.mev_block {
+        } else if let Some(block) = config.block {
             if config.calculate_dex_prices {
-                let (tree, prices) = self.get_tree_block_with_pricing(block).await?;
+                let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
                 quotes = Some(prices);
                 tree
             } else {
-                self.get_tree_block(block).await?
+                self.get_block_tree(block).await?
             }
         } else {
             return Err(err())
@@ -263,7 +288,13 @@ impl InspectorTestUtils {
         let inspector = config
             .inspectors
             .into_iter()
-            .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
+            .map(|i| {
+                i.init_inspector(
+                    self.quote_address,
+                    self.classifier_inspector.libmdbx,
+                    &vec![CexExchange::Binance],
+                )
+            })
             .collect::<Vec<_>>();
 
         let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
@@ -283,7 +314,12 @@ impl InspectorTestUtils {
         assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
 
         let bundle = results.remove(0);
-        assert!(bundle.header.mev_type == config.expected_mev_type, "got wrong composed type");
+        assert!(
+            bundle.header.mev_type == config.expected_mev_type,
+            "got wrong composed type {} != {}",
+            bundle.header.mev_type,
+            config.expected_mev_type
+        );
 
         if let Some(specific_state_tests) = specific_state_tests {
             specific_state_tests(&bundle);
@@ -308,13 +344,14 @@ impl InspectorTestUtils {
     }
 }
 
-/// This run config is used for a single opportunity test.
-/// it supports multiple hashes for sandwiches
+/// This inspector test config is to configure an inspector test for a single
+/// bundle. MevTxHashes is a list of tx hashes that are expected be in the
+/// bundle.
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
     pub metadata_override:    Option<MetadataCombined>,
     pub mev_tx_hashes:        Option<Vec<TxHash>>,
-    pub mev_block:            Option<u64>,
+    pub block:                Option<u64>,
     pub expected_profit_usd:  Option<f64>,
     pub expected_gas_usd:     Option<f64>,
     pub expected_mev_type:    Inspectors,
@@ -325,7 +362,7 @@ impl InspectorTxRunConfig {
     pub fn new(mev: Inspectors) -> Self {
         Self {
             expected_mev_type:    mev,
-            mev_block:            None,
+            block:                None,
             mev_tx_hashes:        None,
             expected_profit_usd:  None,
             expected_gas_usd:     None,
@@ -340,7 +377,7 @@ impl InspectorTxRunConfig {
     }
 
     pub fn with_block(mut self, block: u64) -> Self {
-        self.mev_block = Some(block);
+        self.block = Some(block);
         self
     }
 
@@ -373,7 +410,7 @@ pub struct ComposerRunConfig {
     pub expected_mev_type:    MevType,
     pub metadata_override:    Option<MetadataCombined>,
     pub mev_tx_hashes:        Option<Vec<TxHash>>,
-    pub mev_block:            Option<u64>,
+    pub block:                Option<u64>,
     pub expected_profit_usd:  Option<f64>,
     pub expected_gas_usd:     Option<f64>,
     pub prune_opportunities:  Option<Vec<TxHash>>,
@@ -387,7 +424,7 @@ impl ComposerRunConfig {
             metadata_override: None,
             mev_tx_hashes: None,
             expected_mev_type,
-            mev_block: None,
+            block: None,
             expected_profit_usd: None,
             expected_gas_usd: None,
             prune_opportunities: None,
@@ -406,7 +443,7 @@ impl ComposerRunConfig {
     }
 
     pub fn with_block(mut self, block: u64) -> Self {
-        self.mev_block = Some(block);
+        self.block = Some(block);
         self
     }
 

@@ -5,10 +5,7 @@ use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
     TxTracesWithHeaderAnd,
 };
-use brontes_database::{
-    libmdbx::{types::address_to_protocol::AddressToProtocolData, LibmdbxReadWriter},
-    AddressToProtocol,
-};
+use brontes_database::{libmdbx::LibmdbxReadWriter, AddressToProtocol, AddressToProtocolData};
 use brontes_pricing::{types::DexPriceMsg, Protocol};
 use brontes_types::{normalized_actions::Actions, structured_trace::TraceActions, tree::BlockTree};
 use criterion::{black_box, Criterion};
@@ -222,10 +219,7 @@ impl ClassifierBenchUtils {
             .libmdbx
             .0
             .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData {
-                    address:         protocol_address,
-                    classifier_name: protocol,
-                },
+                AddressToProtocolData { key: protocol_address, value: protocol },
             ])?;
 
         let TxTracesWithHeaderAnd { trace, block, .. } = self

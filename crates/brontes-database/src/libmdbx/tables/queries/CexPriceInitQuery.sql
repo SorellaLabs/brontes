@@ -8,7 +8,7 @@ WITH
             argMinMerge(ask_price) AS ask_price,
             argMinMerge(bid_price) AS bid_price
         FROM brontes.cex_pricing
-        WHERE block_number >= ? AND block_number < ?
+        WHERE block_number >= ? AND block_number <= ?
         GROUP BY
             block_number,
             exchange,
@@ -27,26 +27,3 @@ SELECT
     groupArray((exchange, metadata)) AS data
 FROM all 
 GROUP BY block_number
-
-
-
-
-
-
-
-
-
-SELECT
-    block_number,
-    exchange,
-    pair,
-    argMinMerge(cex_timestamp) AS cex_timestamp,
-    argMinMerge(ask_price) AS ask_price,
-    argMinMerge(bid_price) AS bid_price
-FROM brontes.cex_pricing
-WHERE pair.1 == '0x6982508145454ce325ddbe47a25d4ec3d2311933' OR pair.2 = '0x6982508145454ce325ddbe47a25d4ec3d2311933'
-GROUP BY
-    block_number,
-    exchange,
-    pair
-
