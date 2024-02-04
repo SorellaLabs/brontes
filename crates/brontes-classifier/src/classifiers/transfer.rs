@@ -12,7 +12,6 @@ pub fn try_decode_transfer<DB: LibmdbxReader>(
     idx: u64,
     calldata: Bytes,
     from: Address,
-    to: Address,
     token: Address,
     db: &DB,
 ) -> Option<NormalizedTransfer> {
@@ -22,7 +21,7 @@ pub fn try_decode_transfer<DB: LibmdbxReader>(
     Some(NormalizedTransfer {
         amount: res._1.to_scaled_rational(token_info.decimals),
         token: token_info,
-        to,
+        to: res._0,
         from,
         trace_index: idx,
     })
