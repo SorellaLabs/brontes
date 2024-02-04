@@ -452,4 +452,19 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_eoa_cex_dex() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+
+        let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(6494.83)
+            .with_gas_paid_usd(6261.08);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
