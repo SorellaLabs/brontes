@@ -1,10 +1,6 @@
 use alloy_primitives::{hex, Address};
 use brontes_macros::action_impl;
-use brontes_types::{
-    constants::{DAI_ADDRESS, USDC_ADDRESS},
-    normalized_actions::NormalizedSwap,
-    Protocol, ToScaledRational,
-};
+use brontes_types::{normalized_actions::NormalizedSwap, Protocol, ToScaledRational};
 
 pub const USDC_PSM_ADDRESS: Address = Address::new(hex!(
     "89B78CfA322F6C5dE0aBcEecab66Aee45393cC5A
