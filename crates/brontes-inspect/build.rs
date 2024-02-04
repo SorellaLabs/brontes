@@ -3,7 +3,7 @@ use std::{env, path};
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxWriter};
-use brontes_types::{Protocol};
+use brontes_types::Protocol;
 use serde::Deserialize;
 use toml::Table;
 
@@ -37,6 +37,7 @@ fn insert_manually_defined_entries() {
         let protocol: Protocol = protocol.parse().unwrap();
         for (address, table) in inner.as_table().unwrap() {
             let token_addr: Address = address.parse().unwrap();
+            panic!("{table:?}");
             let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
 
             let table: Vec<TokenInfoWithAddressToml> =
