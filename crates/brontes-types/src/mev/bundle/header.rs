@@ -1,7 +1,9 @@
 use std::fmt::Debug;
 
 use alloy_primitives::Address;
+use redefined::Redefined;
 use reth_primitives::B256;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -10,16 +12,17 @@ use sorella_db_databases::{
 };
 
 use super::MevType;
+use crate::db::redefined_types::primitives::*;
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
     GasDetails,
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
     pub block_number:  u64,
     pub tx_index:      u64,
@@ -33,23 +36,26 @@ pub struct BundleHeader {
     pub profit_usd:    f64,
     pub token_profits: TokenProfits,
     pub bribe_usd:     f64,
+    #[redefined(same_fields)]
     pub mev_type:      MevType,
 }
 
 //TODO: Add token synmbol for display purposes
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Serialize)]
+#[derive(Debug, Deserialize, Row, Clone, Default, Serialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct TokenProfits {
+    pub profits: Vec<TokenProfit>,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Row, Clone, Default, Serialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenProfit {
     pub profit_collector: Address,
     pub token:            Address,
     pub amount:           f64,
     pub usd_value:        f64,
-}
-
-#[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Serialize)]
-pub struct TokenProfits {
-    pub profits: Vec<TokenProfit>,
 }
 
 impl TokenProfits {

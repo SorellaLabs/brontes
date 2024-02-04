@@ -1,9 +1,10 @@
 use std::fmt::{self, Debug};
-
 use alloy_primitives::Address;
 use colored::Colorize;
 use indoc::indoc;
+use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -11,19 +12,22 @@ use sorella_db_databases::{
     clickhouse::{fixed_string::FixedString, Row},
 };
 
+use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
+
     GasDetails,
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct MevBlock {
     pub block_hash: B256,
     pub block_number: u64,
+    #[redefined(same_fields)]
     pub mev_count: MevCount,
     pub eth_price: f64,
     pub cumulative_gas_used: u128,
@@ -127,7 +131,7 @@ fn format_profit(value: f64) -> String {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Serialize, Row, Clone, Default)]
+#[derive(Debug, Deserialize, PartialEq, Serialize, Row, Clone, Default, rDeserialize, rSerialize, Archive)]
 pub struct MevCount {
     pub mev_count:            u64,
     pub sandwich_count:       Option<u64>,
@@ -137,6 +141,9 @@ pub struct MevCount {
     pub atomic_backrun_count: Option<u64>,
     pub liquidation_count:    Option<u64>,
 }
+
+self_convert_redefined!(MevCount);
+
 
 impl fmt::Display for MevCount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -166,8 +173,9 @@ impl fmt::Display for MevCount {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default)]
-pub struct PossibleMevCollection(pub Vec<PossibleMev>);
+#[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct PossibleMevCollection( pub Vec<PossibleMev>);
 
 impl fmt::Display for PossibleMevCollection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -200,21 +208,28 @@ impl fmt::Display for PossibleMev {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PossibleMev {
+
     pub tx_hash:     B256,
     pub tx_idx:      u64,
+    #[redefined(same_fields)]
     pub gas_details: GasDetails,
+    #[redefined(same_fields)]
     pub triggers:    PossibleMevTriggers,
 }
 
+
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default)]
+#[derive(Debug, PartialEq, Deserialize, Row, Clone, Default, Serialize, rSerialize, rDeserialize, Archive)]
 pub struct PossibleMevTriggers {
     pub is_private:        bool,
     pub coinbase_transfer: bool,
     pub high_priority_fee: bool,
 }
+
+self_convert_redefined!(PossibleMevTriggers);
 
 impl fmt::Display for PossibleMevTriggers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

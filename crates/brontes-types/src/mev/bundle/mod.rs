@@ -6,7 +6,9 @@ use std::fmt::{self, Debug};
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
+use redefined::Redefined;
 use reth_primitives::B256;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
@@ -24,12 +26,12 @@ use crate::display::utils::{
 use crate::{
     display::utils::{display_cex_dex, display_sandwich},
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
     GasDetails,
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Bundle {
     pub header: BundleHeader,
     pub data:   BundleData,
@@ -67,7 +69,6 @@ impl fmt::Display for Bundle {
     Default,
     Display,
 )]
-#[archive(check_bytes)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
 #[serde(rename_all = "lowercase")]
