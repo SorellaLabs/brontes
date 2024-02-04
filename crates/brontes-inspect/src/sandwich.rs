@@ -43,7 +43,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
+        metadata: Arc<MetadataCombined>,
     ) -> Vec<Bundle> {
         let search_fn = |node: &Node<Actions>| {
             (
@@ -114,7 +114,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .collect::<Vec<Vec<Actions>>>();
 
                     self.calculate_sandwich(
-                        meta_data.clone(),
+                        metadata.clone(),
                         frontrun_info,
                         back_run_info,
                         searcher_actions,
