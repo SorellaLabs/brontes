@@ -447,16 +447,11 @@ pub struct ExchangeLeg {
 
 #[cfg(test)]
 mod tests {
-    
 
-    use alloy_primitives::{hex};
-    use brontes_types::{
-        constants::USDT_ADDRESS,
-    };
-    
+    use alloy_primitives::hex;
+    use brontes_types::constants::USDT_ADDRESS;
     use serial_test::serial;
 
-    
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
