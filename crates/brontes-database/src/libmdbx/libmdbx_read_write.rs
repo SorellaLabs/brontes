@@ -7,7 +7,9 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         cex::CexPriceMap,
-        dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
+        dex::{
+            decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
+        },
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -43,73 +45,6 @@ impl LibmdbxReadWriter {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
     }
 
-    fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
-        let tx = self.0.ro_tx()?;
-
-        let cex_cur = tx.new_cursor::<CexPrice>()?;
-        let meta_cur = tx.new_cursor::<Metadata>()?;
-
-        let (cex_pass, meta_pass) = rayon::join(
-            || self.validate_range("cex pricing", cex_cur, start_block, end_block),
-            || self.validate_range("metadata", meta_cur, start_block, end_block),
-        );
-        let (cex_pass, meta_pass) = (cex_pass?, meta_pass?);
-
-        return Ok(cex_pass && meta_pass)
-    }
-
-    fn validate_range<T: CompressedTable>(
-        &self,
-        table_name: &str,
-        mut cursor: CompressedCursor<T, RO>,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<bool>
-    where
-        T: CompressedTable<Key = u64>,
-        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    {
-        let range = end_block - start_block;
-        let mut res = true;
-        let mut missing = Vec::new();
-        let mut i = if start_block != 0 { start_block - 1 } else { start_block };
-        let cur = cursor.walk_range(start_block..=end_block)?;
-        let mut peek_cur = cur.peekable();
-        if peek_cur.peek().is_none() {
-            tracing::error!("missing entire block range for table {}", table_name);
-            return Err(eyre::eyre!("no data for entire range"))
-        }
-        for entry in peek_cur {
-            if i % 1000 == 0 {
-                tracing::info!(
-                    "{} validation {:.2}% completed",
-                    table_name,
-                    (i + 1 - start_block) as f64 / (range as f64) * 100.0
-                );
-            }
-
-            if let Ok(field) = entry {
-                if i + 1 != field.0 {
-                    missing.push(i + 1);
-                    res = false;
-                }
-            } else {
-                res = false
-            }
-            i += 1;
-        }
-        // early cutoff
-        if i + 1 != end_block {
-            tracing::error!("missing {} for block_range {}-{}", table_name, i + 1, end_block);
-            res = false
-        }
-
-        if !res {
-            tracing::error!("missing {} for blocks: {:#?}", table_name, missing);
-        }
-        Ok(res)
-    }
-
     #[cfg(not(feature = "local"))]
     pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
         self.validate_metadata_and_cex(start_block, end_block)
@@ -122,9 +57,8 @@ impl LibmdbxReadWriter {
 
         // local part
         let mut trace_cur = tx.new_cursor::<TxTraces>()?;
-        let mut res = self
-            .validate_range("tx traces", trace_cur, start_block, end_block)
-            .ok_or_else(|| eyre::eyre!("trace verification failed"))?;
+        let mut res =
+            self.validate_range("tx traces", trace_cur, start_block, end_block, |b| *b)?;
 
         return Ok(meta_and_cex_pass && res)
     }
@@ -137,15 +71,86 @@ impl LibmdbxReadWriter {
         let start_key = make_key(start_block, 0);
         let end_key = make_key(end_block, u16::MAX);
         let tx = self.0.ro_tx()?;
+        let cursor = tx.cursor_read::<DexPrice>()?;
+        self.validate_range("dex pricing", cursor, start_key, end_key, |key| decompose_key(*key).0)
+    }
 
-        let mut cursor = tx.cursor_read::<DexPrice>()?;
-        for entry in cursor.walk_range(start_key..=end_key)? {
-            if entry.is_err() {
-                return Ok(false)
+    fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
+        let tx = self.0.ro_tx()?;
+
+        let cex_cur = tx.new_cursor::<CexPrice>()?;
+        let meta_cur = tx.new_cursor::<Metadata>()?;
+
+        let (cex_pass, meta_pass) = rayon::join(
+            || self.validate_range("cex pricing", cex_cur, start_block, end_block, |b| *b),
+            || self.validate_range("metadata", meta_cur, start_block, end_block, |b| *b),
+        );
+        let (cex_pass, meta_pass) = (cex_pass?, meta_pass?);
+
+        return Ok(cex_pass && meta_pass)
+    }
+
+    fn validate_range<T: CompressedTable>(
+        &self,
+        table_name: &str,
+        mut cursor: CompressedCursor<T, RO>,
+        start_key: T::Key,
+        end_key: T::Key,
+        decode_key: impl Fn(&T::Key) -> u64,
+    ) -> eyre::Result<bool>
+    where
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        T::Key: Clone,
+    {
+        let range = decode_key(&end_key) - decode_key(&start_key);
+        let mut res = true;
+        let mut missing = Vec::new();
+        let mut i = if decode_key(&start_key) != 0 {
+            decode_key(&start_key) - 1
+        } else {
+            decode_key(&start_key)
+        };
+
+        let cur = cursor.walk_range(start_key.clone()..=end_key.clone())?;
+        let mut peek_cur = cur.peekable();
+        if peek_cur.peek().is_none() {
+            tracing::error!("missing entire block range for table {}", table_name);
+            return Err(eyre::eyre!("no data for entire range"))
+        }
+        for entry in peek_cur {
+            if i % 1000 == 0 {
+                tracing::info!(
+                    "{} validation {:.2}% completed",
+                    table_name,
+                    (i + 1 - decode_key(&start_key)) as f64 / (range as f64) * 100.0
+                );
             }
+
+            if let Ok(field) = entry {
+                if i + 1 != decode_key(&field.0) {
+                    missing.push(i + 1);
+                    res = false;
+                }
+            } else {
+                res = false
+            }
+            i += 1;
+        }
+        // early cutoff
+        if i + 1 != decode_key(&end_key) {
+            tracing::error!(
+                "missing {} for block_range {}-{}",
+                table_name,
+                i + 1,
+                decode_key(&end_key)
+            );
+            res = false
         }
 
-        Ok(true)
+        if !res {
+            tracing::error!("missing {} for blocks: {:#?}", table_name, missing);
+        }
+        Ok(res)
     }
 }
 
