@@ -1,35 +1,39 @@
 use std::fmt::Debug;
 
-use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use ::serde::ser::{SerializeStruct, Serializer};
+use redefined::Redefined;
 use reth_primitives::B256;
-use serde::Deserialize;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
+use crate::{
+    db::redefined_types::primitives::*, normalized_actions::*, tree::ClickhouseVecGasDetails,
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
     tree::GasDetails,
 };
-use crate::{
-    normalized_actions::{ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedMintOrBurn},
-    tree::ClickhouseVecGasDetails,
-};
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct JitLiquidity {
     pub frontrun_mint_tx_hash: B256,
     pub frontrun_mints: Vec<NormalizedMint>,
+    #[redefined(same_fields)]
     pub frontrun_mint_gas_details: GasDetails,
     pub victim_swaps_tx_hashes: Vec<B256>,
     pub victim_swaps: Vec<Vec<NormalizedSwap>>,
     pub victim_swaps_gas_details_tx_hashes: Vec<B256>,
+    #[redefined(same_fields)]
     pub victim_swaps_gas_details: Vec<GasDetails>,
     pub backrun_burn_tx_hash: B256,
     pub backrun_burns: Vec<NormalizedBurn>,
+    #[redefined(same_fields)]
     pub backrun_burn_gas_details: GasDetails,
 }
 
