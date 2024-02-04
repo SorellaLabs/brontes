@@ -351,18 +351,19 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         possible_cex_dex: &PossibleCexDex,
         info: &TxInfo,
     ) -> Option<BundleData> {
-        // Check for positive pnl (either maker or taker profit)
+        if possible_cex_dex.is_triangular_arb() {
+            return None;
+        }
+
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
             || possible_cex_dex.pnl.taker_profit > Rational::ZERO;
 
-        // A cex-dex bot will never be verified, so if the top level call is classified
-        // this is false positive
-        //TODO: This isn't always true, see https://etherscan.io/tx/0x823d500353bdb668616bd19bc60e404600e1d7ed298fbffc3ee7a19209518850
-        let is_unclassified_action = info.is_classifed;
+        let is_unclassified_action = !info.is_cex_dex_call;
 
-        if (has_positive_pnl || possible_cex_dex.gas_details.coinbase_transfer.is_some())
-            && is_unclassified_action
-            || info.is_cex_dex_call
+        if has_positive_pnl
+            || (is_unclassified_action
+                && (possible_cex_dex.gas_details.coinbase_transfer.is_some()
+                    || info.is_cex_dex_call))
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
@@ -395,6 +396,30 @@ impl PossibleCexDex {
             pnl:              self.pnl.clone(),
         })
     }
+
+    pub fn is_triangular_arb(&self) -> bool {
+        // Not enough swaps to form a cycle, thus cannot be arbitrage.
+        if self.swaps.len() < 2 {
+            return false;
+        }
+
+        let original_token = self.swaps[0].token_in.address;
+        let mut total_original_token_in = Rational::ZERO;
+        let mut total_original_token_out = Rational::ZERO;
+
+        for swap in &self.swaps {
+            if swap.token_in.address == original_token {
+                total_original_token_in += &swap.amount_in;
+            }
+            if swap.token_out.address == original_token {
+                total_original_token_out += &swap.amount_out;
+            }
+        }
+
+        // Arbitrage is detected if you end up with more of the original token than you
+        // started with, indicating a profit in terms of the original token.
+        total_original_token_out > total_original_token_in
+    }
 }
 
 pub struct PossibleCexDexLeg {
@@ -422,86 +447,57 @@ pub struct ExchangeLeg {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::{HashMap, HashSet},
-        str::FromStr,
-    };
 
-    use alloy_primitives::{hex, B256, U256};
-    use brontes_types::db::cex::{CexPriceMap, CexQuote};
-    use malachite::num::arithmetic::traits::Reciprocal;
+    use alloy_primitives::hex;
+    use brontes_types::constants::USDT_ADDRESS;
     use serial_test::serial;
 
-    use super::*;
     use crate::{
-        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
 
     #[tokio::test]
     #[serial]
     async fn test_cex_dex() {
-        // sold eth to buy usdc on chain
-        let tx_hash =
-            B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
-                .unwrap();
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
 
-        // reciprocal because we store the prices as usdc / eth due to pair ordering
-        let eth_price = Rational::try_from_float_simplest(1665.81)
-            .unwrap()
-            .reciprocal();
-        let eth_cex = Rational::try_from_float_simplest(1645.81)
-            .unwrap()
-            .reciprocal();
-
-        let eth_usdc = Pair(
-            hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
-            hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
-        );
-        let mut cex_map = HashMap::new();
-        cex_map.insert(
-            eth_usdc.ordered(),
-            vec![CexQuote {
-                price: (eth_cex.clone(), eth_cex),
-                token0: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
-                ..Default::default()
-            }],
-        );
-
-        let cex_quotes = CexPriceMap(cex_map);
-
-        let metadata = MetadataCombined {
-            dex_quotes: brontes_types::db::dex::DexQuotes(vec![Some({
-                let mut map = HashMap::new();
-                map.insert(eth_usdc, eth_price.clone());
-                map
-            })]),
-            db:         brontes_types::db::metadata::MetadataNoDex {
-                block_num: 18264694,
-                block_hash: U256::from_be_bytes(hex!(
-                    "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729"
-                )),
-                block_timestamp: 0,
-                relay_timestamp: None,
-                p2p_timestamp: None,
-                proposer_fee_recipient: Some(
-                    hex!("95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5").into(),
-                ),
-                proposer_mev_reward: None,
-                cex_quotes,
-                eth_prices: eth_price.reciprocal(),
-                private_flow: HashSet::new(),
-            },
-        };
-
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
-            .with_metadata_override(metadata)
-            .with_mev_tx_hashes(vec![tx_hash])
-            .with_gas_paid_usd(79836.4183)
-            .with_expected_profit_usd(21270.966);
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(6772.69)
+            .with_gas_paid_usd(78993.39);
 
-        test_utils.run_inspector(config, None).await.unwrap();
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_eoa_cex_dex() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+
+        let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(7201.40)
+            .with_gas_paid_usd(6261.08);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_not_triangular_arb_false_positive() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+
+        let tx = hex!("3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }

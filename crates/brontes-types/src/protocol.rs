@@ -65,6 +65,7 @@ to_byte!(
         CurveV2BasePool,
         CurveV2MetaPool,
         CurveV2PlainPool,
+        MakerPSM,
         #[default]
         Unknown,
     }
