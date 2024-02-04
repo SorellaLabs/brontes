@@ -315,6 +315,8 @@ pub mod tests {
             MevType::Backrun,
         )
         .with_dex_prices()
+        .with_gas_paid_usd(10.20)
+        .with_expected_profit_usd(347.84)
         .with_mev_tx_hashes(vec![hex!(
             "3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f"
         )
