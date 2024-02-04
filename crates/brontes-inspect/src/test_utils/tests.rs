@@ -21,12 +21,11 @@
 //! detailed configuration of test scenarios, including specifying transaction
 //! hashes, blocks, expected profits, and gas usage, among other parameters.
 
-use alloy_primitives::{hex, Address, FixedBytes, TxHash};
+use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
 use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
-    constants::*,
     db::{cex::CexExchange, dex::DexQuotes, metadata::MetadataCombined},
     mev::{Bundle, MevType},
     normalized_actions::Actions,
