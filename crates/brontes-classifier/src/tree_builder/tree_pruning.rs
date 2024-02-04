@@ -228,3 +228,11 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
         },
     )
 }
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    #[serial_test::serial]
+    fn test_filter_tax_tokens() {}
+}
