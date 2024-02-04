@@ -1,4 +1,5 @@
 use std::fmt::{self, Debug};
+
 use alloy_primitives::Address;
 use colored::Colorize;
 use indoc::indoc;
@@ -17,7 +18,6 @@ use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-
     GasDetails,
 };
 
@@ -131,7 +131,9 @@ fn format_profit(value: f64) -> String {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, PartialEq, Serialize, Row, Clone, Default, rDeserialize, rSerialize, Archive)]
+#[derive(
+    Debug, Deserialize, PartialEq, Serialize, Row, Clone, Default, rDeserialize, rSerialize, Archive,
+)]
 pub struct MevCount {
     pub mev_count:            u64,
     pub sandwich_count:       Option<u64>,
@@ -143,7 +145,6 @@ pub struct MevCount {
 }
 
 self_convert_redefined!(MevCount);
-
 
 impl fmt::Display for MevCount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -175,7 +176,7 @@ impl fmt::Display for MevCount {
 #[serde_as]
 #[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct PossibleMevCollection( pub Vec<PossibleMev>);
+pub struct PossibleMevCollection(pub Vec<PossibleMev>);
 
 impl fmt::Display for PossibleMevCollection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -211,7 +212,6 @@ impl fmt::Display for PossibleMev {
 #[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PossibleMev {
-
     pub tx_hash:     B256,
     pub tx_idx:      u64,
     #[redefined(same_fields)]
@@ -220,9 +220,10 @@ pub struct PossibleMev {
     pub triggers:    PossibleMevTriggers,
 }
 
-
 #[serde_as]
-#[derive(Debug, PartialEq, Deserialize, Row, Clone, Default, Serialize, rSerialize, rDeserialize, Archive)]
+#[derive(
+    Debug, PartialEq, Deserialize, Row, Clone, Default, Serialize, rSerialize, rDeserialize, Archive,
+)]
 pub struct PossibleMevTriggers {
     pub is_private:        bool,
     pub coinbase_transfer: bool,
