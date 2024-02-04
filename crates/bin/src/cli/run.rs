@@ -66,6 +66,7 @@ impl RunArgs {
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
 
         // verify block range validity
+        //TODO: (Will) Please return the range of blocks that aren't inited yet
         if let Some(end_block) = self.end_block {
             tracing::info!("verifying libmdbx state for block range");
             if !libmdbx.valid_range_state(self.start_block, end_block)? {

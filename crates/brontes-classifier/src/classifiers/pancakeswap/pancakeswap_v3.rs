@@ -1,9 +1,8 @@
 use alloy_primitives::{Address, U256};
 use brontes_macros::action_impl;
-use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
-    ToScaledRational,
+    Protocol, ToScaledRational,
 };
 
 use crate::PancakeSwapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
