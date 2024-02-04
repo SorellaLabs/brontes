@@ -312,11 +312,11 @@ pub mod tests {
 
         let config = ComposerRunConfig::new(
             vec![Inspectors::AtomicBackrun, Inspectors::CexDex],
-            MevType::JitSandwich,
+            MevType::AtomicBackrun,
         )
         .with_dex_prices()
         .with_mev_tx_hashes(vec![hex!(
-            "21125c2764afacd354992938531930b6ea42b2d0e5c671e7935f306611f5bb64"
+            "3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f"
         )
         .into()]);
 
