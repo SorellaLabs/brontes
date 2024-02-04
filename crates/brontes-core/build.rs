@@ -1,4 +1,3 @@
-use core::panic;
 use std::{env, path};
 
 use alloy_primitives::Address;
@@ -40,8 +39,7 @@ fn insert_manually_defined_entries() {
             let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
 
             let table: Vec<TokenInfoWithAddressToml> =
-                 table.get("token_info").unwrap().clone().try_into().unwrap();
-
+                table.get("token_info").unwrap().clone().try_into().unwrap();
 
             for t_info in &table {
                 libmdbx
