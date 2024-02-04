@@ -36,6 +36,7 @@ pub struct BundleHeader {
     pub mev_type:      MevType,
 }
 
+//TODO: Add token synmbol for display purposes
 #[serde_as]
 #[derive(Debug, Deserialize, Row, Clone, Default, Serialize)]
 pub struct TokenProfit {
