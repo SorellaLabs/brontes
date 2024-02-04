@@ -118,9 +118,17 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
         _ => panic!("Wrong bundle type"),
     };
 
+    // Tx details
+    writeln!(f, "{}: ", "Transaction Details".bold().underline().red())?;
+    writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
+    writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
+    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    let tx_url = format!("https://etherscan.io/tx/{:?}", bundle.header.tx_hash).underline();
+    writeln!(f, "   - Etherscan: {}", tx_url)?;
+
     // Backrun Section
     writeln!(f, "{}", "Atomic Backrun\n".bright_yellow().underline())?;
-    writeln!(f, " - {}: {}", "Transaction Hash".bright_blue(), atomic_backrun_data.tx_hash)?;
     writeln!(f, " - {}", "Swaps:".bright_blue())?;
     for (i, swap) in atomic_backrun_data.swaps.iter().enumerate() {
         writeln!(f, "    {}: {}", format!("Swap {}", i + 1).green(), swap)?;
