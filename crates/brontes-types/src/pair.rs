@@ -26,10 +26,7 @@ use crate::db::redefined_types::primitives::AddressRedefined;
 #[redefined_attr(other(
     #[archive_attr(derive(Hash, PartialEq, Eq))]
 ))]
-pub struct Pair(
-    #[redefined(field((Address, default)))] pub Address,
-    #[redefined(field((Address, default)))] pub Address,
-);
+pub struct Pair(pub Address, pub Address);
 
 impl Hash for Pair {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

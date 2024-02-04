@@ -146,7 +146,7 @@ serial_test = "2.0.0"
 derive_more = "0.99.17"
 rkyv = { version = "0.7", features = ["validation"] }
 num_cpus = "1.16.0"
-redefined = { git = "https://github.com/0xlagrange/redefined" }
+redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 
 
