@@ -17,6 +17,7 @@ use sorella_db_databases::{
     clickhouse::{fixed_string::FixedString, Row},
 };
 
+use super::Actions;
 use crate::{
     db::{
         redefined_types::{malachite::*, primitives::*},
@@ -67,6 +68,10 @@ impl NormalizedSwap {
 
     pub fn swap_rate(&self) -> Rational {
         &self.amount_in / &self.amount_out
+    }
+
+    pub fn to_action(&self) -> Actions {
+        Actions::Swap(self.clone())
     }
 }
 
