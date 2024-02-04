@@ -19,7 +19,6 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
 };
-use futures::stream::iter;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
@@ -70,6 +69,7 @@ impl LibmdbxReadWriter {
         T: CompressedTable<Key = u64>,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     {
+        let range = end_block - start_block;
         let mut res = true;
         let mut missing = Vec::new();
         let mut i = if start_block != 0 { start_block - 1 } else { start_block };
@@ -84,7 +84,7 @@ impl LibmdbxReadWriter {
                 tracing::info!(
                     "{} validation {:.2}% completed",
                     table_name,
-                    i as f64 / (end_block as f64) * 100.0
+                    (i + 1 - start_block) as f64 / (range as f64) * 100.0
                 );
             }
 
