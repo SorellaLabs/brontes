@@ -329,7 +329,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             tx_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
-            trace.get_to_address(),
             {
                 if trace.is_delegate_call() {
                     // if we got delegate, the actual token address
@@ -364,7 +363,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
                     let call_data = trace.get_calldata();
                     let Some(transfer) =
-                        try_decode_transfer(tx_idx, call_data, from, to, addr, self.libmdbx)
+                        try_decode_transfer(tx_idx, call_data, from,  addr, self.libmdbx)
                     else {
                         return (vec![], Actions::Unclassified(trace))
                     };
