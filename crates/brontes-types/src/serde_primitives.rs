@@ -104,36 +104,6 @@ pub(crate) mod vec_vec_u256 {
     }
 }
 
-pub(crate) mod vec_fixed_string {
-    use std::str::FromStr;
-
-    use alloy_primitives::Address;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
-
-    pub fn serialize<S: Serializer>(u: &Vec<Address>, serializer: S) -> Result<S::Ok, S::Error> {
-        u.iter()
-            .map(|a| format!("{:?}", a).into())
-            .collect::<Vec<FixedString>>()
-            .serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Address>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let addresses: Vec<FixedString> = Deserialize::deserialize(deserializer)?;
-
-        addresses
-            .into_iter()
-            .map(|a| Address::from_str(&a.string))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(serde::de::Error::custom)
-    }
-}
 #[allow(dead_code)]
 pub(crate) mod vec_vec_fixed_string {
 
@@ -285,7 +255,7 @@ pub mod pool_tokens {
 
 pub mod u256 {
 
-    use std::str::FromStr;
+    use std::{fmt::Debug, str::FromStr};
 
     use alloy_primitives::U256;
     use serde::{
@@ -293,18 +263,23 @@ pub mod u256 {
         ser::{Serialize, Serializer},
     };
 
-    pub fn serialize<S: Serializer>(u: &U256, serializer: S) -> Result<S::Ok, S::Error> {
-        let st: String = format!("{:?}", u.clone());
+    pub fn serialize<S: Serializer, T: Into<U256> + Debug>(
+        u: &T,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st: String = format!("{:?}", u);
         st.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<U256, D::Error>
+    pub fn deserialize<'de, D, T: From<U256>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
     {
         let data: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(U256::from_str(&data).map_err(serde::de::Error::custom)?)
+        Ok(U256::from_str(&data)
+            .map_err(serde::de::Error::custom)?
+            .into())
     }
 }
 
@@ -333,9 +308,73 @@ pub mod address {
     }
 }
 
+pub mod addresss {
+
+    use std::{fmt::Debug, str::FromStr};
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    #[allow(dead_code)]
+    pub fn serialize<S: Serializer, T: Into<Address> + Debug>(
+        u: &T,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st: String = format!("{:?}", u);
+        st.serialize(serializer)
+    }
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D, T: From<Address>>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: String = Deserialize::deserialize(deserializer)?;
+
+        Address::from_str(&data)
+            .map_err(serde::de::Error::custom)
+            .map(Into::into)
+    }
+}
+
+pub mod option_addresss {
+
+    use std::{fmt::Debug, str::FromStr};
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    #[allow(dead_code)]
+    pub fn serialize<S: Serializer, T: Into<Address> + Debug>(
+        u: &Option<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st: Option<String> = u.as_ref().map(|inner| format!("{:?}", inner));
+        st.serialize(serializer)
+    }
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D, T: From<Address>>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data_option: Option<String> = Deserialize::deserialize(deserializer)?;
+
+        data_option
+            .map(|data| {
+                Address::from_str(&data)
+                    .map_err(serde::de::Error::custom)
+                    .map(Into::into)
+            })
+            .transpose()
+    }
+}
+
 pub mod vec_txhash {
 
-    use std::str::FromStr;
+    use std::{fmt::Debug, str::FromStr};
 
     use alloy_primitives::TxHash;
     use serde::{
@@ -343,21 +382,29 @@ pub mod vec_txhash {
         ser::{Serialize, Serializer},
     };
     #[allow(dead_code)]
-    pub fn serialize<S: Serializer>(u: &Vec<TxHash>, serializer: S) -> Result<S::Ok, S::Error> {
-        let st: String = format!("{:?}", u.clone());
-        st.serialize(serializer)
+    pub fn serialize<S: Serializer, D: Into<TxHash> + Debug>(
+        u: &Vec<D>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let data = u.iter().map(|t| format!("{:?}", t)).collect::<Vec<_>>();
+
+        data.serialize(serializer)
     }
     #[allow(dead_code)]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<TxHash>, D::Error>
+    pub fn deserialize<'de, D, T: From<TxHash>>(deserializer: D) -> Result<Vec<T>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        data.into_iter()
+        Ok(data
+            .into_iter()
             .map(|d| TxHash::from_str(&d))
             .collect::<Result<Vec<_>, <TxHash as FromStr>::Err>>()
-            .map_err(serde::de::Error::custom)
+            .map_err(serde::de::Error::custom)?
+            .into_iter()
+            .map(|t| t.into())
+            .collect())
     }
 }
 
@@ -372,17 +419,17 @@ pub mod option_r_address {
         ser::{Serialize, Serializer},
     };
 
-    use crate::db::redefined_types::primitives::Redefined_Address;
+    use crate::db::redefined_types::primitives::AddressRedefined;
 
     pub fn serialize<S: Serializer>(
-        u: &Option<Redefined_Address>,
+        u: &Option<AddressRedefined>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Redefined_Address>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<AddressRedefined>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -390,7 +437,7 @@ pub mod option_r_address {
         let data = des.map(|d| Address::from_str(&d));
 
         if let Some(d) = data {
-            Ok(Some(Redefined_Address::from_source(d.map_err(serde::de::Error::custom)?)))
+            Ok(Some(AddressRedefined::from_source(d.map_err(serde::de::Error::custom)?)))
         } else {
             Ok(None)
         }
@@ -436,22 +483,22 @@ pub mod r_address {
         ser::{Serialize, Serializer},
     };
 
-    use crate::db::redefined_types::primitives::Redefined_Address;
+    use crate::db::redefined_types::primitives::AddressRedefined;
 
     pub fn serialize<S: Serializer>(
-        u: &Redefined_Address,
+        u: &AddressRedefined,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Redefined_Address, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<AddressRedefined, D::Error>
     where
         D: Deserializer<'de>,
     {
         let des: String = Deserialize::deserialize(deserializer)?;
-        Redefined_Address::from_str(&des).map_err(serde::de::Error::custom)
+        AddressRedefined::from_str(&des).map_err(serde::de::Error::custom)
     }
 }
 

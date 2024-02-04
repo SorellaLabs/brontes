@@ -1,3 +1,5 @@
+#![feature(trivial_bounds)]
+
 pub mod constants;
 pub mod db;
 pub mod display;

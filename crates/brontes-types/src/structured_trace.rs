@@ -1,16 +1,17 @@
 use std::str::FromStr;
 
 use alloy_primitives::{Address, Log};
-use redefined::{self_convert_redefined, RedefinedConvert};
+use alloy_sol_types::private::LogData;
+use redefined::{redefined_remote, self_convert_redefined, Redefined};
 use reth_primitives::{Bytes, B256};
-use reth_rpc_types::trace::parity::{
-    Action, CallType,
-    TraceOutput::{self},
-    TransactionTrace,
-};
+use reth_rpc_types::trace::parity::*;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT};
+use crate::{
+    constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
+    db::redefined_types::primitives::*,
+};
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
@@ -97,17 +98,9 @@ impl TraceActions for TransactionTraceWithLogs {
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
 )]
-#[archive(check_bytes)]
+
 pub struct DecodedCallData {
     pub function_name: String,
     pub call_data:     Vec<DecodedParams>,
@@ -117,17 +110,8 @@ pub struct DecodedCallData {
 self_convert_redefined!(DecodedCallData);
 
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
 )]
-#[archive(check_bytes)]
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,
@@ -136,7 +120,8 @@ pub struct DecodedParams {
 
 self_convert_redefined!(DecodedParams);
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub logs:         Vec<Log>,
@@ -144,6 +129,7 @@ pub struct TransactionTraceWithLogs {
     /// delegate calls and the headache they cause when it comes to proxies
     pub msg_sender:   Address,
     pub trace_idx:    u64,
+    #[redefined(same_fields)]
     pub decoded_data: Option<DecodedCallData>,
 }
 
@@ -170,7 +156,9 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub tx_hash:         B256,
@@ -193,3 +181,23 @@ impl TxTrace {
         Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
     }
 }
+
+redefined_remote!(
+    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
+    [
+        TransactionTrace, TraceOutput, Action,
+        CallOutput, CallAction, CreateOutput,
+        CreateAction, SelfdestructAction, RewardAction,
+        RewardType
+    ] : "alloy-rpc-types"
+);
+
+redefined_remote!(
+    #[derive(Default, Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
+    [CallType] : "alloy-rpc-types"
+);
+
+redefined_remote!(
+    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
+    [Log, LogData] : "alloy-primitives"
+);
