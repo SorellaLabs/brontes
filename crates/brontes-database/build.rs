@@ -1,11 +1,7 @@
 use std::{
-    env,
     fs::{self, File},
-    io,
-    io::{BufRead, Write},
-    path,
+    io::Write,
     path::Path,
-    str::FromStr,
 };
 
 /// sql file directory
