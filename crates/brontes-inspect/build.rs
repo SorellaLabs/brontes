@@ -1,3 +1,4 @@
+use core::panic;
 use std::{env, path};
 
 use alloy_primitives::Address;
@@ -57,7 +58,8 @@ fn insert_manually_defined_entries() {
             let token_addrs = [table.token_info[0].address, table.token_info[1].address];
             libmdbx
                 .insert_pool(table.init_block, token_addr, token_addrs, protocol)
-                .unwrap()
+                .unwrap();
+            panic!()
         }
     }
 }
