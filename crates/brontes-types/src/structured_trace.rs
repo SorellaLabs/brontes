@@ -1,17 +1,13 @@
 use std::str::FromStr;
 
 use alloy_primitives::{Address, Log};
-use alloy_sol_types::private::LogData;
-use redefined::{redefined_remote, self_convert_redefined, Redefined};
+use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
-    db::redefined_types::primitives::*,
-};
+use crate::constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT};
 pub trait TraceActions {
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
