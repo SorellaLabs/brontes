@@ -27,7 +27,7 @@ sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
-sol!(MakerPSM, "./classifier-abis/MakerPSM_USDC.json");
+sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
