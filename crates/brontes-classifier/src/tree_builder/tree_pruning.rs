@@ -231,8 +231,24 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
 
 #[cfg(test)]
 mod test {
+    use hex_literal::hex;
 
-    #[test]
+    use crate::test_utils::ClassifierTestUtils;
+
+    #[tokio::test]
     #[serial_test::serial]
-    fn test_filter_tax_tokens() {}
+    async fn test_filter_tax_tokens() {
+        let mut utils = ClassifierTestUtils::new();
+        let tree = utils
+            .build_tree_tx(hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1"))
+            .await
+            .unwrap();
+
+        // 7 total swaps but 1 is tax token
+        let swaps = tree.collect(
+            hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1"),
+            |node| (node.data.is_swap(), node.inner.iter().any(|n| n.data.is_swap())),
+        );
+        assert!(swaps.len() == 6, "didn't filter tax token");
+    }
 }
