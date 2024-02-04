@@ -92,7 +92,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     ///
     /// # Arguments
     /// * `tree` - A shared reference to the block tree.
-    /// * `meta_data` - Shared metadata struct containing:
+    /// * `metadata` - Shared metadata struct containing:
     ///     - `cex_quotes` - CEX quotes
     ///     - `dex_quotes` - DEX quotes
     ///     - `private_flow` - Set of private transactions that were not seen in
@@ -106,7 +106,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
+        metadata: Arc<MetadataCombined>,
     ) -> Vec<Bundle> {
         let swap_txes = tree.collect_all(|node| {
             (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
@@ -125,7 +125,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                         let swap = action.force_swap();
 
                         let possible_cex_dex =
-                            self.detect_cex_dex_opportunity(&swap, meta_data.as_ref())?;
+                            self.detect_cex_dex_opportunity(&swap, metadata.as_ref())?;
 
                         Some(possible_cex_dex)
                     })
@@ -134,10 +134,11 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 let possible_cex_dex = self.gas_accounting(
                     possible_cex_dex_by_exchange,
                     &tx_info.gas_details,
-                    meta_data.clone(),
-                );
+                    metadata.clone(),
+                )?;
 
-                let cex_dex = self.filter_possible_cex_dex(&possible_cex_dex, &tx_info)?;
+                let cex_dex =
+                    self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
                 let header = self.inner.build_bundle_header(
                     &tx_info,
@@ -145,7 +146,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     PriceAt::After,
                     &vec![possible_cex_dex.get_swaps()],
                     &vec![tx_info.gas_details],
-                    meta_data.clone(),
+                    metadata.clone(),
                     MevType::CexDex,
                 );
 
@@ -304,7 +305,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         swaps_with_profit_by_exchange: Vec<PossibleCexDexLeg>,
         gas_details: &GasDetails,
         metadata: Arc<MetadataCombined>,
-    ) -> PossibleCexDex {
+    ) -> Option<PossibleCexDex> {
         let mut swaps = Vec::new();
         let mut arb_details = Vec::new();
         let mut total_arb_pre_gas = StatArbPnl::default();
@@ -326,6 +327,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 }
             });
 
+        if swaps.is_empty() {
+            return None
+        }
+
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid());
 
         let pnl = StatArbPnl {
@@ -333,7 +338,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             taker_profit: total_arb_pre_gas.taker_profit - gas_cost,
         };
 
-        PossibleCexDex { swaps, arb_details, gas_details: gas_details.clone(), pnl }
+        Some(PossibleCexDex { swaps, arb_details, gas_details: gas_details.clone(), pnl })
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -350,24 +355,64 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         possible_cex_dex: &PossibleCexDex,
         info: &TxInfo,
+        metadata: Arc<MetadataCombined>,
     ) -> Option<BundleData> {
-        if possible_cex_dex.is_triangular_arb() {
+        if self.is_triangular_arb(possible_cex_dex, info, metadata) {
             return None;
         }
 
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
             || possible_cex_dex.pnl.taker_profit > Rational::ZERO;
 
-        let is_unclassified_action = !info.is_cex_dex_call;
-
         if has_positive_pnl
-            || (is_unclassified_action
-                && (possible_cex_dex.gas_details.coinbase_transfer.is_some()
+            || (!info.is_classified
+                && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
                     || info.is_cex_dex_call))
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
             None
+        }
+    }
+
+    /// Filters out triangular arbitrage
+    pub fn is_triangular_arb(
+        &self,
+        possible_cex_dex: &PossibleCexDex,
+        tx_info: &TxInfo,
+        metadata: Arc<MetadataCombined>,
+    ) -> bool {
+        // Not enough swaps to form a cycle, thus cannot be arbitrage.
+        if possible_cex_dex.swaps.len() < 2 {
+            return false;
+        }
+
+        let original_token = possible_cex_dex.swaps[0].token_in.address;
+        let final_token = possible_cex_dex.swaps.last().unwrap().token_out.address;
+
+        // Check if there is a cycle
+        if original_token != final_token {
+            return false;
+        }
+
+        let profit = self
+            .inner
+            .get_dex_revenue_usd(
+                tx_info.tx_index,
+                PriceAt::Average,
+                &vec![possible_cex_dex
+                    .swaps
+                    .iter()
+                    .map(|s| s.to_action())
+                    .collect()],
+                metadata.clone(),
+            )
+            .unwrap_or_default();
+
+        if profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) <= Rational::ZERO {
+            return false;
+        } else {
+            return true;
         }
     }
 }
@@ -395,30 +440,6 @@ impl PossibleCexDex {
             stat_arb_details: self.arb_details.clone(),
             pnl:              self.pnl.clone(),
         })
-    }
-
-    pub fn is_triangular_arb(&self) -> bool {
-        // Not enough swaps to form a cycle, thus cannot be arbitrage.
-        if self.swaps.len() < 2 {
-            return false;
-        }
-
-        let original_token = self.swaps[0].token_in.address;
-        let mut total_original_token_in = Rational::ZERO;
-        let mut total_original_token_out = Rational::ZERO;
-
-        for swap in &self.swaps {
-            if swap.token_in.address == original_token {
-                total_original_token_in += &swap.amount_in;
-            }
-            if swap.token_out.address == original_token {
-                total_original_token_out += &swap.amount_out;
-            }
-        }
-
-        // Arbitrage is detected if you end up with more of the original token than you
-        // started with, indicating a profit in terms of the original token.
-        total_original_token_out > total_original_token_in
     }
 }
 

@@ -30,8 +30,7 @@ pub struct RunArgs {
     /// physical cores on your machine
     #[arg(long, short)]
     pub max_tasks:       Option<u64>,
-    /// Optional Max Tasks, if omitted it will default to 80% of the number of
-    /// physical cores on your machine
+    /// Optional minimum batch size
     #[arg(long, default_value = "500")]
     pub min_batch_size:  u64,
     /// Optional quote asset, if omitted it will default to USDT
@@ -43,7 +42,8 @@ pub struct RunArgs {
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
     pub cex_exchanges:   Option<Vec<String>>,
-    /// If we should run dex pricing, even if we have the stored dex prices.
+    /// If the dex pricing calculation should be run, even if we have the stored
+    /// dex prices.
     #[arg(long, short, default_value = "false")]
     pub run_dex_pricing: bool,
 }

@@ -24,6 +24,7 @@ pub use transfer::*;
 use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
+    fn is_classified(&self) -> bool;
     fn get_action(&self) -> &Actions;
     fn continue_classification(&self) -> bool;
     fn get_trace_index(&self) -> u64;
@@ -32,6 +33,13 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone {
 }
 
 impl NormalizedAction for Actions {
+    fn is_classified(&self) -> bool {
+        match self {
+            Actions::Unclassified(_) => false,
+            _ => true,
+        }
+    }
+
     fn get_action(&self) -> &Actions {
         self
     }
