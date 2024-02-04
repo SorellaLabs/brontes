@@ -65,7 +65,11 @@ impl CexPriceMapRedefined {
     fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
         let srd: HashMap<_, _> = map.into();
 
-        Self(srd.into_iter().collect_vec().to_source())
+        Self(
+            srd.into_iter()
+                .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
