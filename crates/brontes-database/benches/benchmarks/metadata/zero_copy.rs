@@ -104,7 +104,7 @@ impl<S: Fallible + ?Sized + Serializer + ScratchSpace> Serialize<S> for U256Owne
 #[derive(
     Debug, Default, Clone, serde::Serialize, serde::Deserialize, Serialize, Deserialize, Archive,
 )]
-//#[archive(check_bytes)]
+//
 pub struct MetadataRkyvInner {
     pub block_hash:             U256Owned,
     pub block_timestamp:        u64,
