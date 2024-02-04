@@ -47,11 +47,12 @@ fn insert_manually_defined_entries() {
                     .unwrap();
             }
 
-            if table.len() < 2 {
-                panic!("Config entry missing token info");
-            }
+            let token_addrs = if table.len() < 2 {
+                [Address::default(), Address::default()]
+            } else {
+                [table[0].address, table[1].address]
+            };
 
-            let token_addrs = [table[0].address, table[1].address];
             libmdbx
                 .insert_pool(init_block, token_addr, token_addrs, protocol)
                 .unwrap();
