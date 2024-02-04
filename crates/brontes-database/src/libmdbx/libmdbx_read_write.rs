@@ -130,6 +130,9 @@ impl LibmdbxReadWriter {
                     missing.push(i);
                     res = false;
                 }
+                else {
+                println!("{i},{}",decode_key(&field.0));
+                }
             } else {
                 res = false
             }
