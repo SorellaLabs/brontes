@@ -1,11 +1,10 @@
-use alloy_primitives::{hex, FixedBytes};
 use brontes_macros::action_impl;
-use brontes_pricing::Protocol;
-use brontes_types::{normalized_actions::NormalizedSwap, ToScaledRational};
+use brontes_types::{
+    constants::{ETH_ADDRESS, WETH_ADDRESS},
+    normalized_actions::NormalizedSwap,
+    Protocol, ToScaledRational,
+};
 use reth_primitives::{Address, U256};
-
-pub const ETH: Address = Address(FixedBytes(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")));
-pub const WETH: Address = Address(FixedBytes(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")));
 
 action_impl!(
     Protocol::CurveCryptoSwap,
@@ -80,12 +79,12 @@ action_impl!(
 
         let is_eth = call_data.use_eth;
 
-        // Check if ETH is used and adjust token_in or token_out accordingly
+        // Check if ETH_ADDRESS is used and adjust token_in or token_out accordingly
         if is_eth {
-            if log.sold_id == U256::ZERO && token_0 == WETH {
-                token_0 = ETH;
-            } else if log.sold_id != U256::ZERO && token_1 == WETH {
-                token_1 = ETH;
+            if log.sold_id == U256::ZERO && token_0 == WETH_ADDRESS {
+                token_0 = ETH_ADDRESS;
+            } else if log.sold_id != U256::ZERO && token_1 == WETH_ADDRESS {
+                token_1 = ETH_ADDRESS;
             }
         }
 
@@ -146,12 +145,12 @@ action_impl!(
         let is_eth = call_data.use_eth;
 
         let _recipient = call_data.receiver;
-        // Check if ETH is used and adjust token_in or token_out accordingly
+        // Check if ETH_ADDRESS is used and adjust token_in or token_out accordingly
         if is_eth {
-            if log.sold_id == U256::ZERO && token_0 == WETH {
-                token_0 = ETH;
-            } else if log.sold_id != U256::ZERO && token_1 == WETH {
-                token_1 = ETH;
+            if log.sold_id == U256::ZERO && token_0 == WETH_ADDRESS {
+                token_0 = ETH_ADDRESS;
+            } else if log.sold_id != U256::ZERO && token_1 == WETH_ADDRESS {
+                token_1 = ETH_ADDRESS;
             }
         }
 
@@ -208,12 +207,12 @@ action_impl!(
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
 
-         // Replace WETH with ETH for token_in or token_out
-         if token_0 == WETH {
-            token_0 = ETH;
+         // Replace WETH_ADDRESS with ETH_ADDRESS for token_in or token_out
+         if token_0 == WETH_ADDRESS {
+            token_0 = ETH_ADDRESS;
         }
-        if token_1 == WETH {
-            token_1 = ETH;
+        if token_1 == WETH_ADDRESS {
+            token_1 = ETH_ADDRESS;
         }
 
         let t0_info = db_tx.try_get_token_info(token_0).ok()??;
