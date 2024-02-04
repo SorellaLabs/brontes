@@ -39,6 +39,7 @@ fn insert_manually_defined_entries() {
             .expect("failed to parse toml");
 
     for (protocol, inner) in config {
+        panic!("{}, {:?}", protocol, inner);
         let protocol: Protocol = protocol.parse().unwrap();
         for (address, table) in inner.as_table().unwrap() {
             let token_addr: Address = address.parse().unwrap();
@@ -59,7 +60,7 @@ fn insert_manually_defined_entries() {
             libmdbx
                 .insert_pool(table.init_block, token_addr, token_addrs, protocol)
                 .unwrap();
-            panic!()
+            // not reaching here
         }
     }
 }
