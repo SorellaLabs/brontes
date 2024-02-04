@@ -360,11 +360,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
             || possible_cex_dex.pnl.taker_profit > Rational::ZERO;
 
-        let is_unclassified_action = !info.is_cex_dex_call;
-
         if has_positive_pnl
-            || (is_unclassified_action
-                && (possible_cex_dex.gas_details.coinbase_transfer.is_some()
+            || (!info.is_classified
+                && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
                     || info.is_cex_dex_call))
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
@@ -373,6 +371,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         }
     }
 
+    /// Filters out triangular arbitrage
     pub fn is_triangular_arb(
         &self,
         possible_cex_dex: &PossibleCexDex,

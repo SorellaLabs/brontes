@@ -144,8 +144,8 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-/// discovery dispatch macro crates a struct that automatically dispatches
-/// possible deploy traces to the proper discovery classifier
+/// discovery dispatch macro creates a struct that automatically dispatches
+/// possible CREATE traces to the proper discovery classifier
 /// ```ignore
 /// discovery_dispatch!(<DispatchStructName>, [discovery_impl_name..],);
 /// ```
