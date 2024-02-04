@@ -116,6 +116,7 @@ impl LibmdbxReadWriter {
             tracing::error!("missing entire block range for table {}", table_name);
             return Err(eyre::eyre!("no data for entire range"))
         }
+
         for entry in peek_cur {
             if i % 1000 == 0 {
                 tracing::info!(
@@ -131,22 +132,30 @@ impl LibmdbxReadWriter {
                     res = false;
                 }
             } else {
+                missing.push(i);
                 res = false
             }
             i += 1;
         }
         // early cutoff
-        if i != decode_key(&end_key) {
+        if i - 1 != decode_key(&end_key) {
             tracing::error!(
                 "missing {} for block_range {}-{}",
                 table_name,
-                i + 1,
+                i - 1,
                 decode_key(&end_key)
             );
             res = false
         }
 
         if !res {
+            // put into block ranges so printout is less spammy.
+
+            // let mut i = 0;
+            // let mut ranges = Vec::new();
+            // let mut prev = s
+            // for i
+
             tracing::error!("missing {} for blocks: {:#?}", table_name, missing);
         }
         Ok(res)
