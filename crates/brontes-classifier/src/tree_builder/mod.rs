@@ -325,6 +325,24 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             tx_idx,
         ) {
             return (vec![DexPriceMsg::Update(results.0)], results.1)
+        } else if let Some(transfer) = try_decode_transfer(
+            tx_idx,
+            trace.get_calldata(),
+            trace.get_from_addr(),
+            trace.get_to_address(),
+            {
+                if trace.is_delegate_call() {
+                    // if we got delegate, the actual token address
+                    // is the from addr (proxy) for pool swaps. without
+                    // this our math gets fucked
+                    trace.get_from_addr()
+                } else {
+                    trace.get_to_address()
+                }
+            },
+            self.libmdbx,
+        ) {
+            return (vec![], Actions::Transfer(transfer))
         } else if trace.logs.len() > 0 {
             // A transfer should always be in its own call trace and have 1 log.
             // if forever reason there is a case with multiple logs, we take the first
@@ -355,27 +373,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 }
             }
         } else {
-            let addr = if trace.is_delegate_call() {
-                // if we got delegate, the actual token address
-                // is the from addr (proxy) for pool swaps. without
-                // this our math gets fucked
-                trace.get_from_addr()
-            } else {
-                trace.get_to_address()
-            };
-            let call_data = trace.get_calldata();
-            let Some(transfer) = try_decode_transfer(
-                tx_idx,
-                call_data,
-                trace.get_from_addr(),
-                trace.get_to_address(),
-                addr,
-                self.libmdbx,
-            ) else {
-                return (vec![], Actions::Unclassified(trace))
-            };
-
-            return (vec![], Actions::Transfer(transfer))
         }
         (vec![], Actions::Unclassified(trace))
     }
