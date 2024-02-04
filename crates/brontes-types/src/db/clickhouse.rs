@@ -68,7 +68,7 @@ pub struct ClickhouseTimesFlow {
     pub block_hash:      B256,
     pub relay_time:      u64,
     pub p2p_time:        u64,
-    #[serde(with = "address")]
+    #[serde_as(as = "DisplayFromStr")]
     pub proposer_addr:   Address,
     pub proposer_reward: u128,
     #[serde_as(as = "Vec<DisplayFromStr>")]

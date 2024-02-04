@@ -7,7 +7,7 @@ use brontes_types::{
     db::{
         address_to_tokens::PoolTokens,
         cex::CexPriceMap,
-        dex::{DexPrices, DexQuoteWithIndex, DexQuotes},
+        dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -27,10 +27,7 @@ use tracing::{info, warn};
 use crate::{
     libmdbx::{
         tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
-        types::{
-            dex_price::{make_filter_key_range, make_key},
-            LibmdbxData,
-        },
+        types::LibmdbxData,
         Libmdbx,
     },
     AddressToProtocol, AddressToTokens, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
