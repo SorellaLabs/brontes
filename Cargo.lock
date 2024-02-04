@@ -4128,7 +4128,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.4.10",
+ "socket2 0.5.5",
  "tokio",
  "tower-service",
  "tracing",
@@ -6557,7 +6557,7 @@ dependencies = [
 [[package]]
 name = "redefined"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#aea6db2687922984011b5b58b301e6e2a28f75ac"
+source = "git+https://github.com/0xlagrange/redefined#8de39992aa0069cc7034b845c396408cf79d32e3"
 dependencies = [
  "redefined-derive",
 ]
@@ -6565,7 +6565,7 @@ dependencies = [
 [[package]]
 name = "redefined-derive"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#aea6db2687922984011b5b58b301e6e2a28f75ac"
+source = "git+https://github.com/0xlagrange/redefined#8de39992aa0069cc7034b845c396408cf79d32e3"
 dependencies = [
  "futures",
  "proc-macro2",
