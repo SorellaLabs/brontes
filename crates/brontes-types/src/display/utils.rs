@@ -153,6 +153,7 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
             .to_string()
             .bright_red()
     )?;
+    writeln!(f, "{}", bundle.header.token_profits)?;
 
     Ok(())
 }
@@ -219,6 +220,7 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
             .to_string()
             .bright_red()
     )?;
+    writeln!(f, "{}", bundle.header.token_profits)?;
     Ok(())
 }
 
@@ -364,7 +366,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     writeln!(f, "Gas details: {}", sandwich_data.backrun_gas_details)?;
     writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
     writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
-
+    writeln!(f, "{}", bundle.header.token_profits)?;
     Ok(())
 }
 

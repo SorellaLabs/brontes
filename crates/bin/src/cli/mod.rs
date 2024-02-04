@@ -23,6 +23,8 @@ pub enum Commands {
     /// Runs brontes
     #[command(name = "run")]
     Run(run::RunArgs),
+    /// Initializes the local libmdx database & downloads metadata from
+    /// Sorella's MEV DB
     #[command(name = "init")]
     Init(init::Init),
     #[command(name = "db")]

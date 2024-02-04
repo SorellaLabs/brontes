@@ -1,6 +1,10 @@
-use std::fmt::Debug;
+use std::{
+    fmt,
+    fmt::{Debug, Display},
+};
 
 use alloy_primitives::Address;
+use colored::Colorize;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -12,7 +16,10 @@ use sorella_db_databases::{
 };
 
 use super::MevType;
-use crate::db::redefined_types::primitives::*;
+use crate::db::{
+    redefined_types::primitives::*,
+    token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
@@ -40,7 +47,6 @@ pub struct BundleHeader {
     pub mev_type:      MevType,
 }
 
-//TODO: Add token synmbol for display purposes
 #[serde_as]
 #[derive(Debug, Deserialize, Row, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -53,7 +59,7 @@ pub struct TokenProfits {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenProfit {
     pub profit_collector: Address,
-    pub token:            Address,
+    pub token:            TokenInfoWithAddress,
     pub amount:           f64,
     pub usd_value:        f64,
 }
@@ -90,4 +96,28 @@ impl TokenProfits {
         }
     }
      */
+}
+
+impl Display for TokenProfits {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}", "Token Profits:\n".bold().green())?;
+
+        for profit in &self.profits {
+            writeln!(f, "{}", profit)?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for TokenProfit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "Address: {} gained {} {} worth $ {}",
+            self.profit_collector,
+            self.amount.to_string().green(),
+            self.token.symbol.bold(),
+            self.usd_value
+        )
+    }
 }
