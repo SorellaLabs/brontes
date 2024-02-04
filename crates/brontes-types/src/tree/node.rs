@@ -241,6 +241,14 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
+    /// doesn't append this node to inner subactions.
+    pub fn get_all_sub_actions_exclusive(&self) -> Vec<V> {
+        self.inner
+            .iter()
+            .flat_map(|inner| inner.get_all_sub_actions())
+            .collect::<Vec<V>>()
+    }
+
     pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node<V>> {
         if self.inner.last()?.index == tx_index {
             return Some(self)
