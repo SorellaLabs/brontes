@@ -41,24 +41,22 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let mut deltas = HashMap::new();
 
         for action in actions.into_iter().flatten() {
-            // If the action is a swap, get the decimals to scale the amount in and out
-            // properly.
             if let Actions::Swap(swap) = action {
-                let adjusted_in = -(swap.amount_in.clone());
-                let adjusted_out = swap.amount_out.clone();
+                let amount_in = -swap.amount_in.clone();
+                let amount_out = swap.amount_out.clone();
                 // we track the address deltas so we can apply transfers later on the profit
                 if swap.from == swap.recipient {
                     let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, adjusted_out, entry);
-                    apply_entry(swap.token_in.address, adjusted_in, entry);
+                    apply_entry(swap.token_out.address, amount_out, entry);
+                    apply_entry(swap.token_in.address, amount_in, entry);
                 } else {
                     let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_in.address, adjusted_in, entry_recipient);
+                    apply_entry(swap.token_in.address, amount_in, entry_recipient);
 
                     let entry_from = deltas
                         .entry(swap.recipient)
                         .or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, adjusted_out, entry_from);
+                    apply_entry(swap.token_out.address, amount_out, entry_from);
                 }
             }
         }
