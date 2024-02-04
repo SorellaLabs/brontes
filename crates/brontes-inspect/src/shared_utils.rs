@@ -223,7 +223,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
-        Some(self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing))
+        Some(self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing)?)
     }
 
     pub fn get_token_profits(
@@ -234,7 +234,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         profit_collectors: Vec<Address>,
         deltas: SwapTokenDeltas,
         use_cex_pricing: bool,
-    ) -> TokenProfits {
+    ) -> Option<TokenProfits> {
         let token_profits = profit_collectors
             .into_iter()
             .filter_map(|collector| deltas.get(&collector).map(|d| (collector, d)))
@@ -243,23 +243,23 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     .into_iter()
                     .zip(vec![collector].into_iter().cycle())
             })
-            .map(|((token, amount), collector)| {
+            .filter_map(|((token, amount), collector)| {
                 let usd_value = if use_cex_pricing {
                     self.get_cex_usd_value(*token, amount.clone(), &metadata)
                 } else {
                     self.get_dex_usd_value(*token, at, amount.clone(), tx_index, &metadata)
                 };
 
-                TokenProfit {
+                Some(TokenProfit {
                     profit_collector: collector,
-                    token:            *token,
+                    token:            self.db.try_get_token_info(*token).ok()??,
                     amount:           amount.clone().to_float(),
                     usd_value:        usd_value.to_float(),
-                }
+                })
             })
             .collect();
 
-        TokenProfits { profits: token_profits }
+        Some(TokenProfits { profits: token_profits })
     }
 
     fn get_cex_usd_value(
