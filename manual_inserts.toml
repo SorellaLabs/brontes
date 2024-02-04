@@ -1,12 +1,20 @@
+# entry looks like this:
+# [AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14"]
+# init_block = 18979624
+#
+# [[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14".token_info]]
+# address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+# decimals = 6
+# symbol = "USDC"
+#
+# [[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14".token_info]]
+# address = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+# decimals = 8
+# symbol = "WBTC"
+# However, if the tokens are already addded, you don't have to specify token info.
+
 [AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14"]
 init_block = 18979624
+[AaveV2."0xb9184a4480830bf89b55b73631e287df9079f466"]
+init_block = 18129018
 
-[[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14".token_info]]
-address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-decimals = 6
-symbol = "USDC"
-
-[[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14".token_info]]
-address = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
-decimals = 8
-symbol = "WBTC"
