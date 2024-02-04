@@ -173,6 +173,33 @@ impl<V: NormalizedAction> Node<V> {
         false
     }
 
+    pub fn modify_node_spans<T, F>(&mut self, find: &T, modify: &F) -> bool
+    where
+        T: Fn(&Self) -> bool,
+        F: Fn(&mut Vec<Self>),
+    {
+        if !find(self) {
+            return false
+        }
+
+        let lower_has_better_collect = self
+            .inner
+            .iter_mut()
+            .map(|i| i.modify_node_spans(find, modify))
+            .collect::<Vec<bool>>();
+
+        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
+
+        // if all child nodes don't have a best sub-action. Then the current node is the
+        // best.
+        if !lower_has_better {
+            modify(&mut self.inner);
+        }
+
+        // lower node has a better sub-action.
+        true
+    }
+
     pub fn finalize(&mut self) {
         self.finalized = false;
         self.subactions = self.get_all_sub_actions();
