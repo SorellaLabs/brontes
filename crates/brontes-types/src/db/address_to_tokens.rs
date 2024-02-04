@@ -1,23 +1,29 @@
 use std::str::FromStr;
 
 use alloy_primitives::Address;
-use serde_with::serde_as;
+use redefined::Redefined;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{self, Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::serde_primitives::{address, option_address};
+use crate::{
+    db::redefined_types::primitives::AddressRedefined,
+    implement_table_value_codecs_with_zc,
+    serde_primitives::{addresss, option_addresss},
+};
 
-#[serde_as]
-#[derive(Debug, Default, Row, PartialEq, Clone, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PoolTokens {
-    #[serde(with = "address")]
+    #[serde(with = "addresss")]
     pub token0:     Address,
-    #[serde(with = "address")]
+    #[serde(with = "addresss")]
     pub token1:     Address,
-    #[serde(with = "option_address")]
+    #[serde(with = "option_addresss")]
     pub token2:     Option<Address>,
-    #[serde(with = "option_address")]
+    #[serde(with = "option_addresss")]
     pub token3:     Option<Address>,
-    #[serde(with = "option_address")]
+    #[serde(with = "option_addresss")]
     pub token4:     Option<Address>,
     pub init_block: u64,
 }
@@ -50,3 +56,5 @@ impl From<(Vec<String>, u64)> for PoolTokens {
         }
     }
 }
+
+implement_table_value_codecs_with_zc!(PoolTokensRedefined);

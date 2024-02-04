@@ -8,16 +8,25 @@ use alloy_primitives::{TxHash, U256};
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::Rational;
+use redefined::Redefined;
 use reth_primitives::Address;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::{db::token_info::TokenInfoWithAddress, mev::StatArbDetails, Protocol, ToFloatNearest};
+use crate::{
+    db::{
+        redefined_types::{malachite::*, primitives::*},
+        token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+    },
+    mev::StatArbDetails,
+    Protocol, ToFloatNearest,
+};
 
-#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
 pub struct NormalizedSwapWithFee {
     pub swap:       NormalizedSwap,
     pub fee_token:  TokenInfoWithAddress,
@@ -37,8 +46,10 @@ impl DerefMut for NormalizedSwapWithFee {
     }
 }
 
-#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedSwap {
+    #[redefined(same_fields)]
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,

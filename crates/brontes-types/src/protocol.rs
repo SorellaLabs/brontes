@@ -1,12 +1,7 @@
-use alloy_rlp::{Decodable, Encodable};
-use redefined::{self_convert_redefined, RedefinedConvert};
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
-use reth_primitives::BufMut;
-use rkyv::Deserialize as rkyv_Deserialize;
+use redefined::self_convert_redefined;
 use serde::{Deserialize, Serialize};
+
+use crate::implement_table_value_codecs_with_zc;
 
 macro_rules! to_byte {
     ($(#[$attr:meta])* pub enum $name:ident { $(
@@ -54,7 +49,6 @@ to_byte!(
         strum::Display,
         strum::EnumString,
     )]
-    #[archive(check_bytes)]
     #[repr(u8)]
     pub enum Protocol {
         UniswapV2,
@@ -76,38 +70,5 @@ to_byte!(
     }
 );
 
-impl Encodable for Protocol {
-    fn encode(&self, out: &mut dyn BufMut) {
-        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
-        out.put_slice(&encoded)
-    }
-}
-
-impl Decodable for Protocol {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let archived: &ArchivedProtocol = rkyv::check_archived_root::<Self>(buf).unwrap();
-
-        let this = ArchivedProtocol::deserialize(&archived, &mut rkyv::Infallible).unwrap();
-        Ok(this)
-    }
-}
-
-impl Compress for Protocol {
-    type Compressed = Vec<u8>;
-
-    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-        let mut encoded = Vec::new();
-        self.encode(&mut encoded);
-        buf.put_slice(&encoded);
-    }
-}
-
-impl Decompress for Protocol {
-    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        Protocol::decode(buf).map_err(|_| DatabaseError::Decode)
-    }
-}
-
 self_convert_redefined!(Protocol);
+implement_table_value_codecs_with_zc!(Protocol);

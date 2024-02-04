@@ -4,18 +4,19 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use alloy_rlp::{Decodable, Encodable};
-use bytes::BufMut;
-use redefined::{self_convert_redefined, RedefinedConvert};
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
-use rkyv::Deserialize;
+use redefined::{self_convert_redefined, Redefined};
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+use crate::{
+    db::redefined_types::primitives::AddressRedefined, implement_table_value_codecs_with_zc,
+};
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenInfoWithAddress {
+    #[redefined(same_fields)]
     pub inner:   TokenInfo,
     pub address: Address,
 }
@@ -41,19 +42,8 @@ impl DerefMut for TokenInfoWithAddress {
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Default,
-    Row,
-    serde::Serialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-    PartialEq,
-    Eq,
-    Hash,
+    Debug, Clone, Default, Row, Serialize, rSerialize, rDeserialize, Archive, PartialEq, Eq, Hash,
 )]
-#[archive(check_bytes)]
 pub struct TokenInfo {
     pub decimals: u8,
     pub symbol:   String,
@@ -65,6 +55,7 @@ impl TokenInfo {
 }
 
 self_convert_redefined!(TokenInfo);
+implement_table_value_codecs_with_zc!(TokenInfo);
 
 impl<'de> serde::Deserialize<'de> for TokenInfo {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -74,46 +65,5 @@ impl<'de> serde::Deserialize<'de> for TokenInfo {
         let val: (u8, String) = serde::Deserialize::deserialize(deserializer)?;
 
         Ok(Self { decimals: val.0, symbol: val.1 })
-    }
-}
-
-impl Encodable for TokenInfo {
-    fn encode(&self, out: &mut dyn BufMut) {
-        let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
-
-        out.put_slice(&encoded)
-    }
-}
-
-impl Decodable for TokenInfo {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let archived: &ArchivedTokenInfo = unsafe { rkyv::archived_root::<Self>(buf) };
-
-        let this = archived.deserialize(&mut rkyv::Infallible).unwrap();
-
-        Ok(this)
-    }
-}
-
-impl Compress for TokenInfo {
-    type Compressed = Vec<u8>;
-
-    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-        let mut encoded = Vec::new();
-        self.encode(&mut encoded);
-        let encoded_compressed = zstd::encode_all(&*encoded, 0).unwrap();
-
-        buf.put_slice(&encoded_compressed);
-    }
-}
-
-impl Decompress for TokenInfo {
-    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-
-        let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
-        let buf = &mut encoded_decompressed.as_slice();
-
-        TokenInfo::decode(buf).map_err(|_| DatabaseError::Decode)
     }
 }
