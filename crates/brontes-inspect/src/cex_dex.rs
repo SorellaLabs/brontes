@@ -400,7 +400,7 @@ impl PossibleCexDex {
     pub fn is_triangular_arb(&self) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if self.swaps.len() < 2 {
-            return true;
+            return false;
         }
 
         let original_token = self.swaps[0].token_in.address;
