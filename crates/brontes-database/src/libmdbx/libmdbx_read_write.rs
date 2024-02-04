@@ -173,7 +173,7 @@ impl LibmdbxReadWriter {
                 .fold(String::new(), |acc, x| acc + "\n" + &x);
 
             if cur_block - 1 != decode_key(&end_key) {
-                missing_ranges += &format!("{}-{}", cur_block - 1, decode_key(&end_key));
+                missing_ranges += &format!("\n{}-{}", cur_block - 1, decode_key(&end_key));
             }
 
             tracing::error!("missing {} for blocks: {}", table_name, missing_ranges);
