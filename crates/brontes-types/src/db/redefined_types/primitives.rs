@@ -3,7 +3,10 @@ use std::{hash::Hash, str::FromStr};
 use alloy_primitives::{hex, Address, Bytes, FixedBytes, Uint};
 use derive_more::{Deref, DerefMut, From, Index, IndexMut, IntoIterator};
 use redefined::{redefined_remote, Redefined, RedefinedConvert};
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use rkyv::{
+    ser::Serializer as rSerializer, Archive, Archived, Deserialize as rDeserialize, Fallible,
+    Serialize as rSerialize, SerializeUnsized,
+};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 // Uint
@@ -123,21 +126,37 @@ impl FromStr for AddressRedefined {
     }
 }
 
-/// Bytes
+/// alloy_primitivies::Bytes
 /// Have not implements parsing 'Bytes::bytes' yet
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    Serialize,
-    Deserialize,
-    rSerialize,
-    rDeserialize,
-    Archive,
-    Redefined,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, Deserialize, Default, Redefined)]
 #[redefined(Bytes)]
-#[redefined_attr(to_source = "self.0.into()", from_source = "Self(src.to_vec())")]
-pub struct BytesRedefined(pub Vec<u8>);
+#[redefined_attr(transmute)]
+pub struct BytesRedefined(pub bytes::Bytes);
+
+type ArchivedBytesRedefined = Vec<u8>;
+
+pub struct ResolverForBytesRedefined;
+
+impl Archive for BytesRedefined {
+    type Archived = ArchivedBytesRedefined;
+    type Resolver = ResolverForBytesRedefined;
+
+    unsafe fn resolve(&self, _: usize, _: Self::Resolver, out: *mut Self::Archived) {
+        *out = self.0.to_vec();
+    }
+}
+
+impl<S: rkyv::ser::Serializer + ?Sized + rkyv::ser::ScratchSpace> rkyv::Serialize<S>
+    for BytesRedefined
+{
+    fn serialize(&self, serializer: &mut S) -> Result<Self::Resolver, S::Error> {
+        self.0.as_ref().serialize_unsized(serializer)?;
+        Ok(ResolverForBytesRedefined)
+    }
+}
+
+impl<D: Fallible + ?Sized> rDeserialize<BytesRedefined, D> for Archived<BytesRedefined> {
+    fn deserialize(&self, _: &mut D) -> Result<BytesRedefined, D::Error> {
+        Ok(BytesRedefined(bytes::Bytes::from(self.clone())))
+    }
+}

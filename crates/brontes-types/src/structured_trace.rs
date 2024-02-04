@@ -124,7 +124,6 @@ self_convert_redefined!(DecodedParams);
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
-    #[redefined(func = "self.logs")]
     pub logs:         Vec<Log>,
     /// the msg.sender of the trace. This allows us to properly deal with
     /// delegate calls and the headache they cause when it comes to proxies
@@ -197,24 +196,7 @@ redefined_remote!(
     [CallType] : "alloy-rpc-types"
 );
 
-#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
-#[redefined(Log)]
-#[redefined_attr(
-    to_source = "Log {address: self.address.into(), data: self.data.into()}",
-    from_source = "LogRedefined {address: src.address.into(), data: src.data.into()}"
-)]
-pub struct LogRedefined {
-    pub address: AddressRedefined,
-    pub data:    LogDataRedefined,
-}
-
-#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
-#[redefined(LogData)]
-#[redefined_attr(
-    to_source = "LogData::new_unchecked(self.topics.to_source(), self.data.to_source())"
-)]
-pub struct LogDataRedefined {
-    #[redefined(func = "src.topics().to_vec().into()")]
-    topics:   Vec<B256Redefined>,
-    pub data: BytesRedefined,
-}
+redefined_remote!(
+    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
+    [Log, LogData] : "alloy-primitives"
+);
