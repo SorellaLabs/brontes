@@ -1,4 +1,4 @@
-use alloy_primitives::{FixedBytes, Log, LogData, U64};
+use alloy_primitives::{Log, LogData};
 use redefined::{Redefined, RedefinedConvert};
 use reth_rpc_types::trace::parity::{
     Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction, RewardType,
@@ -6,7 +6,6 @@ use reth_rpc_types::trace::parity::{
 };
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 use super::redefined_types::primitives::*;
 use crate::{
