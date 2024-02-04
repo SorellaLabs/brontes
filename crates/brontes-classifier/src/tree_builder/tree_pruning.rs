@@ -1,6 +1,7 @@
 use brontes_types::{
     normalized_actions::{Actions, NormalizedSwapWithFee},
     tree::BlockTree,
+    unzip_either::IterExt,
 };
 
 pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
@@ -162,48 +163,29 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // adjusts the amount in of the swap and notes the fee on the normalized type.
     // This is needed when swapping into the tax token as the amount out of the swap
     // will be wrong
-    tree.modify_node_if_contains_childs(
+    tree.modify_spans(
         |node| {
-            let mut has_transfer = false;
-            let mut has_swap = false;
-            for action in &node.get_all_sub_actions() {
-                if action.is_transfer() {
-                    has_transfer = true;
-                } else if action.is_swap() {
-                    has_swap = true;
-                }
-            }
-            (node.data.is_swap(), has_swap && has_transfer)
+            node.get_all_sub_actions().iter().any(|d| d.is_swap())
+                && node.get_all_sub_actions().iter().any(|d| d.is_transfer())
         },
-        |node| {
-            // collect all sub transfers
-            let mut transfers = Vec::new();
-            node.collect(
-                &mut transfers,
-                &|node| {
-                    (
-                        node.data.is_transfer(),
-                        node.get_all_sub_actions()
-                            .iter()
-                            .any(|node| node.is_transfer()),
-                    )
-                },
-                &|node| node.data.clone(),
-            );
-
-            transfers
+        |span| {
+            let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
                 .into_iter()
-                .filter_map(
-                    |transfer| {
-                        if let Actions::Transfer(t) = transfer {
-                            Some(t)
-                        } else {
-                            None
-                        }
-                    },
-                )
-                .for_each(|transfer| {
+                .filter_map(|action| {
+                    if action.data.is_swap() {
+                        return Some((Some(action), None))
+                    } else if action.data.is_transfer() {
+                        return Some((None, Some(action)))
+                    }
+                    None
+                })
+                .unzip_either();
+
+            for node in swaps {
+                transfers.iter_mut().for_each(|transfer| {
                     let mut swap = node.data.clone().force_swap();
+                    let transfer = transfer.data.force_transfer_mut();
+
                     tracing::info!(?transfer);
                     // adjust the amount out case
                     if swap.token_out == transfer.token
@@ -212,12 +194,12 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         && swap.amount_out > transfer.amount
                     {
                         let fee_amount = swap.amount_out - &transfer.amount;
-                        swap.amount_out = transfer.amount;
+                        swap.amount_out = transfer.amount.clone();
 
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
                             swap,
                             fee_amount,
-                            fee_token: transfer.token,
+                            fee_token: transfer.token.clone(),
                         });
                         node.data = swap;
                         tracing::info!("fee on amount out: {:?}", node.data);
@@ -229,17 +211,34 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         && swap.amount_in != transfer.amount
                     {
                         let fee_amount = transfer.amount.clone();
-                        swap.amount_in += transfer.amount;
+                        swap.amount_in += &transfer.amount;
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
                             swap,
                             fee_amount,
-                            fee_token: transfer.token,
+                            fee_token: transfer.token.clone(),
                         });
                         node.data = swap;
                         tracing::info!("fee on amount in: {:?}", node.data);
                         return
                     }
                 });
+            }
+
+            // collect all sub transfers
+            // let mut transfers = Vec::new();
+            // node.collect(
+            //     &mut transfers,
+            //     &|node| {
+            //         (
+            //             node.data.is_transfer(),
+            //             node.get_all_sub_actions()
+            //                 .iter()
+            //                 .any(|node| node.is_transfer()),
+            //         )
+            //     },
+            //     &|node| node.data.clone(),
+            // );
+            //
         },
     )
 }
