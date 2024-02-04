@@ -75,10 +75,7 @@ impl TraceLoader {
     }
 
     pub fn test_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
-        Ok(MetadataCombined {
-            db:         MetadataNoDex { block_num, ..Default::default() },
-            dex_quotes: DexQuotes(vec![]),
-        })
+        self.libmdbx.get_metadata(block_num)
     }
 
     pub async fn get_block_traces_with_header(

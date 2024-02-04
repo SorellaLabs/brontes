@@ -3,8 +3,8 @@ use std::sync::Arc;
 use alloy_primitives::{Address, U256};
 use alloy_sol_types::SolCall;
 use brontes_macros::discovery_impl;
-use brontes_pricing::{make_call_request, types::DiscoveredPool, Protocol};
-use brontes_types::traits::TracingProvider;
+use brontes_pricing::{make_call_request, types::DiscoveredPool};
+use brontes_types::{traits::TracingProvider, Protocol};
 use itertools::Itertools;
 
 discovery_impl!(
