@@ -73,6 +73,10 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
         let cursor = tx.cursor_read::<DexPrice>()?;
         self.validate_range("dex pricing", cursor, start_key, end_key, |key| decompose_key(*key).0)
+            .map_err(|e| {
+                tracing::error!("please run range with flag `--run-dex-pricing`");
+                e
+            })
     }
 
     fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
