@@ -7,6 +7,7 @@ use brontes_database::{
 };
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
+use brontes_types::constants::USDT_ADDRESS_STRING;
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -33,19 +34,20 @@ pub struct RunArgs {
     /// physical cores on your machine
     #[arg(long, default_value = "500")]
     pub min_batch_size:  u64,
-    /// Optional quote asset, if omitted it will default to USDC
-    #[arg(long, short, default_value = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")]
+    /// Optional quote asset, if omitted it will default to USDT
+    #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
     pub quote_asset:     String,
     /// inspectors wanted for the run. If empty will run all inspectors
     #[arg(long, short, value_delimiter = ',')]
     pub inspectors:      Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
-    #[arg(long, short, default_values = &["Binance", "Coinbase", "Kraken", "Bybit", "Kucoin"], value_delimiter = ',')]
+    #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
     pub cex_exchanges:   Option<Vec<String>>,
     /// If we should run dex pricing, even if we have the stored dex prices.
     #[arg(long, short, default_value = "false")]
     pub run_dex_pricing: bool,
 }
+
 impl RunArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         // Fetch required environment variables.
@@ -64,6 +66,7 @@ impl RunArgs {
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
 
         // verify block range validity
+        //TODO: (Will) Please return the range of blocks that aren't inited yet
         if let Some(end_block) = self.end_block {
             tracing::info!("verifying libmdbx state for block range");
             if !libmdbx.valid_range_state(self.start_block, end_block)? {
