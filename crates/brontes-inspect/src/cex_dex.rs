@@ -351,6 +351,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         possible_cex_dex: &PossibleCexDex,
         info: &TxInfo,
     ) -> Option<BundleData> {
+        if possible_cex_dex.is_triangular_arb() {
+            return None;
+        }
+
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
             || possible_cex_dex.pnl.taker_profit > Rational::ZERO;
 
@@ -392,6 +396,30 @@ impl PossibleCexDex {
             pnl:              self.pnl.clone(),
         })
     }
+
+    pub fn is_triangular_arb(&self) -> bool {
+        // Not enough swaps to form a cycle, thus cannot be arbitrage.
+        if self.swaps.len() < 2 {
+            return true;
+        }
+
+        let original_token = self.swaps[0].token_in.address;
+        let mut total_original_token_in = Rational::ZERO;
+        let mut total_original_token_out = Rational::ZERO;
+
+        for swap in &self.swaps {
+            if swap.token_in.address == original_token {
+                total_original_token_in += &swap.amount_in;
+            }
+            if swap.token_out.address == original_token {
+                total_original_token_out += &swap.amount_out;
+            }
+        }
+
+        // Arbitrage is detected if you end up with more of the original token than you
+        // started with, indicating a profit in terms of the original token.
+        total_original_token_out > total_original_token_in
+    }
 }
 
 pub struct PossibleCexDexLeg {
@@ -419,20 +447,16 @@ pub struct ExchangeLeg {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::{HashMap, HashSet},
-        str::FromStr,
-    };
+    
 
-    use alloy_primitives::{hex, B256, U256};
+    use alloy_primitives::{hex};
     use brontes_types::{
         constants::USDT_ADDRESS,
-        db::cex::{CexPriceMap, CexQuote},
     };
-    use malachite::num::arithmetic::traits::Reciprocal;
+    
     use serial_test::serial;
 
-    use super::*;
+    
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
@@ -466,5 +490,17 @@ mod tests {
             .with_gas_paid_usd(6261.08);
 
         inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_not_triangular_arb_false_positive() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+
+        let tx = hex!("3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }
