@@ -150,10 +150,8 @@ mod tests {
 
     use alloy_primitives::TxHash;
     use brontes_types::structured_trace::TxTrace;
-    use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
-    use reth_interfaces::provider::ProviderResult;
+    use reth_db::DatabaseError;
     use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
-    use reth_rpc::eth::error::EthResult;
     use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
     use serial_test::serial;
 

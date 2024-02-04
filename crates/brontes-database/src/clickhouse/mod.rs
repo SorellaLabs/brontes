@@ -171,6 +171,7 @@ impl Clickhouse {
     }
 }
 
+#[allow(unused)]
 fn mev_table_type(mev: &BundleData) -> DatabaseTables {
     match mev.mev_type() {
         brontes_types::mev::MevType::Sandwich => DatabaseTables::Sandwich,

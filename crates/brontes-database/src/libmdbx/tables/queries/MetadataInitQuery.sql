@@ -10,3 +10,10 @@ SELECT
 FROM brontes.metadata_util
 WHERE block_hash IS NOT NULL AND block_number >= ? AND block_number <= ? 
 
+
+
+
+
+
+
+
