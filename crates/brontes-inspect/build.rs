@@ -24,10 +24,10 @@ pub struct ProtocolTable {
 }
 
 fn insert_manually_defined_entries() {
-    let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    // don't run on local
+    let Ok(brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
 
-    let libmdbx =
-        LibmdbxReadWriter::init_db(brontes_db_endpoint, None).expect("failed to init libmdbx");
+    let Ok(libmdbx) = LibmdbxReadWriter::init_db(brontes_db_endpoint, None) else { return };
 
     let mut workspace_dir = workspace_dir();
     workspace_dir.push(CONFIG_FILE_NAME);
