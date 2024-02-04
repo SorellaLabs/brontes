@@ -127,15 +127,11 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // will be wrong
     tree.modify_spans(
         |node| {
-            node.get_all_sub_actions_exclusive()
-                .iter()
-                .any(|d| d.is_swap())
+            node.get_all_sub_actions().iter().any(|d| d.is_swap())
                 && node
-                    .get_all_sub_actions_exclusive()
+                    .get_all_sub_actions()
                     .iter()
                     .filter(|d| d.is_transfer())
-                    .count()
-                    == 2
         },
         |span| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
