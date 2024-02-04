@@ -1695,6 +1695,7 @@ dependencies = [
  "strum 0.25.0",
  "thiserror",
  "tokio",
+ "toml",
  "tracing",
  "tracing-subscriber",
  "walkdir",
