@@ -111,7 +111,6 @@ async-trait.workspace = true
 [build-dependencies]
 serde.workspace = true
 toml = "0.8.9"
-brontes-database.workspace = true
 brontes-types.workspace = true
 alloy-primitives.workspace = true
 
