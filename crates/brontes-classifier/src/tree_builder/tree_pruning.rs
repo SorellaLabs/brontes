@@ -121,44 +121,6 @@ pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
 /// accounting inaccuracy as we will register this fee swap as
 /// part of the mev messing up our profit accounting.
 pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
-    // remove swaps that originate from a transfer. This event only occurs
-    // when a tax token is transfered and the taxed amount is swapped into
-    // a more stable currency
-    tree.modify_node_if_contains_childs(
-        |node| {
-            let mut has_transfer = false;
-            let mut has_swap = false;
-
-            for action in &node.get_all_sub_actions() {
-                if action.is_transfer() {
-                    has_transfer = true;
-                } else if action.is_swap() {
-                    has_swap = true;
-                }
-            }
-            (node.data.is_transfer(), has_swap && has_transfer)
-        },
-        |node| {
-            let mut swap_idx = Vec::new();
-            node.collect(
-                &mut swap_idx,
-                &|node| {
-                    (
-                        node.data.is_swap(),
-                        node.get_all_sub_actions()
-                            .iter()
-                            .any(|action| action.is_swap()),
-                    )
-                },
-                &|node| node.index,
-            );
-            tracing::info!(?swap_idx, "removing swaps");
-
-            swap_idx.into_iter().for_each(|idx| {
-                node.remove_node_and_children(idx);
-            })
-        },
-    );
 
     // adjusts the amount in of the swap and notes the fee on the normalized type.
     // This is needed when swapping into the tax token as the amount out of the swap
@@ -234,24 +196,46 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     }
                 });
             }
-
-            // collect all sub transfers
-            // let mut transfers = Vec::new();
-            // node.collect(
-            //     &mut transfers,
-            //     &|node| {
-            //         (
-            //             node.data.is_transfer(),
-            //             node.get_all_sub_actions()
-            //                 .iter()
-            //                 .any(|node| node.is_transfer()),
-            //         )
-            //     },
-            //     &|node| node.data.clone(),
-            // );
-            //
         },
-    )
+    );
+    // remove swaps that originate from a transfer. This event only occurs
+    // when a tax token is transfered and the taxed amount is swapped into
+    // a more stable currency
+    tree.modify_node_if_contains_childs(
+        |node| {
+            let mut has_transfer = false;
+            let mut has_swap = false;
+
+            for action in &node.get_all_sub_actions() {
+                if action.is_transfer() {
+                    has_transfer = true;
+                } else if action.is_swap() {
+                    has_swap = true;
+                }
+            }
+            (node.data.is_transfer(), has_swap && has_transfer)
+        },
+        |node| {
+            let mut swap_idx = Vec::new();
+            node.collect(
+                &mut swap_idx,
+                &|node| {
+                    (
+                        node.data.is_swap(),
+                        node.get_all_sub_actions()
+                            .iter()
+                            .any(|action| action.is_swap()),
+                    )
+                },
+                &|node| node.index,
+            );
+            tracing::info!(?swap_idx, "removing swaps");
+
+            swap_idx.into_iter().for_each(|idx| {
+                node.remove_node_and_children(idx);
+            })
+        },
+    );
 }
 
 #[cfg(test)]
