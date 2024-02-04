@@ -45,7 +45,7 @@ impl InspectorBenchUtils {
 
         let (tree, prices) = self.rt.block_on(
             self.classifier_inspector
-                .build_tree_block_with_pricing(block, self.quote_address),
+                .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
         let mut metadata = self
@@ -127,7 +127,7 @@ impl InspectorBenchUtils {
 
         let (tree, prices) = self.rt.block_on(
             self.classifier_inspector
-                .build_tree_block_with_pricing(block, self.quote_address),
+                .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
         let mut metadata = self
@@ -258,7 +258,7 @@ impl InspectorBenchUtils {
 
         let (tree, prices) = self.rt.block_on(
             self.classifier_inspector
-                .build_tree_block_with_pricing(block, self.quote_address),
+                .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
         let mut metadata = self
