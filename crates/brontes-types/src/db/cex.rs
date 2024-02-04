@@ -56,20 +56,23 @@ pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, CexQuote>>);
 #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexPriceMap)]
 #[redefined_attr(
-    to_source = "CexPriceMap(self.0.into_iter().collect::<HashMap<_,_>>().to_source())",
+    to_source = "CexPriceMap(self.map.into_iter().collect::<HashMap<_,_>>().to_source())",
     from_source = "CexPriceMapRedefined::new(src.0)"
 )]
-pub struct CexPriceMapRedefined(pub Vec<(CexExchange, HashMap<PairRedefined, CexQuoteRedefined>)>);
+pub struct CexPriceMapRedefined {
+    pub map: Vec<(CexExchange, HashMap<PairRedefined, CexQuoteRedefined>)>,
+}
 
 impl CexPriceMapRedefined {
     fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
         let srd: HashMap<_, _> = map.into();
 
-        Self(
-            srd.into_iter()
+        Self {
+            map: srd
+                .into_iter()
                 .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
                 .collect::<Vec<_>>(),
-        )
+        }
     }
 }
 
