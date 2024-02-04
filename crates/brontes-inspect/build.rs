@@ -37,11 +37,11 @@ fn insert_manually_defined_entries() {
         let protocol: Protocol = protocol.parse().unwrap();
         for (address, table) in inner.as_table().unwrap() {
             let token_addr: Address = address.parse().unwrap();
-            panic!("{table:?}");
             let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
 
             let table: Vec<TokenInfoWithAddressToml> =
-                toml::from_str(&table.get("token_info").unwrap().to_string()).unwrap();
+                 table.get("token_info").unwrap().clone().try_into().unwrap();
+
 
             for t_info in &table {
                 libmdbx
