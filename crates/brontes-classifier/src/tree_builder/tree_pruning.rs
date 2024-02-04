@@ -151,6 +151,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 },
                 &|node| node.index,
             );
+            tracing::info!(?swap_idx, "removing swaps");
 
             swap_idx.into_iter().for_each(|idx| {
                 node.remove_node_and_children(idx);
