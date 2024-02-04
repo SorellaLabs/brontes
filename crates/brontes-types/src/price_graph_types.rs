@@ -4,14 +4,20 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use redefined::Redefined;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::Protocol;
+use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, Protocol};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+implement_table_value_codecs_with_zc!(SubGraphsEntryRedefined);
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SubGraphEdge {
     pub info:                   PoolPairInfoDirection,
     pub distance_to_start_node: u8,
@@ -40,9 +46,11 @@ impl SubGraphEdge {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
+    #[redefined(same_fields)]
     pub dex_type:  Protocol,
     pub token_0:   Address,
     pub token_1:   Address,
@@ -54,7 +62,8 @@ impl PoolPairInformation {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PoolPairInfoDirection {
     pub info:       PoolPairInformation,
     pub token_0_in: bool,
