@@ -1,4 +1,4 @@
-use std::{env, path, str::FromStr};
+use std::{env, path};
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxWriter};
@@ -14,7 +14,8 @@ fn main() {
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub protocols: Table,
+    pub protocol_name: Protocol,
+    pub pools:         Vec<ProtocolTable>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,31 +33,30 @@ fn insert_manually_defined_entries() {
     let mut workspace_dir = workspace_dir();
     workspace_dir.push(CONFIG_FILE_NAME);
 
-    let config: Config =
+    let config: Table =
         toml::from_str(&std::fs::read_to_string(workspace_dir).expect("no config file"))
             .expect("failed to parse toml");
 
-    for (protocol, table_entries) in &config.protocols {
-        let protocol = Protocol::from_str(protocol).unwrap();
+    for (protocol, inner) in config {
+        let protocol: Protocol = protocol.parse().unwrap();
+        for (address, table) in inner.as_table().unwrap() {
+            let token_addr: Address = address.parse().unwrap();
 
-        for (address, table_entry) in table_entries.as_table().unwrap() {
-            let address: Address = address.parse().unwrap();
+            let table: ProtocolTable = toml::from_str(&table.to_string()).unwrap();
 
-            let entry: ProtocolTable = toml::from_str(&table_entry.to_string()).unwrap();
-
-            for t_info in &entry.token_info {
+            for t_info in &table.token_info {
                 libmdbx
                     .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
                     .unwrap();
             }
 
-            if entry.token_info.len() < 2 {
+            if table.token_info.len() < 2 {
                 panic!("Config entry missing token info");
             }
 
-            let token_addrs = [entry.token_info[0].address, entry.token_info[1].address];
+            let token_addrs = [table.token_info[0].address, table.token_info[1].address];
             libmdbx
-                .insert_pool(entry.init_block, address, token_addrs, protocol)
+                .insert_pool(table.init_block, token_addr, token_addrs, protocol)
                 .unwrap()
         }
     }
