@@ -120,17 +120,7 @@ pub struct DecodedParams {
 
 self_convert_redefined!(DecodedParams);
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Redefined)]
-#[redefined_attr(derive(
-    Debug,
-    Default,
-    PartialEq,
-    Clone,
-    Serialize,
-    rSerialize,
-    rDeserialize,
-    Archive
-))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub logs:         Vec<Log>,
@@ -138,20 +128,7 @@ pub struct TransactionTraceWithLogs {
     /// delegate calls and the headache they cause when it comes to proxies
     pub msg_sender:   Address,
     pub trace_idx:    u64,
-    #[redefined(same_fields)]
     pub decoded_data: Option<DecodedCallData>,
-}
-
-impl Default for TransactionTraceRedefined {
-    fn default() -> Self {
-        TransactionTraceRedefined {
-            action:        ActionRedefined::Call(CallActionRedefined::default()),
-            error:         None,
-            result:        None,
-            subtraces:     0,
-            trace_address: Vec::new(),
-        }
-    }
 }
 
 impl TransactionTraceWithLogs {
@@ -177,17 +154,8 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Redefined)]
-#[redefined_attr(derive(
-    Debug,
-    Default,
-    PartialEq,
-    Clone,
-    Serialize,
-    rSerialize,
-    rDeserialize,
-    Archive
-))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub tx_hash:         B256,
@@ -210,26 +178,6 @@ impl TxTrace {
         Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
     }
 }
-
-redefined_remote!(
-    #[derive( Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [
-        TransactionTrace, TraceOutput, Action,
-        CallOutput, CreateOutput,
-        CreateAction, SelfdestructAction, RewardAction,
-        RewardType
-    ] : "alloy-rpc-types"
-);
-
-redefined_remote!(
-    #[derive(Default, Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [CallType, CallAction] : "alloy-rpc-types"
-);
-
-redefined_remote!(
-    #[derive(Default, Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [Log, LogData] : "alloy-primitives"
-);
 
 #[test]
 fn t() {
