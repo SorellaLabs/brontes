@@ -26,7 +26,11 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
-    db::{cex::CexExchange, dex::DexQuotes, metadata::MetadataCombined},
+    db::{
+        cex::CexExchange,
+        dex::DexQuotes,
+        metadata::{MetadataCombined, MetadataNoDex},
+    },
     mev::{Bundle, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -77,6 +81,10 @@ impl InspectorTestUtils {
             ))
         }
         Ok(trees.remove(0))
+    }
+
+    fn default_metadata(&self) -> MetadataCombined {
+        MetadataCombined { db: MetadataNoDex::default(), dex_quotes: DexQuotes(vec![]) }
     }
 
     async fn get_block_tree(
@@ -192,7 +200,12 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            self.classifier_inspector.get_metadata(block).await?
+            let res = self.classifier_inspector.get_metadata(block).await;
+            if config.expected_mev_type == Inspectors::CexDex {
+                res?
+            } else {
+                res.unwrap_or_else(|_| self.default_metadata())
+            }
         };
 
         if let Some(quotes) = quotes {
@@ -285,7 +298,12 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            self.classifier_inspector.get_metadata(block).await?
+            let res = self.classifier_inspector.get_metadata(block).await;
+            if config.inspectors.contains(&Inspectors::CexDex) {
+                res?
+            } else {
+                res.unwrap_or_else(|_| self.default_metadata())
+            }
         };
 
         if let Some(quotes) = quotes {
