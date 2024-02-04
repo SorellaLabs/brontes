@@ -33,11 +33,12 @@ impl<V: NormalizedAction> Root<V> {
             self.head.data.get_action().get_to_address(),
             self.tx_hash,
             self.gas_details,
-            self.private,
+            self.head.data.is_classified(),
             matches!(
                 self.head.data.get_action(),
                 Actions::Unclassified(data) if data.is_cex_dex_call()
             ),
+            self.private,
         )
     }
 
