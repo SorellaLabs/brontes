@@ -1,14 +1,14 @@
-use alloy_rlp::{Decodable, Encodable};
-use bytes::BufMut;
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
-};
+use redefined::Redefined;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::structured_trace::TxTrace;
+use crate::{
+    implement_table_value_codecs_with_zc,
+    structured_trace::{TxTrace, TxTraceRedefined},
+};
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TxTracesInner {
     pub traces: Option<Vec<TxTrace>>,
 }
@@ -19,38 +19,4 @@ impl TxTracesInner {
     }
 }
 
-impl Encodable for TxTracesInner {
-    fn encode(&self, out: &mut dyn BufMut) {
-        serde_json::to_value(self)
-            .unwrap()
-            .to_string()
-            .as_bytes()
-            .encode(out);
-    }
-}
-
-impl Decodable for TxTracesInner {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let this = serde_json::from_str(&String::decode(buf)?).unwrap();
-
-        Ok(this)
-    }
-}
-
-impl Compress for TxTracesInner {
-    type Compressed = Vec<u8>;
-
-    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-        let mut encoded = Vec::new();
-        self.encode(&mut encoded);
-        buf.put_slice(&encoded);
-    }
-}
-
-impl Decompress for TxTracesInner {
-    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        TxTracesInner::decode(buf).map_err(|_| DatabaseError::Decode)
-    }
-}
+implement_table_value_codecs_with_zc!(TxTracesInnerRedefined);

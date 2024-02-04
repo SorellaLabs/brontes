@@ -2,16 +2,26 @@ use std::fmt::Debug;
 
 use alloy_primitives::TxHash;
 use malachite::Rational;
+use redefined::Redefined;
 use reth_primitives::Address;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::{db::token_info::TokenInfoWithAddress, Protocol};
-#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+use crate::{
+    db::{
+        redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
+        token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+    },
+    Protocol,
+};
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedMint {
+    #[redefined(same_fields)]
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
@@ -21,8 +31,10 @@ pub struct NormalizedMint {
     pub amount:      Vec<Rational>,
 }
 
-#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedBurn {
+    #[redefined(same_fields)]
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
@@ -32,8 +44,10 @@ pub struct NormalizedBurn {
     pub amount:      Vec<Rational>,
 }
 
-#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedCollect {
+    #[redefined(same_fields)]
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub to:          Address,

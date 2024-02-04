@@ -150,17 +150,15 @@ mod tests {
 
     use alloy_primitives::TxHash;
     use brontes_types::structured_trace::TxTrace;
-    use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
-    use reth_interfaces::provider::ProviderResult;
+    use reth_db::DatabaseError;
     use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
-    use reth_rpc::eth::error::EthResult;
     use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
     use serial_test::serial;
 
     use super::LibmdbxInitializer;
     use crate::{clickhouse::Clickhouse, libmdbx::*};
 
-    #[derive(Default)]
+    #[derive(Default, Clone)]
     struct NoopTP;
 
     #[async_trait::async_trait]
@@ -171,41 +169,41 @@ mod tests {
             _block_number: Option<BlockId>,
             _state_overrides: Option<StateOverride>,
             _block_overrides: Option<Box<BlockOverrides>>,
-        ) -> ProviderResult<Bytes> {
+        ) -> eyre::Result<Bytes> {
             Ok(Default::default())
         }
 
-        async fn block_hash_for_id(&self, _block_num: u64) -> ProviderResult<Option<B256>> {
+        async fn block_hash_for_id(&self, _block_num: u64) -> eyre::Result<Option<B256>> {
             Ok(None)
         }
 
         #[cfg(not(feature = "local"))]
-        fn best_block_number(&self) -> ProviderResult<u64> {
+        fn best_block_number(&self) -> eyre::Result<u64> {
             Ok(0)
         }
 
         #[cfg(feature = "local")]
-        async fn best_block_number(&self) -> ProviderResult<u64>;
+        async fn best_block_number(&self) -> eyre::Result<u64>;
 
         async fn replay_block_transactions(
             &self,
             _block_id: BlockId,
-        ) -> EthResult<Option<Vec<TxTrace>>> {
+        ) -> eyre::Result<Option<Vec<TxTrace>>> {
             Ok(None)
         }
 
         async fn block_receipts(
             &self,
             _number: BlockNumberOrTag,
-        ) -> ProviderResult<Option<Vec<TransactionReceipt>>> {
+        ) -> eyre::Result<Option<Vec<TransactionReceipt>>> {
             Ok(None)
         }
 
-        async fn header_by_number(&self, _number: BlockNumber) -> ProviderResult<Option<Header>> {
+        async fn header_by_number(&self, _number: BlockNumber) -> eyre::Result<Option<Header>> {
             Ok(None)
         }
 
-        async fn block_and_tx_index(&self, _hash: TxHash) -> ProviderResult<(u64, usize)> {
+        async fn block_and_tx_index(&self, _hash: TxHash) -> eyre::Result<(u64, usize)> {
             Ok((0, 0))
         }
     }

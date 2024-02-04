@@ -22,10 +22,17 @@ use malachite::{
     },
     Rational,
 };
-use redefined::{self_convert_redefined, RedefinedConvert};
+use redefined::{self_convert_redefined, Redefined};
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::Serialize;
 use sorella_db_databases::clickhouse::{self, Row};
 
-use crate::{constants::*, pair::Pair};
+use crate::{
+    constants::*,
+    db::redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
+    implement_table_value_codecs_with_zc,
+    pair::{Pair, PairRedefined},
+};
 
 /// Centralized exchange price map organized by exchange.
 ///
@@ -42,8 +49,13 @@ use crate::{constants::*, pair::Pair};
 /// This provides us with the actual token0 when the map is queried so we can
 /// interpret the price in the correct direction & reciprocate the price (which
 /// is a rational) if need be.
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize)]
-pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, CexQuote>>);
+#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct CexPriceMap(
+    #[redefined(field((CexExchange, same)))] pub HashMap<CexExchange, HashMap<Pair, CexQuote>>,
+);
+
+implement_table_value_codecs_with_zc!(CexPriceMapRedefined);
 
 impl Default for CexPriceMap {
     fn default() -> Self {
@@ -249,8 +261,19 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
 /// consistent price interpretation. When queried, if `token0` in `CexQuote`
 /// differs from the base asset of the requested pair, the price is reciprocated
 /// to align with the actual pair order.
-#[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize, Redefined)]
+#[redefined_attr(derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Hash,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive
+))]
 pub struct CexQuote {
+    #[redefined(same_fields)]
     pub exchange:  CexExchange,
     pub timestamp: u64,
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
@@ -309,7 +332,6 @@ impl MulAssign for CexQuote {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
-#[archive(check_bytes)]
 #[archive_attr(derive(Eq, PartialEq, Hash))]
 pub enum CexExchange {
     Binance,
@@ -329,6 +351,8 @@ pub enum CexExchange {
     Unknown,
     Average,
 }
+
+self_convert_redefined!(CexExchange);
 
 impl From<&str> for CexExchange {
     fn from(value: &str) -> Self {
@@ -519,5 +543,3 @@ impl CexExchange {
         }
     }
 }
-
-self_convert_redefined!(CexExchange);
