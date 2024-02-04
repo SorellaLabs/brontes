@@ -131,7 +131,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 && node
                     .get_all_sub_actions()
                     .iter()
-                    .filter(|d| d.is_transfer())
+                    .any(|d| d.is_transfer())
         },
         |span| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
