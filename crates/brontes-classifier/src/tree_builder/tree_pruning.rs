@@ -201,10 +201,9 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         }
                     },
                 )
-                .find_map(|transfer| {
+                .for_each(|transfer| {
                     let mut swap = node.data.clone().force_swap();
-                    // if the swap matches the transfer but the transfer is a less amount of
-                    // tokens than the swap says
+                    // adjust the amount out case
                     if swap.token_out == transfer.token
                         && swap.pool == transfer.from
                         && swap.recipient == transfer.token.address
@@ -219,11 +218,23 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             fee_token: transfer.token,
                         });
                         node.data = swap;
-
-                        return Some(())
+                        return
                     }
-
-                    None
+                    // adjust the amount in case
+                    else if swap.token_in == transfer.token
+                        && swap.pool == transfer.to
+                        && swap.amount_in != transfer.amount
+                    {
+                        let fee_amount = &transfer.amount;
+                        swap.amount_in += transfer.amount;
+                        let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
+                            swap,
+                            fee_amount,
+                            fee_token: transfer.token,
+                        });
+                        node.data = swap;
+                        return
+                    }
                 });
         },
     )

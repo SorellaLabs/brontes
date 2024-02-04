@@ -23,6 +23,7 @@ use tree_pruning::{
 };
 use utils::{decode_transfer, get_coinbase_transfer};
 
+use self::transfer::try_decode_transfer;
 use crate::{
     classifiers::{DiscoveryProtocols, *},
     ActionCollection, FactoryDecoderDispatch,
@@ -329,7 +330,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             // if forever reason there is a case with multiple logs, we take the first
             // transfer
             for log in &trace.logs {
-                if let Some((addr, from, to, value)) = decode_transfer(log) {
+                if let Some((addr, from, to, _)) = decode_transfer(log) {
                     let addr = if trace.is_delegate_call() {
                         // if we got delegate, the actual token address
                         // is the from addr (proxy) for pool swaps. without
@@ -343,24 +344,39 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
                     }
 
-                    let Some(token_info) = self.libmdbx.try_get_token_info(addr).unwrap() else {
+                    let call_data = trace.get_calldata();
+                    let Some(transfer) =
+                        try_decode_transfer(tx_idx, call_data, from, to, addr, self.libmdbx)
+                    else {
                         return (vec![], Actions::Unclassified(trace))
                     };
 
-                    return (
-                        vec![],
-                        Actions::Transfer(NormalizedTransfer {
-                            trace_index,
-                            to,
-                            from,
-                            amount: value.to_scaled_rational(token_info.decimals),
-                            token: token_info,
-                        }),
-                    )
+                    return (vec![], Actions::Transfer(transfer))
                 }
             }
-        }
+        } else {
+            let addr = if trace.is_delegate_call() {
+                // if we got delegate, the actual token address
+                // is the from addr (proxy) for pool swaps. without
+                // this our math gets fucked
+                trace.get_from_addr()
+            } else {
+                trace.get_to_address()
+            };
+            let call_data = trace.get_calldata();
+            let Some(transfer) = try_decode_transfer(
+                tx_idx,
+                call_data,
+                trace.get_from_addr(),
+                trace.get_to_address(),
+                addr,
+                self.libmdbx,
+            ) else {
+                return (vec![], Actions::Unclassified(trace))
+            };
 
+            return (vec![], Actions::Transfer(transfer))
+        }
         (vec![], Actions::Unclassified(trace))
     }
 
