@@ -57,7 +57,7 @@
 //! array of individual inspectors and a `BlockTree` and `Metadata` as input,
 //! running each inspector on the block and collecting their results.
 //!
-//! ```ingnore
+//! ```ignore
 //! pub struct Composer<'a, const N: usize> {
 //!     inspectors_execution: InspectorFut<'a>,
 //!     pre_processing:       BlockPreprocessing,
