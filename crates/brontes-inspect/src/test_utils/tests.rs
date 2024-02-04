@@ -211,7 +211,12 @@ impl InspectorTestUtils {
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
 
-        assert_eq!(results.len(), 1, "Non zero amount of detected mev {:#?}", results);
+        assert_eq!(
+            results.len(),
+            1,
+            "Identified an incorrect number of MEV bundles. Expected 1, found: {}",
+            results.len()
+        );
 
         let bundle = results.remove(0);
 
