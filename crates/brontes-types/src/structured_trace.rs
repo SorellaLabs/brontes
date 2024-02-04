@@ -121,7 +121,16 @@ pub struct DecodedParams {
 self_convert_redefined!(DecodedParams);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+#[redefined_attr(derive(
+    Debug,
+    Default,
+    PartialEq,
+    Clone,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive
+))]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub logs:         Vec<Log>,
@@ -131,6 +140,18 @@ pub struct TransactionTraceWithLogs {
     pub trace_idx:    u64,
     #[redefined(same_fields)]
     pub decoded_data: Option<DecodedCallData>,
+}
+
+impl Default for TransactionTraceRedefined {
+    fn default() -> Self {
+        TransactionTraceRedefined {
+            action:        ActionRedefined::Call(CallActionRedefined::default()),
+            error:         None,
+            result:        None,
+            subtraces:     0,
+            trace_address: Vec::new(),
+        }
+    }
 }
 
 impl TransactionTraceWithLogs {
@@ -157,7 +178,16 @@ impl TransactionTraceWithLogs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+#[redefined_attr(derive(
+    Debug,
+    Default,
+    PartialEq,
+    Clone,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive
+))]
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub tx_hash:         B256,
@@ -182,10 +212,10 @@ impl TxTrace {
 }
 
 redefined_remote!(
-    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
+    #[derive( Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
     [
         TransactionTrace, TraceOutput, Action,
-        CallOutput, CallAction, CreateOutput,
+        CallOutput, CreateOutput,
         CreateAction, SelfdestructAction, RewardAction,
         RewardType
     ] : "alloy-rpc-types"
@@ -193,7 +223,7 @@ redefined_remote!(
 
 redefined_remote!(
     #[derive(Default, Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [CallType] : "alloy-rpc-types"
+    [CallType, CallAction] : "alloy-rpc-types"
 );
 
 redefined_remote!(
@@ -203,18 +233,22 @@ redefined_remote!(
 
 #[test]
 fn t() {
-    let value: LogRedefined = Default::default();
-
-    // let k: Log = unsafe { std::mem::transmute(t) };
-
-    // let kf = LogDataRedefined::default();
-    // let p: LogData = unsafe { std::mem::transmute(kf) };
+    let value: TxTraceRedefined = Default::default();
 
     let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
 
-    let archived = unsafe { rkyv::archived_root::<LogRedefined>(&bytes[..]) };
-    let deserialized: LogRedefined = archived.deserialize(&mut rkyv::Infallible).unwrap();
+    let archived = unsafe { rkyv::archived_root::<TxTraceRedefined>(&bytes[..]) };
+    let deserialized: TxTraceRedefined = archived.deserialize(&mut rkyv::Infallible).unwrap();
     assert_eq!(deserialized, value);
+}
 
-    // let k: Log = t.into();
+#[test]
+fn t2() {
+    let value: TxTraceRedefined = Default::default();
+
+    let real: TxTrace = unsafe { std::mem::transmute(value.clone()) };
+
+    let check: TxTraceRedefined = real.into();
+
+    assert_eq!(check, value);
 }
