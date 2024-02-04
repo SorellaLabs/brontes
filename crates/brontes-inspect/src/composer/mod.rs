@@ -77,12 +77,12 @@ pub async fn compose_mev_results(
 async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
-    meta_data: Arc<MetadataCombined>,
+    metadata: Arc<MetadataCombined>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
     orchestra
         .iter()
-        .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone())));
+        .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), metadata.clone())));
 
     let mut possible_mev_txes =
         DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree);
@@ -278,7 +278,7 @@ pub mod tests {
 
     use super::*;
     use crate::{
-        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS},
+        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS, USDT_ADDRESS},
         Inspectors,
     };
 
@@ -301,6 +301,24 @@ pub mod tests {
             hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
             hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
         ]);
+
+        inspector_util.run_composer(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn test_deduplicate() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.2);
+
+        let config = ComposerRunConfig::new(
+            vec![Inspectors::AtomicBackrun, Inspectors::CexDex],
+            MevType::JitSandwich,
+        )
+        .with_dex_prices()
+        .with_mev_tx_hashes(vec![hex!(
+            "21125c2764afacd354992938531930b6ea42b2d0e5c671e7935f306611f5bb64"
+        )
+        .into()]);
 
         inspector_util.run_composer(config, None).await.unwrap();
     }

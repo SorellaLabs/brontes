@@ -322,7 +322,12 @@ impl InspectorTestUtils {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(results.len(), 1, "got a non zero amount of detected mev");
+        assert_eq!(
+            results.len(),
+            1,
+            "Got wrong number of mev bundles. Expected 1, got {}",
+            results.len()
+        );
 
         let bundle = results.remove(0);
         assert!(

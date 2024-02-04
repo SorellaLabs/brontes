@@ -25,7 +25,7 @@ impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
     async fn process_tree(
         &self,
         _tree: Arc<BlockTree<Actions>>,
-        _meta_data: Arc<MetadataCombined>,
+        _metadata: Arc<MetadataCombined>,
     ) -> Vec<Bundle> {
         return vec![]
     }

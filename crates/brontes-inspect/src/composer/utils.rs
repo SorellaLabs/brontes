@@ -13,7 +13,7 @@ use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingM
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
-    meta_data:               Arc<MetadataCombined>,
+    metadata:                Arc<MetadataCombined>,
     cumulative_gas_used:     u128,
     cumulative_priority_fee: u128,
     total_bribe:             u128,
@@ -28,7 +28,7 @@ pub struct BlockPreprocessing {
 /// `BlockPreprocessing` struct.
 pub(crate) fn pre_process(
     tree: Arc<BlockTree<Actions>>,
-    meta_data: Arc<MetadataCombined>,
+    metadata: Arc<MetadataCombined>,
 ) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
 
@@ -50,7 +50,7 @@ pub(crate) fn pre_process(
     );
 
     BlockPreprocessing {
-        meta_data,
+        metadata,
         cumulative_gas_used,
         cumulative_priority_fee,
         total_bribe,
@@ -82,11 +82,10 @@ pub(crate) fn build_mev_header(
     );
 
     MevBlock {
-        block_hash: pre_processing.meta_data.block_hash.into(),
-        block_number: pre_processing.meta_data.block_num,
+        block_hash: pre_processing.metadata.block_hash.into(),
+        block_number: pre_processing.metadata.block_num,
         mev_count: MevCount::default(),
-        eth_price: f64::rounding_from(&pre_processing.meta_data.eth_prices, RoundingMode::Nearest)
-            .0,
+        eth_price: f64::rounding_from(&pre_processing.metadata.eth_prices, RoundingMode::Nearest).0,
         cumulative_gas_used: pre_processing.cumulative_gas_used,
         cumulative_priority_fee: pre_processing.cumulative_priority_fee,
         total_bribe: pre_processing.total_bribe,
@@ -94,18 +93,18 @@ pub(crate) fn build_mev_header(
         builder_address: pre_processing.builder_address,
         builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
         builder_profit_usd: f64::rounding_from(
-            builder_eth_profit * &pre_processing.meta_data.eth_prices,
+            builder_eth_profit * &pre_processing.metadata.eth_prices,
             RoundingMode::Nearest,
         )
         .0,
-        proposer_fee_recipient: pre_processing.meta_data.proposer_fee_recipient,
-        proposer_mev_reward: pre_processing.meta_data.proposer_mev_reward,
+        proposer_fee_recipient: pre_processing.metadata.proposer_fee_recipient,
+        proposer_mev_reward: pre_processing.metadata.proposer_mev_reward,
         proposer_profit_usd: pre_processing
-            .meta_data
+            .metadata
             .proposer_mev_reward
             .map(|mev_reward| {
                 f64::rounding_from(
-                    mev_reward.to_scaled_rational(18) * &pre_processing.meta_data.eth_prices,
+                    mev_reward.to_scaled_rational(18) * &pre_processing.metadata.eth_prices,
                     RoundingMode::Nearest,
                 )
                 .0
@@ -113,7 +112,7 @@ pub(crate) fn build_mev_header(
         //TODO: This is wron need to fix
         cumulative_mev_profit_usd: f64::rounding_from(
             (cum_mev_priority_fee_paid + pre_processing.total_bribe).to_scaled_rational(18)
-                * &pre_processing.meta_data.eth_prices,
+                * &pre_processing.metadata.eth_prices,
             RoundingMode::Nearest,
         )
         .0,
