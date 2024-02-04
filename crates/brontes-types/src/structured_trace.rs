@@ -120,8 +120,7 @@ pub struct DecodedParams {
 
 self_convert_redefined!(DecodedParams);
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
     pub logs:         Vec<Log>,
@@ -129,7 +128,6 @@ pub struct TransactionTraceWithLogs {
     /// delegate calls and the headache they cause when it comes to proxies
     pub msg_sender:   Address,
     pub trace_idx:    u64,
-    #[redefined(same_fields)]
     pub decoded_data: Option<DecodedCallData>,
 }
 
@@ -156,8 +154,7 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
@@ -182,22 +179,24 @@ impl TxTrace {
     }
 }
 
-redefined_remote!(
-    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [
-        TransactionTrace, TraceOutput, Action,
-        CallOutput, CallAction, CreateOutput,
-        CreateAction, SelfdestructAction, RewardAction,
-        RewardType
-    ] : "alloy-rpc-types"
-);
+#[test]
+fn t() {
+    let value: TxTraceRedefined = Default::default();
 
-redefined_remote!(
-    #[derive(Default, Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [CallType] : "alloy-rpc-types"
-);
+    let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
 
-redefined_remote!(
-    #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [Log, LogData] : "alloy-primitives"
-);
+    let archived = unsafe { rkyv::archived_root::<TxTraceRedefined>(&bytes[..]) };
+    let deserialized: TxTraceRedefined = archived.deserialize(&mut rkyv::Infallible).unwrap();
+    assert_eq!(deserialized, value);
+}
+
+#[test]
+fn t2() {
+    let value: TxTraceRedefined = Default::default();
+
+    let real: TxTrace = unsafe { std::mem::transmute(value.clone()) };
+
+    let check: TxTraceRedefined = real.into();
+
+    assert_eq!(check, value);
+}

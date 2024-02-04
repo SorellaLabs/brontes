@@ -6557,7 +6557,7 @@ dependencies = [
 [[package]]
 name = "redefined"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#aea6db2687922984011b5b58b301e6e2a28f75ac"
+source = "git+https://github.com/SorellaLabs/redefined#7845c25aa68aa0e6bf91416d49995c1f5bb21c7b"
 dependencies = [
  "redefined-derive",
 ]
@@ -6565,7 +6565,7 @@ dependencies = [
 [[package]]
 name = "redefined-derive"
 version = "0.1.0"
-source = "git+https://github.com/0xlagrange/redefined#aea6db2687922984011b5b58b301e6e2a28f75ac"
+source = "git+https://github.com/SorellaLabs/redefined#7845c25aa68aa0e6bf91416d49995c1f5bb21c7b"
 dependencies = [
  "futures",
  "proc-macro2",
