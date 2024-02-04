@@ -109,12 +109,7 @@ impl LibmdbxReadWriter {
         let range = decode_key(&end_key) - decode_key(&start_key);
         let mut res = true;
         let mut missing = Vec::new();
-        let mut i = if decode_key(&start_key) != 0 {
-            decode_key(&start_key) - 1
-        } else {
-            decode_key(&start_key)
-        };
-
+        let mut i = decode_key(&start_key);
         let cur = cursor.walk_range(start_key.clone()..=end_key.clone())?;
         let mut peek_cur = cur.peekable();
         if peek_cur.peek().is_none() {
@@ -126,13 +121,13 @@ impl LibmdbxReadWriter {
                 tracing::info!(
                     "{} validation {:.2}% completed",
                     table_name,
-                    (i + 1 - decode_key(&start_key)) as f64 / (range as f64) * 100.0
+                    (i - decode_key(&start_key)) as f64 / (range as f64) * 100.0
                 );
             }
 
             if let Ok(field) = entry {
-                if i + 1 != decode_key(&field.0) {
-                    missing.push(i + 1);
+                if i != decode_key(&field.0) {
+                    missing.push(i);
                     res = false;
                 }
             } else {
@@ -141,7 +136,7 @@ impl LibmdbxReadWriter {
             i += 1;
         }
         // early cutoff
-        if i + 1 != decode_key(&end_key) {
+        if i != decode_key(&end_key) {
             tracing::error!(
                 "missing {} for block_range {}-{}",
                 table_name,
