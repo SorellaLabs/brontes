@@ -11,9 +11,7 @@
 //! event occurs on a token. When this occurs a subgraph is made for the pair if
 //! one doesn't already exist. This allows for fast computation of a tokens
 //! price. These subgraphs constantly update with new blocks, updating their
-//! nodes and edges to reflect new liquidity pools,  By focusing on relevant
-//! portions of the graph, the system enhances performance and accuracy in price
-//! calculations.
+//! nodes and edges to reflect new liquidity pools.  
 //!
 //! ### Graph Management
 //! The system adds new pools to the token graph as they appear in new blocks,
