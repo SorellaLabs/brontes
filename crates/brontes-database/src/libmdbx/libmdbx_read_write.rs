@@ -109,7 +109,7 @@ impl LibmdbxReadWriter {
         let range = decode_key(&end_key) - decode_key(&start_key);
         let mut res = true;
         let mut missing = Vec::new();
-        let mut i = decode_key(&start_key);
+        let mut cur_block = decode_key(&start_key);
         let cur = cursor.walk_range(start_key.clone()..=end_key.clone())?;
         let mut peek_cur = cur.peekable();
         if peek_cur.peek().is_none() {
@@ -118,39 +118,32 @@ impl LibmdbxReadWriter {
         }
 
         for entry in peek_cur {
-            if i % 1000 == 0 {
+            if cur_block % 1000 == 0 {
                 tracing::info!(
                     "{} validation {:.2}% completed",
                     table_name,
-                    (i - decode_key(&start_key)) as f64 / (range as f64) * 100.0
+                    (cur_block - decode_key(&start_key)) as f64 / (range as f64) * 100.0
                 );
             }
 
             if let Ok(field) = entry {
-                if i != decode_key(&field.0) {
-                    missing.push(i);
+                if cur_block != decode_key(&field.0) {
+                    missing.push(cur_block);
                     res = false;
                 }
             } else {
-                missing.push(i);
+                missing.push(cur_block);
                 res = false
             }
-            i += 1;
+            cur_block += 1;
         }
-        // early cutoff
-        if i - 1 != decode_key(&end_key) {
-            tracing::error!(
-                "missing {} for block_range {}-{}",
-                table_name,
-                i - 1,
-                decode_key(&end_key)
-            );
+
+        if cur_block - 1 != decode_key(&end_key) {
             res = false
         }
 
         if !res {
             // put into block ranges so printout is less spammy.
-
             let mut i = 0usize;
             let mut ranges = vec![vec![]];
             let mut prev = 0;
@@ -170,7 +163,7 @@ impl LibmdbxReadWriter {
                 prev = mb;
             }
 
-            let missing_ranges = ranges
+            let mut missing_ranges = ranges
                 .into_iter()
                 .filter_map(|range| {
                     let start = range.first()?;
@@ -178,6 +171,10 @@ impl LibmdbxReadWriter {
                     Some(format!("{}-{}", start, end))
                 })
                 .fold(String::new(), |acc, x| acc + "\n" + &x);
+
+            if cur_block - 1 != decode_key(&end_key) {
+                missing_ranges += &format!("{}-{}", cur_block - 1, decode_key(&end_key));
+            }
 
             tracing::error!("missing {} for blocks: {}", table_name, missing_ranges);
         }
