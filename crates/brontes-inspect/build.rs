@@ -27,10 +27,12 @@ pub struct ProtocolTable {
 
 fn insert_manually_defined_entries() {
     // don't run on local
+    dotenv::dotenv().unwrap();
     let Ok(brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
 
     let Ok(libmdbx) = LibmdbxReadWriter::init_db(brontes_db_endpoint, None) else {
-        return };
+        return 
+    };
 
     let mut workspace_dir = workspace_dir();
     workspace_dir.push(CONFIG_FILE_NAME);
@@ -39,7 +41,6 @@ fn insert_manually_defined_entries() {
         toml::from_str(&std::fs::read_to_string(workspace_dir).expect("no config file"))
             .expect("failed to parse toml");
 
-    panic!("{:?}", config);
     for (protocol, inner) in config {
         let protocol: Protocol = protocol.parse().unwrap();
         for (address, table) in inner.as_table().unwrap() {
