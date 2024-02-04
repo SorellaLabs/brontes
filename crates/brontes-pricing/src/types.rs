@@ -5,8 +5,8 @@ use brontes_types::{normalized_actions::Actions, pair::Pair};
 use malachite::Rational;
 
 use crate::{
-    errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool,
-    AutomatedMarketMaker, Protocol,
+    errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, Protocol,
+    UpdatableProtocol,
 };
 
 pub trait ProtocolState: Debug {

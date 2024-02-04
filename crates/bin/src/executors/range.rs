@@ -7,38 +7,25 @@ use alloy_primitives::Address;
 use brontes_core::decoding::TracingProvider;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::{MetadataCombined, MetadataNoDex},
-    normalized_actions::Actions,
-    tree::BlockTree,
-};
+use brontes_types::{db::metadata::MetadataCombined, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::info;
 
 use super::shared::{inserts::process_results, state_collector::StateCollector};
-
-type CollectionFut<'a> =
-    Pin<Box<dyn Future<Output = (BlockTree<Actions>, MetadataNoDex)> + Send + 'a>>;
-
-pub struct RangeExecutorWithPricing<T: TracingProvider + Clone, DB: LibmdbxWriter + LibmdbxReader> {
+pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     collector:      StateCollector<T, DB>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 
     current_block: u64,
     end_block:     u64,
-    batch_id:      u64,
-
-    libmdbx:    &'static DB,
-    inspectors: &'static [&'static Box<dyn Inspector>],
+    libmdbx:       &'static DB,
+    inspectors:    &'static [&'static Box<dyn Inspector>],
 }
 
-impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
-    RangeExecutorWithPricing<T, DB>
-{
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
     pub fn new(
         _quote_asset: Address,
-        batch_id: u64,
         start_block: u64,
         end_block: u64,
         state_collector: StateCollector<T, DB>,
@@ -50,7 +37,6 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
             insert_futures: FuturesUnordered::default(),
             current_block: start_block,
             end_block,
-            batch_id,
             libmdbx,
             inspectors,
         }
@@ -84,7 +70,7 @@ impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter>
     }
 }
 
-impl<T: TracingProvider + Clone, DB: LibmdbxReader + LibmdbxWriter> Future
+impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future
     for RangeExecutorWithPricing<T, DB>
 {
     type Output = ();
