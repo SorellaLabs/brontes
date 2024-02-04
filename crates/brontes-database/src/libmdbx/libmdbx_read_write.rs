@@ -19,6 +19,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
 };
+use futures::stream::iter;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
@@ -74,7 +75,14 @@ impl LibmdbxReadWriter {
         let mut res = true;
         let mut missing = Vec::new();
         let mut i = if start_block != 0 { start_block - 1 } else { start_block };
-        for entry in cursor.walk_range(start_block..=end_block)? {
+        let cur = cursor.walk_range(start_block..=end_block)?;
+        let mut peek_cur = cur.peekable();
+        if peek_cur.peek().is_none() {
+            tracing::error!("missing entire block range for table {}", table_name);
+            return Err(eyre::eyre!("no data for entire range"))
+        }
+
+        for entry in peek_cur {
             tracing::info!("loop");
 
             if i % 1000 == 0 {
@@ -95,6 +103,7 @@ impl LibmdbxReadWriter {
                 res = false
             }
         }
+
         if !res {
             tracing::error!("missing {} for blocks: {:#?}", table_name, missing);
         }
