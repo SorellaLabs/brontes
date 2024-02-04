@@ -12,7 +12,7 @@ fn main() {
     insert_manually_defined_entries()
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct TokenInfoWithAddressToml {
     pub symbol:   String,
     pub decimals: u8,
@@ -38,8 +38,11 @@ fn insert_manually_defined_entries() {
             let token_addr: Address = address.parse().unwrap();
             let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
 
-            let table: Vec<TokenInfoWithAddressToml> =
-                table.get("token_info").unwrap().clone().try_into().unwrap();
+            let table: Vec<TokenInfoWithAddressToml> = table
+                .get("token_info")
+                .map(|i| i.clone().try_into())
+                .unwrap_or(Ok(vec![]))
+                .unwrap_or(vec![]);
 
             for t_info in &table {
                 libmdbx
