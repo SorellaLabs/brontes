@@ -1,6 +1,7 @@
-[protocols.AaveV3.0x5faab9e1adbddad0a08734be8a52185fd6558e14]
+[protocols.AaveV3]
 init_block = 18979624
 
+[protocols.AaveV3.0x5faab9e1adbddad0a08734be8a52185fd6558e14]
 [[protocols.AaveV3.0x5faab9e1adbddad0a08734be8a52185fd6558e14.token_info]]
 address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 inner = { decimals = 6, symbol = "USDC" }
