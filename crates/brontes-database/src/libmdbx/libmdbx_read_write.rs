@@ -70,7 +70,6 @@ impl LibmdbxReadWriter {
         T: CompressedTable<Key = u64>,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     {
-        let blocks_to_validate = end_block - start_block;
 
         let mut res = true;
         let mut missing = Vec::new();
@@ -86,7 +85,7 @@ impl LibmdbxReadWriter {
                 tracing::info!(
                     "{} validation {:.2}% completed",
                     table_name,
-                    (blocks_to_validate - i) as f64 / (blocks_to_validate as f64) * 100.0
+                    (end_block - i) as f64 / (end_block as f64) * 100.0
                 );
             }
 
