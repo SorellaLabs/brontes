@@ -211,7 +211,8 @@ impl InspectorTestUtils {
         );
 
         let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
-        assert_eq!(results.len(), 1, "got a non zero amount of detected mev {:#?}", results);
+
+        assert_eq!(results.len(), 1, "Non zero amount of detected mev {:#?}", results);
 
         let bundle = results.remove(0);
 
