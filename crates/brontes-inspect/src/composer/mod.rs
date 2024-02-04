@@ -312,7 +312,7 @@ pub mod tests {
 
         let config = ComposerRunConfig::new(
             vec![Inspectors::AtomicBackrun, Inspectors::CexDex],
-            MevType::AtomicBackrun,
+            MevType::Backrun,
         )
         .with_dex_prices()
         .with_mev_tx_hashes(vec![hex!(
