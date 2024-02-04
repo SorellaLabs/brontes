@@ -215,7 +215,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         && swap.amount_in != transfer.amount
                     {
                         let fee_amount = transfer.amount.clone() - &swap.amount_in;
-                        swap.amount_in = &transfer.amount;
+                        swap.amount_in = transfer.amount.clone();
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
                             swap,
                             fee_amount,
