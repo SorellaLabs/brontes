@@ -1,4 +1,3 @@
-use alloy_sol_types::abi::token;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedSwapWithFee},
     tree::BlockTree,
@@ -26,7 +25,7 @@ pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
         |node| (node.index, node.data.clone()),
         |other_nodes, node| {
             // calcuate the
-            let Actions::Swap(swap_data) = &node.data else { unreachable!() };
+            let swap_data = &node.data.force_swap_ref();
             other_nodes
                 .into_iter()
                 .filter_map(|(index, data)| {
@@ -128,10 +127,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     tree.modify_spans(
         |node| {
             node.get_all_sub_actions().iter().any(|d| d.is_swap())
-                && node
-                    .get_all_sub_actions()
-                    .iter()
-                    .any(|d| d.is_transfer())
+                && node.get_all_sub_actions().iter().any(|d| d.is_transfer())
         },
         |span| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
