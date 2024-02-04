@@ -1,3 +1,4 @@
+use alloy_sol_types::abi::token;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedSwapWithFee},
     tree::BlockTree,
@@ -121,7 +122,6 @@ pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
 /// accounting inaccuracy as we will register this fee swap as
 /// part of the mev messing up our profit accounting.
 pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
-
     // adjusts the amount in of the swap and notes the fee on the normalized type.
     // This is needed when swapping into the tax token as the amount out of the swap
     // will be wrong
@@ -153,12 +153,13 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 return
             }
 
-            tracing::info!("{:#?} \n {:#?}", swaps, transfers);
-
             for node in swaps {
                 transfers.iter_mut().for_each(|transfer| {
                     let mut swap = node.data.clone().force_swap();
                     let transfer = transfer.data.force_transfer_mut();
+                    if transfer.token.symbol.to_lowercase() == "yeet" {
+                        tracing::info!("{:#?}, {:#?}", swap, transfer);
+                    }
 
                     // adjust the amount out case
                     if swap.token_out == transfer.token
