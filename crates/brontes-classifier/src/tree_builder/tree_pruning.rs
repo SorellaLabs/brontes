@@ -172,7 +172,8 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     .get_all_sub_actions_exclusive()
                     .iter()
                     .filter(|d| d.is_transfer())
-                    .count() == 2
+                    .count()
+                    == 2
         },
         |span| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
@@ -186,6 +187,11 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     None
                 })
                 .unzip_either();
+            if swaps.is_empty() {
+                return
+            }
+
+            tracing::info!("{:#?} \n {:#?}", swaps, transfers);
 
             for node in swaps {
                 transfers.iter_mut().for_each(|transfer| {
