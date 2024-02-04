@@ -517,7 +517,9 @@ mod tests {
 
         let tx = hex!("3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f").into();
 
-        let config = InspectorTxRunConfig::new(Inspectors::CexDex).with_mev_tx_hashes(vec![tx]);
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
