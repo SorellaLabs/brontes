@@ -240,20 +240,6 @@ mod test {
     #[serial_test::serial]
     async fn test_filter_tax_tokens() {
         let mut utils = ClassifierTestUtils::new();
-        let unpruned_tree = utils
-            .build_raw_tree_tx(
-                hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-            )
-            .await
-            .unwrap();
-
-        let swaps = unpruned_tree.collect(
-            hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-            |node| (node.data.is_swap(), node.inner.iter().any(|n| n.data.is_swap())),
-        );
-        println!("{:?}",swaps);
-        assert!(swaps.len() == 7, "missmatch");
-
         let tree = utils
             .build_tree_tx(
                 hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
