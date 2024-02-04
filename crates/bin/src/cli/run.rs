@@ -66,15 +66,25 @@ impl RunArgs {
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
 
         // verify block range validity
-        //TODO: (Will) Please return the range of blocks that aren't inited yet
         if let Some(end_block) = self.end_block {
             tracing::info!("verifying libmdbx state for block range");
             if !libmdbx.valid_range_state(self.start_block, end_block)? {
                 return Err(eyre::eyre!(
-                    "do not have all the libmdbx state to run the given block range. please init \
+                    "Don't have all the libmdbx state to run the given block range. please init \
                      this range first before trying to run"
                 ))
             }
+
+            if !self.run_dex_pricing
+                && !libmdbx.has_dex_pricing_for_range(self.start_block, end_block)?
+            {
+                return Err(eyre::eyre!(
+                    "Don't have dex pricing for the given range. please run the missing blocks \
+                     with the `--run-dex-pricing` flag"
+                ))
+            }
+
+            tracing::info!("verified libmdbx state");
         }
 
         // check to make sure that we have the dex-prices for the range
