@@ -30,6 +30,7 @@ pub mod implementation;
 pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
+pub mod utils;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
@@ -93,6 +94,7 @@ impl Libmdbx {
 
     /// Clears a table in the database
     /// Only called on initialization
+    #[allow(unused)]
     fn clear_table<T>(&self) -> eyre::Result<()>
     where
         T: CompressedTable,
