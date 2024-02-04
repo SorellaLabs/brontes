@@ -3,7 +3,7 @@ use std::{collections::HashSet, fmt, fmt::Display};
 use alloy_primitives::TxHash;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use redefined::{self_convert_redefined, RedefinedConvert};
+use redefined::self_convert_redefined;
 use reth_primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
@@ -145,6 +145,7 @@ impl<V: NormalizedAction> Root<V> {
     Debug,
     Clone,
     Copy,
+    PartialEq,
     Serialize,
     Deserialize,
     Row,
@@ -153,7 +154,6 @@ impl<V: NormalizedAction> Root<V> {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
-#[archive(check_bytes)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u128,

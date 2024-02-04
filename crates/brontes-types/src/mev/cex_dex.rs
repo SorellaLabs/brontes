@@ -1,33 +1,39 @@
 use std::{fmt, fmt::Debug};
 
-use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use ::serde::ser::{SerializeStruct, Serializer};
 use malachite::Rational;
+use redefined::Redefined;
 use reth_primitives::B256;
-use serde::Deserialize;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
 use crate::{
-    db::cex::CexExchange,
-    normalized_actions::{ClickhouseVecNormalizedSwap, ClickhouseVecStatArbDetails},
+    db::{
+        cex::CexExchange,
+        redefined_types::{malachite::RationalRedefined, primitives::*},
+    },
+    normalized_actions::*,
     Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
     GasDetails,
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDex {
     pub tx_hash:          B256,
     pub swaps:            Vec<NormalizedSwap>,
     pub stat_arb_details: Vec<StatArbDetails>,
     pub pnl:              StatArbPnl,
+    #[redefined(same_fields)]
     pub gas_details:      GasDetails,
 }
 
@@ -128,10 +134,13 @@ impl DbRow for CexDex {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct StatArbDetails {
+    #[redefined(same_fields)]
     pub cex_exchange: CexExchange,
     pub cex_price:    Rational,
+    #[redefined(same_fields)]
     pub dex_exchange: Protocol,
     pub dex_price:    Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
@@ -148,7 +157,8 @@ impl fmt::Display for StatArbDetails {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct StatArbPnl {
     pub maker_profit: Rational,
     pub taker_profit: Rational,

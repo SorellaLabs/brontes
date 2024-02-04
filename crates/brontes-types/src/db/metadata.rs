@@ -2,31 +2,50 @@ use std::collections::HashSet;
 
 use alloy_primitives::{Address, TxHash, U256};
 use malachite::{num::basic::traits::Zero, Rational};
-use serde_with::{serde_as, DisplayFromStr};
+use redefined::Redefined;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{self, Serialize};
+use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use super::{cex::CexPriceMap, dex::DexQuotes};
 use crate::{
     constants::{USDC_ADDRESS, WETH_ADDRESS},
+    db::redefined_types::primitives::*,
+    implement_table_value_codecs_with_zc,
     pair::Pair,
-    serde_primitives::{option_address, u256},
+    serde_primitives::{option_addresss, u256, vec_txhash},
 };
 
 /// libmdbx type
 #[serde_as]
-#[derive(Debug, Default, Row, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Default, Row, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined,
+)]
+#[redefined_attr(derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    rDeserialize,
+    rSerialize,
+    Archive
+))]
 pub struct MetadataInner {
     #[serde(with = "u256")]
     pub block_hash:             U256,
     pub block_timestamp:        u64,
     pub relay_timestamp:        Option<u64>,
     pub p2p_timestamp:          Option<u64>,
-    #[serde(with = "option_address")]
+    #[serde(with = "option_addresss")]
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward:    Option<u128>,
-    #[serde_as(as = "Vec<DisplayFromStr>")]
+    #[serde(with = "vec_txhash")]
     pub private_flow:           Vec<TxHash>,
 }
+
+implement_table_value_codecs_with_zc!(MetadataInnerRedefined);
 
 /// aggregated metadata from clickhouse WITH dex pricing
 #[derive(Debug, Clone, derive_more::Deref, derive_more::AsRef)]
