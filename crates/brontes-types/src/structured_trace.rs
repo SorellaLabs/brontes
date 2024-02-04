@@ -158,7 +158,6 @@ impl TransactionTraceWithLogs {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub tx_hash:         B256,
@@ -182,6 +181,13 @@ impl TxTrace {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
+#[redefined(Log)]
+pub struct LogRedefined {
+    pub address: AddressRedefined,
+    pub data:    LogDataRedefined,
+}
+
 redefined_remote!(
     #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
     [
@@ -199,5 +205,5 @@ redefined_remote!(
 
 redefined_remote!(
     #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive)]
-    [Log, LogData] : "alloy-primitives"
+    [LogData] : "alloy-primitives"
 );
