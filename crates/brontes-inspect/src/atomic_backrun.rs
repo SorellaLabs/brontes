@@ -87,8 +87,8 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
-        // Can change this later to check if people are subsidising arbs to kill ops for
-        // competitors
+        // Can change this later to check if people are subsidizing arbs to kill the
+        // dry out the competition
         if &rev_usd - &gas_used_usd <= Rational::ZERO {
             return None
         }
