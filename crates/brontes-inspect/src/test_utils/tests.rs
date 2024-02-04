@@ -199,7 +199,7 @@ impl InspectorTestUtils {
             metadata.dex_quotes = quotes;
         }
 
-        if metadata.dex_quotes.0.is_empty() {
+        if metadata.dex_quotes.0.is_empty() && config.calculate_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
@@ -281,7 +281,7 @@ impl InspectorTestUtils {
             metadata.dex_quotes = quotes;
         }
 
-        if metadata.dex_quotes.0.is_empty() {
+        if metadata.dex_quotes.0.is_empty() && config.calculate_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
