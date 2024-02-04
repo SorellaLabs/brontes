@@ -181,6 +181,8 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 })
                 .unzip_either();
 
+            tracing::info!(?swaps, ?transfers);
+
             for node in swaps {
                 transfers.iter_mut().for_each(|transfer| {
                     let mut swap = node.data.clone().force_swap();
