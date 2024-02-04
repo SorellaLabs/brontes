@@ -150,11 +150,7 @@ impl LibmdbxReadWriter {
 
             for mb in missing {
                 // new range
-                let prev_block = if prev == 0 {
-                    mb - 1
-                } else {
-                    prev + 1
-                };
+                let prev_block = if prev == 0 { mb } else { prev + 1 };
 
                 if prev_block != mb {
                     if i != 0 {
