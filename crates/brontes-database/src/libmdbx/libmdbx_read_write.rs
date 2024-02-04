@@ -75,6 +75,8 @@ impl LibmdbxReadWriter {
         let mut missing = Vec::new();
         let mut i = if start_block != 0 { start_block - 1 } else { start_block };
         for entry in cursor.walk_range(start_block..=end_block)? {
+            tracing::info!("loop");
+
             if i % 1000 == 0 {
                 tracing::info!(
                     "{} validation {:.2}% completed",
