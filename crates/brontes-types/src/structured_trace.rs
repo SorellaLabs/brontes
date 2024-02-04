@@ -196,9 +196,7 @@ redefined_remote!(
     [CallType] : "alloy-rpc-types"
 );
 
-#[derive(
-    Debug, Default, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(Log)]
 #[redefined_attr(
     to_source = "Log {address: self.address.into(), data: self.data.into()}",
@@ -209,9 +207,7 @@ pub struct LogRedefined {
     pub data:    LogDataRedefined,
 }
 
-#[derive(
-    Debug, Default, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(LogData)]
 #[redefined_attr(
     to_source = "LogData::new_unchecked(self.topics.to_source(), self.data.to_source())"
