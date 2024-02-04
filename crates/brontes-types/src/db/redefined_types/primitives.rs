@@ -25,6 +25,12 @@ impl<const BITS: usize, const LIMBS: usize> Serialize for UintRedefined<BITS, LI
     }
 }
 
+impl<const BITS: usize, const LIMBS: usize> Default for UintRedefined<BITS, LIMBS> {
+    fn default() -> Self {
+        Uint::default().into()
+    }
+}
+
 pub type U256Redefined = UintRedefined<256, 4>;
 pub type U64Redefined = UintRedefined<64, 1>;
 
