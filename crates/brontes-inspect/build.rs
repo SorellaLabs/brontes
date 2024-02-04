@@ -3,7 +3,8 @@ use std::{env, path};
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxWriter};
-use brontes_types::{db::token_info::TokenInfoWithAddress, Protocol};
+use brontes_types::{Protocol};
+use serde::Deserialize;
 use toml::Table;
 
 const CONFIG_FILE_NAME: &str = "manual_inserts.toml";
@@ -12,6 +13,12 @@ fn main() {
     insert_manually_defined_entries()
 }
 
+#[derive(Debug, Deserialize)]
+pub struct TokenInfoWithAddressToml {
+    pub symbol:   String,
+    pub decimals: u8,
+    pub address:  Address,
+}
 fn insert_manually_defined_entries() {
     // don't run on local
     dotenv::dotenv().unwrap();
@@ -32,7 +39,7 @@ fn insert_manually_defined_entries() {
             let token_addr: Address = address.parse().unwrap();
             let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
 
-            let table: Vec<TokenInfoWithAddress> =
+            let table: Vec<TokenInfoWithAddressToml> =
                 toml::from_str(&table.get("token_info").unwrap().to_string()).unwrap();
 
             for t_info in &table {
