@@ -16,13 +16,14 @@ use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use derive_more::Display;
+use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::ReciprocalAssign, basic::traits::One, conversion::traits::FromSciString,
     },
     Rational,
 };
-use redefined::{self_convert_redefined, Redefined};
+use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use sorella_db_databases::clickhouse::{self, Row};
@@ -49,11 +50,28 @@ use crate::{
 /// This provides us with the actual token0 when the map is queried so we can
 /// interpret the price in the correct direction & reciprocate the price (which
 /// is a rational) if need be.
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct CexPriceMap(
-    #[redefined(field((CexExchange, same)))] pub HashMap<CexExchange, HashMap<Pair, CexQuote>>,
-);
+#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize)]
+pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, CexQuote>>);
+
+#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
+#[redefined(CexPriceMap)]
+#[redefined_attr(
+    to_source = "CexPriceMap(self.0.into_iter().collect::<HashMap<_,_>>().to_source())",
+    from_source = "CexPriceMapRedefined::new(src.0)"
+)]
+pub struct CexPriceMapRedefined(pub Vec<(CexExchange, HashMap<PairRedefined, CexQuoteRedefined>)>);
+
+impl CexPriceMapRedefined {
+    fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
+        let srd: HashMap<_, _> = map.into();
+
+        Self(
+            srd.into_iter()
+                .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
+                .collect::<Vec<_>>(),
+        )
+    }
+}
 
 implement_table_value_codecs_with_zc!(CexPriceMapRedefined);
 
