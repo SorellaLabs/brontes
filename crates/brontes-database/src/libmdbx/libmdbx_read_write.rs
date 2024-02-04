@@ -81,10 +81,7 @@ impl LibmdbxReadWriter {
             tracing::error!("missing entire block range for table {}", table_name);
             return Err(eyre::eyre!("no data for entire range"))
         }
-
         for entry in peek_cur {
-            tracing::info!("loop");
-
             if i % 1000 == 0 {
                 tracing::info!(
                     "{} validation {:.2}% completed",
@@ -98,10 +95,10 @@ impl LibmdbxReadWriter {
                     missing.push(i + 1);
                     res = false;
                 }
-                i += 1;
             } else {
                 res = false
             }
+            i += 1;
         }
 
         if !res {
