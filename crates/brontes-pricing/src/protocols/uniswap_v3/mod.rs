@@ -97,8 +97,6 @@ sol!(
     }
 );
 
-const TASK_LIMIT: usize = 10;
-
 pub const MIN_SQRT_RATIO: U256 = U256::from_limbs([4295128739, 0, 0, 0]);
 pub const MAX_SQRT_RATIO: U256 =
     U256::from_limbs([6743328256752651558, 17280870778742802505, 4294805859, 0]);
@@ -638,14 +636,6 @@ impl UniswapV3Pool {
     }
 }
 
-pub struct CurrentState {
-    amount_specified_remaining: I256,
-    amount_calculated: I256,
-    sqrt_price_x_96: U256,
-    tick: i32,
-    liquidity: u128,
-}
-
 #[derive(Default)]
 pub struct StepComputations {
     pub sqrt_price_start_x_96: U256,
@@ -656,9 +646,6 @@ pub struct StepComputations {
     pub amount_out:            U256,
     pub fee_amount:            U256,
 }
-
-const MIN_TICK: i32 = -887272;
-const MAX_TICK: i32 = 887272;
 
 pub struct Tick {
     pub liquidity_gross: u128,
