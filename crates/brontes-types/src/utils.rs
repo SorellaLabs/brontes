@@ -9,6 +9,7 @@ use malachite::{
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    serde_primitives::vec_vec_fixed_string,
     GasDetails,
 };
 
