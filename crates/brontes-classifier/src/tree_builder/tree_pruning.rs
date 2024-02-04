@@ -251,6 +251,7 @@ mod test {
             hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
             |node| (node.data.is_swap(), node.inner.iter().any(|n| n.data.is_swap())),
         );
+        println!("{:?}",swaps);
         assert!(swaps.len() == 7, "missmatch");
 
         let tree = utils
