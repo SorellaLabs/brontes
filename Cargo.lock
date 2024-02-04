@@ -1645,6 +1645,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-scoped",
+ "toml",
  "tracing",
  "zstd 0.13.0",
 ]
