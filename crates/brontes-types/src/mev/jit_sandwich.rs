@@ -1,43 +1,44 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
+use redefined::Redefined;
 use reth_primitives::B256;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Bundle, BundleData, BundleHeader, JitLiquidity, Mev, MevType, Sandwich};
+use crate::{
+    db::redefined_types::primitives::*, normalized_actions::*, tree::ClickhouseVecGasDetails,
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
     GasDetails,
-};
-use crate::{
-    normalized_actions::{
-        ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedMintOrBurn,
-        ClickhouseVecNormalizedMintOrBurnWithTxHash, ClickhouseVecNormalizedSwap,
-    },
-    tree::ClickhouseVecGasDetails,
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct JitLiquiditySandwich {
     pub frontrun_tx_hash:     Vec<B256>,
     pub frontrun_swaps:       Vec<Vec<NormalizedSwap>>,
     pub frontrun_mints:       Vec<Option<Vec<NormalizedMint>>>,
+    #[redefined(same_fields)]
     pub frontrun_gas_details: Vec<GasDetails>,
 
     pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
     pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
+    #[redefined(same_fields)]
     pub victim_swaps_gas_details: Vec<GasDetails>,
 
     // Similar to frontrun fields, backrun fields are also vectors to handle multiple transactions.
     pub backrun_tx_hash:     B256,
     pub backrun_swaps:       Vec<NormalizedSwap>,
     pub backrun_burns:       Vec<NormalizedBurn>,
+    #[redefined(same_fields)]
     pub backrun_gas_details: GasDetails,
 }
 
