@@ -100,6 +100,11 @@ impl LibmdbxReadWriter {
             }
             i += 1;
         }
+        // early cutoff
+        if i + 1 != end_block {
+            tracing::error!("missing {} for block_range {}-{}", table_name, i + 1, end_block);
+            res = false
+        }
 
         if !res {
             tracing::error!("missing {} for blocks: {:#?}", table_name, missing);
