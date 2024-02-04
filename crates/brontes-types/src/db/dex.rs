@@ -39,6 +39,7 @@ pub enum PriceAt {
     After,
     Lowest,
     Highest,
+    Average,
 }
 
 impl DexPrices {
@@ -48,6 +49,7 @@ impl DexPrices {
             PriceAt::Before => self.pre_state,
             PriceAt::Lowest => min(self.pre_state, self.post_state),
             PriceAt::Highest => max(self.pre_state, self.post_state),
+            PriceAt::Average => (self.pre_state + self.post_state) / Rational::from(2),
         }
     }
 }
