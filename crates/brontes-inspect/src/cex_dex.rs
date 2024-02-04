@@ -523,4 +523,18 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_not_triangular_arb_false_positive_simple() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+
+        let tx = hex!("31a1572dad67e949cff13d6ede0810678f25a30c6a3c67424453133bb822bd26").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices();
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
 }
