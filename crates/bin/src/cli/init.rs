@@ -67,6 +67,7 @@ impl Init {
                             }
                         })
                         .as_slice(),
+                    false, // add to clear tables to cli
                     range,
                 )
                 .await?;

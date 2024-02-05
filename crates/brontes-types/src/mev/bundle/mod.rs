@@ -30,7 +30,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Redefined)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Bundle {
     pub header: BundleHeader,

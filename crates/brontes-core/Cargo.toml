@@ -98,4 +98,4 @@ alloy-primitives.workspace = true
 default = []
 dyn-decode = []
 tests = []
-local = []
+local = ["brontes-types/local", "reth-tracing-ext/local", "brontes-database/local"]
