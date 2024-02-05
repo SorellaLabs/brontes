@@ -42,6 +42,17 @@ jobs:
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
 
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          components: rustfmt, clippy
+          override: true
+      - uses: Swatinem/rust-cache@v1
+        with:
+          cache-on-failure: true
+
       - name: cargo fmt
         run: cargo +nightly fmt --all -- --check
   test: 
@@ -54,7 +65,7 @@ jobs:
           brontes: ${{ secrets.BRONTES_SSH }}
 
       # init server args
-      - run: mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config
+      - run: mkdir ~/.ssh/ && mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config
         shell: bash
       - run: echo ${{ secrets.BASTION_SSH }} > ~/.ssh/bastion && chmod 600 ~/.ssh/bastion
         shell: bash
