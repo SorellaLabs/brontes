@@ -159,6 +159,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_block(19042179)
+            .needs_token(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into())
             .with_dex_prices()
             .with_gas_paid_usd(2792.487)
             .with_expected_profit_usd(71.593);

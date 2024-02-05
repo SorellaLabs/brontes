@@ -319,6 +319,10 @@ pub mod tests {
             MevType::AtomicArb,
         )
         .with_dex_prices()
+        .needs_tokens(vec![
+            hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+            hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+        ])
         .with_gas_paid_usd(10.20)
         .with_expected_profit_usd(347.84)
         .with_mev_tx_hashes(vec![hex!(
