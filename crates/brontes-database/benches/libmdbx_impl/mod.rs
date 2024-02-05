@@ -2,13 +2,12 @@ pub mod cursor;
 pub mod tx;
 mod utils;
 
-use std::{cmp::max, collections::HashMap, path::Path, str::FromStr, sync::Arc};
+use std::path::Path;
 
-use alloy_primitives::Address;
 use brontes_database::libmdbx::types::LibmdbxData;
 use eyre::Context;
 use reth_db::{
-    cursor::{DbCursorRO, DbCursorRW},
+    cursor::DbCursorRO,
     is_database_empty,
     mdbx::DatabaseFlags,
     table::Table,
@@ -17,8 +16,6 @@ use reth_db::{
     DatabaseEnv, DatabaseEnvKind, DatabaseError, TableType,
 };
 use reth_interfaces::db::LogLevel;
-use reth_libmdbx::RO;
-use reth_tracing_ext::TracingClient;
 
 use self::tx::LibmdbxTxBench;
 use crate::setup::tables::BenchTables;
