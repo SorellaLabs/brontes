@@ -8,7 +8,7 @@ use brontes_types::{
     tree::BlockTree,
 };
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct LongTailInspector<'db, DB: LibmdbxReader> {
     _inner: SharedInspectorUtils<'db, DB>,
@@ -25,7 +25,7 @@ impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
     async fn process_tree(
         &self,
         _tree: Arc<BlockTree<Actions>>,
-        _meta_data: Arc<MetadataCombined>,
+        _metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         return vec![]
     }

@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 
-
 [[bench]]
 name = "compression"
 harness = false
@@ -28,7 +27,6 @@ alloy-primitives = { workspace = true, features = [
 ] }
 alloy-rlp = { workspace = true, features = ["arrayvec"] }
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
-
 
 
 # reth
@@ -74,7 +72,6 @@ tokio.workspace = true
 tokio-scoped = "0.2.0"
 
 
-
 # web
 hyper-tls.workspace = true
 hyper.workspace = true
@@ -111,10 +108,12 @@ serial_test.workspace = true
 test-fuzz = "4"
 async-trait.workspace = true
 
+[build-dependencies]
+serde.workspace = true
+toml = "0.8.9"
+brontes-types.workspace = true
+alloy-primitives.workspace = true
 
 [features]
 tests = []
 local = []
-
-
-

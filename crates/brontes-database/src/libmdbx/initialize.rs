@@ -14,7 +14,6 @@ use super::{tables::Tables, types::LibmdbxData, Libmdbx};
 use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
 
 const DEFAULT_START_BLOCK: u64 = 0;
-const INNER_CHUNK_SIZE: usize = 10_000;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
     libmdbx:    Arc<Libmdbx>,
@@ -102,51 +101,43 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
 
         info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
+
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
+            let clickhouse = self.clickhouse.clone();
+            let libmdbx = self.libmdbx.clone();
+
             async move {
-                iter(&(start..end).into_iter().chunks(INNER_CHUNK_SIZE)).map(|range| {
-                    let mut range = range.collect_vec();
-                    let start = range.remove(0);
-                    let end = range.pop().unwrap();
-                    let clickhouse = self.clickhouse.clone();
-                    let libmdbx = self.libmdbx.clone();
-                    async move {
-                        let data =
-                            clickhouse
-                            .inner()
-                            .query_many::<D>(T::INIT_QUERY.expect("Should only be called on clickhouse tables"), &(start, end))
-                            .await;
+                let data = clickhouse
+                    .inner()
+                    .query_many::<D>(
+                        T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
+                        &(start, end),
+                    )
+                    .await;
 
-                        match data {
-                            Ok(d) => libmdbx.write_table(&d)?,
-                            Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
-                            }
-                        }
-                        Ok::<(), eyre::Report>(())
+                match data {
+                    Ok(d) => libmdbx.write_table(&d)?,
+                    Err(e) => {
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
                     }
+                }
 
-                }).unordered_buffer_map(5, |item| {
-                    tokio::spawn(item)
-                })
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?;
+                let num = {
+                    let mut n = num_chunks.lock().unwrap();
+                    *n -= 1;
+                    n.clone() + 1
+                };
 
-            let num = {
-                let mut n = num_chunks.lock().unwrap();
-                *n -= 1;
-                n.clone() + 1
-            };
+                info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
 
-            info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
-
-            Ok::<(), eyre::Report>(())
-        }})).buffer_unordered(5).collect::<Vec<_>>().await.into_iter()
+                Ok::<(), eyre::Report>(())
+            }
+        }))
+        .unordered_buffer_map(4, |fut| tokio::spawn(fut))
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
@@ -159,17 +150,15 @@ mod tests {
 
     use alloy_primitives::TxHash;
     use brontes_types::structured_trace::TxTrace;
-    use reth_db::{cursor::DbCursorRO, transaction::DbTx, DatabaseError};
-    use reth_interfaces::provider::ProviderResult;
+    use reth_db::DatabaseError;
     use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
-    use reth_rpc::eth::error::EthResult;
     use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
     use serial_test::serial;
 
     use super::LibmdbxInitializer;
     use crate::{clickhouse::Clickhouse, libmdbx::*};
 
-    #[derive(Default)]
+    #[derive(Default, Clone)]
     struct NoopTP;
 
     #[async_trait::async_trait]
@@ -180,41 +169,41 @@ mod tests {
             _block_number: Option<BlockId>,
             _state_overrides: Option<StateOverride>,
             _block_overrides: Option<Box<BlockOverrides>>,
-        ) -> ProviderResult<Bytes> {
+        ) -> eyre::Result<Bytes> {
             Ok(Default::default())
         }
 
-        async fn block_hash_for_id(&self, _block_num: u64) -> ProviderResult<Option<B256>> {
+        async fn block_hash_for_id(&self, _block_num: u64) -> eyre::Result<Option<B256>> {
             Ok(None)
         }
 
         #[cfg(not(feature = "local"))]
-        fn best_block_number(&self) -> ProviderResult<u64> {
+        fn best_block_number(&self) -> eyre::Result<u64> {
             Ok(0)
         }
 
         #[cfg(feature = "local")]
-        async fn best_block_number(&self) -> ProviderResult<u64>;
+        async fn best_block_number(&self) -> eyre::Result<u64>;
 
         async fn replay_block_transactions(
             &self,
             _block_id: BlockId,
-        ) -> EthResult<Option<Vec<TxTrace>>> {
+        ) -> eyre::Result<Option<Vec<TxTrace>>> {
             Ok(None)
         }
 
         async fn block_receipts(
             &self,
             _number: BlockNumberOrTag,
-        ) -> ProviderResult<Option<Vec<TransactionReceipt>>> {
+        ) -> eyre::Result<Option<Vec<TransactionReceipt>>> {
             Ok(None)
         }
 
-        async fn header_by_number(&self, _number: BlockNumber) -> ProviderResult<Option<Header>> {
+        async fn header_by_number(&self, _number: BlockNumber) -> eyre::Result<Option<Header>> {
             Ok(None)
         }
 
-        async fn block_and_tx_index(&self, _hash: TxHash) -> ProviderResult<(u64, usize)> {
+        async fn block_and_tx_index(&self, _hash: TxHash) -> eyre::Result<(u64, usize)> {
             Ok((0, 0))
         }
     }
@@ -358,11 +347,11 @@ mod tests {
         Ok(())
     }
 
-    async fn test_metadata_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+    async fn test_block_info_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
         let tx = db.ro_tx()?;
-        assert_ne!(tx.entries::<Metadata>()?, 0);
+        assert_ne!(tx.entries::<BlockInfo>()?, 0);
 
-        let mut cursor = tx.cursor_read::<Metadata>()?;
+        let mut cursor = tx.cursor_read::<BlockInfo>()?;
         if !print {
             cursor.first()?.ok_or(DatabaseError::Read(-1))?;
         } else {
@@ -499,19 +488,18 @@ mod tests {
         assert!(db.is_ok());
 
         let db = db.unwrap();
-        /*
+
         assert!(test_tokens_decimals_table(&db, false).await.is_ok());
 
         assert!(test_address_to_protocols_table(&db, false).await.is_ok());
-        */
+
         assert!(test_address_to_tokens_table(&db, false).await.is_ok());
-        //assert!(test_cex_mapping_table(&db, false).await.is_ok());
-        /*
-        assert!(test_metadata_table(&db, false).await.is_ok());
-        assert!(test_pool_state_table(&db, false).await.is_ok());
-        assert!(test_dex_price_table(&db, false).await.is_ok());
+        assert!(test_cex_mapping_table(&db, false).await.is_ok());
+
+        assert!(test_block_info_table(&db, false).await.is_ok());
+        //assert!(test_pool_state_table(&db, false).await.is_ok());
+        //assert!(test_dex_price_table(&db, false).await.is_ok());
         assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());
-        assert!(test_tx_traces_table(&db, true).await.is_ok());
-        */
+        // assert!(test_tx_traces_table(&db, true).await.is_ok());
     }
 }

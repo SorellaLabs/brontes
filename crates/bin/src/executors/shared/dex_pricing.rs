@@ -7,9 +7,10 @@ use std::{
 use brontes_core::decoding::TracingProvider;
 use brontes_pricing::BrontesBatchPricer;
 use brontes_types::{
+    constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
     db::{
         dex::DexQuotes,
-        metadata::{MetadataCombined, MetadataNoDex},
+        metadata::Metadata,
         traits::{LibmdbxReader, LibmdbxWriter},
     },
     normalized_actions::Actions,
@@ -24,7 +25,7 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: LibmdbxWriter + Libmdb
     receiver: Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>,
     tx:       Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>,
 
-    pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, MetadataNoDex)>,
+    pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, Metadata)>,
     task_executor:            TaskExecutor,
 }
 
@@ -55,12 +56,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> WaitingForPr
         self.task_executor.spawn_critical("dex pricer", fut);
     }
 
-    pub fn add_pending_inspection(
-        &mut self,
-        block: u64,
-        tree: BlockTree<Actions>,
-        meta: MetadataNoDex,
-    ) {
+    pub fn add_pending_inspection(&mut self, block: u64, tree: BlockTree<Actions>, meta: Metadata) {
         assert!(
             self.pending_trees.insert(block, (tree, meta)).is_none(),
             "traced a duplicate block"
@@ -71,7 +67,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> WaitingForPr
 impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
     for WaitingForPricerFuture<T, DB>
 {
-    type Item = (BlockTree<Actions>, MetadataCombined);
+    type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
@@ -81,11 +77,16 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
             if let Some((block, prices)) = inner {
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
-                let Some((tree, meta)) = self.pending_trees.remove(&block) else {
+                let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None)
                 };
 
-                let finalized_meta = meta.into_finalized_metadata(prices);
+                if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
+                    tree.label_private_txes(&meta);
+                }
+
+                let finalized_meta = meta.into_full_metadata(prices);
+
                 return Poll::Ready(Some((tree, finalized_meta)))
             } else {
                 // means we have completed chunks

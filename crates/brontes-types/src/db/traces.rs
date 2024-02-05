@@ -1,14 +1,20 @@
-use alloy_rlp::{Decodable, Encodable};
-use bytes::BufMut;
-use reth_db::{
-    table::{Compress, Decompress},
-    DatabaseError,
+use alloy_primitives::{Log, LogData};
+use redefined::Redefined;
+use reth_rpc_types::trace::parity::{
+    Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction, RewardType,
+    SelfdestructAction, TraceOutput, TransactionTrace,
 };
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::structured_trace::TxTrace;
+use super::redefined_types::primitives::*;
+use crate::{
+    implement_table_value_codecs_with_zc,
+    structured_trace::{DecodedCallData, TransactionTraceWithLogs, TxTrace},
+};
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TxTracesInner {
     pub traces: Option<Vec<TxTrace>>,
 }
@@ -19,38 +25,263 @@ impl TxTracesInner {
     }
 }
 
-impl Encodable for TxTracesInner {
-    fn encode(&self, out: &mut dyn BufMut) {
-        serde_json::to_value(self)
-            .unwrap()
-            .to_string()
-            .as_bytes()
-            .encode(out);
-    }
+implement_table_value_codecs_with_zc!(TxTracesInnerRedefined);
+
+#[derive(
+    Debug,
+    Clone,
+    Redefined,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Default,
+)]
+#[redefined(TxTrace)]
+pub struct TxTraceRedefined {
+    pub trace:           Vec<TransactionTraceWithLogsRedefined>,
+    pub tx_hash:         FixedBytesRedefined<32>,
+    pub gas_used:        u128,
+    pub effective_price: u128,
+    pub tx_index:        u64,
+    // False if the transaction reverted
+    pub is_success:      bool,
 }
 
-impl Decodable for TxTracesInner {
-    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let this = serde_json::from_str(&String::decode(buf)?).unwrap();
-
-        Ok(this)
-    }
+#[derive(
+    Debug, Clone, Redefined, PartialEq, serde::Serialize, rSerialize, rDeserialize, rkyv::Archive,
+)]
+#[redefined(TransactionTraceWithLogs)]
+pub struct TransactionTraceWithLogsRedefined {
+    pub trace:        TransactionTraceRedefined,
+    pub logs:         Vec<LogRedefined>,
+    pub msg_sender:   AddressRedefined,
+    pub trace_idx:    u64,
+    pub decoded_data: Option<DecodedCallData>,
 }
 
-impl Compress for TxTracesInner {
-    type Compressed = Vec<u8>;
-
-    fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-        let mut encoded = Vec::new();
-        self.encode(&mut encoded);
-        buf.put_slice(&encoded);
-    }
+#[derive(
+    Debug, Clone, Redefined, PartialEq, serde::Serialize, rSerialize, rDeserialize, rkyv::Archive,
+)]
+#[redefined(Log)]
+pub struct LogRedefined {
+    pub address: AddressRedefined,
+    pub data:    LogDataRedefined,
 }
 
-impl Decompress for TxTracesInner {
-    fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let binding = value.as_ref().to_vec();
-        let buf = &mut binding.as_slice();
-        TxTracesInner::decode(buf).map_err(|_| DatabaseError::Decode)
-    }
+#[derive(
+    Debug, Clone, Redefined, PartialEq, serde::Serialize, rSerialize, rDeserialize, rkyv::Archive,
+)]
+#[redefined(LogData)]
+#[redefined_attr(to_source = "LogData::new_unchecked(self.topics.into_iter().map(Into::into).\
+                              collect(), self.data.into())")]
+pub struct LogDataRedefined {
+    #[redefined(func = "src.topics().into_iter().map(|t| t.clone().into()).collect()")]
+    pub topics: Vec<FixedBytesRedefined<32>>,
+    pub data:   BytesRedefined,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(TransactionTrace)]
+pub struct TransactionTraceRedefined {
+    pub action:        ActionRedefined,
+    pub error:         Option<String>,
+    pub result:        Option<TraceOutputRedefined>,
+    pub subtraces:     usize,
+    pub trace_address: Vec<usize>,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(Action)]
+pub enum ActionRedefined {
+    Call(CallActionRedefined),
+    Create(CreateActionRedefined),
+    Selfdestruct(SelfdestructActionRedefined),
+    Reward(RewardActionRedefined),
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(CallAction)]
+pub struct CallActionRedefined {
+    pub from:      AddressRedefined,
+    pub call_type: CallTypeRedefined,
+    pub gas:       U64Redefined,
+    pub input:     BytesRedefined,
+    pub to:        AddressRedefined,
+    pub value:     U256Redefined,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(CreateAction)]
+pub struct CreateActionRedefined {
+    pub from:  AddressRedefined,
+    pub gas:   U64Redefined,
+    pub init:  BytesRedefined,
+    pub value: U256Redefined,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(SelfdestructAction)]
+pub struct SelfdestructActionRedefined {
+    pub address:        AddressRedefined,
+    pub balance:        U256Redefined,
+    pub refund_address: AddressRedefined,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(RewardAction)]
+pub struct RewardActionRedefined {
+    pub author:      AddressRedefined,
+    pub reward_type: RewardTypeRedefined,
+    pub value:       U256Redefined,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(RewardType)]
+pub enum RewardTypeRedefined {
+    Block,
+    Uncle,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(CallType)]
+pub enum CallTypeRedefined {
+    None,
+    Call,
+    CallCode,
+    DelegateCall,
+    StaticCall,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(TraceOutput)]
+pub enum TraceOutputRedefined {
+    Call(CallOutputRedefined),
+    Create(CreateOutputRedefined),
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(CallOutput)]
+pub struct CallOutputRedefined {
+    pub gas_used: U64Redefined,
+    pub output:   BytesRedefined,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(CreateOutput)]
+pub struct CreateOutputRedefined {
+    pub address:  AddressRedefined,
+    pub code:     BytesRedefined,
+    pub gas_used: U64Redefined,
 }

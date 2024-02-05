@@ -14,4 +14,5 @@ pub struct NormalizedTransfer {
     pub to:          Address,
     pub token:       TokenInfoWithAddress,
     pub amount:      Rational,
+    pub fee:         Rational,
 }

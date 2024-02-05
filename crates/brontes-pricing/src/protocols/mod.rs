@@ -1,13 +1,12 @@
 pub mod errors;
-pub mod factory;
 pub mod lazy;
 pub mod uniswap_v2;
 pub mod uniswap_v3;
-pub mod uniswap_v3_math;
+// pub mod uniswap_v3_math;
 
 use std::{future::Future, sync::Arc};
 
-use alloy_primitives::{Address, Log, U256};
+use alloy_primitives::{Address, Log};
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
 pub use brontes_types::{queries::make_call_request, Protocol};
@@ -16,11 +15,20 @@ use tracing::error;
 
 use crate::{
     lazy::{PoolFetchError, PoolFetchSuccess},
-    protocols::errors::{AmmError, ArithmeticError, EventLogError, SwapSimulationError},
+    protocols::errors::{AmmError, ArithmeticError, EventLogError},
     uniswap_v2::UniswapV2Pool,
     uniswap_v3::UniswapV3Pool,
     LoadResult, PoolState,
 };
+
+#[async_trait]
+pub trait UpdatableProtocol {
+    fn address(&self) -> Address;
+    fn tokens(&self) -> Vec<Address>;
+    fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError>;
+    fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError>;
+    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError>;
+}
 
 pub trait LoadState {
     fn try_load_state<T: TracingProvider>(
@@ -95,31 +103,4 @@ impl LoadState for Protocol {
             }
         }
     }
-}
-
-#[async_trait]
-pub trait AutomatedMarketMaker {
-    fn address(&self) -> Address;
-    // fn sync_on_event_signatures(&self) -> Vec<B256>;
-    fn tokens(&self) -> Vec<Address>;
-    fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError>;
-    fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError>;
-    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError>;
-    async fn populate_data<M: TracingProvider>(
-        &mut self,
-        block_number: Option<u64>,
-        middleware: Arc<M>,
-    ) -> Result<(), AmmError>;
-
-    fn simulate_swap(
-        &self,
-        token_in: Address,
-        amount_in: U256,
-    ) -> Result<U256, SwapSimulationError>;
-    fn simulate_swap_mut(
-        &mut self,
-        token_in: Address,
-        amount_in: U256,
-    ) -> Result<U256, SwapSimulationError>;
-    fn get_token_out(&self, token_in: Address) -> Address;
 }

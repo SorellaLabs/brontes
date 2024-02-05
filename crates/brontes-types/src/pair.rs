@@ -2,12 +2,30 @@ use std::{hash::Hash, str::FromStr};
 
 use alloy_primitives::Address;
 use alloy_rlp::{BufMut, Decodable, Encodable};
+use redefined::Redefined;
 use reth_db::table::{Decode, Encode};
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
+
+use crate::db::redefined_types::primitives::AddressRedefined;
 
 /// Pair has a custom hash impl that will always make sure the pair is ordered
 /// before hashing aswell as on equals
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialOrd, Ord, Redefined)]
+#[redefined_attr(derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    rDeserialize,
+    rSerialize,
+    Archive,
+))]
+#[redefined_attr(other(
+    #[archive_attr(derive(Hash, PartialEq, Eq))]
+))]
 pub struct Pair(pub Address, pub Address);
 
 impl Hash for Pair {
@@ -25,6 +43,14 @@ impl PartialEq for Pair {
         self.ordered().0 == other.ordered().0 && self.ordered().1 == other.ordered().1
     }
 }
+
+// impl Eq for ArchivedPairRedefined {}
+
+// impl PartialEq for ArchivedPairRedefined {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.0 == other.0 && self.1 == other.1
+//     }
+// }
 
 impl Pair {
     pub fn flip(self) -> Self {

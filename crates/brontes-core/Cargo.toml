@@ -82,23 +82,16 @@ criterion = { version = "0.5", features = ["async", "async_tokio"] }
 
 
 [build-dependencies]
-tokio.workspace = true
-reth-tracing-ext.workspace = true
-clickhouse.workspace = true
-hyper.workspace = true
-hyper-tls.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 rayon.workspace = true
-alloy-json-abi = { workspace = true, features = ["serde_json"] }
-phf.workspace = true
-phf_codegen.workspace = true
+walkdir = "2.4.0"
+convert_case = "0.6.0"
+quote = "1.0.35"
 dotenv.workspace = true
-toml = "0.8.2"
-reth-rpc-types.workspace = true
-reth-primitives.workspace = true
-futures.workspace = true
-itertools.workspace = true
+brontes-database.workspace = true
+serde.workspace = true
+toml = "0.8.9"
+brontes-types.workspace = true
+alloy-primitives.workspace = true
 
 
 [features]
