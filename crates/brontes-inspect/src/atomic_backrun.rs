@@ -121,7 +121,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             if start == end && swaps[0].token_out.address == swaps[1].token_in.address {
                 return Some(AtomicArbType::Triangle)
             } else {
-                return Some(AtomicArbType::CrossPair(2))
+                return Some(AtomicArbType::CrossPair(1))
             }
         } else {
             Some(identify_arb_sequence(&swaps))
