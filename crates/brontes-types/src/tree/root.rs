@@ -63,7 +63,7 @@ impl<V: NormalizedAction> Root<V> {
     pub fn modify_spans<T, F>(&mut self, find: &T, modify: &F)
     where
         T: Fn(&Node<V>) -> bool,
-        F: Fn(&mut Vec<Node<V>>),
+        F: Fn(Vec<&mut Node<V>>),
     {
         self.head.modify_node_spans(find, modify);
     }
