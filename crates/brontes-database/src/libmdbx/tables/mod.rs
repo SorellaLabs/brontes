@@ -124,6 +124,13 @@ impl Tables {
                     )
                     .await
             }
+            Tables::PoolCreationBlocks => {
+                initializer
+                    .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
+                        clear_table,
+                    )
+                    .await
+            }
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
@@ -134,12 +141,7 @@ impl Tables {
             }
             Tables::BlockInfo => {
                 initializer
-                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(block_range, clear_table)
-                    .await
-            }
-            Tables::PoolCreationBlocks => {
-                initializer
-                    .initialize_table_from_clickhouse::<PoolCreationBlocks, PoolCreationBlocksData>(
+                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
                         block_range,
                         clear_table,
                     )
@@ -214,17 +216,18 @@ macro_rules! compressed_table {
                 write!(f, "{}", stringify!($table_name))
             }
         }
-        
+
         #[cfg(test)]
         #[allow(unused)]
         impl $table_name {
             pub(crate) async fn test_initialized_data(
-                clickhouse: &crate::libmdbx::Clickhouse,
-                libmdbx: &crate::libmdbx::Libmdbx,
+                clickhouse: &crate::clickhouse::Clickhouse,
+                libmdbx: &crate::libmdbx::LibmdbxReadWriter,
                 block_range: Option<(u64, u64)>
             ) -> eyre::Result<(usize, usize)> {
-                paste::paste!{ 
-                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data::<$table_name, [<$table_name Data>]>(clickhouse, libmdbx, block_range).await 
+                paste::paste!{
+                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
+                        ::<$table_name,[<$table_name Data>]>(clickhouse, libmdbx, block_range).await
                 }
             }
         }
