@@ -172,6 +172,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
+            .needs_token(hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into())
             .with_expected_profit_usd(0.188588)
             .with_gas_paid_usd(71.632668);
 
