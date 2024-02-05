@@ -145,10 +145,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     }
 
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
-        addr_usd_deltas
-            .iter()
-            .map(|(addr, value)| *addr)
-            .collect()
+        addr_usd_deltas.iter().map(|(addr, value)| *addr).collect()
     }
 
     pub fn build_bundle_header(
@@ -287,7 +284,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .dex_quotes
             .price_at_or_before(Pair(token, self.quote), tx_index as usize)
             .map(|price| price.get_price(at).clone())
-            .unwrap_or_default()
+            .unwrap_or_else(|| {
+                tracing::error!(?token, "unwrap occured for");
+                Rational::ZERO
+            })
             * amount
     }
 }
