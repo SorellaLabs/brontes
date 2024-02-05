@@ -7,6 +7,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 
 alloy_sol_macro::sol!(
     function transfer(address, uint) returns(bool);
+    function transferFrom(address, address, uint) returns(bool);
 );
 
 pub fn try_decode_transfer<DB: LibmdbxReader>(
@@ -16,15 +17,22 @@ pub fn try_decode_transfer<DB: LibmdbxReader>(
     token: Address,
     db: &DB,
 ) -> Option<NormalizedTransfer> {
-    let res = transferCall::abi_decode(&calldata, false).ok()?;
+    let (from_addr, to_addr, amount) = transferCall::abi_decode(&calldata, false)
+        .ok()
+        .map(|t| Some((from, t._0, t._1)))
+        .unwrap_or_else(|| {
+            transferFromCall::abi_decode(&calldata, false)
+                .ok()
+                .map(|t| (t._0, t._1, t._2))
+        })?;
     let token_info = db.try_get_token_info(token).ok()??;
 
     Some(NormalizedTransfer {
-        amount: res._1.to_scaled_rational(token_info.decimals),
-        token: token_info,
-        to: res._0,
-        from,
+        amount:      amount.to_scaled_rational(token_info.decimals),
+        token:       token_info,
+        to:          to_addr,
+        from:        from_addr,
         trace_index: idx,
-        fee: Rational::ZERO,
+        fee:         Rational::ZERO,
     })
 }
