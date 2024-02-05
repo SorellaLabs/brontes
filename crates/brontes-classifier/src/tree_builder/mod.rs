@@ -86,6 +86,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
+        // tax token accounting should always be first.
         account_for_tax_tokens(tree);
         remove_swap_transfers(tree);
         remove_mint_transfers(tree);
@@ -366,6 +367,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                     let log_am = amount.to_scaled_rational(decimals);
 
                     if log_am != transfer.amount {
+                        tracing::info!("tax token");
                         let transferred_amount = min(&log_am, &transfer.amount).clone();
                         let fee = (&log_am - &transfer.amount).abs();
                         transfer.amount = transferred_amount;
