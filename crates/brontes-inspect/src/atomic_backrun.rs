@@ -60,6 +60,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<Bundle> {
+        //TODO: Also get transfer actions into vec for pnl calculation
+        // Usefull for longtail
         let swaps = searcher_actions
             .iter()
             .flatten()
