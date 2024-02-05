@@ -158,8 +158,14 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
-            .with_block(19042179)
-            .needs_token(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into())
+            .with_mev_tx_hashes(vec![hex!(
+                "dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"
+            )
+            .into()])
+            .needs_tokens(vec![
+                hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+            ])
             .with_dex_prices()
             .with_gas_paid_usd(2792.487)
             .with_expected_profit_usd(71.593);
