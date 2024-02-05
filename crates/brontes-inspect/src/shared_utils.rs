@@ -41,23 +41,26 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let mut deltas = HashMap::new();
 
         for action in actions.into_iter().flatten() {
-            if let Actions::Swap(swap) = action {
-                let amount_in = -swap.amount_in.clone();
-                let amount_out = swap.amount_out.clone();
-                // we track the address deltas so we can apply transfers later on the profit
-                if swap.from == swap.recipient {
-                    let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, amount_out, entry);
-                    apply_entry(swap.token_in.address, amount_in, entry);
-                } else {
-                    let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_in.address, amount_in, entry_recipient);
+            if !action.is_swap() {
+                continue
+            }
 
-                    let entry_from = deltas
-                        .entry(swap.recipient)
-                        .or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, amount_out, entry_from);
-                }
+            let swap = action.force_swap_ref();
+            let amount_in = -swap.amount_in.clone();
+            let amount_out = swap.amount_out.clone();
+            // we track the address deltas so we can apply transfers later on the profit
+            if swap.from == swap.recipient {
+                let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
+                apply_entry(swap.token_out.address, amount_out, entry);
+                apply_entry(swap.token_in.address, amount_in, entry);
+            } else {
+                let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
+                apply_entry(swap.token_in.address, amount_in, entry_recipient);
+
+                let entry_from = deltas
+                    .entry(swap.recipient)
+                    .or_insert_with(HashMap::default);
+                apply_entry(swap.token_out.address, amount_out, entry_from);
             }
         }
 
@@ -287,7 +290,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .dex_quotes
             .price_at_or_before(Pair(token, self.quote), tx_index as usize)
             .map(|price| price.get_price(at).clone())
-            .unwrap_or_default()
+            .unwrap_or_else(|| {
+                tracing::error!(?token, "unwrap occured for");
+                Rational::ZERO
+            })
             * amount
     }
 }
