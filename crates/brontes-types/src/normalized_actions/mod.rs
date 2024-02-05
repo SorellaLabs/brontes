@@ -229,9 +229,7 @@ impl Actions {
     }
 
     pub fn force_transfer_mut(&mut self) -> &mut NormalizedTransfer {
-        let Actions::Transfer(transfer) = self else {
-            unreachable!()
-        };
+        let Actions::Transfer(transfer) = self else { unreachable!() };
         transfer
     }
 

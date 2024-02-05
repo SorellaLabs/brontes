@@ -140,7 +140,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
         let all_actions = searcher_actions.clone();
-        tracing::info!("{:#?}", all_actions);
         let back_run_swaps = searcher_actions
             .pop()?
             .iter()
@@ -218,6 +217,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
+
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,
             PriceAt::After,
