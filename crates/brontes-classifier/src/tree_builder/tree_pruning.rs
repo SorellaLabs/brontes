@@ -3,6 +3,7 @@ use brontes_types::{
     tree::BlockTree,
     unzip_either::IterExt,
 };
+use malachite::{num::basic::traits::Zero, Rational};
 
 pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
     tree.remove_duplicate_data(
@@ -146,6 +147,9 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 transfers.iter_mut().for_each(|transfer| {
                     let mut swap = node.data.clone().force_swap();
                     let transfer = transfer.data.force_transfer_mut();
+                    if transfer.fee == Rational::ZERO {
+                        return
+                    }
 
                     // adjust the amount out case
                     if swap.token_out == transfer.token

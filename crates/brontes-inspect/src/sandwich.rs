@@ -104,6 +104,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .iter()
                         .flat_map(|pf| tree.get_tx_info(*pf))
                         .collect::<Vec<_>>();
+
                     let back_run_info = tree.get_tx_info(possible_backrun)?;
 
                     let searcher_actions = possible_frontruns
@@ -180,6 +181,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             return None
         }
+        tracing::info!(?front_run_swaps, ?backrun_swaps, "swaps");
 
         let victim_swaps = victim_actions
             .iter()
