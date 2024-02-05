@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
+    constants::{is_euro_stable, is_gold_stable, is_usd_stable},
     db::dex::PriceAt,
     mev::{AtomicArb, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
@@ -75,27 +76,21 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             })
             .collect_vec();
 
-        self.is_possible_arb(swaps)?;
+        let possible_arb_type = self.is_possible_arb(swaps)?;
 
-        let rev_usd = self.inner.get_dex_revenue_usd(
-            info.tx_index,
-            PriceAt::Average,
-            &searcher_actions,
-            metadata.clone(),
-        )?;
-
-        let gas_used = info.gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
-
-        // Can change this later to check if people are subsidizing arbs to kill the
-        // dry out the competition
-        if &rev_usd - &gas_used_usd <= Rational::ZERO {
-            return None
-        }
+        let profit = match possible_arb_type {
+            AtomicArbitrage::LongTail => return None,
+            AtomicArbitrage::Triangle => {
+                self.process_triangle_arb(info, metadata.clone(), &searcher_actions)
+            }
+            AtomicArbitrage::CrossPair => {
+                self.process_cross_pair_arb(info, metadata.clone(), &searcher_actions)
+            }
+        }?;
 
         let header = self.inner.build_bundle_header(
             &info,
-            (rev_usd - &gas_used_usd).to_float(),
+            profit.to_float(),
             PriceAt::Average,
             &searcher_actions,
             &vec![info.gas_details],
@@ -115,40 +110,100 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
 
-    fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<()> {
+    fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<AtomicArbitrage> {
         // check to see if more than 1 swap
         if swaps.len() <= 1 {
-            return None
+            return Some(AtomicArbitrage::LongTail)
         } else if swaps.len() == 2 {
             let start = swaps[0].token_in.address;
             let end = swaps[1].token_out.address;
 
-            if start != end {
-                return None
+            if start == end && swaps[0].token_out.address == swaps[1].token_in.address {
+                return Some(AtomicArbitrage::Triangle)
+            } else {
+                return Some(AtomicArbitrage::CrossPair)
             }
         } else {
-            let mut address_to_tokens: HashMap<Address, Vec<Address>> = HashMap::new();
-            swaps.iter().for_each(|swap| {
-                let e = address_to_tokens.entry(swap.pool).or_default();
-                e.push(swap.token_in.address);
-                e.push(swap.token_out.address);
-            });
-
-            let _pools = address_to_tokens.len();
-
-            let _unique_tokens = address_to_tokens
-                .values()
-                .flatten()
-                .sorted()
-                .dedup()
-                .count();
+            Some(identify_arb_sequence(swaps))
         }
-        Some(())
+    }
+
+    fn process_triangle_arb(
+        &self,
+        tx_info: TxInfo,
+        metadata: Arc<Metadata>,
+        searcher_actions: &Vec<Vec<Actions>>,
+    ) -> Option<Rational> {
+        let rev_usd = self.inner.get_dex_revenue_usd(
+            tx_info.tx_index,
+            PriceAt::Average,
+            &searcher_actions,
+            metadata.clone(),
+        )?;
+
+        let gas_used = tx_info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
+        // Can change this later to check if people are subsidizing arbs to kill the
+        // dry out the competition
+        if &rev_usd - &gas_used_usd <= Rational::ZERO {
+            return None
+        } else {
+            Some(rev_usd - &gas_used_usd)
+        }
+    }
+
+    fn process_cross_pair_arb(
+        &self,
+        tx_info: TxInfo,
+        metadata: Arc<Metadata>,
+        searcher_actions: &Vec<Vec<Actions>>,
+    ) -> Option<Rational> {
+        let rev_usd = self.inner.get_dex_revenue_usd(
+            tx_info.tx_index,
+            PriceAt::Average,
+            &searcher_actions,
+            metadata.clone(),
+        )?;
+
+        let gas_used = tx_info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
+        // Can change this later to check if people are subsidizing arbs to kill the
+        // dry out the competition
+        if &rev_usd - &gas_used_usd <= Rational::ZERO {
+            return None
+        } else {
+            Some(rev_usd - &gas_used_usd)
+        }
     }
 }
 
-#[allow(dead_code)]
+fn identify_arb_sequence(swaps: Vec<NormalizedSwap>) -> AtomicArbitrage {
+    let start_token = swaps.first().unwrap().token_in.address;
+    let end_token = swaps.last().unwrap().token_out.address;
+
+    if start_token != end_token {
+        return AtomicArbitrage::LongTail
+    }
+
+    let mut last_out = swaps.first().unwrap().token_out.address;
+
+    for swap in swaps.iter().skip(1) {
+        if swap.token_in.address != last_out {
+            return AtomicArbitrage::CrossPair
+        }
+        last_out = swap.token_out.address;
+    }
+
+    AtomicArbitrage::Triangle
+}
+
+/// Represents the different types of atomic arb
+/// A triangle arb is a simple arb that goes from token A -> B -> C -> A
+/// A cross pair arb is a more complex arb that goes from token A -> B -> C -> A
 enum AtomicArbitrage {
+    LongTail,
     Triangle,
     CrossPair,
 }
@@ -156,6 +211,7 @@ enum AtomicArbitrage {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
+    use brontes_types::constants::USDT_ADDRESS;
     use serial_test::serial;
 
     use crate::{
@@ -226,5 +282,18 @@ mod tests {
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    //TODO:
+    #[tokio::test]
+    #[serial]
+    async fn test_cross_stable_arb() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let tx = hex!("397c98efa1991e0384db16c56bd1693fb82addc7d932328941912afa8176cdb1").into();
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices();
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
