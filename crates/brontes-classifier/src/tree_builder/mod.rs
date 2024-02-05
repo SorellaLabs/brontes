@@ -348,6 +348,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 if let Some((addr, from, to, amount)) = decode_transfer(log) {
                     if addr != transfer.token.address || transfer.from != from || transfer.to != to
                     {
+
                         continue
                     }
 
@@ -374,6 +375,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
                         tracing::info!(?transfer, "tax token");
                     }
+                    break;
                 }
             }
 
