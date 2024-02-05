@@ -44,17 +44,6 @@ jobs:
 
       - name: cargo fmt
         run: cargo +nightly fmt --all -- --check
-
-      # init server args
-      - run: mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config
-        shell: bash
-      - run: echo ${{ secrets.BASTION_SSH }} > ~/.ssh/bastion && chmod 600 ~/.ssh/bastion
-        shell: bash
-      - run: echo ${{ secrets.BRONTES_SSH }} > ~/.ssh/brontes_server && chmod 600 ~/.ssh/brontes_server
-        shell: bash
-
-      - name: cargo test
-        run: ssh brontes_server -o StrictHostKeyChecking=no -t "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
   test: 
     runs-on: ubuntu-latest
     steps:
