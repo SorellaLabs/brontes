@@ -32,6 +32,9 @@ pub mod tables;
 pub mod types;
 pub mod utils;
 
+#[cfg(test)]
+pub mod test_utils;
+
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
 
@@ -84,10 +87,13 @@ impl Libmdbx {
         clickhouse: Arc<Clickhouse>,
         tracer: Arc<T>,
         tables: &[Tables],
+        clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
-        initializer.initialize(tables, block_range).await?;
+        initializer
+            .initialize(tables, clear_tables, block_range)
+            .await?;
 
         Ok(())
     }

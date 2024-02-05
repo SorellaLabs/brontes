@@ -107,6 +107,8 @@ auto_impl.workspace = true
 serial_test.workspace = true
 test-fuzz = "4"
 async-trait.workspace = true
+reth-tasks.workspace = true
+brontes-core.workspace = true
 
 [build-dependencies]
 serde.workspace = true
@@ -116,4 +118,4 @@ alloy-primitives.workspace = true
 
 [features]
 tests = []
-local = []
+local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
