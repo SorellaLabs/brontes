@@ -6,10 +6,10 @@ use brontes_types::Protocol;
 use serde::Deserialize;
 use toml::Table;
 
-const CONFIG_FILE_NAME: &str = "manual_inserts.toml";
+const CONFIG_FILE_NAME: &str = "classifier_config.toml";
 
 fn main() {
-    insert_manually_defined_entries()
+    insert_manually_defined_classifiers()
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -18,7 +18,7 @@ pub struct TokenInfoWithAddressToml {
     pub decimals: u8,
     pub address:  Address,
 }
-fn insert_manually_defined_entries() {
+fn insert_manually_defined_classifiers() {
     // don't run on local
     let _ = dotenv::dotenv();
     let Ok(brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
