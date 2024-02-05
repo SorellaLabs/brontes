@@ -187,7 +187,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     if swap.token_out == transfer.token
                         && swap.pool == transfer.from
                         && swap.recipient == transfer.token.address
-                        && swap.amount_out != &transfer.amount 
+                        && swap.amount_out != transfer.amount
                     {
                         let fee_amount = transfer.fee.clone();
                         // token is going out so the amount out on the swap
