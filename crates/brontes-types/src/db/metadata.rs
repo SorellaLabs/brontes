@@ -32,7 +32,7 @@ use crate::{
     rSerialize,
     Archive
 ))]
-pub struct MetadataInner {
+pub struct BlockMetadataInner {
     #[serde(with = "u256")]
     pub block_hash:             U256,
     pub block_timestamp:        u64,
@@ -45,36 +45,46 @@ pub struct MetadataInner {
     pub private_flow:           Vec<TxHash>,
 }
 
-implement_table_value_codecs_with_zc!(MetadataInnerRedefined);
+implement_table_value_codecs_with_zc!(BlockMetadataInnerRedefined);
 
-/// aggregated metadata from clickhouse WITH dex pricing
-#[derive(Debug, Clone, derive_more::Deref, derive_more::AsRef)]
-pub struct MetadataCombined {
+/// Aggregated Metadata
+#[derive(Debug, Clone, derive_more::Deref, derive_more::AsRef, Default)]
+pub struct Metadata {
     #[deref]
     #[as_ref]
-    pub db:         MetadataNoDex,
-    pub dex_quotes: DexQuotes,
+    pub block_metadata: BlockMetadata,
+    pub cex_quotes:     CexPriceMap,
+    pub dex_quotes:     Option<DexQuotes>,
 }
 
-impl MetadataCombined {
+impl Metadata {
     pub fn get_gas_price_usd(&self, gas_used: u128) -> Rational {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
-        let eth_price = if self.eth_prices == Rational::ZERO {
-            self.dex_quotes
-                .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), self.dex_quotes.0.len())
-                .map(|price| price.post_state)
-                .unwrap()
+        let eth_price = if self.block_metadata.eth_prices == Rational::ZERO {
+            if let Some(dex_quotes) = &self.dex_quotes {
+                dex_quotes
+                    .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), dex_quotes.0.len())
+                    .map(|price| price.post_state)
+                    .unwrap_or(Rational::ZERO)
+            } else {
+                Rational::ZERO
+            }
         } else {
-            self.eth_prices.clone()
+            self.block_metadata.eth_prices.clone()
         };
 
         gas_used_rational * eth_price
     }
+
+    pub fn into_full_metadata(mut self, dex_quotes: DexQuotes) -> Self {
+        self.dex_quotes = Some(dex_quotes);
+        self
+    }
 }
 
-/// aggregated metadata from clickhouse WITHOUT dex pricing
+/// Block Metadata
 #[derive(Debug, Clone, Default)]
-pub struct MetadataNoDex {
+pub struct BlockMetadata {
     pub block_num:              u64,
     pub block_hash:             U256,
     pub block_timestamp:        u64,
@@ -82,14 +92,13 @@ pub struct MetadataNoDex {
     pub p2p_timestamp:          Option<u64>,
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward:    Option<u128>,
-    pub cex_quotes:             CexPriceMap,
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     /// Tx
     pub private_flow:           HashSet<TxHash>,
 }
 
-impl MetadataNoDex {
+impl BlockMetadata {
     pub fn new(
         block_num: u64,
         block_hash: U256,
@@ -98,7 +107,6 @@ impl MetadataNoDex {
         p2p_timestamp: Option<u64>,
         proposer_fee_recipient: Option<Address>,
         proposer_mev_reward: Option<u128>,
-        cex_quotes: CexPriceMap,
         eth_prices: Rational,
         private_flow: HashSet<TxHash>,
     ) -> Self {
@@ -107,7 +115,6 @@ impl MetadataNoDex {
             block_hash,
             relay_timestamp,
             p2p_timestamp,
-            cex_quotes,
             eth_prices,
             proposer_fee_recipient,
             proposer_mev_reward,
@@ -116,7 +123,7 @@ impl MetadataNoDex {
         }
     }
 
-    pub fn into_finalized_metadata(self, prices: DexQuotes) -> MetadataCombined {
-        MetadataCombined { db: self, dex_quotes: prices }
+    pub fn into_metadata(self, cex_quotes: CexPriceMap, dex_quotes: Option<DexQuotes>) -> Metadata {
+        Metadata { block_metadata: self, cex_quotes, dex_quotes }
     }
 }
