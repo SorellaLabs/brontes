@@ -144,7 +144,13 @@ impl InspectorTestUtils {
         let inspector = config.expected_mev_type.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &vec![
+                CexExchange::Binance,
+                CexExchange::Coinbase,
+                CexExchange::Okex,
+                CexExchange::BybitSpot,
+                CexExchange::Kucoin,
+            ],
         );
 
         let results = inspector.process_tree(tree.into(), metadata.into()).await;
