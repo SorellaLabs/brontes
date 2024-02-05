@@ -26,6 +26,9 @@ use crate::decoding::parser::TraceParser;
 #[cfg(feature = "local")]
 use crate::local_provider::LocalProvider;
 
+// so we only have to init critical tables once
+const INIT_LOCK: OnceLock<()> = OnceLock::new();
+
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
     pub libmdbx:          &'static LibmdbxReadWriter,
@@ -43,18 +46,25 @@ impl TraceLoader {
 
         let this = Self { libmdbx, tracing_provider, _metrics: b };
 
-        let this = std::thread::spawn(|| {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(async {
-                    this.init_on_start().await.unwrap();
-                    this
-                })
-        })
-        .join()
-        .unwrap();
+        let this = if INIT_LOCK.get().is_none() {
+            tracing::info!("initing critical tables");
+            let this = std::thread::spawn(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+                    .block_on(async {
+                        this.init_on_start().await.unwrap();
+                        this
+                    })
+            })
+            .join()
+            .unwrap();
+            let _ = INIT_LOCK.get_or_init(|| ());
+            this
+        } else {
+            this
+        };
 
         this
     }
