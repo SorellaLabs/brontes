@@ -91,7 +91,7 @@ impl DexQuotes {
         }
 
         loop {
-            if let Some(_) = self.get_price(pair, tx_idx) {
+            if let Some(_) = self.get_price(*pair, tx_idx) {
                 return true
             }
             if tx_idx == 0 {
