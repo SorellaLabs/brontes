@@ -28,7 +28,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default, Redefined)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
     pub block_number:  u64,
@@ -48,14 +48,14 @@ pub struct BundleHeader {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Serialize, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenProfits {
     pub profits: Vec<TokenProfit>,
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Serialize, Redefined)]
+#[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenProfit {
     pub profit_collector: Address,
