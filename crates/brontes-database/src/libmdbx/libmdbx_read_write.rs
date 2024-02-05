@@ -21,6 +21,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
 };
+use eyre::eyre;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
@@ -478,14 +479,14 @@ impl LibmdbxReadWriter {
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
         tx.get::<BlockInfo>(block_num)?
-            .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))
+            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num))
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         let tx = self.0.ro_tx()?;
         Ok(CexPriceMap(
             tx.get::<CexPrice>(block_num)?
-                .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))?
+                .ok_or_else(|| eyre!("Failed to fetch cexquotes's for block {}", block_num))?
                 .0,
         ))
     }
