@@ -241,7 +241,7 @@ impl ClassifierTestUtils {
         &self,
         tx_hashes: Vec<TxHash>,
         quote_asset: Address,
-    ) -> Result<Vec<(BlockTree<Actions>, Option<DexQuotes>)>, ClassifierTestUtilsError> {
+    ) -> Result<Vec<(BlockTree<Actions>, DexQuotes)>, ClassifierTestUtilsError> {
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
@@ -269,16 +269,16 @@ impl ClassifierTestUtils {
 
         let mut possible_price = Vec::new();
         let mut failed = false;
-        for block in start_block..=end_block {
-            if let Ok(m) = self.libmdbx.get_metadata(block) {
-                if m.dex_quotes.is_none() {
-                    failed = true;
-                    break;
+
+        for block_num in start_block..=end_block {
+            match self.libmdbx.fetch_dex_quotes(block_num) {
+                Ok(dex_quotes) => {
+                    possible_price.push(dex_quotes);
                 }
-                possible_price.push(m.dex_quotes);
-            } else {
-                failed = true;
-                break
+                Err(_) => {
+                    failed = true;
+                    break
+                }
             }
         }
 
@@ -297,7 +297,7 @@ impl ClassifierTestUtils {
                 self.libmdbx
                     .write_dex_quotes(block, Some(quotes.clone()))
                     .unwrap();
-                prices.push(Some(quotes));
+                prices.push(quotes);
             }
             prices
         } else {

@@ -55,7 +55,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
             && self.clickhouse_futures.is_empty()
     }
 
-    fn clear_no_price_chan(&mut self) {
+    fn clear_no_price_channel(&mut self) {
         if let Some(chan) = self.no_price_chan.as_mut() {
             while let Ok(_) = chan.try_recv() {}
         }
@@ -64,7 +64,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
         let block = tree.header.number;
         // clear price channel
-        self.clear_no_price_chan();
+        self.clear_no_price_channel();
         // pull directly from libmdbx
         if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
             let Ok(meta) = libmdbx.get_metadata(block) else {
@@ -102,7 +102,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataF
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        self.clear_no_price_chan();
+        self.clear_no_price_channel();
 
         if let Some(res) = self.result_buf.pop_front() {
             return Poll::Ready(Some(res))
