@@ -4,26 +4,26 @@ use std::{
 };
 
 use brontes_pricing::{Protocol, SubGraphsEntry};
-
 use brontes_types::{
     db::{
+        address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_tokens::{PoolTokens, PoolTokensRedefined},
+        builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
+        searcher::{SearcherInfo, SearcherInfoRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
-        searcher::{SearcherInfo, SearcherInfoRedefined},
-        builder::{BuilderInfo, BuilderInfoRedefined},
-        address_metadata::{AddressMetadata, AddressMetadataRedefined}
     },
     pair::Pair,
     price_graph_types::SubGraphsEntryRedefined,
     serde_utils::*,
     traits::TracingProvider,
 };
+use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
@@ -33,7 +33,7 @@ mod const_sql;
 use alloy_primitives::Address;
 use const_sql::*;
 use paste::paste;
-use reth_db::{table::Table, TableType};
+use reth_db::TableType;
 
 use super::{
     initialize::LibmdbxInitializer, types::IntoTableKey, utils::static_bindings, CompressedTable,
@@ -146,7 +146,7 @@ impl Tables {
                         clear_table,
                     )
                     .await
-            },
+            }
             Tables::DexPrice => Ok(()),
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
@@ -573,7 +573,6 @@ compressed_table!(
     }
 );
 
-
 compressed_table!(
     Table AddressMeta {
         Data {
@@ -591,8 +590,6 @@ compressed_table!(
         }
     }
 );
-
-
 
 compressed_table!(
     Table Searcher {
