@@ -208,7 +208,7 @@ mod tests {
         assert_eq!(c, l);
 
         // Metadata
-        let (c, l) = Metadata::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
+        let (c, l) = BlockInfo::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
             .await
             .unwrap();
         assert_eq!(c, l);

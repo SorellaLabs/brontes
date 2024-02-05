@@ -35,7 +35,7 @@ mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    db::metadata::MetadataCombined,
+    db::metadata::Metadata,
     mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -61,7 +61,7 @@ pub struct ComposerResults {
 pub async fn compose_mev_results(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> ComposerResults {
     let pre_processing = pre_process(tree.clone(), metadata.clone());
     let (possible_mev_txes, classified_mev) =
@@ -77,7 +77,7 @@ pub async fn compose_mev_results(
 async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
     orchestra
@@ -118,7 +118,7 @@ fn on_orchestra_resolution(
     pre_processing: BlockPreprocessing,
     tree: Arc<BlockTree<Actions>>,
     possible_mev_txes: PossibleMevCollection,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut header = build_mev_header(

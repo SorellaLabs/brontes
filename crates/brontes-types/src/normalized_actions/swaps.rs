@@ -64,8 +64,7 @@ pub struct NormalizedSwap {
 }
 
 impl NormalizedSwap {
-    /// Calculates the rate for a given DEX swap
-
+    /// Calculates the exchange rate for a given DEX swap
     pub fn swap_rate(&self) -> Rational {
         if self.amount_out == Rational::ZERO {
             return Rational::ZERO
