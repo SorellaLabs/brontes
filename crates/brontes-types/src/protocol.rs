@@ -59,6 +59,7 @@ to_byte!(
         CurveCryptoSwap,
         AaveV2,
         AaveV3,
+        BalancerV1,
         UniswapX,
         CurveV1BasePool,
         CurveV1MetaPool,
