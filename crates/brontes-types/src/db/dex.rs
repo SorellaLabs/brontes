@@ -83,7 +83,7 @@ impl DexQuotes {
         self.0.get(tx)?.as_ref()?.get(&pair)
     }
 
-    pub fn has_quote(&self, pair: Pair) -> bool {
+    pub fn has_quote(&self, pair: &Pair) -> bool {
         let mut tx_idx = self.0.len();
 
         if pair.0 == pair.1 {

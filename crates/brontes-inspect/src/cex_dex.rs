@@ -355,7 +355,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Option<BundleData> {
         if self.is_triangular_arb(possible_cex_dex, info, metadata) {
-            return None;
+            return None
         }
 
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
@@ -381,7 +381,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if possible_cex_dex.swaps.len() < 2 {
-            return false;
+            return false
         }
 
         let original_token = possible_cex_dex.swaps[0].token_in.address;
@@ -389,7 +389,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         // Check if there is a cycle
         if original_token != final_token {
-            return false;
+            return false
         }
 
         let profit = self
@@ -407,9 +407,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .unwrap_or_default();
 
         if profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) <= Rational::ZERO {
-            return false;
+            return false
         } else {
-            return true;
+            return true
         }
     }
 }
