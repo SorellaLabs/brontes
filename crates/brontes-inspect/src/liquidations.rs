@@ -153,6 +153,7 @@ mod tests {
     };
 
     #[tokio::test]
+    #[serial]
     async fn test_aave_v3_liquidation() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0);
 
@@ -173,6 +174,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_aave_v2_liquidation() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
