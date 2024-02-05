@@ -14,7 +14,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{b256, Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -31,7 +31,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         let liq_txs = tree.collect_all(|node| {
             (
@@ -57,7 +57,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     fn calculate_liquidation(
         &self,
         info: TxInfo,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         actions: Vec<Actions>,
     ) -> Option<Bundle> {
         let swaps = actions

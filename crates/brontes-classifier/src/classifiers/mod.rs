@@ -10,6 +10,9 @@ pub use sushiswap::*;
 pub mod curve;
 pub use curve::*;
 
+pub mod balancer;
+pub use balancer::*;
+
 pub mod aave;
 pub use aave::*;
 
@@ -67,5 +70,7 @@ action_dispatch!(
     AaveV3liquidationCallCall,
     AaveV2flashLoanCall,
     AaveV3flashLoanCall,
-    AaveV3flashLoanSimpleCall
+    AaveV3flashLoanSimpleCall,
+    BalancerV1swapExactAmountInCall,
+    BalancerV1swapExactAmountOutCall
 );
