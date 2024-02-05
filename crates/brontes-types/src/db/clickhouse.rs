@@ -9,7 +9,7 @@ use sorella_db_databases::{
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::serde_primitives::vec_u256;
+use crate::serde_utils::vec_u256;
 
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
