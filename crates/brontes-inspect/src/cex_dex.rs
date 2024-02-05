@@ -516,6 +516,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
@@ -530,6 +531,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into())
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
