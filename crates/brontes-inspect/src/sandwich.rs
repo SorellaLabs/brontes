@@ -181,7 +181,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             return None
         }
-        tracing::info!(?front_run_swaps, ?backrun_swaps, "swaps");
+        tracing::info!(?front_run_swaps, ?back_run_swaps, "swaps");
 
         let victim_swaps = victim_actions
             .iter()
