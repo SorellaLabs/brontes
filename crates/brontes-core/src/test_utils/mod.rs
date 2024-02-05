@@ -68,11 +68,15 @@ impl TraceLoader {
         pricing: bool,
     ) -> Result<Metadata, TraceLoaderError> {
         if pricing {
-            self.test_metadata_with_pricing(block)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            self.test_metadata_with_pricing(block).map_err(|e| {
+                tracing::error!(error=%e);
+                TraceLoaderError::NoMetadataFound(block)
+            })
         } else {
-            self.test_metadata(block)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            self.test_metadata(block).map_err(|e| {
+                tracing::error!(error=%e);
+                TraceLoaderError::NoMetadataFound(block)
+            })
         }
     }
 
