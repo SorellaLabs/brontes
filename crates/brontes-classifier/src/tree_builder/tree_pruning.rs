@@ -178,9 +178,6 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     None
                 })
                 .unzip_either();
-            if swaps.is_empty() {
-                return
-            }
 
             for node in swaps {
                 transfers.iter_mut().for_each(|transfer| {
@@ -190,7 +187,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     if swap.token_out == transfer.token
                         && swap.pool == transfer.from
                         && swap.recipient == transfer.token.address
-                        && swap.amount_out != (&transfer.amount + &transfer.fee)
+                        && swap.amount_out != &transfer.amount 
                     {
                         let fee_amount = transfer.fee.clone();
                         // token is going out so the amount out on the swap
