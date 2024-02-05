@@ -22,6 +22,7 @@ use brontes_pricing::{
 };
 use brontes_types::{
     db::{dex::DexQuotes, token_info::TokenInfoWithAddress, traits::LibmdbxWriter},
+    pair::Pair,
     structured_trace::TraceActions,
     tree::{BlockTree, Node},
 };
@@ -167,6 +168,23 @@ impl ClassifierTestUtils {
         .await)
     }
 
+    fn has_all_tokens(
+        &self,
+        quote_token: Address,
+        quotes: Option<DexQuotes>,
+        needs_tokens: &Vec<Address>,
+    ) -> bool {
+        quotes.map(|quote| {
+            let pairs = needs_tokens
+                .iter()
+                .zip(vec![quote_token].into_iter().cycle())
+                .map(|(token, quote)| Pair(*token, quote))
+                .all(|pair| {
+                    quote.
+                });
+        });
+    }
+
     pub async fn build_tree_tx(
         &self,
         tx_hash: TxHash,
@@ -182,6 +200,7 @@ impl ClassifierTestUtils {
         &self,
         tx_hash: TxHash,
         quote_asset: Address,
+        needs_tokens: Vec<Address>,
     ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, block, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
@@ -323,6 +342,7 @@ impl ClassifierTestUtils {
         &self,
         block: u64,
         quote_asset: Address,
+        needs_tokens: Vec<Address>,
     ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), ClassifierTestUtilsError> {
         let BlockTracesWithHeaderAnd { traces, header, .. } = self
             .trace_loader
@@ -333,8 +353,8 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
         let tree = classifier.build_block_tree(traces, header).await;
 
-        let mut price =
-            if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        let mut price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+
         price = if price.is_none() {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             ctr.store(true, SeqCst);
