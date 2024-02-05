@@ -367,7 +367,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                     let log_am = amount.to_scaled_rational(decimals);
 
                     if log_am != transfer.amount {
-                        tracing::info!("tax token");
+
+                        tracing::info!(?transfer, "tax token");
                         let transferred_amount = min(&log_am, &transfer.amount).clone();
                         let fee = (&log_am - &transfer.amount).abs();
                         transfer.amount = transferred_amount;
