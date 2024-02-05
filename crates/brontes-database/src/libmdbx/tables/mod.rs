@@ -4,6 +4,7 @@ use std::{
 };
 
 use brontes_pricing::{Protocol, SubGraphsEntry};
+
 use brontes_types::{
     db::{
         address_to_tokens::{PoolTokens, PoolTokensRedefined},
@@ -14,10 +15,13 @@ use brontes_types::{
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
+        searcher::{SearcherInfo, SearcherInfoRedefined},
+        builder::{BuilderInfo, BuilderInfoRedefined},
+        address_metadata::{AddressMetadata, AddressMetadataRedefined}
     },
     pair::Pair,
     price_graph_types::SubGraphsEntryRedefined,
-    serde_primitives::*,
+    serde_utils::*,
     traits::TracingProvider,
 };
 use serde_with::serde_as;
@@ -35,7 +39,7 @@ use super::{
     initialize::LibmdbxInitializer, types::IntoTableKey, utils::static_bindings, CompressedTable,
 };
 
-pub const NUM_TABLES: usize = 10;
+pub const NUM_TABLES: usize = 13;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -140,11 +144,22 @@ impl Tables {
                         clear_table,
                     )
                     .await
-            }
+            },
             Tables::DexPrice => Ok(()),
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
             Tables::TxTraces => Ok(()),
+            Tables::Builder => {
+                initializer
+                    .clickhouse_init_no_args::<Builder, BuilderData>(clear_table)
+                    .await
+            }
+            Tables::AddressMeta => {
+                initializer
+                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(clear_table)
+                    .await
+            }
+            Tables::Searcher => Ok(()),
         }
     }
 }
@@ -159,7 +174,10 @@ tables!(
     PoolCreationBlocks,
     MevBlocks,
     SubGraphs,
-    TxTraces
+    TxTraces,
+    Builder,
+    AddressMeta,
+    Searcher
 );
 
 /// Must be in this order when defining
@@ -526,6 +544,64 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Other
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table Builder {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: BuilderInfo,
+            compressed_value: BuilderInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+
+compressed_table!(
+    Table AddressMeta {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: AddressMetadata,
+            compressed_value: AddressMetadataRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+
+
+compressed_table!(
+    Table Searcher {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: SearcherInfo,
+            compressed_value: SearcherInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
         },
         CLI {
             can_insert: False

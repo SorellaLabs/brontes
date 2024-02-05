@@ -224,5 +224,17 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(c, l);
+
+        // Builder
+        let (c, l) = Builder::test_initialized_data(&clickhouse, &libmdbx, None)
+            .await
+            .unwrap();
+        assert_eq!(c, l);
+
+        // AddressMeta
+        let (c, l) = AddressMeta::test_initialized_data(&clickhouse, &libmdbx, None)
+            .await
+            .unwrap();
+        assert_eq!(c, l);
     }
 }

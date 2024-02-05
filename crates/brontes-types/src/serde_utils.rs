@@ -22,9 +22,9 @@ pub mod address_string {
     }
 }
 
-pub mod vec_address_string {
+pub mod vec_address {
 
-    use std::str::FromStr;
+    use std::{fmt::Debug, str::FromStr};
 
     use alloy_primitives::Address;
     use serde::{
@@ -32,22 +32,25 @@ pub mod vec_address_string {
         ser::{Serialize, Serializer},
     };
 
-    pub fn serialize<S: Serializer>(u: &Vec<Address>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer, T: Into<Address> + Debug>(
+        u: &Vec<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         let st: Vec<String> = u
             .iter()
-            .map(|addr| format!("{:?}", addr.clone()))
+            .map(|addr| format!("{:?}", addr))
             .collect::<Vec<_>>();
         st.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Address>, D::Error>
+    pub fn deserialize<'de, D, T: From<Address>>(deserializer: D) -> Result<Vec<T>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
         data.into_iter()
-            .map(|d| Address::from_str(&d))
+            .map(|d| Address::from_str(&d).map(Into::into))
             .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
             .map_err(serde::de::Error::custom)
     }
@@ -145,38 +148,6 @@ pub(crate) mod vec_vec_fixed_string {
                     .map(|a| Address::from_str(&a.string))
                     .collect::<Result<Vec<_>, _>>()
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(serde::de::Error::custom)
-    }
-}
-#[allow(dead_code)]
-pub(crate) mod vec_b256 {
-    use std::str::FromStr;
-
-    use alloy_primitives::B256;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
-
-    pub fn serialize<S: Serializer>(u: &Vec<B256>, serializer: S) -> Result<S::Ok, S::Error> {
-        u.iter()
-            .map(|a| format!("{:?}", a).into())
-            .collect::<Vec<FixedString>>()
-            .serialize(serializer)
-    }
-
-    #[allow(dead_code)]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<B256>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let addresses: Vec<FixedString> = Deserialize::deserialize(deserializer)?;
-
-        addresses
-            .into_iter()
-            .map(|a| B256::from_str(&a.string))
             .collect::<Result<Vec<_>, _>>()
             .map_err(serde::de::Error::custom)
     }
@@ -280,6 +251,68 @@ pub mod u256 {
         Ok(U256::from_str(&data)
             .map_err(serde::de::Error::custom)?
             .into())
+    }
+}
+
+pub mod vec_b256 {
+
+    use std::{fmt::Debug, str::FromStr};
+
+    use alloy_primitives::B256;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    pub fn serialize<S: Serializer, T: Into<B256> + Debug>(
+        u: &Vec<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st: Vec<String> = u.into_iter().map(|data| format!("{:?}", data)).collect();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, T: From<B256>>(deserializer: D) -> Result<Vec<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: Vec<String> = Deserialize::deserialize(deserializer)?;
+
+        data.into_iter()
+            .map(|d| B256::from_str(&d).map(Into::into))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+pub mod vec_bls_pub_key {
+
+    use std::{fmt::Debug, str::FromStr};
+
+    use reth_rpc_types::beacon::BlsPublicKey;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    pub fn serialize<S: Serializer, T: Into<BlsPublicKey> + Debug>(
+        u: &Vec<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st: Vec<String> = u.into_iter().map(|data| format!("{:?}", data)).collect();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, T: From<BlsPublicKey>>(deserializer: D) -> Result<Vec<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: Vec<String> = Deserialize::deserialize(deserializer)?;
+
+        data.into_iter()
+            .map(|d| BlsPublicKey::from_str(&d).map(Into::into))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -538,5 +571,56 @@ pub mod pools_libmdbx {
                 .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
                 .map_err(serde::de::Error::custom)?,
         ))
+    }
+}
+
+pub mod option_contract_info {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::{db::address_metadata::ContractInfo, Protocol};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (verified_contract, contract_creator_opt, protocol, reputation): (
+            Option<bool>,
+            Option<String>,
+            Option<String>,
+            Option<u8>,
+        ) = Deserialize::deserialize(deserializer)?;
+
+        Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
+            verified_contract,
+            contract_creator: Address::from_str(&contract_creator).unwrap(),
+            protocol: protocol.map(|p| Protocol::from_str(&p).ok()).flatten(),
+            reputation,
+        }))
+    }
+}
+
+pub mod socials {
+
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::db::address_metadata::Socials;
+
+    pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (twitter, twitter_followers, website_url, crunchbase, linkedin): (
+            Option<String>,
+            Option<u64>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ) = Deserialize::deserialize(deserializer)?;
+
+        Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
     }
 }

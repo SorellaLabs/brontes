@@ -57,6 +57,7 @@ redefined_remote!(
 
 pub type TxHashRedefined = FixedBytesRedefined<32>;
 pub type B256Redefined = FixedBytesRedefined<32>;
+pub type BlsPublicKeyRedefined = FixedBytesRedefined<48>;
 
 impl<const N: usize> Serialize for FixedBytesRedefined<N> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
