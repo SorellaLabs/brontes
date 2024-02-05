@@ -9,7 +9,7 @@ use sorella_db_databases::{clickhouse, clickhouse::Row};
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
-    serde_primitives::{addresss, option_addresss},
+    serde_utils::{addresss, option_addresss},
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
