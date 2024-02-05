@@ -12,7 +12,7 @@ use super::Node;
 use crate::{
     db::metadata::Metadata,
     normalized_actions::{Actions, NormalizedAction},
-    TxInfo,
+    TreeSearchArgs, TxInfo,
 };
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
@@ -69,18 +69,20 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn collect<F>(&self, call: &F) -> Vec<V>
     where
-        F: Fn(&Node<V>) -> (bool, bool),
+        F: Fn(&Node<V>) -> TreeSearchArgs,
     {
         let mut result = Vec::new();
         self.head
             .collect(&mut result, call, &|data| data.data.clone());
+
+        result.sort_by(|a, b| a.get_trace_index().cmp(&b.get_trace_index()));
 
         result
     }
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F)
     where
-        T: Fn(&Node<V>) -> (bool, bool),
+        T: Fn(&Node<V>) -> TreeSearchArgs,
         F: Fn(&mut Node<V>),
     {
         self.head.modify_node_if_contains_childs(find, modify);
@@ -102,8 +104,8 @@ impl<V: NormalizedAction> Root<V> {
     ) where
         T: Fn(&Node<V>) -> R + Sync,
         C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node<V>) -> (bool, bool),
-        Re: Fn(&Node<V>) -> (bool, bool) + Sync,
+        F: Fn(&Node<V>) -> TreeSearchArgs,
+        Re: Fn(&Node<V>) -> TreeSearchArgs + Sync,
     {
         let mut find_res = Vec::new();
         self.head.collect(&mut find_res, find, &|data| data.clone());
@@ -124,7 +126,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
     where
-        T: Fn(Address, &Node<V>) -> (bool, bool),
+        T: Fn(Address, &Node<V>) -> TreeSearchArgs,
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         // bool is used for recursion
