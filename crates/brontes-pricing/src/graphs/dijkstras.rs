@@ -227,6 +227,7 @@ where
 /// assert_eq!(vec![101], build_path(&101, &parents));
 /// ```
 #[allow(clippy::implicit_hasher)]
+#[allow(unused)]
 pub fn build_path<N, C>(target: &N, parents: &HashMap<N, (N, C)>) -> Vec<N>
 where
     N: Eq + Hash + Clone,

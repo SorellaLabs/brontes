@@ -21,7 +21,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AtomicBackrun {
     pub tx_hash:     B256,
