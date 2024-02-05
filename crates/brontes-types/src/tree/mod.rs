@@ -120,7 +120,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     pub fn modify_spans<T, F>(&mut self, find: T, modify: F)
     where
         T: Fn(&Node<V>) -> bool + Send + Sync,
-        F: Fn(&mut Vec<Node<V>>) + Send + Sync,
+        F: Fn(Vec<&mut Node<V>>) + Send + Sync,
     {
         self.tx_roots.par_iter_mut().for_each(|root| {
             root.modify_spans(&find, &modify);
