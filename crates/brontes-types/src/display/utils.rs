@@ -114,7 +114,7 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     }
 
     let atomic_backrun_data = match &bundle.data {
-        BundleData::AtomicBackrun(data) => data,
+        BundleData::AtomicArb(data) => data,
         _ => panic!("Wrong bundle type"),
     };
 

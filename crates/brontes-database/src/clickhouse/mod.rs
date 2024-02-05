@@ -75,7 +75,7 @@ impl Clickhouse {
     // ) {
     //     match mev_detail {
     //         BundleData::Sandwich(sandwich) => sandwich.serialize(serializer),
-    //         BundleData::AtomicBackrun(backrun) => backrun.serialize(serializer),
+    //         BundleData::AtomicArb(backrun) => backrun.serialize(serializer),
     //         BundleData::JitSandwich(jit_sandwich) =>
     // jit_sandwich.serialize(serializer),         BundleData::Jit(jit) =>
     // jit.serialize(serializer),         BundleData::CexDex(cex_dex) =>
@@ -175,7 +175,7 @@ impl Clickhouse {
 fn mev_table_type(mev: &BundleData) -> DatabaseTables {
     match mev.mev_type() {
         brontes_types::mev::MevType::Sandwich => DatabaseTables::Sandwich,
-        brontes_types::mev::MevType::Backrun => DatabaseTables::AtomicBackrun,
+        brontes_types::mev::MevType::AtomicArb => DatabaseTables::AtomicArb,
         brontes_types::mev::MevType::JitSandwich => DatabaseTables::JitSandwich,
         brontes_types::mev::MevType::Jit => DatabaseTables::Jit,
         brontes_types::mev::MevType::CexDex => DatabaseTables::CexDex,
