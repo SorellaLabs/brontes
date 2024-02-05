@@ -1,4 +1,4 @@
-use std::{fmt::Debug};
+use std::fmt::Debug;
 
 use malachite::Rational;
 use reth_primitives::Address;
@@ -16,4 +16,3 @@ pub struct NormalizedTransfer {
     pub amount:      Rational,
     pub fee:         Rational,
 }
-
