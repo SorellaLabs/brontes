@@ -6,6 +6,7 @@ use std::{
 };
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
+use brontes_database::{clickhouse::Clickhouse, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
@@ -68,16 +69,56 @@ impl TraceLoader {
         pricing: bool,
     ) -> Result<Metadata, TraceLoaderError> {
         if pricing {
-            self.test_metadata_with_pricing(block).map_err(|e| {
-                tracing::error!(error=%e);
-                TraceLoaderError::NoMetadataFound(block)
-            })
+            if let Ok(res) = self.test_metadata_with_pricing(block) {
+                return Ok(res)
+            } else {
+                self.fetch_missing_metadata(block).await?;
+                return self
+                    .test_metadata_with_pricing(block)
+                    .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            }
         } else {
-            self.test_metadata(block).map_err(|e| {
-                tracing::error!(error=%e);
-                TraceLoaderError::NoMetadataFound(block)
-            })
+            if let Ok(res) = self.test_metadata(block) {
+                return Ok(res)
+            } else {
+                self.fetch_missing_metadata(block).await?;
+                return self
+                    .test_metadata(block)
+                    .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            }
         }
+    }
+
+    pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
+        tracing::info!(%block, "fetching missing metadata");
+
+        let clickhouse = Arc::new(Clickhouse::default());
+        self.libmdbx
+            .initialize_tables(
+                clickhouse.clone(),
+                self.tracing_provider.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice],
+                false,
+                Some((block - 2, block + 2)),
+            )
+            .await?;
+
+        self.libmdbx
+            .initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                &[
+                    Tables::PoolCreationBlocks,
+                    Tables::TokenDecimals,
+                    Tables::AddressToTokens,
+                    Tables::AddressToProtocol,
+                ],
+                false,
+                None,
+            )
+            .await?;
+
+        Ok(())
     }
 
     pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
