@@ -94,3 +94,4 @@ eyre.workspace = true
 testing = []
 uni-v3-ticks = []
 benchmarking = []
+local = ["reth-tracing-ext/local"]

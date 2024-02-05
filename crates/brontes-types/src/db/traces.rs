@@ -1,5 +1,5 @@
 use alloy_primitives::{Log, LogData};
-use redefined::{Redefined, RedefinedConvert};
+use redefined::Redefined;
 use reth_rpc_types::trace::parity::{
     Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction, RewardType,
     SelfdestructAction, TraceOutput, TransactionTrace,
@@ -13,7 +13,7 @@ use crate::{
     structured_trace::{DecodedCallData, TransactionTraceWithLogs, TxTrace},
 };
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Redefined)]
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TxTracesInner {
     pub traces: Option<Vec<TxTrace>>,
