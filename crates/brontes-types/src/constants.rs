@@ -34,3 +34,52 @@ pub const SCP_MAIN_CEX_DEX_BOT: Address =
     Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C"));
 
 pub const EXECUTE_FFS_YO: Bytes = Bytes::from_static(&[0x78, 0xe1, 0x11, 0xf6]);
+
+pub const EURO_STABLES: [&str; 2] = [
+    "EURS", // STASIS EURO
+    "EURT", // Tether Euro
+];
+
+pub const GOLD_STABLES: [&str; 2] = [
+    "XAUT", // Tether Gold
+    "PAXG", // Paxos Gold
+];
+
+pub const USD_STABLES: [&str; 25] = [
+    "USDT",    // Tether
+    "USDC",    // USD Coin
+    "DAI",     // Dai
+    "FDUSD",   // First Digital USD
+    "TUSD",    // TrueUSD
+    "USDD",    // His excellency USD
+    "FRAX",    // Frax
+    "USDP",    // Pax Dollar
+    "PYUSD",   // PaypalUSD
+    "USTC",    // TerraUSD Classic
+    "ALUSD",   // Alchemix USD
+    "USDE",    // Ethena USD
+    "LUSD",    // Liquity USD
+    "MKUSD",   // Prisma USD
+    "CRVUSD",  // Curve USD
+    "BUSD",    // Binance USD
+    "MIM",     // Magic Internet Money
+    "SUSD",    // sUSD
+    "HAY",     // Hay
+    "BEAN",    // Bean
+    "GUSD",    // Gemini Dollar
+    "GHO",     // Aave
+    "USX",     // dForce USD
+    "DOLA",    // Dola USD Stablecoin
+    "MIMATIC", // MAI (Mimatic)
+];
+
+pub fn is_usd_stable(symbol: &str) -> bool {
+    USD_STABLES.contains(&symbol)
+}
+pub fn is_euro_stable(symbol: &str) -> bool {
+    EURO_STABLES.contains(&symbol)
+}
+
+pub fn is_gold_stable(symbol: &str) -> bool {
+    GOLD_STABLES.contains(&symbol)
+}
