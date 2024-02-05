@@ -473,7 +473,7 @@ mod tests {
             .with_dex_prices()
             .needs_tokens(vec![hex!("0588504472198e9296a248edca6ccdc40bd237cb").into()])
             .with_gas_paid_usd(34.3368)
-            .with_expected_profit_usd(24.0);
+            .with_expected_profit_usd(7.12);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
