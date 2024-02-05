@@ -2,10 +2,14 @@ use std::{env, fmt::Debug};
 
 #[cfg(feature = "local")]
 use brontes_core::local_provider::LocalProvider;
+#[cfg(not(feature = "local"))]
 use reth_tasks::TaskManager;
+#[cfg(not(feature = "local"))]
 use reth_tracing_ext::TracingClient;
 use serde::Deserialize;
 use sorella_db_databases::{clickhouse::DbRow, Database};
+#[cfg(not(feature = "local"))]
+use tokio::runtime::Handle;
 
 use super::{
     implementation::compressed_wrappers::utils::CompressedTableRow, types::LibmdbxData, Libmdbx,
@@ -20,13 +24,10 @@ pub fn init_libmdbx() -> eyre::Result<Libmdbx> {
 }
 
 #[cfg(not(feature = "local"))]
-pub fn init_tracing() -> eyre::Result<TracingClient> {
+pub fn init_tracing(handle: Handle) -> eyre::Result<TracingClient> {
     dotenv::dotenv().ok();
-    let tokio_runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()?;
 
-    let task_manager = TaskManager::new(tokio_runtime.handle().clone());
+    let task_manager = TaskManager::new(handle);
     let reth_db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
 
     Ok(TracingClient::new(&std::path::Path::new(&reth_db_path), 10, task_manager.executor()))
