@@ -221,7 +221,10 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             .any(|action| action.is_swap()),
                     )
                 },
-                &|node| node.index,
+                &|node| {
+                    tracing::info!("removing swap: {:#?}", node.data);
+                    node.index
+                },
             );
 
             swap_idx.into_iter().for_each(|idx| {
