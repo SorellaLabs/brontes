@@ -69,7 +69,7 @@ impl InspectorTestUtils {
     ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
         let mut trees = self
             .classifier_inspector
-            .build_tree_txes_with_pricing(tx_hashes, self.quote_address)
+            .build_tree_txes_with_pricing(tx_hashes, self.quote_address, needs_tokens)
             .await?;
 
         if trees.len() != 1 {
@@ -96,7 +96,7 @@ impl InspectorTestUtils {
         needs_tokens: Vec<Address>,
     ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), InspectorTestUtilsError> {
         self.classifier_inspector
-            .build_block_tree_with_pricing(block, self.quote_address)
+            .build_block_tree_with_pricing(block, self.quote_address, needs_tokens)
             .await
             .map_err(Into::into)
     }
@@ -111,7 +111,7 @@ impl InspectorTestUtils {
         let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
+                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes, config.needs_tokens).await?;
                 quotes = Some(prices);
                 tree
             } else {
@@ -119,7 +119,7 @@ impl InspectorTestUtils {
             }
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
+                let (tree, prices) = self.get_block_tree_with_pricing(block, config.needs_tokens).await?;
                 quotes = prices;
                 tree
             } else {
@@ -178,7 +178,7 @@ impl InspectorTestUtils {
         let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
+                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes,config.needs_tokens).await?;
                 quotes = Some(prices);
                 tree
             } else {
@@ -186,7 +186,7 @@ impl InspectorTestUtils {
             }
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
+                let (tree, prices) = self.get_block_tree_with_pricing(block,config.needs_tokens).await?;
                 quotes = prices;
                 tree
             } else {
@@ -276,7 +276,7 @@ impl InspectorTestUtils {
         let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
+                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes, config.needs_tokens).await?;
                 quotes = Some(prices);
                 tree
             } else {
@@ -284,7 +284,7 @@ impl InspectorTestUtils {
             }
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
+                let (tree, prices) = self.get_block_tree_with_pricing(block, config.needs_tokens).await?;
                 quotes = prices;
                 tree
             } else {
