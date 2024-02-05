@@ -1,17 +1,14 @@
-mod block;
-mod dex_pricing;
-mod error;
 mod range;
+mod shared;
 mod tip;
-mod utils;
-
 use std::{
+    collections::HashMap,
     pin::Pin,
+    sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
 };
 
 use alloy_primitives::Address;
-pub use block::BlockInspector;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
@@ -19,221 +16,234 @@ use brontes_database::{
     libmdbx::{LibmdbxReader, LibmdbxWriter},
 };
 use brontes_inspect::Inspector;
-use brontes_pricing::types::DexPriceMsg;
-use futures::{pin_mut, stream::FuturesUnordered, Future, FutureExt, StreamExt};
+use brontes_pricing::{BrontesBatchPricer, GraphManager};
+use futures::{stream::FuturesUnordered, Future, StreamExt};
+use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use reth_tasks::TaskExecutor;
 pub use tip::TipInspector;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::info;
+use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
+
+use self::shared::{
+    dex_pricing::WaitingForPricerFuture, metadata::MetadataFetcher, state_collector::StateCollector,
+};
+use crate::cli::static_object;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-enum Mode {
-    Historical,
-    Tip,
+pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+    pub start_block: u64,
+    pub end_block:   Option<u64>,
+
+    pub max_tasks:        u64,
+    pub min_batch_size:   u64,
+    pub quote_asset:      Address,
+    pub with_dex_pricing: bool,
+
+    pub inspectors: &'static [&'static Box<dyn Inspector>],
+    pub clickhouse: Option<&'static Clickhouse>,
+    pub parser:     &'static Parser<'static, T, DB>,
+    pub libmdbx:    &'static DB,
 }
 
-pub struct Brontes<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    current_block:    u64,
-    end_block:        Option<u64>,
-    chain_tip:        u64,
-    quote_asset:      Address,
-    mode:             Mode,
-    max_tasks:        u64,
-    parser:           &'inspector Parser<'inspector, T, DB>,
-    classifier:       &'inspector Classifier<'inspector, T, DB>,
-    inspectors:       &'inspector [&'inspector Box<dyn Inspector>],
-    clickhouse:       &'inspector Clickhouse,
-    database:         &'static DB,
-    block_inspectors: FuturesUnordered<BlockInspector<'inspector, T, DB>>,
-    tip_inspector:    Option<TipInspector<'inspector, T, DB>>,
-    task_executor:    TaskExecutor,
-    dex_price_rx:     Option<UnboundedReceiver<DexPriceMsg>>,
-}
-
-impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Brontes<'inspector, T, DB> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, DB> {
     pub fn new(
-        init_block: u64,
+        start_block: u64,
         end_block: Option<u64>,
-        chain_tip: u64,
+
         max_tasks: u64,
-        parser: &'inspector Parser<'inspector, T, DB>,
-        clickhouse: &'inspector Clickhouse,
-        database: &'static DB,
-        classifier: &'inspector Classifier<'_, T, DB>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
-        task_executor: TaskExecutor,
-        dex_price_rx: UnboundedReceiver<DexPriceMsg>,
+        min_batch_size: u64,
         quote_asset: Address,
+        with_dex_pricing: bool,
+
+        inspectors: &'static [&'static Box<dyn Inspector>],
+        clickhouse: Option<&'static Clickhouse>,
+        parser: &'static Parser<'static, T, DB>,
+        libmdbx: &'static DB,
     ) -> Self {
-        let mut brontes = Self {
-            current_block: init_block,
-            end_block,
-            chain_tip,
-            mode: Mode::Historical,
-            max_tasks,
-            parser,
+        Self {
             clickhouse,
-            database,
-            classifier,
+            start_block,
+            min_batch_size,
+            max_tasks,
+            with_dex_pricing,
+            parser,
+            libmdbx,
             inspectors,
-            block_inspectors: FuturesUnordered::new(),
-            tip_inspector: None,
-            task_executor,
-            dex_price_rx: Some(dex_price_rx),
             quote_asset,
-        };
-
-        let max_blocks = match end_block {
-            Some(end_block) => end_block.min(init_block + max_tasks),
-            None => init_block + max_tasks,
-        };
-
-        for _ in init_block..=max_blocks {
-            brontes.spawn_block_inspector();
+            end_block,
         }
-
-        brontes
     }
 
-    pub async fn run_until_graceful_shutdown(self, shutdown: GracefulShutdown) {
-        let brontes = self;
-        pin_mut!(brontes, shutdown);
+    fn build_range_executors(
+        &self,
+        executor: TaskExecutor,
+        end_block: u64,
+    ) -> Vec<RangeExecutorWithPricing<T, DB>> {
+        let mut executors = Vec::new();
 
-        let mut graceful_guard = None;
-        tokio::select! {
-            _= &mut brontes=> {
+        // calculate the chunk size using min batch size and max_tasks.
+        // max tasks defaults to 25% of physical threads of the system if not set
+        let range = end_block - self.start_block;
+        let cpus_min = range / self.min_batch_size;
 
-            },
-            guard = shutdown => {
-                graceful_guard = Some(guard);
-            },
-        }
-        // finish all block inspectors
-        while let Some(_) = brontes.block_inspectors.next().await {}
-        if let Some(tip) = brontes.tip_inspector.take() {
-            tip.shutdown().await;
-        }
-
-        info!("brontes properly shutdown");
-
-        drop(graceful_guard);
-    }
-
-    fn spawn_block_inspector(&mut self) {
-        let inspector = BlockInspector::new(
-            self.parser,
-            self.database,
-            self.classifier,
-            self.inspectors,
-            self.current_block,
-        );
-        info!(block_number = self.current_block, "started new block inspector");
-        self.current_block += 1;
-        self.block_inspectors.push(inspector);
-    }
-
-    fn spawn_tip_inspector(&mut self) {
-        let mut rx = self.dex_price_rx.take().unwrap();
-        // drain all historical
-        while let Ok(_) = rx.try_recv() {}
-
-        let inspector = TipInspector::new(
-            self.parser,
-            self.clickhouse,
-            self.database,
-            self.classifier,
-            self.inspectors,
-            self.chain_tip,
-            self.task_executor.clone(),
-            rx,
-            self.quote_asset,
-        );
-
-        info!(block_number = self.chain_tip, "Finished historical inspectors, now tracking tip");
-        self.tip_inspector = Some(inspector);
-    }
-
-    fn start_block_inspector(&mut self) -> bool {
-        // reached end of line
-        if self.block_inspectors.len() >= self.max_tasks as usize
-            || Some(self.current_block) > self.end_block
+        let cpus = std::cmp::min(cpus_min, self.max_tasks);
+        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
+        for (batch_id, mut chunk) in (self.start_block..=end_block)
+            .chunks(chunk_size.try_into().unwrap())
+            .into_iter()
+            .enumerate()
         {
-            return false
-        }
+            let start_block = chunk.next().unwrap();
+            let end_block = chunk.last().unwrap_or(start_block);
 
-        #[cfg(not(feature = "local"))]
-        if self.current_block >= self.chain_tip {
-            if let Ok(chain_tip) = self.parser.get_latest_block_number() {
-                if chain_tip > self.chain_tip {
-                    self.chain_tip = chain_tip;
-                } else {
-                    self.mode = Mode::Tip;
-                    self.spawn_tip_inspector();
-                    return false
-                }
-            }
-        }
+            tracing::info!(batch_id, start_block, end_block, "starting batch");
 
-        #[cfg(feature = "local")]
-        if self.current_block >= self.chain_tip {
-            if let Ok(chain_tip) = tokio::task::block_in_place(|| {
-                // This will now run the future to completion on the current thread
-                // without blocking the entire runtime
-                futures::executor::block_on(self.parser.get_latest_block_number())
-            }) {
-                self.chain_tip = chain_tip;
+            let state_collector = if self.with_dex_pricing {
+                self.state_collector_dex_price(executor.clone(), start_block, end_block)
             } else {
-                // no new block ready
-                return false
-            }
+                self.state_collector_no_dex_price()
+            };
+
+            executors.push(RangeExecutorWithPricing::new(
+                self.quote_asset,
+                start_block,
+                end_block,
+                state_collector,
+                self.libmdbx,
+                self.inspectors,
+            ));
         }
 
-        true
+        executors
     }
 
-    fn progress_block_inspectors(&mut self, cx: &mut Context<'_>) {
-        while let Poll::Ready(Some(_)) = self.block_inspectors.poll_next_unpin(cx) {}
+    fn build_tip_inspector(&self, executor: TaskExecutor, start_block: u64) -> TipInspector<T, DB> {
+        let state_collector = self.state_collector_dex_price(executor, start_block, start_block);
+        TipInspector::new(
+            start_block,
+            self.quote_asset,
+            state_collector,
+            self.parser,
+            self.libmdbx,
+            self.inspectors,
+        )
+    }
+
+    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB> {
+        let (tx, rx) = unbounded_channel();
+        let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
+
+        let fetcher = MetadataFetcher::new(None, None, Some(rx));
+        StateCollector::new(
+            Arc::new(AtomicBool::new(false)),
+            fetcher,
+            classifier,
+            self.parser,
+            self.libmdbx,
+        )
+    }
+
+    fn state_collector_dex_price(
+        &self,
+        executor: TaskExecutor,
+        start_block: u64,
+        end_block: u64,
+    ) -> StateCollector<T, DB> {
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let (tx, rx) = unbounded_channel();
+        let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
+
+        let pairs = self.libmdbx.protocols_created_before(start_block).unwrap();
+        let rest_pairs = self
+            .libmdbx
+            .protocols_created_range(start_block + 1, end_block)
+            .unwrap()
+            .into_iter()
+            .flat_map(|(_, pools)| {
+                pools
+                    .into_iter()
+                    .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<HashMap<_, _>>();
+
+        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+
+        let pricer = BrontesBatchPricer::new(
+            shutdown.clone(),
+            self.quote_asset,
+            pair_graph,
+            rx,
+            self.parser.get_tracer(),
+            start_block,
+            rest_pairs,
+        );
+        let pricing = WaitingForPricerFuture::new(pricer, executor);
+        let fetcher = MetadataFetcher::new(self.clickhouse, Some(pricing), None);
+
+        StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
+    }
+
+    pub async fn build(self, executor: TaskExecutor) -> Brontes {
+        let futures = FuturesUnordered::new();
+        if let Some(end_block) = self.end_block {
+            (&self)
+                .build_range_executors(executor.clone(), end_block)
+                .into_iter()
+                .for_each(|block_range| {
+                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                        "range_executor",
+                        |shutdown| async move {
+                            block_range.run_until_graceful_shutdown(shutdown).await
+                        },
+                    ));
+                });
+        } else {
+            #[cfg(not(feature = "local"))]
+            let chain_tip = self.parser.get_latest_block_number().unwrap();
+            #[cfg(feature = "local")]
+            let chain_tip = self.parser.get_latest_block_number().await.unwrap();
+
+            (&self)
+                .build_range_executors(executor.clone(), chain_tip)
+                .into_iter()
+                .for_each(|block_range| {
+                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                        "range_executor",
+                        |shutdown| async move {
+                            block_range.run_until_graceful_shutdown(shutdown).await
+                        },
+                    ));
+                });
+
+            let tip_inspector = self.build_tip_inspector(executor.clone(), chain_tip);
+            futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                "Tip Inspector",
+                |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },
+            ));
+        }
+
+        Brontes(futures)
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future for Brontes<'_, T, DB> {
+pub struct Brontes(FuturesUnordered<JoinHandle<()>>);
+
+impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut iters = 256;
-        loop {
-            match self.mode {
-                Mode::Historical => {
-                    if Some(self.current_block) >= self.end_block
-                        && self.block_inspectors.is_empty()
-                    {
-                        return Poll::Ready(())
-                    }
-
-                    if self.start_block_inspector() {
-                        self.spawn_block_inspector();
-                    }
-
-                    self.progress_block_inspectors(cx);
-                }
-                Mode::Tip => {
-                    if let Some(tip_inspector) = self.tip_inspector.as_mut() {
-                        match tip_inspector.poll_unpin(cx) {
-                            Poll::Ready(()) => return Poll::Ready(()),
-                            Poll::Pending => {}
-                        }
-                    }
-                }
-            }
-
-            iters -= 1;
-            if iters == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
-            }
+        if self.0.is_empty() {
+            return Poll::Ready(())
         }
+
+        if let Poll::Ready(None) = self.0.poll_next_unpin(cx) {
+            return Poll::Ready(())
+        }
+
+        cx.waker().wake_by_ref();
+        return Poll::Pending
     }
 }

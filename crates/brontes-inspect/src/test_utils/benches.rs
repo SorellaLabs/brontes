@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
-use brontes_types::db::metadata::MetadataCombined;
+use brontes_types::db::{cex::CexExchange, metadata::Metadata};
 use criterion::{black_box, Criterion};
 
 use super::InspectorTestUtilsError;
@@ -34,17 +34,23 @@ impl InspectorBenchUtils {
     ) -> Result<(), InspectorTestUtilsError> {
         let inspectors = inspectors
             .into_iter()
-            .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
+            .map(|i| {
+                i.init_inspector(
+                    self.quote_address,
+                    self.classifier_inspector.libmdbx,
+                    &vec![CexExchange::Binance],
+                )
+            })
             .collect::<Vec<_>>();
 
         let (tree, prices) = self.rt.block_on(
             self.classifier_inspector
-                .build_tree_block_with_pricing(block, self.quote_address),
+                .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
         let mut metadata = self
             .rt
-            .block_on(self.classifier_inspector.get_metadata(block))?;
+            .block_on(self.classifier_inspector.get_metadata(block, false))?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -69,8 +75,11 @@ impl InspectorBenchUtils {
         inspector: Inspectors,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector =
-            inspector.init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+        let inspector = inspector.init_inspector(
+            self.quote_address,
+            self.classifier_inspector.libmdbx,
+            &vec![CexExchange::Binance],
+        );
 
         let mut trees = self.rt.block_on(
             self.classifier_inspector
@@ -85,10 +94,11 @@ impl InspectorBenchUtils {
 
         let (tree, prices) = trees.remove(0);
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
-        metadata.dex_quotes = prices;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
+        metadata.dex_quotes = Some(prices);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
@@ -110,17 +120,21 @@ impl InspectorBenchUtils {
         inspector: Inspectors,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector =
-            inspector.init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+        let inspector = inspector.init_inspector(
+            self.quote_address,
+            self.classifier_inspector.libmdbx,
+            &vec![CexExchange::Binance],
+        );
 
         let (tree, prices) = self.rt.block_on(
             self.classifier_inspector
-                .build_tree_block_with_pricing(block, self.quote_address),
+                .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -139,13 +153,16 @@ impl InspectorBenchUtils {
         &self,
         bench_name: &str,
         tx_hashes: Vec<TxHash>,
-        metadata: MetadataCombined,
+        metadata: Metadata,
         iters: usize,
         inspector: Inspectors,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector =
-            inspector.init_inspector(self.quote_address, self.classifier_inspector.libmdbx);
+        let inspector = inspector.init_inspector(
+            self.quote_address,
+            self.classifier_inspector.libmdbx,
+            &vec![CexExchange::Binance],
+        );
 
         let mut trees = self
             .rt
@@ -181,7 +198,13 @@ impl InspectorBenchUtils {
     ) -> Result<(), InspectorTestUtilsError> {
         let inspectors = inspectors
             .into_iter()
-            .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
+            .map(|i| {
+                i.init_inspector(
+                    self.quote_address,
+                    self.classifier_inspector.libmdbx,
+                    &vec![CexExchange::Binance],
+                )
+            })
             .collect::<Vec<_>>();
 
         let mut trees = self.rt.block_on(
@@ -196,10 +219,11 @@ impl InspectorBenchUtils {
         }
         let (tree, prices) = trees.remove(0);
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
-        metadata.dex_quotes = prices;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
+        metadata.dex_quotes = Some(prices);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
@@ -226,17 +250,24 @@ impl InspectorBenchUtils {
     ) -> Result<(), InspectorTestUtilsError> {
         let inspectors = inspectors
             .into_iter()
-            .map(|i| i.init_inspector(self.quote_address, self.classifier_inspector.libmdbx))
+            .map(|i| {
+                i.init_inspector(
+                    self.quote_address,
+                    self.classifier_inspector.libmdbx,
+                    &vec![CexExchange::Binance],
+                )
+            })
             .collect::<Vec<_>>();
 
         let (tree, prices) = self.rt.block_on(
             self.classifier_inspector
-                .build_tree_block_with_pricing(block, self.quote_address),
+                .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));

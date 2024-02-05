@@ -46,7 +46,6 @@ pub struct BadEdge {
 #[derive(Debug, Default)]
 struct BfsArgs {
     pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
-    pub remove_all:    HashSet<Pair>,
 }
 
 const MIN_LIQUIDITY_USDC: u128 = 15_000;
@@ -659,7 +658,7 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 #[cfg(test)]
 pub mod test {
     use alloy_primitives::{hex, Address};
-    use brontes_types::constants::USDC_ADDRESS;
+    use brontes_types::{constants::USDC_ADDRESS, Protocol};
     use futures::StreamExt;
     use serial_test::serial;
 

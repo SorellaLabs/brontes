@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{cmp::min, sync::Arc};
 
 use brontes_types::ToScaledRational;
 mod tree_pruning;
@@ -7,13 +7,14 @@ use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    normalized_actions::{Actions, NormalizedAction, NormalizedTransfer, SelfdestructWithIndex},
+    normalized_actions::{Actions, NormalizedAction, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
 };
 use futures::future::join_all;
 use itertools::Itertools;
+use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
@@ -23,6 +24,7 @@ use tree_pruning::{
 };
 use utils::{decode_transfer, get_coinbase_transfer};
 
+use self::transfer::try_decode_transfer;
 use crate::{
     classifiers::{DiscoveryProtocols, *},
     ActionCollection, FactoryDecoderDispatch,
@@ -84,6 +86,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
+        // tax token accounting should always be first.
         account_for_tax_tokens(tree);
         remove_swap_transfers(tree);
         remove_mint_transfers(tree);
@@ -324,12 +327,30 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             tx_idx,
         ) {
             return (vec![DexPriceMsg::Update(results.0)], results.1)
-        } else if trace.logs.len() > 0 {
-            // A transfer should always be in its own call trace and have 1 log.
-            // if forever reason there is a case with multiple logs, we take the first
-            // transfer
+        } else if let Some(mut transfer) = try_decode_transfer(
+            tx_idx,
+            trace.get_calldata(),
+            trace.get_from_addr(),
+            {
+                if trace.is_delegate_call() {
+                    // if we got delegate, the actual token address
+                    // is the from addr (proxy) for pool swaps. without
+                    // this our math gets fucked
+                    trace.get_from_addr()
+                } else {
+                    trace.get_to_address()
+                }
+            },
+            self.libmdbx,
+        ) {
+            // go through the log to look for descrepency of transfer amount
             for log in &trace.logs {
-                if let Some((addr, from, to, value)) = decode_transfer(log) {
+                if let Some((addr, from, to, amount)) = decode_transfer(log) {
+                    if addr != transfer.token.address || transfer.from != from || transfer.to != to
+                    {
+                        continue
+                    }
+
                     let addr = if trace.is_delegate_call() {
                         // if we got delegate, the actual token address
                         // is the from addr (proxy) for pool swaps. without
@@ -342,25 +363,21 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                     if self.libmdbx.try_get_token_info(addr).unwrap().is_none() {
                         load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
                     }
+                    let decimals = transfer.token.decimals;
+                    let log_am = amount.to_scaled_rational(decimals);
 
-                    let Some(token_info) = self.libmdbx.try_get_token_info(addr).unwrap() else {
-                        return (vec![], Actions::Unclassified(trace))
-                    };
-
-                    return (
-                        vec![],
-                        Actions::Transfer(NormalizedTransfer {
-                            trace_index,
-                            to,
-                            from,
-                            amount: value.to_scaled_rational(token_info.decimals),
-                            token: token_info,
-                        }),
-                    )
+                    if log_am != transfer.amount {
+                        let transferred_amount = min(&log_am, &transfer.amount).clone();
+                        let fee = (&log_am - &transfer.amount).abs();
+                        transfer.amount = transferred_amount;
+                        transfer.fee = fee;
+                    }
+                    break;
                 }
             }
-        }
 
+            return (vec![], Actions::Transfer(transfer))
+        }
         (vec![], Actions::Unclassified(trace))
     }
 
@@ -430,9 +447,11 @@ pub mod test {
 
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
+        db::token_info::TokenInfoWithAddress,
         normalized_actions::{Actions, NormalizedLiquidation},
         Protocol,
     };
+    use malachite::Rational;
     use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;
@@ -454,12 +473,18 @@ pub mod test {
                     .any(|action| action.is_swap() || action.is_transfer()),
             )
         });
-        let mut swaps: HashMap<Address, HashSet<U256>> = HashMap::default();
+        let mut swaps: HashMap<TokenInfoWithAddress, HashSet<Rational>> = HashMap::default();
 
         for i in &swap {
             if let Actions::Swap(s) = i {
-                swaps.entry(s.token_in).or_default().insert(s.amount_in);
-                swaps.entry(s.token_out).or_default().insert(s.amount_out);
+                swaps
+                    .entry(s.token_in.clone())
+                    .or_default()
+                    .insert(s.amount_in.clone());
+                swaps
+                    .entry(s.token_out.clone())
+                    .or_default()
+                    .insert(s.amount_out.clone());
             }
         }
 
@@ -481,11 +506,13 @@ pub mod test {
 
         let eq_action = Actions::Liquidation(NormalizedLiquidation {
             protocol:              Protocol::AaveV3,
-            liquidated_collateral: U256::from(165516722u64),
-            covered_debt:          U256::from(63857746423u64),
+            liquidated_collateral: Rational::from_signeds(165516722, 100000000),
+            covered_debt:          Rational::from_signeds(63857746423_i64, 1000000),
             debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
-            debt_asset:            Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
-            collateral_asset:      Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")),
+            debt_asset:            classifier_utils
+                .get_token_info(Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))),
+            collateral_asset:      classifier_utils
+                .get_token_info(Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))),
             liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
             pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
             trace_index:           6,

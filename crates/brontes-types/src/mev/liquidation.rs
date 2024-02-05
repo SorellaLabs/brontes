@@ -1,28 +1,30 @@
 use std::fmt::Debug;
 
-use ::serde::ser::{Serialize, SerializeStruct, Serializer};
+use ::serde::ser::{SerializeStruct, Serializer};
+use redefined::Redefined;
 use reth_primitives::B256;
-use serde::Deserialize;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
-use crate::normalized_actions::{ClickhouseVecNormalizedLiquidation, ClickhouseVecNormalizedSwap};
-#[allow(unused_imports)]
 use crate::{
-    display::utils::{display_sandwich, print_mev_type_header},
-    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
-    GasDetails,
+    db::redefined_types::primitives::*,
+    normalized_actions::{ClickhouseVecNormalizedLiquidation, ClickhouseVecNormalizedSwap},
 };
+#[allow(unused_imports)]
+use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Liquidation {
     pub liquidation_tx_hash: B256,
     pub trigger:             B256,
     pub liquidation_swaps:   Vec<NormalizedSwap>,
     pub liquidations:        Vec<NormalizedLiquidation>,
+    #[redefined(same_fields)]
     pub gas_details:         GasDetails,
 }
 

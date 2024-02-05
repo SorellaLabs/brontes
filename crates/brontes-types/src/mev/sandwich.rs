@@ -1,21 +1,29 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
+use redefined::Redefined;
 use reth_primitives::B256;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
+/*
+
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use crate::db::redefined_types::primitives::*;
+use redefined::Redefined;
+
+*/
 use super::{Mev, MevType};
-use crate::ClickhouseVecGasDetails;
+use crate::{db::redefined_types::primitives::*, normalized_actions::*, ClickhouseVecGasDetails};
 #[allow(unused_imports)]
 use crate::{
-    display::utils::{display_sandwich, print_mev_type_header},
+    display::utils::display_sandwich,
     normalized_actions::{
         ClickhouseDoubleVecNormalizedSwap, ClickhouseVecNormalizedSwap, NormalizedBurn,
         NormalizedLiquidation, NormalizedMint, NormalizedSwap,
     },
-    serde_primitives::vec_fixed_string,
     GasDetails,
 };
 
@@ -50,7 +58,8 @@ use crate::{
 /// - Victim 2: [Etherscan Link](https://etherscan.io/tx/0x0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677)
 /// - Backrun: [Etherscan Link](https://etherscan.io/tx/0xfb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d)
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Sandwich {
     /// Transaction hashes of the frontrunning transactions.
     /// Supports multiple transactions for complex sandwich scenarios.
@@ -59,6 +68,7 @@ pub struct Sandwich {
     /// Nested vectors represent multiple swaps within each transaction.
     pub frontrun_swaps:           Vec<Vec<NormalizedSwap>>,
     /// Gas details for each frontrunning transaction.
+    #[redefined(same_fields)]
     pub frontrun_gas_details:     Vec<GasDetails>,
     /// Transaction hashes of the victim transactions, logically grouped by
     /// their corresponding frontrunning transaction. Each outer vector
@@ -69,12 +79,14 @@ pub struct Sandwich {
     /// transaction.
     pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
     /// Gas details for each victim transaction.
+    #[redefined(same_fields)]
     pub victim_swaps_gas_details: Vec<GasDetails>,
     /// Transaction hashes of the backrunning transactions.
     pub backrun_tx_hash:          B256,
     /// Swaps executed in each backrunning transaction.
     pub backrun_swaps:            Vec<NormalizedSwap>,
     /// Gas details for each backrunning transaction.
+    #[redefined(same_fields)]
     pub backrun_gas_details:      GasDetails,
 }
 

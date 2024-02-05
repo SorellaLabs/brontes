@@ -7,7 +7,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::{cex::CexExchange, dex::PriceAt, metadata::MetadataCombined},
+    db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
     normalized_actions::Actions,
     pair::Pair,
@@ -37,34 +37,30 @@ type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
     pub(crate) fn calculate_token_deltas(&self, actions: &Vec<Vec<Actions>>) -> SwapTokenDeltas {
-        let mut transfers = Vec::new();
         // Address and there token delta's
         let mut deltas = HashMap::new();
 
         for action in actions.into_iter().flatten() {
-            // If the action is a swap, get the decimals to scale the amount in and out
-            // properly.
-            if let Actions::Swap(swap) = action {
-                let adjusted_in = -(swap.amount_in.clone());
-                let adjusted_out = swap.amount_out.clone();
-                // we track the address deltas so we can apply transfers later on the profit
-                if swap.from == swap.recipient {
-                    let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, adjusted_out, entry);
-                    apply_entry(swap.token_in.address, adjusted_in, entry);
-                } else {
-                    let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_in.address, adjusted_in, entry_recipient);
+            if !action.is_swap() {
+                continue
+            }
 
-                    let entry_from = deltas
-                        .entry(swap.recipient)
-                        .or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, adjusted_out, entry_from);
-                }
+            let swap = action.force_swap_ref();
+            let amount_in = -swap.amount_in.clone();
+            let amount_out = swap.amount_out.clone();
+            // we track the address deltas so we can apply transfers later on the profit
+            if swap.from == swap.recipient {
+                let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
+                apply_entry(swap.token_out.address, amount_out, entry);
+                apply_entry(swap.token_in.address, amount_in, entry);
+            } else {
+                let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
+                apply_entry(swap.token_in.address, amount_in, entry_recipient);
 
-            // If there is a transfer, push to the given transfer addresses.
-            } else if let Actions::Transfer(transfer) = action {
-                transfers.push(transfer);
+                let entry_from = deltas
+                    .entry(swap.recipient)
+                    .or_insert_with(HashMap::default);
+                apply_entry(swap.token_out.address, amount_out, entry_from);
             }
         }
 
@@ -83,7 +79,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         tx_position: usize,
         at: PriceAt,
         deltas: &SwapTokenDeltas,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
         let mut usd_deltas = HashMap::new();
@@ -97,6 +93,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 } else {
                     metadata
                         .dex_quotes
+                        .as_ref()?
                         .price_at_or_before(pair, tx_position)
                         .map(|price| price.get_price(at))?
                         .clone()
@@ -117,7 +114,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         at: PriceAt,
         token_address: Address,
         amount: &Rational,
-        metadata: &Arc<MetadataCombined>,
+        metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
             return Some(amount.clone())
@@ -127,6 +124,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         Some(
             metadata
                 .dex_quotes
+                .as_ref()?
                 .price_at_or_before(pair, block_position)?
                 .get_price(at)
                 * amount,
@@ -138,7 +136,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         block_position: usize,
         at: PriceAt,
         token_address: Address,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
             return Some(Rational::ONE)
@@ -147,6 +145,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let pair = Pair(token_address, self.quote);
         metadata
             .dex_quotes
+            .as_ref()?
             .price_at_or_before(pair, block_position)
             .map(|price| price.get_price(at))
     }
@@ -165,7 +164,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         at: PriceAt,
         actions: &Vec<Vec<Actions>>,
         gas_details: &Vec<GasDetails>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
         let token_profits = self
@@ -200,7 +199,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         tx_index: u64,
         at: PriceAt,
         bundle_actions: &Vec<Vec<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Option<Rational> {
         let deltas = self.calculate_token_deltas(bundle_actions);
 
@@ -218,7 +217,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         tx_index: u64,
         at: PriceAt,
         bundle_actions: &Vec<Vec<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         pricing: bool,
     ) -> Option<TokenProfits> {
         let deltas = self.calculate_token_deltas(bundle_actions);
@@ -228,18 +227,18 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
-        Some(self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing))
+        Some(self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing)?)
     }
 
     pub fn get_token_profits(
         &self,
         tx_index: u64,
         at: PriceAt,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         profit_collectors: Vec<Address>,
         deltas: SwapTokenDeltas,
         use_cex_pricing: bool,
-    ) -> TokenProfits {
+    ) -> Option<TokenProfits> {
         let token_profits = profit_collectors
             .into_iter()
             .filter_map(|collector| deltas.get(&collector).map(|d| (collector, d)))
@@ -248,31 +247,26 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     .into_iter()
                     .zip(vec![collector].into_iter().cycle())
             })
-            .map(|((token, amount), collector)| {
+            .filter_map(|((token, amount), collector)| {
                 let usd_value = if use_cex_pricing {
                     self.get_cex_usd_value(*token, amount.clone(), &metadata)
                 } else {
-                    self.get_dex_usd_value(*token, at, amount.clone(), tx_index, &metadata)
+                    self.get_dex_usd_value(*token, at, amount.clone(), tx_index, &metadata)?
                 };
 
-                TokenProfit {
+                Some(TokenProfit {
                     profit_collector: collector,
-                    token:            *token,
+                    token:            self.db.try_get_token_info(*token).ok()??,
                     amount:           amount.clone().to_float(),
                     usd_value:        usd_value.to_float(),
-                }
+                })
             })
             .collect();
 
-        TokenProfits { profits: token_profits }
+        Some(TokenProfits { profits: token_profits })
     }
 
-    fn get_cex_usd_value(
-        &self,
-        token: Address,
-        amount: Rational,
-        metadata: &MetadataCombined,
-    ) -> Rational {
+    fn get_cex_usd_value(&self, token: Address, amount: Rational, metadata: &Metadata) -> Rational {
         metadata
             .cex_quotes
             .get_quote(&Pair(token, self.quote), &CexExchange::Binance)
@@ -288,14 +282,20 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         at: PriceAt,
         amount: Rational,
         tx_index: u64,
-        metadata: &MetadataCombined,
-    ) -> Rational {
-        metadata
-            .dex_quotes
-            .price_at_or_before(Pair(token, self.quote), tx_index as usize)
-            .map(|price| price.get_price(at).clone())
-            .unwrap_or_default()
-            * amount
+        metadata: &Metadata,
+    ) -> Option<Rational> {
+        Some(
+            metadata
+                .dex_quotes
+                .as_ref()?
+                .price_at_or_before(Pair(token, self.quote), tx_index as usize)
+                .map(|price| price.get_price(at).clone())
+                .unwrap_or_else(|| {
+                    tracing::error!(?token, "unwrap occured for");
+                    Rational::ZERO
+                })
+                * amount,
+        )
     }
 }
 

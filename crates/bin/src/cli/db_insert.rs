@@ -42,7 +42,7 @@ impl AddToDb {
         write_to_table!(
             self.table,
             CexPrice,
-            Metadata,
+            BlockInfo,
             DexPrice,
             MevBlocks,
             TokenDecimals,

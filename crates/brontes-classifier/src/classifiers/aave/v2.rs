@@ -1,9 +1,9 @@
 use alloy_primitives::Address;
 use brontes_macros::action_impl;
-use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation},
     utils::ToScaledRational,
+    Protocol,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 

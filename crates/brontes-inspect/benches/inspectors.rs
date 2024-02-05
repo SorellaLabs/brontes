@@ -1,23 +1,13 @@
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::str::FromStr;
 
-use alloy_primitives::{hex, Address, B256, U256};
+use alloy_primitives::{hex, B256};
+use brontes_classifier::test_utils::ClassifierTestUtils;
 use brontes_inspect::{
     test_utils::{InspectorBenchUtils, USDC_ADDRESS},
     Inspectors,
 };
-use brontes_types::{
-    db::{
-        cex::{CexPriceMap, CexQuote},
-        metadata::MetadataCombined,
-    },
-    pair::Pair,
-};
 use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
-use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 use strum::IntoEnumIterator;
 
 fn bench_sandwich(c: &mut Criterion) {
@@ -97,55 +87,14 @@ fn bench_liquidation(c: &mut Criterion) {
 }
 
 fn bench_cex_dex(c: &mut Criterion) {
+    let rt = tokio::runtime::Handle::current();
     let tx_hash =
         B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
             .unwrap();
 
-    // reciprocal because we store the prices as usdc / eth due to pair ordering
-    let eth_price = Rational::try_from_float_simplest(1665.81)
-        .unwrap()
-        .reciprocal();
-    let eth_cex = Rational::try_from_float_simplest(1645.81)
-        .unwrap()
-        .reciprocal();
+    let classifer_utils = ClassifierTestUtils::new_with_rt(rt.clone());
 
-    let eth_usdc = Pair(
-        hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
-        hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
-    );
-    let mut cex_map = HashMap::new();
-    cex_map.insert(
-        eth_usdc.ordered(),
-        vec![CexQuote {
-            price: (eth_cex.clone(), eth_cex),
-            token0: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
-            ..Default::default()
-        }],
-    );
-
-    let cex_quotes = CexPriceMap(cex_map);
-
-    let metadata = MetadataCombined {
-        dex_quotes: brontes_types::db::dex::DexQuotes(vec![Some({
-            let mut map = HashMap::new();
-            map.insert(eth_usdc, eth_price.clone());
-            map
-        })]),
-        db:         brontes_types::db::metadata::MetadataNoDex {
-            block_num: 18264694,
-            block_hash: U256::from_be_bytes(hex!(
-                "57968198764731c3fcdb0caff812559ce5035aabade9e6bcb2d7fcee29616729"
-            )),
-            block_timestamp: 0,
-            relay_timestamp: None,
-            p2p_timestamp: None,
-            proposer_fee_recipient: Some(hex!("95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5").into()),
-            proposer_mev_reward: None,
-            cex_quotes,
-            eth_prices: eth_price.reciprocal(),
-            private_flow: HashSet::new(),
-        },
-    };
+    let metadata = rt.block_on(classifer_utils.get_metadata(0, true)).unwrap();
 
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher

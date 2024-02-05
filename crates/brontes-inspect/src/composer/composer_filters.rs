@@ -46,11 +46,7 @@ pub fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     }
 }
 
-mev_composability!(
-    JitSandwich => Sandwich, Jit;
-);
-
-/// Defines precedence rules among different MEV types
+// Defines precedence rules among different MEV types
 /// for the purpose of deduplication.
 ///
 /// This macro creates a static reference (`MEV_DEDUPLICATION_FILTER`) that maps
@@ -83,9 +79,3 @@ macro_rules! define_mev_precedence {
     }
     };
 }
-
-define_mev_precedence!(
-    Sandwich => Backrun;
-    CexDex => Backrun;
-    Sandwich => CexDex;
-);
