@@ -1,8 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    constants::{is_euro_stable, is_gold_stable, is_usd_stable},
+    constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
@@ -44,10 +44,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
 
         intersting_state
             .into_par_iter()
-            .filter_map(|(tx, swaps)| {
+            .filter_map(|(tx, actions)| {
                 let info = tree.get_tx_info(tx)?;
 
-                self.process_swaps(info, meta_data.clone(), vec![swaps])
+                self.process_swaps(info, meta_data.clone(), actions)
             })
             .collect::<Vec<_>>()
     }
@@ -58,13 +58,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        searcher_actions: Vec<Vec<Actions>>,
+        searcher_actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        //TODO: Also get transfer actions into vec for pnl calculation
-        // Usefull for longtail
         let swaps = searcher_actions
             .iter()
-            .flatten()
             .filter(|s| s.is_swap() || s.is_flash_loan())
             .flat_map(|s| match s.clone() {
                 Actions::Swap(s) => vec![s],
@@ -78,55 +75,56 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             })
             .collect_vec();
 
-        let possible_arb_type = self.is_possible_arb(swaps)?;
+        let possible_arb_type = self.is_possible_arb(&swaps)?;
+
+        let actions = searcher_actions.clone();
 
         let profit = match possible_arb_type {
-            AtomicArbitrage::LongTail => return None,
-            AtomicArbitrage::Triangle => {
-                self.process_triangle_arb(info, metadata.clone(), &searcher_actions)
+            AtomicArbType::LongTail => {
+                self.process_long_tail(info, metadata.clone(), &vec![actions])
             }
-            AtomicArbitrage::CrossPair => {
-                self.process_cross_pair_arb(info, metadata.clone(), &searcher_actions)
+            AtomicArbType::Triangle => {
+                self.process_triangle_arb(info, metadata.clone(), &vec![actions])
             }
+            AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_arb(
+                info,
+                metadata.clone(),
+                &swaps,
+                &vec![actions],
+                jump_index,
+            ),
         }?;
 
         let header = self.inner.build_bundle_header(
             &info,
             profit.to_float(),
             PriceAt::Average,
-            &searcher_actions,
+            &vec![searcher_actions],
             &vec![info.gas_details],
             metadata,
             MevType::AtomicArb,
         );
-
-        let swaps = searcher_actions
-            .into_iter()
-            .flatten()
-            .filter(|actions| actions.is_swap())
-            .map(|s| s.force_swap())
-            .collect::<Vec<_>>();
 
         let backrun = AtomicArb { tx_hash: info.tx_hash, gas_details: info.gas_details, swaps };
 
         Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
 
-    fn is_possible_arb(&self, swaps: Vec<NormalizedSwap>) -> Option<AtomicArbitrage> {
+    fn is_possible_arb(&self, swaps: &Vec<NormalizedSwap>) -> Option<AtomicArbType> {
         // check to see if more than 1 swap
         if swaps.len() <= 1 {
-            return Some(AtomicArbitrage::LongTail)
+            return Some(AtomicArbType::LongTail)
         } else if swaps.len() == 2 {
             let start = swaps[0].token_in.address;
             let end = swaps[1].token_out.address;
 
             if start == end && swaps[0].token_out.address == swaps[1].token_in.address {
-                return Some(AtomicArbitrage::Triangle)
+                return Some(AtomicArbType::Triangle)
             } else {
-                return Some(AtomicArbitrage::CrossPair)
+                return Some(AtomicArbType::CrossPair(2))
             }
         } else {
-            Some(identify_arb_sequence(swaps))
+            Some(identify_arb_sequence(&swaps))
         }
     }
 
@@ -139,19 +137,33 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let rev_usd = self.inner.get_dex_revenue_usd(
             tx_info.tx_index,
             PriceAt::Average,
-            &searcher_actions,
+            searcher_actions,
             metadata.clone(),
         )?;
 
         let gas_used = tx_info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
-        // Can change this later to check if people are subsidizing arbs to kill the
-        // dry out the competition
-        if &rev_usd - &gas_used_usd <= Rational::ZERO {
-            return None
+        let profit = &rev_usd - &gas_used_usd;
+
+        let is_profitable = profit > Rational::ZERO;
+
+        if is_profitable {
+            return Some(rev_usd - gas_used_usd);
         } else {
-            Some(rev_usd - &gas_used_usd)
+            // If the arb is not profitable, check if this is a know searcher or if the tx
+            // is private or coinbase.transfers to the builder
+            match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
+                Ok(Some(_info)) => Some(profit),
+                Ok(None) => {
+                    if tx_info.gas_details.coinbase_transfer.is_some() {
+                        Some(profit)
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            }
         }
     }
 
@@ -159,55 +171,126 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         tx_info: TxInfo,
         metadata: Arc<Metadata>,
+        swaps: &Vec<NormalizedSwap>,
         searcher_actions: &Vec<Vec<Actions>>,
+        jump_index: usize,
     ) -> Option<Rational> {
+        let is_stable_arb = is_stable_arb(swaps, jump_index);
+
         let rev_usd = self.inner.get_dex_revenue_usd(
             tx_info.tx_index,
             PriceAt::Average,
-            &searcher_actions,
+            searcher_actions,
             metadata.clone(),
         )?;
 
         let gas_used = tx_info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
-        // Can change this later to check if people are subsidizing arbs to kill the
-        // dry out the competition
-        if &rev_usd - &gas_used_usd <= Rational::ZERO {
-            return None
+        let profit = &rev_usd - &gas_used_usd;
+
+        let is_profitable = profit > Rational::ZERO;
+
+        if is_profitable || is_stable_arb {
+            return Some(rev_usd - gas_used_usd);
         } else {
-            Some(rev_usd - &gas_used_usd)
+            // If the arb is not profitable, check if this is a know searcher or if the tx
+            // is private or coinbase.transfers to the builder
+            match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
+                Ok(Some(_info)) => Some(profit),
+                Ok(None) => {
+                    if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
+                        Some(profit)
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            }
+        }
+    }
+
+    fn process_long_tail(
+        &self,
+        tx_info: TxInfo,
+        metadata: Arc<Metadata>,
+        searcher_actions: &Vec<Vec<Actions>>,
+    ) -> Option<Rational> {
+        let gas_used = tx_info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
+        let rev_usd = self.inner.get_dex_revenue_usd(
+            tx_info.tx_index,
+            PriceAt::Average,
+            searcher_actions,
+            metadata.clone(),
+        )?;
+
+        let profit = &rev_usd - &gas_used_usd;
+
+        let is_profitable = profit > Rational::ZERO;
+
+        if is_profitable {
+            match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
+                Ok(Some(_info)) => Some(profit),
+                Ok(None) => {
+                    if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
+                        Some(profit)
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            }
+        } else {
+            None
         }
     }
 }
 
-fn identify_arb_sequence(swaps: Vec<NormalizedSwap>) -> AtomicArbitrage {
+fn identify_arb_sequence(swaps: &Vec<NormalizedSwap>) -> AtomicArbType {
     let start_token = swaps.first().unwrap().token_in.address;
     let end_token = swaps.last().unwrap().token_out.address;
 
     if start_token != end_token {
-        return AtomicArbitrage::LongTail
+        return AtomicArbType::LongTail
     }
 
     let mut last_out = swaps.first().unwrap().token_out.address;
 
-    for swap in swaps.iter().skip(1) {
+    for (index, swap) in swaps.iter().skip(1).enumerate() {
         if swap.token_in.address != last_out {
-            return AtomicArbitrage::CrossPair
+            return AtomicArbType::CrossPair(index + 1)
         }
         last_out = swap.token_out.address;
     }
 
-    AtomicArbitrage::Triangle
+    AtomicArbType::Triangle
+}
+
+fn is_stable_arb(swaps: &Vec<NormalizedSwap>, jump_index: usize) -> bool {
+    let token_bought = &swaps[jump_index - 1].token_out.symbol;
+    let token_sold = &swaps[jump_index].token_in.symbol;
+
+    // Check if this is a stable arb
+    if let Some(stable_type) = get_stable_type(&token_bought) {
+        match stable_type {
+            StableType::USD => is_usd_stable(&token_sold),
+            StableType::EURO => is_euro_stable(&token_sold),
+            StableType::GOLD => is_gold_stable(&token_sold),
+        }
+    } else {
+        false
+    }
 }
 
 /// Represents the different types of atomic arb
 /// A triangle arb is a simple arb that goes from token A -> B -> C -> A
 /// A cross pair arb is a more complex arb that goes from token A -> B -> C -> A
-enum AtomicArbitrage {
+enum AtomicArbType {
     LongTail,
     Triangle,
-    CrossPair,
+    CrossPair(usize),
 }
 
 #[cfg(test)]
