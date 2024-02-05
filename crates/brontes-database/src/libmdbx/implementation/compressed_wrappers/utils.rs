@@ -14,6 +14,16 @@ where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>;
 
+impl<T> PartialEq for CompressedTableRow<T>
+where
+    T: CompressedTable,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
 impl<T> From<(<T as Table>::Key, <T as Table>::Value)> for CompressedTableRow<T>
 where
     T: CompressedTable,
