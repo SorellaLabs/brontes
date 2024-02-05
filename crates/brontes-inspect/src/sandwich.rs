@@ -15,7 +15,7 @@ use brontes_types::{
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -43,7 +43,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         let search_fn = |node: &Node<Actions>| {
             (
@@ -104,6 +104,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .iter()
                         .flat_map(|pf| tree.get_tx_info(*pf))
                         .collect::<Vec<_>>();
+
                     let back_run_info = tree.get_tx_info(possible_backrun)?;
 
                     let searcher_actions = possible_frontruns
@@ -114,7 +115,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .collect::<Vec<Vec<Actions>>>();
 
                     self.calculate_sandwich(
-                        meta_data.clone(),
+                        metadata.clone(),
                         frontrun_info,
                         back_run_info,
                         searcher_actions,
@@ -130,7 +131,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn calculate_sandwich(
         &self,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         mut possible_front_runs_info: Vec<TxInfo>,
         backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,
@@ -138,7 +139,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
-        let _all_actions = searcher_actions.clone();
+        let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
             .iter()
@@ -156,6 +157,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .collect_vec()
             })
             .collect_vec();
+
         //TODO: Check later if this method correctly identifies an incorrect middle
         // frontrun that is unrelated
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions) {
@@ -215,10 +217,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
+
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,
             PriceAt::After,
-            &searcher_actions,
+            &all_actions,
             metadata.clone(),
         )?;
 
@@ -228,7 +231,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &possible_front_runs_info[0],
             profit_usd,
             PriceAt::After,
-            &searcher_actions,
+            &all_actions,
             &possible_front_runs_info
                 .iter()
                 .chain(vec![backrun_info].iter())
@@ -332,21 +335,23 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
                 // Get's prev tx hash for this sender & replaces it with the current tx hash
                 let prev_tx_hash = o.insert(root.tx_hash);
                 if let Some(frontrun_victims) = possible_victims.remove(&prev_tx_hash) {
-                    match possible_sandwiches.entry(root.head.address) {
-                        Entry::Vacant(e) => {
-                            e.insert(PossibleSandwich {
-                                eoa:                   root.head.address,
-                                possible_frontruns:    vec![prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
-                                mev_executor_contract: root.head.data.get_to_address(),
-                                victims:               vec![frontrun_victims],
-                            });
-                        }
-                        Entry::Occupied(mut o) => {
-                            let sandwich = o.get_mut();
-                            sandwich.possible_frontruns.push(prev_tx_hash);
-                            sandwich.possible_backrun = root.tx_hash;
-                            sandwich.victims.push(frontrun_victims);
+                    if !frontrun_victims.is_empty() {
+                        match possible_sandwiches.entry(root.head.address) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleSandwich {
+                                    eoa:                   root.head.address,
+                                    possible_frontruns:    vec![prev_tx_hash],
+                                    possible_backrun:      root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               vec![frontrun_victims],
+                                });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.possible_frontruns.push(prev_tx_hash);
+                                sandwich.possible_backrun = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
+                            }
                         }
                     }
                 }
@@ -400,21 +405,23 @@ fn get_possible_sandwich_duplicate_contracts(
                 let (prev_tx_hash, frontrun_eoa) = o.get_mut();
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
-                    match possible_sandwiches.entry(root.head.data.get_to_address()) {
-                        Entry::Vacant(e) => {
-                            e.insert(PossibleSandwich {
-                                eoa:                   *frontrun_eoa,
-                                possible_frontruns:    vec![*prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
-                                mev_executor_contract: root.head.data.get_to_address(),
-                                victims:               vec![frontrun_victims],
-                            });
-                        }
-                        Entry::Occupied(mut o) => {
-                            let sandwich = o.get_mut();
-                            sandwich.possible_frontruns.push(*prev_tx_hash);
-                            sandwich.possible_backrun = root.tx_hash;
-                            sandwich.victims.push(frontrun_victims);
+                    if !frontrun_victims.is_empty() {
+                        match possible_sandwiches.entry(root.head.data.get_to_address()) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleSandwich {
+                                    eoa:                   *frontrun_eoa,
+                                    possible_frontruns:    vec![*prev_tx_hash],
+                                    possible_backrun:      root.tx_hash,
+                                    mev_executor_contract: root.head.data.get_to_address(),
+                                    victims:               vec![frontrun_victims],
+                                });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.possible_frontruns.push(*prev_tx_hash);
+                                sandwich.possible_backrun = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
+                            }
                         }
                     }
                 }

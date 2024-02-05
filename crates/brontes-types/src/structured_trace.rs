@@ -1,13 +1,10 @@
 use std::str::FromStr;
 
 use alloy_primitives::{Address, Log};
-use redefined::{self_convert_redefined, RedefinedConvert};
+use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
-use reth_rpc_types::trace::parity::{
-    Action, CallType,
-    TraceOutput::{self},
-    TransactionTrace,
-};
+use reth_rpc_types::trace::parity::*;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT};
@@ -97,17 +94,9 @@ impl TraceActions for TransactionTraceWithLogs {
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
 )]
-#[archive(check_bytes)]
+
 pub struct DecodedCallData {
     pub function_name: String,
     pub call_data:     Vec<DecodedParams>,
@@ -117,17 +106,8 @@ pub struct DecodedCallData {
 self_convert_redefined!(DecodedCallData);
 
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
 )]
-#[archive(check_bytes)]
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,
@@ -171,6 +151,7 @@ impl TransactionTraceWithLogs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     pub tx_hash:         B256,
@@ -191,5 +172,41 @@ impl TxTrace {
         is_success: bool,
     ) -> Self {
         Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
+    }
+}
+
+#[test]
+fn t2() {}
+
+#[cfg(test)]
+mod tests {
+    use rkyv::{Deserialize, Infallible, Serialize};
+
+    use super::*;
+    use crate::db::traces::TxTraceRedefined;
+
+    #[test]
+    fn test_serialization_deserialization() {
+        let value: TxTraceRedefined = Default::default();
+
+        // Serialize the value
+        let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
+
+        // Deserialize the value
+        let archived = unsafe { rkyv::archived_root::<TxTraceRedefined>(&bytes[..]) };
+        let deserialized: TxTraceRedefined = archived.deserialize(&mut Infallible).unwrap();
+
+        assert_eq!(deserialized, value);
+    }
+
+    #[test]
+    fn test_conversion_between_types() {
+        let value: TxTraceRedefined = Default::default();
+
+        let real: TxTrace = unsafe { std::mem::transmute(value.clone()) };
+
+        let check: TxTraceRedefined = real.into();
+
+        assert_eq!(check, value);
     }
 }

@@ -11,9 +11,7 @@
 //! event occurs on a token. When this occurs a subgraph is made for the pair if
 //! one doesn't already exist. This allows for fast computation of a tokens
 //! price. These subgraphs constantly update with new blocks, updating their
-//! nodes and edges to reflect new liquidity pools,  By focusing on relevant
-//! portions of the graph, the system enhances performance and accuracy in price
-//! calculations.
+//! nodes and edges to reflect new liquidity pools.  
 //!
 //! ### Graph Management
 //! The system adds new pools to the token graph as they appear in new blocks,
@@ -468,27 +466,30 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         }
 
         let mut recusing = Vec::new();
-        new_state.into_iter().for_each(|(pair, block, edges)| {
-            // add regularly
-            if !edges.is_empty() {
-                let Some((id, need_state, force_rundown)) =
-                    self.add_subgraph(pair, block, edges, true)
-                else {
-                    return;
-                };
-                if force_rundown {
-                    self.rundown(pair, block);
+        new_state
+            .into_iter()
+            .for_each(|(pair, block, missing_paths)| {
+                let edges = missing_paths.into_iter().flatten().unique().collect_vec();
+                // add regularly
+                if !edges.is_empty() {
+                    let Some((id, need_state, force_rundown)) =
+                        self.add_subgraph(pair, block, edges, true)
+                    else {
+                        return;
+                    };
+                    if force_rundown {
+                        self.rundown(pair, block);
+                        return
+                    }
+
+                    if !need_state {
+                        recusing.push((block, id, pair))
+                    }
                     return
                 }
 
-                if !need_state {
-                    recusing.push((block, id, pair))
-                }
-                return
-            }
-
-            self.rundown(pair, block);
-        });
+                self.rundown(pair, block);
+            });
 
         self.try_verify_subgraph(recusing);
     }
@@ -505,6 +506,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 vec![(pair, block, ignores.iter().copied().collect(), vec![])],
             )
             .remove(0);
+            let edges = edges.into_iter().flatten().unique().collect_vec();
 
             if edges.is_empty() {
                 if popped.is_none() {
@@ -519,7 +521,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 if !need_state {
                     self.try_verify_subgraph(vec![(block, id, pair)]);
                 }
-                break;
+                break
             }
         }
     }
@@ -602,7 +604,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
 
         for pool_info in self
             .graph_manager
-            .create_subgraph_mut(block, pair, 100)
+            .create_subgraph_mut(block, pair, 100, 5)
             .into_iter()
         {
             let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
@@ -775,31 +777,22 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                             }
                         }
                     }
-                    Poll::Ready(None) => {
+                    Poll::Ready(None) | Poll::Pending => {
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
                             return Poll::Ready(self.on_close())
-                        } else {
-                            break
                         }
+                        break
                     }
-                    Poll::Pending => break,
                 }
 
                 // we poll here to continuously progress state fetches as they are slow
                 if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                     self.on_pool_resolve(state)
                 }
-            }
-
-            if self.lazy_loader.is_empty()
-                && self.lazy_loader.can_progress(&self.completed_block)
-                && self.finished.load(SeqCst)
-            {
-                return Poll::Ready(self.on_close())
             }
 
             self.on_pool_updates(block_updates);
@@ -897,21 +890,27 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
 fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>,
-) -> Vec<(Pair, u64, Vec<SubGraphEdge>)> {
+) -> Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>)> {
     pairs
         .into_par_iter()
-        .flat_map(|(pair, block, ignore, frayed_ends)| {
+        .map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return vec![(pair, block, graph.create_subgraph(block, pair, ignore, 100))]
+                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)])
             }
 
-            frayed_ends
-                .into_iter()
-                .zip(vec![pair.0].into_iter().cycle())
-                .map(|(end, start)| {
-                    (pair, block, graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0))
-                })
-                .collect_vec()
+            (
+                pair,
+                block,
+                frayed_ends
+                    .into_iter()
+                    .zip(vec![pair.0].into_iter().cycle())
+                    .collect_vec()
+                    .into_par_iter()
+                    .map(|(end, start)| {
+                        graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0, 12)
+                    })
+                    .collect::<Vec<_>>(),
+            )
         })
         .collect::<Vec<_>>()
 }
@@ -975,7 +974,7 @@ fn queue_loading_returns<DB: LibmdbxWriter + LibmdbxReader>(
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100);
+        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100, 5);
         (subgraph, pair, trigger_update.block)
     }))
 }

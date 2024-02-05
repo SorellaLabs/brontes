@@ -14,7 +14,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{b256, Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -31,7 +31,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         let liq_txs = tree.collect_all(|node| {
             (
@@ -57,7 +57,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     fn calculate_liquidation(
         &self,
         info: TxInfo,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         actions: Vec<Actions>,
     ) -> Option<Bundle> {
         let swaps = actions
@@ -172,7 +172,10 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
-            .with_block(18979710)
+            .with_mev_tx_hashes(vec![hex!(
+                "725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db"
+            )
+            .into()])
             .with_dex_prices()
             .with_gas_paid_usd(636.54)
             .with_expected_profit_usd(129.23);

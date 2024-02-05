@@ -1,137 +1,69 @@
 use std::{
-    collections::HashMap,
     pin::Pin,
-    sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
 };
 
 use alloy_primitives::Address;
-use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReader, LibmdbxWriter},
-};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
-use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{db::metadata::MetadataNoDex, normalized_actions::Actions, tree::BlockTree};
-use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
-use reth_tasks::TaskExecutor;
-use tokio::sync::mpsc::UnboundedReceiver;
+use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
+use reth_tasks::shutdown::GracefulShutdown;
 use tracing::{debug, info};
 
-use super::{dex_pricing::WaitingForPricerFuture, utils::process_results};
+use super::shared::{inserts::process_results, state_collector::StateCollector};
 
-type CollectionFut<'a> =
-    Pin<Box<dyn Future<Output = (MetadataNoDex, BlockTree<Actions>)> + Send + 'a>>;
-
-pub struct TipInspector<'inspector, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    current_block:     u64,
-    parser:            &'inspector Parser<'inspector, T, DB>,
-    classifier:        &'inspector Classifier<'inspector, T, DB>,
-    clickhouse:        &'inspector Clickhouse,
-    database:          &'static DB,
-    inspectors:        &'inspector [&'inspector Box<dyn Inspector>],
-    pricer:            WaitingForPricerFuture<T, DB>,
-    // pending future data
-    classifier_future: Option<CollectionFut<'inspector>>,
-    composer_future:   FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'inspector>>>,
+pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+    current_block:      u64,
+    parser:             &'static Parser<'static, T, DB>,
+    state_collector:    StateCollector<T, DB>,
+    database:           &'static DB,
+    inspectors:         &'static [&'static Box<dyn Inspector>],
+    processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
-impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
-    TipInspector<'inspector, T, DB>
-{
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> {
     pub fn new(
-        parser: &'inspector Parser<'inspector, T, DB>,
-        clickhouse: &'inspector Clickhouse,
-        database: &'static DB,
-        classifier: &'inspector Classifier<'_, T, DB>,
-        inspectors: &'inspector [&'inspector Box<dyn Inspector>],
         current_block: u64,
-        task_executor: TaskExecutor,
-        rx: UnboundedReceiver<DexPriceMsg>,
-        quote_asset: Address,
+        _quote_asset: Address,
+        state_collector: StateCollector<T, DB>,
+        parser: &'static Parser<'static, T, DB>,
+        database: &'static DB,
+        inspectors: &'static [&'static Box<dyn Inspector>],
     ) -> Self {
-        let pairs = database.protocols_created_before(current_block).unwrap();
-
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), database);
-
-        let pricer = BrontesBatchPricer::new(
-            Arc::new(AtomicBool::new(false)),
-            quote_asset,
-            pair_graph,
-            rx,
-            parser.get_tracer(),
-            current_block,
-            HashMap::new(),
-        );
         Self {
-            pricer: WaitingForPricerFuture::new(pricer, task_executor),
+            state_collector,
             inspectors,
             current_block,
             parser,
-            clickhouse,
-            composer_future: FuturesUnordered::new(),
+            processing_futures: FuturesUnordered::new(),
             database,
-            classifier,
-            classifier_future: None,
         }
     }
 
-    pub async fn shutdown(mut self) {
-        if let Some(fut) = self.classifier_future.take() {
-            let (meta, tree) = fut.await;
-            self.pricer
-                .add_pending_inspection(self.current_block, tree, meta);
-        }
-        self.classifier.close();
+    pub async fn run_until_graceful_shutdown(self, shutdown: GracefulShutdown) {
+        let tip = self;
+        pin_mut!(tip, shutdown);
 
-        // triggers pricing shutdown
-        while let Some((tree, meta_data)) = self.pricer.next().await {
-            self.classifier.close();
-            self.composer_future.push(Box::pin(
-                process_results(self.database, self.inspectors, tree.into(), meta_data.into())
-                    .map(|_| ()),
-            ));
+        let mut graceful_guard = None;
+        tokio::select! {
+            _= &mut tip => {
+
+            },
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+            },
         }
 
-        while let Some(_) = self.composer_future.next().await {}
-        info!("tip inspector properly shutdown");
-    }
+        while let Some(_) = tip.processing_futures.next().await {}
 
-    fn start_collection(&mut self) {
-        info!(block_number = self.current_block, "starting data collection");
-        let parser_fut = self.parser.execute(self.current_block);
-        let labeller_fut = self.clickhouse.get_metadata(self.current_block);
-
-        let classifier_fut = Box::pin(async {
-            let (traces, header) = parser_fut.await.unwrap().unwrap();
-            info!("Got {} traces + header", traces.len());
-            let tree = self.classifier.build_block_tree(traces, header).await;
-            let meta = labeller_fut.await;
-
-            (meta, tree)
-        });
-
-        self.classifier_future = Some(classifier_fut);
-    }
-
-    fn progress_futures(&mut self, cx: &mut Context<'_>) {
-        if let Some(mut future) = self.classifier_future.take() {
-            if let Poll::Ready((meta, tree)) = future.poll_unpin(cx) {
-                debug!("built tree");
-                let block = self.current_block;
-                self.pricer.add_pending_inspection(block, tree, meta);
-            } else {
-                self.classifier_future = Some(future);
-            }
-        }
-        if let Poll::Ready(Some(_)) = self.composer_future.poll_next_unpin(cx) {}
+        drop(graceful_guard);
     }
 
     #[cfg(not(feature = "local"))]
     fn start_block_inspector(&mut self) -> bool {
-        if self.classifier_future.is_some() {
+        if self.state_collector.is_collecting_state() {
             return false
         }
 
@@ -153,6 +85,10 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
 
     #[cfg(feature = "local")]
     async fn start_block_inspector(&mut self) -> bool {
+        if self.state_collector.is_collecting_state() {
+            return false
+        }
+
         match self.parser.get_latest_block_number().await {
             Ok(chain_tip) => {
                 if chain_tip > self.current_block {
@@ -168,24 +104,35 @@ impl<'inspector, T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader>
             }
         }
     }
+
+    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
+        info!(target:"brontes","Completed DEX pricing");
+        self.processing_futures.push(Box::pin(process_results(
+            self.database,
+            self.inspectors,
+            tree.into(),
+            meta.into(),
+        )));
+    }
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<'_, T, DB> {
+impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         #[cfg(not(feature = "local"))]
         {
             if self.start_block_inspector() {
-                self.start_collection();
+                let block = self.current_block;
+                self.state_collector.fetch_state_for(block);
             }
-            self.progress_futures(cx);
-            if let Poll::Ready(Some((tree, meta))) = self.pricer.poll_next_unpin(cx) {
-                self.composer_future.push(Box::pin(
-                    process_results(self.database, self.inspectors, tree.into(), meta.into())
-                        .map(|_| ()),
-                ));
+            if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
+                match item {
+                    Some((tree, meta)) => self.on_price_finish(tree, meta),
+                    None => return Poll::Ready(()),
+                }
             }
+            while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
         }
 
         Poll::Pending

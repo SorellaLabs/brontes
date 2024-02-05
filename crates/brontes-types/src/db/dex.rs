@@ -3,24 +3,43 @@ use std::{
     collections::HashMap,
 };
 
+use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use malachite::{num::basic::traits::One, Rational};
-use serde::{Deserialize, Serialize};
+use redefined::Redefined;
+use reth_db::DatabaseError;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{self, Deserialize, Serialize};
 use tracing::error;
 
-use crate::pair::Pair;
+use crate::{
+    db::redefined_types::malachite::RationalRedefined,
+    implement_table_value_codecs_with_zc,
+    pair::{Pair, PairRedefined},
+};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize, Redefined)]
+#[redefined_attr(derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    rDeserialize,
+    rSerialize,
+    Archive
+))]
 pub struct DexPrices {
     pub pre_state:  Rational,
     pub post_state: Rational,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PriceAt {
     Before,
     After,
     Lowest,
     Highest,
+    Average,
 }
 
 impl DexPrices {
@@ -30,11 +49,12 @@ impl DexPrices {
             PriceAt::Before => self.pre_state,
             PriceAt::Lowest => min(self.pre_state, self.post_state),
             PriceAt::Highest => max(self.pre_state, self.post_state),
+            PriceAt::Average => (self.pre_state + self.post_state) / Rational::from(2),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {
@@ -73,7 +93,17 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
+#[redefined_attr(derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    rDeserialize,
+    rSerialize,
+    Archive
+))]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
     pub quote:  Vec<(Pair, DexPrices)>,
@@ -83,4 +113,48 @@ impl From<DexQuote> for Vec<(Pair, DexPrices)> {
     fn from(val: DexQuote) -> Self {
         val.0.into_iter().collect()
     }
+}
+
+implement_table_value_codecs_with_zc!(DexQuoteWithIndexRedefined);
+
+wrap_fixed_bytes!(
+    extra_derives: [],
+    pub struct DexKey<10>;
+);
+
+impl reth_db::table::Encode for DexKey {
+    type Encoded = [u8; 10];
+
+    fn encode(self) -> Self::Encoded {
+        self.0 .0
+    }
+}
+
+impl reth_db::table::Decode for DexKey {
+    fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, DatabaseError> {
+        Ok(DexKey::from_slice(value.as_ref()))
+    }
+}
+
+pub fn decompose_key(key: DexKey) -> (u64, u16) {
+    let block = FixedBytes::<8>::from_slice(&key[0..8]);
+    let block_number = u64::from_be_bytes(*block);
+
+    let tx_idx = FixedBytes::<2>::from_slice(&key[8..]);
+    let tx_idx = u16::from_be_bytes(*tx_idx);
+
+    (block_number, tx_idx)
+}
+
+pub fn make_key(block_number: u64, tx_idx: u16) -> DexKey {
+    let block_bytes = FixedBytes::new(block_number.to_be_bytes());
+    block_bytes.concat_const(tx_idx.to_be_bytes().into()).into()
+}
+
+pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
+    let base = FixedBytes::new(block_number.to_be_bytes());
+    let start_key = base.concat_const([0u8; 2].into());
+    let end_key = base.concat_const([u8::MAX; 2].into());
+
+    (start_key.into(), end_key.into())
 }

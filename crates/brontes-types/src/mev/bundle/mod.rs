@@ -6,7 +6,9 @@ use std::fmt::{self, Debug};
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
+use redefined::Redefined;
 use reth_primitives::B256;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
@@ -16,16 +18,20 @@ use sorella_db_databases::{
 };
 use strum::{Display, EnumIter};
 
+use crate::display::utils::{
+    display_atomic_backrun, display_jit_liquidity, display_jit_liquidity_sandwich,
+    display_liquidation,
+};
 #[allow(unused_imports)]
 use crate::{
-    display::utils::{display_cex_dex, display_sandwich, print_mev_type_header},
+    display::utils::{display_cex_dex, display_sandwich},
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
     GasDetails,
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Bundle {
     pub header: BundleHeader,
     pub data:   BundleData,
@@ -36,6 +42,10 @@ impl fmt::Display for Bundle {
         match self.header.mev_type {
             MevType::Sandwich => display_sandwich(self, f)?,
             MevType::CexDex => display_cex_dex(self, f)?,
+            MevType::Jit => display_jit_liquidity(self, f)?,
+            MevType::Backrun => display_atomic_backrun(self, f)?,
+            MevType::Liquidation => display_liquidation(self, f)?,
+            MevType::JitSandwich => display_jit_liquidity_sandwich(self, f)?,
             _ => writeln!(f, "{:#?}", self)?,
         }
 
@@ -59,7 +69,6 @@ impl fmt::Display for Bundle {
     Default,
     Display,
 )]
-#[archive(check_bytes)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
 #[serde(rename_all = "lowercase")]

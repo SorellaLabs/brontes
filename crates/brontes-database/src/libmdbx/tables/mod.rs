@@ -6,21 +6,24 @@ use std::{
 use brontes_pricing::{Protocol, SubGraphsEntry};
 use brontes_types::{
     db::{
-        address_to_tokens::PoolTokens, cex::CexPriceMap, dex::DexQuoteWithIndex,
-        metadata::MetadataInner, mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses, token_info::TokenInfo, traces::TxTracesInner,
+        address_to_tokens::{PoolTokens, PoolTokensRedefined},
+        cex::{CexPriceMap, CexPriceMapRedefined},
+        dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
+        metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
+        mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
+        pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
+        token_info::TokenInfo,
+        traces::{TxTracesInner, TxTracesInnerRedefined},
     },
     pair::Pair,
+    price_graph_types::SubGraphsEntryRedefined,
     serde_primitives::*,
     traits::TracingProvider,
 };
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::libmdbx::{
-    types::{utils::static_bindings, ReturnKV},
-    LibmdbxData,
-};
+use crate::libmdbx::{types::ReturnKV, LibmdbxData};
 
 mod const_sql;
 use alloy_primitives::Address;
@@ -29,19 +32,7 @@ use paste::paste;
 use reth_db::{table::Table, TableType};
 
 use super::{
-    initialize::LibmdbxInitializer,
-    types::{
-        address_to_tokens::{ArchivedLibmdbxPoolTokens, LibmdbxPoolTokens},
-        cex_price::{ArchivedLibmdbxCexPriceMap, LibmdbxCexPriceMap},
-        dex_price::{ArchivedLibmdbxDexQuoteWithIndex, DexKey, LibmdbxDexQuoteWithIndex},
-        metadata::{ArchivedLibmdbxMetadataInner, LibmdbxMetadataInner},
-        mev_block::{ArchivedLibmdbxMevBlockWithClassified, LibmdbxMevBlockWithClassified},
-        pool_creation_block::{ArchivedLibmdbxPoolsToAddresses, LibmdbxPoolsToAddresses},
-        subgraphs::{ArchivedLibmdbxSubGraphsEntry, LibmdbxSubGraphsEntry},
-        traces::{ArchivedLibmdbxTxTracesInner, LibmdbxTxTracesInner},
-        IntoTableKey,
-    },
-    CompressedTable,
+    initialize::LibmdbxInitializer, types::IntoTableKey, utils::static_bindings, CompressedTable,
 };
 
 pub const NUM_TABLES: usize = 10;
@@ -131,9 +122,9 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(block_range)
                     .await
             }
-            Tables::Metadata => {
+            Tables::BlockInfo => {
                 initializer
-                    .initialize_table_from_clickhouse::<Metadata, MetadataData>(block_range)
+                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(block_range)
                     .await
             }
             Tables::PoolCreationBlocks => {
@@ -156,61 +147,13 @@ tables!(
     AddressToTokens,
     AddressToProtocol,
     CexPrice,
-    Metadata,
+    BlockInfo,
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
     SubGraphs,
     TxTraces
 );
-
-#[macro_export]
-macro_rules! implement_table_value_codecs_with_zc {
-    ($table_value:ident) => {
-        impl alloy_rlp::Encodable for $table_value {
-            fn encode(&self, out: &mut dyn bytes::BufMut) {
-                let encoded = rkyv::to_bytes::<_, 256>(self).unwrap();
-
-                out.put_slice(&encoded)
-            }
-        }
-
-        impl alloy_rlp::Decodable for $table_value {
-            fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-                let archived: &paste!([<Archived $table_value>]) =
-                    rkyv::check_archived_root::<Self>(&buf[..]).unwrap();
-
-
-                let this = rkyv::Deserialize::deserialize(archived, &mut rkyv::Infallible).unwrap();
-
-                Ok(this)
-            }
-        }
-
-        impl reth_db::table::Compress for $table_value {
-            type Compressed = Vec<u8>;
-
-            fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
-                let mut encoded = Vec::new();
-                alloy_rlp::Encodable::encode(&self, &mut encoded);
-                let encoded_compressed = zstd::encode_all(&*encoded, 0).unwrap();
-
-                buf.put_slice(&encoded_compressed);
-            }
-        }
-
-        impl reth_db::table::Decompress for $table_value {
-            fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-                let binding = value.as_ref().to_vec();
-
-                let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
-                let buf = &mut encoded_decompressed.as_slice();
-
-                alloy_rlp::Decodable::decode(buf).map_err(|_| reth_db::DatabaseError::Decode)
-            }
-        }
-    };
-}
 
 /// Must be in this order when defining
 /// Table {
@@ -258,7 +201,6 @@ macro_rules! compressed_table {
             $(#[$vcattrs:meta])* compressed_value: $c_val:ident
         },  $($tail:tt)*
     ) => {
-        implement_table_value_codecs_with_zc!($c_val);
         compressed_table!($(#[$attrs])* $table_name { $($acc)* }
                           Data  {
                               $(#[$kattrs])* key: $key,
@@ -415,7 +357,7 @@ compressed_table!(
             key: Address,
             #[serde(with = "pool_tokens")]
             value: PoolTokens,
-            compressed_value: LibmdbxPoolTokens
+            compressed_value: PoolTokensRedefined
         },
         Init {
             init_size: None,
@@ -451,10 +393,10 @@ compressed_table!(
         Data {
         key: u64,
         value: CexPriceMap,
-        compressed_value: LibmdbxCexPriceMap
+        compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(200000),
+            init_size: Some(10_000),
             init_method: Clickhouse
         },
         CLI {
@@ -465,15 +407,15 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table Metadata {
+    Table BlockInfo {
         #[serde_as]
         Data {
             key: u64,
-            value: MetadataInner,
-            compressed_value: LibmdbxMetadataInner
+            value: BlockMetadataInner,
+            compressed_value: BlockMetadataInnerRedefined
         },
         Init {
-            init_size: Some(200000),
+            init_size: Some(50_000),
             init_method: Clickhouse
         },
         CLI {
@@ -487,7 +429,7 @@ compressed_table!(
         Data {
             key: DexKey,
             value: DexQuoteWithIndex,
-            compressed_value: LibmdbxDexQuoteWithIndex
+            compressed_value: DexQuoteWithIndexRedefined
         },
         Init {
             init_size: None,
@@ -506,7 +448,7 @@ compressed_table!(
             key: u64,
             #[serde(with = "pools_libmdbx")]
             value: PoolsToAddresses,
-            compressed_value: LibmdbxPoolsToAddresses
+            compressed_value: PoolsToAddressesRedefined
         },
         Init {
             init_size: None,
@@ -523,7 +465,7 @@ compressed_table!(
         Data {
             key: u64,
             value: MevBlockWithClassified,
-            compressed_value: LibmdbxMevBlockWithClassified
+            compressed_value: MevBlockWithClassifiedRedefined
         },
         Init {
             init_size: None,
@@ -540,7 +482,7 @@ compressed_table!(
         Data {
             key: Pair,
             value: SubGraphsEntry,
-            compressed_value: LibmdbxSubGraphsEntry
+            compressed_value: SubGraphsEntryRedefined
         },
         Init {
             init_size: None,
@@ -558,7 +500,7 @@ compressed_table!(
         Data {
             key: u64,
             value: TxTracesInner,
-            compressed_value: LibmdbxTxTracesInner
+            compressed_value: TxTracesInnerRedefined
         },
         Init {
             init_size: None,

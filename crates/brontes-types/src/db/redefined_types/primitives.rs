@@ -1,156 +1,110 @@
-use std::{fmt, hash::Hash, str::FromStr};
+use std::{hash::Hash, str::FromStr};
 
-use alloy_primitives::{hex, Address, Bytes as Alloy_Bytes, FixedBytes, Uint};
+use alloy_primitives::{hex, Address, Bytes, FixedBytes, Uint};
 use derive_more::{Deref, DerefMut, From, Index, IndexMut, IntoIterator};
-use redefined::{Redefined, RedefinedConvert};
+use redefined::{redefined_remote, Redefined, RedefinedConvert};
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::pair::Pair;
-/*
---------------
+// Uint
+redefined_remote!(
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, rSerialize, rDeserialize, Archive)]
+    [Uint] : "ruint"
+);
 
-
-UInt
-
-
-
-*/
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Hash,
-    Redefined,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-)]
-#[archive(check_bytes)]
-#[redefined(Uint)]
-#[redefined_attr(to_source = "Uint::from_limbs(self.limbs)")]
-pub struct Redefined_Uint<const BITS: usize, const LIMBS: usize> {
-    #[redefined(func = "src.into_limbs()")]
-    limbs: [u64; LIMBS],
-}
-
-impl<const BITS: usize, const LIMBS: usize> serde::Serialize for Redefined_Uint<BITS, LIMBS> {
+impl<const BITS: usize, const LIMBS: usize> Serialize for UintRedefined<BITS, LIMBS> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
-        let this = self.to_source();
+        let this: Uint<BITS, LIMBS> = (*self).into();
         this.serialize(serializer)
     }
 }
 
-impl<'de, const BITS: usize, const LIMBS: usize> serde::Deserialize<'de>
-    for Redefined_Uint<BITS, LIMBS>
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let this = Uint::deserialize(deserializer)?;
-        Ok(Self::from_source(this))
-    }
-}
-
-impl<const BITS: usize, const LIMBS: usize> Default for Redefined_Uint<BITS, LIMBS> {
+impl<const BITS: usize, const LIMBS: usize> Default for UintRedefined<BITS, LIMBS> {
     fn default() -> Self {
-        Self { limbs: [0; LIMBS] }
+        Uint::default().into()
     }
 }
 
-pub type Redefined_U256 = Redefined_Uint<256, 4>;
-pub type Redefined_U64 = Redefined_Uint<64, 1>;
+pub type U256Redefined = UintRedefined<256, 4>;
+pub type U64Redefined = UintRedefined<64, 1>;
 
-/*
---------------
+//FixedBytes
+redefined_remote!(
+    #[derive(
+        Debug,
+        Clone,
+        Copy,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        Hash,
+        Deref,
+        DerefMut,
+        From,
+        Index,
+        IndexMut,
+        IntoIterator,
+        rSerialize,
+        rDeserialize,
+        Archive,
+    )]
+    [FixedBytes] : "alloy-primitives"
+);
 
+pub type TxHashRedefined = FixedBytesRedefined<32>;
+pub type B256Redefined = FixedBytesRedefined<32>;
 
-FixedBytes
-
-
-
-*/
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Deref,
-    DerefMut,
-    From,
-    Index,
-    IndexMut,
-    IntoIterator,
-    Redefined,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-)]
-#[archive(check_bytes)]
-#[archive(compare(PartialEq))]
-#[redefined(FixedBytes)]
-#[redefined_attr(to_source = "FixedBytes::from_slice(&self.0)")]
-pub struct Redefined_FixedBytes<const N: usize>(#[into_iterator(owned, ref, ref_mut)] pub [u8; N]);
-
-impl<const N: usize> serde::Serialize for Redefined_FixedBytes<N> {
+impl<const N: usize> Serialize for FixedBytesRedefined<N> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
         let this = self.to_source();
-        this.serialize(serializer)
+        Serialize::serialize(&this, serializer)
     }
 }
 
-impl<'de, const N: usize> serde::Deserialize<'de> for Redefined_FixedBytes<N> {
+impl<'de, const N: usize> Deserialize<'de> for FixedBytesRedefined<N> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
-        let this = FixedBytes::deserialize(deserializer)?;
-        Ok(Self::from_source(this))
+        let this: FixedBytes<N> = Deserialize::deserialize(deserializer)?;
+        Ok(this.into())
     }
 }
 
-impl<const N: usize> FromStr for Redefined_FixedBytes<N> {
-    type Err = hex::FromHexError;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Redefined_FixedBytes::from_source(FixedBytes::from_str(s)?))
+impl<const N: usize> Hash for ArchivedFixedBytesRedefined<N> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
     }
 }
 
-impl<const N: usize> fmt::Display for Redefined_FixedBytes<N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let this = self.to_source();
-        this.fmt(f)
+impl<const N: usize> Eq for ArchivedFixedBytesRedefined<N> {}
+
+impl<const N: usize> PartialEq for ArchivedFixedBytesRedefined<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
-pub type Redefined_TxHash = Redefined_FixedBytes<32>;
+impl<const N: usize> Default for FixedBytesRedefined<N> {
+    fn default() -> Self {
+        FixedBytesRedefined([0; N])
+    }
+}
 
-/*
---------------
-
-
-Address
-
-
-
-*/
+/// Address
+/// Haven't implemented macro stuff yet
 #[derive(
     Debug,
     Clone,
     Copy,
+    Default,
     PartialEq,
     Eq,
     PartialOrd,
@@ -159,41 +113,31 @@ Address
     Deref,
     DerefMut,
     From,
-    serde::Serialize,
-    serde::Deserialize,
+    Serialize,
+    Deserialize,
     Index,
     IndexMut,
     IntoIterator,
     Redefined,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
+    rSerialize,
+    rDeserialize,
+    Archive,
 )]
-#[archive(check_bytes)]
-#[archive(compare(PartialEq))]
-//#[archive_attr(derive(PartialEq, Eq))]
 #[redefined(Address)]
-pub struct Redefined_Address(Redefined_FixedBytes<20>);
+#[archive_attr(derive(Hash, PartialEq, Eq))]
+pub struct AddressRedefined(FixedBytesRedefined<20>);
 
-impl FromStr for Redefined_Address {
+impl FromStr for AddressRedefined {
     type Err = hex::FromHexError;
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Redefined_Address::from_source(Address::from_str(s)?))
+        Ok(AddressRedefined::from_source(Address::from_str(s)?))
     }
 }
 
-/*
---------------
-
-
-Pair
-
-
-
-*/
-
+/// alloy_primitivies::Bytes
+/// Have not implements parsing 'Bytes::bytes' yet
 #[derive(
     Debug,
     Clone,
@@ -207,61 +151,6 @@ Pair
     rkyv::Archive,
     Redefined,
 )]
-#[archive(check_bytes)]
-#[redefined(Pair)]
-pub struct Redefined_Pair(Redefined_Address, Redefined_Address);
-
-impl Hash for ArchivedRedefined_Pair {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let addr0: Redefined_Address =
-            rkyv::Deserialize::deserialize(&self.0, &mut rkyv::Infallible).unwrap();
-        let addr1: Redefined_Address =
-            rkyv::Deserialize::deserialize(&self.1, &mut rkyv::Infallible).unwrap();
-        addr0.hash(state);
-        addr1.hash(state);
-    }
-}
-
-impl PartialEq for ArchivedRedefined_Pair {
-    fn eq(&self, other: &Self) -> bool {
-        let addr0: Redefined_Address =
-            rkyv::Deserialize::deserialize(&self.0, &mut rkyv::Infallible).unwrap();
-        let addr1: Redefined_Address =
-            rkyv::Deserialize::deserialize(&self.1, &mut rkyv::Infallible).unwrap();
-        addr0 == other.0 && addr1 == other.1
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-}
-
-impl Eq for ArchivedRedefined_Pair {}
-
-/*
---------------
-
-
-alloy_primitives::Bytes
-
-
-
-*/
-
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-    Redefined,
-)]
-#[archive(check_bytes)]
-#[redefined(Alloy_Bytes)]
+#[redefined(Bytes)]
 #[redefined_attr(to_source = "self.0.into()", from_source = "Self(src.to_vec())")]
-pub struct Redefined_Alloy_Bytes(pub Vec<u8>);
+pub struct BytesRedefined(pub Vec<u8>);

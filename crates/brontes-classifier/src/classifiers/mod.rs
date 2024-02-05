@@ -1,4 +1,5 @@
 use brontes_macros::{action_dispatch, discovery_dispatch};
+pub mod transfer;
 
 pub mod uniswap;
 pub use uniswap::*;
@@ -17,6 +18,9 @@ pub use aave::*;
 
 pub mod pancakeswap;
 pub use pancakeswap::*;
+
+pub mod maker;
+pub use maker::*;
 
 discovery_dispatch!(
     DiscoveryProtocols,
@@ -61,6 +65,8 @@ action_dispatch!(
     CurveCryptoSwapexchange_1Call,
     CurveCryptoSwapexchange_2Call,
     CurveCryptoSwapexchange_underlying_0Call,
+    MakerPSMbuyGemCall,
+    MakerPSMsellGemCall,
     AaveV2liquidationCallCall,
     AaveV3liquidationCallCall,
     AaveV2flashLoanCall,

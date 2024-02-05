@@ -6,7 +6,7 @@ use alloy_json_abi::JsonAbi;
 use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
-    db::{cex::CexPriceMap, clickhouse::*, metadata::MetadataNoDex},
+    db::{cex::CexPriceMap, clickhouse::*, metadata::Metadata},
     mev::{Bundle, BundleData, Mev, MevBlock},
     pair::Pair,
 };
@@ -39,7 +39,7 @@ impl Clickhouse {
         self.client.credentials()
     }
 
-    pub async fn get_metadata(&self, block_num: u64) -> MetadataNoDex {
+    pub async fn get_metadata(&self, block_num: u64) -> Metadata {
         let times_flow = self.get_times_flow_info(block_num).await;
         let cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
 
@@ -171,6 +171,7 @@ impl Clickhouse {
     }
 }
 
+#[allow(unused)]
 fn mev_table_type(mev: &BundleData) -> DatabaseTables {
     match mev.mev_type() {
         brontes_types::mev::MevType::Sandwich => DatabaseTables::Sandwich,

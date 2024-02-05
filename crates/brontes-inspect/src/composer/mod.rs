@@ -35,7 +35,7 @@ mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    db::metadata::MetadataCombined,
+    db::metadata::Metadata,
     mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -61,7 +61,7 @@ pub struct ComposerResults {
 pub async fn compose_mev_results(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> ComposerResults {
     let pre_processing = pre_process(tree.clone(), metadata.clone());
     let (possible_mev_txes, classified_mev) =
@@ -77,12 +77,12 @@ pub async fn compose_mev_results(
 async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
-    meta_data: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
     orchestra
         .iter()
-        .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), meta_data.clone())));
+        .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), metadata.clone())));
 
     let mut possible_mev_txes =
         DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree);
@@ -118,7 +118,7 @@ fn on_orchestra_resolution(
     pre_processing: BlockPreprocessing,
     tree: Arc<BlockTree<Actions>>,
     possible_mev_txes: PossibleMevCollection,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut header = build_mev_header(
@@ -278,7 +278,7 @@ pub mod tests {
 
     use super::*;
     use crate::{
-        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS},
+        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS, USDT_ADDRESS},
         Inspectors,
     };
 
@@ -301,6 +301,26 @@ pub mod tests {
             hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
             hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
         ]);
+
+        inspector_util.run_composer(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn test_deduplicate() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.2);
+
+        let config = ComposerRunConfig::new(
+            vec![Inspectors::AtomicBackrun, Inspectors::CexDex],
+            MevType::Backrun,
+        )
+        .with_dex_prices()
+        .with_gas_paid_usd(10.20)
+        .with_expected_profit_usd(347.84)
+        .with_mev_tx_hashes(vec![hex!(
+            "3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f"
+        )
+        .into()]);
 
         inspector_util.run_composer(config, None).await.unwrap();
     }
