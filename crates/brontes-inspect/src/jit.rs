@@ -10,7 +10,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, TxInfo,
+    GasDetails, ToFloatNearest, TreeSearchArgs, TxInfo,
 };
 use itertools::Itertools;
 use malachite::Rational;
@@ -58,17 +58,13 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
-                            tree.collect(tx, |node| {
-                                (
-                                    node.data.is_mint()
-                                        || node.data.is_burn()
-                                        || node.data.is_collect(),
-                                    node.subactions.iter().any(|action| {
-                                        action.is_mint()
-                                            || action.is_collect()
-                                            || node.data.is_burn()
-                                    }),
-                                )
+                            tree.collect(tx, |node| TreeSearchArgs {
+                                collect_current_node:  node.data.is_mint()
+                                    || node.data.is_burn()
+                                    || node.data.is_collect(),
+                                child_node_to_collect: node.subactions.iter().any(|action| {
+                                    action.is_mint() || action.is_collect() || node.data.is_burn()
+                                }),
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
@@ -91,11 +87,12 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.collect(*victim, |node| {
-                                (
-                                    node.data.is_swap(),
-                                    node.subactions.iter().any(|action| action.is_swap()),
-                                )
+                            tree.collect(*victim, |node| TreeSearchArgs {
+                                collect_current_node:  node.data.is_swap(),
+                                child_node_to_collect: node
+                                    .subactions
+                                    .iter()
+                                    .any(|action| action.is_swap()),
                             })
                         })
                         .collect_vec();
