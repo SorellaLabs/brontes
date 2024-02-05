@@ -173,6 +173,41 @@ impl<V: NormalizedAction> Node<V> {
         false
     }
 
+    pub fn modify_node_spans<T, F>(&mut self, find: &T, modify: &F) -> bool
+    where
+        T: Fn(&Self) -> bool,
+        F: Fn(Vec<&mut Self>),
+    {
+        if !find(self) {
+            return false
+        }
+
+        let lower_has_better_collect = self
+            .inner
+            .iter_mut()
+            .map(|n| n.modify_node_spans(find, modify))
+            .collect::<Vec<_>>();
+
+        // take the collection of nodes that where false and apply modify to that
+        // collection
+
+        let all_lower_better = lower_has_better_collect.into_iter().all(|t| t);
+        // if all child nodes don't have a best sub-action. Then the current node is the
+        // best.
+        if !all_lower_better {
+            // annoying but only way todo it
+            let mut nodes = vec![unsafe { &mut *(self as *mut Self) }];
+            for i in &mut self.inner {
+                nodes.push(i)
+            }
+
+            modify(nodes);
+        }
+
+        // lower node has a better sub-action.
+        true
+    }
+
     pub fn finalize(&mut self) {
         self.finalized = false;
         self.subactions = self.get_all_sub_actions();
@@ -212,6 +247,14 @@ impl<V: NormalizedAction> Node<V> {
 
             res
         }
+    }
+
+    /// doesn't append this node to inner subactions.
+    pub fn get_all_sub_actions_exclusive(&self) -> Vec<V> {
+        self.inner
+            .iter()
+            .flat_map(|inner| inner.get_all_sub_actions())
+            .collect::<Vec<V>>()
     }
 
     pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node<V>> {

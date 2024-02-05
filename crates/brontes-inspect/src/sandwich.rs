@@ -104,6 +104,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .iter()
                         .flat_map(|pf| tree.get_tx_info(*pf))
                         .collect::<Vec<_>>();
+
                     let back_run_info = tree.get_tx_info(possible_backrun)?;
 
                     let searcher_actions = possible_frontruns
@@ -216,6 +217,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
+
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,
             PriceAt::After,
