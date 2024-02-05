@@ -11,7 +11,7 @@ use brontes_inspect::{
 use brontes_types::{
     db::{
         cex::{CexPriceMap, CexQuote},
-        metadata::MetadataCombined,
+        metadata::Metadata,
     },
     pair::Pair,
 };
@@ -125,7 +125,7 @@ fn bench_cex_dex(c: &mut Criterion) {
 
     let cex_quotes = CexPriceMap(cex_map);
 
-    let metadata = MetadataCombined {
+    let metadata = Metadata {
         dex_quotes: brontes_types::db::dex::DexQuotes(vec![Some({
             let mut map = HashMap::new();
             map.insert(eth_usdc, eth_price.clone());

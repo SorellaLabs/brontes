@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
-use brontes_types::db::{cex::CexExchange, metadata::MetadataCombined};
+use brontes_types::db::{cex::CexExchange, metadata::Metadata};
 use criterion::{black_box, Criterion};
 
 use super::InspectorTestUtilsError;
@@ -151,7 +151,7 @@ impl InspectorBenchUtils {
         &self,
         bench_name: &str,
         tx_hashes: Vec<TxHash>,
-        metadata: MetadataCombined,
+        metadata: Metadata,
         iters: usize,
         inspector: Inspectors,
         c: &mut Criterion,
