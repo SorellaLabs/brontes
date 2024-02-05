@@ -26,7 +26,11 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
-    db::{cex::CexExchange, dex::DexQuotes, metadata::Metadata},
+    db::{
+        cex::CexExchange,
+        dex::DexQuotes,
+        metadata::{self, Metadata},
+    },
     mev::{Bundle, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -204,7 +208,9 @@ impl InspectorTestUtils {
             }
         };
 
-        metadata.dex_quotes = quotes;
+        if metadata.dex_quotes.is_none() {
+            metadata.dex_quotes = quotes;
+        }
 
         if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
