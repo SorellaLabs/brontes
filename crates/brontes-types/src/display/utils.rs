@@ -298,6 +298,8 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
             .bright_red()
     )?;
 
+    writeln!(f, "Token Profits: {}", bundle.header.token_profits)?;
+
     Ok(())
 }
 

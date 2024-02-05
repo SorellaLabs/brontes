@@ -133,13 +133,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_actions: Vec<Vec<Actions>>,
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
-        let _deltas = self.inner.calculate_token_deltas(
-            &[searcher_actions.clone(), victim_actions.clone()]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<Vec<_>>>(),
-        );
-
         // grab all mints and burns
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
