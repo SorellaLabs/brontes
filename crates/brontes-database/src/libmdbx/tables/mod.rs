@@ -120,6 +120,13 @@ impl Tables {
                     )
                     .await
             }
+            Tables::PoolCreationBlocks => {
+                initializer
+                    .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
+                        clear_table,
+                    )
+                    .await
+            }
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
@@ -131,14 +138,6 @@ impl Tables {
             Tables::BlockInfo => {
                 initializer
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
-                        block_range,
-                        clear_table,
-                    )
-                    .await
-            }
-            Tables::PoolCreationBlocks => {
-                initializer
-                    .initialize_table_from_clickhouse::<PoolCreationBlocks, PoolCreationBlocksData>(
                         block_range,
                         clear_table,
                     )
