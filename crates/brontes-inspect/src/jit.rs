@@ -16,7 +16,7 @@ use itertools::Itertools;
 use malachite::Rational;
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, MetadataCombined,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, Metadata,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -43,7 +43,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         self.possible_jit_set(tree.clone())
             .into_iter()
@@ -127,7 +127,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     fn calculate_jit(
         &self,
         info: [TxInfo; 2],
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_actions: Vec<Vec<Actions>>,
@@ -317,7 +317,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         set.into_iter().collect()
     }
 
-    fn get_bribes(&self, price: Arc<MetadataCombined>, gas: &Vec<GasDetails>) -> Rational {
+    fn get_bribes(&self, price: Arc<Metadata>, gas: &Vec<GasDetails>) -> Rational {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
@@ -327,7 +327,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         &self,
         idx: usize,
         collect: Vec<NormalizedCollect>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Rational {
         let (tokens, amount): (Vec<_>, Vec<_>) = collect
             .into_iter()
@@ -351,7 +351,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 (impl Iterator<Item = &'a Rational> + 'a),
             ),
         >,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Rational {
         iter.map(|(token, amount)| self.get_liquidity_price(idx, metadata.clone(), token, amount))
             .sum()
@@ -360,7 +360,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     fn get_liquidity_price<'a>(
         &self,
         idx: usize,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         token: impl Iterator<Item = Address>,
         amount: impl Iterator<Item = &'a Rational>,
     ) -> Rational {

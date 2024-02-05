@@ -26,11 +26,7 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
-    db::{
-        cex::CexExchange,
-        dex::DexQuotes,
-        metadata::{MetadataCombined, MetadataNoDex},
-    },
+    db::{cex::CexExchange, dex::DexQuotes, metadata::Metadata},
     mev::{Bundle, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -83,10 +79,6 @@ impl InspectorTestUtils {
         Ok(trees.remove(0))
     }
 
-    fn default_metadata(&self) -> MetadataCombined {
-        MetadataCombined { db: MetadataNoDex::default(), dex_quotes: DexQuotes(vec![]) }
-    }
-
     async fn get_block_tree(
         &self,
         block: u64,
@@ -100,7 +92,7 @@ impl InspectorTestUtils {
     async fn get_block_tree_with_pricing(
         &self,
         block: u64,
-    ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
+    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), InspectorTestUtilsError> {
         self.classifier_inspector
             .build_block_tree_with_pricing(block, self.quote_address)
             .await
@@ -126,7 +118,7 @@ impl InspectorTestUtils {
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_block_tree(block).await?
@@ -140,21 +132,25 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            self.classifier_inspector.get_metadata(block).await?
+            self.classifier_inspector.get_metadata(block, false).await?
         };
 
-        if let Some(quotes) = quotes {
-            metadata.dex_quotes = quotes;
-        }
+        metadata.dex_quotes = quotes;
 
-        if metadata.dex_quotes.0.is_empty() && config.needs_dex_prices {
+        if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
         let inspector = config.expected_mev_type.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &vec![
+                CexExchange::Binance,
+                CexExchange::Coinbase,
+                CexExchange::Okex,
+                CexExchange::BybitSpot,
+                CexExchange::Kucoin,
+            ],
         );
 
         let results = inspector.process_tree(tree.into(), metadata.into()).await;
@@ -186,7 +182,7 @@ impl InspectorTestUtils {
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_block_tree(block).await?
@@ -200,19 +196,17 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            let res = self.classifier_inspector.get_metadata(block).await;
+            let res = self.classifier_inspector.get_metadata(block, false).await;
             if config.expected_mev_type == Inspectors::CexDex {
                 res?
             } else {
-                res.unwrap_or_else(|_| self.default_metadata())
+                res.unwrap_or_else(|_| Metadata::default())
             }
         };
 
-        if let Some(quotes) = quotes {
-            metadata.dex_quotes = quotes;
-        }
+        metadata.dex_quotes = quotes;
 
-        if metadata.dex_quotes.0.is_empty() && config.needs_dex_prices {
+        if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
@@ -284,7 +278,7 @@ impl InspectorTestUtils {
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_block_tree(block).await?
@@ -298,19 +292,19 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            let res = self.classifier_inspector.get_metadata(block).await;
+            let res = self.classifier_inspector.get_metadata(block, false).await;
             if config.inspectors.contains(&Inspectors::CexDex) {
                 res?
             } else {
-                res.unwrap_or_else(|_| self.default_metadata())
+                res.unwrap_or_else(|_| Metadata::default())
             }
         };
 
         if let Some(quotes) = quotes {
-            metadata.dex_quotes = quotes;
+            metadata.dex_quotes = Some(quotes);
         }
 
-        if metadata.dex_quotes.0.is_empty() && config.needs_dex_prices {
+        if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
@@ -383,7 +377,7 @@ impl InspectorTestUtils {
 /// bundle.
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
-    pub metadata_override:   Option<MetadataCombined>,
+    pub metadata_override:   Option<Metadata>,
     pub mev_tx_hashes:       Option<Vec<TxHash>>,
     pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
@@ -415,7 +409,7 @@ impl InspectorTxRunConfig {
         self
     }
 
-    pub fn with_metadata_override(mut self, metadata: MetadataCombined) -> Self {
+    pub fn with_metadata_override(mut self, metadata: Metadata) -> Self {
         self.metadata_override = Some(metadata);
         self
     }
@@ -442,7 +436,7 @@ impl InspectorTxRunConfig {
 pub struct ComposerRunConfig {
     pub inspectors:          Vec<Inspectors>,
     pub expected_mev_type:   MevType,
-    pub metadata_override:   Option<MetadataCombined>,
+    pub metadata_override:   Option<Metadata>,
     pub mev_tx_hashes:       Option<Vec<TxHash>>,
     pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
@@ -466,7 +460,7 @@ impl ComposerRunConfig {
         }
     }
 
-    pub fn with_metadata_override(mut self, metadata: MetadataCombined) -> Self {
+    pub fn with_metadata_override(mut self, metadata: Metadata) -> Self {
         self.metadata_override = Some(metadata);
         self
     }
