@@ -47,7 +47,7 @@ where
     <Self as Table>::Value: From<<Self as CompressedTable>::DecompressedValue>
         + Into<<Self as CompressedTable>::DecompressedValue>,
 {
-    type DecompressedValue: Debug;
+    type DecompressedValue: Debug + PartialEq;
     const INIT_CHUNK_SIZE: Option<usize>;
     const INIT_QUERY: Option<&'static str>;
 }

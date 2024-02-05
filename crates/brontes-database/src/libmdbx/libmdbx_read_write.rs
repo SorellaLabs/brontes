@@ -56,6 +56,7 @@ impl LibmdbxReadWriter {
         let meta_and_cex_pass = self.validate_metadata_and_cex(start_block, end_block)?;
 
         // local part
+        let tx = self.0.ro_tx()?;
         let mut trace_cur = tx.new_cursor::<TxTraces>()?;
         let mut res =
             self.validate_range("tx traces", trace_cur, start_block, end_block, |b| *b)?;
