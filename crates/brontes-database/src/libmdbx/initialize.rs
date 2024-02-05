@@ -10,19 +10,26 @@ use serde::Deserialize;
 use sorella_db_databases::{clickhouse::DbRow, Database};
 use tracing::{error, info};
 
-use super::{tables::Tables, types::LibmdbxData, Libmdbx};
-use crate::{clickhouse::Clickhouse, libmdbx::types::CompressedTable};
+use super::tables::Tables;
+use crate::{
+    clickhouse::Clickhouse,
+    libmdbx::{types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
+};
 
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
-    libmdbx:    Arc<Libmdbx>,
+    libmdbx:    &'static LibmdbxReadWriter,
     clickhouse: Arc<Clickhouse>,
     tracer:     Arc<TP>,
 }
 
 impl<TP: TracingProvider> LibmdbxInitializer<TP> {
-    pub fn new(libmdbx: Arc<Libmdbx>, clickhouse: Arc<Clickhouse>, tracer: Arc<TP>) -> Self {
+    pub fn new(
+        libmdbx: &'static LibmdbxReadWriter,
+        clickhouse: Arc<Clickhouse>,
+        tracer: Arc<TP>,
+    ) -> Self {
         Self { libmdbx, clickhouse, tracer }
     }
 
@@ -52,7 +59,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
         if clear_table {
-            self.libmdbx.clear_table::<T>()?;
+            self.libmdbx.0.clear_table::<T>()?;
         }
 
         let data = self
@@ -65,7 +72,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             .await;
 
         match data {
-            Ok(d) => self.libmdbx.write_table(&d)?,
+            Ok(d) => self.libmdbx.0.write_table(&d)?,
             Err(e) => {
                 error!(target: "brontes::init", error=%e, "error initing {}", T::NAME)
             }
@@ -85,7 +92,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
         if clear_table {
-            self.libmdbx.clear_table::<T>()?;
+            self.libmdbx.0.clear_table::<T>()?;
         }
 
         let block_range_chunks = if let Some((s, e)) = block_range {
@@ -116,7 +123,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
             let clickhouse = self.clickhouse.clone();
-            let libmdbx = self.libmdbx.clone();
+            let libmdbx = self.libmdbx;
 
             async move {
                 let data = clickhouse
@@ -128,7 +135,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                     .await;
 
                 match data {
-                    Ok(d) => libmdbx.write_table(&d)?,
+                    Ok(d) => libmdbx.0.write_table(&d)?,
                     Err(e) => {
                         info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
                     }
@@ -177,10 +184,9 @@ mod tests {
         let tracing_client = Arc::new(init_tracing().unwrap());
 
         let clickhouse = Arc::new(init_clickhouse());
-        let libmdbx = Arc::new(init_libmdbx().unwrap());
+        let libmdbx = init_libmdbx().unwrap();
 
-        let intializer =
-            LibmdbxInitializer::new(libmdbx.clone(), clickhouse.clone(), tracing_client);
+        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse.clone(), tracing_client);
 
         let tables = Tables::ALL;
         intializer

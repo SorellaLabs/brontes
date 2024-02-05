@@ -1,9 +1,9 @@
 use std::{env, path::Path, sync::Arc};
 
-use brontes_database::{clickhouse::Clickhouse, libmdbx::Libmdbx, Tables};
+use brontes_database::{clickhouse::Clickhouse, libmdbx::LibmdbxReadWriter, Tables};
 use clap::Parser;
-use reth_tracing_ext::TracingClient;
 
+use super::{get_tracing_provider, static_object};
 use crate::{cli::get_env_vars, runner::CliContext};
 
 #[derive(Debug, Parser)]
@@ -40,9 +40,10 @@ impl Init {
         let clickhouse = Arc::new(Clickhouse::default());
 
         let db_path = get_env_vars()?;
-        let tracer = TracingClient::new(Path::new(&db_path), 10, ctx.task_executor.clone());
+        let tracer =
+            Arc::new(get_tracing_provider(Path::new(&db_path), 10, ctx.task_executor.clone()));
 
-        let libmdbx = Arc::new(Libmdbx::init_db(brontes_db_endpoint, None)?);
+        let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
         if self.init_libmdbx {
             // currently inits all tables
             let range = if let (Some(start), Some(end)) = (self.start_block, self.end_block) {
@@ -54,7 +55,7 @@ impl Init {
             libmdbx
                 .initialize_tables(
                     clickhouse.clone(),
-                    tracer.into(),
+                    tracer,
                     self.tables_to_init
                         .unwrap_or({
                             if self.download_dex_pricing {
