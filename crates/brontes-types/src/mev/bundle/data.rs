@@ -23,7 +23,7 @@ pub struct BundleDataWithRevenue {
     pub data:    BundleData,
 }
 
-#[derive(Debug, Deserialize, EnumIter, Clone, Display, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub enum BundleData {
     Sandwich(Sandwich),

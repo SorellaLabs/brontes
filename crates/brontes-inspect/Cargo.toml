@@ -104,4 +104,4 @@ tests = [
   "brontes-pricing",
   "criterion",
 ]
-local = ["brontes-core/local"]
+local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]

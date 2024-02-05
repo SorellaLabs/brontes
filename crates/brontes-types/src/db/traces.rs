@@ -13,7 +13,7 @@ use crate::{
     structured_trace::{DecodedCallData, TransactionTraceWithLogs, TxTrace},
 };
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Redefined)]
+#[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TxTracesInner {
     pub traces: Option<Vec<TxTrace>>,
