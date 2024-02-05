@@ -55,7 +55,7 @@ fn bench_backrun_triagular(c: &mut Criterion) {
             "backrun triagular",
             vec![hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into()],
             0,
-            Inspectors::AtomicBackrun,
+            Inspectors::AtomicArb,
             c,
         )
         .unwrap()
@@ -67,7 +67,7 @@ fn bench_backrun_10_swaps(c: &mut Criterion) {
             "bench backrun 10 swaps",
             vec![hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into()],
             0,
-            Inspectors::AtomicBackrun,
+            Inspectors::AtomicArb,
             c,
         )
         .unwrap()
@@ -174,7 +174,7 @@ fn bench_backrun_regular_block(c: &mut Criterion) {
             "backrun 15 mill gas block",
             18000103,
             0,
-            vec![Inspectors::AtomicBackrun],
+            vec![Inspectors::AtomicArb],
             c,
         )
         .unwrap()
