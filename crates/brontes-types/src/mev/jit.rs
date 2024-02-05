@@ -19,7 +19,7 @@ use crate::{
     tree::GasDetails,
 };
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct JitLiquidity {
     pub frontrun_mint_tx_hash: B256,

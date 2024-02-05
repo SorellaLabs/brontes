@@ -17,7 +17,7 @@ use crate::{
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Liquidation {
     pub liquidation_tx_hash: B256,
