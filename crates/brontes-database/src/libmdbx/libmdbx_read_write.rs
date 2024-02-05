@@ -6,7 +6,7 @@ use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
-        cex::CexPriceMap,
+        cex::{CexPriceMap, CexQuote},
         dex::{
             decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
         },
@@ -25,7 +25,7 @@ use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
-use tracing::{info, warn};
+use tracing::info;
 
 use super::cursor::CompressedCursor;
 use crate::{
@@ -209,32 +209,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
-        let tx = self.0.ro_tx()?;
-
-        let block_meta: BlockMetadataInner = tx
-            .get::<BlockInfo>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        let cex_quotes: CexPriceMap = match tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))
-        {
-            Ok(map) => map,
-            Err(e) => {
-                warn!(target:"brontes","Failed to fetch CexPrice db table for block {} -- {:?}", block_num, e);
-                CexPriceMap::default()
-            }
-        };
-
-        let eth_prices = if let Some(eth_usdt) =
-            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
-        {
-            eth_usdt
-        } else {
-            cex_quotes
-                .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                .unwrap_or_default()
-        };
+        let block_meta = self.fetch_block_metadata(block_num)?;
+        let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        let eth_prices = determine_eth_prices(&cex_quotes);
 
         Ok(BlockMetadata::new(
             block_num,
@@ -251,53 +228,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        let tx = self.0.ro_tx()?;
-        let block_meta: BlockMetadataInner = tx
-            .get::<BlockInfo>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        let cex_quotes = CexPriceMap(
-            tx.get::<CexPrice>(block_num)?
-                .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-                .0,
-        );
-
-        let eth_prices = if let Some(eth_usdt) =
-            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
-        {
-            eth_usdt
-        } else {
-            cex_quotes
-                .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                .unwrap_or_default()
-        };
-
-        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
-        let (start_range, end_range) = make_filter_key_range(block_num);
-
-        tx.cursor_read::<DexPrice>()?
-            .walk_range(start_range..=end_range)?
-            .for_each(|inner| {
-                if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
-                    for _ in dex_quotes.len()..=val.tx_idx as usize {
-                        dex_quotes.push(None);
-                    }
-
-                    let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
-
-                    if let Some(tx) = tx.as_mut() {
-                        for (pair, price) in val.quote {
-                            tx.insert(pair, price);
-                        }
-                    } else {
-                        let mut tx_pairs = HashMap::default();
-                        for (pair, price) in val.quote {
-                            tx_pairs.insert(pair, price);
-                        }
-                        *tx = Some(tx_pairs);
-                    }
-                }
-            });
+        let block_meta = self.fetch_block_metadata(block_num)?;
+        let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        let eth_prices = determine_eth_prices(&cex_quotes);
+        let dex_quotes = self.fetch_dex_quotes(block_num)?;
 
         Ok({
             BlockMetadata::new(
@@ -311,7 +245,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 max(eth_prices.price.0, eth_prices.price.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(DexQuotes(dex_quotes)))
+            .into_metadata(cex_quotes, Some(dex_quotes))
         })
     }
 
@@ -532,5 +466,64 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
 
         Ok(self.0.write_table(&vec![table])?)
+    }
+}
+
+impl LibmdbxReadWriter {
+    fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
+        let tx = self.0.ro_tx()?;
+        tx.get::<BlockInfo>(block_num)?
+            .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))
+    }
+
+    fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
+        let tx = self.0.ro_tx()?;
+        Ok(CexPriceMap(
+            tx.get::<CexPrice>(block_num)?
+                .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))?
+                .0,
+        ))
+    }
+
+    pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
+        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let (start_range, end_range) = make_filter_key_range(block_num);
+        let tx = self.0.ro_tx()?;
+
+        tx.cursor_read::<DexPrice>()?
+            .walk_range(start_range..=end_range)?
+            .for_each(|inner| {
+                if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
+                    for _ in dex_quotes.len()..=val.tx_idx as usize {
+                        dex_quotes.push(None);
+                    }
+
+                    let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
+
+                    if let Some(tx) = tx.as_mut() {
+                        for (pair, price) in val.quote {
+                            tx.insert(pair, price);
+                        }
+                    } else {
+                        let mut tx_pairs = HashMap::default();
+                        for (pair, price) in val.quote {
+                            tx_pairs.insert(pair, price);
+                        }
+                        *tx = Some(tx_pairs);
+                    }
+                }
+            });
+
+        Ok(DexQuotes(dex_quotes))
+    }
+}
+
+fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
+    if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
+        eth_usdt
+    } else {
+        cex_quotes
+            .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+            .unwrap_or_default()
     }
 }

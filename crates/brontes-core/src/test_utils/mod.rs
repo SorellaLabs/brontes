@@ -62,13 +62,26 @@ impl TraceLoader {
             .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
     }
 
-    pub async fn get_metadata(&self, block: u64) -> Result<Metadata, TraceLoaderError> {
-        self.test_metadata(block)
-            .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+    pub async fn get_metadata(
+        &self,
+        block: u64,
+        pricing: bool,
+    ) -> Result<Metadata, TraceLoaderError> {
+        if pricing {
+            self.test_metadata_with_pricing(block)
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+        } else {
+            self.test_metadata(block)
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+        }
+    }
+
+    pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
+        self.libmdbx.get_metadata(block_num)
     }
 
     pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata(block_num)
+        self.libmdbx.get_metadata_no_dex_price(block_num)
     }
 
     pub async fn get_block_traces_with_header(
@@ -102,7 +115,7 @@ impl TraceLoader {
         block: u64,
     ) -> Result<BlockTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
         let (traces, header) = self.trace_block(block).await?;
-        let metadata = self.get_metadata(block).await?;
+        let metadata = self.get_metadata(block, false).await?;
 
         Ok(BlockTracesWithHeaderAnd { block, traces, header, other: metadata })
     }
@@ -117,7 +130,7 @@ impl TraceLoader {
                 .into_iter()
                 .map(|block| async move {
                     let (traces, header) = self.trace_block(block).await?;
-                    let metadata = self.get_metadata(block).await?;
+                    let metadata = self.get_metadata(block, false).await?;
                     Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
                 }),
         )
@@ -203,7 +216,7 @@ impl TraceLoader {
             .block_and_tx_index(tx_hash)
             .await?;
         let (traces, header) = self.trace_block(block).await?;
-        let metadata = self.get_metadata(block).await?;
+        let metadata = self.get_metadata(block, false).await?;
         let trace = traces[tx_idx].clone();
 
         Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })
@@ -220,7 +233,7 @@ impl TraceLoader {
                 .block_and_tx_index(tx_hash)
                 .await?;
             let (traces, header) = self.trace_block(block).await?;
-            let metadata = self.get_metadata(block).await?;
+            let metadata = self.get_metadata(block, false).await?;
             let trace = traces[tx_idx].clone();
 
             Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })
