@@ -50,6 +50,9 @@ impl AddToDb {
             AddressToProtocol,
             SubGraphs,
             TxTraces,
+            Builder,
+            AddressMeta,
+            Searcher,
             PoolCreationBlocks = &self.key,
             &self.value
         );

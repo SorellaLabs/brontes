@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use redefined::{self_convert_redefined, Redefined};
+use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize, Serializer};
@@ -15,8 +15,6 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
-
-self_convert_redefined!(MevType);
 
 pub struct BundleDataWithRevenue {
     pub revenue: f64,

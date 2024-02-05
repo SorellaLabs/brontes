@@ -9,7 +9,7 @@ pub mod pair;
 pub mod price_graph_types;
 pub use price_graph_types::*;
 pub mod queries;
-pub mod serde_primitives;
+pub mod serde_utils;
 pub mod unordered_buffer_map;
 pub mod unzip_either;
 pub use queries::make_call_request;
