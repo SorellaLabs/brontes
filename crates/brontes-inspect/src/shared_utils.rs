@@ -147,7 +147,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
         addr_usd_deltas
             .iter()
-            .filter_map(|(addr, value)| (*value > Rational::ZERO).then(|| *addr))
+            .map(|(addr, value)| *addr)
             .collect()
     }
 
