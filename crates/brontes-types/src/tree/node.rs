@@ -1,3 +1,6 @@
+use std::borrow::BorrowMut;
+
+use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use serde::{Deserialize, Serialize};
 use tracing::error;
@@ -176,7 +179,7 @@ impl<V: NormalizedAction> Node<V> {
     pub fn modify_node_spans<T, F>(&mut self, find: &T, modify: &F) -> bool
     where
         T: Fn(&Self) -> bool,
-        F: Fn(&mut Vec<Self>),
+        F: Fn(Vec<&mut Self>),
     {
         if !find(self) {
             return false
@@ -195,7 +198,13 @@ impl<V: NormalizedAction> Node<V> {
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !all_lower_better {
-            modify(&mut self.inner);
+            // annoying but only way todo it
+            let mut nodes = vec![unsafe { &mut *(self as *mut Self) }];
+            for i in &mut self.inner {
+                nodes.push(i)
+            }
+
+            modify(nodes);
         }
 
         // lower node has a better sub-action.
