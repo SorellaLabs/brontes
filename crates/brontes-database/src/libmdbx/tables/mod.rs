@@ -100,37 +100,47 @@ impl Tables {
         &self,
         initializer: &LibmdbxInitializer<T>,
         block_range: Option<(u64, u64)>,
+        clear_table: bool,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
                 initializer
-                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>()
+                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(clear_table)
                     .await
             }
             Tables::AddressToTokens => {
                 initializer
-                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>()
+                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>(clear_table)
                     .await
             }
             Tables::AddressToProtocol => {
                 initializer
-                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>()
+                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>(
+                        clear_table,
+                    )
                     .await
             }
             Tables::CexPrice => {
                 initializer
-                    .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(block_range)
+                    .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
+                        block_range,
+                        clear_table,
+                    )
                     .await
             }
             Tables::Metadata => {
                 initializer
-                    .initialize_table_from_clickhouse::<Metadata, MetadataData>(block_range)
+                    .initialize_table_from_clickhouse::<Metadata, MetadataData>(
+                        block_range,
+                        clear_table,
+                    )
                     .await
             }
             Tables::PoolCreationBlocks => {
                 initializer
                     .initialize_table_from_clickhouse::<PoolCreationBlocks, PoolCreationBlocksData>(
                         block_range,
+                        clear_table,
                     )
                     .await
             }
@@ -187,6 +197,20 @@ macro_rules! compressed_table {
         impl std::fmt::Display for $table_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", stringify!($table_name))
+            }
+        }
+        
+        #[cfg(test)]
+        #[allow(unused)]
+        impl $table_name {
+            pub(crate) async fn test_initialized_data(
+                clickhouse: &crate::libmdbx::Clickhouse,
+                libmdbx: &crate::libmdbx::Libmdbx,
+                block_range: Option<(u64, u64)>
+            ) -> eyre::Result<(usize, usize)> {
+                paste::paste!{ 
+                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data::<$table_name, [<$table_name Data>]>(clickhouse, libmdbx, block_range).await 
+                }
             }
         }
 
