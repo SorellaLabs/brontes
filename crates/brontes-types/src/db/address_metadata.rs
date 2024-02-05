@@ -17,7 +17,8 @@ pub struct AddressMetadata {
     pub entity_name:     Option<String>,
     pub nametag:         Option<String>,
     pub labels:          Vec<String>,
-    pub r#type:          Option<String>,
+    #[serde(rename = "type")]
+    pub address_type:    Option<String>,
     #[serde(deserialize_with = "option_contract_info::deserialize")]
     pub contract_info:   Option<ContractInfo>,
     pub ens:             Option<String>,
