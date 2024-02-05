@@ -311,7 +311,7 @@ pub mod tests {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.2);
 
         let config = ComposerRunConfig::new(
-            vec![Inspectors::AtomicBackrun, Inspectors::CexDex],
+            vec![Inspectors::AtomicArb, Inspectors::CexDex],
             MevType::Backrun,
         )
         .with_dex_prices()

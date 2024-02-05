@@ -23,14 +23,14 @@ use crate::{
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct AtomicBackrun {
+pub struct AtomicArb {
     pub tx_hash:     B256,
     pub swaps:       Vec<NormalizedSwap>,
     #[redefined(same_fields)]
     pub gas_details: GasDetails,
 }
 
-impl Mev for AtomicBackrun {
+impl Mev for AtomicArb {
     fn total_gas_paid(&self) -> u128 {
         self.gas_details.gas_paid()
     }
@@ -48,16 +48,16 @@ impl Mev for AtomicBackrun {
     }
 
     fn mev_type(&self) -> MevType {
-        MevType::Backrun
+        MevType::AtomicArb
     }
 }
 
-impl Serialize for AtomicBackrun {
+impl Serialize for AtomicArb {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("AtomicBackrun", 34)?;
+        let mut ser_struct = serializer.serialize_struct("AtomicArb", 34)?;
 
         ser_struct.serialize_field("tx_hash", &FixedString::from(format!("{:?}", self.tx_hash)))?;
 
@@ -85,7 +85,7 @@ impl Serialize for AtomicBackrun {
     }
 }
 
-impl DbRow for AtomicBackrun {
+impl DbRow for AtomicArb {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "tx_hash",
         "swaps.trace_idx",
