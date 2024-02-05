@@ -42,7 +42,19 @@ impl TraceLoader {
         let tracing_provider = init_trace_parser(handle.clone(), a, libmdbx, 10);
 
         let this = Self { libmdbx, tracing_provider, _metrics: b };
-        handle.block_on(async { this.init_on_start().await.unwrap() });
+
+        let this = std::thread::spawn(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(async {
+                    this.init_on_start().await.unwrap();
+                    this
+                })
+        })
+        .join()
+        .unwrap();
 
         this
     }
