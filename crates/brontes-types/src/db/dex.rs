@@ -79,16 +79,16 @@ impl DexQuotes {
         None
     }
 
-    pub fn get_price(&self, pair: Pair, tx: usize) -> Option<&DexPrices> {
-        self.0.get(tx)?.as_ref()?.get(&pair)
-    }
-
     pub fn has_quote(&self, pair: &Pair, tx: usize) -> bool {
         self.0
             .get(tx)
             .map(|i| i.as_ref().map(|i| i.get(pair).is_some()))
             .flatten()
             .unwrap_or(false)
+    }
+
+    fn get_price(&self, pair: Pair, tx: usize) -> Option<&DexPrices> {
+        self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
 
