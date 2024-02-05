@@ -10,7 +10,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, TxInfo},
-    ToFloatNearest,
+    ToFloatNearest, TreeSearchArgs,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -45,13 +45,12 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let search_fn = |node: &Node<Actions>| {
-            (
-                node.data.is_swap() || node.data.is_transfer(),
-                node.subactions
-                    .iter()
-                    .any(|action| action.is_swap() || action.is_transfer()),
-            )
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .any(|action| action.is_swap() || action.is_transfer()),
         };
 
         Self::get_possible_sandwich(tree.clone())

@@ -108,8 +108,9 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let swap_txes = tree.collect_all(|node| {
-            (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
+        let swap_txes = tree.collect_all(|node| brontes_types::TreeSearchArgs {
+            collect_current_node:  node.data.is_swap(),
+            child_node_to_collect: node.subactions.iter().any(|action| action.is_swap()),
         });
 
         swap_txes

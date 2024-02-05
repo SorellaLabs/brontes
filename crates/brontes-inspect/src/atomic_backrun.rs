@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{AtomicArb, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
     tree::BlockTree,
-    ToFloatNearest, TxInfo,
+    ToFloatNearest, TreeSearchArgs, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -32,16 +32,16 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let intersting_state = tree.collect_all(|node| {
-            (
-                node.data.is_swap() || node.data.is_transfer() || node.data.is_flash_loan(),
-                node.subactions.iter().any(|action| {
-                    action.is_swap() || action.is_transfer() || node.data.is_flash_loan()
-                }),
-            )
+        let interesting_state = tree.collect_all(|node| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap()
+                || node.data.is_transfer()
+                || node.data.is_flash_loan(),
+            child_node_to_collect: node.get_all_sub_actions().iter().any(|action| {
+                action.is_swap() || action.is_transfer() || node.data.is_flash_loan()
+            }),
         });
 
-        intersting_state
+        interesting_state
             .into_par_iter()
             .filter_map(|(tx, swaps)| {
                 let info = tree.get_tx_info(tx)?;
