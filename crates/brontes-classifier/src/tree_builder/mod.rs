@@ -372,8 +372,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         let fee = (&log_am - &transfer.amount).abs();
                         transfer.amount = transferred_amount;
                         transfer.fee = fee;
-
-                        tracing::info!(?transfer, "tax token");
                     }
                     break;
                 }
