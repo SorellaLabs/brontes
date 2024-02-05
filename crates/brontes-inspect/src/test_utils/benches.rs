@@ -30,6 +30,7 @@ impl InspectorBenchUtils {
         block: u64,
         iters: usize,
         inspectors: Vec<Inspectors>,
+        needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
         let inspectors = inspectors
@@ -43,10 +44,13 @@ impl InspectorBenchUtils {
             })
             .collect::<Vec<_>>();
 
-        let (tree, prices) = self.rt.block_on(
-            self.classifier_inspector
-                .build_block_tree_with_pricing(block, self.quote_address),
-        )?;
+        let (tree, prices) =
+            self.rt
+                .block_on(self.classifier_inspector.build_block_tree_with_pricing(
+                    block,
+                    self.quote_address,
+                    needed_tokens,
+                ))?;
 
         let mut metadata = self
             .rt
@@ -73,6 +77,7 @@ impl InspectorBenchUtils {
         tx_hashes: Vec<TxHash>,
         iters: usize,
         inspector: Inspectors,
+        needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
         let inspector = inspector.init_inspector(
@@ -81,10 +86,13 @@ impl InspectorBenchUtils {
             &vec![CexExchange::Binance],
         );
 
-        let mut trees = self.rt.block_on(
-            self.classifier_inspector
-                .build_tree_txes_with_pricing(tx_hashes, self.quote_address),
-        )?;
+        let mut trees =
+            self.rt
+                .block_on(self.classifier_inspector.build_tree_txes_with_pricing(
+                    tx_hashes,
+                    self.quote_address,
+                    needed_tokens,
+                ))?;
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
@@ -118,6 +126,7 @@ impl InspectorBenchUtils {
         block: u64,
         iters: usize,
         inspector: Inspectors,
+        needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
         let inspector = inspector.init_inspector(
@@ -126,10 +135,13 @@ impl InspectorBenchUtils {
             &vec![CexExchange::Binance],
         );
 
-        let (tree, prices) = self.rt.block_on(
-            self.classifier_inspector
-                .build_block_tree_with_pricing(block, self.quote_address),
-        )?;
+        let (tree, prices) =
+            self.rt
+                .block_on(self.classifier_inspector.build_block_tree_with_pricing(
+                    block,
+                    self.quote_address,
+                    needed_tokens,
+                ))?;
 
         let mut metadata = self.rt.block_on(
             self.classifier_inspector
@@ -194,6 +206,7 @@ impl InspectorBenchUtils {
         tx_hashes: Vec<TxHash>,
         iters: usize,
         inspectors: Vec<Inspectors>,
+        needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
         let inspectors = inspectors
@@ -207,10 +220,13 @@ impl InspectorBenchUtils {
             })
             .collect::<Vec<_>>();
 
-        let mut trees = self.rt.block_on(
-            self.classifier_inspector
-                .build_tree_txes_with_pricing(tx_hashes, self.quote_address),
-        )?;
+        let mut trees =
+            self.rt
+                .block_on(self.classifier_inspector.build_tree_txes_with_pricing(
+                    tx_hashes,
+                    self.quote_address,
+                    needed_tokens,
+                ))?;
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
@@ -246,6 +262,7 @@ impl InspectorBenchUtils {
         block: u64,
         iters: usize,
         inspectors: Vec<Inspectors>,
+        needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
         let inspectors = inspectors
@@ -259,10 +276,13 @@ impl InspectorBenchUtils {
             })
             .collect::<Vec<_>>();
 
-        let (tree, prices) = self.rt.block_on(
-            self.classifier_inspector
-                .build_block_tree_with_pricing(block, self.quote_address),
-        )?;
+        let (tree, prices) =
+            self.rt
+                .block_on(self.classifier_inspector.build_block_tree_with_pricing(
+                    block,
+                    self.quote_address,
+                    needed_tokens,
+                ))?;
 
         let mut metadata = self.rt.block_on(
             self.classifier_inspector

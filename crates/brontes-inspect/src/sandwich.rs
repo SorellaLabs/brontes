@@ -10,7 +10,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, Node, TxInfo},
-    ToFloatNearest,
+    ToFloatNearest, TreeSearchArgs,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -45,13 +45,12 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let search_fn = |node: &Node<Actions>| {
-            (
-                node.data.is_swap() || node.data.is_transfer(),
-                node.subactions
-                    .iter()
-                    .any(|action| action.is_swap() || action.is_transfer()),
-            )
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .any(|action| action.is_swap() || action.is_transfer()),
         };
 
         Self::get_possible_sandwich(tree.clone())
@@ -64,6 +63,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
+                    if victims.iter().flatten().count() == 0 {
+                        return None
+                    };
+
                     let vicitim_info = victims
                         .iter()
                         .map(|victims| {
@@ -335,23 +338,21 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
                 // Get's prev tx hash for this sender & replaces it with the current tx hash
                 let prev_tx_hash = o.insert(root.tx_hash);
                 if let Some(frontrun_victims) = possible_victims.remove(&prev_tx_hash) {
-                    if !frontrun_victims.is_empty() {
-                        match possible_sandwiches.entry(root.head.address) {
-                            Entry::Vacant(e) => {
-                                e.insert(PossibleSandwich {
-                                    eoa:                   root.head.address,
-                                    possible_frontruns:    vec![prev_tx_hash],
-                                    possible_backrun:      root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               vec![frontrun_victims],
-                                });
-                            }
-                            Entry::Occupied(mut o) => {
-                                let sandwich = o.get_mut();
-                                sandwich.possible_frontruns.push(prev_tx_hash);
-                                sandwich.possible_backrun = root.tx_hash;
-                                sandwich.victims.push(frontrun_victims);
-                            }
+                    match possible_sandwiches.entry(root.head.address) {
+                        Entry::Vacant(e) => {
+                            e.insert(PossibleSandwich {
+                                eoa:                   root.head.address,
+                                possible_frontruns:    vec![prev_tx_hash],
+                                possible_backrun:      root.tx_hash,
+                                mev_executor_contract: root.head.data.get_to_address(),
+                                victims:               vec![frontrun_victims],
+                            });
+                        }
+                        Entry::Occupied(mut o) => {
+                            let sandwich = o.get_mut();
+                            sandwich.possible_frontruns.push(prev_tx_hash);
+                            sandwich.possible_backrun = root.tx_hash;
+                            sandwich.victims.push(frontrun_victims);
                         }
                     }
                 }
@@ -405,23 +406,21 @@ fn get_possible_sandwich_duplicate_contracts(
                 let (prev_tx_hash, frontrun_eoa) = o.get_mut();
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
-                    if !frontrun_victims.is_empty() {
-                        match possible_sandwiches.entry(root.head.data.get_to_address()) {
-                            Entry::Vacant(e) => {
-                                e.insert(PossibleSandwich {
-                                    eoa:                   *frontrun_eoa,
-                                    possible_frontruns:    vec![*prev_tx_hash],
-                                    possible_backrun:      root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               vec![frontrun_victims],
-                                });
-                            }
-                            Entry::Occupied(mut o) => {
-                                let sandwich = o.get_mut();
-                                sandwich.possible_frontruns.push(*prev_tx_hash);
-                                sandwich.possible_backrun = root.tx_hash;
-                                sandwich.victims.push(frontrun_victims);
-                            }
+                    match possible_sandwiches.entry(root.head.data.get_to_address()) {
+                        Entry::Vacant(e) => {
+                            e.insert(PossibleSandwich {
+                                eoa:                   *frontrun_eoa,
+                                possible_frontruns:    vec![*prev_tx_hash],
+                                possible_backrun:      root.tx_hash,
+                                mev_executor_contract: root.head.data.get_to_address(),
+                                victims:               vec![frontrun_victims],
+                            });
+                        }
+                        Entry::Occupied(mut o) => {
+                            let sandwich = o.get_mut();
+                            sandwich.possible_frontruns.push(*prev_tx_hash);
+                            sandwich.possible_backrun = root.tx_hash;
+                            sandwich.victims.push(frontrun_victims);
                         }
                     }
                 }
@@ -463,6 +462,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
+                hex!("056343cdc08500ea8c994b887aee346b7187ec6291d034512378f73743a700bc").into(),
                 hex!("849c3cb1f299fa181e12b0506166e4aa221fce4384a710ac0d2e064c9b4e1c42").into(),
                 hex!("055f8dd4eb02c15c1c1faa9b65da5521eaaff54f332e0fa311bc6ce6a4149d18").into(),
                 hex!("ab765f128ae604fdf245c78c8d0539a85f0cf5dc7f83a2756890dea670138506").into(),
@@ -470,8 +470,9 @@ mod tests {
                 hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
             ])
             .with_dex_prices()
+            .needs_tokens(vec![hex!("0588504472198e9296a248edca6ccdc40bd237cb").into()])
             .with_gas_paid_usd(34.3368)
-            .with_expected_profit_usd(24.0);
+            .with_expected_profit_usd(7.12);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -488,6 +489,7 @@ mod tests {
                 hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
             ])
             .with_dex_prices()
+            .needs_token(Address::new(hex!("28cf5263108c1c40cf30e0fe390bd9ccf929bf82")))
             .with_gas_paid_usd(16.64)
             .with_expected_profit_usd(15.648);
 
@@ -506,6 +508,7 @@ mod tests {
                 hex!("3e9c6cbee7c8c85a3c1bbc0cc8b9e23674f86bc7aedc51f05eb9d0eda0f6247e").into(),
                 hex!("9ee36a8a24c3eb5406e7a651525bcfbd0476445bd291622f89ebf8d13d54b7ee").into(),
             ])
+            .needs_token(hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into())
             .with_dex_prices()
             .with_gas_paid_usd(40.26)
             .with_expected_profit_usd(-56.444);
@@ -528,6 +531,7 @@ mod tests {
                 hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
                 hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
             ])
+            .needs_tokens(vec![hex!("b17548c7b510427baac4e267bea62e800b247173").into()])
             .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-9.003);
 
@@ -547,6 +551,10 @@ mod tests {
                 hex!("bcb8115fb54b7d6b0a0b0faf6e65fae02066705bd4afde70c780d4251a771428").into(),
                 hex!("0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677").into(),
                 hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
+            ])
+            .needs_tokens(vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
             ])
             .with_gas_paid_usd(21.9)
             .with_expected_profit_usd(0.015);
