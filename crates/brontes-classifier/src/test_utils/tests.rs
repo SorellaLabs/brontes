@@ -182,7 +182,7 @@ impl ClassifierTestUtils {
         &self,
         tx_hash: TxHash,
         quote_asset: Address,
-    ) -> Result<(BlockTree<Actions>, DexQuotes), ClassifierTestUtilsError> {
+    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, block, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();
@@ -190,12 +190,10 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header).await;
 
-        let mut price = if let Ok(m) = self.libmdbx.get_metadata(block) {
-            m.dex_quotes
-        } else {
-            DexQuotes(vec![])
-        };
-        price = if price.0.is_empty() {
+        let mut price =
+            if let Ok(m) = self.libmdbx.get_metadata(block) { m.dex_quotes } else { None };
+
+        price = if price.is_none() {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
 
@@ -205,9 +203,9 @@ impl ClassifierTestUtils {
 
             if let Some((p_block, pricing)) = pricer.next().await {
                 self.libmdbx
-                    .write_dex_quotes(p_block, pricing.clone())
+                    .write_dex_quotes(p_block, Some(pricing.clone()))
                     .unwrap();
-                pricing
+                Some(pricing)
             } else {
                 return Err(ClassifierTestUtilsError::DexPricingError)
             }
@@ -243,7 +241,7 @@ impl ClassifierTestUtils {
         &self,
         tx_hashes: Vec<TxHash>,
         quote_asset: Address,
-    ) -> Result<Vec<(BlockTree<Actions>, DexQuotes)>, ClassifierTestUtilsError> {
+    ) -> Result<Vec<(BlockTree<Actions>, Option<DexQuotes>)>, ClassifierTestUtilsError> {
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
 
@@ -273,7 +271,7 @@ impl ClassifierTestUtils {
         let mut failed = false;
         for block in start_block..=end_block {
             if let Ok(m) = self.libmdbx.get_metadata(block) {
-                if m.dex_quotes.0.is_empty() {
+                if m.dex_quotes.is_none() {
                     failed = true;
                     break;
                 }
@@ -297,9 +295,9 @@ impl ClassifierTestUtils {
 
             while let Some((block, quotes)) = pricer.next().await {
                 self.libmdbx
-                    .write_dex_quotes(block, quotes.clone())
+                    .write_dex_quotes(block, Some(quotes.clone()))
                     .unwrap();
-                prices.push(quotes);
+                prices.push(Some(quotes));
             }
             prices
         } else {
@@ -326,7 +324,7 @@ impl ClassifierTestUtils {
         &self,
         block: u64,
         quote_asset: Address,
-    ) -> Result<(BlockTree<Actions>, DexQuotes), ClassifierTestUtilsError> {
+    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), ClassifierTestUtilsError> {
         let BlockTracesWithHeaderAnd { traces, header, .. } = self
             .trace_loader
             .get_block_traces_with_header(block)
@@ -336,12 +334,9 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
         let tree = classifier.build_block_tree(traces, header).await;
 
-        let mut price = if let Ok(m) = self.libmdbx.get_metadata(block) {
-            m.dex_quotes
-        } else {
-            DexQuotes(vec![])
-        };
-        price = if price.0.is_empty() {
+        let mut price =
+            if let Ok(m) = self.libmdbx.get_metadata(block) { m.dex_quotes } else { None };
+        price = if price.is_none() {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             ctr.store(true, SeqCst);
 
@@ -351,10 +346,10 @@ impl ClassifierTestUtils {
 
             if let Some((p_block, pricing)) = pricer.next().await {
                 self.libmdbx
-                    .write_dex_quotes(p_block, pricing.clone())
+                    .write_dex_quotes(p_block, Some(pricing.clone()))
                     .unwrap();
                 assert!(p_block == block, "got pricing for the wrong block");
-                pricing
+                Some(pricing)
             } else {
                 return Err(ClassifierTestUtilsError::DexPricingError)
             }

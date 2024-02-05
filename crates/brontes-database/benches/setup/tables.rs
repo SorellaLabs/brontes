@@ -1,6 +1,6 @@
 use std::{fmt::Debug, str::FromStr};
 
-use brontes_database::libmdbx::{tables::CompressedTable, types::LibmdbxData};
+use brontes_database::libmdbx::types::{CompressedTable, LibmdbxData};
 use reth_db::{table::Table, TableType};
 
 use crate::{
