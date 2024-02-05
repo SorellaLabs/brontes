@@ -294,6 +294,10 @@ pub mod tests {
         .with_dex_prices()
         .with_gas_paid_usd(90.875025)
         .with_expected_profit_usd(13.568977)
+        .needs_tokens(vec![
+            hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
+            hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
+        ])
         .with_mev_tx_hashes(vec![
             hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),
             hex!("72eb3269ac013cf663dde9aa11cc3295e0dfb50c7edfcf074c5c57b43611439c").into(),
