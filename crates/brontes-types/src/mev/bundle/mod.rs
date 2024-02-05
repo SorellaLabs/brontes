@@ -6,7 +6,7 @@ use std::fmt::{self, Debug};
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
-use redefined::Redefined;
+use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
@@ -84,6 +84,8 @@ pub enum MevType {
     #[default]
     Unknown     = 6,
 }
+
+self_convert_redefined!(MevType);
 
 impl MevType {
     pub fn use_cex_pricing_for_deltas(&self) -> bool {
