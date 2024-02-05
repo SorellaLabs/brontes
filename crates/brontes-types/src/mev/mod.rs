@@ -195,17 +195,17 @@ mod tests {
     //
     // #[tokio::test]
     // async fn test_db_atomic_backrun() {
-    //     let test_mev = AtomicBackrun::default();
+    //     let test_mev = AtomicArb::default();
     //
     //     let db = spawn_db();
     //
-    //     db.insert_one(&test_mev, DatabaseTables::AtomicBackrun)
+    //     db.insert_one(&test_mev, DatabaseTables::AtomicArb)
     //         .await
     //         .unwrap();
     //
     //     let delete_query = format!(
     //         "DELETE FROM {} where tx_hash = ?",
-    //         db.to_table_string(DatabaseTables::AtomicBackrun)
+    //         db.to_table_string(DatabaseTables::AtomicArb)
     //     );
     //     db.execute_remote(&delete_query, &(format!("{:?}",
     // test_mev.tx_hash)))         .await

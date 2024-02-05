@@ -27,7 +27,7 @@ pub struct BundleDataWithRevenue {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub enum BundleData {
     Sandwich(Sandwich),
-    AtomicBackrun(AtomicBackrun),
+    AtomicArb(AtomicArb),
     JitSandwich(JitLiquiditySandwich),
     Jit(JitLiquidity),
     CexDex(CexDex),
@@ -39,7 +39,7 @@ impl Mev for BundleData {
     fn mev_type(&self) -> MevType {
         match self {
             BundleData::Sandwich(m) => m.mev_type(),
-            BundleData::AtomicBackrun(m) => m.mev_type(),
+            BundleData::AtomicArb(m) => m.mev_type(),
             BundleData::JitSandwich(m) => m.mev_type(),
             BundleData::Jit(m) => m.mev_type(),
             BundleData::CexDex(m) => m.mev_type(),
@@ -51,7 +51,7 @@ impl Mev for BundleData {
     fn total_gas_paid(&self) -> u128 {
         match self {
             BundleData::Sandwich(m) => m.total_gas_paid(),
-            BundleData::AtomicBackrun(m) => m.total_gas_paid(),
+            BundleData::AtomicArb(m) => m.total_gas_paid(),
             BundleData::JitSandwich(m) => m.total_gas_paid(),
             BundleData::Jit(m) => m.total_gas_paid(),
             BundleData::CexDex(m) => m.total_gas_paid(),
@@ -63,7 +63,7 @@ impl Mev for BundleData {
     fn total_priority_fee_paid(&self, base_fee: u128) -> u128 {
         match self {
             BundleData::Sandwich(m) => m.total_priority_fee_paid(base_fee),
-            BundleData::AtomicBackrun(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::AtomicArb(m) => m.total_priority_fee_paid(base_fee),
             BundleData::JitSandwich(m) => m.total_priority_fee_paid(base_fee),
             BundleData::Jit(m) => m.total_priority_fee_paid(base_fee),
             BundleData::CexDex(m) => m.total_priority_fee_paid(base_fee),
@@ -77,7 +77,7 @@ impl Mev for BundleData {
     fn bribe(&self) -> u128 {
         match self {
             BundleData::Sandwich(m) => m.bribe(),
-            BundleData::AtomicBackrun(m) => m.bribe(),
+            BundleData::AtomicArb(m) => m.bribe(),
             BundleData::JitSandwich(m) => m.bribe(),
             BundleData::Jit(m) => m.bribe(),
             BundleData::CexDex(m) => m.bribe(),
@@ -89,7 +89,7 @@ impl Mev for BundleData {
     fn mev_transaction_hashes(&self) -> Vec<B256> {
         match self {
             BundleData::Sandwich(m) => m.mev_transaction_hashes(),
-            BundleData::AtomicBackrun(m) => m.mev_transaction_hashes(),
+            BundleData::AtomicArb(m) => m.mev_transaction_hashes(),
             BundleData::JitSandwich(m) => m.mev_transaction_hashes(),
             BundleData::Jit(m) => m.mev_transaction_hashes(),
             BundleData::CexDex(m) => m.mev_transaction_hashes(),
@@ -107,9 +107,9 @@ impl From<Sandwich> for BundleData {
     }
 }
 
-impl From<AtomicBackrun> for BundleData {
-    fn from(value: AtomicBackrun) -> Self {
-        Self::AtomicBackrun(value)
+impl From<AtomicArb> for BundleData {
+    fn from(value: AtomicArb) -> Self {
+        Self::AtomicArb(value)
     }
 }
 
@@ -144,7 +144,7 @@ impl Serialize for BundleData {
     {
         match self {
             BundleData::Sandwich(sandwich) => sandwich.serialize(serializer),
-            BundleData::AtomicBackrun(backrun) => backrun.serialize(serializer),
+            BundleData::AtomicArb(backrun) => backrun.serialize(serializer),
             BundleData::JitSandwich(jit_sandwich) => jit_sandwich.serialize(serializer),
             BundleData::Jit(jit) => jit.serialize(serializer),
             BundleData::CexDex(cex_dex) => cex_dex.serialize(serializer),
@@ -160,7 +160,7 @@ impl InsertRow for BundleData {
     fn get_column_names(&self) -> &'static [&'static str] {
         match self {
             BundleData::Sandwich(sandwich) => sandwich.get_column_names(),
-            BundleData::AtomicBackrun(backrun) => backrun.get_column_names(),
+            BundleData::AtomicArb(backrun) => backrun.get_column_names(),
             BundleData::JitSandwich(jit_sandwich) => jit_sandwich.get_column_names(),
             BundleData::Jit(jit) => jit.get_column_names(),
             BundleData::CexDex(cex_dex) => cex_dex.get_column_names(),
