@@ -33,7 +33,6 @@ sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
-sol!(BalancerV1Factory, "./classifier-abis/BalancerV1Factory.json");
 sol!(CurveV1MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV1.json");
 sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
 sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
