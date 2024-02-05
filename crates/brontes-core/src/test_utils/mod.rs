@@ -323,7 +323,8 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
         let _ = dotenv::dotenv();
         init_tracing();
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let brontes_db_endpoint =
+            env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
             .expect(&format!("failed to open db path {}", brontes_db_endpoint))
     })
