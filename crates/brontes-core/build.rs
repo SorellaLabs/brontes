@@ -23,7 +23,7 @@ fn insert_manually_defined_classifiers() {
     let _ = dotenv::dotenv();
 
     let Ok(prod_brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
-    let Ok(test_brontes_db_endpoint) = env::var("BRONTES_DB_PATH_TEST") else { return };
+    let Ok(test_brontes_db_endpoint) = env::var("BRONTES_TEST_DB_PATH") else { return };
     let Ok(prod_libmdbx) = LibmdbxReadWriter::init_db(prod_brontes_db_endpoint, None) else {
         return
     };
