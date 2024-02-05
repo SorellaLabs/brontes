@@ -198,6 +198,10 @@ impl LibmdbxReadWriter {
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
+    fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
+        self.fetch_dex_quotes(block)
+    }
+
     fn load_trace(&self, block_num: u64) -> eyre::Result<Option<Vec<TxTrace>>> {
         let tx = self.0.ro_tx()?;
         Ok(tx.get::<TxTraces>(block_num)?.and_then(|i| i.traces))
