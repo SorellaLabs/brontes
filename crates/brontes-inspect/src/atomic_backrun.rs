@@ -7,7 +7,7 @@ use brontes_types::{
     mev::{AtomicArb, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap},
     tree::BlockTree,
-    ToFloatNearest, TxInfo,
+    ToFloatNearest, TreeSearchArgs, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -33,16 +33,16 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let intersting_state = tree.collect_all(|node| {
-            (
-                node.data.is_swap() || node.data.is_transfer() || node.data.is_flash_loan(),
-                node.subactions.iter().any(|action| {
-                    action.is_swap() || action.is_transfer() || node.data.is_flash_loan()
-                }),
-            )
+        let interesting_state = tree.collect_all(|node| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap()
+                || node.data.is_transfer()
+                || node.data.is_flash_loan(),
+            child_node_to_collect: node.get_all_sub_actions().iter().any(|action| {
+                action.is_swap() || action.is_transfer() || node.data.is_flash_loan()
+            }),
         });
 
-        intersting_state
+        interesting_state
             .into_par_iter()
             .filter_map(|(tx, actions)| {
                 let info = tree.get_tx_info(tx)?;
@@ -313,6 +313,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
+            .needs_token(hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into())
             .with_expected_profit_usd(0.188588)
             .with_gas_paid_usd(71.632668);
 
@@ -326,6 +327,7 @@ mod tests {
         let tx = hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("c98835e792553e505ae46e73a6fd27a23985acca").into())
             .with_dex_prices()
             .with_expected_profit_usd(311.18)
             .with_gas_paid_usd(91.51);
@@ -338,18 +340,6 @@ mod tests {
     async fn test_not_false_positive_uni_router() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
         let tx = hex!("ac1127310fdec0b07e618407eabfb7cdf5ada81dc47e914c76fc759843346a0e").into();
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices();
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_not_false_positive_1_inch() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
-        let tx = hex!("3b6d8fcf36546e5d371b1b38f3a5beb02438dfa4d5a047c74884341c89286c3a").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices();

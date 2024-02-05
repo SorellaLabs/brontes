@@ -6,6 +6,7 @@ use std::{
 };
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
+use brontes_database::{clickhouse::Clickhouse, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
@@ -25,6 +26,9 @@ use crate::decoding::parser::TraceParser;
 #[cfg(feature = "local")]
 use crate::local_provider::LocalProvider;
 
+// so we only have to init critical tables once
+const INIT_LOCK: OnceLock<()> = OnceLock::new();
+
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
     pub libmdbx:          &'static LibmdbxReadWriter,
@@ -37,8 +41,32 @@ impl TraceLoader {
     pub fn new() -> Self {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
-        let tracing_provider = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10);
-        Self { libmdbx, tracing_provider, _metrics: b }
+        let handle = tokio::runtime::Handle::current();
+        let tracing_provider = init_trace_parser(handle.clone(), a, libmdbx, 10);
+
+        let this = Self { libmdbx, tracing_provider, _metrics: b };
+
+        let this = if INIT_LOCK.get().is_none() {
+            tracing::info!("initing critical tables");
+            let this = std::thread::spawn(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+                    .block_on(async {
+                        this.init_on_start().await.unwrap();
+                        this
+                    })
+            })
+            .join()
+            .unwrap();
+            let _ = INIT_LOCK.get_or_init(|| ());
+            this
+        } else {
+            this
+        };
+
+        this
     }
 
     pub fn new_with_rt(handle: Handle) -> Self {
@@ -68,12 +96,59 @@ impl TraceLoader {
         pricing: bool,
     ) -> Result<Metadata, TraceLoaderError> {
         if pricing {
-            self.test_metadata_with_pricing(block)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            if let Ok(res) = self.test_metadata_with_pricing(block) {
+                return Ok(res)
+            } else {
+                self.fetch_missing_metadata(block).await?;
+                return self
+                    .test_metadata_with_pricing(block)
+                    .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            }
         } else {
-            self.test_metadata(block)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            if let Ok(res) = self.test_metadata(block) {
+                return Ok(res)
+            } else {
+                self.fetch_missing_metadata(block).await?;
+                return self
+                    .test_metadata(block)
+                    .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+            }
         }
+    }
+
+    async fn init_on_start(&self) -> eyre::Result<()> {
+        let clickhouse = Arc::new(Clickhouse::default());
+        self.libmdbx
+            .initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                &[
+                    Tables::PoolCreationBlocks,
+                    Tables::TokenDecimals,
+                    Tables::AddressToTokens,
+                    Tables::AddressToProtocol,
+                ],
+                false,
+                None,
+            )
+            .await
+    }
+
+    pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
+        tracing::info!(%block, "fetching missing metadata");
+
+        let clickhouse = Arc::new(Clickhouse::default());
+        self.libmdbx
+            .initialize_tables(
+                clickhouse.clone(),
+                self.tracing_provider.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice],
+                false,
+                Some((block - 2, block + 2)),
+            )
+            .await?;
+
+        Ok(())
     }
 
     pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -278,7 +353,8 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
         let _ = dotenv::dotenv();
         init_tracing();
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let brontes_db_endpoint =
+            env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
             .expect(&format!("failed to open db path {}", brontes_db_endpoint))
     })
