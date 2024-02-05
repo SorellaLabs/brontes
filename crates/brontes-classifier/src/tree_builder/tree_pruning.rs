@@ -190,10 +190,12 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     if swap.token_out == transfer.token
                         && swap.pool == transfer.from
                         && swap.recipient == transfer.token.address
-                        && swap.amount_out > transfer.amount
+                        && swap.amount_out != (&transfer.amount + &transfer.fee)
                     {
                         let fee_amount = transfer.fee.clone();
-                        swap.amount_out = transfer.amount.clone();
+                        // token is going out so the amount out on the swap
+                        // will be with fee.
+                        swap.amount_out -= &transfer.fee;
 
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
                             swap,
@@ -207,10 +209,11 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     // adjust the amount in case
                     else if swap.token_in == transfer.token
                         && swap.pool == transfer.to
-                        && swap.amount_in != transfer.amount
+                        && swap.amount_in != (&transfer.amount + &transfer.fee)
                     {
                         let fee_amount = transfer.fee.clone();
-                        swap.amount_in = transfer.amount.clone();
+                        // swap amount in will be the amount without fee.
+                        swap.amount_in += &transfer.fee;
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
                             swap,
                             fee_amount,
