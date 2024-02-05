@@ -164,7 +164,6 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             fee_token: transfer.token.clone(),
                         });
                         node.data = swap;
-                        tracing::info!("fee on amount out: {:?}", node.data);
                         return
                     }
                     // adjust the amount in case
@@ -181,7 +180,6 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             fee_token: transfer.token.clone(),
                         });
                         node.data = swap;
-                        tracing::info!("fee on amount in: {:?}", node.data);
                         return
                     }
                 });
