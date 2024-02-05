@@ -14,7 +14,7 @@ use crate::{
     db::redefined_types::primitives::*,
     implement_table_value_codecs_with_zc,
     pair::Pair,
-    serde_primitives::{option_addresss, u256, vec_txhash},
+    serde_utils::{option_addresss, u256, vec_txhash},
 };
 
 /// libmdbx type
