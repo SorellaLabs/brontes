@@ -29,7 +29,7 @@ use brontes_types::{
     db::{
         cex::CexExchange,
         dex::DexQuotes,
-        metadata::{MetadataCombined, MetadataNoDex},
+        metadata::{Metadata, MetadataNoDex},
     },
     mev::{Bundle, MevType},
     normalized_actions::Actions,
@@ -83,8 +83,8 @@ impl InspectorTestUtils {
         Ok(trees.remove(0))
     }
 
-    fn default_metadata(&self) -> MetadataCombined {
-        MetadataCombined { db: MetadataNoDex::default(), dex_quotes: DexQuotes(vec![]) }
+    fn default_metadata(&self) -> Metadata {
+        Metadata { db: MetadataNoDex::default(), dex_quotes: DexQuotes(vec![]) }
     }
 
     async fn get_block_tree(
@@ -383,7 +383,7 @@ impl InspectorTestUtils {
 /// bundle.
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
-    pub metadata_override:   Option<MetadataCombined>,
+    pub metadata_override:   Option<Metadata>,
     pub mev_tx_hashes:       Option<Vec<TxHash>>,
     pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
@@ -415,7 +415,7 @@ impl InspectorTxRunConfig {
         self
     }
 
-    pub fn with_metadata_override(mut self, metadata: MetadataCombined) -> Self {
+    pub fn with_metadata_override(mut self, metadata: Metadata) -> Self {
         self.metadata_override = Some(metadata);
         self
     }
@@ -442,7 +442,7 @@ impl InspectorTxRunConfig {
 pub struct ComposerRunConfig {
     pub inspectors:          Vec<Inspectors>,
     pub expected_mev_type:   MevType,
-    pub metadata_override:   Option<MetadataCombined>,
+    pub metadata_override:   Option<Metadata>,
     pub mev_tx_hashes:       Option<Vec<TxHash>>,
     pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
@@ -466,7 +466,7 @@ impl ComposerRunConfig {
         }
     }
 
-    pub fn with_metadata_override(mut self, metadata: MetadataCombined) -> Self {
+    pub fn with_metadata_override(mut self, metadata: Metadata) -> Self {
         self.metadata_override = Some(metadata);
         self
     }

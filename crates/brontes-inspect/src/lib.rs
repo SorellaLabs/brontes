@@ -22,7 +22,7 @@
 //!     async fn process_tree(
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
-//!         metadata: Arc<MetadataCombined>,
+//!         metadata: Arc<Metadata>,
 //!     ) -> Vec<Bundle>;
 //! }
 //! ```
@@ -101,7 +101,7 @@ use alloy_primitives::Address;
 use atomic_backrun::AtomicBackrunInspector;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::MetadataCombined},
+    db::{cex::CexExchange, metadata::Metadata},
     mev::{Bundle, BundleData},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -117,7 +117,7 @@ pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle>;
 }
 
