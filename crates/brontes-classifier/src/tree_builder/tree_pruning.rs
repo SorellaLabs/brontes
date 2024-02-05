@@ -168,7 +168,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             fee_token: transfer.token.clone(),
                         });
                         node.data = swap;
-                        tracing::info!("fee on amount out: {:?}", node.data);
+                        tracing::info!("fee on amount out: {:#?}", node.data);
                         return
                     }
                     // adjust the amount in case
@@ -185,7 +185,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             fee_token: transfer.token.clone(),
                         });
                         node.data = swap;
-                        tracing::info!("fee on amount in: {:?}", node.data);
+                        tracing::info!("fee on amount in: {:#?}", node.data);
                         return
                     }
                 });
@@ -241,7 +241,7 @@ mod test {
     #[tokio::test]
     #[serial_test::serial]
     async fn test_filter_tax_tokens() {
-        let mut utils = ClassifierTestUtils::new();
+        let utils = ClassifierTestUtils::new();
         let tree = utils
             .build_tree_tx(
                 hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
