@@ -136,7 +136,10 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            self.classifier_inspector.get_metadata(block, false).await?
+            self.classifier_inspector
+                .get_metadata(block, false)
+                .await
+                .unwrap_or_default()
         };
 
         metadata.dex_quotes = quotes;
