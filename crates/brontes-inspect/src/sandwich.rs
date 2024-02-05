@@ -140,6 +140,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
         let all_actions = searcher_actions.clone();
+        tracing::info!("{:#?}", all_actions);
         let back_run_swaps = searcher_actions
             .pop()?
             .iter()
@@ -169,7 +170,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
 
-                tracing::info!("looping");
                 return self.calculate_sandwich(
                     metadata.clone(),
                     possible_front_runs_info,
