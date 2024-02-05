@@ -31,8 +31,8 @@ action_impl!(
 
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         // The amount of gem token being bought
         let amount_out = call_data.gemAmt.to_scaled_rational(t1_info.decimals);
@@ -79,8 +79,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
 
         // The amount of gem asset being sold

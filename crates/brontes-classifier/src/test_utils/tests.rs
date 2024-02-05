@@ -56,7 +56,7 @@ impl ClassifierTestUtils {
     }
 
     pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
-        self.libmdbx.try_get_token_info(address).unwrap().unwrap()
+        self.libmdbx.try_fetch_token_info(address).unwrap().unwrap()
     }
 
     pub fn new_with_rt(handle: Handle) -> Self {
