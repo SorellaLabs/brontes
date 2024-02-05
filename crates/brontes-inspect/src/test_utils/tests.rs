@@ -26,11 +26,7 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
-    db::{
-        cex::CexExchange,
-        dex::DexQuotes,
-        metadata::{self, Metadata},
-    },
+    db::{cex::CexExchange, dex::DexQuotes, metadata::Metadata},
     mev::{Bundle, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
