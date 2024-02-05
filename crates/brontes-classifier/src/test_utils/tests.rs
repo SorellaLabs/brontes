@@ -190,8 +190,7 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header).await;
 
-        let mut price =
-            if let Ok(m) = self.libmdbx.get_metadata(block) { m.dex_quotes } else { None };
+        let mut price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
 
         price = if price.is_none() {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
@@ -335,7 +334,7 @@ impl ClassifierTestUtils {
         let tree = classifier.build_block_tree(traces, header).await;
 
         let mut price =
-            if let Ok(m) = self.libmdbx.get_metadata(block) { m.dex_quotes } else { None };
+            if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
         price = if price.is_none() {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             ctr.store(true, SeqCst);
