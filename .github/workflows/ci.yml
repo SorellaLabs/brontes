@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 name: CI
 jobs:
-  lint:
+  build: 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -16,7 +16,6 @@ jobs:
         shell: bash
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
-
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
@@ -32,6 +31,17 @@ jobs:
       - name: cargo build
         run: cargo +nightly build 
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.CI }}
+      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+        shell: bash
+      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+        shell: bash
+
       - name: cargo fmt
         run: cargo +nightly fmt --all -- --check
 
@@ -45,3 +55,23 @@ jobs:
 
       - name: cargo test
         run: ssh brontes_server -o StrictHostKeyChecking=no -t "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
+  test: 
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          config: ${{ secrets.SSH_CONFIG }}
+          bastion: ${{ secrets.BASTION_SSH }}
+          brontes: ${{ secrets.BRONTES_SSH }}
+
+      # init server args
+      - run: mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config
+        shell: bash
+      - run: echo ${{ secrets.BASTION_SSH }} > ~/.ssh/bastion && chmod 600 ~/.ssh/bastion
+        shell: bash
+      - run: echo ${{ secrets.BRONTES_SSH }} > ~/.ssh/brontes_server && chmod 600 ~/.ssh/brontes_server
+        shell: bash
+
+      - name: cargo test
+        run: ssh brontes_server -o StrictHostKeyChecking=no -t "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
+
