@@ -117,6 +117,10 @@ impl LibmdbxReadWriter {
             return Err(eyre::eyre!("no data for entire range"))
         }
 
+        // because for some ranges, not every item is for a block. so we only
+        // increment our counter if we know its a block update
+        let mut last_updated_block = decode_key(&peek_cur.peek().unwrap().as_ref().unwrap().0);
+
         for entry in peek_cur {
             if cur_block % 1000 == 0 {
                 tracing::info!(
@@ -127,15 +131,23 @@ impl LibmdbxReadWriter {
             }
 
             if let Ok(field) = entry {
-                if cur_block != decode_key(&field.0) {
+                let key = decode_key(&field.0);
+                while key >= cur_block {
                     missing.push(cur_block);
                     res = false;
+                    cur_block += 1;
+                }
+
+                // need todo this due to dex pricing
+                if key != last_updated_block {
+                    cur_block += 1;
+                    last_updated_block = key;
                 }
             } else {
                 missing.push(cur_block);
-                res = false
+                res = false;
+                break
             }
-            cur_block += 1;
         }
 
         if cur_block - 1 != decode_key(&end_key) {
