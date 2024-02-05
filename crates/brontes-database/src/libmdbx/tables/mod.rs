@@ -4,26 +4,26 @@ use std::{
 };
 
 use brontes_pricing::{Protocol, SubGraphsEntry};
-
 use brontes_types::{
     db::{
+        address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_tokens::{PoolTokens, PoolTokensRedefined},
+        builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
+        searcher::{SearcherInfo, SearcherInfoRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
-        searcher::{SearcherInfo, SearcherInfoRedefined},
-        builder::{BuilderInfo, BuilderInfoRedefined},
-        address_metadata::{AddressMetadata, AddressMetadataRedefined}
     },
     pair::Pair,
     price_graph_types::SubGraphsEntryRedefined,
     serde_utils::*,
     traits::TracingProvider,
 };
+use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
@@ -33,7 +33,7 @@ mod const_sql;
 use alloy_primitives::Address;
 use const_sql::*;
 use paste::paste;
-use reth_db::{table::Table, TableType};
+use reth_db::TableType;
 
 use super::{
     initialize::LibmdbxInitializer, types::IntoTableKey, utils::static_bindings, CompressedTable,
@@ -124,6 +124,13 @@ impl Tables {
                     )
                     .await
             }
+            Tables::PoolCreationBlocks => {
+                initializer
+                    .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
+                        clear_table,
+                    )
+                    .await
+            }
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
@@ -134,17 +141,12 @@ impl Tables {
             }
             Tables::BlockInfo => {
                 initializer
-                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(block_range, clear_table)
-                    .await
-            }
-            Tables::PoolCreationBlocks => {
-                initializer
-                    .initialize_table_from_clickhouse::<PoolCreationBlocks, PoolCreationBlocksData>(
+                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
                         block_range,
                         clear_table,
                     )
                     .await
-            },
+            }
             Tables::DexPrice => Ok(()),
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
@@ -214,17 +216,18 @@ macro_rules! compressed_table {
                 write!(f, "{}", stringify!($table_name))
             }
         }
-        
+
         #[cfg(test)]
         #[allow(unused)]
         impl $table_name {
             pub(crate) async fn test_initialized_data(
-                clickhouse: &crate::libmdbx::Clickhouse,
-                libmdbx: &crate::libmdbx::Libmdbx,
+                clickhouse: &crate::clickhouse::Clickhouse,
+                libmdbx: &crate::libmdbx::LibmdbxReadWriter,
                 block_range: Option<(u64, u64)>
             ) -> eyre::Result<(usize, usize)> {
-                paste::paste!{ 
-                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data::<$table_name, [<$table_name Data>]>(clickhouse, libmdbx, block_range).await 
+                paste::paste!{
+                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
+                        ::<$table_name,[<$table_name Data>]>(clickhouse, libmdbx, block_range).await
                 }
             }
         }
@@ -570,7 +573,6 @@ compressed_table!(
     }
 );
 
-
 compressed_table!(
     Table AddressMeta {
         Data {
@@ -588,8 +590,6 @@ compressed_table!(
         }
     }
 );
-
-
 
 compressed_table!(
     Table Searcher {

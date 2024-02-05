@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
-    ToFloatNearest, TxInfo,
+    ToFloatNearest, TreeSearchArgs, TxInfo,
 };
 use hyper::header;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -33,13 +33,12 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let liq_txs = tree.collect_all(|node| {
-            (
-                node.data.is_liquidation() || node.data.is_swap(),
-                node.subactions
-                    .iter()
-                    .any(|action| action.is_liquidation() || action.is_swap()),
-            )
+        let liq_txs = tree.collect_all(|node| TreeSearchArgs {
+            collect_current_node:  node.data.is_liquidation() || node.data.is_swap(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .any(|action| action.is_liquidation() || action.is_swap()),
         });
 
         liq_txs
@@ -155,12 +154,19 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_aave_v3_liquidation() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0);
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
-            .with_block(19042179)
+            .with_mev_tx_hashes(vec![hex!(
+                "dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"
+            )
+            .into()])
+            .needs_tokens(vec![
+                hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+            ])
             .with_dex_prices()
-            .with_gas_paid_usd(2792.487)
+            .with_gas_paid_usd(2793.9)
             .with_expected_profit_usd(71.593);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -176,6 +182,7 @@ mod tests {
                 "725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db"
             )
             .into()])
+            .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
             .with_dex_prices()
             .with_gas_paid_usd(636.54)
             .with_expected_profit_usd(129.23);
