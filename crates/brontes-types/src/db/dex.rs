@@ -82,6 +82,27 @@ impl DexQuotes {
     pub fn get_price(&self, pair: Pair, tx: usize) -> Option<&DexPrices> {
         self.0.get(tx)?.as_ref()?.get(&pair)
     }
+
+    pub fn has_quote(&self, pair: Pair) -> bool {
+        let mut tx_idx = self.0.len();
+
+        if pair.0 == pair.1 {
+            return true
+        }
+
+        loop {
+            if let Some(_) = self.get_price(pair, tx_idx) {
+                return true
+            }
+            if tx_idx == 0 {
+                break
+            }
+
+            tx_idx -= 1;
+        }
+
+        false
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
