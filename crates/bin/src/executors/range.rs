@@ -7,7 +7,7 @@ use alloy_primitives::Address;
 use brontes_core::decoding::TracingProvider;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::MetadataCombined, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::info;
@@ -59,7 +59,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPri
         drop(graceful_guard);
     }
 
-    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: MetadataCombined) {
+    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
         info!(target:"brontes","Completed DEX pricing");
         self.insert_futures.push(Box::pin(process_results(
             self.libmdbx,

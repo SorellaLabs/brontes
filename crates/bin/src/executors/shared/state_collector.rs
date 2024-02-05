@@ -11,7 +11,7 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_types::{
     db::{
-        metadata::MetadataCombined,
+        metadata::Metadata,
         traits::{LibmdbxReader, LibmdbxWriter},
     },
     normalized_actions::Actions,
@@ -72,7 +72,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateCollector<T, DB> {
-    type Item = (BlockTree<Actions>, MetadataCombined);
+    type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,

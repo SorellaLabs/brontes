@@ -7,14 +7,7 @@ use std::{
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
 use brontes_metrics::PoirotMetricEvents;
-use brontes_types::{
-    db::{
-        dex::DexQuotes,
-        metadata::{MetadataCombined, MetadataNoDex},
-    },
-    structured_trace::TxTrace,
-    traits::TracingProvider,
-};
+use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
@@ -69,13 +62,26 @@ impl TraceLoader {
             .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
     }
 
-    pub async fn get_metadata(&self, block: u64) -> Result<MetadataCombined, TraceLoaderError> {
-        self.test_metadata(block)
-            .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+    pub async fn get_metadata(
+        &self,
+        block: u64,
+        pricing: bool,
+    ) -> Result<Metadata, TraceLoaderError> {
+        if pricing {
+            self.test_metadata_with_pricing(block)
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+        } else {
+            self.test_metadata(block)
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+        }
     }
 
-    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
+    pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
         self.libmdbx.get_metadata(block_num)
+    }
+
+    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        self.libmdbx.get_metadata_no_dex_price(block_num)
     }
 
     pub async fn get_block_traces_with_header(
@@ -107,9 +113,9 @@ impl TraceLoader {
     pub async fn get_block_traces_with_header_and_metadata(
         &self,
         block: u64,
-    ) -> Result<BlockTracesWithHeaderAnd<MetadataCombined>, TraceLoaderError> {
+    ) -> Result<BlockTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
         let (traces, header) = self.trace_block(block).await?;
-        let metadata = self.get_metadata(block).await?;
+        let metadata = self.get_metadata(block, false).await?;
 
         Ok(BlockTracesWithHeaderAnd { block, traces, header, other: metadata })
     }
@@ -118,13 +124,13 @@ impl TraceLoader {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> Result<Vec<BlockTracesWithHeaderAnd<MetadataCombined>>, TraceLoaderError> {
+    ) -> Result<Vec<BlockTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
         join_all(
             (start_block..=end_block)
                 .into_iter()
                 .map(|block| async move {
                     let (traces, header) = self.trace_block(block).await?;
-                    let metadata = self.get_metadata(block).await?;
+                    let metadata = self.get_metadata(block, false).await?;
                     Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
                 }),
         )
@@ -203,14 +209,14 @@ impl TraceLoader {
     pub async fn get_tx_trace_with_header_and_metadata(
         &self,
         tx_hash: B256,
-    ) -> Result<TxTracesWithHeaderAnd<MetadataCombined>, TraceLoaderError> {
+    ) -> Result<TxTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
         let (block, tx_idx) = self
             .tracing_provider
             .get_tracer()
             .block_and_tx_index(tx_hash)
             .await?;
         let (traces, header) = self.trace_block(block).await?;
-        let metadata = self.get_metadata(block).await?;
+        let metadata = self.get_metadata(block, false).await?;
         let trace = traces[tx_idx].clone();
 
         Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })
@@ -219,7 +225,7 @@ impl TraceLoader {
     pub async fn get_tx_traces_with_header_and_metadata(
         &self,
         tx_hashes: Vec<B256>,
-    ) -> Result<Vec<TxTracesWithHeaderAnd<MetadataCombined>>, TraceLoaderError> {
+    ) -> Result<Vec<TxTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
         join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self
                 .tracing_provider
@@ -227,7 +233,7 @@ impl TraceLoader {
                 .block_and_tx_index(tx_hash)
                 .await?;
             let (traces, header) = self.trace_block(block).await?;
-            let metadata = self.get_metadata(block).await?;
+            let metadata = self.get_metadata(block, false).await?;
             let trace = traces[tx_idx].clone();
 
             Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })

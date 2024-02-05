@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
-use brontes_types::db::{cex::CexExchange, metadata::MetadataCombined};
+use brontes_types::db::{cex::CexExchange, metadata::Metadata};
 use criterion::{black_box, Criterion};
 
 use super::InspectorTestUtilsError;
@@ -50,7 +50,7 @@ impl InspectorBenchUtils {
 
         let mut metadata = self
             .rt
-            .block_on(self.classifier_inspector.get_metadata(block))?;
+            .block_on(self.classifier_inspector.get_metadata(block, false))?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -94,10 +94,11 @@ impl InspectorBenchUtils {
 
         let (tree, prices) = trees.remove(0);
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
-        metadata.dex_quotes = prices;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
+        metadata.dex_quotes = Some(prices);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
@@ -130,9 +131,10 @@ impl InspectorBenchUtils {
                 .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -151,7 +153,7 @@ impl InspectorBenchUtils {
         &self,
         bench_name: &str,
         tx_hashes: Vec<TxHash>,
-        metadata: MetadataCombined,
+        metadata: Metadata,
         iters: usize,
         inspector: Inspectors,
         c: &mut Criterion,
@@ -217,10 +219,11 @@ impl InspectorBenchUtils {
         }
         let (tree, prices) = trees.remove(0);
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
-        metadata.dex_quotes = prices;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
+        metadata.dex_quotes = Some(prices);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
@@ -261,9 +264,10 @@ impl InspectorBenchUtils {
                 .build_block_tree_with_pricing(block, self.quote_address),
         )?;
 
-        let mut metadata = self
-            .rt
-            .block_on(self.classifier_inspector.get_metadata(tree.header.number))?;
+        let mut metadata = self.rt.block_on(
+            self.classifier_inspector
+                .get_metadata(tree.header.number, false),
+        )?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
