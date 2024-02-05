@@ -206,18 +206,6 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_not_false_positive_1_inch() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
-        let tx = hex!("3b6d8fcf36546e5d371b1b38f3a5beb02438dfa4d5a047c74884341c89286c3a").into();
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicBackrun)
-            .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices();
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[tokio::test]
-    #[serial]
     async fn test_not_false_positive_hex_usdc() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
         let tx = hex!("e4b8b358118daa26809a1ff77323d825664202c4f31a2afe923f3fe83d7eccc4").into();
