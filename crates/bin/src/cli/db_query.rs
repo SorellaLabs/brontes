@@ -74,6 +74,9 @@ impl DatabaseQuery {
                 AddressToTokens,
                 AddressToProtocol,
                 PoolCreationBlocks,
+                Builder,
+                AddressMeta,
+                Searcher,
                 SubGraphs,
                 TxTraces
             );
@@ -89,6 +92,9 @@ impl DatabaseQuery {
                 TokenDecimals,
                 AddressToTokens,
                 AddressToProtocol,
+                Builder,
+                AddressMeta,
+                Searcher,
                 SubGraphs,
                 TxTraces,
                 PoolCreationBlocks = &self.key
