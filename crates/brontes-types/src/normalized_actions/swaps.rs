@@ -7,7 +7,7 @@ use std::{
 use alloy_primitives::{TxHash, U256};
 use colored::Colorize;
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
 use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -67,6 +67,10 @@ impl NormalizedSwap {
     /// Calculates the rate for a given DEX swap
 
     pub fn swap_rate(&self) -> Rational {
+        if self.amount_out == Rational::ZERO {
+            return Rational::ZERO
+        }
+
         &self.amount_in / &self.amount_out
     }
 
