@@ -100,13 +100,12 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
 
 pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
-        ______            _                     
-        | ___ \          | |                    
-        | |_/ / __ _  ___| | ___ __ _   _ _ __  
-        | ___ \/ _` |/ __| |/ / '__| | | | '_ \ 
-        | |_/ / (_| | (__|   <| |  | |_| | | | |
-        \____/ \__,_|\___|_|\_\_|   \__,_|_| |_|
-
+          ___  _                  _         ___       _     
+         / _ \| |                (_)       / _ \     | |    
+        / /_\ \ |_ ___  _ __ ___  _  ___  / /_\ \_ __| |__  
+        |  _  | __/ _ \| '_ ` _ \| |/ __| |  _  | '__| '_ \ 
+        | | | | || (_) | | | | | | | (__  | | | | |  | |_) |
+        \_| |_/\__\___/|_| |_| |_|_|\___| \_| |_/_|  |_.__/ 
     "#};
 
     for line in ascii_header.lines() {
@@ -114,7 +113,7 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     }
 
     let atomic_backrun_data = match &bundle.data {
-        BundleData::AtomicBackrun(data) => data,
+        BundleData::AtomicArb(data) => data,
         _ => panic!("Wrong bundle type"),
     };
 
