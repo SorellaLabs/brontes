@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashMap, path::Path};
+use std::{cmp::max, collections::HashMap, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -23,7 +23,9 @@ use brontes_types::{
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
+    traits::TracingProvider,
 };
+use eyre::eyre;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
@@ -32,10 +34,11 @@ use tracing::info;
 
 use super::cursor::CompressedCursor;
 use crate::{
+    clickhouse::Clickhouse,
     libmdbx::{
         tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, *},
         types::LibmdbxData,
-        Libmdbx,
+        Libmdbx, LibmdbxInitializer,
     },
     AddressToProtocol, AddressToTokens, CompressedTable, PoolCreationBlocks, SubGraphs,
     TokenDecimals, TxTraces,
@@ -46,6 +49,23 @@ pub struct LibmdbxReadWriter(pub Libmdbx);
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
+    }
+
+    /// initializes all the tables with data via the CLI
+    pub async fn initialize_tables<T: TracingProvider>(
+        &'static self,
+        clickhouse: Arc<Clickhouse>,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize(tables, clear_tables, block_range)
+            .await?;
+
+        Ok(())
     }
 
     #[cfg(not(feature = "local"))]
@@ -202,6 +222,10 @@ impl LibmdbxReadWriter {
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
+    fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
+        self.fetch_dex_quotes(block)
+    }
+
     fn load_trace(&self, block_num: u64) -> eyre::Result<Option<Vec<TxTrace>>> {
         let tx = self.0.ro_tx()?;
         Ok(tx.get::<TxTraces>(block_num)?.and_then(|i| i.traces))
@@ -512,14 +536,14 @@ impl LibmdbxReadWriter {
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
         tx.get::<BlockInfo>(block_num)?
-            .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))
+            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num))
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         let tx = self.0.ro_tx()?;
         Ok(CexPriceMap(
             tx.get::<CexPrice>(block_num)?
-                .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))?
+                .ok_or_else(|| eyre!("Failed to fetch cexquotes's for block {}", block_num))?
                 .0,
         ))
     }

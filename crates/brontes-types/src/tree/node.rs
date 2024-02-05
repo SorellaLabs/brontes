@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use super::Root;
-use crate::normalized_actions::NormalizedAction;
+use crate::{normalized_actions::NormalizedAction, TreeSearchArgs};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockTree<V: NormalizedAction> {
@@ -75,13 +75,12 @@ impl<V: NormalizedAction> Node<V> {
             let mut results = Vec::new();
             let classification = self.data.continued_classification_types();
 
-            let collect_fn = |node: &Node<V>| {
-                (
-                    (classification)(&node.data),
-                    node.get_all_sub_actions()
-                        .iter()
-                        .any(|i| (classification)(i)),
-                )
+            let collect_fn = |node: &Node<V>| TreeSearchArgs {
+                collect_current_node:  (classification)(&node.data),
+                child_node_to_collect: node
+                    .get_all_sub_actions()
+                    .iter()
+                    .any(|i| (classification)(i)),
             };
             self.collect(&mut results, &collect_fn, &|a| (a.index, a.data.clone()));
             // Now that we have the child actions of interest we can finalize the parent
@@ -146,11 +145,12 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F) -> bool
     where
-        T: Fn(&Self) -> (bool, bool),
+        T: Fn(&Self) -> TreeSearchArgs,
         F: Fn(&mut Self),
     {
-        let (is_parent_node, has_lower_set) = find(&self);
-        if !has_lower_set {
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } = find(&self);
+
+        if !child_node_to_collect {
             return false
         }
 
@@ -163,7 +163,7 @@ impl<V: NormalizedAction> Node<V> {
         if !lower_classification_results.into_iter().any(|n| n) {
             // if we don't collect because of parent node
             // we return false
-            if is_parent_node {
+            if collect_current_node {
                 modify(self);
                 return true
             } else {
@@ -367,15 +367,15 @@ impl<V: NormalizedAction> Node<V> {
     /// fetching all actions that match a certain criteria.
     pub fn collect<F, T, R>(&self, results: &mut Vec<R>, call: &F, wanted_data: &T)
     where
-        F: Fn(&Node<V>) -> (bool, bool),
+        F: Fn(&Node<V>) -> TreeSearchArgs,
         T: Fn(&Node<V>) -> R,
     {
-        let (add, go_lower) = call(self);
-        if add {
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } = call(self);
+        if collect_current_node {
             results.push(wanted_data(self))
         }
 
-        if go_lower {
+        if child_node_to_collect {
             self.inner
                 .iter()
                 .for_each(|i| i.collect(results, call, wanted_data))
@@ -389,16 +389,17 @@ impl<V: NormalizedAction> Node<V> {
         result: &mut Vec<(Address, (Address, Address))>,
     ) -> bool
     where
-        T: Fn(Address, &Node<V>) -> (bool, bool),
+        T: Fn(Address, &Node<V>) -> TreeSearchArgs,
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
-        let (go_lower, set_change) = find(self.address, self);
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } =
+            find(self.address, self);
 
-        if !go_lower {
+        if !child_node_to_collect {
             return false
         }
 
-        if set_change {
+        if collect_current_node {
             if let Some(res) = call(self) {
                 result.push(res);
             }
@@ -412,7 +413,7 @@ impl<V: NormalizedAction> Node<V> {
 
         let lower_has_better = lower_has_better_c.into_iter().any(|i| i);
 
-        if !lower_has_better && !set_change {
+        if !lower_has_better && !child_node_to_collect {
             if let Some(res) = call(self) {
                 result.push(res);
             }

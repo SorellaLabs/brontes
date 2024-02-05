@@ -5,7 +5,8 @@ use alloy_primitives::Address;
 use crate::{
     db::{
         address_metadata::AddressMetadata, address_to_tokens::PoolTokens, builder::BuilderInfo,
-        metadata::Metadata, searcher::SearcherInfo, token_info::TokenInfoWithAddress,
+        dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo,
+        token_info::TokenInfoWithAddress,
     },
     pair::Pair,
     structured_trace::TxTrace,
@@ -27,6 +28,7 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
 
     fn try_fetch_address_metadata(&self, address: Address)
         -> eyre::Result<Option<AddressMetadata>>;
+    fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes>;
 
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>>;
 
