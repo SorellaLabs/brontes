@@ -146,6 +146,7 @@ impl LibmdbxReadWriter {
             } else {
                 missing.push(cur_block);
                 res = false;
+                tracing::error!("error on db entry");
                 break
             }
         }
