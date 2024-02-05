@@ -1,6 +1,6 @@
-use std::borrow::BorrowMut;
 
-use itertools::Itertools;
+
+
 use reth_primitives::{Address, Header};
 use serde::{Deserialize, Serialize};
 use tracing::error;
