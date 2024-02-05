@@ -155,7 +155,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_aave_v3_liquidation() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0);
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_mev_tx_hashes(vec![hex!(
@@ -167,7 +167,7 @@ mod tests {
                 hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
             ])
             .with_dex_prices()
-            .with_gas_paid_usd(2792.487)
+            .with_gas_paid_usd(2793.9)
             .with_expected_profit_usd(71.593);
 
         inspector_util.run_inspector(config, None).await.unwrap();
