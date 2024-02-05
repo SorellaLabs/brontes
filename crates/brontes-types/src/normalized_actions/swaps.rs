@@ -75,6 +75,27 @@ impl NormalizedSwap {
     }
 }
 
+// impl Display for NormalizedSwap {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let amount_in = format!("{:.4}",
+// self.amount_in.clone().to_float()).red();         let amount_out =
+// format!("{:.4}", self.amount_out.clone().to_float()).green();         let
+// token_in_symbol = self.token_in.symbol.bold();         let token_out_symbol =
+// self.token_out.symbol.bold();         let protocol =
+// self.protocol.to_string().bold();
+
+//         write!(
+//             f,
+//             "Swap: {} {} → {} {} via {}",
+//             amount_in,
+//             token_in_symbol,
+//             amount_out,
+//             token_out_symbol,
+//             protocol
+//         )
+//     }
+// }
+
 impl Display for NormalizedSwap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
