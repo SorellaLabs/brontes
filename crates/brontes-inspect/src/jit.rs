@@ -409,8 +409,8 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .needs_tokens(vec![
-                          hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into()
-                          hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()
+                hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into(),
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
             ])
             .with_mev_tx_hashes(vec![
                 hex!("11a88cf8d0cab67c146709eae4803a65af4b7f70fba6d4b657c25b853a57b0f7").into(),

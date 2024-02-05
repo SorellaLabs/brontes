@@ -29,7 +29,7 @@ use brontes_types::{
 };
 use futures::{future::join_all, StreamExt};
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use thiserror::Error;
@@ -176,11 +176,11 @@ impl ClassifierTestUtils {
         &self,
         block: u64,
         quote_token: Address,
-        quotes: Option<DexQuotes>,
+        quotes: Option<&DexQuotes>,
         needs_tokens: &Vec<Address>,
         tx: UnboundedSender<DexPriceMsg>,
     ) -> bool {
-        if let Some(quotes) = quotes {
+        if let Some(quote) = quotes {
             needs_tokens
                 .iter()
                 .zip(vec![quote_token].into_iter().cycle())
@@ -237,13 +237,12 @@ impl ClassifierTestUtils {
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();
 
-        let block = header.number;
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header).await;
 
-        let mut price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
 
-        let price = if self.need_dex_quotes(block, quote_asset, price, &needs_tokens, tx) {
+        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx) {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
 
@@ -336,12 +335,14 @@ impl ClassifierTestUtils {
         let prices = if possible_price
             .iter()
             .map(|(block, price)| {
-                self.need_dex_quotes(block, quote_asset, Some(price), &needs_tokens, tx)
+                self.need_dex_quotes(*block, quote_asset, Some(price), &needs_tokens, tx.clone())
             })
             .any(|f| f)
             || failed
         {
-            let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+            let (ctr, mut pricer) = self
+                .init_dex_pricer(start_block, None, quote_asset, rx)
+                .await?;
             classifier.close();
 
             ctr.store(true, SeqCst);
@@ -392,9 +393,9 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(traces, header).await;
 
-        let mut price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
 
-        let price = if self.need_dex_quotes(block, quote_asset, price, &needs_tokens, tx) {
+        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx) {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
 
