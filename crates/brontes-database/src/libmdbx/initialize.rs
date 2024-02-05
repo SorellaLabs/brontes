@@ -170,8 +170,13 @@ mod tests {
     async fn test_intialize_clickhouse_no_args_tables() {
         let block_range = (17000000, 17000100);
 
-        let clickhouse = Arc::new(init_clickhouse());
+        #[cfg(not(feature = "local"))]
+        let tracing_client =
+            Arc::new(init_tracing(tokio::runtime::Handle::current().clone()).unwrap());
+        #[cfg(feature = "local")]
         let tracing_client = Arc::new(init_tracing().unwrap());
+
+        let clickhouse = Arc::new(init_clickhouse());
         let libmdbx = Arc::new(init_libmdbx().unwrap());
 
         let intializer =
