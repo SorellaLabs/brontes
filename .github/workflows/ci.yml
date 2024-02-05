@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 name: CI
 jobs:
-  build: 
+  build+fmt: 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,28 +30,6 @@ jobs:
 
       - name: cargo build
         run: cargo +nightly build 
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.CI }}
-      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
-        shell: bash
-      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
-        shell: bash
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
 
       - name: cargo fmt
         run: cargo +nightly fmt --all -- --check
