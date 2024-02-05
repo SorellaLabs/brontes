@@ -347,11 +347,11 @@ mod tests {
         Ok(())
     }
 
-    async fn test_metadata_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
+    async fn test_block_info_table(db: &Libmdbx, print: bool) -> eyre::Result<()> {
         let tx = db.ro_tx()?;
-        assert_ne!(tx.entries::<Metadata>()?, 0);
+        assert_ne!(tx.entries::<BlockInfo>()?, 0);
 
-        let mut cursor = tx.cursor_read::<Metadata>()?;
+        let mut cursor = tx.cursor_read::<BlockInfo>()?;
         if !print {
             cursor.first()?.ok_or(DatabaseError::Read(-1))?;
         } else {
@@ -496,7 +496,7 @@ mod tests {
         assert!(test_address_to_tokens_table(&db, false).await.is_ok());
         assert!(test_cex_mapping_table(&db, false).await.is_ok());
 
-        assert!(test_metadata_table(&db, false).await.is_ok());
+        assert!(test_block_info_table(&db, false).await.is_ok());
         //assert!(test_pool_state_table(&db, false).await.is_ok());
         //assert!(test_dex_price_table(&db, false).await.is_ok());
         assert!(test_pool_creation_blocks_table(&db, false).await.is_ok());

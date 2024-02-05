@@ -10,7 +10,7 @@ use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::{
         dex::DexQuotes,
-        metadata::{MetadataCombined, MetadataNoDex},
+        metadata::{Metadata, MetadataNoDex},
     },
     structured_trace::TxTrace,
     traits::TracingProvider,
@@ -69,12 +69,12 @@ impl TraceLoader {
             .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
     }
 
-    pub async fn get_metadata(&self, block: u64) -> Result<MetadataCombined, TraceLoaderError> {
+    pub async fn get_metadata(&self, block: u64) -> Result<Metadata, TraceLoaderError> {
         self.test_metadata(block)
             .map_err(|_| TraceLoaderError::NoMetadataFound(block))
     }
 
-    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
+    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         self.libmdbx.get_metadata(block_num)
     }
 
@@ -107,7 +107,7 @@ impl TraceLoader {
     pub async fn get_block_traces_with_header_and_metadata(
         &self,
         block: u64,
-    ) -> Result<BlockTracesWithHeaderAnd<MetadataCombined>, TraceLoaderError> {
+    ) -> Result<BlockTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
         let (traces, header) = self.trace_block(block).await?;
         let metadata = self.get_metadata(block).await?;
 
@@ -118,7 +118,7 @@ impl TraceLoader {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> Result<Vec<BlockTracesWithHeaderAnd<MetadataCombined>>, TraceLoaderError> {
+    ) -> Result<Vec<BlockTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
         join_all(
             (start_block..=end_block)
                 .into_iter()
@@ -203,7 +203,7 @@ impl TraceLoader {
     pub async fn get_tx_trace_with_header_and_metadata(
         &self,
         tx_hash: B256,
-    ) -> Result<TxTracesWithHeaderAnd<MetadataCombined>, TraceLoaderError> {
+    ) -> Result<TxTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
         let (block, tx_idx) = self
             .tracing_provider
             .get_tracer()
@@ -219,7 +219,7 @@ impl TraceLoader {
     pub async fn get_tx_traces_with_header_and_metadata(
         &self,
         tx_hashes: Vec<B256>,
-    ) -> Result<Vec<TxTracesWithHeaderAnd<MetadataCombined>>, TraceLoaderError> {
+    ) -> Result<Vec<TxTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
         join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self
                 .tracing_provider

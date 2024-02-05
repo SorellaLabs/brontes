@@ -9,7 +9,7 @@ use brontes_types::{
         address_to_tokens::{PoolTokens, PoolTokensRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        metadata::{MetadataInner, MetadataInnerRedefined},
+        metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
         token_info::TokenInfo,
@@ -122,9 +122,9 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(block_range)
                     .await
             }
-            Tables::Metadata => {
+            Tables::BlockInfo => {
                 initializer
-                    .initialize_table_from_clickhouse::<Metadata, MetadataData>(block_range)
+                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(block_range)
                     .await
             }
             Tables::PoolCreationBlocks => {
@@ -147,7 +147,7 @@ tables!(
     AddressToTokens,
     AddressToProtocol,
     CexPrice,
-    Metadata,
+    BlockInfo,
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
@@ -407,12 +407,12 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table Metadata {
+    Table BlockInfo {
         #[serde_as]
         Data {
             key: u64,
-            value: MetadataInner,
-            compressed_value: MetadataInnerRedefined
+            value: BlockMetadataInner,
+            compressed_value: BlockMetadataInnerRedefined
         },
         Init {
             init_size: Some(50_000),

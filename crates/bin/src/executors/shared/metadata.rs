@@ -5,7 +5,7 @@ use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     db::{
-        metadata::{MetadataCombined, MetadataNoDex},
+        metadata::Metadata,
         traits::{LibmdbxReader, LibmdbxWriter},
     },
     normalized_actions::Actions,
@@ -24,11 +24,10 @@ pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader
     /// we will drain this in the case we aren't running a dex pricer to avoid
     /// being terrible on memory
     no_price_chan:      Option<UnboundedReceiver<DexPriceMsg>>,
-    clickhouse_futures: FuturesOrdered<
-        Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, MetadataNoDex)> + Send>>,
-    >,
+    clickhouse_futures:
+        FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>,
 
-    result_buf: VecDeque<(BlockTree<Actions>, MetadataCombined)>,
+    result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, DB> {
@@ -97,7 +96,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataFetcher<T, DB> {
-    type Item = (BlockTree<Actions>, MetadataCombined);
+    type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
