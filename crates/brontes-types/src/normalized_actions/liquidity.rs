@@ -1,6 +1,7 @@
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 
 use alloy_primitives::TxHash;
+use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::Address;
@@ -16,7 +17,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    Protocol,
+    Protocol, ToFloatNearest,
 };
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -65,6 +66,21 @@ pub struct ClickhouseVecNormalizedMintOrBurn {
     pub recipient:   Vec<FixedString>,
     pub tokens:      Vec<Vec<FixedString>>,
     pub amounts:     Vec<Vec<[u8; 32]>>,
+}
+
+impl fmt::Display for NormalizedMint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let protocol = self.protocol.to_string().bold();
+        let mut mint_info = vec![];
+
+        for (token, amount) in self.token.iter().zip(self.amount.iter()) {
+            let token_symbol = token.inner.symbol.bold();
+            let amount_formatted = format!("{:.4}", amount.clone().to_float()).green();
+            mint_info.push(format!("{} {}", amount_formatted, token_symbol));
+        }
+
+        write!(f, "Add [{}] Liquidity on {}", mint_info.join(", "), protocol)
+    }
 }
 
 impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {

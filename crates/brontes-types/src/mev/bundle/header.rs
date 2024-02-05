@@ -100,7 +100,7 @@ impl TokenProfits {
 
 impl Display for TokenProfits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", "Token Profits:\n".bold().green())?;
+        writeln!(f, "{}", "Token Profits:\n".bold().bright_green().underline())?;
 
         for profit in &self.profits {
             writeln!(f, "{}", profit)?;
