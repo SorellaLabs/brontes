@@ -185,7 +185,7 @@ impl ClassifierTestUtils {
                 .iter()
                 .zip(vec![quote_token].into_iter().cycle())
                 .map(|(token, quote)| Pair(*token, quote))
-                .filter(|pair| !quote.has_quote(pair))
+                .filter(|pair| !quote.has_quote(pair, 0))
                 .map(|pair| {
                     let update = DexPriceMsg::Update(PoolUpdate {
                         block,
