@@ -130,7 +130,10 @@ impl Tables {
             }
             Tables::BlockInfo => {
                 initializer
-                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(block_range, clear_table)
+                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
+                        block_range,
+                        clear_table,
+                    )
                     .await
             }
             Tables::PoolCreationBlocks => {
@@ -196,7 +199,7 @@ macro_rules! compressed_table {
                 write!(f, "{}", stringify!($table_name))
             }
         }
-        
+
         #[cfg(test)]
         #[allow(unused)]
         impl $table_name {
@@ -205,8 +208,8 @@ macro_rules! compressed_table {
                 libmdbx: &crate::libmdbx::Libmdbx,
                 block_range: Option<(u64, u64)>
             ) -> eyre::Result<(usize, usize)> {
-                paste::paste!{ 
-                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data::<$table_name, [<$table_name Data>]>(clickhouse, libmdbx, block_range).await 
+                paste::paste!{
+                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data::<$table_name, [<$table_name Data>]>(clickhouse, libmdbx, block_range).await
                 }
             }
         }

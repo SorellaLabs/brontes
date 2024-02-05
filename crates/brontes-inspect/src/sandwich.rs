@@ -470,6 +470,7 @@ mod tests {
                 hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
             ])
             .with_dex_prices()
+            .needs_tokens(vec![hex!("0588504472198e9296a248edca6ccdc40bd237cb").into()])
             .with_gas_paid_usd(34.3368)
             .with_expected_profit_usd(24.0);
 
@@ -528,6 +529,7 @@ mod tests {
                 hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
                 hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
             ])
+            .needs_tokens(vec![hex!("b17548c7b510427baac4e267bea62e800b247173").into()])
             .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-9.003);
 
@@ -547,6 +549,10 @@ mod tests {
                 hex!("bcb8115fb54b7d6b0a0b0faf6e65fae02066705bd4afde70c780d4251a771428").into(),
                 hex!("0b428553bc2ccc8047b0da46e6c1c1e8a338d9a461850fcd67ddb233f6984677").into(),
                 hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
+            ])
+            .needs_tokens(vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
             ])
             .with_gas_paid_usd(21.9)
             .with_expected_profit_usd(0.015);
