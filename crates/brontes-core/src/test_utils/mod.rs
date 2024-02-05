@@ -38,8 +38,13 @@ impl TraceLoader {
     pub fn new() -> Self {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
-        let tracing_provider = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10);
-        Self { libmdbx, tracing_provider, _metrics: b }
+        let handle = tokio::runtime::Handle::current();
+        let tracing_provider = init_trace_parser(handle.clone(), a, libmdbx, 10);
+
+        let this = Self { libmdbx, tracing_provider, _metrics: b };
+        handle.block_on(async { this.init_on_start().await.unwrap() });
+
+        this
     }
 
     pub fn new_with_rt(handle: Handle) -> Self {
@@ -89,20 +94,8 @@ impl TraceLoader {
         }
     }
 
-    pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
-        tracing::info!(%block, "fetching missing metadata");
-
+    async fn init_on_start(&self) -> eyre::Result<()> {
         let clickhouse = Arc::new(Clickhouse::default());
-        self.libmdbx
-            .initialize_tables(
-                clickhouse.clone(),
-                self.tracing_provider.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
-                false,
-                Some((block - 2, block + 2)),
-            )
-            .await?;
-
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -115,6 +108,21 @@ impl TraceLoader {
                 ],
                 false,
                 None,
+            )
+            .await
+    }
+
+    pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
+        tracing::info!(%block, "fetching missing metadata");
+
+        let clickhouse = Arc::new(Clickhouse::default());
+        self.libmdbx
+            .initialize_tables(
+                clickhouse.clone(),
+                self.tracing_provider.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice],
+                false,
+                Some((block - 2, block + 2)),
             )
             .await?;
 
