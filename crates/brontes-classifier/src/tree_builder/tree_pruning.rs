@@ -2,26 +2,25 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwapWithFee},
     tree::BlockTree,
     unzip_either::IterExt,
+    TreeSearchArgs,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 
 pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
     tree.remove_duplicate_data(
-        |node| {
-            (
-                node.data.is_swap(),
-                node.get_all_sub_actions()
-                    .into_iter()
-                    .any(|data| data.is_swap()),
-            )
+        |node| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .into_iter()
+                .any(|data| data.is_swap()),
         },
-        |node| {
-            (
-                node.data.is_transfer(),
-                node.get_all_sub_actions()
-                    .into_iter()
-                    .any(|data| data.is_transfer()),
-            )
+        |node| TreeSearchArgs {
+            collect_current_node:  node.data.is_transfer(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .into_iter()
+                .any(|data| data.is_transfer()),
         },
         |node| (node.index, node.data.clone()),
         |other_nodes, node| {
@@ -45,21 +44,19 @@ pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
 }
 pub(crate) fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
     tree.remove_duplicate_data(
-        |node| {
-            (
-                node.data.is_mint(),
-                node.get_all_sub_actions()
-                    .into_iter()
-                    .any(|data| data.is_mint()),
-            )
+        |node| TreeSearchArgs {
+            collect_current_node:  node.data.is_mint(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .into_iter()
+                .any(|data| data.is_mint()),
         },
-        |node| {
-            (
-                node.data.is_transfer(),
-                node.get_all_sub_actions()
-                    .into_iter()
-                    .any(|data| data.is_transfer()),
-            )
+        |node| TreeSearchArgs {
+            collect_current_node:  node.data.is_transfer(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .into_iter()
+                .any(|data| data.is_transfer()),
         },
         |node| (node.index, node.data.clone()),
         |other_nodes, node| {
@@ -82,21 +79,19 @@ pub(crate) fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
 
 pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
     tree.remove_duplicate_data(
-        |node| {
-            (
-                node.data.is_collect(),
-                node.get_all_sub_actions()
-                    .into_iter()
-                    .any(|data| data.is_collect()),
-            )
+        |node| TreeSearchArgs {
+            collect_current_node:  node.data.is_collect(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .into_iter()
+                .any(|data| data.is_collect()),
         },
-        |node| {
-            (
-                node.data.is_transfer(),
-                node.get_all_sub_actions()
-                    .into_iter()
-                    .any(|data| data.is_transfer()),
-            )
+        |node| TreeSearchArgs {
+            collect_current_node:  node.data.is_transfer(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .into_iter()
+                .any(|data| data.is_transfer()),
         },
         |node| (node.index, node.data.clone()),
         |other_nodes, node| {
@@ -205,19 +200,22 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     has_swap = true;
                 }
             }
-            (node.data.is_transfer(), has_swap && has_transfer)
+
+            TreeSearchArgs {
+                collect_current_node:  node.data.is_transfer(),
+                child_node_to_collect: has_swap && has_transfer,
+            }
         },
         |node| {
             let mut swap_idx = Vec::new();
             node.collect(
                 &mut swap_idx,
-                &|node| {
-                    (
-                        node.data.is_swap(),
-                        node.get_all_sub_actions()
-                            .iter()
-                            .any(|action| action.is_swap()),
-                    )
+                &|node| TreeSearchArgs {
+                    collect_current_node:  node.data.is_swap(),
+                    child_node_to_collect: node
+                        .get_all_sub_actions()
+                        .iter()
+                        .any(|action| action.is_swap()),
                 },
                 &|node| node.index,
             );
@@ -231,6 +229,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
 
 #[cfg(test)]
 mod test {
+    use brontes_types::TreeSearchArgs;
     use hex_literal::hex;
 
     use crate::test_utils::ClassifierTestUtils;
@@ -249,7 +248,10 @@ mod test {
 
         let swaps = tree.collect(
             hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-            |node| (node.data.is_swap(), node.inner.iter().any(|n| n.data.is_swap())),
+            |node| TreeSearchArgs {
+                collect_current_node:  node.data.is_swap(),
+                child_node_to_collect: node.inner.iter().any(|n| n.data.is_swap()),
+            },
         );
         tracing::info!("{:#?}", swaps);
         assert!(swaps.len() == 6, "didn't filter tax token");
