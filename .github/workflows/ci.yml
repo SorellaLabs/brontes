@@ -16,6 +16,8 @@ jobs:
         shell: bash
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
+
+
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -33,3 +35,17 @@ jobs:
       - name: cargo fmt
         run: cargo +nightly fmt --all -- --check
 
+      # init server args
+      - run: mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config
+        shell: bash
+      - run: echo ${{ secrets.BASTION }} > ~/.ssh/bastion && chmod 600 ~/.ssh/bastion
+        shell: bash
+      - run: echo ${{ secrets.BRONTES_SERVER }} > ~/.ssh/brontes_server && chmod 600 ~/.ssh/brontes_server
+        shell: bash
+
+      #open up tunnel
+      - run: ssh -f -N bastion_tunnel 
+        shell: bash
+
+      - name: cargo test
+        run: ssh brontes_server -t "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
