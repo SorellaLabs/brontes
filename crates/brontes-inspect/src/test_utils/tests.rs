@@ -65,7 +65,7 @@ impl InspectorTestUtils {
     async fn get_tree_txes_with_pricing(
         &self,
         tx_hashes: Vec<TxHash>,
-    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), InspectorTestUtilsError> {
+    ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
         let mut trees = self
             .classifier_inspector
             .build_tree_txes_with_pricing(tx_hashes, self.quote_address)
@@ -110,7 +110,7 @@ impl InspectorTestUtils {
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
-                quotes = prices;
+                quotes = Some(prices);
                 tree
             } else {
                 self.get_tree_txes(tx_hashes).await?
@@ -132,7 +132,7 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            self.classifier_inspector.get_metadata(block).await?
+            self.classifier_inspector.get_metadata(block, false).await?
         };
 
         metadata.dex_quotes = quotes;
@@ -174,7 +174,7 @@ impl InspectorTestUtils {
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
-                quotes = prices;
+                quotes = Some(prices);
                 tree
             } else {
                 self.get_tree_txes(tx_hashes).await?
@@ -196,7 +196,7 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            let res = self.classifier_inspector.get_metadata(block).await;
+            let res = self.classifier_inspector.get_metadata(block, false).await;
             if config.expected_mev_type == Inspectors::CexDex {
                 res?
             } else {
@@ -278,7 +278,7 @@ impl InspectorTestUtils {
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_block_tree(block).await?
@@ -292,7 +292,7 @@ impl InspectorTestUtils {
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            let res = self.classifier_inspector.get_metadata(block).await;
+            let res = self.classifier_inspector.get_metadata(block, false).await;
             if config.inspectors.contains(&Inspectors::CexDex) {
                 res?
             } else {
@@ -301,7 +301,7 @@ impl InspectorTestUtils {
         };
 
         if let Some(quotes) = quotes {
-            metadata.dex_quotes = quotes;
+            metadata.dex_quotes = Some(quotes);
         }
 
         if metadata.dex_quotes.is_none() && config.needs_dex_prices {
