@@ -176,6 +176,7 @@ mod tests {
                 "725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db"
             )
             .into()])
+            .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
             .with_dex_prices()
             .with_gas_paid_usd(636.54)
             .with_expected_profit_usd(129.23);

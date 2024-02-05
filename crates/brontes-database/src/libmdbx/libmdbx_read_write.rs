@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashMap, path::Path};
+use std::{cmp::max, collections::HashMap, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -20,6 +20,7 @@ use brontes_types::{
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
+    traits::TracingProvider,
 };
 use eyre::eyre;
 use itertools::Itertools;
@@ -30,10 +31,11 @@ use tracing::info;
 
 use super::cursor::CompressedCursor;
 use crate::{
+    clickhouse::Clickhouse,
     libmdbx::{
         tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, *},
         types::LibmdbxData,
-        Libmdbx,
+        Libmdbx, LibmdbxInitializer,
     },
     AddressToProtocol, AddressToTokens, CompressedTable, PoolCreationBlocks, SubGraphs,
     TokenDecimals, TxTraces,
@@ -44,6 +46,23 @@ pub struct LibmdbxReadWriter(pub Libmdbx);
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
+    }
+
+    /// initializes all the tables with data via the CLI
+    pub async fn initialize_tables<T: TracingProvider>(
+        &'static self,
+        clickhouse: Arc<Clickhouse>,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize(tables, clear_tables, block_range)
+            .await?;
+
+        Ok(())
     }
 
     #[cfg(not(feature = "local"))]

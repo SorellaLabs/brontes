@@ -13,14 +13,15 @@ use tokio::runtime::Handle;
 
 use super::{
     implementation::compressed_wrappers::utils::CompressedTableRow, types::LibmdbxData, Libmdbx,
+    LibmdbxReadWriter,
 };
 use crate::{clickhouse::Clickhouse, CompressedTable};
 
-pub fn init_libmdbx() -> eyre::Result<Libmdbx> {
+pub fn init_libmdbx() -> eyre::Result<&'static LibmdbxReadWriter> {
     dotenv::dotenv().ok();
     let brontes_test_db_path =
         env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
-    Libmdbx::init_db(brontes_test_db_path, None)
+    Ok(Box::leak(Box::new(LibmdbxReadWriter::init_db(brontes_test_db_path, None)?)))
 }
 
 #[cfg(not(feature = "local"))]
@@ -88,7 +89,7 @@ where
 
 pub async fn compare_clickhouse_libmdbx_data<T, D>(
     clickhouse: &Clickhouse,
-    libmdbx: &Libmdbx,
+    libmdbx: &LibmdbxReadWriter,
     block_range: Option<(u64, u64)>,
 ) -> eyre::Result<(usize, usize)>
 where
@@ -98,7 +99,7 @@ where
 {
     let clickhouse_data = clickhouse_data::<T, D>(clickhouse, block_range).await?;
 
-    let tx = libmdbx.ro_tx()?;
+    let tx = libmdbx.0.ro_tx()?;
     let libmdbx_data = tx
         .cursor_read::<T>()?
         .walk_range(..)?
