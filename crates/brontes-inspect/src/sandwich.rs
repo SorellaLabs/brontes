@@ -489,6 +489,7 @@ mod tests {
                 hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
             ])
             .with_dex_prices()
+            .needs_token(Address::new(hex!("28cf5263108c1c40cf30e0fe390bd9ccf929bf82")))
             .with_gas_paid_usd(16.64)
             .with_expected_profit_usd(15.648);
 
