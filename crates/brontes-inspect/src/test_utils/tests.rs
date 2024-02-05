@@ -26,11 +26,7 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
-    db::{
-        cex::CexExchange,
-        dex::DexQuotes,
-        metadata::{Metadata, MetadataNoDex},
-    },
+    db::{cex::CexExchange, dex::DexQuotes, metadata::Metadata},
     mev::{Bundle, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -69,7 +65,7 @@ impl InspectorTestUtils {
     async fn get_tree_txes_with_pricing(
         &self,
         tx_hashes: Vec<TxHash>,
-    ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
+    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), InspectorTestUtilsError> {
         let mut trees = self
             .classifier_inspector
             .build_tree_txes_with_pricing(tx_hashes, self.quote_address)
@@ -81,10 +77,6 @@ impl InspectorTestUtils {
             ))
         }
         Ok(trees.remove(0))
-    }
-
-    fn default_metadata(&self) -> Metadata {
-        Metadata { db: MetadataNoDex::default(), dex_quotes: DexQuotes(vec![]) }
     }
 
     async fn get_block_tree(
@@ -100,7 +92,7 @@ impl InspectorTestUtils {
     async fn get_block_tree_with_pricing(
         &self,
         block: u64,
-    ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
+    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), InspectorTestUtilsError> {
         self.classifier_inspector
             .build_block_tree_with_pricing(block, self.quote_address)
             .await
@@ -118,7 +110,7 @@ impl InspectorTestUtils {
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_tree_txes(tx_hashes).await?
@@ -126,7 +118,7 @@ impl InspectorTestUtils {
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_block_tree(block).await?
@@ -143,11 +135,9 @@ impl InspectorTestUtils {
             self.classifier_inspector.get_metadata(block).await?
         };
 
-        if let Some(quotes) = quotes {
-            metadata.dex_quotes = quotes;
-        }
+        metadata.dex_quotes = quotes;
 
-        if metadata.dex_quotes.0.is_empty() && config.needs_dex_prices {
+        if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
@@ -178,7 +168,7 @@ impl InspectorTestUtils {
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_tree_txes(tx_hashes).await?
@@ -186,7 +176,7 @@ impl InspectorTestUtils {
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
                 let (tree, prices) = self.get_block_tree_with_pricing(block).await?;
-                quotes = Some(prices);
+                quotes = prices;
                 tree
             } else {
                 self.get_block_tree(block).await?
@@ -204,15 +194,13 @@ impl InspectorTestUtils {
             if config.expected_mev_type == Inspectors::CexDex {
                 res?
             } else {
-                res.unwrap_or_else(|_| self.default_metadata())
+                res.unwrap_or_else(|_| Metadata::default())
             }
         };
 
-        if let Some(quotes) = quotes {
-            metadata.dex_quotes = quotes;
-        }
+        metadata.dex_quotes = quotes;
 
-        if metadata.dex_quotes.0.is_empty() && config.needs_dex_prices {
+        if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 
@@ -302,7 +290,7 @@ impl InspectorTestUtils {
             if config.inspectors.contains(&Inspectors::CexDex) {
                 res?
             } else {
-                res.unwrap_or_else(|_| self.default_metadata())
+                res.unwrap_or_else(|_| Metadata::default())
             }
         };
 
@@ -310,7 +298,7 @@ impl InspectorTestUtils {
             metadata.dex_quotes = quotes;
         }
 
-        if metadata.dex_quotes.0.is_empty() && config.needs_dex_prices {
+        if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             assert!(false, "no dex quotes found in metadata. test suite will fail");
         }
 

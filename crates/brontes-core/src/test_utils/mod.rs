@@ -7,14 +7,7 @@ use std::{
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
 use brontes_metrics::PoirotMetricEvents;
-use brontes_types::{
-    db::{
-        dex::DexQuotes,
-        metadata::{Metadata, MetadataNoDex},
-    },
-    structured_trace::TxTrace,
-    traits::TracingProvider,
-};
+use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
