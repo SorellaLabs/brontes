@@ -111,7 +111,9 @@ impl InspectorTestUtils {
         let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes, config.needs_tokens).await?;
+                let (tree, prices) = self
+                    .get_tree_txes_with_pricing(tx_hashes, config.needs_tokens)
+                    .await?;
                 quotes = Some(prices);
                 tree
             } else {
@@ -119,7 +121,9 @@ impl InspectorTestUtils {
             }
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_block_tree_with_pricing(block, config.needs_tokens).await?;
+                let (tree, prices) = self
+                    .get_block_tree_with_pricing(block, config.needs_tokens)
+                    .await?;
                 quotes = prices;
                 tree
             } else {
@@ -178,7 +182,9 @@ impl InspectorTestUtils {
         let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes,config.needs_tokens).await?;
+                let (tree, prices) = self
+                    .get_tree_txes_with_pricing(tx_hashes, config.needs_tokens)
+                    .await?;
                 quotes = Some(prices);
                 tree
             } else {
@@ -186,7 +192,9 @@ impl InspectorTestUtils {
             }
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_block_tree_with_pricing(block,config.needs_tokens).await?;
+                let (tree, prices) = self
+                    .get_block_tree_with_pricing(block, config.needs_tokens)
+                    .await?;
                 quotes = prices;
                 tree
             } else {
@@ -276,7 +284,9 @@ impl InspectorTestUtils {
         let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_tree_txes_with_pricing(tx_hashes, config.needs_tokens).await?;
+                let (tree, prices) = self
+                    .get_tree_txes_with_pricing(tx_hashes, config.needs_tokens)
+                    .await?;
                 quotes = Some(prices);
                 tree
             } else {
@@ -284,7 +294,9 @@ impl InspectorTestUtils {
             }
         } else if let Some(block) = config.block {
             if config.needs_dex_prices {
-                let (tree, prices) = self.get_block_tree_with_pricing(block, config.needs_tokens).await?;
+                let (tree, prices) = self
+                    .get_block_tree_with_pricing(block, config.needs_tokens)
+                    .await?;
                 quotes = prices;
                 tree
             } else {
@@ -413,7 +425,7 @@ impl InspectorTxRunConfig {
         self
     }
 
-    pub fn needs_token(mut self, token: Address) -> self {
+    pub fn needs_token(mut self, token: Address) -> Self {
         self.needs_tokens.push(token);
         self
     }
@@ -486,7 +498,7 @@ impl ComposerRunConfig {
         self
     }
 
-    pub fn needs_token(mut self, token: Address) -> self {
+    pub fn needs_token(mut self, token: Address) -> Self {
         self.needs_tokens.push(token);
         self
     }

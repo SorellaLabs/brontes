@@ -24,6 +24,7 @@ fn bench_sandwich(c: &mut Criterion) {
             ],
             0,
             Inspectors::Sandwich,
+            vec![],
             c,
         )
         .unwrap()
@@ -43,6 +44,7 @@ fn bench_sandwich_big_mac(c: &mut Criterion) {
             ],
             0,
             Inspectors::Sandwich,
+            vec![],
             c,
         )
         .unwrap()
@@ -56,6 +58,7 @@ fn bench_backrun_triagular(c: &mut Criterion) {
             vec![hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into()],
             0,
             Inspectors::AtomicBackrun,
+            vec![],
             c,
         )
         .unwrap()
@@ -68,6 +71,7 @@ fn bench_backrun_10_swaps(c: &mut Criterion) {
             vec![hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into()],
             0,
             Inspectors::AtomicBackrun,
+            vec![],
             c,
         )
         .unwrap()
@@ -81,6 +85,7 @@ fn bench_liquidation(c: &mut Criterion) {
             vec![hex!("725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db").into()],
             0,
             Inspectors::Liquidations,
+            vec![],
             c,
         )
         .unwrap()
@@ -123,6 +128,7 @@ fn bench_composer(c: &mut Criterion) {
             ],
             0,
             vec![Inspectors::Sandwich, Inspectors::Jit],
+            vec![],
             c,
         )
         .unwrap()
@@ -136,6 +142,7 @@ fn bench_regular_block(c: &mut Criterion) {
             18672183,
             0,
             Inspectors::iter().collect_vec(),
+            vec![],
             c,
         )
         .unwrap()
@@ -149,6 +156,7 @@ fn bench_sandwich_regular_block(c: &mut Criterion) {
             18500002,
             0,
             vec![Inspectors::Sandwich],
+            vec![],
             c,
         )
         .unwrap()
@@ -162,6 +170,7 @@ fn bench_liquidations_regular_block(c: &mut Criterion) {
             18979710,
             0,
             vec![Inspectors::Liquidations],
+            vec![],
             c,
         )
         .unwrap()
@@ -175,6 +184,7 @@ fn bench_backrun_regular_block(c: &mut Criterion) {
             18000103,
             0,
             vec![Inspectors::AtomicBackrun],
+            vec![],
             c,
         )
         .unwrap()
@@ -183,7 +193,14 @@ fn bench_backrun_regular_block(c: &mut Criterion) {
 fn bench_jit_regular_block(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
-        .bench_inspectors_block("jit 16 mill gas block", 18500009, 0, vec![Inspectors::Jit], c)
+        .bench_inspectors_block(
+            "jit 16 mill gas block",
+            18500009,
+            0,
+            vec![Inspectors::Jit],
+            vec![],
+            c,
+        )
         .unwrap()
 }
 
@@ -195,6 +212,7 @@ fn bench_cex_dex_regular_block(c: &mut Criterion) {
             18264694,
             0,
             vec![Inspectors::CexDex],
+            vec![],
             c,
         )
         .unwrap()
