@@ -31,7 +31,7 @@ pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
                 .filter_map(|(index, data)| {
                     let Actions::Transfer(transfer) = data else { return None };
                     if (transfer.amount == swap_data.amount_in
-                        || transfer.amount == swap_data.amount_out)
+                        || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
                         && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
                     {
                         return Some(*index)
@@ -152,7 +152,6 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 },
                 &|node| node.index,
             );
-            tracing::info!(?swap_idx, "removing swaps");
 
             swap_idx.into_iter().for_each(|idx| {
                 node.remove_node_and_children(idx);
@@ -187,17 +186,13 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 transfers.iter_mut().for_each(|transfer| {
                     let mut swap = node.data.clone().force_swap();
                     let transfer = transfer.data.force_transfer_mut();
-                    if transfer.token.symbol.to_lowercase() == "yeet" {
-                        tracing::info!("{:#?}, {:#?}", swap, transfer);
-                    }
-
                     // adjust the amount out case
                     if swap.token_out == transfer.token
                         && swap.pool == transfer.from
                         && swap.recipient == transfer.token.address
                         && swap.amount_out > transfer.amount
                     {
-                        let fee_amount = swap.amount_out - &transfer.amount;
+                        let fee_amount = transfer.fee.clone();
                         swap.amount_out = transfer.amount.clone();
 
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
@@ -214,7 +209,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         && swap.pool == transfer.to
                         && swap.amount_in != transfer.amount
                     {
-                        let fee_amount = transfer.amount.clone() - &swap.amount_in;
+                        let fee_amount = transfer.fee.clone();
                         swap.amount_in = transfer.amount.clone();
                         let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
                             swap,

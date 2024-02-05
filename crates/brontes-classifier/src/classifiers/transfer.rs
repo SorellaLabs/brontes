@@ -3,6 +3,7 @@ use alloy_sol_types::SolCall;
 use brontes_types::{
     db::traits::LibmdbxReader, normalized_actions::NormalizedTransfer, ToScaledRational,
 };
+use malachite::{num::basic::traits::Zero, Rational};
 
 alloy_sol_macro::sol!(
     function transfer(address, uint) returns(bool);
@@ -24,5 +25,6 @@ pub fn try_decode_transfer<DB: LibmdbxReader>(
         to: res._0,
         from,
         trace_index: idx,
+        fee: Rational::ZERO,
     })
 }
