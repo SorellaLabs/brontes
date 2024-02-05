@@ -183,6 +183,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 transfers.iter_mut().for_each(|transfer| {
                     let mut swap = node.data.clone().force_swap();
                     let transfer = transfer.data.force_transfer_mut();
+                    tracing::info!("{:#?}", transfer);
 
                     // adjust the amount out case
                     if swap.token_out == transfer.token
