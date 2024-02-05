@@ -449,7 +449,7 @@ pub mod test {
     use brontes_types::{
         db::token_info::TokenInfoWithAddress,
         normalized_actions::{Actions, NormalizedLiquidation},
-        Protocol,
+        Protocol, TreeSearchArgs,
     };
     use malachite::Rational;
     use serial_test::serial;
@@ -465,13 +465,12 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jared_tx, |node| {
-            (
-                node.data.is_swap() || node.data.is_transfer(),
-                node.subactions
-                    .iter()
-                    .any(|action| action.is_swap() || action.is_transfer()),
-            )
+        let swap = tree.collect(jared_tx, |node| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .any(|action| action.is_swap() || action.is_transfer()),
         });
         let mut swaps: HashMap<TokenInfoWithAddress, HashSet<Rational>> = HashMap::default();
 
