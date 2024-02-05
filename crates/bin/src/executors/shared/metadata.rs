@@ -5,7 +5,7 @@ use brontes_database::clickhouse::Clickhouse;
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     db::{
-        metadata::{MetadataCombined, MetadataNoDex},
+        metadata::Metadata,
         traits::{LibmdbxReader, LibmdbxWriter},
     },
     normalized_actions::Actions,
@@ -24,11 +24,10 @@ pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader
     /// we will drain this in the case we aren't running a dex pricer to avoid
     /// being terrible on memory
     no_price_chan:      Option<UnboundedReceiver<DexPriceMsg>>,
-    clickhouse_futures: FuturesOrdered<
-        Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, MetadataNoDex)> + Send>>,
-    >,
+    clickhouse_futures:
+        FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>,
 
-    result_buf: VecDeque<(BlockTree<Actions>, MetadataCombined)>,
+    result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, DB> {
@@ -56,7 +55,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
             && self.clickhouse_futures.is_empty()
     }
 
-    fn clear_no_price_chan(&mut self) {
+    fn clear_no_price_channel(&mut self) {
         if let Some(chan) = self.no_price_chan.as_mut() {
             while let Ok(_) = chan.try_recv() {}
         }
@@ -65,7 +64,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
         let block = tree.header.number;
         // clear price channel
-        self.clear_no_price_chan();
+        self.clear_no_price_channel();
         // pull directly from libmdbx
         if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
             let Ok(meta) = libmdbx.get_metadata(block) else {
@@ -97,13 +96,13 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataFetcher<T, DB> {
-    type Item = (BlockTree<Actions>, MetadataCombined);
+    type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        self.clear_no_price_chan();
+        self.clear_no_price_channel();
 
         if let Some(res) = self.result_buf.pop_front() {
             return Poll::Ready(Some(res))

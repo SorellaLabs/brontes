@@ -13,7 +13,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
-use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, Metadata};
 
 pub struct AtomicBackrunInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -30,7 +30,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicBackrunInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
+        meta_data: Arc<Metadata>,
     ) -> Vec<Bundle> {
         let intersting_state = tree.collect_all(|node| {
             (
@@ -56,7 +56,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
     fn process_swaps(
         &self,
         info: TxInfo,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<Bundle> {
         let swaps = searcher_actions

@@ -6,11 +6,11 @@ use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
-        cex::CexPriceMap,
+        cex::{CexPriceMap, CexQuote},
         dex::{
             decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
         },
-        metadata::{MetadataCombined, MetadataInner, MetadataNoDex},
+        metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
         token_info::{TokenInfo, TokenInfoWithAddress},
@@ -25,12 +25,12 @@ use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::RO;
-use tracing::{info, warn};
+use tracing::info;
 
 use super::cursor::CompressedCursor;
 use crate::{
     libmdbx::{
-        tables::{CexPrice, DexPrice, Metadata, MevBlocks, *},
+        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, *},
         types::LibmdbxData,
         Libmdbx,
     },
@@ -83,7 +83,7 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
 
         let cex_cur = tx.new_cursor::<CexPrice>()?;
-        let meta_cur = tx.new_cursor::<Metadata>()?;
+        let meta_cur = tx.new_cursor::<BlockInfo>()?;
 
         let (cex_pass, meta_pass) = rayon::join(
             || self.validate_range("cex pricing", cex_cur, start_block, end_block, |b| *b),
@@ -208,111 +208,44 @@ impl LibmdbxReader for LibmdbxReadWriter {
         Ok(tx.get::<AddressToProtocol>(address)?)
     }
 
-    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<MetadataNoDex> {
-        let tx = self.0.ro_tx()?;
+    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
+        let block_meta = self.fetch_block_metadata(block_num)?;
+        let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        let eth_prices = determine_eth_prices(&cex_quotes);
 
-        let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
-
-        let cex_quotes: CexPriceMap = match tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))
-        {
-            Ok(map) => map,
-            Err(e) => {
-                warn!(target:"brontes","failed to read CexPrice db table for block {} -- {:?}", block_num, e);
-                CexPriceMap::default()
-            }
-        };
-
-        let eth_prices = if let Some(eth_usdt) =
-            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
-        {
-            eth_usdt
-        } else {
-            cex_quotes
-                .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                .unwrap_or_default()
-        };
-
-        Ok(MetadataNoDex {
+        Ok(BlockMetadata::new(
             block_num,
-            block_hash: block_meta.block_hash,
-            relay_timestamp: block_meta.relay_timestamp,
-            p2p_timestamp: block_meta.p2p_timestamp,
-            proposer_fee_recipient: block_meta.proposer_fee_recipient,
-            proposer_mev_reward: block_meta.proposer_mev_reward,
-            cex_quotes,
-            eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-            private_flow: block_meta.private_flow.into_iter().collect(),
-            block_timestamp: block_meta.block_timestamp,
-        })
+            block_meta.block_hash,
+            block_meta.block_timestamp,
+            block_meta.relay_timestamp,
+            block_meta.p2p_timestamp,
+            block_meta.proposer_fee_recipient,
+            block_meta.proposer_mev_reward,
+            max(eth_prices.price.0, eth_prices.price.1),
+            block_meta.private_flow.into_iter().collect(),
+        )
+        .into_metadata(cex_quotes, None))
     }
 
-    fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined> {
-        let tx = self.0.ro_tx()?;
-        let block_meta: MetadataInner = tx
-            .get::<Metadata>(block_num)?
-            .ok_or_else(|| reth_db::DatabaseError::Read(-1))?;
+    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        let block_meta = self.fetch_block_metadata(block_num)?;
+        let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        let eth_prices = determine_eth_prices(&cex_quotes);
+        let dex_quotes = self.fetch_dex_quotes(block_num)?;
 
-        let cex_quotes = CexPriceMap(
-            tx.get::<CexPrice>(block_num)?
-                .ok_or_else(|| reth_db::DatabaseError::Read(-1))?
-                .0,
-        );
-
-        let eth_prices = if let Some(eth_usdt) =
-            cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
-        {
-            eth_usdt
-        } else {
-            cex_quotes
-                .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-                .unwrap_or_default()
-        };
-
-        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
-        let (start_range, end_range) = make_filter_key_range(block_num);
-
-        tx.cursor_read::<DexPrice>()?
-            .walk_range(start_range..=end_range)?
-            .for_each(|inner| {
-                if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
-                    for _ in dex_quotes.len()..=val.tx_idx as usize {
-                        dex_quotes.push(None);
-                    }
-
-                    let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
-
-                    if let Some(tx) = tx.as_mut() {
-                        for (pair, price) in val.quote {
-                            tx.insert(pair, price);
-                        }
-                    } else {
-                        let mut tx_pairs = HashMap::default();
-                        for (pair, price) in val.quote {
-                            tx_pairs.insert(pair, price);
-                        }
-                        *tx = Some(tx_pairs);
-                    }
-                }
-            });
-
-        Ok(MetadataCombined {
-            db:         MetadataNoDex {
+        Ok({
+            BlockMetadata::new(
                 block_num,
-                block_hash: block_meta.block_hash,
-                relay_timestamp: block_meta.relay_timestamp,
-                p2p_timestamp: block_meta.p2p_timestamp,
-                proposer_fee_recipient: block_meta.proposer_fee_recipient,
-                proposer_mev_reward: block_meta.proposer_mev_reward,
-                cex_quotes,
-                eth_prices: max(eth_prices.price.0, eth_prices.price.1),
-                block_timestamp: block_meta.block_timestamp,
-                private_flow: block_meta.private_flow.into_iter().collect(),
-            },
-            dex_quotes: DexQuotes(dex_quotes),
+                block_meta.block_hash,
+                block_meta.block_timestamp,
+                block_meta.relay_timestamp,
+                block_meta.p2p_timestamp,
+                block_meta.proposer_fee_recipient,
+                block_meta.proposer_mev_reward,
+                max(eth_prices.price.0, eth_prices.price.1),
+                block_meta.private_flow.into_iter().collect(),
+            )
+            .into_metadata(cex_quotes, Some(dex_quotes))
         })
     }
 
@@ -434,33 +367,35 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn write_dex_quotes(&self, block_num: u64, quotes: DexQuotes) -> eyre::Result<()> {
-        let data = quotes
-            .0
-            .into_iter()
-            .enumerate()
-            .filter(|(_, v)| v.is_some())
-            .map(|(idx, value)| {
-                let index = DexQuoteWithIndex {
-                    tx_idx: idx as u16,
-                    quote:  value.unwrap().into_iter().collect_vec(),
-                };
+    fn write_dex_quotes(&self, block_num: u64, quotes: Option<DexQuotes>) -> eyre::Result<()> {
+        if let Some(quotes) = quotes {
+            let data = quotes
+                .0
+                .into_iter()
+                .enumerate()
+                .filter_map(|(idx, value)| value.map(|v| (idx, v)))
+                .map(|(idx, value)| {
+                    let index = DexQuoteWithIndex {
+                        tx_idx: idx as u16,
+                        quote:  value.into_iter().collect_vec(),
+                    };
 
-                DexPriceData::new(make_key(block_num, idx as u16), index)
-            })
-            .collect::<Vec<_>>();
-
-        self.0.update_db(|tx| {
-            let mut cursor = tx.cursor_write::<DexPrice>()?;
-
-            data.into_iter()
-                .map(|entry| {
-                    let entry = entry.into_key_val();
-                    cursor.upsert(entry.key, entry.value)?;
-                    Ok(())
+                    DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
-                .collect::<Result<Vec<_>, DatabaseError>>()
-        })??;
+                .collect::<Vec<_>>();
+
+            self.0.update_db(|tx| {
+                let mut cursor = tx.cursor_write::<DexPrice>()?;
+
+                data.into_iter()
+                    .map(|entry| {
+                        let entry = entry.into_key_val();
+                        cursor.upsert(entry.key, entry.value)?;
+                        Ok(())
+                    })
+                    .collect::<Result<Vec<_>, DatabaseError>>()
+            })??;
+        }
 
         Ok(())
     }
@@ -531,5 +466,64 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
 
         Ok(self.0.write_table(&vec![table])?)
+    }
+}
+
+impl LibmdbxReadWriter {
+    fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
+        let tx = self.0.ro_tx()?;
+        tx.get::<BlockInfo>(block_num)?
+            .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))
+    }
+
+    fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
+        let tx = self.0.ro_tx()?;
+        Ok(CexPriceMap(
+            tx.get::<CexPrice>(block_num)?
+                .ok_or_else(|| eyre::Report::from(reth_db::DatabaseError::Read(-1)))?
+                .0,
+        ))
+    }
+
+    pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
+        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let (start_range, end_range) = make_filter_key_range(block_num);
+        let tx = self.0.ro_tx()?;
+
+        tx.cursor_read::<DexPrice>()?
+            .walk_range(start_range..=end_range)?
+            .for_each(|inner| {
+                if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
+                    for _ in dex_quotes.len()..=val.tx_idx as usize {
+                        dex_quotes.push(None);
+                    }
+
+                    let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
+
+                    if let Some(tx) = tx.as_mut() {
+                        for (pair, price) in val.quote {
+                            tx.insert(pair, price);
+                        }
+                    } else {
+                        let mut tx_pairs = HashMap::default();
+                        for (pair, price) in val.quote {
+                            tx_pairs.insert(pair, price);
+                        }
+                        *tx = Some(tx_pairs);
+                    }
+                }
+            });
+
+        Ok(DexQuotes(dex_quotes))
+    }
+}
+
+fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
+    if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
+        eth_usdt
+    } else {
+        cex_quotes
+            .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
+            .unwrap_or_default()
     }
 }

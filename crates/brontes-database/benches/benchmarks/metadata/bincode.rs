@@ -5,7 +5,8 @@ use std::{
 
 use alloy_rlp::{Decodable, Encodable};
 use bincode::{config, Decode as BincodeDecode, Encode as BincodeEncode};
-use brontes_database::libmdbx::types::{utils::*, LibmdbxData};
+use brontes_database::libmdbx::types::LibmdbxData;
+use brontes_types::serde_primitives::{option_address, u256};
 use bytes::{Buf, BufMut, Bytes};
 use reth_db::{
     table::{Compress, Decompress},
