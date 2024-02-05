@@ -169,6 +169,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
 
+                tracing::info!("looping");
                 return self.calculate_sandwich(
                     metadata.clone(),
                     possible_front_runs_info,
