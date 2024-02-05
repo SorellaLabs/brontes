@@ -181,6 +181,7 @@ impl Display for GasDetails {
         )
     }
 }
+
 self_convert_redefined!(GasDetails);
 
 impl GasDetails {
@@ -209,80 +210,35 @@ impl GasDetails {
     // Pretty print after 'spaces' spaces
     pub fn pretty_print_with_spaces(&self, spaces: usize) {
         let space_str = " ".repeat(spaces);
-
         let labels = [
-            "Coinbase Transfer",
-            "Priority Fee",
-            "Gas Used",
-            "Effective Gas Price",
-            "Total Gas Paid in ETH",
+            ("Coinbase Transfer", self.coinbase_transfer.map(|amount| format!("{} ETH", amount)).unwrap_or_else(|| "None".to_string())),
+            ("Priority Fee", format!("{} Wei", self.priority_fee)),
+            ("Gas Used", self.gas_used.to_string()),
+            ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
+            ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
         ];
-
-        let max_label_length = labels.iter().map(|label| label.len()).max().unwrap();
-
-        let coinbase_transfer_display = self.format_line_with_spaces(
-            labels[0],
-            self.coinbase_transfer
-                .map_or("None".bright_yellow().to_string().to_string(), |amount| {
-                    format!("{} ETH", amount).bright_yellow().to_string()
-                }),
-            max_label_length,
-            &space_str,
-        );
-
-        let priority_fee_display = self.format_line_with_spaces(
-            labels[1],
-            format!("{} Wei", self.priority_fee)
-                .bright_yellow()
-                .to_string(),
-            max_label_length,
-            &space_str,
-        );
-
-        let gas_used_display = self.format_line_with_spaces(
-            labels[2],
-            format!("{}", self.gas_used).bright_yellow().to_string(),
-            max_label_length,
-            &space_str,
-        );
-
-        let effective_gas_price_display = self.format_line_with_spaces(
-            labels[3],
-            format!("{} Wei", self.effective_gas_price)
-                .bright_yellow()
-                .to_string(),
-            max_label_length,
-            &space_str,
-        );
-
-        let total_eth_spent_display = self.format_line_with_spaces(
-            labels[4],
-            format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)
-                .bright_yellow()
-                .to_string(),
-            max_label_length,
-            &space_str,
-        );
-
-        println!("{}", coinbase_transfer_display);
-        println!("{}", priority_fee_display);
-        println!("{}", gas_used_display);
-        println!("{}", effective_gas_price_display);
-        println!("{}", total_eth_spent_display);
+    
+        let max_label_length = labels.iter().map(|(label, _)| label.len()).max().unwrap_or(0);
+    
+        for (label, value) in &labels {
+            println!(
+                "{}",
+                self.format_line_with_spaces(label, value, max_label_length, &space_str)
+                    .bright_yellow()
+            );
+        }
     }
-
+    
     fn format_line_with_spaces(
         &self,
         label: &str,
-        value: String,
+        value: &str,
         max_label_length: usize,
         leading_spaces: &str,
     ) -> String {
         let padded_label = format!("{:<width$} :", label, width = max_label_length);
-        let formatted_value = format!("{}{}", " ".repeat(4), value); // 4 spaces before the value for alignment
-        let line = format!("{}{}{}", leading_spaces, padded_label, formatted_value);
-
-        line.yellow().to_string()
+        let formatted_value = format!("    {}", value); // 4 spaces for alignment
+        format!("{}{}{}", leading_spaces, padded_label, formatted_value)
     }
 }
 
