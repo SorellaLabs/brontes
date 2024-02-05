@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
-    db::metadata::MetadataCombined,
+    db::metadata::Metadata,
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -13,7 +13,7 @@ use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingM
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
-    metadata:                Arc<MetadataCombined>,
+    metadata:                Arc<Metadata>,
     cumulative_gas_used:     u128,
     cumulative_priority_fee: u128,
     total_bribe:             u128,
@@ -28,7 +28,7 @@ pub struct BlockPreprocessing {
 /// `BlockPreprocessing` struct.
 pub(crate) fn pre_process(
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
 
@@ -60,7 +60,7 @@ pub(crate) fn pre_process(
 
 //TODO: Clean up & fix
 pub(crate) fn build_mev_header(
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
     tree: Arc<BlockTree<Actions>>,
     pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,

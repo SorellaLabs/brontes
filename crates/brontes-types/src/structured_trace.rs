@@ -176,23 +176,37 @@ impl TxTrace {
 }
 
 #[test]
-fn t() {
-    let value: TxTraceRedefined = Default::default();
+fn t2() {}
 
-    let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
+#[cfg(test)]
+mod tests {
+    use rkyv::{Deserialize, Infallible, Serialize};
 
-    let archived = unsafe { rkyv::archived_root::<TxTraceRedefined>(&bytes[..]) };
-    let deserialized: TxTraceRedefined = archived.deserialize(&mut rkyv::Infallible).unwrap();
-    assert_eq!(deserialized, value);
-}
+    use super::*;
+    use crate::db::traces::TxTraceRedefined;
 
-#[test]
-fn t2() {
-    let value: TxTraceRedefined = Default::default();
+    #[test]
+    fn test_serialization_deserialization() {
+        let value: TxTraceRedefined = Default::default();
 
-    let real: TxTrace = unsafe { std::mem::transmute(value.clone()) };
+        // Serialize the value
+        let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
 
-    let check: TxTraceRedefined = real.into();
+        // Deserialize the value
+        let archived = unsafe { rkyv::archived_root::<TxTraceRedefined>(&bytes[..]) };
+        let deserialized: TxTraceRedefined = archived.deserialize(&mut Infallible).unwrap();
 
-    assert_eq!(check, value);
+        assert_eq!(deserialized, value);
+    }
+
+    #[test]
+    fn test_conversion_between_types() {
+        let value: TxTraceRedefined = Default::default();
+
+        let real: TxTrace = unsafe { std::mem::transmute(value.clone()) };
+
+        let check: TxTraceRedefined = real.into();
+
+        assert_eq!(check, value);
+    }
 }

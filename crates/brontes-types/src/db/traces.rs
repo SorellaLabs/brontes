@@ -1,5 +1,5 @@
 use alloy_primitives::{Log, LogData};
-use redefined::{Redefined, RedefinedConvert};
+use redefined::Redefined;
 use reth_rpc_types::trace::parity::{
     Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction, RewardType,
     SelfdestructAction, TraceOutput, TransactionTrace,
@@ -28,7 +28,15 @@ impl TxTracesInner {
 implement_table_value_codecs_with_zc!(TxTracesInnerRedefined);
 
 #[derive(
-    Debug, Clone, Redefined, PartialEq, serde::Serialize, rSerialize, rDeserialize, rkyv::Archive,
+    Debug,
+    Clone,
+    Redefined,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Default,
 )]
 #[redefined(TxTrace)]
 pub struct TxTraceRedefined {

@@ -15,7 +15,7 @@ use brontes_types::{
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -43,7 +43,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         let search_fn = |node: &Node<Actions>| {
             (
@@ -131,7 +131,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn calculate_sandwich(
         &self,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         mut possible_front_runs_info: Vec<TxInfo>,
         backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,

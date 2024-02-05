@@ -10,11 +10,10 @@ use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
 use crate::{
+    db::metadata::Metadata,
     normalized_actions::{Actions, NormalizedAction},
-    tree::MetadataNoDex,
     TxInfo,
 };
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
@@ -143,7 +142,7 @@ impl<V: NormalizedAction> Root<V> {
         self.private
     }
 
-    pub fn label_private_tx(&mut self, metadata: &MetadataNoDex) {
+    pub fn label_private_tx(&mut self, metadata: &Metadata) {
         if metadata.private_flow.contains(&self.tx_hash) {
             self.private = true;
         }
