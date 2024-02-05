@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSer, rDeser, Archive))]
 pub struct MevBlock {
     pub block_hash: B256,
@@ -172,7 +172,7 @@ impl fmt::Display for MevCount {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSer, rDeser, Archive))]
 pub struct PossibleMevCollection(pub Vec<PossibleMev>);
 
@@ -207,7 +207,7 @@ impl fmt::Display for PossibleMev {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSer, rDeser, Archive))]
 pub struct PossibleMev {
     pub tx_hash:     B256,
