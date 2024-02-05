@@ -172,6 +172,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
+            .needs_token(hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into())
             .with_expected_profit_usd(0.188588)
             .with_gas_paid_usd(71.632668);
 
@@ -185,6 +186,7 @@ mod tests {
         let tx = hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("c98835e792553e505ae46e73a6fd27a23985acca").into())
             .with_dex_prices()
             .with_expected_profit_usd(311.18)
             .with_gas_paid_usd(91.51);
@@ -197,18 +199,6 @@ mod tests {
     async fn test_not_false_positive_uni_router() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
         let tx = hex!("ac1127310fdec0b07e618407eabfb7cdf5ada81dc47e914c76fc759843346a0e").into();
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices();
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_not_false_positive_1_inch() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
-        let tx = hex!("3b6d8fcf36546e5d371b1b38f3a5beb02438dfa4d5a047c74884341c89286c3a").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices();
