@@ -132,7 +132,7 @@ impl LibmdbxReadWriter {
 
             if let Ok(field) = entry {
                 let key = decode_key(&field.0);
-                while key >= cur_block {
+                while key > cur_block {
                     missing.push(cur_block);
                     res = false;
                     cur_block += 1;
