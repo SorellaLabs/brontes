@@ -119,7 +119,7 @@ impl LibmdbxReadWriter {
 
         // because for some ranges, not every item is for a block. so we only
         // increment our counter if we know its a block update
-        let mut last_updated_block = decode_key(&peek_cur.peek().unwrap().as_ref().unwrap().0);
+        let mut last_updated_block = decode_key(&peek_cur.peek().unwrap().as_ref().unwrap().0) - 1;
 
         for entry in peek_cur {
             if cur_block % 1000 == 0 {
