@@ -181,7 +181,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             return None
         }
-        tracing::info!(?front_run_swaps, ?back_run_swaps, "swaps");
 
         let victim_swaps = victim_actions
             .iter()
@@ -252,7 +251,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
-        println!("{:#?}, {:#?}", header, sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
