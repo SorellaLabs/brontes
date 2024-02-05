@@ -91,8 +91,8 @@ macro_rules! define_mev_precedence {
     };
 }
 define_mev_precedence!(
-    CexDex => Backrun;
-    Backrun, CexDex => Sandwich;
-    Backrun, CexDex => Jit;
-    Backrun, CexDex, Sandwich => JitSandwich;
+    CexDex => AtomicArb;
+    AtomicArb, CexDex => Sandwich;
+    AtomicArb, CexDex => Jit;
+    AtomicArb, CexDex, Sandwich => JitSandwich;
 );
