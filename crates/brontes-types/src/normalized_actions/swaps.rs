@@ -7,17 +7,27 @@ use std::{
 use alloy_primitives::{TxHash, U256};
 use colored::Colorize;
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
+use redefined::Redefined;
 use reth_primitives::Address;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::{db::token_info::TokenInfoWithAddress, mev::StatArbDetails, Protocol, ToFloatNearest};
+use super::Actions;
+use crate::{
+    db::{
+        redefined_types::{malachite::*, primitives::*},
+        token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+    },
+    mev::StatArbDetails,
+    Protocol, ToFloatNearest,
+};
 
-#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
 pub struct NormalizedSwapWithFee {
     pub swap:       NormalizedSwap,
     pub fee_token:  TokenInfoWithAddress,
@@ -37,8 +47,10 @@ impl DerefMut for NormalizedSwapWithFee {
     }
 }
 
-#[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedSwap {
+    #[redefined(same_fields)]
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
@@ -52,10 +64,17 @@ pub struct NormalizedSwap {
 }
 
 impl NormalizedSwap {
-    /// Calculates the rate for a given DEX swap
-
+    /// Calculates the exchange rate for a given DEX swap
     pub fn swap_rate(&self) -> Rational {
+        if self.amount_out == Rational::ZERO {
+            return Rational::ZERO
+        }
+
         &self.amount_in / &self.amount_out
+    }
+
+    pub fn to_action(&self) -> Actions {
+        Actions::Swap(self.clone())
     }
 }
 
@@ -63,7 +82,7 @@ impl Display for NormalizedSwap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Swapped: {} {} for {} {} on {}",
+            "   - {} {} for {} {} on {}",
             self.amount_in.clone().to_float().to_string().red(),
             self.token_in.symbol.bold(),
             &self.amount_out.clone().to_float().to_string().green(),

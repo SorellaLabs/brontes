@@ -3,7 +3,6 @@ use clap::{Parser, Subcommand};
 mod db_insert;
 mod db_query;
 mod init;
-mod range_with_dex_price;
 mod run;
 mod trace_range;
 mod utils;
@@ -24,10 +23,10 @@ pub enum Commands {
     /// Runs brontes
     #[command(name = "run")]
     Run(run::RunArgs),
+    /// Initializes the local libmdx database & downloads metadata from
+    /// Sorella's MEV DB
     #[command(name = "init")]
     Init(init::Init),
-    #[command(name = "range-with-dex-price")]
-    RangeWithDexPrice(range_with_dex_price::RangeWithDexPrice),
     #[command(name = "db")]
     QueryDb(db_query::DatabaseQuery),
     #[command(name = "db_add")]

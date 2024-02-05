@@ -10,8 +10,9 @@ pub struct TxInfo {
     pub mev_contract:    Address,
     pub tx_hash:         TxHash,
     pub gas_details:     GasDetails,
-    pub is_classifed:    bool,
+    pub is_classified:   bool,
     pub is_cex_dex_call: bool,
+    pub is_private:      bool,
 }
 
 impl TxInfo {
@@ -22,8 +23,9 @@ impl TxInfo {
         mev_contract: Address,
         tx_hash: TxHash,
         gas_details: GasDetails,
-        is_classifed: bool,
+        is_classified: bool,
         is_cex_dex_call: bool,
+        is_private: bool,
     ) -> Self {
         Self {
             tx_index,
@@ -31,9 +33,10 @@ impl TxInfo {
             mev_contract,
             eoa,
             tx_hash,
-            is_classifed,
             gas_details,
+            is_classified,
             is_cex_dex_call,
+            is_private,
         }
     }
 

@@ -6,9 +6,9 @@ use brontes_database::{
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
 };
 use brontes_metrics::PoirotMetricsListener;
+use brontes_types::unordered_buffer_map::BrontesStreamExt;
 use clap::Parser;
-use futures::{stream::FuturesUnordered, StreamExt};
-use itertools::Itertools;
+use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, static_object};
@@ -27,7 +27,7 @@ impl TraceArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
-        let max_tasks = determine_max_tasks(None) * 3;
+        let max_tasks = determine_max_tasks(None) * 2;
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -51,24 +51,22 @@ impl TraceArgs {
             tracer.clone(),
             Box::new(|address, db_tx| db_tx.get_protocol(*address).unwrap().is_none()),
         ));
-        let chunk_size = (self.end_block - self.start_block) / max_tasks + 1;
 
-        let mut handles = FuturesUnordered::new();
-        for chunk in &(self.start_block..self.end_block)
-            .into_iter()
-            .chunks(chunk_size as usize)
-        {
-            let chunk = chunk.collect::<Vec<_>>();
-            let spawner = ctx.task_executor.clone();
+        let amount = (self.end_block - self.start_block) as f64;
 
-            handles.push(spawner.spawn(async move {
-                for i in chunk {
-                    let _ = parser.execute(i).await;
+        futures::stream::iter(self.start_block..self.end_block)
+            .unordered_buffer_map(10_000, |i| {
+                if i % 5000 == 0 {
+                    tracing::info!(
+                        "tracing {:.2}% done",
+                        (i - self.start_block) as f64 / amount * 100.0
+                    );
                 }
-            }));
-        }
-
-        while let Some(_) = handles.next().await {}
+                parser.execute(i)
+            })
+            .map(|_res| ())
+            .collect::<Vec<_>>()
+            .await;
 
         Ok(())
     }

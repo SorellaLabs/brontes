@@ -1,7 +1,9 @@
 use std::fmt::Debug;
 
 use malachite::Rational;
+use redefined::Redefined;
 use reth_primitives::Address;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
@@ -9,9 +11,18 @@ use sorella_db_databases::{
 };
 
 pub use super::{Actions, NormalizedSwap};
-use crate::{db::token_info::TokenInfoWithAddress, Protocol};
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+use crate::{
+    db::{
+        redefined_types::{malachite::RationalRedefined, primitives::*},
+        token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+    },
+    Protocol,
+};
+
+#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedLiquidation {
+    #[redefined(same_fields)]
     pub protocol:              Protocol,
     pub trace_index:           u64,
     pub pool:                  Address,

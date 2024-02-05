@@ -187,31 +187,13 @@ impl AllPairGraph {
         }
     }
 
-    pub(super) fn is_only_edge(&self, node: &Address) -> bool {
-        let node = *self.token_to_index.get(node).unwrap();
-        self.graph.edges(node.into()).collect_vec().len() == 1
-    }
-
-    pub(super) fn is_only_edge_ignoring(&self, node: &Address, ignore: &HashSet<Pair>) -> bool {
-        let node = *self.token_to_index.get(node).unwrap();
-        self.graph
-            .edges(node.into())
-            .filter(|edge| {
-                let item = edge.weight().first().unwrap();
-                let pair = Pair(item.token_0, item.token_1).ordered();
-                !ignore.contains(&pair)
-            })
-            .collect_vec()
-            .len()
-            <= 1
-    }
-
     pub fn get_paths_ignoring(
         &self,
         pair: Pair,
         ignore: &HashSet<Pair>,
         block: u64,
         connectivity_wight: usize,
+        connections: usize,
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
@@ -244,13 +226,9 @@ impl AllPairGraph {
                             return false
                         }
 
-                        f.weight()
-                            .into_iter()
-                            .map(|edge| {
-                                let created_pair = Pair(edge.token_0, edge.token_1).ordered();
-                                !ignore.contains(&created_pair)
-                            })
-                            .all(|a| a)
+                        let edge = f.weight().first().unwrap();
+                        let created_pair = Pair(edge.token_0, edge.token_1).ordered();
+                        !ignore.contains(&created_pair)
                     })
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
                     .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
@@ -259,7 +237,7 @@ impl AllPairGraph {
             },
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
-            4,
+            connections,
             10_000,
         )
         .into_iter()
@@ -308,9 +286,10 @@ impl AllPairGraph {
         pair: Pair,
         block: u64,
         connectivity_wight: usize,
+        connections: usize,
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         let ignore = HashSet::new();
-        self.get_paths_ignoring(pair, &ignore, block, connectivity_wight)
+        self.get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections)
     }
 
     pub fn get_all_known_addresses(&self) -> Vec<Address> {

@@ -1,7 +1,13 @@
-use std::fmt::Debug;
+use std::{
+    fmt,
+    fmt::{Debug, Display},
+};
 
 use alloy_primitives::Address;
+use colored::Colorize;
+use redefined::Redefined;
 use reth_primitives::B256;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{
@@ -10,16 +16,20 @@ use sorella_db_databases::{
 };
 
 use super::MevType;
+use crate::db::{
+    redefined_types::primitives::*,
+    token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+};
 #[allow(unused_imports)]
 use crate::{
-    display::utils::{display_sandwich, print_mev_type_header},
+    display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    serde_primitives::vec_fixed_string,
     GasDetails,
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Row, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
     pub block_number:  u64,
     pub tx_index:      u64,
@@ -33,22 +43,25 @@ pub struct BundleHeader {
     pub profit_usd:    f64,
     pub token_profits: TokenProfits,
     pub bribe_usd:     f64,
+    #[redefined(same_fields)]
     pub mev_type:      MevType,
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Serialize)]
-pub struct TokenProfit {
-    pub profit_collector: Address,
-    pub token:            Address,
-    pub amount:           f64,
-    pub usd_value:        f64,
+#[derive(Debug, Deserialize, Row, Clone, Default, Serialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct TokenProfits {
+    pub profits: Vec<TokenProfit>,
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Row, Clone, Default, Serialize)]
-pub struct TokenProfits {
-    pub profits: Vec<TokenProfit>,
+#[derive(Debug, Deserialize, Row, Clone, Default, Serialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct TokenProfit {
+    pub profit_collector: Address,
+    pub token:            TokenInfoWithAddress,
+    pub amount:           f64,
+    pub usd_value:        f64,
 }
 
 impl TokenProfits {
@@ -83,4 +96,28 @@ impl TokenProfits {
         }
     }
      */
+}
+
+impl Display for TokenProfits {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}", "Token Profits:\n".bold().green())?;
+
+        for profit in &self.profits {
+            writeln!(f, "{}", profit)?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for TokenProfit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
+            "Address: {} gained {} {} worth $ {}",
+            self.profit_collector,
+            self.amount.to_string().green(),
+            self.token.symbol.bold(),
+            self.usd_value
+        )
+    }
 }

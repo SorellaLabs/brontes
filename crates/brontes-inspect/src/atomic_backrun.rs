@@ -13,7 +13,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
-use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, Metadata};
 
 pub struct AtomicBackrunInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -30,7 +30,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicBackrunInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<MetadataCombined>,
+        meta_data: Arc<Metadata>,
     ) -> Vec<Bundle> {
         let intersting_state = tree.collect_all(|node| {
             (
@@ -56,7 +56,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
     fn process_swaps(
         &self,
         info: TxInfo,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
     ) -> Option<Bundle> {
         let swaps = searcher_actions
@@ -79,7 +79,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
 
         let rev_usd = self.inner.get_dex_revenue_usd(
             info.tx_index,
-            PriceAt::Lowest,
+            PriceAt::Average,
             &searcher_actions,
             metadata.clone(),
         )?;
@@ -87,8 +87,8 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
-        // Can change this later to check if people are subsidising arbs to kill ops for
-        // competitors
+        // Can change this later to check if people are subsidizing arbs to kill the
+        // dry out the competition
         if &rev_usd - &gas_used_usd <= Rational::ZERO {
             return None
         }
@@ -96,7 +96,7 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
         let header = self.inner.build_bundle_header(
             &info,
             (rev_usd - &gas_used_usd).to_float(),
-            PriceAt::Lowest,
+            PriceAt::Average,
             &searcher_actions,
             &vec![info.gas_details],
             metadata,
@@ -121,14 +121,9 @@ impl<DB: LibmdbxReader> AtomicBackrunInspector<'_, DB> {
             return None
         } else if swaps.len() == 2 {
             let start = swaps[0].token_in.address;
-            let mid = swaps[0].token_out.address;
-            let mid1 = swaps[1].token_in.address;
             let end = swaps[1].token_out.address;
-            // if not triangular or more than 2 unique tokens, then return.
-            // mid != mid1 looks weird. However it is needed as some transactions such as
-            // 0x67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88 swap to a
-            // newer token version
-            if !(start == end && mid == mid1 || (start != end || mid != mid1)) || start == mid {
+
+            if start != end {
                 return None
             }
         } else {

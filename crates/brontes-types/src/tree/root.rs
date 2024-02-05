@@ -3,18 +3,17 @@ use std::{collections::HashSet, fmt, fmt::Display};
 use alloy_primitives::TxHash;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use redefined::{self_convert_redefined, RedefinedConvert};
+use redefined::self_convert_redefined;
 use reth_primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
 use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
 use crate::{
+    db::metadata::Metadata,
     normalized_actions::{Actions, NormalizedAction},
-    tree::MetadataNoDex,
     TxInfo,
 };
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
@@ -33,11 +32,12 @@ impl<V: NormalizedAction> Root<V> {
             self.head.data.get_action().get_to_address(),
             self.tx_hash,
             self.gas_details,
-            self.private,
+            self.head.data.is_classified(),
             matches!(
                 self.head.data.get_action(),
                 Actions::Unclassified(data) if data.is_cex_dex_call()
             ),
+            self.private,
         )
     }
 
@@ -57,6 +57,14 @@ impl<V: NormalizedAction> Root<V> {
         self.head.collect_spans(&mut result, call);
 
         result
+    }
+
+    pub fn modify_spans<T, F>(&mut self, find: &T, modify: &F)
+    where
+        T: Fn(&Node<V>) -> bool,
+        F: Fn(Vec<&mut Node<V>>),
+    {
+        self.head.modify_node_spans(find, modify);
     }
 
     pub fn collect<F>(&self, call: &F) -> Vec<V>
@@ -134,7 +142,7 @@ impl<V: NormalizedAction> Root<V> {
         self.private
     }
 
-    pub fn label_private_tx(&mut self, metadata: &MetadataNoDex) {
+    pub fn label_private_tx(&mut self, metadata: &Metadata) {
         if metadata.private_flow.contains(&self.tx_hash) {
             self.private = true;
         }
@@ -145,6 +153,7 @@ impl<V: NormalizedAction> Root<V> {
     Debug,
     Clone,
     Copy,
+    PartialEq,
     Serialize,
     Deserialize,
     Row,
@@ -153,7 +162,6 @@ impl<V: NormalizedAction> Root<V> {
     rkyv::Deserialize,
     rkyv::Archive,
 )]
-#[archive(check_bytes)]
 pub struct GasDetails {
     pub coinbase_transfer:   Option<u128>,
     pub priority_fee:        u128,

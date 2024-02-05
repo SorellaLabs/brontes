@@ -9,7 +9,7 @@ use sorella_db_databases::{
     clickhouse::{fixed_string::FixedString, Row},
 };
 
-use crate::serde_primitives::{address, vec_u256};
+use crate::serde_primitives::vec_u256;
 
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
@@ -68,7 +68,7 @@ pub struct ClickhouseTimesFlow {
     pub block_hash:      B256,
     pub relay_time:      u64,
     pub p2p_time:        u64,
-    #[serde(with = "address")]
+    #[serde_as(as = "DisplayFromStr")]
     pub proposer_addr:   Address,
     pub proposer_reward: u128,
     #[serde_as(as = "Vec<DisplayFromStr>")]
