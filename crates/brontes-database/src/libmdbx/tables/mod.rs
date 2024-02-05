@@ -23,7 +23,7 @@ use brontes_types::{
     serde_utils::*,
     traits::TracingProvider,
 };
-pub use reth_db::table::Table;
+use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 

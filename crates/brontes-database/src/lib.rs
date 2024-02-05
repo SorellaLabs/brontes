@@ -6,3 +6,4 @@ pub use libmdbx::{
     tables::*,
     types::{CompressedTable, IntoTableKey},
 };
+pub use reth_db::table::Table;
