@@ -25,16 +25,14 @@ use crate::{
 #[cfg(test)]
 mod tests {
 
-    use std::str::FromStr;
+    
 
-    use alloy_primitives::Address;
+    
     use sorella_db_databases::{
         clickhouse::db::ClickhouseClient,
-        tables::{DatabaseTables, FromDatabaseTables},
-        Database,
     };
 
-    use super::*;
+    
 
     fn spawn_db() -> ClickhouseClient {
         ClickhouseClient::default()

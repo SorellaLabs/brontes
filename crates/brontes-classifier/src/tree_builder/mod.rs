@@ -518,7 +518,15 @@ pub mod test {
         });
 
         classifier_utils
-            .contains_action(aave_v3_liquidation, 0, eq_action, Actions::liquidation_collect_fn())
+            .contains_action(
+                aave_v3_liquidation,
+                0,
+                eq_action,
+                TreeSearchArgs {
+                    collect_current_node:  Actions::liquidation_collect_fn(),
+                    child_node_to_collect: Actions::liquidation_child_fn(),
+                },
+            )
             .await
             .unwrap();
     }
