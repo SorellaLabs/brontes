@@ -23,8 +23,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
@@ -88,8 +88,8 @@ action_impl!(
             }
         }
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
@@ -154,8 +154,8 @@ action_impl!(
             }
         }
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
@@ -215,8 +215,8 @@ action_impl!(
             token_1 = ETH_ADDRESS;
         }
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);

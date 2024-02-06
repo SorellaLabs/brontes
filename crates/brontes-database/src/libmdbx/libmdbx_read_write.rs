@@ -5,7 +5,9 @@ use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
+        address_metadata::AddressMetadata,
         address_to_tokens::PoolTokens,
+        builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
         dex::{
             decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
@@ -13,6 +15,7 @@ use brontes_types::{
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
+        searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
         traits::{LibmdbxReader, LibmdbxWriter},
@@ -100,6 +103,8 @@ impl LibmdbxReadWriter {
             })
     }
 
+    //TODO: Batch & parallelize the data validation + return correct logs for
+    // specific blocks that are missing data.
     fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
         let tx = self.0.ro_tx()?;
 
@@ -274,11 +279,16 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>> {
+    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>> {
         let tx = self.0.ro_tx()?;
         Ok(tx
             .get::<TokenDecimals>(address)?
             .map(|inner| TokenInfoWithAddress { inner, address }))
+    }
+
+    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<Option<SearcherInfo>> {
+        let tx = self.0.ro_tx()?;
+        tx.get::<Searcher>(searcher_eoa).map_err(Into::into)
     }
 
     fn protocols_created_before(
@@ -376,9 +386,39 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>> {
         Ok(self.0.ro_tx()?.get::<AddressToTokens>(address)?)
     }
+
+    fn try_fetch_address_metadata(
+        &self,
+        address: Address,
+    ) -> eyre::Result<Option<AddressMetadata>> {
+        self.0
+            .ro_tx()?
+            .get::<AddressMeta>(address)
+            .map_err(Into::into)
+    }
+
+    fn try_fetch_builder_info(
+        &self,
+        builder_coinbase_addr: Address,
+    ) -> eyre::Result<Option<BuilderInfo>> {
+        self.0
+            .ro_tx()?
+            .get::<Builder>(builder_coinbase_addr)
+            .map_err(Into::into)
+    }
 }
 
 impl LibmdbxWriter for LibmdbxReadWriter {
+    fn write_searcher_info(
+        &self,
+        searcher_eoa: Address,
+        searcher_info: SearcherInfo,
+    ) -> eyre::Result<()> {
+        let data = SearcherData::new(searcher_eoa, searcher_info);
+        self.0.write_table::<Searcher, SearcherData>(&vec![data])?;
+        Ok(())
+    }
+
     fn save_mev_blocks(
         &self,
         block_number: u64,
