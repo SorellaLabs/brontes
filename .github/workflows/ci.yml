@@ -47,6 +47,8 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config 
 
       - name: cargo test
+        id: branch-names
+        uses: tj-actions/branch-names@v8
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'git pull && git checkout ${{ github.ref }} && git pull && cargo test'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && cargo test'" 
 
