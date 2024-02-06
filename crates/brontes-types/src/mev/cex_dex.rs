@@ -26,7 +26,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDex {
     pub tx_hash:          B256,
@@ -134,7 +134,7 @@ impl DbRow for CexDex {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct StatArbDetails {
     #[redefined(same_fields)]
@@ -157,7 +157,7 @@ impl fmt::Display for StatArbDetails {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct StatArbPnl {
     pub maker_profit: Rational,

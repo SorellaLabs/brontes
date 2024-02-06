@@ -35,7 +35,7 @@ mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};
 use brontes_types::{
-    db::metadata::MetadataCombined,
+    db::metadata::Metadata,
     mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -61,7 +61,7 @@ pub struct ComposerResults {
 pub async fn compose_mev_results(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> ComposerResults {
     let pre_processing = pre_process(tree.clone(), metadata.clone());
     let (possible_mev_txes, classified_mev) =
@@ -77,7 +77,7 @@ pub async fn compose_mev_results(
 async fn run_inspectors(
     orchestra: &[&Box<dyn Inspector>],
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
     orchestra
@@ -118,7 +118,7 @@ fn on_orchestra_resolution(
     pre_processing: BlockPreprocessing,
     tree: Arc<BlockTree<Actions>>,
     possible_mev_txes: PossibleMevCollection,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut header = build_mev_header(
@@ -294,6 +294,10 @@ pub mod tests {
         .with_dex_prices()
         .with_gas_paid_usd(90.875025)
         .with_expected_profit_usd(13.568977)
+        .needs_tokens(vec![
+            hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
+            hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
+        ])
         .with_mev_tx_hashes(vec![
             hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),
             hex!("72eb3269ac013cf663dde9aa11cc3295e0dfb50c7edfcf074c5c57b43611439c").into(),
@@ -308,15 +312,19 @@ pub mod tests {
     #[tokio::test]
     #[serial]
     pub async fn test_deduplicate() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.2);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0);
 
         let config = ComposerRunConfig::new(
-            vec![Inspectors::AtomicBackrun, Inspectors::CexDex],
-            MevType::Backrun,
+            vec![Inspectors::AtomicArb, Inspectors::CexDex],
+            MevType::AtomicArb,
         )
         .with_dex_prices()
+        .needs_tokens(vec![
+            hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+            hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+        ])
         .with_gas_paid_usd(10.20)
-        .with_expected_profit_usd(347.84)
+        .with_expected_profit_usd(349.2)
         .with_mev_tx_hashes(vec![hex!(
             "3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f"
         )

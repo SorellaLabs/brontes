@@ -6,7 +6,7 @@ use std::fmt::{self, Debug};
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
-use redefined::Redefined;
+use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
@@ -30,7 +30,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, Row, Clone, Redefined)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Bundle {
     pub header: BundleHeader,
@@ -43,7 +43,7 @@ impl fmt::Display for Bundle {
             MevType::Sandwich => display_sandwich(self, f)?,
             MevType::CexDex => display_cex_dex(self, f)?,
             MevType::Jit => display_jit_liquidity(self, f)?,
-            MevType::Backrun => display_atomic_backrun(self, f)?,
+            MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
             MevType::JitSandwich => display_jit_liquidity_sandwich(self, f)?,
             _ => writeln!(f, "{:#?}", self)?,
@@ -74,7 +74,7 @@ impl fmt::Display for Bundle {
 #[serde(rename_all = "lowercase")]
 pub enum MevType {
     Sandwich    = 1,
-    Backrun     = 5,
+    AtomicArb   = 5,
     #[serde(rename = "jit_sandwich")]
     JitSandwich = 3,
     Jit         = 2,
@@ -85,13 +85,15 @@ pub enum MevType {
     Unknown     = 6,
 }
 
+self_convert_redefined!(MevType);
+
 impl MevType {
     pub fn use_cex_pricing_for_deltas(&self) -> bool {
         match self {
             MevType::Sandwich
             | MevType::JitSandwich
             | MevType::Jit
-            | MevType::Backrun
+            | MevType::AtomicArb
             | MevType::Liquidation
             | MevType::Unknown => false,
             MevType::CexDex => true,

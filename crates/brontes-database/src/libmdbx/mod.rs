@@ -1,10 +1,10 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
 
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 pub use brontes_types::db::traits::{LibmdbxReader, LibmdbxWriter};
-use brontes_types::traits::TracingProvider;
+
 pub mod initialize;
 mod libmdbx_read_write;
 use eyre::Context;
@@ -24,13 +24,15 @@ use tables::*;
 use tracing::info;
 
 use self::types::{CompressedTable, LibmdbxData};
-use crate::clickhouse::Clickhouse;
 
 pub mod implementation;
 pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
 pub mod utils;
+
+#[cfg(test)]
+pub mod test_utils;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
@@ -74,20 +76,6 @@ impl Libmdbx {
         }
 
         tx.commit()?;
-
-        Ok(())
-    }
-
-    /// initializes all the tables with data via the CLI
-    pub async fn initialize_tables<T: TracingProvider>(
-        self: Arc<Self>,
-        clickhouse: Arc<Clickhouse>,
-        tracer: Arc<T>,
-        tables: &[Tables],
-        block_range: Option<(u64, u64)>, // inclusive of start only
-    ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
-        initializer.initialize(tables, block_range).await?;
 
         Ok(())
     }

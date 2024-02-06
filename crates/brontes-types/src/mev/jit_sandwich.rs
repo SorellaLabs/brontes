@@ -20,7 +20,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Deserialize, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct JitLiquiditySandwich {
     pub frontrun_tx_hash:     Vec<B256>,

@@ -11,8 +11,10 @@ pub mod tx_info;
 pub use node::*;
 pub use root::*;
 pub use tx_info::*;
+pub mod search_args;
+pub use search_args::*;
 
-use crate::{db::metadata::MetadataNoDex, normalized_actions::NormalizedAction};
+use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockTree<V: NormalizedAction> {
@@ -128,7 +130,7 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     pub fn collect<F>(&self, hash: B256, call: F) -> Vec<V>
     where
-        F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+        F: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
     {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect(&call)
@@ -140,7 +142,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     //TODO: (Will) Write the docs for this
     pub fn collect_all<F>(&self, call: F) -> HashMap<B256, Vec<V>>
     where
-        F: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+        F: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
     {
         self.tx_roots
             .par_iter()
@@ -186,7 +188,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// decodes the call gets executed in order to capture the
     pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
     where
-        T: Fn(Address, &Node<V>) -> (bool, bool) + Sync,
+        T: Fn(Address, &Node<V>) -> TreeSearchArgs + Sync,
         F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
     {
         self.tx_roots
@@ -197,7 +199,7 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: T, modify: F)
     where
-        T: Fn(&Node<V>) -> (bool, bool) + Send + Sync,
+        T: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
         F: Fn(&mut Node<V>) + Send + Sync,
     {
         self.tx_roots
@@ -214,15 +216,15 @@ impl<V: NormalizedAction> BlockTree<V> {
     ) where
         WantedData: Fn(&Node<V>) -> R + Sync,
         ClassifyRemovalIndex: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        FindActionHead: Fn(&Node<V>) -> (bool, bool) + Sync,
-        FindRemoval: Fn(&Node<V>) -> (bool, bool) + Sync,
+        FindActionHead: Fn(&Node<V>) -> TreeSearchArgs + Sync,
+        FindRemoval: Fn(&Node<V>) -> TreeSearchArgs + Sync,
     {
         self.tx_roots
             .par_iter_mut()
             .for_each(|root| root.remove_duplicate_data(&find, &classify, &info, &find_removal));
     }
 
-    pub fn label_private_txes(&mut self, metadata: &MetadataNoDex) {
+    pub fn label_private_txes(&mut self, metadata: &Metadata) {
         self.tx_roots
             .par_iter_mut()
             .for_each(|root| root.label_private_tx(metadata));

@@ -60,7 +60,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 use tracing::debug;
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, MetadataCombined};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
     inner:         SharedInspectorUtils<'db, DB>,
@@ -106,10 +106,11 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let swap_txes = tree.collect_all(|node| {
-            (node.data.is_swap(), node.subactions.iter().any(|action| action.is_swap()))
+        let swap_txes = tree.collect_all(|node| brontes_types::TreeSearchArgs {
+            collect_current_node:  node.data.is_swap(),
+            child_node_to_collect: node.subactions.iter().any(|action| action.is_swap()),
         });
 
         swap_txes
@@ -171,7 +172,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     pub fn detect_cex_dex_opportunity(
         &self,
         swap: &NormalizedSwap,
-        metadata: &MetadataCombined,
+        metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
         let cex_prices = self.cex_quotes_for_swap(swap, metadata)?;
 
@@ -192,7 +193,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         exchange_cex_price: (CexExchange, Rational, bool),
-        metadata: &MetadataCombined,
+        metadata: &Metadata,
     ) -> Option<ExchangeLeg> {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
@@ -200,7 +201,6 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let fees = exchange_cex_price.0.fees();
 
         let token_price = metadata
-            .db
             .cex_quotes
             .get_quote_direct_or_via_intermediary(
                 &Pair(swap.token_in.address, self.inner.quote),
@@ -247,7 +247,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     fn cex_quotes_for_swap(
         &self,
         swap: &NormalizedSwap,
-        metadata: &MetadataCombined,
+        metadata: &Metadata,
     ) -> Option<Vec<(CexExchange, Rational, bool)>> {
         let pair = Pair(swap.token_out.address, swap.token_in.address);
         let quotes = self
@@ -255,13 +255,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .iter()
             .filter_map(|&exchange| {
                 metadata
-                    .db
                     .cex_quotes
                     .get_quote(&pair, &exchange)
                     .map(|cex_quote| (exchange, cex_quote.price.0, true))
                     .or_else(|| {
                         metadata
-                            .db
                             .cex_quotes
                             .get_quote_via_intermediary(&pair, &exchange)
                             .map(|cex_quote| (exchange, cex_quote.price.0, false))
@@ -304,7 +302,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swaps_with_profit_by_exchange: Vec<PossibleCexDexLeg>,
         gas_details: &GasDetails,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Option<PossibleCexDex> {
         let mut swaps = Vec::new();
         let mut arb_details = Vec::new();
@@ -355,10 +353,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         possible_cex_dex: &PossibleCexDex,
         info: &TxInfo,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Option<BundleData> {
         if self.is_triangular_arb(possible_cex_dex, info, metadata) {
-            return None;
+            return None
         }
 
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
@@ -380,11 +378,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         possible_cex_dex: &PossibleCexDex,
         tx_info: &TxInfo,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if possible_cex_dex.swaps.len() < 2 {
-            return false;
+            return false
         }
 
         let original_token = possible_cex_dex.swaps[0].token_in.address;
@@ -392,7 +390,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         // Check if there is a cycle
         if original_token != final_token {
-            return false;
+            return false
         }
 
         let profit = self
@@ -410,9 +408,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .unwrap_or_default();
 
         if profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) <= Rational::ZERO {
-            return false;
+            return false
         } else {
-            return true;
+            return true
         }
     }
 }
@@ -519,6 +517,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
@@ -533,6 +532,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into())
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();

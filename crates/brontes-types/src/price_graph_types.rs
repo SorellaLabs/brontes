@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, Protocol};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Redefined)]
+#[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
 
