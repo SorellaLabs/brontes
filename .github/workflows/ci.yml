@@ -43,7 +43,7 @@ jobs:
           brontes: ${{ secrets.BRONTES_SSH }}
 
       # init server args
-      - run: mkdir ~/.ssh/ && mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config
+      - run: mkdir ~/.ssh/ && echo "Include ./config.d/*" > ~/.ssh/config && mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config
         shell: bash
       - run: echo ${{ secrets.BASTION_SSH }} > ~/.ssh/bastion && chmod 600 ~/.ssh/bastion
         shell: bash
