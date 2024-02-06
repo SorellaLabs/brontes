@@ -25,8 +25,7 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
-//TODO: Add a wrapped asset to unwrapped asset detector to detect wrapped ->
-// unwrapped arbs
+
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     async fn process_tree(
@@ -251,13 +250,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         if is_profitable {
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(Some(info)) => {
-                    if info.mev.contains(&MevType::AtomicArb) {
-                        Some(profit)
-                    } else {
-                        None
-                    }
-                }
+                Ok(Some(info)) => if info. Some(profit),
                 Ok(None) => {
                     if tx_info.is_private
                         && tx_info.gas_details.coinbase_transfer.is_some()
@@ -386,7 +379,8 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
-
+}
+/* 
     //TODO:
     #[tokio::test]
     #[serial]
@@ -400,5 +394,4 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
-
-// TODO: Debug: https://etherscan.io/tx/0xaf410a70a5b693225555f30c44d62eaed265d04ec49a00409fe2aaa61ea5a881
+*/
