@@ -211,15 +211,24 @@ impl GasDetails {
     pub fn pretty_print_with_spaces(&self, spaces: usize) {
         let space_str = " ".repeat(spaces);
         let labels = [
-            ("Coinbase Transfer", self.coinbase_transfer.map(|amount| format!("{} ETH", amount)).unwrap_or_else(|| "None".to_string())),
+            (
+                "Coinbase Transfer",
+                self.coinbase_transfer
+                    .map(|amount| format!("{} ETH", amount))
+                    .unwrap_or_else(|| "None".to_string()),
+            ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
             ("Gas Used", self.gas_used.to_string()),
             ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
             ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
         ];
-    
-        let max_label_length = labels.iter().map(|(label, _)| label.len()).max().unwrap_or(0);
-    
+
+        let max_label_length = labels
+            .iter()
+            .map(|(label, _)| label.len())
+            .max()
+            .unwrap_or(0);
+
         for (label, value) in &labels {
             println!(
                 "{}",
@@ -228,7 +237,7 @@ impl GasDetails {
             );
         }
     }
-    
+
     fn format_line_with_spaces(
         &self,
         label: &str,

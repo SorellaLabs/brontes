@@ -50,15 +50,14 @@ impl<V: NormalizedAction> BlockTree<V> {
             .map(|root| &root.gas_details)
     }
 
-    pub fn get_prev_tx(&self, hash: B256) -> B256 {
-        let (index, _) = self
-            .tx_roots
-            .iter()
-            .enumerate()
-            .find(|(_, h)| h.tx_hash == hash)
-            .unwrap();
-
-        self.tx_roots[index - 1].tx_hash
+    pub fn get_prev_tx(&self, hash: B256) -> Option<B256> {
+        let index = self.tx_roots.iter().position(|h| h.tx_hash == hash)?;
+    
+        if index == 0 {
+            None
+        } else {
+            Some(self.tx_roots[index - 1].tx_hash)
+        }
     }
 
     pub fn insert_root(&mut self, root: Root<V>) {
