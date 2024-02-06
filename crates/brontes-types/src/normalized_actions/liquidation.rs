@@ -49,9 +49,16 @@ impl fmt::Display for NormalizedLiquidation {
         // TODO
         write!(
             f,
-            "Protocol {} - Pool: {}, Liquidator: {}, Debtor: {}, Collateral: {}, Debt: {}, Covered Debt: {}, Liquidated Collateral: {}",
-            protocol, pool_address, liquidator_address, debtor_address,
-            collateral_asset_symbol, debt_asset_symbol, covered_debt_formatted, liquidated_collateral_formatted
+            "Protocol {} - Pool: {}, Liquidator: {}, Debtor: {}, Collateral: {}, Debt: {}, \
+             Covered Debt: {}, Liquidated Collateral: {}",
+            protocol,
+            pool_address,
+            liquidator_address,
+            debtor_address,
+            collateral_asset_symbol,
+            debt_asset_symbol,
+            covered_debt_formatted,
+            liquidated_collateral_formatted
         )
     }
 }

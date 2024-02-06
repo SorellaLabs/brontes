@@ -54,7 +54,7 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     pub fn get_prev_tx(&self, hash: B256) -> Option<B256> {
         let index = self.tx_roots.iter().position(|h| h.tx_hash == hash)?;
-    
+
         if index == 0 {
             None
         } else {
