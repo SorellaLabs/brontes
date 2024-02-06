@@ -80,7 +80,7 @@
 //! results to identify more complex strategies.
 //TODO: Update composer section once finished
 
-pub mod atomic_backrun;
+pub mod atomic_arb;
 pub mod cex_dex;
 pub mod composer;
 pub mod discovery;
@@ -98,7 +98,7 @@ pub mod test_utils;
 use std::sync::Arc;
 
 use alloy_primitives::Address;
-use atomic_backrun::AtomicArbInspector;
+use atomic_arb::AtomicArbInspector;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
     db::{cex::CexExchange, metadata::Metadata},

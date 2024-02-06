@@ -197,7 +197,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let rev_usd = self.inner.get_dex_revenue_usd(
             tx_info.tx_index,
-            PriceAt::Average,
+            PriceAt::After,
             searcher_actions,
             metadata.clone(),
         )?;
