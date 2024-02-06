@@ -47,6 +47,8 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config 
 
       - name: cargo test
+        env:
+         BRANCH_NAME: ${{ github.head_ref || github.ref_name }
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'git pull && git checkout ${GITHUB_HEAD_REF} && git pull && cargo test'" 
 
