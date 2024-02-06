@@ -250,7 +250,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         if is_profitable {
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(Some(_info)) => Some(profit),
+                Ok(Some(info)) => {
+                    if info.mev.contains(&MevType::AtomicArb) {
+                        Some(profit)
+                    } else {
+                        None
+                    }
+                }
                 Ok(None) => {
                     if tx_info.is_private
                         && tx_info.gas_details.coinbase_transfer.is_some()
@@ -393,3 +399,5 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
+
+// TODO: Debug: https://etherscan.io/tx/0xaf410a70a5b693225555f30c44d62eaed265d04ec49a00409fe2aaa61ea5a881
