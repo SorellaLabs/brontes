@@ -250,7 +250,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         if is_profitable {
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(Some(info)) => if info. Some(profit),
+                Ok(Some(info)) => {
+                    if info.mev.contains(&MevType::AtomicArb) {
+                        Some(profit)
+                    } else {
+                        None
+                    }
+                }
                 Ok(None) => {
                     if tx_info.is_private
                         && tx_info.gas_details.coinbase_transfer.is_some()
@@ -380,7 +386,7 @@ mod tests {
         inspector_util.assert_no_mev(config).await.unwrap();
     }
 }
-/* 
+/*
     //TODO:
     #[tokio::test]
     #[serial]
