@@ -13,6 +13,9 @@ pub use curve::*;
 pub mod balancer;
 pub use balancer::*;
 
+pub mod compound;
+pub use compound::*;
+
 pub mod aave;
 pub use aave::*;
 
