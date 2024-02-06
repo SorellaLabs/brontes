@@ -117,7 +117,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
             .into_par_iter()
             .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
-                let tx_info = tree.get_tx_info(tx)?;
+                let tx_info = tree.get_tx_info(tx, self.inner.db)?;
 
                 // For each swap in the transaction, detect potential CEX-DEX
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
