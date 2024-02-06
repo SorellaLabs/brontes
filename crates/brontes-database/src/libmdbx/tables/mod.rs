@@ -6,20 +6,24 @@ use std::{
 use brontes_pricing::{Protocol, SubGraphsEntry};
 use brontes_types::{
     db::{
+        address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_tokens::{PoolTokens, PoolTokensRedefined},
+        builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        metadata::{MetadataInner, MetadataInnerRedefined},
+        metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
+        searcher::{SearcherInfo, SearcherInfoRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
     },
     pair::Pair,
     price_graph_types::SubGraphsEntryRedefined,
-    serde_primitives::*,
+    serde_utils::*,
     traits::TracingProvider,
 };
+use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
@@ -29,13 +33,13 @@ mod const_sql;
 use alloy_primitives::Address;
 use const_sql::*;
 use paste::paste;
-use reth_db::{table::Table, TableType};
+use reth_db::TableType;
 
 use super::{
     initialize::LibmdbxInitializer, types::IntoTableKey, utils::static_bindings, CompressedTable,
 };
 
-pub const NUM_TABLES: usize = 10;
+pub const NUM_TABLES: usize = 13;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -100,37 +104,46 @@ impl Tables {
         &self,
         initializer: &LibmdbxInitializer<T>,
         block_range: Option<(u64, u64)>,
+        clear_table: bool,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
                 initializer
-                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>()
+                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(clear_table)
                     .await
             }
             Tables::AddressToTokens => {
                 initializer
-                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>()
+                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>(clear_table)
                     .await
             }
             Tables::AddressToProtocol => {
                 initializer
-                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>()
-                    .await
-            }
-            Tables::CexPrice => {
-                initializer
-                    .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(block_range)
-                    .await
-            }
-            Tables::Metadata => {
-                initializer
-                    .initialize_table_from_clickhouse::<Metadata, MetadataData>(block_range)
+                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>(
+                        clear_table,
+                    )
                     .await
             }
             Tables::PoolCreationBlocks => {
                 initializer
-                    .initialize_table_from_clickhouse::<PoolCreationBlocks, PoolCreationBlocksData>(
+                    .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
+                        clear_table,
+                    )
+                    .await
+            }
+            Tables::CexPrice => {
+                initializer
+                    .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
+                        clear_table,
+                    )
+                    .await
+            }
+            Tables::BlockInfo => {
+                initializer
+                    .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
+                        block_range,
+                        clear_table,
                     )
                     .await
             }
@@ -138,6 +151,17 @@ impl Tables {
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
             Tables::TxTraces => Ok(()),
+            Tables::Builder => {
+                initializer
+                    .clickhouse_init_no_args::<Builder, BuilderData>(clear_table)
+                    .await
+            }
+            Tables::AddressMeta => {
+                initializer
+                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(clear_table)
+                    .await
+            }
+            Tables::Searcher => Ok(()),
         }
     }
 }
@@ -147,12 +171,15 @@ tables!(
     AddressToTokens,
     AddressToProtocol,
     CexPrice,
-    Metadata,
+    BlockInfo,
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
     SubGraphs,
-    TxTraces
+    TxTraces,
+    Builder,
+    AddressMeta,
+    Searcher
 );
 
 /// Must be in this order when defining
@@ -187,6 +214,21 @@ macro_rules! compressed_table {
         impl std::fmt::Display for $table_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", stringify!($table_name))
+            }
+        }
+
+        #[cfg(test)]
+        #[allow(unused)]
+        impl $table_name {
+            pub(crate) async fn test_initialized_data(
+                clickhouse: &crate::clickhouse::Clickhouse,
+                libmdbx: &crate::libmdbx::LibmdbxReadWriter,
+                block_range: Option<(u64, u64)>
+            ) -> eyre::Result<(usize, usize)> {
+                paste::paste!{
+                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
+                        ::<$table_name,[<$table_name Data>]>(clickhouse, libmdbx, block_range).await
+                }
             }
         }
 
@@ -407,12 +449,12 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table Metadata {
+    Table BlockInfo {
         #[serde_as]
         Data {
             key: u64,
-            value: MetadataInner,
-            compressed_value: MetadataInnerRedefined
+            value: BlockMetadataInner,
+            compressed_value: BlockMetadataInnerRedefined
         },
         Init {
             init_size: Some(50_000),
@@ -505,6 +547,61 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Other
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table Builder {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: BuilderInfo,
+            compressed_value: BuilderInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table AddressMeta {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: AddressMetadata,
+            compressed_value: AddressMetadataRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table Searcher {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: SearcherInfo,
+            compressed_value: SearcherInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
         },
         CLI {
             can_insert: False

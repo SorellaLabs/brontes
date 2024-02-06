@@ -65,7 +65,7 @@ criterion = { version = "0.5", features = [
 [features]
 tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
 default = []
-local = ["brontes-core/local"]
+local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
 
 [dev-dependencies]
 strum = { workspace = true, features = ["derive"] }

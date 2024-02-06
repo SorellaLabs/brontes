@@ -1,13 +1,12 @@
-use std::{env, fs::File, sync::Arc};
+use std::{fs::File, sync::Arc};
 
 use arrow::{datatypes::Schema, record_batch::RecordBatch};
-use brontes_database::libmdbx::Libmdbx;
 use owned_chunks::OwnedChunks;
 use parquet::arrow::{arrow_reader::ParquetRecordBatchReaderBuilder, ArrowWriter};
 use serde::Deserialize;
 use sorella_db_databases::clickhouse::{db::ClickhouseClient, DbRow};
 
-use super::tables::{BenchTables, MetadataRLP};
+use super::tables::BenchTables;
 use crate::libmdbx_impl::LibmdbxBench;
 
 pub trait ToRecordBatch: Sized {

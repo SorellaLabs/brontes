@@ -42,7 +42,7 @@ impl AddToDb {
         write_to_table!(
             self.table,
             CexPrice,
-            Metadata,
+            BlockInfo,
             DexPrice,
             MevBlocks,
             TokenDecimals,
@@ -50,6 +50,9 @@ impl AddToDb {
             AddressToProtocol,
             SubGraphs,
             TxTraces,
+            Builder,
+            AddressMeta,
+            Searcher,
             PoolCreationBlocks = &self.key,
             &self.value
         );
