@@ -71,7 +71,9 @@ pub struct ClickhouseVecNormalizedMintOrBurn {
 impl fmt::Display for NormalizedMint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let protocol = self.protocol.to_string().bold();
-        let mint_info: Vec<_> = self.token.iter()
+        let mint_info: Vec<_> = self
+            .token
+            .iter()
             .zip(self.amount.iter())
             .map(|(token, amount)| {
                 let token_symbol = token.inner.symbol.bold();
@@ -87,7 +89,9 @@ impl fmt::Display for NormalizedMint {
 impl fmt::Display for NormalizedBurn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let protocol = self.protocol.to_string().bold();
-        let mint_info: Vec<_> = self.token.iter()
+        let mint_info: Vec<_> = self
+            .token
+            .iter()
             .zip(self.amount.iter())
             .map(|(token, amount)| {
                 let token_symbol = token.inner.symbol.bold();
@@ -103,7 +107,9 @@ impl fmt::Display for NormalizedBurn {
 impl fmt::Display for NormalizedCollect {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let protocol = self.protocol.to_string().bold();
-        let mint_info: Vec<_> = self.token.iter()
+        let mint_info: Vec<_> = self
+            .token
+            .iter()
             .zip(self.amount.iter())
             .map(|(token, amount)| {
                 let token_symbol = token.inner.symbol.bold();
@@ -115,7 +121,6 @@ impl fmt::Display for NormalizedCollect {
         write!(f, "Collect [{}] Fees on {}", mint_info.join(", "), protocol)
     }
 }
-
 
 impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
     fn from(_value: Vec<NormalizedMint>) -> Self {

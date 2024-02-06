@@ -209,7 +209,7 @@ impl GasDetails {
     }
 
     // Pretty print after 'spaces' spaces
-    pub fn pretty_print_with_spaces(&self, spaces: usize) {
+    pub fn pretty_print_with_spaces(&self, f: &mut fmt::Formatter, spaces: usize) -> fmt::Result {
         let space_str = " ".repeat(spaces);
         let labels = [
             (
@@ -231,12 +231,14 @@ impl GasDetails {
             .unwrap_or(0);
 
         for (label, value) in &labels {
-            println!(
+            writeln!(
+                f,
                 "{}",
                 self.format_line_with_spaces(label, value, max_label_length, &space_str)
-                    .bright_yellow()
-            );
+            )?;
         }
+
+        Ok(())
     }
 
     fn format_line_with_spaces(
@@ -247,7 +249,7 @@ impl GasDetails {
         leading_spaces: &str,
     ) -> String {
         let padded_label = format!("{:<width$} :", label, width = max_label_length);
-        let formatted_value = format!("    {}", value); // 4 spaces for alignment
+        let formatted_value = format!("    {}", value).bright_yellow();
         format!("{}{}{}", leading_spaces, padded_label, formatted_value)
     }
 }

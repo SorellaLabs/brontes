@@ -1,5 +1,6 @@
 use std::fmt;
 
+use alloy_primitives::FixedBytes;
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
@@ -35,51 +36,78 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
         .zip(jit_sandwich_data.frontrun_gas_details.iter())
         .enumerate()
     {
-        writeln!(f, " - {}: {}", format!("Transaction {}", i + 1).bright_blue(), tx_hash)?;
+        writeln!(
+            f,
+            " - {}: {}",
+            format!("Transaction {}", i + 1).bright_blue(),
+            format_etherscan_url(tx_hash)
+        )?;
+        writeln!(f, "     - {}:", "Actions".bright_blue())?;
         for (j, swap) in swaps.iter().enumerate() {
-            writeln!(f, "   {}: {}", format!(" - {}", j + 1).green(), swap)?;
+            writeln!(f, "      {}: {}", format!(" - {}", j + 1).green(), swap)?;
         }
+
         if let Some(mint_list) = mints {
+            let no_of_swaps: usize = swaps.len() + 1;
             for (j, mint) in mint_list.iter().enumerate() {
-                writeln!(f, "   {}: {:?}", format!(" - {}", j + 1).green(), mint)?;
+                writeln!(f, "      {}: {}", format!(" - {}", j + no_of_swaps).green(), mint)?;
             }
         }
-        writeln!(f, " - {}:", "Gas Details".bright_blue())?;
-        gas_details.pretty_print_with_spaces(8);
+        writeln!(f, "     - {}:", "Gas Details".bright_blue())?;
+        gas_details.pretty_print_with_spaces(f, 8)?;
     }
 
     // Victim Section
     writeln!(f, "\n{}\n", "Victim Transactions".bright_yellow().underline())?;
-    for (_i, ((tx_hashes, swaps), gas_details)) in jit_sandwich_data
-        .victim_swaps_tx_hashes
-        .iter()
-        .zip(jit_sandwich_data.victim_swaps.iter())
-        .zip(jit_sandwich_data.victim_swaps_gas_details.iter())
-        .enumerate()
-    {
-        for (j, tx_hash) in tx_hashes.iter().enumerate() {
-            writeln!(f, " - {}: {}", format!("Transaction {}", j + 1).bright_blue(), tx_hash)?;
+    let mut idx = 0;
+    for (i, tx_hashes) in jit_sandwich_data.victim_swaps_tx_hashes.iter().enumerate() {
+        writeln!(f, " {}:",format!("Victims of Frontrun Tx {}", i + 1).yellow())?;
+        let swaps = &jit_sandwich_data.victim_swaps[idx];
+        let gas_details = &jit_sandwich_data.victim_swaps_gas_details[idx];
+
+        for tx_hash in tx_hashes.iter() {
+            writeln!(
+                f,
+                " - {}: {}",
+                format!("Victim Transaction {}", i + 1).bright_magenta(),
+                format_etherscan_url(tx_hash)
+            )?;
+
+            writeln!(f, "     - {}:", "Actions".bright_blue())?;
+            for (j, swap) in swaps.iter().enumerate() {
+                writeln!(f, "      {}: {}", format!(" - {}", j + 1).green(), swap)?;
+
+            }
+
+            writeln!(f, "     - {}:", "Gas Details".bright_blue())?;
+            gas_details.pretty_print_with_spaces(f, 8)?;
         }
-        for (j, swap) in swaps.iter().enumerate() {
-            writeln!(f, "   {}: {}", format!(" - {}", j + 1).green(), swap)?;
-        }
-        writeln!(f, " - {}:", "Gas Details".bright_blue())?;
-        gas_details.pretty_print_with_spaces(8)
+
+        idx += 1;
     }
 
     // Backrun Section
     writeln!(f, "\n{}\n", "Backrun Transaction".bright_yellow().underline())?;
-    writeln!(f, " - {}: {}", "Tx Hash".bright_blue(), jit_sandwich_data.backrun_tx_hash)?;
+    writeln!(
+        f,
+        " - {}: {}",
+        "Backrun Transaction".bright_blue(),
+        format_etherscan_url(&jit_sandwich_data.backrun_tx_hash)
+    )?;
+
+    writeln!(f, "     - {}:", "Actions".bright_blue())?;
     for (i, swap) in jit_sandwich_data.backrun_swaps.iter().enumerate() {
-        writeln!(f, "   {}: {}", format!(" - {}", i + 1).green(), swap)?;
+        writeln!(f, "      {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
+
+    let no_of_swaps: usize = jit_sandwich_data.backrun_swaps.len() + 1;
     for (i, burn) in jit_sandwich_data.backrun_burns.iter().enumerate() {
-        writeln!(f, "   {}: {:?}", format!(" - {}", i + 1).green(), burn)?;
+        writeln!(f, "      {}: {}", format!(" - {}", i + no_of_swaps).green(), burn)?;
     }
-    writeln!(f, " - {}:", "Gas Details".bright_blue())?;
+    writeln!(f, "     - {}:", "Gas Details".bright_blue())?;
     jit_sandwich_data
         .backrun_gas_details
-        .pretty_print_with_spaces(8);
+        .pretty_print_with_spaces(f, 8)?;
 
     // Profitability Section
     writeln!(f, "\n{}\n", "Profitability".bright_yellow().underline())?;
@@ -138,7 +166,9 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
-    atomic_backrun_data.gas_details.pretty_print_with_spaces(8);
+    atomic_backrun_data
+        .gas_details
+        .pretty_print_with_spaces(f, 8)?;
 
     // Profitability Section
     writeln!(f, "\n{}\n", "Profitability".bright_yellow().underline())?;
@@ -200,12 +230,14 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
     // Liquidations Section
     writeln!(f, "\n{}\n", "Liquidations".bright_yellow().underline())?;
     for (i, liquidation) in liquidation_data.liquidations.iter().enumerate() {
-        writeln!(f, " - {}: {:?}", format!("Liquidation {}", i + 1).bright_blue(), liquidation)?;
+        writeln!(f, " - {}: {}", format!("Liquidation {}", i + 1).bright_blue(), liquidation)?;
     }
 
     // Gas Details Section
     writeln!(f, "\n - {}:", "Gas Details:".bright_blue())?;
-    liquidation_data.gas_details.pretty_print_with_spaces(8);
+    liquidation_data
+        .gas_details
+        .pretty_print_with_spaces(f, 8)?;
 
     // Profitability Section
     writeln!(f, "\n{}\n", "Profitability".bright_yellow().underline())?;
@@ -259,12 +291,11 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     writeln!(f, " - {}", "Mints:".bright_blue())?;
     for (i, mint) in jit_data.frontrun_mints.iter().enumerate() {
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), mint)?;
-
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     jit_data
         .frontrun_mint_gas_details
-        .pretty_print_with_spaces(8);
+        .pretty_print_with_spaces(f, 8)?;
 
     // Victim Section
     writeln!(f, "\n{}\n", "Victim Swaps".bright_yellow().underline())?;
@@ -279,7 +310,7 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
             writeln!(f, "    {}: {}", format!(" - {}", j + 1).green(), swap)?;
         }
         writeln!(f, "   - {}:", "Gas Details".bright_blue())?;
-        gas_details.pretty_print_with_spaces(8);
+        gas_details.pretty_print_with_spaces(f, 8)?;
     }
 
     // Backrun Section
@@ -288,12 +319,11 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     writeln!(f, " - {}", "Burns:".bright_blue())?;
     for (i, burn) in jit_data.backrun_burns.iter().enumerate() {
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), burn)?;
-
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     jit_data
         .backrun_burn_gas_details
-        .pretty_print_with_spaces(8);
+        .pretty_print_with_spaces(f, 8)?;
 
     // Profitability Section
     writeln!(f, "\n{}\n", "Profitability".bright_yellow().underline())?;
@@ -352,7 +382,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
             writeln!(f, "    {}: {}", format!(" - {}", j + 1).green(), swap)?;
         }
         writeln!(f, " - {}:", "Gas Details".bright_blue())?;
-        gas_details.pretty_print_with_spaces(8);
+        gas_details.pretty_print_with_spaces(f, 8)?;
     }
 
     // Victim Section
@@ -370,7 +400,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
             writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
         }
         writeln!(f, " - {}:", "Gas Details".bright_blue())?;
-        gas_details.pretty_print_with_spaces(8);
+        gas_details.pretty_print_with_spaces(f, 8)?;
     }
 
     // Backrun Section
@@ -382,7 +412,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     sandwich_data
         .backrun_gas_details
-        .pretty_print_with_spaces(8);
+        .pretty_print_with_spaces(f, 8)?;
 
     // Profitability Section
     writeln!(f, "\n{}\n", "Profitability".bright_yellow().underline())?;
@@ -429,7 +459,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     };
 
     // Tx details
-    writeln!(f, "{}: \n", "Transaction Details".bold().underline().red())?;
+    writeln!(f, "{}: \n", "Transaction Details".bold().underline().bright_yellow())?;
     writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
     writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
@@ -438,7 +468,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(f, "   - Etherscan: {}", tx_url)?;
 
     // Mev section
-    writeln!(f, "\n{}", "MEV:\n".bold().red().underline())?;
+    writeln!(f, "\n{}", "MEV:\n".bold().underline().bright_yellow())?;
     writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
     writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
 
@@ -471,4 +501,10 @@ fn format_profit(value: f64) -> ColoredString {
 
 fn format_bribe(value: f64) -> ColoredString {
     format!("${:.2}", value).red()
+}
+
+fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
+    format!("https://etherscan.io/tx/{:?}", tx_hash)
+        .underline()
+        .to_string()
 }
