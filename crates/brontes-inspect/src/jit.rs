@@ -73,7 +73,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         return None
                     }
 
-                    let info = [tree.get_tx_info(frontrun_tx)?, tree.get_tx_info(backrun_tx)?];
+                    let info = [
+                        tree.get_tx_info(frontrun_tx, self.inner.db)?,
+                        tree.get_tx_info(backrun_tx, self.inner.db)?,
+                    ];
 
                     if victims
                         .iter()
@@ -103,7 +106,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     let victim_info = victims
                         .into_iter()
-                        .map(|v| tree.get_tx_info(v).unwrap())
+                        .map(|v| tree.get_tx_info(v, self.inner.db).unwrap())
                         .collect_vec();
 
                     self.calculate_jit(

@@ -5,11 +5,11 @@ use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, Bundle, MevType},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     tree::BlockTree,
     ToFloatNearest, TreeSearchArgs, TxInfo,
 };
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
@@ -45,7 +45,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         interesting_state
             .into_par_iter()
             .filter_map(|(tx, actions)| {
-                let info = tree.get_tx_info(tx)?;
+                let info = tree.get_tx_info(tx, self.inner.db)?;
 
                 self.process_swaps(info, meta_data.clone(), actions)
             })
@@ -60,22 +60,25 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         searcher_actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        let swaps = searcher_actions
+        let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = searcher_actions
             .iter()
-            .filter(|s| s.is_swap() || s.is_flash_loan())
-            .flat_map(|s| match s.clone() {
-                Actions::Swap(s) => vec![s],
+            .flat_map(|action| match action {
+                Actions::Swap(s) => vec![Either::Left(s.clone())],
+                Actions::Transfer(t) => vec![Either::Right(t.clone())],
                 Actions::FlashLoan(f) => f
                     .child_actions
-                    .into_iter()
-                    .filter(|a| a.is_swap())
-                    .map(|s| s.force_swap())
-                    .collect_vec(),
+                    .iter()
+                    .flat_map(|a| match a {
+                        Actions::Swap(s) => vec![Either::Left(s.clone())],
+                        Actions::Transfer(t) => vec![Either::Right(t.clone())],
+                        _ => vec![],
+                    })
+                    .collect(),
                 _ => vec![],
             })
-            .collect_vec();
+            .partition_map(|either| either);
 
-        let possible_arb_type = self.is_possible_arb(&swaps)?;
+        let possible_arb_type = self.is_possible_arb(&swaps, &transfers)?;
 
         let actions = searcher_actions.clone();
 
@@ -110,10 +113,18 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
 
-    fn is_possible_arb(&self, swaps: &Vec<NormalizedSwap>) -> Option<AtomicArbType> {
+    fn is_possible_arb(
+        &self,
+        swaps: &Vec<NormalizedSwap>,
+        transfers: &Vec<NormalizedTransfer>,
+    ) -> Option<AtomicArbType> {
         // check to see if more than 1 swap
         if swaps.len() <= 1 {
-            return Some(AtomicArbType::LongTail)
+            if transfers.len() >= 2 {
+                return Some(AtomicArbType::LongTail)
+            } else {
+                return None
+            }
         } else if swaps.len() == 2 {
             let start = swaps[0].token_in.address;
             let end = swaps[1].token_out.address;
@@ -156,7 +167,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
                 Ok(Some(_info)) => Some(profit),
                 Ok(None) => {
-                    if tx_info.gas_details.coinbase_transfer.is_some() {
+                    if tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private {
                         Some(profit)
                     } else {
                         None
@@ -234,7 +245,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
                 Ok(Some(_info)) => Some(profit),
                 Ok(None) => {
-                    if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
+                    if tx_info.is_private
+                        && tx_info.gas_details.coinbase_transfer.is_some()
+                        && !tx_info.is_verified_contract
+                    {
                         Some(profit)
                     } else {
                         None
