@@ -72,7 +72,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|victims| {
                             victims
                                 .into_iter()
-                                .map(|v| tree.get_tx_info(*v).unwrap())
+                                .map(|v| tree.get_tx_info(*v, self.inner.db).unwrap())
                                 .collect::<Vec<_>>()
                         })
                         .collect_vec();
@@ -105,10 +105,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let frontrun_info = possible_frontruns
                         .iter()
-                        .flat_map(|pf| tree.get_tx_info(*pf))
+                        .flat_map(|pf| tree.get_tx_info(*pf, self.inner.db))
                         .collect::<Vec<_>>();
 
-                    let back_run_info = tree.get_tx_info(possible_backrun)?;
+                    let back_run_info = tree.get_tx_info(possible_backrun, self.inner.db)?;
 
                     let searcher_actions = possible_frontruns
                         .iter()

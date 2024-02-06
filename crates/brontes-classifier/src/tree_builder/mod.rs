@@ -223,7 +223,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if let Actions::Transfer(transfer) = &classification {
             if self
                 .libmdbx
-                .try_get_token_info(transfer.token.address)
+                .try_fetch_token_info(transfer.token.address)
                 .unwrap()
                 .is_none()
             {
@@ -360,7 +360,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         addr
                     };
 
-                    if self.libmdbx.try_get_token_info(addr).unwrap().is_none() {
+                    if self.libmdbx.try_fetch_token_info(addr).unwrap().is_none() {
                         load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
                     }
                     let decimals = transfer.token.decimals;
@@ -518,7 +518,15 @@ pub mod test {
         });
 
         classifier_utils
-            .contains_action(aave_v3_liquidation, 0, eq_action, Actions::liquidation_collect_fn())
+            .contains_action(
+                aave_v3_liquidation,
+                0,
+                eq_action,
+                TreeSearchArgs {
+                    collect_current_node:  Actions::liquidation_collect_fn(),
+                    child_node_to_collect: Actions::liquidation_child_fn(),
+                },
+            )
             .await
             .unwrap();
     }
