@@ -25,7 +25,8 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
         Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
-
+//TODO: Add a wrapped asset to unwrapped asset detector to detect wrapped ->
+// unwrapped arbs
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     async fn process_tree(
