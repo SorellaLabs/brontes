@@ -48,5 +48,5 @@ jobs:
 
       - name: cargo test
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'git pull && git checkout ${{ github.ref_name }} && git pull && cargo test'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'git pull && git checkout ${{ github.ref }} && git pull && cargo test'" 
 
