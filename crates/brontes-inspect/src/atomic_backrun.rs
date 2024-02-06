@@ -118,24 +118,30 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         swaps: &Vec<NormalizedSwap>,
         transfers: &Vec<NormalizedTransfer>,
     ) -> Option<AtomicArbType> {
-        // check to see if more than 1 swap
-        if swaps.len() <= 1 {
-            if transfers.len() >= 2 {
-                return Some(AtomicArbType::LongTail)
-            } else {
-                return None
+        match swaps.len() {
+            0 | 1 => {
+                if transfers.len() >= 2 {
+                    Some(AtomicArbType::LongTail)
+                } else {
+                    None
+                }
             }
-        } else if swaps.len() == 2 {
-            let start = swaps[0].token_in.address;
-            let end = swaps[1].token_out.address;
+            2 => {
+                let start = swaps[0].token_in.address;
+                let end = swaps[1].token_out.address;
+                let is_triangle =
+                    start == end && swaps[0].token_out.address == swaps[1].token_in.address;
+                let is_cross_pair = start == end;
 
-            if start == end && swaps[0].token_out.address == swaps[1].token_in.address {
-                return Some(AtomicArbType::Triangle)
-            } else {
-                return Some(AtomicArbType::CrossPair(1))
+                if is_triangle {
+                    Some(AtomicArbType::Triangle)
+                } else if is_cross_pair {
+                    Some(AtomicArbType::CrossPair(1))
+                } else {
+                    Some(AtomicArbType::LongTail)
+                }
             }
-        } else {
-            Some(identify_arb_sequence(&swaps))
+            _ => Some(identify_arb_sequence(&swaps)),
         }
     }
 
@@ -181,6 +187,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     fn process_cross_pair_arb(
         &self,
         tx_info: TxInfo,
+
         metadata: Arc<Metadata>,
         swaps: &Vec<NormalizedSwap>,
         searcher_actions: &Vec<Vec<Actions>>,
