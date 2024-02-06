@@ -49,5 +49,5 @@ jobs:
 
       - name: cargo test
         run: 
-          ssh brontes_server -tt "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
+          ssh bastion -tt "ls" # ssh brontes_server -tt "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
 
