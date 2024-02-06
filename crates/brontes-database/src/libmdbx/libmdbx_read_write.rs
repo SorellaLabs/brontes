@@ -103,6 +103,8 @@ impl LibmdbxReadWriter {
             })
     }
 
+    //TODO: Batch & parallelize the data validation + return correct logs for
+    // specific blocks that are missing data.
     fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
         let tx = self.0.ro_tx()?;
 
