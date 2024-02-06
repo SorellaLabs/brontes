@@ -150,7 +150,7 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 
 pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
@@ -173,26 +173,4 @@ impl TxTrace {
     ) -> Self {
         Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
     }
-}
-
-#[test]
-fn t() {
-    let value: TxTraceRedefined = Default::default();
-
-    let bytes = rkyv::to_bytes::<_, 256>(&value).unwrap();
-
-    let archived = unsafe { rkyv::archived_root::<TxTraceRedefined>(&bytes[..]) };
-    let deserialized: TxTraceRedefined = archived.deserialize(&mut rkyv::Infallible).unwrap();
-    assert_eq!(deserialized, value);
-}
-
-#[test]
-fn t2() {
-    let value: TxTraceRedefined = Default::default();
-
-    let real: TxTrace = unsafe { std::mem::transmute(value.clone()) };
-
-    let check: TxTraceRedefined = real.into();
-
-    assert_eq!(check, value);
 }

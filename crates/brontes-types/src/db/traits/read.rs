@@ -4,8 +4,7 @@ use alloy_primitives::Address;
 
 use crate::{
     db::{
-        address_to_tokens::PoolTokens,
-        metadata::{MetadataCombined, MetadataNoDex},
+        address_to_tokens::PoolTokens, dex::DexQuotes, metadata::Metadata,
         token_info::TokenInfoWithAddress,
     },
     pair::Pair,
@@ -15,8 +14,10 @@ use crate::{
 
 #[auto_impl::auto_impl(&)]
 pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
-    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<MetadataNoDex>;
-    fn get_metadata(&self, block_num: u64) -> eyre::Result<MetadataCombined>;
+    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata>;
+    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata>;
+
+    fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes>;
 
     fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>>;
 

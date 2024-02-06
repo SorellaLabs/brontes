@@ -16,7 +16,6 @@ use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use derive_more::Display;
-use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::ReciprocalAssign, basic::traits::One, conversion::traits::FromSciString,

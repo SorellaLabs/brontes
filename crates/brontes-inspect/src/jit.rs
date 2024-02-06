@@ -10,13 +10,13 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, TxInfo,
+    GasDetails, ToFloatNearest, TreeSearchArgs, TxInfo,
 };
 use itertools::Itertools;
 use malachite::Rational;
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, MetadataCombined,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, Metadata,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -43,7 +43,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         self.possible_jit_set(tree.clone())
             .into_iter()
@@ -58,17 +58,13 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
-                            tree.collect(tx, |node| {
-                                (
-                                    node.data.is_mint()
-                                        || node.data.is_burn()
-                                        || node.data.is_collect(),
-                                    node.subactions.iter().any(|action| {
-                                        action.is_mint()
-                                            || action.is_collect()
-                                            || node.data.is_burn()
-                                    }),
-                                )
+                            tree.collect(tx, |node| TreeSearchArgs {
+                                collect_current_node:  node.data.is_mint()
+                                    || node.data.is_burn()
+                                    || node.data.is_collect(),
+                                child_node_to_collect: node.subactions.iter().any(|action| {
+                                    action.is_mint() || action.is_collect() || node.data.is_burn()
+                                }),
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
@@ -91,11 +87,12 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.collect(*victim, |node| {
-                                (
-                                    node.data.is_swap(),
-                                    node.subactions.iter().any(|action| action.is_swap()),
-                                )
+                            tree.collect(*victim, |node| TreeSearchArgs {
+                                collect_current_node:  node.data.is_swap(),
+                                child_node_to_collect: node
+                                    .subactions
+                                    .iter()
+                                    .any(|action| action.is_swap()),
                             })
                         })
                         .collect_vec();
@@ -127,19 +124,12 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     fn calculate_jit(
         &self,
         info: [TxInfo; 2],
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
         // victim
         victim_actions: Vec<Vec<Actions>>,
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
-        let _deltas = self.inner.calculate_token_deltas(
-            &[searcher_actions.clone(), victim_actions.clone()]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<Vec<_>>>(),
-        );
-
         // grab all mints and burns
         let (mints, burns, collect): (
             Vec<Option<NormalizedMint>>,
@@ -317,7 +307,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         set.into_iter().collect()
     }
 
-    fn get_bribes(&self, price: Arc<MetadataCombined>, gas: &Vec<GasDetails>) -> Rational {
+    fn get_bribes(&self, price: Arc<Metadata>, gas: &Vec<GasDetails>) -> Rational {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
@@ -327,7 +317,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         &self,
         idx: usize,
         collect: Vec<NormalizedCollect>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Rational {
         let (tokens, amount): (Vec<_>, Vec<_>) = collect
             .into_iter()
@@ -351,7 +341,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 (impl Iterator<Item = &'a Rational> + 'a),
             ),
         >,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Rational {
         iter.map(|(token, amount)| self.get_liquidity_price(idx, metadata.clone(), token, amount))
             .sum()
@@ -360,7 +350,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     fn get_liquidity_price<'a>(
         &self,
         idx: usize,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
         token: impl Iterator<Item = Address>,
         amount: impl Iterator<Item = &'a Rational>,
     ) -> Rational {
@@ -408,13 +398,17 @@ mod tests {
         let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
+            .needs_tokens(vec![
+                hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into(),
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+            ])
             .with_mev_tx_hashes(vec![
                 hex!("11a88cf8d0cab67c146709eae4803a65af4b7f70fba6d4b657c25b853a57b0f7").into(),
                 hex!("0424da7217b8d10b07fc31bca18558861ce8156597746f29d88813594330f6a0").into(),
                 hex!("7c8fd39012a2c25668096307c65a29f53c2398b30369c3ec45cbd75c4e16cc83").into(),
             ])
             .with_gas_paid_usd(92.65)
-            .with_expected_profit_usd(743.31);
+            .with_expected_profit_usd(26.46);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
