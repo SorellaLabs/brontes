@@ -71,17 +71,51 @@ pub struct ClickhouseVecNormalizedMintOrBurn {
 impl fmt::Display for NormalizedMint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let protocol = self.protocol.to_string().bold();
-        let mut mint_info = vec![];
+        let mint_info: Vec<_> = self.token.iter()
+            .zip(self.amount.iter())
+            .map(|(token, amount)| {
+                let token_symbol = token.inner.symbol.bold();
+                let amount_formatted = format!("{:.4}", amount.clone().to_float()).green();
+                format!("{} {}", amount_formatted, token_symbol)
+            })
+            .collect();
 
-        for (token, amount) in self.token.iter().zip(self.amount.iter()) {
-            let token_symbol = token.inner.symbol.bold();
-            let amount_formatted = format!("{:.4}", amount.clone().to_float()).green();
-            mint_info.push(format!("{} {}", amount_formatted, token_symbol));
-        }
-
-        write!(f, "Add [{}] Liquidity on {}", mint_info.join(", "), protocol)
+        write!(f, "Added [{}] Liquidity on {}", mint_info.join(", "), protocol)
     }
 }
+
+impl fmt::Display for NormalizedBurn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let protocol = self.protocol.to_string().bold();
+        let mint_info: Vec<_> = self.token.iter()
+            .zip(self.amount.iter())
+            .map(|(token, amount)| {
+                let token_symbol = token.inner.symbol.bold();
+                let amount_formatted = format!("{:.4}", amount.clone().to_float()).red();
+                format!("{} {}", amount_formatted, token_symbol)
+            })
+            .collect();
+
+        write!(f, "Removed [{}] Liquidity on {}", mint_info.join(", "), protocol)
+    }
+}
+
+impl fmt::Display for NormalizedCollect {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let protocol = self.protocol.to_string().bold();
+        let mint_info: Vec<_> = self.token.iter()
+            .zip(self.amount.iter())
+            .map(|(token, amount)| {
+                let token_symbol = token.inner.symbol.bold();
+                let amount_formatted = format!("{:.4}", amount.clone().to_float()).green();
+                format!("{} {}", amount_formatted, token_symbol)
+            })
+            .collect();
+
+        write!(f, "Collect [{}] Fees on {}", mint_info.join(", "), protocol)
+    }
+}
+
 
 impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
     fn from(_value: Vec<NormalizedMint>) -> Self {

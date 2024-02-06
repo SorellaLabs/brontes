@@ -1,5 +1,6 @@
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 
+use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::Address;
@@ -32,6 +33,27 @@ pub struct NormalizedLiquidation {
     pub debt_asset:            TokenInfoWithAddress,
     pub covered_debt:          Rational,
     pub liquidated_collateral: Rational,
+}
+
+impl fmt::Display for NormalizedLiquidation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let protocol = self.protocol.to_string().bold();
+        let pool_address = format!("{}", self.pool).cyan();
+        let liquidator_address = format!("{}", self.liquidator).cyan();
+        let debtor_address = format!("{}", self.debtor).cyan();
+        let collateral_asset_symbol = self.collateral_asset.inner.symbol.bold();
+        let debt_asset_symbol = self.debt_asset.inner.symbol.bold();
+        let covered_debt_formatted = format!("{:.4}", self.covered_debt).green();
+        let liquidated_collateral_formatted = format!("{:.4}", self.liquidated_collateral).red();
+
+        // TODO
+        write!(
+            f,
+            "Protocol {} - Pool: {}, Liquidator: {}, Debtor: {}, Collateral: {}, Debt: {}, Covered Debt: {}, Liquidated Collateral: {}",
+            protocol, pool_address, liquidator_address, debtor_address,
+            collateral_asset_symbol, debt_asset_symbol, covered_debt_formatted, liquidated_collateral_formatted
+        )
+    }
 }
 
 impl NormalizedLiquidation {
