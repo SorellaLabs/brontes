@@ -44,13 +44,11 @@ jobs:
 
     # init server args
       - name: Init ssh config
-        shell: bash
         run: 
           mkdir ~/.ssh/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config && 
           echo ${{ secrets.BASTION_SSH }} > ~/.ssh/bastion && chmod 600 ~/.ssh/bastion && echo ${{ secrets.BRONTES_SSH }} > ~/.ssh/brontes_server && chmod 600 ~/.ssh/brontes_server
 
       - name: cargo test
-        shell: bash
         run: 
           ssh brontes_server -o StrictHostKeyChecking=no -tt "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
 
