@@ -3,10 +3,7 @@ use std::{hash::Hash, str::FromStr};
 use alloy_primitives::{hex, Address, Bytes, FixedBytes, Uint};
 use derive_more::{Deref, DerefMut, From, Index, IndexMut, IntoIterator};
 use redefined::{redefined_remote, Redefined, RedefinedConvert};
-use rkyv::{
-    ser::Serializer as rSerializer, Archive, Deserialize as rDeserialize, Fallible,
-    Serialize as rSerialize, SerializeUnsized,
-};
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 // Uint
@@ -60,6 +57,7 @@ redefined_remote!(
 
 pub type TxHashRedefined = FixedBytesRedefined<32>;
 pub type B256Redefined = FixedBytesRedefined<32>;
+pub type BlsPublicKeyRedefined = FixedBytesRedefined<48>;
 
 impl<const N: usize> Serialize for FixedBytesRedefined<N> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

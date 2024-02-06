@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
-    db::metadata::MetadataCombined,
+    db::metadata::Metadata,
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -13,7 +13,7 @@ use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingM
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
-    metadata:                Arc<MetadataCombined>,
+    metadata:                Arc<Metadata>,
     cumulative_gas_used:     u128,
     cumulative_priority_fee: u128,
     total_bribe:             u128,
@@ -28,7 +28,7 @@ pub struct BlockPreprocessing {
 /// `BlockPreprocessing` struct.
 pub(crate) fn pre_process(
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
 ) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
 
@@ -60,7 +60,7 @@ pub(crate) fn pre_process(
 
 //TODO: Clean up & fix
 pub(crate) fn build_mev_header(
-    metadata: Arc<MetadataCombined>,
+    metadata: Arc<Metadata>,
     tree: Arc<BlockTree<Actions>>,
     pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,
@@ -166,7 +166,7 @@ pub fn filter_and_count_bundles(
         let filtered_bundles: Vec<Bundle> = bundles
             .into_iter()
             .filter(|bundle| {
-                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::Backrun) {
+                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::AtomicArb) {
                     bundle.header.profit_usd > 0.0
                 } else {
                     true
@@ -195,7 +195,7 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
         MevType::CexDex => mev_count.cex_dex_count = Some(count),
         MevType::Jit => mev_count.jit_count = Some(count),
         MevType::JitSandwich => mev_count.jit_sandwich_count = Some(count),
-        MevType::Backrun => mev_count.atomic_backrun_count = Some(count),
+        MevType::AtomicArb => mev_count.atomic_backrun_count = Some(count),
         MevType::Liquidation => mev_count.liquidation_count = Some(count),
         MevType::Unknown => (),
     }

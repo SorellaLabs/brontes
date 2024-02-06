@@ -22,7 +22,7 @@
 //!     async fn process_tree(
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
-//!         metadata: Arc<MetadataCombined>,
+//!         metadata: Arc<Metadata>,
 //!     ) -> Vec<Bundle>;
 //! }
 //! ```
@@ -98,10 +98,10 @@ pub mod test_utils;
 use std::sync::Arc;
 
 use alloy_primitives::Address;
-use atomic_backrun::AtomicBackrunInspector;
+use atomic_backrun::AtomicArbInspector;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::MetadataCombined},
+    db::{cex::CexExchange, metadata::Metadata},
     mev::{Bundle, BundleData},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -117,7 +117,7 @@ pub trait Inspector: Send + Sync {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<MetadataCombined>,
+        metadata: Arc<Metadata>,
     ) -> Vec<Bundle>;
 }
 
@@ -125,7 +125,7 @@ pub trait Inspector: Send + Sync {
     Debug, PartialEq, Clone, Copy, Eq, Hash, strum::Display, strum::EnumString, strum::EnumIter,
 )]
 pub enum Inspectors {
-    AtomicBackrun,
+    AtomicArb,
     CexDex,
     Jit,
     Liquidations,
@@ -141,8 +141,8 @@ impl Inspectors {
         cex_exchanges: &Vec<CexExchange>,
     ) -> &'static Box<dyn Inspector> {
         match &self {
-            Self::AtomicBackrun => {
-                static_object(Box::new(AtomicBackrunInspector::new(quote_token, db))
+            Self::AtomicArb => {
+                static_object(Box::new(AtomicArbInspector::new(quote_token, db))
                     as Box<dyn Inspector + 'static>)
             }
             Self::Jit => static_object(

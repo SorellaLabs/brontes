@@ -21,9 +21,15 @@ pub struct TokenInfoWithAddressToml {
 fn insert_manually_defined_classifiers() {
     // don't run on local
     let _ = dotenv::dotenv();
-    let Ok(brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
 
-    let Ok(libmdbx) = LibmdbxReadWriter::init_db(brontes_db_endpoint, None) else { return };
+    let Ok(prod_brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
+    let Ok(test_brontes_db_endpoint) = env::var("BRONTES_TEST_DB_PATH") else { return };
+    let Ok(prod_libmdbx) = LibmdbxReadWriter::init_db(prod_brontes_db_endpoint, None) else {
+        return
+    };
+    let Ok(test_libmdbx) = LibmdbxReadWriter::init_db(test_brontes_db_endpoint, None) else {
+        return
+    };
 
     let mut workspace_dir = workspace_dir();
     workspace_dir.push(CONFIG_FILE_NAME);
@@ -45,7 +51,10 @@ fn insert_manually_defined_classifiers() {
                 .unwrap_or(vec![]);
 
             for t_info in &table {
-                libmdbx
+                prod_libmdbx
+                    .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
+                    .unwrap();
+                test_libmdbx
                     .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
                     .unwrap();
             }
@@ -56,7 +65,10 @@ fn insert_manually_defined_classifiers() {
                 [table[0].address, table[1].address]
             };
 
-            libmdbx
+            prod_libmdbx
+                .insert_pool(init_block, token_addr, token_addrs, protocol)
+                .unwrap();
+            test_libmdbx
                 .insert_pool(init_block, token_addr, token_addrs, protocol)
                 .unwrap();
         }
