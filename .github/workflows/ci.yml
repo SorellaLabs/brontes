@@ -40,9 +40,9 @@ jobs:
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/ 
-          echo ${{ secrets.BASTION_SSH }} > ~/.ssh/bastion 
+          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion 
           chmod 600 ~/.ssh/bastion 
-          echo ${{ secrets.BRONTES_SSH }} > ~/.ssh/brontes_server 
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server 
           chmod 600 ~/.ssh/brontes_server
           # add config file
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config 
