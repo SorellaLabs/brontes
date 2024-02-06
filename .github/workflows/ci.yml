@@ -32,7 +32,7 @@ jobs:
         run: cargo +nightly build 
 
       - name: cargo fmt
-        run: cargo +nightly fmt --all -- --check
+        run: cargo +nightly clippy -- -D clippy::all && cargo +nightly fmt --all -- --check 
   test: 
     runs-on: ubuntu-latest
     steps:
@@ -48,5 +48,5 @@ jobs:
 
       - name: cargo test
         run: 
-          ssh brontes_server -tt "cd /home/shared/brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'git pull && git checkout ${GITHUB_REF##*/} && git pull && cargo test'" 
 

@@ -262,39 +262,37 @@ impl<'a> LogData<'a> {
                             log_res.#log_field_name = Some(repeating_results);
                     )
                 }
-            } else {
-                if *ignore_before {
-                    let next_log = log_names.get(enum_i + 1);
-                    self.parse_ignore_before(
-                        next_log,
-                        log_name,
-                        indexes,
-                        quote!(
-                        log_res.#log_field_name = Some(decoded_result);
-                        ),
-                    )
-                } else {
+            } else if *ignore_before {
+                let next_log = log_names.get(enum_i + 1);
+                self.parse_ignore_before(
+                    next_log,
+                    log_name,
+                    indexes,
                     quote!(
-                    'possible: {
-                            if let Some(log) = &logs.get(#indexes + repeating_modifier) {
-                                if let Some(decoded) = <#mod_path::#log_name
-                                    as ::alloy_sol_types::SolEvent>
-                                    ::decode_log_data(&log.data, false).ok() {
-                                        log_res.#log_field_name = Some(decoded);
-                                        break 'possible
-                                }
-                                else {
-                                    ::tracing::error!(?from_address,
-                                                      ?target_address,
-                                                      ?self,
-                                                      "decoding a default log failed, this should never occur,
-                                                      please make a issue if you come across this"
-                                    );
-                                }
+                    log_res.#log_field_name = Some(decoded_result);
+                    ),
+                )
+            } else {
+                quote!(
+                'possible: {
+                        if let Some(log) = &logs.get(#indexes + repeating_modifier) {
+                            if let Some(decoded) = <#mod_path::#log_name
+                                as ::alloy_sol_types::SolEvent>
+                                ::decode_log_data(&log.data, false).ok() {
+                                    log_res.#log_field_name = Some(decoded);
+                                    break 'possible
+                            }
+                            else {
+                                ::tracing::error!(?from_address,
+                                                  ?target_address,
+                                                  ?self,
+                                                  "decoding a default log failed, this should never occur,
+                                                  please make a issue if you come across this"
+                                );
                             }
                         }
-                    )
-                }
+                    }
+                )
             };
 
             stream.extend(res);
