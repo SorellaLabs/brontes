@@ -46,7 +46,7 @@ jobs:
       - name: Init ssh config
         shell: bash
         run: 
-          mkdir ~/.ssh/ && echo "Include ./config.d/*" > ~/.ssh/config && mkdir ~/.ssh/config.d/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config.d/ssh_config 
+          mkdir ~/.ssh/ && echo ${{ secrets.SSH_CONFIG }} > ~/.ssh/config && 
           echo ${{ secrets.BASTION_SSH }} > ~/.ssh/bastion && chmod 600 ~/.ssh/bastion && echo ${{ secrets.BRONTES_SSH }} > ~/.ssh/brontes_server && chmod 600 ~/.ssh/brontes_server
 
       - name: cargo test
