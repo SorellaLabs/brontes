@@ -5,6 +5,8 @@ use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use tracing::error;
+
+use crate::db::traits::LibmdbxReader;
 pub mod node;
 pub mod root;
 pub mod tx_info;
@@ -34,11 +36,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
-    pub fn get_tx_info(&self, tx_hash: B256) -> Option<TxInfo> {
+    pub fn get_tx_info<DB: LibmdbxReader>(&self, tx_hash: B256, database: &DB) -> Option<TxInfo> {
         self.tx_roots
             .par_iter()
             .find_any(|r| r.tx_hash == tx_hash)
-            .map(|root| root.get_tx_info(self.header.number))
+            .map(|root| root.get_tx_info(self.header.number, database))
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
