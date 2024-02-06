@@ -26,8 +26,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
 
         if logs.amount0In == U256::ZERO {
@@ -82,8 +82,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         let am0 = log_data.amount0.to_scaled_rational(t0_info.decimals);
         let am1 = log_data.amount1.to_scaled_rational(t1_info.decimals);
@@ -117,8 +117,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         let am0 = log_data.amount0.to_scaled_rational(t0_info.decimals);
         let am1 = log_data.amount1.to_scaled_rational(t1_info.decimals);

@@ -118,7 +118,7 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
                         tx_idx,
                         logs: logs.clone(),
                         action: res.clone()
-                    },
+                    }, //TODOD: Return Err details if classification fails
                     res)}).or_else(|| {
                         ::tracing::error!(
                             "classifier failed on function sig: {:?} for address: {:?}",

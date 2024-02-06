@@ -363,8 +363,8 @@ impl<V: NormalizedAction> Node<V> {
         true
     }
 
-    // will collect all elements of the operation that are specified.
-    // useful for fetching all transfers etc
+    /// Collects all actions that match the call closure. This is useful for
+    /// fetching all actions that match a certain criteria.
     pub fn collect<F, T, R>(&self, results: &mut Vec<R>, call: &F, wanted_data: &T)
     where
         F: Fn(&Node<V>) -> TreeSearchArgs,

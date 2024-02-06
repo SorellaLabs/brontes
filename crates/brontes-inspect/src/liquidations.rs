@@ -44,7 +44,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         liq_txs
             .into_par_iter()
             .filter_map(|(tx_hash, liq)| {
-                let info = tree.get_tx_info(tx_hash)?;
+                let info = tree.get_tx_info(tx_hash, self.inner.db)?;
 
                 self.calculate_liquidation(info, metadata.clone(), liq)
             })
