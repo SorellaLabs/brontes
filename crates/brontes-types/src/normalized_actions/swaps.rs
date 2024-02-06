@@ -78,36 +78,21 @@ impl NormalizedSwap {
     }
 }
 
-// impl Display for NormalizedSwap {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         let amount_in = format!("{:.4}",self.amount_in.clone().to_float()).red();         
-//         let amount_out = format!("{:.4}", self.amount_out.clone().to_float()).green();         
-//         let token_in_symbol = self.token_in.symbol.clone();         
-//         let token_out_symbol = self.token_out.symbol.clone();         
-//         let protocol = self.protocol.to_string().bold();
-//         write!(f,"{}", token_in_symbol);
-//         write!(
-//             f,
-//             "Swap: {} {} → {} {} via {}",
-//             amount_in,
-//             token_in_symbol,
-//             amount_out,
-//             token_out_symbol,
-//             protocol
-//         )
-//     }
-// }
-
 impl Display for NormalizedSwap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let amount_in = format!("{:.4}",self.amount_in.clone().to_float()).red();         
+        let amount_out = format!("{:.4}", self.amount_out.clone().to_float()).green();         
+        let token_in_symbol = self.token_in.symbol.clone();         
+        let token_out_symbol = self.token_out.symbol.clone();         
+        let protocol: colored::ColoredString = self.protocol.to_string().bold();
         write!(
             f,
-            "   - {} {} for {} {} on {}",
-            self.amount_in.clone().to_float().to_string().red(),
-            self.token_in.symbol.bold(),
-            &self.amount_out.clone().to_float().to_string().green(),
-            self.token_out.symbol.bold(),
-            self.protocol.to_string().bold()
+            "Swap {} {} to {} {} via {}",
+            amount_in,
+            token_in_symbol,
+            amount_out,
+            token_out_symbol,
+            protocol
         )
     }
 }

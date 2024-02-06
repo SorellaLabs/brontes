@@ -37,11 +37,11 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     {
         writeln!(f, " - {}: {}", format!("Transaction {}", i + 1).bright_blue(), tx_hash)?;
         for (j, swap) in swaps.iter().enumerate() {
-            writeln!(f, "   {}: {}", format!("Swap {}", j + 1).green(), swap)?;
+            writeln!(f, "   {}: {}", format!(" - {}", j + 1).green(), swap)?;
         }
         if let Some(mint_list) = mints {
             for (j, mint) in mint_list.iter().enumerate() {
-                writeln!(f, "   {}: {:?}", format!("Mint {}", j + 1).green(), mint)?;
+                writeln!(f, "   {}: {:?}", format!(" - {}", j + 1).green(), mint)?;
             }
         }
         writeln!(f, " - {}:", "Gas Details".bright_blue())?;
@@ -61,7 +61,7 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
             writeln!(f, " - {}: {}", format!("Transaction {}", j + 1).bright_blue(), tx_hash)?;
         }
         for (j, swap) in swaps.iter().enumerate() {
-            writeln!(f, "   {}: {}", format!("Swap {}", j + 1).green(), swap)?;
+            writeln!(f, "   {}: {}", format!(" - {}", j + 1).green(), swap)?;
         }
         writeln!(f, " - {}:", "Gas Details".bright_blue())?;
         gas_details.pretty_print_with_spaces(8)
@@ -71,10 +71,10 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     writeln!(f, "\n{}\n", "Backrun Transaction".bright_yellow().underline())?;
     writeln!(f, " - {}: {}", "Tx Hash".bright_blue(), jit_sandwich_data.backrun_tx_hash)?;
     for (i, swap) in jit_sandwich_data.backrun_swaps.iter().enumerate() {
-        writeln!(f, "   {}: {}", format!("Swap {}", i + 1).green(), swap)?;
+        writeln!(f, "   {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
     for (i, burn) in jit_sandwich_data.backrun_burns.iter().enumerate() {
-        writeln!(f, "   {}: {:?}", format!("Burn {}", i + 1).green(), burn)?;
+        writeln!(f, "   {}: {:?}", format!(" - {}", i + 1).green(), burn)?;
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     jit_sandwich_data
@@ -135,7 +135,7 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     writeln!(f, "\n{}", "Atomic Backrun\n".bright_yellow().underline())?;
     writeln!(f, " - {}", "Swaps:".bright_blue())?;
     for (i, swap) in atomic_backrun_data.swaps.iter().enumerate() {
-        writeln!(f, "    {}: {}", format!("Swap {}", i + 1).green(), swap)?;
+        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     atomic_backrun_data.gas_details.pretty_print_with_spaces(8);
@@ -194,7 +194,7 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
     // Swaps Section
     writeln!(f, "\n{}\n", "Liquidation Swaps".bright_yellow().underline())?;
     for (i, swap) in liquidation_data.liquidation_swaps.iter().enumerate() {
-        writeln!(f, " - {}: {}", format!("Swap {}", i + 1).bright_blue(), swap)?;
+        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
 
     // Liquidations Section
@@ -258,7 +258,8 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     writeln!(f, " - {}: {}", "Mint Tx Hash".bright_blue(), jit_data.frontrun_mint_tx_hash)?;
     writeln!(f, " - {}", "Mints:".bright_blue())?;
     for (i, mint) in jit_data.frontrun_mints.iter().enumerate() {
-        writeln!(f, "    {}: {:?}", format!("Mint {}", i + 1).green(), mint)?;
+        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), mint)?;
+
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     jit_data
@@ -275,7 +276,7 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     {
         writeln!(f, " - {}: ", format!("Transaction {}", i + 1).bright_blue())?;
         for (j, swap) in swaps.iter().enumerate() {
-            writeln!(f, "    {}: {}", format!("Swap {}", j + 1).green(), swap)?;
+            writeln!(f, "    {}: {}", format!(" - {}", j + 1).green(), swap)?;
         }
         writeln!(f, "   - {}:", "Gas Details".bright_blue())?;
         gas_details.pretty_print_with_spaces(8);
@@ -286,7 +287,8 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     writeln!(f, " - {}: {}", "Burn Tx Hash".bright_blue(), jit_data.backrun_burn_tx_hash)?;
     writeln!(f, " - {}", "Burns:".bright_blue())?;
     for (i, burn) in jit_data.backrun_burns.iter().enumerate() {
-        writeln!(f, "    {}: {:?}", format!("Burn {}", i + 1).green(), burn)?;
+        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), burn)?;
+
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     jit_data
@@ -347,7 +349,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     {
         writeln!(f, " - {}: {}", format!("Transaction {}", i + 1).bright_blue(), tx_hash)?;
         for (j, swap) in swaps.iter().enumerate() {
-            writeln!(f, "   {}: {}", format!("Swap {}", j + 1).green(), swap)?;
+            writeln!(f, "    {}: {}", format!(" - {}", j + 1).green(), swap)?;
         }
         writeln!(f, " - {}:", "Gas Details".bright_blue())?;
         gas_details.pretty_print_with_spaces(8);
@@ -364,8 +366,8 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
         for (j, tx_hash) in tx_hashes.iter().enumerate() {
             writeln!(f, " - {}: {}", format!("Transaction {}", j + 1).bright_blue(), tx_hash)?;
         }
-        for (j, swap) in swaps.iter().enumerate() {
-            writeln!(f, "   {}: {}", format!("Swap {}", j + 1).green(), swap)?;
+        for (i, swap) in swaps.iter().enumerate() {
+            writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
         }
         writeln!(f, " - {}:", "Gas Details".bright_blue())?;
         gas_details.pretty_print_with_spaces(8);
@@ -375,7 +377,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     writeln!(f, "\n{}\n", "Backrun Transaction".bright_yellow().underline())?;
     writeln!(f, " - {}: {}", "Tx Hash".bright_blue(), sandwich_data.backrun_tx_hash)?;
     for (i, swap) in sandwich_data.backrun_swaps.iter().enumerate() {
-        writeln!(f, "   {}: {}", format!("Swap {}", i + 1).green(), swap)?;
+        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     sandwich_data
@@ -445,8 +447,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(f, "PnL: {}", cex_dex_data.pnl)?;
 
     for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
-        writeln!(f, "\nSwap {}: ", i + 1,)?;
-        writeln!(f, "{}", swap)?;
+        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
         if let Some(stat_arb_detail) = cex_dex_data.stat_arb_details.get(i) {
             writeln!(f, "{}", stat_arb_detail)?;
         } else {
