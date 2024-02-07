@@ -1,5 +1,7 @@
-use rayon::collections::hash_map;
+use redefined::self_convert_redefined;
+use serde::{Deserialize, Serialize};
 
+use crate::implement_table_value_codecs_with_zc;
 #[derive(
     Debug,
     Default,
@@ -63,12 +65,12 @@ impl InitializedStateMeta {
 
     #[inline(always)]
     pub fn has_dex_price(&self) -> bool {
-        self.0 >> 3 as bool
+        self.0 >> 3 == 1
     }
 
     #[inline(always)]
     pub fn should_ignore(&self) -> bool {
-        self.0 >> 4 as bool
+        self.0 >> 4 == 1
     }
 }
 

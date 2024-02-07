@@ -75,15 +75,14 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
 
-        let mut peek_cur = cur.peekable();
+        let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
         if peek_cur.peek().is_none() {
             return Ok(vec![start_block..=end_block])
         }
 
-        let mut fetch_blocks = Vec::new();
         let mut block_tracking = start_block;
 
-        for entry in peek_cur.walk_range(start_block..=end_block)? {
+        for entry in peek_cur {
             if let Ok(has_info) = entry {
 
 
@@ -92,6 +91,8 @@ impl LibmdbxReadWriter {
                 panic!("database is corrupted");
             }
         }
+
+        todo!()
     }
 
     #[cfg(not(feature = "local"))]
@@ -249,14 +250,6 @@ impl LibmdbxReadWriter {
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
-    fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>> {
-        todo!()
-    }
-
-    fn try_fetch_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
-        todo!()
-    }
-
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
         self.fetch_dex_quotes(block)
     }
@@ -559,24 +552,6 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
 
         Ok(self.0.write_table(&vec![table])?)
-    }
-}
-
-pub trait DbInitializer {
-    fn initializer<TP: TracingProvider>(
-        &self,
-        tp: Arc<TP>,
-        clickhouse: Arc<Clickhouse>,
-    ) -> LibmdbxInitializer<TP>;
-}
-
-impl DbInitializer for LibmdbxReadWriter {
-    fn initializer<TP: TracingProvider>(
-        &self,
-        tp: Arc<TP>,
-        clickhouse: Arc<Clickhouse>,
-    ) -> LibmdbxInitializer<TP> {
-        LibmdbxInitializer::new(self, clickhouse, tp)
     }
 }
 

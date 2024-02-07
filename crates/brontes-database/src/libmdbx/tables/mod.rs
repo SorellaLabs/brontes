@@ -588,7 +588,7 @@ compressed_table!(
         Data {
             key: u64,
             value: InitializedStateMeta,
-            compressed_value: InitializedStateMeta,
+            compressed_value: InitializedStateMeta
         },
         Init {
             init_size: None,
