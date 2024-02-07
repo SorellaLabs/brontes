@@ -225,6 +225,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 .libmdbx
                 .try_fetch_token_info(transfer.token.address)
                 .is_err()
+                || self
+                    .libmdbx
+                    .try_fetch_token_decimals(transfer.token.address)
+                    .is_err()
             {
                 load_missing_token_info(
                     &self.provider,
