@@ -44,13 +44,7 @@ impl ActionDispatch {
             impl crate::ActionCollection for #struct_name {
                 fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader> (
                     &self,
-                    index: u64,
-                    data: ::alloy_primitives::Bytes,
-                    return_data: ::alloy_primitives::Bytes,
-                    from_address: ::alloy_primitives::Address,
-                    target_address: ::alloy_primitives::Address,
-                    msg_sender: ::alloy_primitives::Address,
-                    logs: &Vec<::alloy_primitives::Log>,
+                    call_info: ::brontes_types::strctured_trace::CallFrameInfo<'_>,
                     db_tx: &DB,
                     block: u64,
                     tx_idx: u64,
@@ -102,26 +96,23 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
         match sig_w_byte {
         #(
             #var_name => {
+                let logs = call_info.logs().clone();
+                let target_address = call_info.target_address;
                  return crate::IntoAction::decode_trace_data(
                     &self.#var_idx,
-                    index,
-                    data,
-                    return_data,
-                    from_address,
-                    target_address,
-                    msg_sender,
-                    logs,
+                    call_info,
                     db_tx
                 ).map(|res| {
                     (::brontes_pricing::types::PoolUpdate {
                         block,
                         tx_idx,
-                        logs: logs.clone(),
+                        logs,
                         action: res.clone()
                     }, //TODOD: Return Err details if classification fails
                     res)}).or_else(|| {
                         ::tracing::error!(
-                            "classifier failed on function sig: {:?} for address: {:?}",
+                            "classifier: {:?} failed on function sig: {:?} for address: {:?}",
+                            #var_name,
                             ::malachite::strings::ToLowerHexString::to_lower_hex_string(
                                 &hex_selector
                             ),

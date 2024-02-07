@@ -18,7 +18,7 @@ impl ToTokens for ReturnData<'_> {
         let call_tokens = quote!(
                 let return_data = <#path
                     as alloy_sol_types::SolCall>
-                ::abi_decode_returns(&return_data, false).map_err(|e| {
+                ::abi_decode_returns(&call_info.return_data, false).map_err(|e| {
                     tracing::error!("return data failed to decode {:#?}", return_data);
                     e
                 }).ok()?;

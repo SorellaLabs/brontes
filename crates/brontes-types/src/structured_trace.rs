@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use alloy_primitives::{Address, Log};
+use alloy_primitives::{Address, Log, U256};
 use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT};
 pub trait TraceActions {
+    fn get_callframe_info(&self) -> CallFrameInfo<'_>;
     fn get_from_addr(&self) -> Address;
     fn get_to_address(&self) -> Address;
     fn get_msg_sender(&self) -> Address;
@@ -91,6 +92,19 @@ impl TraceActions for TransactionTraceWithLogs {
             _ => Bytes::default(),
         }
     }
+
+    fn get_callframe_info(&self) -> CallFrameInfo<'_> {
+        let a = CallFrameInfo {
+            trace_idx:      self.trace_idx,
+            call_data:      self.get_calldata(),
+            return_data:    self.get_return_calldata(),
+            target_address: self.get_to_address(),
+            from_address:   self.get_from_addr(),
+            logs:           &self.logs,
+            msg_sender:     self.msg_sender,
+            msg_value:      self.get_msg_value(),
+        };
+    }
 }
 
 #[derive(
@@ -116,6 +130,17 @@ pub struct DecodedParams {
 
 self_convert_redefined!(DecodedParams);
 
+pub struct CallFrameInfo<'a> {
+    pub trace_idx:      u64,
+    pub call_data:      Bytes,
+    pub return_data:    Bytes,
+    pub target_address: Address,
+    pub from_address:   Address,
+    pub logs:           &'a Vec<Log>,
+    pub msg_sender:     Address,
+    pub msg_value:      U256,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
@@ -128,6 +153,15 @@ pub struct TransactionTraceWithLogs {
 }
 
 impl TransactionTraceWithLogs {
+    pub fn get_msg_value(&self) -> U256 {
+        match self.trace.action {
+            Action::Call(c) => c.value,
+            Action::Create(c) => c.value,
+            Action::Reward(r) => r.value,
+            Action::Selfdestruct(s) => U256::ZERO,
+        }
+    }
+
     pub fn get_trace_address(&self) -> Vec<usize> {
         self.trace.trace_address.clone()
     }
