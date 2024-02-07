@@ -78,7 +78,7 @@ impl ActionMacro {
                     db_tx: &DB
                     ) -> ::eyre::Result<::brontes_types::normalized_actions::Actions> {
                     #call_data
-                    ::brontes_types::normalized_actions::Actions::#action_type(result)
+                    Ok(::brontes_types::normalized_actions::Actions::#action_type(result))
                 }
             }
         })
