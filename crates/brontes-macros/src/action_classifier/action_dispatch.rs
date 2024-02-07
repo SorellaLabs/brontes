@@ -53,10 +53,13 @@ impl ActionDispatch {
                         ::brontes_types::normalized_actions::Actions
                     )> {
 
-                    let protocol_byte = db_tx.get_protocol(call_info.target_address).ok()?.to_byte();
+                    let protocol_byte = db_tx.get_protocol(call_info.target_address)
+                        .ok()?.to_byte();
 
-                    let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&call_info.call_data[0..4]);
-                    let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&call_info.call_data[0..4]).0;
+                    let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
+                        &call_info.call_data[0..4]);
+                    let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(
+                        &call_info.call_data[0..4]).0;
 
                     let mut sig_w_byte= [0u8; 5];
                     sig_w_byte[0..4].copy_from_slice(&sig);
