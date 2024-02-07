@@ -102,14 +102,15 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
                     &self.#var_idx,
                     call_info,
                     db_tx
+                // map on error
                 ).map(|res| {
-                    (::brontes_pricing::types::PoolUpdate {
+                    Some((::brontes_pricing::types::PoolUpdate {
                         block,
                         tx_idx,
                         logs,
                         action: res.clone()
-                    }, //TODOD: Return Err details if classification fails
-                    res)}).unwrap_or_else(|e| {
+                    },
+                    res))}).unwrap_or_else(|e| {
                         ::tracing::error!(error=%e,
                             "classifier: {:?} failed on function sig: {:?} for address: {:?}",
                             #var_name,
@@ -118,8 +119,8 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
                             ),
                             target_address.0,
                         );
-                        Err(::eyre::eyre!("err"))
-                    }).ok()
+                        None
+                    })
             }
             )*
 

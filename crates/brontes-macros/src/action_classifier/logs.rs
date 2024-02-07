@@ -166,7 +166,7 @@ impl<'a> LogData<'a> {
             quote!(
              if <#mod_path::#next_log
                 as ::alloy_sol_types::SolEvent>
-                    ::decode_log_data(&call_info.logs.data, false).ok().is_some()
+                    ::decode_log_data(&log.data, false).ok().is_some()
                     && started {
                     break
                 }
