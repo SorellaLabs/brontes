@@ -11,7 +11,7 @@ use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
 use crate::{
-    db::metadata::Metadata,
+    db::{metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::{Actions, NormalizedAction},
     TreeSearchArgs, TxInfo,
 };
@@ -25,12 +25,20 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
-    pub fn get_tx_info(&self, block_number: u64) -> TxInfo {
+    pub fn get_tx_info<DB: LibmdbxReader>(&self, block_number: u64, database: &DB) -> TxInfo {
+        let to_address = self.head.data.get_action().get_to_address();
+
+        let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
+            Ok(Some(metadata)) => metadata.is_verified(),
+            Ok(None) => false,
+            Err(_) => false,
+        };
+
         TxInfo::new(
             block_number,
             self.position as u64,
             self.head.address,
-            self.head.data.get_action().get_to_address(),
+            to_address,
             self.tx_hash,
             self.gas_details,
             self.head.data.is_classified(),
@@ -39,6 +47,7 @@ impl<V: NormalizedAction> Root<V> {
                 Actions::Unclassified(data) if data.is_cex_dex_call()
             ),
             self.private,
+            is_verified_contract,
         )
     }
 

@@ -8,6 +8,7 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
+use reth_node_ethereum::EthEvmConfig;
 use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
@@ -37,15 +38,14 @@ use reth_transaction_pool::{
 };
 use revm::interpreter::InstructionResult;
 use revm_primitives::{ExecutionResult, SpecId};
-
 mod provider;
 
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
-    ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory>,
+    ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory<EthEvmConfig>>,
 >;
 
-pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork>;
+pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>;
 
 pub type RethTxPool = Pool<
     TransactionValidationTaskExecutor<EthTransactionValidator<Provider, EthPooledTransaction>>,
@@ -55,7 +55,7 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub api:   EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
     pub trace: TraceApi<Provider, RethApi>,
 }
 
@@ -68,7 +68,7 @@ impl TracingClient {
         let tree_externals = TreeExternals::new(
             provider_factory,
             Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
-            EvmProcessorFactory::new(chain.clone()),
+            EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
         );
 
         let tree_config = BlockchainTreeConfig::default();
@@ -87,6 +87,7 @@ impl TracingClient {
             provider.clone(),
             EthStateCacheConfig::default(),
             task_executor.clone(),
+            EthEvmConfig::default(),
         );
 
         let transaction_validator = EthTransactionValidatorBuilder::new(chain.clone())
@@ -101,7 +102,12 @@ impl TracingClient {
         let blocking = BlockingTaskPool::build().unwrap();
         let eth_state_config = EthStateCacheConfig::default();
         let fee_history = FeeHistoryCache::new(
-            EthStateCache::spawn_with(provider.clone(), eth_state_config, task_executor.clone()),
+            EthStateCache::spawn_with(
+                provider.clone(),
+                eth_state_config,
+                task_executor.clone(),
+                EthEvmConfig::default(),
+            ),
             FeeHistoryCacheConfig::default(),
         );
         // blocking task pool
@@ -120,6 +126,7 @@ impl TracingClient {
             Box::new(task_executor.clone()),
             blocking,
             fee_history,
+            EthEvmConfig::default(),
         );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
