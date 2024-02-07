@@ -16,18 +16,15 @@ pub fn try_decode_transfer<DB: LibmdbxReader>(
     from: Address,
     token: Address,
     db: &DB,
-) -> Option<NormalizedTransfer> {
-    let (from_addr, to_addr, amount) = transferCall::abi_decode(&calldata, false)
-        .ok()
+) -> eyre::Result<NormalizedTransfer> {
+    let (from_addr, to_addr, amount) = transferCall::abi_decode(&calldata, false)?
         .map(|t| Some((from, t._0, t._1)))
-        .unwrap_or_else(|| {
-            transferFromCall::abi_decode(&calldata, false)
-                .ok()
-                .map(|t| (t._0, t._1, t._2))
+        .unwrap_or_else(|_| {
+            transferFromCall::abi_decode(&calldata, false).map(|t| (t._0, t._1, t._2))
         })?;
     let token_info = db.try_fetch_token_info(token).ok()??;
 
-    Some(NormalizedTransfer {
+    Ok(NormalizedTransfer {
         amount:      amount.to_scaled_rational(token_info.decimals),
         token:       token_info,
         to:          to_addr,

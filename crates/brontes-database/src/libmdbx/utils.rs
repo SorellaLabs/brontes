@@ -25,32 +25,6 @@ pub mod pool_tokens {
     }
 }
 
-pub mod static_bindings {
-
-    use std::str::FromStr;
-
-    use brontes_pricing::Protocol;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-
-    pub fn serialize<S: Serializer>(u: &Protocol, serializer: S) -> Result<S::Ok, S::Error> {
-        let st: String = (*u).to_string();
-        st.serialize(serializer)
-    }
-
-    #[allow(dead_code)]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Protocol, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let address: Option<String> = Deserialize::deserialize(deserializer)?;
-
-        Ok(Protocol::from_str(&address.unwrap()).unwrap())
-    }
-}
-
 pub mod pools_libmdbx {
 
     use std::str::FromStr;

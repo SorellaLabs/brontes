@@ -25,12 +25,12 @@ action_impl!(
     db_tx: &DB| {
 
         // For the PSM, the token0 should always be set to DAI and token1 is the gem (USDC or USDP)
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address)?;
 
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         // The amount of gem token being bought
         let amount_out = call_data.gemAmt.to_scaled_rational(t1_info.decimals);
@@ -43,7 +43,7 @@ action_impl!(
         let amount_in = &amount_out + &amount_out * fee_amount;
 
 
-        Some(NormalizedSwap {
+        Ok(NormalizedSwap {
             protocol: Protocol::MakerPSM,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -72,11 +72,11 @@ action_impl!(
     log_data: MakerPSMsellGemCallLogs,
     db_tx: &DB| {
         // For the PSM, the token0 is DAI and token1 is the gem (USDC or USDP)
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address)?;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
 
         // The amount of gem asset being sold
@@ -91,7 +91,7 @@ action_impl!(
         let amount_out = &amount_in - (&amount_in * fee_amount);
 
 
-        Some(NormalizedSwap {
+        Ok(NormalizedSwap {
             protocol: Protocol::MakerPSM,
             trace_index: info.trace_idx,
             from: info.from_address,

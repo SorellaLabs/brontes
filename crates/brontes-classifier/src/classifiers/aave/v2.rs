@@ -18,13 +18,12 @@ action_impl!(
     info: CallInfo,
     call_data: liquidationCallCall,
     db_tx: &DB| {
-
-        let debt_info = db_tx.try_fetch_token_info(call_data.debtAsset).ok()??;
-        let collateral_info = db_tx.try_fetch_token_info(call_data.collateralAsset).ok()??;
+        let debt_info = db_tx.try_fetch_token_info(call_data.debtAsset)?;
+        let collateral_info = db_tx.try_fetch_token_info(call_data.collateralAsset)?;
 
         let covered_debt = call_data.debtToCover.to_scaled_rational(debt_info.decimals);
 
-        return Some(NormalizedLiquidation {
+        return Ok(NormalizedLiquidation {
             protocol: Protocol::AaveV2,
             trace_index: info.trace_idx,
             pool: info.target_address,
@@ -53,11 +52,11 @@ action_impl!(
             .iter()
             .zip(call_data.amounts.iter())
             .filter_map(|(asset, amount)| {
-                let token_info = db_tx.try_fetch_token_info(*asset).ok()??;
+                let token_info = db_tx.try_fetch_token_info(*asset).ok()?;
                 Some((amount.to_scaled_rational(token_info.decimals),token_info))
         }).unzip();
 
-        return Some(NormalizedFlashLoan {
+        return Ok(NormalizedFlashLoan {
             protocol: Protocol::AaveV2,
             trace_index: info.trace_idx,
             from: info.msg_sender,

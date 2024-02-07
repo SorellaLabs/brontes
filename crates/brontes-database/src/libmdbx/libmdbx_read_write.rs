@@ -233,9 +233,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
         Ok(tx.get::<TxTraces>(block_num)?.and_then(|i| i.traces))
     }
 
-    fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>> {
+    fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         let tx = self.0.ro_tx()?;
-        Ok(tx.get::<AddressToProtocol>(address)?)
+        tx.get::<AddressToProtocolInfo>(address)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
     }
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -279,16 +280,17 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>> {
+    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let tx = self.0.ro_tx()?;
-        Ok(tx
-            .get::<TokenDecimals>(address)?
-            .map(|inner| TokenInfoWithAddress { inner, address }))
+        tx.get::<TokenDecimals>(address)?
+            .map(|inner| TokenInfoWithAddress { inner, address })
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
     }
 
-    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<Option<SearcherInfo>> {
+    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
         let tx = self.0.ro_tx()?;
-        tx.get::<Searcher>(searcher_eoa).map_err(Into::into)
+        tx.get::<Searcher>(searcher_eoa)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", address))
     }
 
     fn protocols_created_before(
@@ -383,28 +385,25 @@ impl LibmdbxReader for LibmdbxReadWriter {
         last.ok_or_else(|| eyre::eyre!("no pair found"))
     }
 
-    fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>> {
-        Ok(self.0.ro_tx()?.get::<AddressToTokens>(address)?)
-    }
-
-    fn try_fetch_address_metadata(
-        &self,
-        address: Address,
-    ) -> eyre::Result<Option<AddressMetadata>> {
+    fn get_protocol_tokens(&self, address: Address) -> eyre::Result<PoolTokens> {
         self.0
             .ro_tx()?
-            .get::<AddressMeta>(address)
-            .map_err(Into::into)
+            .get::<AddressToTokens>(address)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in Address to tokens", address))
     }
 
-    fn try_fetch_builder_info(
-        &self,
-        builder_coinbase_addr: Address,
-    ) -> eyre::Result<Option<BuilderInfo>> {
+    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<AddressMetadata> {
         self.0
             .ro_tx()?
-            .get::<Builder>(builder_coinbase_addr)
-            .map_err(Into::into)
+            .get::<AddressMeta>(address)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in address metadata", address))
+    }
+
+    fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
+        self.0
+            .ro_tx()?
+            .get::<Builder>(builder_coinbase_addr)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in builder info", address))
     }
 }
 

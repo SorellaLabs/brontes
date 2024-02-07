@@ -7,7 +7,7 @@ use brontes_pricing::{Protocol, SubGraphsEntry};
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
-        address_to_tokens::{PoolTokens, PoolTokensRedefined},
+        address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
@@ -392,14 +392,13 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table AddressToTokens {
+    Table AddressToProtocolInfo{
         #[serde_as]
         Data {
             #[serde(with = "address_string")]
             key: Address,
-            #[serde(with = "pool_tokens")]
-            value: PoolTokens,
-            compressed_value: PoolTokensRedefined
+            value: ProtocolInfo,
+            compressed_value:ProtocolInfoRedefined
         },
         Init {
             init_size: None,
@@ -407,25 +406,6 @@ compressed_table!(
         },
         CLI {
             can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table AddressToProtocol {
-        #[serde_as]
-        Data {
-            #[serde(with = "address_string")]
-            key: Address,
-            #[serde(with = "static_bindings")]
-            value: Protocol
-        },
-        Init {
-            init_size: None,
-            init_method: Clickhouse
-        },
-        CLI {
-            can_insert: True
         }
     }
 );
