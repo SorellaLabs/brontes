@@ -113,7 +113,7 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
                     res))}).unwrap_or_else(|e| {
                         ::tracing::error!(error=%e,
                             "classifier: {:?} failed on function sig: {:?} for address: {:?}",
-                            #var_name,
+                            stringify!(#var_name),
                             ::malachite::strings::ToLowerHexString::to_lower_hex_string(
                                 &hex_selector
                             ),
