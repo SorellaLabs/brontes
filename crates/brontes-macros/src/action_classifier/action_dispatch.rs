@@ -53,10 +53,10 @@ impl ActionDispatch {
                         ::brontes_types::normalized_actions::Actions
                     )> {
 
-                    let protocol_byte = db_tx.get_protocol(target_address).ok()??.to_byte();
+                    let protocol_byte = db_tx.get_protocol(call_info.target_address).ok()?.to_byte();
 
-                    let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&data[0..4]);
-                    let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&data[0..4]).0;
+                    let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&call_info.call_data[0..4]);
+                    let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&call_info.call_data[0..4]).0;
 
                     let mut sig_w_byte= [0u8; 5];
                     sig_w_byte[0..4].copy_from_slice(&sig);
@@ -96,7 +96,7 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
         match sig_w_byte {
         #(
             #var_name => {
-                let logs = call_info.logs().clone();
+                let logs = call_info.logs.clone();
                 let target_address = call_info.target_address;
                  return crate::IntoAction::decode_trace_data(
                     &self.#var_idx,
@@ -125,6 +125,7 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
             )*
 
             _ => {
+            let target_address = call_info.target_address;
             ::tracing::debug!(
                 "no inspector for function selector: {:?} with contract address: {:?}",
                 ::malachite::strings::ToLowerHexString::to_lower_hex_string(
