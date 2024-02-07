@@ -27,7 +27,7 @@ jobs:
         shell: bash
 
       - run: cargo clippy --workspace --lib --examples --tests --benches --all-features
-      - env:
+        env:
           RUSTFLAGS: -D warnings
 
   build:
