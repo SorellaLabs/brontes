@@ -4,32 +4,59 @@ on:
       - main
   pull_request:
     branches: [ main ]
+
 name: CI
+
 jobs:
-  lint:
+  clippy:
+    name: "clippy"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.CI }}
+      - uses: dtolnay/rust-toolchain@clippy
+        with:
+          toolchain: nightly-2024-02-03
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
       - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
         shell: bash
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
 
-      - name: cargo build
-        run: cargo +nightly build 
+      - name: "clippy all"
+        run: cargo clippy --workspace --lib --examples --tests --benches --all-features
+        env:
+          RUSTFLAGS: -D warnings
 
-      - name: cargo fmt
-        run: cargo +nightly fmt --all -- --check
+  build:
+      name: "build and fmt"
+      runs-on: ubuntu-latest
+      timeout-minutes: 30
+      steps:
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@nightly
+          with:
+              toolchain: nightly-2024-02-03
+        - uses: Swatinem/rust-cache@v2
+          with:
+            cache-on-failure: true
+
+        # allow for downloads
+        - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+          shell: bash
+        - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+          shell: bash
+
+        - name: "build nightly"
+          run: cargo build --workspace --all-features
+          env:
+            RUSTFLAGS: -D warnings
+
+        - name: "cargo fmt"
+          run: cargo fmt --all --check
 

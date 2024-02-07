@@ -25,14 +25,7 @@ use crate::{
 #[cfg(test)]
 mod tests {
 
-    
-
-    
-    use sorella_db_databases::{
-        clickhouse::db::ClickhouseClient,
-    };
-
-    
+    use sorella_db_databases::clickhouse::db::ClickhouseClient;
 
     fn spawn_db() -> ClickhouseClient {
         ClickhouseClient::default()
