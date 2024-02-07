@@ -96,7 +96,7 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
         match sig_w_byte {
         #(
             #var_name => {
-                let logs = call_info.logs.clone();
+                let logs = call_info.logs.clone().to_vec();
                 let target_address = call_info.target_address;
                  return crate::IntoAction::decode_trace_data(
                     &self.#var_idx,
