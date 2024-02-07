@@ -519,7 +519,7 @@ pub mod test {
 
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
             collect_current_node:  node.data.is_liquidation(),
-            child_node_to_collect: false,
+            child_node_to_collect: node.subactions.iter().any(|action| action.is_liquidation()),
         };
 
         classifier_utils
