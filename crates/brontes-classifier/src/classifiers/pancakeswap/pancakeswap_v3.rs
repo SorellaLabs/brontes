@@ -1,4 +1,4 @@
-use alloy_primitives::{U256};
+use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},

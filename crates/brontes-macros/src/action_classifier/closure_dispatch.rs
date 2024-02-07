@@ -1,5 +1,5 @@
 use quote::{quote, ToTokens};
-use syn::{ExprClosure};
+use syn::ExprClosure;
 
 pub struct ClosureDispatch {
     logs:        bool,
