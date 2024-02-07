@@ -173,7 +173,7 @@ dependencies = [
 [[package]]
 name = "alloy-eips"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -184,7 +184,7 @@ dependencies = [
 [[package]]
 name = "alloy-genesis"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
@@ -206,7 +206,7 @@ dependencies = [
 [[package]]
 name = "alloy-json-rpc"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-primitives",
  "serde",
@@ -217,7 +217,7 @@ dependencies = [
 [[package]]
 name = "alloy-network"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-eips",
  "alloy-json-rpc",
@@ -256,7 +256,7 @@ dependencies = [
 [[package]]
 name = "alloy-providers"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-network",
  "alloy-primitives",
@@ -297,7 +297,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-client"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
@@ -314,7 +314,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-engine-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -327,7 +327,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-trace-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
@@ -338,7 +338,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -397,7 +397,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-json-rpc",
  "base64 0.21.7",
@@ -413,7 +413,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport-http"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#48f1c0fbf6e22f09c1b3f297955f5acea0b0f99d"
+source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
@@ -2174,7 +2174,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-table-macro"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#952bde1f46f9b13d920342a8390f1114a752ec57"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f5bff454f39cc04c75dc29c6767f89b0b4532d88"
 dependencies = [
  "dotenv",
  "proc-macro2",
@@ -8437,7 +8437,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#952bde1f46f9b13d920342a8390f1114a752ec57"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f5bff454f39cc04c75dc29c6767f89b0b4532d88"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -8469,7 +8469,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#952bde1f46f9b13d920342a8390f1114a752ec57"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f5bff454f39cc04c75dc29c6767f89b0b4532d88"
 dependencies = [
  "eyre",
  "futures",
@@ -8486,7 +8486,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#952bde1f46f9b13d920342a8390f1114a752ec57"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f5bff454f39cc04c75dc29c6767f89b0b4532d88"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8498,7 +8498,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#952bde1f46f9b13d920342a8390f1114a752ec57"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f5bff454f39cc04c75dc29c6767f89b0b4532d88"
 dependencies = [
  "serde",
  "serde_json",
@@ -8512,10 +8512,9 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#952bde1f46f9b13d920342a8390f1114a752ec57"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f5bff454f39cc04c75dc29c6767f89b0b4532d88"
 dependencies = [
  "alloy-primitives",
- "alloy-rpc-types",
  "async-trait",
  "binance",
  "chrono",
