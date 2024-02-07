@@ -39,7 +39,6 @@ pub async fn load_missing_token_infos<T: TracingProvider, W: LibmdbxWriter>(
     block: u64,
     missing: Vec<Address>,
 ) {
-    tracing::info!(?missing, "laoding missing token info");
     let mut pending_decimals = FuturesUnordered::new();
     missing
         .into_iter()
