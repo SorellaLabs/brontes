@@ -1,4 +1,4 @@
-use alloy_primitives::Address;
+
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedBatch, structured_trace::CallInfo};

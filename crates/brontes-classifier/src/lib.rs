@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use alloy_primitives::{Address, Bytes, Log};
+use alloy_primitives::{Address, Bytes};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
 use brontes_types::{structured_trace::CallFrameInfo, traits::TracingProvider};
