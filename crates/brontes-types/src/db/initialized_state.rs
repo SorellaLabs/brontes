@@ -33,22 +33,47 @@ impl InitializedStateMeta {
     ) -> Self {
         let mut this = 0u8;
         if should_skip {
-            this |= 0b00010000;
+            this |= 0b10000;
         }
         if has_dex_price {
-            this |= 0b00001000
+            this |= 0b1000
         }
         if has_traces {
-            this |= 0b00000100
+            this |= 0b100
         }
         if has_cex_price {
-            this |= 0b00000010
+            this |= 0b10
         }
         if has_meta {
-            this |= 0b00000001
+            this |= 0b1
         }
 
         Self(this)
+    }
+
+    #[inline(always)]
+    pub fn set_meta(&mut self) {
+        self.0 |= 0b1
+    }
+
+    #[inline(always)]
+    pub fn set_cex(&mut self) {
+        self.0 |= 0b10
+    }
+
+    #[inline(always)]
+    pub fn set_traces(&mut self) {
+        self.0 |= 0b100
+    }
+
+    #[inline(always)]
+    pub fn set_dex_price(&mut self) {
+        self.0 |= 0b1000
+    }
+
+    #[inline(always)]
+    pub fn set_skippable(&mut self) {
+        self.0 |= 0b10000
     }
 
     #[cfg(not(feature = "local"))]
