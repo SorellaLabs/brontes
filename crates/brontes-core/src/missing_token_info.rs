@@ -28,7 +28,6 @@ pub async fn load_missing_token_info<T: TracingProvider, W: LibmdbxWriter>(
     block: u64,
     missing_address: Address,
 ) {
-    tracing::info!(?missing_address, "laoding missing token info");
     let data = query_missing_data(provider, block, missing_address).await;
     on_decimal_query_resolution(db, data);
 }
