@@ -43,7 +43,7 @@ impl TraceArgs {
         let _clickhouse = static_object(Clickhouse::default());
 
         let tracer =
-            get_tracing_provider(&Path::new(&db_path), max_tasks, ctx.task_executor.clone());
+            get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
 
         let parser = static_object(DParser::new(
             metrics_tx,
