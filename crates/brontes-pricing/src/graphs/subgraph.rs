@@ -173,11 +173,11 @@ impl PairSubGraph {
         if let Some(edge) = self.graph.find_edge(n0, n1) {
             let weights = self.graph.edge_weight_mut(edge).unwrap();
             weights.retain(|e| e.pool_addr != pool_address);
-            weights.len() == 0
+            weights.is_empty()
         } else if let Some(edge) = self.graph.find_edge(n1, n0) {
             let weights = self.graph.edge_weight_mut(edge).unwrap();
             weights.retain(|e| e.pool_addr != pool_address);
-            weights.len() == 0
+            weights.is_empty()
         } else {
             false
         }
@@ -233,7 +233,7 @@ impl PairSubGraph {
                 return false
             }
 
-            let d0 = PoolPairInfoDirection { info: edge_info.clone(), token_0_in: true };
+            let d0 = PoolPairInfoDirection { info: edge_info, token_0_in: true };
             let d1 = PoolPairInfoDirection { info: edge_info, token_0_in: false };
 
             let new_edge0 = SubGraphEdge::new(d0, to_start, to_end);
@@ -289,7 +289,7 @@ impl PairSubGraph {
             let mut weight = Rational::ZERO;
 
             let node_weights = edge.weight();
-            if node_weights.len() == 0 {
+            if node_weights.is_empty() {
                 tracing::error!("found a node with no weight");
             }
 
@@ -339,7 +339,7 @@ impl PairSubGraph {
     }
 
     fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, HashSet<BadEdge>>) {
-        removal_state.into_iter().for_each(|(k, v)| {
+        removal_state.iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else {
                 tracing::error!("no token 0 in token to index");
                 return
@@ -356,7 +356,7 @@ impl PairSubGraph {
                 return
             };
 
-            let bad_edge_to_pool = v.into_iter().map(|edge| edge.pool_address).collect_vec();
+            let bad_edge_to_pool = v.iter().map(|edge| edge.pool_address).collect_vec();
 
             let mut weights = self.graph.remove_edge(e).unwrap();
             weights.retain(|node| !bad_edge_to_pool.contains(&node.pool_addr));
@@ -373,11 +373,11 @@ impl PairSubGraph {
         });
     }
 
-    fn next_edges_directed<'a>(
-        &'a self,
+    fn next_edges_directed(
+        &self,
         node: u16,
         outgoing: bool,
-    ) -> Edges<'a, Vec<SubGraphEdge>, Directed, u16> {
+    ) -> Edges<'_, Vec<SubGraphEdge>, Directed, u16> {
         if outgoing {
             self.graph.edges_directed(node.into(), Direction::Outgoing)
         } else {

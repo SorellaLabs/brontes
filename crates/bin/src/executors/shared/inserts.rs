@@ -22,7 +22,7 @@ pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
     let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
-    if let Err(e) = db.write_dex_quotes(metadata.block_num.clone(), metadata.dex_quotes.clone()) {
+    if let Err(e) = db.write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone()) {
         tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
     }
 
@@ -77,7 +77,7 @@ fn output_mev_and_update_searcher_info<DB: LibmdbxWriter + LibmdbxReader>(
         searcher_info.pnl += mev.header.profit_usd;
         searcher_info.total_bribed += mev.header.bribe_usd;
         if !searcher_info.mev.contains(&mev.header.mev_type) {
-            searcher_info.mev.push(mev.header.mev_type.clone());
+            searcher_info.mev.push(mev.header.mev_type);
         }
         searcher_info.last_active = block_number;
 

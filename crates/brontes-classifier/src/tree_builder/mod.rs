@@ -71,7 +71,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         tx_roots: Vec<TxTreeResult>,
         tree: &mut BlockTree<Actions>,
     ) -> Vec<Option<(usize, Vec<u64>)>> {
-        let further_classification_requests = tx_roots
+        tx_roots
             .into_iter()
             .map(|root_data| {
                 tree.insert_root(root_data.root);
@@ -80,9 +80,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 });
                 root_data.further_classification_requests
             })
-            .collect_vec();
-
-        further_classification_requests
+            .collect_vec()
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
@@ -285,17 +283,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Revert)
         }
         match trace.action_type() {
-            Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index).await,
+            Action::Call(_) => self.classify_call(block, tx_idx, trace, trace_index).await,
             Action::Create(_) => {
-                return self
-                    .classify_create(block, root_head, tx_idx, trace, trace_index)
+                self.classify_create(block, root_head, tx_idx, trace, trace_index)
                     .await
             }
             Action::Selfdestruct(sd) => {
-                return (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+                (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
             }
-            Action::Reward(_) => return (vec![], Actions::Unclassified(trace)),
-        };
+            Action::Reward(_) => (vec![], Actions::Unclassified(trace)),
+        }
     }
 
     async fn classify_call(
@@ -407,7 +404,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Unclassified(trace));
         };
 
-        return (
+        (
             DiscoveryProtocols::default()
                 .dispatch(self.provider.clone(), from_address, created_addr, calldata)
                 .await

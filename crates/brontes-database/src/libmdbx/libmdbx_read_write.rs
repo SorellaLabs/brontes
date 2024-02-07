@@ -117,7 +117,7 @@ impl LibmdbxReadWriter {
         );
         let (cex_pass, meta_pass) = (cex_pass?, meta_pass?);
 
-        return Ok(cex_pass && meta_pass)
+        Ok(cex_pass && meta_pass)
     }
 
     fn validate_range<T: CompressedTable>(
