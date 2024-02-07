@@ -518,7 +518,7 @@ pub mod test {
         });
 
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+            collect_current_node:  node.data.is_liquidation(),
             child_node_to_collect: false,
         };
 
