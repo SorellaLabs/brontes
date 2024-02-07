@@ -29,8 +29,8 @@ impl ActionDispatch {
             })
             .unzip();
 
-        let (i, name): (Vec<Index>, Vec<Ident>) = rest
-            .into_iter()
+        let (i, name): (Vec<Index>, Vec<&Ident>) = rest
+            .iter()
             .enumerate()
             .map(|(i, n)| (Index::from(i), n))
             .unzip();
