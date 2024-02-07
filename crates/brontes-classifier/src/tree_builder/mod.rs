@@ -220,26 +220,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             further_classification_requests.push(classification.get_trace_index());
         }
 
-        if let Actions::Transfer(transfer) = &classification {
-            if self
-                .libmdbx
-                .try_fetch_token_info(transfer.token.address)
-                .is_err()
-                || self
-                    .libmdbx
-                    .try_fetch_token_decimals(transfer.token.address)
-                    .is_err()
-            {
-                load_missing_token_info(
-                    &self.provider,
-                    self.libmdbx,
-                    block_number,
-                    transfer.token.address,
-                )
-                .await;
-            }
-        }
-
         // if we have a discovered pool, check if its new
         update.into_iter().for_each(|update| {
             match update {
@@ -332,7 +312,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 }
             },
             self.libmdbx,
-        ) {
+            &self.provider,
+            block,
+        )
+        .await
+        {
             // go through the log to look for descrepency of transfer amount
             for log in &trace.logs {
                 if let Some((addr, from, to, amount)) = decode_transfer(log) {
@@ -341,18 +325,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         continue
                     }
 
-                    let addr = if trace.is_delegate_call() {
-                        // if we got delegate, the actual token address
-                        // is the from addr (proxy) for pool swaps. without
-                        // this our math gets fucked
-                        trace.get_from_addr()
-                    } else {
-                        addr
-                    };
-
-                    if self.libmdbx.try_fetch_token_info(addr).is_err() {
-                        load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
-                    }
                     let decimals = transfer.token.decimals;
                     let log_am = amount.to_scaled_rational(decimals);
 
