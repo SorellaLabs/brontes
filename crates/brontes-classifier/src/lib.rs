@@ -1,9 +1,9 @@
 use std::{fmt::Debug, sync::Arc};
 
-use alloy_primitives::{Address, Bytes, Log};
+use alloy_primitives::{Address, Bytes};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
-use brontes_types::traits::TracingProvider;
+use brontes_types::{structured_trace::CallFrameInfo, traits::TracingProvider};
 use futures::Future;
 
 pub mod tree_builder;
@@ -49,13 +49,7 @@ sol! {
 pub trait ActionCollection: Sync + Send {
     fn dispatch<DB: LibmdbxReader>(
         &self,
-        trace_index: u64,
-        call_data: Bytes,
-        return_data: Bytes,
-        from_address: Address,
-        target_address: Address,
-        msg_sender: Address,
-        logs: &Vec<Log>,
+        call_info: CallFrameInfo<'_>,
         db_tx: &DB,
         block: u64,
         tx_idx: u64,
@@ -65,15 +59,9 @@ pub trait ActionCollection: Sync + Send {
 pub trait IntoAction: Debug + Send + Sync {
     fn decode_trace_data<DB: LibmdbxReader>(
         &self,
-        index: u64,
-        call_data: Bytes,
-        return_data: Bytes,
-        from_address: Address,
-        target_address: Address,
-        msg_sender: Address,
-        logs: &Vec<Log>,
+        call_info: CallFrameInfo<'_>,
         db_tx: &DB,
-    ) -> Option<Actions>;
+    ) -> eyre::Result<Actions>;
 }
 
 pub trait FactoryDecoder {

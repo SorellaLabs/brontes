@@ -43,7 +43,7 @@ pub struct BrontesRunConfig<T: TracingProvider> {
     pub quote_asset:      Address,
     pub with_dex_pricing: bool,
 
-    pub inspectors: &'static [&'static Box<dyn Inspector>],
+    pub inspectors: &'static [&'static dyn Inspector],
     pub clickhouse: Option<&'static Clickhouse>,
     pub parser:     &'static Parser<'static, T, DB>,
     pub libmdbx:    &'static LibmdbxReadWriter,
@@ -59,7 +59,7 @@ impl<T: TracingProvider> BrontesRunConfig {
         quote_asset: Address,
         with_dex_pricing: bool,
 
-        inspectors: &'static [&'static Box<dyn Inspector>],
+        inspectors: &'static [&'static dyn Inspector],
         clickhouse: Option<&'static Clickhouse>,
 
         parser: &'static Parser<'static, T, LibmdbxReadWriter>,
