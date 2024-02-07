@@ -19,13 +19,13 @@ action_impl!(
 
         let fill_event = logs_data.Fill_field;
 
-        Some(NormalizedBatch {
+        Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver: fill_event.filler,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Some(Vec::new()),
+            solver_swaps: Ok(Vec::new()),
         })
     }
 );
@@ -40,13 +40,13 @@ action_impl!(
     info: CallInfo,
     _call_data: executeBatchCall,
     _db_tx: &DB| {
-        Some(NormalizedBatch {
+        Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver: info.from_address,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Some(Vec::new()),
+            solver_swaps: Ok(Vec::new()),
         })
     }
 );
@@ -63,13 +63,13 @@ action_impl!(
     _call_data: executeBatchWithCallbackCall,
     _log_data: UniswapXexecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
-        Some(NormalizedBatch {
+        Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver: info.from_address,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Some(Vec::new()),
+            solver_swaps: Ok(Vec::new()),
         })
     }
 );
@@ -84,13 +84,13 @@ action_impl!(
     info: CallInfo,
     _call_data: executeWithCallbackCall,
     _db_tx: &DB| {
-        Some(NormalizedBatch {
+        Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver: info.from_address,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Some(Vec::new()),
+            solver_swaps: Ok(Vec::new()),
         })
     }
 );

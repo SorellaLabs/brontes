@@ -241,7 +241,8 @@ impl<'a> LogData<'a> {
                         let mut i = 0usize;
                             let mut started = false;
                             loop {
-                                if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier + i) {
+                                if let Some(log) = &call_info.logs.get(
+                                    #indexes + repeating_modifier + i) {
                                     if let Some(decoded) =
                                         <#mod_path::#log_name as
                                         ::alloy_sol_types::SolEvent>

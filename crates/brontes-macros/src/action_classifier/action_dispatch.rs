@@ -44,7 +44,7 @@ impl ActionDispatch {
             impl crate::ActionCollection for #struct_name {
                 fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader> (
                     &self,
-                    call_info: ::brontes_types::strctured_trace::CallFrameInfo<'_>,
+                    call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
                     db_tx: &DB,
                     block: u64,
                     tx_idx: u64,
@@ -109,8 +109,8 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
                         logs,
                         action: res.clone()
                     }, //TODOD: Return Err details if classification fails
-                    res)}).or_else(|| {
-                        ::tracing::error!(
+                    res)}).unwrap_or_else(|e| {
+                        ::tracing::error!(error=%e,
                             "classifier: {:?} failed on function sig: {:?} for address: {:?}",
                             #var_name,
                             ::malachite::strings::ToLowerHexString::to_lower_hex_string(
@@ -118,8 +118,8 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
                             ),
                             target_address.0,
                         );
-                        None
-                    })
+                        Err(::eyre::eyre!("err"))
+                    }).ok()
             }
             )*
 
