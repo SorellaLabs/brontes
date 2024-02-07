@@ -49,17 +49,17 @@ impl<'a> LogData<'a> {
             .log_config
             .into_iter()
             .enumerate()
-            .filter_map(|(i, LogConfig { can_repeat, log_ident, ignore_before })| {
+            .map(|(i, LogConfig { can_repeat, log_ident, ignore_before })| {
                 // is possible, need to increment count
 
                 let idx = if *ignore_before { Index::from(0) } else { Index::from(i) };
-                Some((
+                (
                     idx,
                     *can_repeat,
                     *ignore_before,
                     Ident::new(&(log_ident.to_string() + "_field"), Span::call_site()),
                     log_ident.clone(),
-                ))
+                )
             })
             .multiunzip();
 
@@ -263,39 +263,37 @@ impl<'a> LogData<'a> {
                             log_res.#log_field_name = Some(repeating_results);
                     )
                 }
-            } else {
-                if *ignore_before {
-                    let next_log = log_names.get(enum_i + 1);
-                    self.parse_ignore_before(
-                        next_log,
-                        log_name,
-                        indexes,
-                        quote!(
-                        log_res.#log_field_name = Some(decoded_result);
-                        ),
-                    )
-                } else {
+            } else if *ignore_before {
+                let next_log = log_names.get(enum_i + 1);
+                self.parse_ignore_before(
+                    next_log,
+                    log_name,
+                    indexes,
                     quote!(
-                    'possible: {
-                            if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier) {
-                                if let Some(decoded) = <#mod_path::#log_name
-                                    as ::alloy_sol_types::SolEvent>
-                                    ::decode_log_data(&log.data, false).ok() {
-                                        log_res.#log_field_name = Some(decoded);
-                                        break 'possible
-                                }
-                                else {
-                                    ::tracing::error!(?call_info.from_address,
-                                                      ?call_info.target_address,
-                                                      ?self,
-                                                      "decoding a default log failed, this should never occur,
-                                                      please make a issue if you come across this"
-                                    );
-                                }
+                    log_res.#log_field_name = Some(decoded_result);
+                    ),
+                )
+            } else {
+                quote!(
+                'possible: {
+                        if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier) {
+                            if let Some(decoded) = <#mod_path::#log_name
+                                as ::alloy_sol_types::SolEvent>
+                                ::decode_log_data(&log.data, false).ok() {
+                                    log_res.#log_field_name = Some(decoded);
+                                    break 'possible
+                            }
+                            else {
+                                ::tracing::error!(?call_info.from_address,
+                                                  ?call_info.target_address,
+                                                  ?self,
+                                                  "decoding a default log failed, this should never occur,
+                                                  please make a issue if you come across this"
+                                );
                             }
                         }
-                    )
-                }
+                    }
+                )
             };
 
             stream.extend(res);
