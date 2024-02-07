@@ -59,10 +59,8 @@ impl Init {
                     self.tables_to_init
                         .unwrap_or({
                             if self.download_dex_pricing {
-                                let tables = Tables::ALL.to_vec();
-                                //tables.retain(|table| table != &Tables::CexPrice);
-                                //println!("TABLES: {:?}", tables);
-                                tables
+                                //TODO: Joe add non dex price download behaviour
+                                Tables::ALL.to_vec()
                             } else {
                                 Tables::ALL.to_vec()
                             }

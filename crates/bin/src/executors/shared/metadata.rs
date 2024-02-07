@@ -57,7 +57,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
 
     fn clear_no_price_channel(&mut self) {
         if let Some(chan) = self.no_price_chan.as_mut() {
-            while let Ok(_) = chan.try_recv() {}
+            while chan.try_recv().is_ok() {}
         }
     }
 
@@ -119,6 +119,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataF
             return res
         }
 
-        return std::task::Poll::Pending
+        std::task::Poll::Pending
     }
 }
