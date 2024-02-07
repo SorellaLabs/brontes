@@ -13,6 +13,10 @@ use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
     inspectors::GasInspector,
+    revm::{
+        interpreter::InstructionResult,
+        primitives::{ExecutionResult, SpecId},
+    },
     tracing::{
         types::{CallKind, CallTraceNode},
         TracingInspectorConfig, *,
@@ -36,8 +40,6 @@ use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
-use revm::interpreter::InstructionResult;
-use revm_primitives::{ExecutionResult, SpecId};
 mod provider;
 
 pub type Provider = BlockchainProvider<

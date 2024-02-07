@@ -139,31 +139,20 @@ impl Inspectors {
         quote_token: Address,
         db: &'static LibmdbxReadWriter,
         cex_exchanges: &Vec<CexExchange>,
-    ) -> &'static Box<dyn Inspector> {
+    ) -> &'static dyn Inspector {
         match &self {
-            Self::AtomicArb => {
-                static_object(Box::new(AtomicArbInspector::new(quote_token, db))
-                    as Box<dyn Inspector + 'static>)
-            }
-            Self::Jit => static_object(
-                Box::new(JitInspector::new(quote_token, db)) as Box<dyn Inspector + 'static>
-            ),
-            Self::LongTail => {
-                static_object(Box::new(LongTailInspector::new(quote_token, db))
-                    as Box<dyn Inspector + 'static>)
-            }
-            Self::CexDex => {
-                static_object(Box::new(CexDexInspector::new(quote_token, db, cex_exchanges))
-                    as Box<dyn Inspector + 'static>)
-            }
-            Self::Sandwich => {
-                static_object(Box::new(SandwichInspector::new(quote_token, db))
-                    as Box<dyn Inspector + 'static>)
-            }
-            Self::Liquidations => {
-                static_object(Box::new(LiquidationInspector::new(quote_token, db))
-                    as Box<dyn Inspector + 'static>)
-            }
+            Self::AtomicArb => static_object(AtomicArbInspector::new(quote_token, db))
+                as &'static (dyn Inspector + 'static),
+            Self::Jit => static_object(JitInspector::new(quote_token, db))
+                as &'static (dyn Inspector + 'static),
+            Self::LongTail => static_object(LongTailInspector::new(quote_token, db))
+                as &'static (dyn Inspector + 'static),
+            Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
+                as &'static (dyn Inspector + 'static),
+            Self::Sandwich => static_object(SandwichInspector::new(quote_token, db))
+                as &'static (dyn Inspector + 'static),
+            Self::Liquidations => static_object(LiquidationInspector::new(quote_token, db))
+                as &'static (dyn Inspector + 'static),
         }
     }
 }
