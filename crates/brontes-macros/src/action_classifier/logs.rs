@@ -166,7 +166,7 @@ impl<'a> LogData<'a> {
             quote!(
              if <#mod_path::#next_log
                 as ::alloy_sol_types::SolEvent>
-                    ::decode_log_data(&log.data, false).ok().is_some()
+                    ::decode_log_data(&call_info.logs.data, false).ok().is_some()
                     && started {
                     break
                 }
@@ -179,7 +179,7 @@ impl<'a> LogData<'a> {
             let mut i = 0usize;
             let mut started = false;
             loop {
-                if let Some(log) = &logs.get(#index + repeating_modifier + i) {
+                if let Some(log) = &call_info.logs.get(#index + repeating_modifier + i) {
                     if let Some(decoded_result) = <#mod_path::#log_name
                         as ::alloy_sol_types::SolEvent>
                             ::decode_log_data(&log.data, false).ok() {
@@ -241,7 +241,7 @@ impl<'a> LogData<'a> {
                         let mut i = 0usize;
                             let mut started = false;
                             loop {
-                                if let Some(log) = &logs.get(#indexes + repeating_modifier + i) {
+                                if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier + i) {
                                     if let Some(decoded) =
                                         <#mod_path::#log_name as
                                         ::alloy_sol_types::SolEvent>
@@ -276,7 +276,7 @@ impl<'a> LogData<'a> {
                 } else {
                     quote!(
                     'possible: {
-                            if let Some(log) = &logs.get(#indexes + repeating_modifier) {
+                            if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier) {
                                 if let Some(decoded) = <#mod_path::#log_name
                                     as ::alloy_sol_types::SolEvent>
                                     ::decode_log_data(&log.data, false).ok() {

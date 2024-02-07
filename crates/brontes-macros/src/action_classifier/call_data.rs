@@ -17,7 +17,7 @@ impl ToTokens for CallData<'_> {
 
         let call_tokens = quote!(
             let call_data = <#path
-                as ::alloy_sol_types::SolCall>::abi_decode(&data[..], false).ok()?;
+                as ::alloy_sol_types::SolCall>::abi_decode(&call_info.call_data[..], false).ok()?;
         );
 
         tokens.extend(call_tokens);
