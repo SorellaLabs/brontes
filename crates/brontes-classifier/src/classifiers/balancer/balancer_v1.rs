@@ -19,12 +19,12 @@ action_impl!(
     call_data: swapExactAmountInCall,
     return_data: swapExactAmountInReturn,
     db_tx: &DB| {
-        let token_in = db_tx.try_fetch_token_info(call_data.tokenIn).ok()??;
-        let token_out = db_tx.try_fetch_token_info(call_data.tokenOut).ok()??;
+        let token_in = db_tx.try_fetch_token_info(call_data.tokenIn)?;
+        let token_out = db_tx.try_fetch_token_info(call_data.tokenOut)?;
         let amount_in = call_data.tokenAmountIn.to_scaled_rational(token_in.decimals);
         let amount_out = return_data.tokenAmountOut.to_scaled_rational(token_out.decimals);
 
-        Some(NormalizedSwap {
+        Ok(NormalizedSwap {
             protocol: Protocol::BalancerV1,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -50,12 +50,12 @@ action_impl!(
     call_data: swapExactAmountOutCall,
     return_data: swapExactAmountOutReturn,
     db_tx: &DB| {
-        let token_in = db_tx.try_fetch_token_info(call_data.tokenIn).ok()??;
-        let token_out = db_tx.try_fetch_token_info(call_data.tokenOut).ok()??;
+        let token_in = db_tx.try_fetch_token_info(call_data.tokenIn)?;
+        let token_out = db_tx.try_fetch_token_info(call_data.tokenOut)?;
         let amount_in = return_data.tokenAmountIn.to_scaled_rational(token_in.decimals);
         let amount_out = call_data.tokenAmountOut.to_scaled_rational(token_out.decimals);
 
-        Some(NormalizedSwap {
+        Ok(NormalizedSwap {
             protocol: Protocol::BalancerV1,
             trace_index: info.trace_idx,
             from: info.from_address,
