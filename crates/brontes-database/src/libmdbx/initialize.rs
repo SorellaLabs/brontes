@@ -20,14 +20,14 @@ const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
     libmdbx:    &'static LibmdbxReadWriter,
-    clickhouse: Arc<Clickhouse>,
+    clickhouse: &'static Clickhouse,
     tracer:     Arc<TP>,
 }
 
 impl<TP: TracingProvider> LibmdbxInitializer<TP> {
     pub fn new(
         libmdbx: &'static LibmdbxReadWriter,
-        clickhouse: Arc<Clickhouse>,
+        clickhouse: &'static Clickhouse,
         tracer: Arc<TP>,
     ) -> Self {
         Self { libmdbx, clickhouse, tracer }
@@ -122,7 +122,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
-            let clickhouse = self.clickhouse.clone();
+            let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
 
             async move {
