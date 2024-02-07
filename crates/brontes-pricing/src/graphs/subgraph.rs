@@ -680,11 +680,11 @@ pub mod test {
     }
 
     impl ProtocolState for MockPoolState {
-        fn price(&self, base: Address) -> Result<Rational, crate::errors::ArithmeticError> {
+        fn price(&self, _base: Address) -> Result<Rational, crate::errors::ArithmeticError> {
             Ok(self.price.clone())
         }
 
-        fn tvl(&self, base: Address) -> (Rational, Rational) {
+        fn tvl(&self, _base: Address) -> (Rational, Rational) {
             self.tvl.clone()
         }
     }
@@ -705,7 +705,7 @@ pub mod test {
             $(
                 let $var = Address::new(bytes);
                 bytes[19] += 1;
-            )*;
+            )*
         };
     }
 
@@ -727,8 +727,8 @@ pub mod test {
 
     #[test]
     fn test_dijkstra_pricing() {
-        addresses!(t0, t1, t2, t3, t4);
-        let mut graph = make_simple_graph();
+        addresses!(t0, t1, t2, t3, _t4);
+        let graph = make_simple_graph();
         let mut state_map = HashMap::new();
 
         // t1 / t0 == 10
