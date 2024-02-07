@@ -28,7 +28,7 @@ action_impl!(
             protocol: Protocol::BalancerV1,
             trace_index: info.trace_idx,
             from: info.from_address,
-            recipient: _msg_sender,
+            recipient: info.msg_sender,
             pool: info.target_address,
             token_in,
             token_out,
