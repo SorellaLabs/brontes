@@ -2,9 +2,11 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, Bytes};
 use alloy_sol_types::SolCall;
-use brontes_core::{missing_token_info::load_missing_token_info, LibmdbxWriter};
+use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
-    db::traits::LibmdbxReader, normalized_actions::NormalizedTransfer, traits::TracingProvider,
+    db::traits::{LibmdbxReader, LibmdbxWriter},
+    normalized_actions::NormalizedTransfer,
+    traits::TracingProvider,
     ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
