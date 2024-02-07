@@ -1,7 +1,7 @@
 [workspace]
 members = [
-  "crates/brontes-core",
   "crates/bin",
+  "crates/brontes-core",
   "crates/reth-tracing-ext",
   "crates/brontes-inspect",
   "crates/brontes-types",
@@ -150,6 +150,9 @@ num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 
+# revert to 2.1.0 as 2.1.1 was not building
+[patch.crates-io]
+ed25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek.git", rev = "f08bbb7" }
 
 [profile.dev]
 opt-level = 0           # No optimizations
