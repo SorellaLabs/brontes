@@ -1,5 +1,5 @@
 use quote::{quote, ToTokens};
-use syn::ExprClosure;
+use syn::{parse::Parse, ExprClosure, ReturnType};
 
 pub struct ClosureDispatch {
     logs:        bool,
@@ -32,14 +32,15 @@ impl ToTokens for ClosureDispatch {
 
         tokens.extend(quote!(
             let fixed_fields = call_info.get_fixed_fields();
-            let result = (#closure)
+            let result: ::eyre::Result<_> = (#closure)
             (
                 fixed_fields,
                 #call_data
                 #return_data
                 #log_data
                 db_tx
-            )?;
+            );
+            let result = result?;
         ))
     }
 }

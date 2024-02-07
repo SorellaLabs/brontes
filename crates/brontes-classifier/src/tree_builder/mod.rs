@@ -224,8 +224,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             if self
                 .libmdbx
                 .try_fetch_token_info(transfer.token.address)
-                .unwrap()
-                .is_none()
+                .is_err()
             {
                 load_missing_token_info(
                     &self.provider,
@@ -241,7 +240,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         update.into_iter().for_each(|update| {
             match update {
                 DexPriceMsg::DiscoveredPool(pool, block) => {
-                    if !self.contains_pool(pool.pool_address).unwrap() {
+                    if !self.contains_pool(pool.pool_address) {
                         self.pricing_update_sender
                             .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
                             .unwrap();
@@ -269,8 +268,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         classification
     }
 
-    fn contains_pool(&self, address: Address) -> eyre::Result<bool> {
-        Ok(self.libmdbx.get_protocol(address)?.is_some())
+    fn contains_pool(&self, address: Address) -> bool {
+        self.libmdbx.get_protocol(address).is_ok()
     }
 
     async fn classify_node(
@@ -314,7 +313,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
             return (vec![DexPriceMsg::Update(results.0)], results.1)
-        } else if let Some(mut transfer) = try_decode_transfer(
+        } else if let Ok(mut transfer) = try_decode_transfer(
             tx_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
@@ -347,7 +346,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         addr
                     };
 
-                    if self.libmdbx.try_fetch_token_info(addr).unwrap().is_none() {
+                    if self.libmdbx.try_fetch_token_info(addr).is_err() {
                         load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
                     }
                     let decimals = transfer.token.decimals;

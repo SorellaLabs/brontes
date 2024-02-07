@@ -12,6 +12,7 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
+    _call_data: executeCall,
     logs_data: UniswapXexecuteCallLogs,
     _db_tx: &DB| {
         //TODO: When the fill is a vec, iterate over to get each user order
@@ -25,7 +26,7 @@ action_impl!(
             solver: fill_event.filler,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Ok(Vec::new()),
+            solver_swaps: Some(Vec::new()),
         })
     }
 );
@@ -46,7 +47,7 @@ action_impl!(
             solver: info.from_address,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Ok(Vec::new()),
+            solver_swaps: Some(Vec::new()),
         })
     }
 );
@@ -69,7 +70,7 @@ action_impl!(
             solver: info.from_address,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Ok(Vec::new()),
+            solver_swaps: Some(Vec::new()),
         })
     }
 );
@@ -90,7 +91,7 @@ action_impl!(
             solver: info.from_address,
             settlement_contract: info.target_address,
             user_swaps: Vec::new(),
-            solver_swaps: Ok(Vec::new()),
+            solver_swaps: Some(Vec::new()),
         })
     }
 );
