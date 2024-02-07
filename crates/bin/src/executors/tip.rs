@@ -56,7 +56,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
             },
         }
 
-        while let Some(_) = tip.processing_futures.next().await {}
+        while (tip.processing_futures.next().await).is_some() {}
 
         drop(graceful_guard);
     }

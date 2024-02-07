@@ -54,7 +54,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
             return Some((trace, self.tracer.header_by_number(block_num).await.ok()??))
         }
 
-        return None
+        None
     }
 
     /// executes the tracing of a given block
