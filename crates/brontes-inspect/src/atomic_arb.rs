@@ -84,13 +84,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let profit = match possible_arb_type {
             AtomicArbType::LongTail => {
-                self.process_long_tail(info, metadata.clone(), &vec![actions])
+                self.process_long_tail(&info, metadata.clone(), &vec![actions])
             }
             AtomicArbType::Triangle => {
-                self.process_triangle_arb(info, metadata.clone(), &vec![actions])
+                self.process_triangle_arb(&info, metadata.clone(), &vec![actions])
             }
             AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_arb(
-                info,
+                &info,
                 metadata.clone(),
                 &swaps,
                 &vec![actions],
@@ -147,7 +147,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
     fn process_triangle_arb(
         &self,
-        tx_info: TxInfo,
+        tx_info: &TxInfo,
         metadata: Arc<Metadata>,
         searcher_actions: &Vec<Vec<Actions>>,
     ) -> Option<Rational> {
@@ -166,13 +166,18 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let is_profitable = profit > Rational::ZERO;
 
         if is_profitable {
-            Some(rev_usd - gas_used_usd)
+            Some(profit)
         } else {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
-            match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(_) => Some(profit),
-                Err(_) => {
+            if tx_info.is_searcher_of_type(MevType::AtomicArb) {
+                Some(profit)
+            } else {
+                // If the arb is not profitable, check if this is a know searcher or if the tx
+                // is private or coinbase.transfers to the builder
+                if tx_info.is_searcher_of_type(MevType::AtomicArb) {
+                    Some(profit)
+                } else {
                     if tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private {
                         Some(profit)
                     } else {
@@ -185,7 +190,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
     fn process_cross_pair_arb(
         &self,
-        tx_info: TxInfo,
+        tx_info: &TxInfo,
 
         metadata: Arc<Metadata>,
         swaps: &Vec<NormalizedSwap>,
@@ -213,14 +218,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         } else {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
-            match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(_) => Some(profit),
-                Err(_) => {
-                    if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
-                        Some(profit)
-                    } else {
-                        None
-                    }
+            if tx_info.is_searcher_of_type(MevType::AtomicArb) {
+                Some(profit)
+            } else {
+                if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
+                    Some(profit)
+                } else {
+                    None
                 }
             }
         }
@@ -228,7 +232,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
     fn process_long_tail(
         &self,
-        tx_info: TxInfo,
+        tx_info: &TxInfo,
         metadata: Arc<Metadata>,
         searcher_actions: &Vec<Vec<Actions>>,
     ) -> Option<Rational> {
