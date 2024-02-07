@@ -302,7 +302,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        trace_index: u64,
+        _trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
             return (vec![], Actions::Unclassified(trace))

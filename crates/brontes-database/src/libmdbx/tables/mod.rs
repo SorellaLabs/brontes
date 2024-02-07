@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use brontes_pricing::{Protocol, SubGraphsEntry};
+use brontes_pricing::{SubGraphsEntry};
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
