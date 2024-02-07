@@ -56,6 +56,7 @@ impl IntoIterator for ProtocolInfo {
 
 impl From<(Vec<String>, u64, String)> for ProtocolInfo {
     fn from(value: (Vec<String>, u64, String)) -> Self {
+        println!("VALUE: {:?}", value);
         let init_block = value.1;
         let protocol = Protocol::parse_string(value.2);
         let value = value.0;
