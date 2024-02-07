@@ -12,12 +12,13 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherInfo {
     #[redefined(same_fields)]
-    pub fund:        Option<Fund>,
-    pub pnl:         f64,
+    pub fund:         Option<Fund>,
+    pub pnl:          f64,
+    pub total_bribed: f64,
     #[redefined(same_fields)]
-    pub mev:         Vec<MevType>,
-    pub builder:     Option<BuilderInfo>,
-    pub last_active: u64,
+    pub mev:          Vec<MevType>,
+    pub builder:      Option<BuilderInfo>,
+    pub last_active:  u64,
 }
 
 implement_table_value_codecs_with_zc!(SearcherInfoRedefined);

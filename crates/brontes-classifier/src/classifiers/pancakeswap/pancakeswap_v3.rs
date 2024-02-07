@@ -27,8 +27,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
             (
@@ -77,8 +77,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
         let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
@@ -111,8 +111,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
         let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
@@ -147,8 +147,8 @@ action_impl!(
         let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
+        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
 
         let am0 = return_data.amount0.to_scaled_rational(t0_info.decimals);
         let am1 = return_data.amount1.to_scaled_rational(t1_info.decimals);

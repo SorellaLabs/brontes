@@ -4,7 +4,8 @@ use alloy_primitives::Address;
 
 use crate::{
     db::{
-        address_to_tokens::PoolTokens, dex::DexQuotes, metadata::Metadata,
+        address_metadata::AddressMetadata, address_to_tokens::PoolTokens, builder::BuilderInfo,
+        dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo,
         token_info::TokenInfoWithAddress,
     },
     pair::Pair,
@@ -15,14 +16,26 @@ use crate::{
 #[auto_impl::auto_impl(&)]
 pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata>;
+
+    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<Option<SearcherInfo>>;
+
+    fn try_fetch_builder_info(
+        &self,
+        builder_coinbase_addr: Address,
+    ) -> eyre::Result<Option<BuilderInfo>>;
+
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata>;
 
+    fn try_fetch_address_metadata(&self, address: Address)
+        -> eyre::Result<Option<AddressMetadata>>;
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes>;
 
-    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>>;
+    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>>;
 
-    fn try_get_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
-        Ok(self.try_get_token_info(address)?.map(|info| info.decimals))
+    fn try_fetch_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
+        Ok(self
+            .try_fetch_token_info(address)?
+            .map(|info| info.decimals))
     }
 
     fn protocols_created_before(

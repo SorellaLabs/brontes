@@ -20,8 +20,8 @@ action_impl!(
     call_data: liquidationCallCall,
     db_tx: &DB | {
 
-        let debt_info = db_tx.try_get_token_info(call_data.debtAsset).ok()??;
-        let collateral_info = db_tx.try_get_token_info(call_data.collateralAsset).ok()??;
+        let debt_info = db_tx.try_fetch_token_info(call_data.debtAsset).ok()??;
+        let collateral_info = db_tx.try_fetch_token_info(call_data.collateralAsset).ok()??;
 
         let covered_debt = call_data.debtToCover.to_scaled_rational(debt_info.decimals);
 
@@ -56,7 +56,7 @@ action_impl!(
             .iter()
             .zip(call_data.amounts.iter())
             .filter_map(|(asset, amount)| {
-                let token_info = db_tx.try_get_token_info(*asset).ok()??;
+                let token_info = db_tx.try_fetch_token_info(*asset).ok()??;
                 Some((amount.to_scaled_rational(token_info.decimals),token_info))
         }).unzip();
 
@@ -93,7 +93,7 @@ action_impl!(
     call_data: flashLoanSimpleCall,
     db_tx: &DB | {
 
-        let token_info = db_tx.try_get_token_info(call_data.asset).ok()??;
+        let token_info = db_tx.try_fetch_token_info(call_data.asset).ok()??;
         let amount = call_data.amount.to_scaled_rational(token_info.decimals);
 
         return Some(NormalizedFlashLoan {
