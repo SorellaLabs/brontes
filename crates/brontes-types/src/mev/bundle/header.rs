@@ -1,6 +1,6 @@
 use std::{
-    fmt,
-    fmt::{Debug, Display},
+    collections::HashMap,
+    fmt::{self, Debug, Display},
 };
 
 use alloy_primitives::Address;
@@ -100,24 +100,59 @@ impl TokenProfits {
 
 impl Display for TokenProfits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", "Token Profits:\n".bold().bright_green().underline())?;
+        writeln!(f, "{}", "Token Deltas:\n".bold().bright_white().underline())?;
 
+        let mut profits_by_collector: HashMap<Address, Vec<TokenProfit>> = HashMap::new();
         for profit in &self.profits {
-            writeln!(f, "{}", profit)?;
+            profits_by_collector
+                .entry(profit.profit_collector.clone())
+                .or_insert_with(Vec::new)
+                .push(profit.clone());
         }
+
+        for (collector, profits) in profits_by_collector {
+            writeln!(f, " - Address {}: ", collector.to_string().bright_white())?;
+            for profit in profits {
+                if profit.amount >= 0.0 {
+                    writeln!(
+                        f,
+                        "    Gained: {} {} (worth ${})",
+                        format!("{:.7}", profit.amount).to_string().green(),
+                        profit.token.inner.symbol.bold(),
+                        format!("{:.3}", profit.usd_value)
+                    )?;
+                } else {
+                    writeln!(
+                        f,
+                        "    Lost: {} {} (worth ${})",
+                        format!("{:.7}", profit.amount.abs()).to_string().red(),
+                        profit.token.inner.symbol.bold(),
+                        format!("{:.3}", profit.usd_value.abs())
+                    )?;
+                }
+            }
+        }
+
         Ok(())
     }
 }
 
 impl Display for TokenProfit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (profit_or_loss, amount_str, usd_value_str) = if self.amount < 0.0 {
+            ("lost", self.amount.to_string().red(), format!("$ {}", self.usd_value).red())
+        } else {
+            ("gained", self.amount.to_string().green(), format!("$ {}", self.usd_value).green())
+        };
+
         writeln!(
             f,
-            "Address: {} gained {} {} worth $ {}",
+            "Address: {} {} {} {} worth {}",
             self.profit_collector,
-            self.amount.to_string().green(),
+            profit_or_loss,
+            amount_str,
             self.token.symbol.bold(),
-            self.usd_value
+            usd_value_str
         )
     }
 }
