@@ -35,11 +35,9 @@ use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
 
-use super::{
-    initialize::LibmdbxInitializer, types::IntoTableKey, utils::static_bindings, CompressedTable,
-};
+use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 13;
+pub const NUM_TABLES: usize = 12;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -112,14 +110,9 @@ impl Tables {
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(clear_table)
                     .await
             }
-            Tables::AddressToTokens => {
+            Tables::AddressToProtocolInfo => {
                 initializer
-                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>(clear_table)
-                    .await
-            }
-            Tables::AddressToProtocol => {
-                initializer
-                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>(
+                    .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
                         clear_table,
                     )
                     .await
@@ -168,8 +161,7 @@ impl Tables {
 
 tables!(
     TokenDecimals,
-    AddressToTokens,
-    AddressToProtocol,
+    AddressToProtocolInfo,
     CexPrice,
     BlockInfo,
     DexPrice,

@@ -94,7 +94,7 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 
     fn get_callframe_info(&self) -> CallFrameInfo<'_> {
-        let a = CallFrameInfo {
+        CallFrameInfo {
             trace_idx:      self.trace_idx,
             call_data:      self.get_calldata(),
             return_data:    self.get_return_calldata(),
@@ -103,7 +103,7 @@ impl TraceActions for TransactionTraceWithLogs {
             logs:           &self.logs,
             msg_sender:     self.msg_sender,
             msg_value:      self.get_msg_value(),
-        };
+        }
     }
 }
 
@@ -174,11 +174,11 @@ pub struct TransactionTraceWithLogs {
 
 impl TransactionTraceWithLogs {
     pub fn get_msg_value(&self) -> U256 {
-        match self.trace.action {
+        match &self.trace.action {
             Action::Call(c) => c.value,
             Action::Create(c) => c.value,
             Action::Reward(r) => r.value,
-            Action::Selfdestruct(s) => U256::ZERO,
+            Action::Selfdestruct(_) => U256::ZERO,
         }
     }
 

@@ -1,30 +1,3 @@
-pub mod pool_tokens {
-
-    use brontes_types::db::address_to_tokens::PoolTokens;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-
-    pub fn serialize<S: Serializer>(u: &PoolTokens, serializer: S) -> Result<S::Ok, S::Error> {
-        u.clone()
-            .into_iter()
-            .map(|a| format!("{:?}", a))
-            .collect::<Vec<String>>()
-            .serialize(serializer)
-    }
-
-    #[allow(dead_code)]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<PoolTokens, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let addresses: (Vec<String>, u64) = Deserialize::deserialize(deserializer)?;
-
-        Ok(addresses.into())
-    }
-}
-
 pub mod pools_libmdbx {
 
     use std::str::FromStr;
