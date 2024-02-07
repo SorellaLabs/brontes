@@ -54,11 +54,11 @@ impl IntoIterator for ProtocolInfo {
     }
 }
 
-impl From<(Protocol, Vec<String>, u64)> for ProtocolInfo {
-    fn from(value: (Protocol, Vec<String>, u64)) -> Self {
-        let init_block = value.2;
-        let protocol = value.0;
-        let value = value.1;
+impl From<(Vec<String>, u64, Protocol)> for ProtocolInfo {
+    fn from(value: ( Vec<String>, u64, Protocol)) -> Self {
+        let init_block = value.1;
+        let protocol = value.2;
+        let value = value.0;
         let mut iter = value.into_iter();
         ProtocolInfo {
             protocol,
