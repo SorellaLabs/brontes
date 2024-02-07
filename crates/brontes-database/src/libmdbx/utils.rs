@@ -23,7 +23,6 @@ pub mod protocol_info {
         D: Deserializer<'de>,
     {
         let data: (Vec<String>, u64, String) = Deserialize::deserialize(deserializer)?;
-        println!("{data:?}");
         Ok(data.into())
     }
 }
