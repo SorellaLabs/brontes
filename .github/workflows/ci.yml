@@ -1,10 +1,11 @@
-name: CI
 on:
   push:
     branches:
       - main
   pull_request:
     branches: [ main ]
+
+name: CI
 
 jobs:
   clippy:
@@ -27,7 +28,8 @@ jobs:
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
 
-      - run: cargo clippy --workspace --lib --examples --tests --benches --all-features
+      - name: "clippy all"
+        run: cargo clippy --workspace --lib --examples --tests --benches --all-features
         env:
           RUSTFLAGS: -D warnings
 
@@ -50,7 +52,8 @@ jobs:
         - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
           shell: bash
 
-        - run: cargo +nightly build --workspace --all-features
+        - name: "build nightly"
+          run: cargo +nightly build --workspace --all-features
           env:
             RUSTFLAGS: -D warnings
 
@@ -71,5 +74,6 @@ jobs:
         - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
           shell: bash
 
-        - run: cargo fmt --all --check
+        - name: "cargo fmt"
+          run: cargo fmt --all --check
 
