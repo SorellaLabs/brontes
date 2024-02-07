@@ -9,15 +9,25 @@ use sorella_db_databases::{clickhouse, clickhouse::Row};
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
-    serde_utils::{addresss, option_addresss},
+    serde_utils::{addresss, option_addresss, static_bindings},
     Protocol,
 };
 
-#[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+#[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined, Hash)]
+#[redefined_attr(derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive,
+    Hash
+))]
 pub struct ProtocolInfo {
     #[serde(with = "static_bindings")]
-    protocol:       Protocol,
+    #[redefined(same_fields)]
+    pub protocol:   Protocol,
     #[serde(with = "addresss")]
     pub token0:     Address,
     #[serde(with = "addresss")]
@@ -47,10 +57,11 @@ impl IntoIterator for ProtocolInfo {
 impl From<(Protocol, Vec<String>, u64)> for ProtocolInfo {
     fn from(value: (Protocol, Vec<String>, u64)) -> Self {
         let init_block = value.2;
+        let protocol = value.0;
         let value = value.1;
         let mut iter = value.into_iter();
         ProtocolInfo {
-            protocol: value.0,
+            protocol,
             token0: Address::from_str(&iter.next().unwrap()).unwrap(),
             token1: Address::from_str(&iter.next().unwrap()).unwrap(),
             token2: iter.next().and_then(|a| Address::from_str(&a).ok()),

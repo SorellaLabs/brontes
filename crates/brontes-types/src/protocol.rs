@@ -1,4 +1,5 @@
 use redefined::self_convert_redefined;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::implement_table_value_codecs_with_zc;
@@ -43,9 +44,9 @@ to_byte!(
         Hash,
         Serialize,
         Deserialize,
-        rkyv::Serialize,
-        rkyv::Deserialize,
-        rkyv::Archive,
+        rSerialize,
+        rDeserialize,
+        Archive,
         strum::Display,
         strum::EnumString,
     )]
