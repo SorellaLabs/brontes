@@ -430,6 +430,7 @@ impl ClassifierTestUtils {
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
+        println!("{:#?}", root);
         let mut actions = root.collect(&tree_collect_fn);
         let action = actions.remove(action_number_in_tx);
 
