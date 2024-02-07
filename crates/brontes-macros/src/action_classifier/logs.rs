@@ -47,7 +47,7 @@ impl<'a> LogData<'a> {
             Vec<_>,
         ) = self
             .log_config
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(i, LogConfig { can_repeat, log_ident, ignore_before })| {
                 // is possible, need to increment count

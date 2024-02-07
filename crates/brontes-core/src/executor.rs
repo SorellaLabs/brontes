@@ -3,6 +3,7 @@ use tokio::{runtime::Runtime, task::JoinHandle};
 
 /// executes tasks on the runtime
 /// used for a thread pool for the simulator
+
 pub struct Executor {
     pub runtime: Runtime,
 }
@@ -72,4 +73,10 @@ impl Executor {
 pub enum TaskKind {
     Default,
     Blocking,
+}
+
+impl Default for Executor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
