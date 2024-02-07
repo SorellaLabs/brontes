@@ -1,7 +1,7 @@
 [workspace]
 members = [
-  "crates/brontes-core",
   "crates/bin",
+  "crates/brontes-core",
   "crates/reth-tracing-ext",
   "crates/brontes-inspect",
   "crates/brontes-types",
