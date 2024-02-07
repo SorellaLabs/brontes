@@ -30,7 +30,7 @@ action_impl!(
             debtor: call_data.user,
             collateral_asset: collateral_info,
             debt_asset: debt_info,
-            covered_debt: covered_debt,
+            covered_debt,
             // filled in later
             liquidated_collateral: Rational::ZERO,
         })

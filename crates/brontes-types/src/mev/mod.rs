@@ -25,12 +25,6 @@ use crate::{
 #[cfg(test)]
 mod tests {
 
-    use sorella_db_databases::clickhouse::db::ClickhouseClient;
-
-    fn spawn_db() -> ClickhouseClient {
-        ClickhouseClient::default()
-    }
-
     // #[tokio::test]
     // async fn test_db_mev_block() {
     //     let test_block = MevBlock::default();
