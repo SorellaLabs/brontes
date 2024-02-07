@@ -31,17 +31,16 @@ impl ToTokens for ClosureDispatch {
         let log_data = self.logs.then_some(quote!(log_data,)).unwrap_or_default();
 
         tokens.extend(quote!(
-            let result = (#closure)
+            let fixed_fields = call_info.get_fixed_fields();
+            let result: ::eyre::Result<_> = (#closure)
             (
-                index,
-                from_address,
-                target_address,
-                msg_sender,
+                fixed_fields,
                 #call_data
                 #return_data
                 #log_data
                 db_tx
-            )?;
+            );
+            let result = result?;
         ))
     }
 }
