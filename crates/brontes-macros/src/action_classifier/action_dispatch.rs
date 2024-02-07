@@ -91,7 +91,11 @@ impl Parse for ActionDispatch {
     }
 }
 
-fn expand_match_dispatch(reg_name: &[Ident],var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream {
+fn expand_match_dispatch(
+    reg_name: &[Ident],
+    var_name: &[Ident],
+    var_idx: Vec<Index>,
+) -> TokenStream {
     quote!(
         match sig_w_byte {
         #(
