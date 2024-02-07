@@ -25,7 +25,6 @@ pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + Libm
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
     pub fn new(
-        _quote_asset: Address,
         start_block: u64,
         end_block: u64,
         state_collector: StateCollector<T, DB>,
