@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::normalized_actions::NormalizedBatch;
+use brontes_types::{normalized_actions::NormalizedBatch, structured_trace::CallInfo};
 
 action_impl!(
     Protocol::UniswapX,
@@ -10,11 +10,8 @@ action_impl!(
     [..Fill],
     call_data: true,
     logs: true,
-    |trace_index,
-    _from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
-    _call_data: executeCall,
+    |
+    info: CallInfo,
     logs_data: UniswapXexecuteCallLogs,
     _db_tx: &DB| {
         //TODO: When the fill is a vec, iterate over to get each user order
@@ -24,9 +21,9 @@ action_impl!(
 
         Some(NormalizedBatch {
             protocol: Protocol::UniswapX,
-            trace_index,
+            trace_index: info.trace_idx,
             solver: fill_event.filler,
-            settlement_contract: target_address,
+            settlement_contract: info.target_address,
             user_swaps: Vec::new(),
             solver_swaps: Some(Vec::new()),
         })
@@ -39,17 +36,15 @@ action_impl!(
     Batch,
     [..Fill*],
     call_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     _call_data: executeBatchCall,
     _db_tx: &DB| {
         Some(NormalizedBatch {
             protocol: Protocol::UniswapX,
-            trace_index,
-            solver: from_address,
-            settlement_contract: target_address,
+            trace_index: info.trace_idx,
+            solver: info.from_address,
+            settlement_contract: info.target_address,
             user_swaps: Vec::new(),
             solver_swaps: Some(Vec::new()),
         })
@@ -63,18 +58,16 @@ action_impl!(
     [..Fill*],
     call_data: true,
     logs: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     _call_data: executeBatchWithCallbackCall,
     _log_data: UniswapXexecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
         Some(NormalizedBatch {
             protocol: Protocol::UniswapX,
-            trace_index,
-            solver: from_address,
-            settlement_contract: target_address,
+            trace_index: info.trace_idx,
+            solver: info.from_address,
+            settlement_contract: info.target_address,
             user_swaps: Vec::new(),
             solver_swaps: Some(Vec::new()),
         })
@@ -87,17 +80,15 @@ action_impl!(
     Batch,
     [..Fill],
     call_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     _call_data: executeWithCallbackCall,
     _db_tx: &DB| {
         Some(NormalizedBatch {
             protocol: Protocol::UniswapX,
-            trace_index,
-            solver: from_address,
-            settlement_contract: target_address,
+            trace_index: info.trace_idx,
+            solver: info.from_address,
+            settlement_contract: info.target_address,
             user_swaps: Vec::new(),
             solver_swaps: Some(Vec::new()),
         })

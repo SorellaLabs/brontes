@@ -3,6 +3,7 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
+    structured_trace::CallInfo,
     ToScaledRational,
 };
 
@@ -15,17 +16,15 @@ action_impl!(
     [Swap],
     call_data: true,
     return_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: swapCall,
     return_data: swapReturn,
     db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
@@ -49,10 +48,10 @@ action_impl!(
 
         Some(NormalizedSwap {
             protocol: Protocol::UniswapV3,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            pool: info.target_address,
             recipient,
-            pool: target_address,
             token_in,
             token_out,
             amount_in,
@@ -67,15 +66,13 @@ action_impl!(
     [Mint],
     return_data: true,
     call_data: true,
-    |trace_index,
-     from_address: Address,
-     target_address: Address,
-     _msg_sender: Address,
+     |
+     info: CallInfo,
      call_data: mintCall,
      return_data: mintReturn,  db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
@@ -86,10 +83,10 @@ action_impl!(
 
         Some(NormalizedMint {
             protocol: Protocol::UniswapV3,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.recipient,
-            to: target_address,
+            to: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -101,15 +98,13 @@ action_impl!(
     Burn,
     [Burn],
     return_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     return_data: burnReturn,
     db_tx: &DB| {
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
@@ -137,15 +132,12 @@ action_impl!(
     call_data: true,
     return_data: true,
     |
-    trace_index,
-    from_addr: Address,
-    to_addr: Address,
-    _msg_sender: Address,
+    info: CallInfo,
     call_data: collectCall,
     return_data: collectReturn,
     db_tx: &DB
     | {
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
@@ -156,10 +148,10 @@ action_impl!(
 
         Some(NormalizedCollect {
             protocol: Protocol::UniswapV3,
-            trace_index,
-            from: from_addr,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.recipient,
-            to: to_addr,
+            to: info.to_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })

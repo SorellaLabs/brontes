@@ -141,6 +141,26 @@ pub struct CallFrameInfo<'a> {
     pub msg_value:      U256,
 }
 
+pub struct CallInfo {
+    pub trace_idx:      u64,
+    pub target_address: Address,
+    pub from_address:   Address,
+    pub msg_sender:     Address,
+    pub msg_value:      U256,
+}
+
+impl CallFrameInfo<'_> {
+    pub fn get_fixed_fields(&self) -> CallInfo {
+        CallInfo {
+            trace_idx:      self.trace_idx,
+            target_address: self.target_address,
+            from_address:   self.from_address,
+            msg_sender:     self.msg_sender,
+            msg_value:      self.msg_value,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
     pub trace:        TransactionTrace,
