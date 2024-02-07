@@ -62,7 +62,7 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB
     }
 
     pub async fn get_block_hash_for_number(&self, block_num: u64) -> eyre::Result<Option<B256>> {
-        self.parser.tracer.block_hash_for_id(block_num.into()).await
+        self.parser.tracer.block_hash_for_id(block_num).await
     }
 
     /// executes the tracing of a given block
