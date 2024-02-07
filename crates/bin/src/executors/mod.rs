@@ -10,14 +10,17 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    LibmdbxReadWriter,
+};
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReader, LibmdbxWriter},
+    libmdbx::{DbInitializer, LibmdbxReader, LibmdbxWriter},
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
-use futures::{stream::FuturesUnordered, Future, StreamExt};
+use futures::{future, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::TaskExecutor;
@@ -32,10 +35,9 @@ use crate::cli::static_object;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    pub start_block: u64,
-    pub end_block:   Option<u64>,
-
+pub struct BrontesRunConfig<T: TracingProvider> {
+    pub start_block:      u64,
+    pub end_block:        Option<u64>,
     pub max_tasks:        u64,
     pub min_batch_size:   u64,
     pub quote_asset:      Address,
@@ -44,10 +46,10 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxReader + LibmdbxWrite
     pub inspectors: &'static [&'static Box<dyn Inspector>],
     pub clickhouse: Option<&'static Clickhouse>,
     pub parser:     &'static Parser<'static, T, DB>,
-    pub libmdbx:    &'static DB,
+    pub libmdbx:    &'static LibmdbxReadWriter,
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, DB> {
+impl<T: TracingProvider> BrontesRunConfig {
     pub fn new(
         start_block: u64,
         end_block: Option<u64>,
@@ -59,8 +61,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
 
         inspectors: &'static [&'static Box<dyn Inspector>],
         clickhouse: Option<&'static Clickhouse>,
-        parser: &'static Parser<'static, T, DB>,
-        libmdbx: &'static DB,
+
+        parser: &'static Parser<'static, T, LibmdbxReadWriter>,
+        libmdbx: &'static LibmdbxReadWriter,
     ) -> Self {
         Self {
             clickhouse,
@@ -76,50 +79,54 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
         }
     }
 
-    fn build_range_executors(
+    async fn build_range_executors(
         &self,
         executor: TaskExecutor,
         end_block: u64,
-    ) -> Vec<RangeExecutorWithPricing<T, DB>> {
+    ) -> Vec<RangeExecutorWithPricing<T, LibmdbxReadWriter>> {
         let mut executors = Vec::new();
 
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block;
-        let cpus_min = range / self.min_batch_size;
+        let cpus_min = range / self.min_batch_size + 1;
 
         let cpus = std::cmp::min(cpus_min, self.max_tasks);
         let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
-        for (batch_id, mut chunk) in (self.start_block..=end_block)
+
+        futures::stream::iter(self.start_block..=end_block)
             .chunks(chunk_size.try_into().unwrap())
-            .into_iter()
             .enumerate()
-        {
-            let start_block = chunk.next().unwrap();
-            let end_block = chunk.last().unwrap_or(start_block);
+            .map(|(id, chunk)| {
+                let start_block = chunk.next().unwrap();
+                let end_block = chunk.last().unwrap_or(start_block);
 
-            tracing::info!(batch_id, start_block, end_block, "starting batch");
+                tracing::info!(batch_id, start_block, end_block, "starting batch");
 
-            let state_collector = if self.with_dex_pricing {
-                self.state_collector_dex_price(executor.clone(), start_block, end_block)
-            } else {
-                self.state_collector_no_dex_price()
-            };
+                let state_collector = if self.with_dex_pricing {
+                    self.state_collector_dex_price(executor.clone(), start_block, end_block)
+                        .await
+                } else {
+                    self.state_collector_no_dex_price().await
+                };
 
-            executors.push(RangeExecutorWithPricing::new(
-                self.quote_asset,
-                start_block,
-                end_block,
-                state_collector,
-                self.libmdbx,
-                self.inspectors,
-            ));
-        }
-
-        executors
+                RangeExecutorWithPricing::new(
+                    start_block,
+                    end_block,
+                    state_collector,
+                    self.libmdbx,
+                    self.inspectors,
+                )
+            })
+            .collect::<Vec<_>>()
+            .await
     }
 
-    fn build_tip_inspector(&self, executor: TaskExecutor, start_block: u64) -> TipInspector<T, DB> {
+    fn build_tip_inspector(
+        &self,
+        executor: TaskExecutor,
+        start_block: u64,
+    ) -> TipInspector<T, LibmdbxReadWriter> {
         let state_collector = self.state_collector_dex_price(executor, start_block, start_block);
         TipInspector::new(
             start_block,
@@ -131,7 +138,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
         )
     }
 
-    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB> {
+    fn state_collector_no_dex_price(&self) -> StateCollector<T, LibmdbxReadWriter> {
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
 
@@ -145,12 +152,12 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
         )
     }
 
-    fn state_collector_dex_price(
+    async fn state_collector_dex_price(
         &self,
         executor: TaskExecutor,
         start_block: u64,
         end_block: u64,
-    ) -> StateCollector<T, DB> {
+    ) -> StateCollector<T, LibmdbxReadWriter> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
@@ -186,11 +193,29 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
 
+    pub async fn verify_database_fetch_missing(&self, block_number: u64) {
+        tracing::info!(start_block=%self.start_block, end_block=%block_number, "verifying db fetching state that is missing");
+        self.libmdbx
+    }
+
     pub async fn build(self, executor: TaskExecutor) -> Brontes {
         let futures = FuturesUnordered::new();
-        if let Some(end_block) = self.end_block {
+        let (had_end_block, end_block) = if let Some(end_block) = self.end_block {
+            (true, end_block)
+        } else {
+            #[cfg(not(feature = "local"))]
+            let chain_tip = self.parser.get_latest_block_number().unwrap();
+            #[cfg(feature = "local")]
+            let chain_tip = self.parser.get_latest_block_number().await.unwrap();
+            (false, chain_tip)
+        };
+
+        self.verify_database_fetch_missing(end_block).await;
+
+        if had_end_block {
             (&self)
                 .build_range_executors(executor.clone(), end_block)
+                .await
                 .into_iter()
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -201,13 +226,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
                     ));
                 });
         } else {
-            #[cfg(not(feature = "local"))]
-            let chain_tip = self.parser.get_latest_block_number().unwrap();
-            #[cfg(feature = "local")]
-            let chain_tip = self.parser.get_latest_block_number().await.unwrap();
-
             (&self)
-                .build_range_executors(executor.clone(), chain_tip)
+                .build_range_executors(executor.clone(), end_block)
+                .await
                 .into_iter()
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(

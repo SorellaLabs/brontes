@@ -11,6 +11,7 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
+        initialized_state::InitializedStateMeta,
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -602,6 +603,23 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table InitializedState {
+        Data {
+            key: u64,
+            value: InitializedStateMeta,
+            compressed_value: InitializedStateMeta,
+        },
+        Init {
+            init_size: None,
+            init_method: Other
         },
         CLI {
             can_insert: False
