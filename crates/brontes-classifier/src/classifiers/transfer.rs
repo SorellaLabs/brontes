@@ -25,7 +25,7 @@ pub fn try_decode_transfer<DB: LibmdbxReader>(
                 .ok()
                 .map(|t| (t._0, t._1, t._2))
         })?;
-    let token_info = db.try_get_token_info(token).ok()??;
+    let token_info = db.try_fetch_token_info(token).ok()??;
 
     Some(NormalizedTransfer {
         amount:      amount.to_scaled_rational(token_info.decimals),
