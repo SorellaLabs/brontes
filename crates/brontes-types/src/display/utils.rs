@@ -93,7 +93,6 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
 
     // Backrun Section
     writeln!(f, "\n{}\n", "Backrun Transaction".bright_yellow().underline())?;
-
     writeln!(
         f,
         " - {}: {}",
@@ -105,6 +104,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     for (i, swap) in sandwich_data.backrun_swaps.iter().enumerate() {
         writeln!(f, "        {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
+
     writeln!(f, "     - {}:", "Gas Details".bright_blue())?;
     sandwich_data
         .backrun_gas_details
@@ -240,6 +240,7 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     for (i, burn) in jit_sandwich_data.backrun_burns.iter().enumerate() {
         writeln!(f, "      {}: {}", format!(" - {}", i + no_of_swaps).green(), burn)?;
     }
+
     writeln!(f, "     - {}:", "Gas Details".bright_blue())?;
     jit_sandwich_data
         .backrun_gas_details
@@ -304,6 +305,7 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     for (i, swap) in atomic_backrun_data.swaps.iter().enumerate() {
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
     }
+
     writeln!(f, " - {}:", "Gas Details".bright_blue())?;
     atomic_backrun_data
         .gas_details
@@ -560,9 +562,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
     writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
-
-    let tx_url = format!("https://etherscan.io/tx/{:?}", bundle.header.tx_hash).underline();
-    writeln!(f, "   - Etherscan: {}", tx_url)?;
+    writeln!(f, "   - Etherscan: {}", format_etherscan_url(&bundle.header.tx_hash))?;
 
     // Mev section
     writeln!(f, "\n{}", "MEV:\n".bold().underline().bright_yellow())?;
