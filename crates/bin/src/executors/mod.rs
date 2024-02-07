@@ -1,5 +1,7 @@
 mod range;
 mod shared;
+use brontes_database::Tables;
+use reth_db::Tables;
 mod tip;
 use std::{
     collections::HashMap,
@@ -41,7 +43,7 @@ pub struct BrontesRunConfig<T: TracingProvider> {
     pub with_dex_pricing: bool,
 
     pub inspectors: &'static [&'static dyn Inspector],
-    pub clickhouse: Option<&'static Clickhouse>,
+    pub clickhouse: &'static Clickhouse,
     pub parser:     &'static Parser<'static, T, LibmdbxReadWriter>,
     pub libmdbx:    &'static LibmdbxReadWriter,
 }
@@ -96,26 +98,31 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                 .map(|(batch_id, chunk)| {
                     let executor = executor.clone();
                     async move {
-                    let start_block = chunk.first().unwrap();
-                    let end_block = chunk.last().unwrap_or(start_block);
+                        let start_block = chunk.first().unwrap();
+                        let end_block = chunk.last().unwrap_or(start_block);
 
-                    tracing::info!(batch_id, start_block, end_block, "starting batch");
+                        tracing::info!(batch_id, start_block, end_block, "starting batch");
 
-                    let state_collector = if self.with_dex_pricing {
-                        self.state_collector_dex_price(executor.clone(), *start_block, *end_block)
+                        let state_collector = if self.with_dex_pricing {
+                            self.state_collector_dex_price(
+                                executor.clone(),
+                                *start_block,
+                                *end_block,
+                            )
                             .await
-                    } else {
-                        self.state_collector_no_dex_price()
-                    };
+                        } else {
+                            self.state_collector_no_dex_price()
+                        };
 
-                    RangeExecutorWithPricing::new(
-                        *start_block,
-                        *end_block,
-                        state_collector,
-                        self.libmdbx,
-                        self.inspectors,
-                    )
-                }})
+                        RangeExecutorWithPricing::new(
+                            *start_block,
+                            *end_block,
+                            state_collector,
+                            self.libmdbx,
+                            self.inspectors,
+                        )
+                    }
+                })
                 .collect::<Vec<_>>()
                 .await,
         )
@@ -190,16 +197,60 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             rest_pairs,
         );
         let pricing = WaitingForPricerFuture::new(pricer, executor);
-        let fetcher = MetadataFetcher::new(self.clickhouse, Some(pricing), None);
+        let fetcher = MetadataFetcher::new(Some(self.clickhouse), Some(pricing), None);
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
 
-    pub async fn verify_database_fetch_missing(&self, block_number: u64) {
-        tracing::info!(start_block=%self.start_block, end_block=%block_number, "verifying db fetching state that is missing");
+    pub async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
+        tracing::info!("initing critical range state");
+        // these tables are super lightweight and as such, we init them for the entire
+        // range
+        self.libmdbx
+            .initialize_tables(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[
+                    Tables::PoolCreationBlocks,
+                    Tables::TokenDecimals,
+                    Tables::PoolCreationBlocks,
+                    Tables::Builder,
+                    Tables::AddressMeta,
+                ],
+                false,
+                None,
+            )
+            .await?;
+
+        tracing::info!(start_block=%self.start_block, %end_block, "verifying db fetching state that is missing");
+        let state_to_init = self.libmdbx.state_to_initialize(
+            self.start_block,
+            end_block,
+            !self.with_dex_pricing,
+        )?;
+
+        tracing::info!("initing missing ranges");
+        join_all(state_to_init.into_iter().map(|range| async {
+            let start = range.start();
+            let end = range.end();
+            self.libmdbx
+                .initialize_tables(
+                    self.clickhouse,
+                    self.parser.get_tracer(),
+                    &[Tables::BlockInfo, Tables::CexPrice],
+                    false,
+                    Some((*start, *end)),
+                )
+                .await
+        }))
+        .await
+        .into_iter()
+        .collect::<eyre::Result<_>>()?;
+
+        Ok(())
     }
 
-    pub async fn build(self, executor: TaskExecutor) -> Brontes {
+    pub async fn build(self, executor: TaskExecutor) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
         let (had_end_block, end_block) = if let Some(end_block) = self.end_block {
             (true, end_block)
@@ -211,7 +262,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             (false, chain_tip)
         };
 
-        self.verify_database_fetch_missing(end_block).await;
+        self.verify_database_fetch_missing(end_block).await?;
 
         if had_end_block {
             (&self)
@@ -247,7 +298,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             ));
         }
 
-        Brontes(futures)
+        Ok(Brontes(futures))
     }
 }
 

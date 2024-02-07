@@ -53,7 +53,7 @@ impl LibmdbxReadWriter {
     /// initializes all the tables with data via the CLI
     pub async fn initialize_tables<T: TracingProvider>(
         &'static self,
-        clickhouse: Arc<Clickhouse>,
+        clickhouse: &'static Clickhouse,
         tracer: Arc<T>,
         tables: &[Tables],
         clear_tables: bool,
@@ -71,6 +71,7 @@ impl LibmdbxReadWriter {
         &self,
         start_block: u64,
         end_block: u64,
+        needs_dex_price: bool,
     ) -> eyre::Result<Vec<RangeInclusive<u64>>> {
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
@@ -80,19 +81,37 @@ impl LibmdbxReadWriter {
             return Ok(vec![start_block..=end_block])
         }
 
+        let mut result = Vec::new();
         let mut block_tracking = start_block;
 
         for entry in peek_cur {
             if let Ok(has_info) = entry {
+                let block = has_info.0;
+                let state = has_info.1;
+                // if we are missing the block, we add it to the range
+                if block != block_tracking {
+                    result.push(block_tracking..=block);
+                    block_tracking = block + 1;
+                    continue
+                }
+                block_tracking += 1;
+                if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
+                    tracing::error!("block is missing dex pricing");
+                    return Err(eyre::eyre!(
+                        "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
+                    ))
+                }
 
-
+                if !state.is_init() {
+                    result.push(block..=block);
+                }
             } else {
-                // degen but should never happen unless a courput db
+                // should never happen unless a courput db
                 panic!("database is corrupted");
             }
         }
 
-        todo!()
+        Ok(result)
     }
 
     #[cfg(not(feature = "local"))]
