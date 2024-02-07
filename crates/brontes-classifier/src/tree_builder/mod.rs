@@ -445,11 +445,11 @@ pub struct TxTreeResult {
 pub mod test {
     use std::collections::{HashMap, HashSet};
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{hex, Address, B256};
     use brontes_types::{
         db::token_info::TokenInfoWithAddress,
         normalized_actions::{Actions, NormalizedLiquidation},
-        Protocol, TreeSearchArgs,
+        Node, Protocol, TreeSearchArgs,
     };
     use malachite::Rational;
     use serial_test::serial;
@@ -517,16 +517,16 @@ pub mod test {
             trace_index:           6,
         });
 
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .any(|action| action.is_swap() || action.is_transfer()),
+        };
+
         classifier_utils
-            .contains_action(
-                aave_v3_liquidation,
-                0,
-                eq_action,
-                TreeSearchArgs {
-                    collect_current_node:  Actions::liquidation_collect_fn(),
-                    child_node_to_collect: Actions::liquidation_child_fn(),
-                },
-            )
+            .contains_action(aave_v3_liquidation, 0, eq_action, search_fn)
             .await
             .unwrap();
     }
