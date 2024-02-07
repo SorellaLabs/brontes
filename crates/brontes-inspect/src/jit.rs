@@ -170,8 +170,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         );
 
         let (hashes, gas_details): (Vec<_>, Vec<_>) = info
-            .into_iter()
-            .map(|info| info.split_to_storage_info())
+            .iter()
+            .map(|info| info.clone().split_to_storage_info())
             .unzip();
 
         let (victim_hashes, victim_gas_details): (Vec<_>, Vec<_>) = victim_info
