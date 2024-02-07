@@ -22,7 +22,7 @@ pub(crate) fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U
         return None
     }
 
-    if log.topics().get(0) == Some(&TRANSFER_TOPIC) {
+    if log.topics().first() == Some(&TRANSFER_TOPIC) {
         let from = Address::from_slice(&log.topics()[1][12..]);
         let to = Address::from_slice(&log.topics()[2][12..]);
         let data = U256::try_from_be_slice(&log.data.data[..]).unwrap();
