@@ -27,6 +27,14 @@ pub struct AddressMetadata {
     pub social_metadata: Socials,
 }
 
+impl AddressMetadata {
+    pub fn is_verified(&self) -> bool {
+        self.contract_info
+            .as_ref()
+            .map_or(false, |c| c.verified_contract.unwrap_or(false))
+    }
+}
+
 implement_table_value_codecs_with_zc!(AddressMetadataRedefined);
 
 #[derive(Debug, Default, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
