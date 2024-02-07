@@ -20,7 +20,7 @@ pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + Libm
     current_block: u64,
     end_block:     u64,
     libmdbx:       &'static DB,
-    inspectors:    &'static [&'static Box<dyn Inspector>],
+    inspectors:    &'static [&'static dyn Inspector],
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
@@ -30,7 +30,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPri
         end_block: u64,
         state_collector: StateCollector<T, DB>,
         libmdbx: &'static DB,
-        inspectors: &'static [&'static Box<dyn Inspector>],
+        inspectors: &'static [&'static dyn Inspector],
     ) -> Self {
         Self {
             collector: state_collector,

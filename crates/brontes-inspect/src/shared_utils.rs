@@ -256,7 +256,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 Some(TokenProfit {
                     profit_collector: collector,
-                    token:            self.db.try_fetch_token_info(*token).ok()??,
+                    token:            self.db.try_fetch_token_info(*token).ok()?,
                     amount:           amount.clone().to_float(),
                     usd_value:        usd_value.to_float(),
                 })

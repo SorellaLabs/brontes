@@ -125,8 +125,8 @@ impl TraceLoader {
                 &[
                     Tables::PoolCreationBlocks,
                     Tables::TokenDecimals,
-                    Tables::AddressToTokens,
-                    Tables::AddressToProtocol,
+                    //Tables::AddressToTokens,
+                    //Tables::AddressToProtocol,
                 ],
                 false,
                 None,
