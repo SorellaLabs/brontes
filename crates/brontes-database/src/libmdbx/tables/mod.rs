@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use brontes_pricing::{SubGraphsEntry};
+use brontes_pricing::SubGraphsEntry;
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
@@ -27,7 +27,7 @@ use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::libmdbx::{types::ReturnKV, LibmdbxData};
+use crate::libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData};
 
 mod const_sql;
 use alloy_primitives::Address;
@@ -389,6 +389,7 @@ compressed_table!(
         Data {
             #[serde(with = "address_string")]
             key: Address,
+            #[serde(with = "protocol_info")]
             value: ProtocolInfo,
             compressed_value:ProtocolInfoRedefined
         },

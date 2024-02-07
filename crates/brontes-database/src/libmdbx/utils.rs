@@ -1,3 +1,32 @@
+pub mod protocol_info {
+
+    use brontes_types::db::address_to_protocol_info::ProtocolInfo;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    pub fn serialize<S: Serializer>(u: &ProtocolInfo, serializer: S) -> Result<S::Ok, S::Error> {
+        let entry = (
+            u.clone()
+                .into_iter()
+                .map(|addr| format!("{:?}", addr))
+                .collect::<Vec<_>>(),
+            u.init_block,
+            u.protocol.to_string(),
+        );
+        entry.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ProtocolInfo, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: (Vec<String>, u64, String) = Deserialize::deserialize(deserializer)?;
+        Ok(data.into())
+    }
+}
+
 pub mod pools_libmdbx {
 
     use std::str::FromStr;
