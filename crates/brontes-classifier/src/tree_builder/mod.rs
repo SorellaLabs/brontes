@@ -3,7 +3,7 @@ use std::{cmp::min, sync::Arc};
 use brontes_types::ToScaledRational;
 mod tree_pruning;
 mod utils;
-use brontes_core::missing_token_info::load_missing_token_info;
+
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
