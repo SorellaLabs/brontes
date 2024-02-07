@@ -58,10 +58,11 @@ async fn query_missing_data<T: TracingProvider>(
         make_call_request(normal::symbolCall::new(()), provider, missing_address, Some(block)),
         make_call_request(autistic::symbolCall::new(()), provider, missing_address, Some(block))
     );
-    decimals.map(|d| {
+
+    Ok(decimals.map(|d| d._0).unwrap_or_default()).map(|d| {
         (
             missing_address,
-            d._0,
+            d,
             symbol.map(|s| s._0).unwrap_or_else(|_| {
                 symbol_autistic
                     .map(|s| String::from_utf8((&s._0).to_vec()).unwrap_or_default())
