@@ -25,8 +25,7 @@ jobs:
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
 
-      - name: cargo clippy
-          cargo clippy --workspace --lib --examples --tests --benches --all-features
+      - run: cargo clippy --workspace --lib --examples --tests --benches --all-features
       -  env:
           RUSTFLAGS: -D warnings
 
