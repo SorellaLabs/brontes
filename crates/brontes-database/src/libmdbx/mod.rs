@@ -7,7 +7,6 @@ pub use brontes_types::db::traits::{LibmdbxReader, LibmdbxWriter};
 
 pub mod initialize;
 mod libmdbx_read_write;
-pub use libmdbx_read_write::DbInitializer;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
