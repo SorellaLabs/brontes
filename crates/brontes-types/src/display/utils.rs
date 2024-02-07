@@ -369,7 +369,12 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
         "Transaction".bright_blue(),
         format_etherscan_url(&liquidation_data.liquidation_tx_hash)
     )?;
-    writeln!(f, " - {}: {}", "Trigger".bright_blue(), liquidation_data.trigger)?;
+    writeln!(
+        f,
+        " - {}: {}",
+        "Trigger".bright_blue(),
+        format_etherscan_url(&liquidation_data.trigger)
+    )?;
 
     // Swaps Section
     writeln!(f, "\n{}\n", "Liquidation Swaps".bright_yellow().underline())?;
@@ -380,11 +385,12 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
     // Liquidations Section
     writeln!(f, "\n{}\n", "Liquidations".bright_yellow().underline())?;
     for (i, liquidation) in liquidation_data.liquidations.iter().enumerate() {
-        writeln!(f, " - {}: {}", format!("Liquidation {}", i + 1).bright_blue(), liquidation)?;
+        writeln!(f, " - {}:", format!("Liquidation {}", i + 1).bright_blue())?;
+        liquidation.pretty_print(f, 8)?;
     }
 
     // Gas Details Section
-    writeln!(f, "\n - {}:", "Gas Details:".bright_blue())?;
+    writeln!(f, "\n - {}:", "Gas Details".bright_blue())?;
     liquidation_data
         .gas_details
         .pretty_print_with_spaces(f, 8)?;

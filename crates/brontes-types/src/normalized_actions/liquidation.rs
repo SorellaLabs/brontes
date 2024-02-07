@@ -46,7 +46,6 @@ impl fmt::Display for NormalizedLiquidation {
         let covered_debt_formatted = format!("{:.4}", self.covered_debt).green();
         let liquidated_collateral_formatted = format!("{:.4}", self.liquidated_collateral).red();
 
-        // TODO
         write!(
             f,
             "Protocol {} - Pool: {}, Liquidator: {}, Debtor: {}, Collateral: {}, Debt: {}, \
@@ -82,6 +81,61 @@ impl NormalizedLiquidation {
             })
             .map(|e| vec![e])
             .unwrap_or_default()
+    }
+
+    pub fn pretty_print(&self, f: &mut fmt::Formatter<'_>, spaces: usize) -> fmt::Result {
+        let field_names = [
+            "Protocol",
+            "Pool",
+            "Liquidator",
+            "Debtor",
+            "Collateral",
+            "Debt",
+            "Covered Debt",
+            "Liquidated Collateral",
+        ];
+        let max_field_name_length = field_names.iter().map(|name| name.len()).max().unwrap_or(0);
+        let indent = " ".repeat(spaces);
+
+        let protocol = self.protocol.to_string().bright_yellow();
+        let pool_address = format!("{}", self.pool).bright_yellow();
+        let liquidator_address = format!("{}", self.liquidator).bright_yellow();
+        let debtor_address = format!("{}", self.debtor).bright_yellow();
+        let collateral_asset_symbol = self.collateral_asset.inner.symbol.clone().bright_yellow();
+        let debt_asset_symbol = self.debt_asset.inner.symbol.clone().bright_yellow();
+        let covered_debt_formatted = format!("{:.4}", self.covered_debt).bright_yellow();
+        let liquidated_collateral_formatted =
+            format!("{:.4}", self.liquidated_collateral).bright_yellow();
+
+        writeln!(
+            f,
+            "{}",
+            format!(
+                "{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+                 {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+                 {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}",
+                "Protocol",
+                protocol,
+                "Pool",
+                pool_address,
+                "Liquidator",
+                liquidator_address,
+                "Debtor",
+                debtor_address,
+                "Collateral",
+                collateral_asset_symbol,
+                "Debt",
+                debt_asset_symbol,
+                "Covered Debt",
+                covered_debt_formatted,
+                "Liquidated Collateral",
+                liquidated_collateral_formatted,
+                indent = indent,
+                width = max_field_name_length + spaces + 1
+            )
+        )?;
+
+        Ok(())
     }
 }
 
