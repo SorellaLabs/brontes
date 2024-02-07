@@ -35,7 +35,7 @@ impl ActionDispatch {
             .map(|(i, n)| (Index::from(i), n))
             .unzip();
 
-        let match_stmt = expand_match_dispatch(&var_name, i);
+        let match_stmt = expand_match_dispatch(&rest, &var_name, i);
 
         Ok(quote!(
             #[derive(Default, Debug)]
@@ -91,7 +91,7 @@ impl Parse for ActionDispatch {
     }
 }
 
-fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream {
+fn expand_match_dispatch(reg_name: &[Ident],var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream {
     quote!(
         match sig_w_byte {
         #(
@@ -112,8 +112,8 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
                     },
                     res))}).unwrap_or_else(|e| {
                         ::tracing::error!(error=%e,
-                            "classifier: {:?} failed on function sig: {:?} for address: {:?}",
-                            stringify!(#var_name),
+                            "classifier: {} failed on function sig: {:?} for address: {:?}",
+                            stringify!(#reg_name),
                             ::malachite::strings::ToLowerHexString::to_lower_hex_string(
                                 &hex_selector
                             ),
