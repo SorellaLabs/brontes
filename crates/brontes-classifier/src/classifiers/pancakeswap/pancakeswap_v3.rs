@@ -23,8 +23,8 @@ action_impl!(
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
-        let tokens = db_tx.get_protocol_tokens(info.target_address)?;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
@@ -71,8 +71,8 @@ action_impl!(
      return_data: mintReturn,  db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let tokens = db_tx.get_protocol_tokens(info.target_address)?;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
@@ -103,8 +103,8 @@ action_impl!(
     db_tx: &DB| {
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
-        let tokens = db_tx.get_protocol_tokens(info.target_address)?;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
@@ -136,8 +136,8 @@ action_impl!(
     return_data: collectReturn,
     db_tx: &DB
     | {
-        let tokens = db_tx.get_protocol_tokens(info.target_address)?;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
@@ -150,7 +150,7 @@ action_impl!(
             trace_index: info.trace_idx,
             from: info.from_address,
             recipient: call_data.recipient,
-            to: info.to_address,
+            to: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })

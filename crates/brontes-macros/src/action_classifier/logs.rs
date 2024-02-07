@@ -285,8 +285,8 @@ impl<'a> LogData<'a> {
                                         break 'possible
                                 }
                                 else {
-                                    ::tracing::error!(?from_address,
-                                                      ?target_address,
+                                    ::tracing::error!(?call_info.from_address,
+                                                      ?call_info.target_address,
                                                       ?self,
                                                       "decoding a default log failed, this should never occur,
                                                       please make a issue if you come across this"

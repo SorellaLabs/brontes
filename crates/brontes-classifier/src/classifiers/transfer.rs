@@ -17,12 +17,17 @@ pub fn try_decode_transfer<DB: LibmdbxReader>(
     token: Address,
     db: &DB,
 ) -> eyre::Result<NormalizedTransfer> {
-    let (from_addr, to_addr, amount) = transferCall::abi_decode(&calldata, false)?
+    let Some((from_addr, to_addr, amount)) = transferCall::abi_decode(&calldata, false)
         .map(|t| Some((from, t._0, t._1)))
         .unwrap_or_else(|_| {
-            transferFromCall::abi_decode(&calldata, false).map(|t| (t._0, t._1, t._2))
-        })?;
-    let token_info = db.try_fetch_token_info(token).ok()??;
+            transferFromCall::abi_decode(&calldata, false)
+                .ok()
+                .map(|t| (t._0, t._1, t._2))
+        })
+    else {
+        return Err(eyre::eyre!("failed to decode transfer for token: {:?}", token))
+    };
+    let token_info = db.try_fetch_token_info(token)?;
 
     Ok(NormalizedTransfer {
         amount:      amount.to_scaled_rational(token_info.decimals),

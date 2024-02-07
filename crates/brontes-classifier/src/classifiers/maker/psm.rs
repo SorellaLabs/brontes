@@ -1,6 +1,8 @@
 use alloy_primitives::{hex, Address};
 use brontes_macros::action_impl;
-use brontes_types::{normalized_actions::NormalizedSwap, Protocol, ToScaledRational};
+use brontes_types::{
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, Protocol, ToScaledRational,
+};
 
 pub const USDC_PSM_ADDRESS: Address = Address::new(hex!(
     "89B78CfA322F6C5dE0aBcEecab66Aee45393cC5A
@@ -25,9 +27,8 @@ action_impl!(
     db_tx: &DB| {
 
         // For the PSM, the token0 should always be set to DAI and token1 is the gem (USDC or USDP)
-        let tokens = db_tx.get_protocol_tokens(target_address)?;
-
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
@@ -72,8 +73,8 @@ action_impl!(
     log_data: MakerPSMsellGemCallLogs,
     db_tx: &DB| {
         // For the PSM, the token0 is DAI and token1 is the gem (USDC or USDP)
-        let tokens = db_tx.get_protocol_tokens(target_address)?;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
