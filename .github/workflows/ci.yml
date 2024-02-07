@@ -1,10 +1,11 @@
+name: CI
 on:
   push:
     branches:
       - main
   pull_request:
     branches: [ main ]
-name: CI
+
 jobs:
   clippy:
     runs-on: ubuntu-latest
@@ -26,7 +27,7 @@ jobs:
         shell: bash
 
       - run: cargo clippy --workspace --lib --examples --tests --benches --all-features
-      -  env:
+      - env:
           RUSTFLAGS: -D warnings
 
   build:
