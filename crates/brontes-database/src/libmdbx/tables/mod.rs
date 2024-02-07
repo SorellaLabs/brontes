@@ -3,11 +3,11 @@ use std::{
     str::FromStr,
 };
 
-use brontes_pricing::{Protocol, SubGraphsEntry};
+use brontes_pricing::SubGraphsEntry;
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
-        address_to_tokens::{PoolTokens, PoolTokensRedefined},
+        address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
@@ -27,7 +27,7 @@ use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::libmdbx::{types::ReturnKV, LibmdbxData};
+use crate::libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData};
 
 mod const_sql;
 use alloy_primitives::Address;
@@ -35,11 +35,9 @@ use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
 
-use super::{
-    initialize::LibmdbxInitializer, types::IntoTableKey, utils::static_bindings, CompressedTable,
-};
+use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 13;
+pub const NUM_TABLES: usize = 12;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -112,14 +110,9 @@ impl Tables {
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(clear_table)
                     .await
             }
-            Tables::AddressToTokens => {
+            Tables::AddressToProtocolInfo => {
                 initializer
-                    .clickhouse_init_no_args::<AddressToTokens, AddressToTokensData>(clear_table)
-                    .await
-            }
-            Tables::AddressToProtocol => {
-                initializer
-                    .clickhouse_init_no_args::<AddressToProtocol, AddressToProtocolData>(
+                    .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
                         clear_table,
                     )
                     .await
@@ -168,8 +161,7 @@ impl Tables {
 
 tables!(
     TokenDecimals,
-    AddressToTokens,
-    AddressToProtocol,
+    AddressToProtocolInfo,
     CexPrice,
     BlockInfo,
     DexPrice,
@@ -392,14 +384,14 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table AddressToTokens {
+    Table AddressToProtocolInfo{
         #[serde_as]
         Data {
             #[serde(with = "address_string")]
             key: Address,
-            #[serde(with = "pool_tokens")]
-            value: PoolTokens,
-            compressed_value: PoolTokensRedefined
+            #[serde(with = "protocol_info")]
+            value: ProtocolInfo,
+            compressed_value:ProtocolInfoRedefined
         },
         Init {
             init_size: None,
@@ -407,25 +399,6 @@ compressed_table!(
         },
         CLI {
             can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table AddressToProtocol {
-        #[serde_as]
-        Data {
-            #[serde(with = "address_string")]
-            key: Address,
-            #[serde(with = "static_bindings")]
-            value: Protocol
-        },
-        Init {
-            init_size: None,
-            init_method: Clickhouse
-        },
-        CLI {
-            can_insert: True
         }
     }
 );

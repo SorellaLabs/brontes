@@ -171,15 +171,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(Some(_info)) => Some(profit),
-                Ok(None) => {
+                Ok(_) => Some(profit),
+                Err(_) => {
                     if tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private {
                         Some(profit)
                     } else {
                         None
                     }
                 }
-                Err(_) => None,
             }
         }
     }
@@ -215,15 +214,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(Some(_info)) => Some(profit),
-                Ok(None) => {
+                Ok(_) => Some(profit),
+                Err(_) => {
                     if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
                         Some(profit)
                     } else {
                         None
                     }
                 }
-                Err(_) => None,
             }
         }
     }
@@ -250,14 +248,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         if is_profitable {
             match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(Some(info)) => {
+                Ok(info) => {
                     if info.mev.contains(&MevType::AtomicArb) {
                         Some(profit)
                     } else {
                         None
                     }
                 }
-                Ok(None) => {
+                Err(_) => {
                     if tx_info.is_private
                         && tx_info.gas_details.coinbase_transfer.is_some()
                         && !tx_info.is_verified_contract
@@ -267,7 +265,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         None
                     }
                 }
-                Err(_) => None,
             }
         } else {
             None
