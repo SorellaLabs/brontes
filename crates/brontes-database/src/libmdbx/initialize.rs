@@ -225,10 +225,9 @@ mod tests {
         assert_eq!(c, l);
 
         // PoolCreationBlocks
-        let (c, l) =
-            PoolCreationBlocks::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
-                .await
-                .unwrap();
+        let (c, l) = PoolCreationBlocks::test_initialized_data(&clickhouse, &libmdbx, None)
+            .await
+            .unwrap();
         assert_eq!(c, l);
 
         // Builder
