@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashMap, path::Path, sync::Arc};
+use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -40,8 +40,8 @@ use crate::{
         types::LibmdbxData,
         Libmdbx, LibmdbxInitializer,
     },
-    AddressToProtocol, AddressToTokens, CompressedTable, PoolCreationBlocks, SubGraphs,
-    TokenDecimals, TxTraces,
+    AddressToProtocol, AddressToTokens, CompressedTable, InitializedState, PoolCreationBlocks,
+    SubGraphs, TokenDecimals, TxTraces,
 };
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -66,6 +66,33 @@ impl LibmdbxReadWriter {
             .await?;
 
         Ok(())
+    }
+
+    pub fn state_to_initialize(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<Vec<RangeInclusive<u64>>> {
+        let tx = self.0.ro_tx()?;
+        let mut cur = tx.new_cursor::<InitializedState>()?;
+
+        let mut peek_cur = cur.peekable();
+        if peek_cur.peek().is_none() {
+            return Ok(vec![start_block..=end_block])
+        }
+
+        let mut fetch_blocks = Vec::new();
+        let mut block_tracking = start_block;
+
+        for entry in peek_cur.walk_range(start_block..=end_block)? {
+            if let Ok(has_info) = entry {
+
+
+            } else {
+                // degen but should never happen unless a courput db
+                panic!("database is corrupted");
+            }
+        }
     }
 
     #[cfg(not(feature = "local"))]
@@ -224,6 +251,14 @@ impl LibmdbxReadWriter {
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
+    fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>> {
+        todo!()
+    }
+
+    fn try_fetch_token_decimals(&self, address: Address) -> eyre::Result<Option<u8>> {
+        todo!()
+    }
+
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
         self.fetch_dex_quotes(block)
     }
@@ -231,11 +266,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn load_trace(&self, block_num: u64) -> eyre::Result<Option<Vec<TxTrace>>> {
         let tx = self.0.ro_tx()?;
         Ok(tx.get::<TxTraces>(block_num)?.and_then(|i| i.traces))
-    }
-
-    fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>> {
-        let tx = self.0.ro_tx()?;
-        Ok(tx.get::<AddressToProtocol>(address)?)
     }
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -279,16 +309,17 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>> {
+    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let tx = self.0.ro_tx()?;
-        Ok(tx
-            .get::<TokenDecimals>(address)?
-            .map(|inner| TokenInfoWithAddress { inner, address }))
+        tx.get::<TokenDecimals>(address)?
+            .map(|inner| TokenInfoWithAddress { inner, address })
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
     }
 
-    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<Option<SearcherInfo>> {
+    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
         let tx = self.0.ro_tx()?;
-        tx.get::<Searcher>(searcher_eoa).map_err(Into::into)
+        tx.get::<Searcher>(searcher_eoa)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", address))
     }
 
     fn protocols_created_before(
@@ -383,28 +414,25 @@ impl LibmdbxReader for LibmdbxReadWriter {
         last.ok_or_else(|| eyre::eyre!("no pair found"))
     }
 
-    fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>> {
-        Ok(self.0.ro_tx()?.get::<AddressToTokens>(address)?)
-    }
-
-    fn try_fetch_address_metadata(
-        &self,
-        address: Address,
-    ) -> eyre::Result<Option<AddressMetadata>> {
+    fn get_protocol_tokens(&self, address: Address) -> eyre::Result<PoolTokens> {
         self.0
             .ro_tx()?
-            .get::<AddressMeta>(address)
-            .map_err(Into::into)
+            .get::<AddressToTokens>(address)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in Address to tokens", address))
     }
 
-    fn try_fetch_builder_info(
-        &self,
-        builder_coinbase_addr: Address,
-    ) -> eyre::Result<Option<BuilderInfo>> {
+    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<AddressMetadata> {
         self.0
             .ro_tx()?
-            .get::<Builder>(builder_coinbase_addr)
-            .map_err(Into::into)
+            .get::<AddressMeta>(address)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in address metadata", address))
+    }
+
+    fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
+        self.0
+            .ro_tx()?
+            .get::<Builder>(builder_coinbase_addr)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in builder info", address))
     }
 }
 
@@ -531,6 +559,24 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
 
         Ok(self.0.write_table(&vec![table])?)
+    }
+}
+
+pub trait DbInitializer {
+    fn initializer<TP: TracingProvider>(
+        &self,
+        tp: Arc<TP>,
+        clickhouse: Arc<Clickhouse>,
+    ) -> LibmdbxInitializer<TP>;
+}
+
+impl DbInitializer for LibmdbxReadWriter {
+    fn initializer<TP: TracingProvider>(
+        &self,
+        tp: Arc<TP>,
+        clickhouse: Arc<Clickhouse>,
+    ) -> LibmdbxInitializer<TP> {
+        LibmdbxInitializer::new(self, clickhouse, tp)
     }
 }
 
