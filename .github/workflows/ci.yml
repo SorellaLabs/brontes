@@ -53,7 +53,7 @@ jobs:
           shell: bash
 
         - name: "build nightly"
-          run: cargo +nightly build --workspace --all-features
+          run: cargo build --workspace --all-features
           env:
             RUSTFLAGS: -D warnings
 
