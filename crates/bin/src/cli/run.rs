@@ -103,7 +103,7 @@ impl RunArgs {
             metrics_tx,
             libmdbx,
             tracer.clone(),
-            Box::new(|address, db_tx| db_tx.get_protocol(*address).unwrap().is_none()),
+            Box::new(|address, db_tx| db_tx.get_protocol(*address).is_err()),
         ));
 
         BrontesRunConfig::new(
