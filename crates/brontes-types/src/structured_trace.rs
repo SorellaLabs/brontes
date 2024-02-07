@@ -136,7 +136,7 @@ pub struct CallFrameInfo<'a> {
     pub return_data:    Bytes,
     pub target_address: Address,
     pub from_address:   Address,
-    pub logs:           &'a Vec<Log>,
+    pub logs:           &'a [Log],
     pub msg_sender:     Address,
     pub msg_value:      U256,
 }
