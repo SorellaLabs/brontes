@@ -3,6 +3,7 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap},
+    structured_trace::CallInfo,
     ToScaledRational,
 };
 
@@ -13,17 +14,15 @@ action_impl!(
     [..Swap],
     call_data: true,
     logs: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: swapCall,
     logs: SushiSwapV2swapCallLogs,
     db_tx: &DB| {
         let logs = logs.Swap_field;
 
         let recipient = call_data.to;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
@@ -35,9 +34,9 @@ action_impl!(
 
             return Some(NormalizedSwap {
                 protocol: Protocol::SushiSwapV2,
-                pool: target_address,
-                trace_index,
-                from: from_address,
+                pool: info.target_address,
+                trace_index: info.trace_idx,
+                from: info.from_address,
                 recipient,
                 token_in: t1_info,
                 token_out: t0_info,
@@ -49,9 +48,9 @@ action_impl!(
             let amount_out = logs.amount1Out.to_scaled_rational(t1_info.decimals);
             return Some(NormalizedSwap {
                 protocol: Protocol::SushiSwapV2,
-                trace_index,
-                pool: target_address,
-                from: from_address,
+                pool: info.target_address,
+                trace_index: info.trace_idx,
+                from: info.from_address,
                 recipient,
                 token_in: t0_info,
                 token_out: t1_info,
@@ -70,16 +69,14 @@ action_impl!(
     [..Mint],
     logs: true,
     call_data: true,
-    |trace_index,
-     from_address: Address,
-     target_address: Address,
-     _msg_sender: Address,
+    |
+        info: CallInfo,
      call_data: mintCall,
      log_data: SushiSwapV2mintCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Mint_field;
 
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
@@ -91,9 +88,9 @@ action_impl!(
         Some(NormalizedMint {
             protocol: Protocol::SushiSwapV2,
             recipient: call_data.to,
-            from: from_address,
-            trace_index,
-            to: target_address,
+            from: info.from_address,
+            trace_index: info.trace_idx,
+            to: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -107,15 +104,13 @@ action_impl!(
     [..Burn],
     call_data: true,
     logs: true,
-    |trace_index,
-     from_address: Address,
-     target_address: Address,
-     _msg_sender: Address,
+    |
+     info: CallInfo,
      call_data: burnCall,
      log_data: SushiSwapV2burnCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Burn_field;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
@@ -127,9 +122,9 @@ action_impl!(
         Some(NormalizedBurn {
             protocol: Protocol::SushiSwapV2,
             recipient: call_data.to,
-            to: target_address,
-            trace_index,
-            from: from_address,
+            to: info.target_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })

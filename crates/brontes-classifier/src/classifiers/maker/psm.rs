@@ -18,10 +18,8 @@ action_impl!(
     [BuyGem],
     call_data: true,
     logs: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: buyGemCall,
     log_data: MakerPSMbuyGemCallLogs,
     db_tx: &DB| {
@@ -47,10 +45,10 @@ action_impl!(
 
         Some(NormalizedSwap {
             protocol: Protocol::MakerPSM,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.usr,
-            pool: target_address,
+            pool: info.target_address,
             token_in: t0_info,
             token_out: t1_info,
             amount_in,
@@ -68,10 +66,8 @@ action_impl!(
     [SellGem],
     call_data: true,
     logs: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: sellGemCall,
     log_data: MakerPSMsellGemCallLogs,
     db_tx: &DB| {
@@ -97,10 +93,10 @@ action_impl!(
 
         Some(NormalizedSwap {
             protocol: Protocol::MakerPSM,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.usr,
-            pool: target_address,
+            pool: info.target_address,
             token_in: t0_info,
             token_out: t1_info,
             amount_in,

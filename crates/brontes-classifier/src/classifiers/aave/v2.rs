@@ -2,6 +2,7 @@ use alloy_primitives::Address;
 use brontes_macros::action_impl;
 use brontes_types::{
     normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation},
+    structured_trace::CallInfo,
     utils::ToScaledRational,
     Protocol,
 };
@@ -13,10 +14,8 @@ action_impl!(
     Liquidation,
     [],
     call_data: true,
-    |trace_index,
-    _from_address: Address,
-    target_address: Address,
-    msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: liquidationCallCall,
     db_tx: &DB| {
 
@@ -27,9 +26,9 @@ action_impl!(
 
         return Some(NormalizedLiquidation {
             protocol: Protocol::AaveV2,
-            trace_index,
-            pool: target_address,
-            liquidator: msg_sender,
+            trace_index: info.trace_idx,
+            pool: info.target_address,
+            liquidator: info.msg_sender,
             debtor: call_data.user,
             collateral_asset: collateral_info,
             debt_asset: debt_info,
@@ -46,10 +45,8 @@ action_impl!(
     FlashLoan,
     [],
     call_data: true,
-    |trace_index,
-    _from_address: Address,
-    target_address: Address,
-    msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: flashLoanCall,
     db_tx: &DB| {
         let (amounts, assets): (Vec<_>, Vec<_>) = call_data.assets
@@ -60,12 +57,11 @@ action_impl!(
                 Some((amount.to_scaled_rational(token_info.decimals),token_info))
         }).unzip();
 
-
         return Some(NormalizedFlashLoan {
             protocol: Protocol::AaveV2,
-            trace_index,
-            from: msg_sender,
-            pool: target_address,
+            trace_index: info.trace_idx,
+            from: info.msg_sender,
+            pool: info.target_address,
             receiver_contract: call_data.receiverAddress,
             assets ,
             amounts,
