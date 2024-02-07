@@ -74,17 +74,11 @@ impl ActionMacro {
             impl crate::IntoAction for #exchange_name_w_call {
                 fn decode_trace_data<DB: ::brontes_database::libmdbx::LibmdbxReader>(
                     &self,
-                    index: u64,
-                    data: ::alloy_primitives::Bytes,
-                    return_data: ::alloy_primitives::Bytes,
-                    from_address: ::alloy_primitives::Address,
-                    target_address: ::alloy_primitives::Address,
-                    msg_sender: ::alloy_primitives::Address,
-                    logs: &Vec<::alloy_primitives::Log>,
+                    call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
                     db_tx: &DB
-                    ) -> Option<::brontes_types::normalized_actions::Actions> {
+                    ) -> ::eyre::Result<::brontes_types::normalized_actions::Actions> {
                     #call_data
-                    Some(::brontes_types::normalized_actions::Actions::#action_type(result))
+                    Ok(::brontes_types::normalized_actions::Actions::#action_type(result))
                 }
             }
         })

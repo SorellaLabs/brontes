@@ -15,7 +15,7 @@ use tracing::{error, info};
 
 pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
     db: &DB,
-    inspectors: &[&Box<dyn Inspector>],
+    inspectors: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) {
@@ -65,12 +65,8 @@ fn output_mev_and_update_searcher_info<DB: LibmdbxWriter + LibmdbxReader>(
         let result = database.try_fetch_searcher_info(mev.header.eoa);
 
         let mut searcher_info = match result {
-            Ok(Some(info)) => info,
-            Ok(None) => SearcherInfo::default(),
-            Err(e) => {
-                error!("Failed to query searcher table: {:?}, table has not been initialized!", e);
-                continue;
-            }
+            Ok(info) => info,
+            Err(_) => SearcherInfo::default(),
         };
 
         // Update the searcher info with the current MEV details
