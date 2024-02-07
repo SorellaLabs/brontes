@@ -31,6 +31,7 @@ impl<V: NormalizedAction> Root<V> {
             Ok(metadata) => metadata.is_verified(),
             Err(_) => false,
         };
+        let searcher_info = database.try_fetch_searcher_info(self.head.address).ok();
 
         TxInfo::new(
             block_number,
@@ -46,6 +47,7 @@ impl<V: NormalizedAction> Root<V> {
             ),
             self.private,
             is_verified_contract,
+            searcher_info,
         )
     }
 
