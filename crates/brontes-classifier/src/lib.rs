@@ -61,7 +61,7 @@ pub trait IntoAction: Debug + Send + Sync {
         &self,
         call_info: CallFrameInfo<'_>,
         db_tx: &DB,
-    ) -> Option<Actions>;
+    ) -> eyre::Result<Actions>;
 }
 
 pub trait FactoryDecoder {

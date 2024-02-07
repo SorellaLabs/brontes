@@ -19,16 +19,16 @@ action_impl!(
     db_tx: &DB| {
         let log = log.TokenExchange_field;
 
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address)?;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 pool: info.target_address,
                 trace_index: info.tx_info,
@@ -42,7 +42,7 @@ action_impl!(
         } else {
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 trace_index: info.trace_idx,
                 pool: info.target_address,
@@ -71,7 +71,7 @@ action_impl!(
     db_tx: &DB| {
 
         let log = log.TokenExchange_field;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address)?;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         let is_eth = call_data.use_eth;
@@ -85,13 +85,13 @@ action_impl!(
             }
         }
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 pool: target_address,
                 trace_index,
@@ -105,7 +105,7 @@ action_impl!(
         } else {
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 trace_index,
                 pool: target_address,
@@ -134,7 +134,7 @@ action_impl!(
     db_tx: &DB| {
 
         let log = log.TokenExchange_field;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address)?;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
         let is_eth = call_data.use_eth;
@@ -149,13 +149,13 @@ action_impl!(
             }
         }
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
@@ -169,7 +169,7 @@ action_impl!(
         } else {
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
@@ -196,7 +196,7 @@ action_impl!(
     log: CurveCryptoSwapexchange_underlying_0CallLogs,
     db_tx: &DB| {
         let log = log.TokenExchange_field;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(target_address)?;
         let [mut token_0, mut token_1] = [tokens.token0, tokens.token1];
 
 
@@ -208,13 +208,13 @@ action_impl!(
             token_1 = ETH_ADDRESS;
         }
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         if log.sold_id ==  U256::ZERO {
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
@@ -228,7 +228,7 @@ action_impl!(
         } else {
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::CurveCryptoSwap,
                 pool: info.target_address,
                 trace_index: info.trace_idx,

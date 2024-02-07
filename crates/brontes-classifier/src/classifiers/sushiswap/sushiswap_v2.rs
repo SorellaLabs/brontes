@@ -22,17 +22,17 @@ action_impl!(
         let logs = logs.Swap_field;
 
         let recipient = call_data.to;
-        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address)?;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         if logs.amount0In == U256::ZERO {
             let amount_in = logs.amount1In.to_scaled_rational(t1_info.decimals);
             let amount_out = logs.amount0Out.to_scaled_rational(t0_info.decimals);
 
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::SushiSwapV2,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
@@ -46,7 +46,7 @@ action_impl!(
         } else {
             let amount_in = logs.amount0In.to_scaled_rational(t0_info.decimals);
             let amount_out = logs.amount1Out.to_scaled_rational(t1_info.decimals);
-            return Some(NormalizedSwap {
+            return Ok(NormalizedSwap {
                 protocol: Protocol::SushiSwapV2,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
@@ -76,16 +76,16 @@ action_impl!(
      db_tx: &DB| {
         let log_data = log_data.Mint_field;
 
-        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address)?;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         let am0 = log_data.amount0.to_scaled_rational(t0_info.decimals);
         let am1 = log_data.amount1.to_scaled_rational(t1_info.decimals);
 
-        Some(NormalizedMint {
+        Ok(NormalizedMint {
             protocol: Protocol::SushiSwapV2,
             recipient: call_data.to,
             from: info.from_address,
@@ -110,16 +110,16 @@ action_impl!(
      log_data: SushiSwapV2burnCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Burn_field;
-        let tokens = db_tx.get_protocol_tokens(info.target_address).ok()??;
+        let tokens = db_tx.get_protocol_tokens(info.target_address)?;
         let [token_0, token_1] = [tokens.token0, tokens.token1];
 
-        let t0_info = db_tx.try_fetch_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_fetch_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         let am0 = log_data.amount0.to_scaled_rational(t0_info.decimals);
         let am1 = log_data.amount1.to_scaled_rational(t1_info.decimals);
 
-        Some(NormalizedBurn {
+        Ok(NormalizedBurn {
             protocol: Protocol::SushiSwapV2,
             recipient: call_data.to,
             to: info.target_address,
