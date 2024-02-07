@@ -1,7 +1,13 @@
 SELECT DISTINCT 
-    toString(address) AS address, 
-    (arrayMap(x -> toString(x), tokens), init_block, classifier_name) AS tokens
-FROM ethereum.pools 
-RIGHT JOIN brontes.protocol_details
-on ethereum.pools.address = brontes.protocol_details.address
-HAVING classifier_name IS NOT NULL AND classifier_name != '' 
+    toString(p.address) AS address, 
+    (arrayMap(x -> toString(x), p.tokens), p.init_block, d.classifier_name) AS tokens
+FROM ethereum.pools p
+RIGHT JOIN brontes.protocol_details d ON p.address = d.address
+WHERE classifier_name IS NOT NULL
+
+
+
+
+
+
+
