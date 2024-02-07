@@ -1,7 +1,9 @@
 use alloy_primitives::Address;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::{normalized_actions::NormalizedSwap, ToScaledRational};
+use brontes_types::{
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
+};
 
 use crate::BalancerV1::{swapExactAmountInReturn, swapExactAmountOutReturn};
 
@@ -12,10 +14,8 @@ action_impl!(
     [Swap],
     call_data: true,
     return_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: swapExactAmountInCall,
     return_data: swapExactAmountInReturn,
     db_tx: &DB| {
@@ -26,10 +26,10 @@ action_impl!(
 
         Some(NormalizedSwap {
             protocol: Protocol::BalancerV1,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: _msg_sender,
-            pool: target_address,
+            pool: info.target_address,
             token_in,
             token_out,
             amount_in,
@@ -45,10 +45,8 @@ action_impl!(
     [Swap],
     call_data: true,
     return_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: swapExactAmountOutCall,
     return_data: swapExactAmountOutReturn,
     db_tx: &DB| {
@@ -59,10 +57,10 @@ action_impl!(
 
         Some(NormalizedSwap {
             protocol: Protocol::BalancerV1,
-            trace_index,
-            from: from_address,
-            recipient: _msg_sender,
-            pool: target_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.msg_sender,
+            pool: info.target_address,
             token_in,
             token_out,
             amount_in,

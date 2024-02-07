@@ -308,24 +308,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if trace.is_static_call() {
             return (vec![], Actions::Unclassified(trace))
         }
-        let from_address = trace.get_from_addr();
-        let target_address = trace.get_to_address();
+        let call_info = trace.get_callframe_info();
 
-        let call_data = trace.get_calldata();
-        let return_bytes = trace.get_return_calldata();
-
-        if let Some(results) = ProtocolClassifications::default().dispatch(
-            trace_index,
-            call_data,
-            return_bytes.clone(),
-            from_address,
-            target_address,
-            trace.msg_sender,
-            &trace.logs,
-            self.libmdbx,
-            block,
-            tx_idx,
-        ) {
+        if let Some(results) =
+            ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
+        {
             return (vec![DexPriceMsg::Update(results.0)], results.1)
         } else if let Some(mut transfer) = try_decode_transfer(
             tx_idx,
@@ -372,7 +359,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         transfer.amount = transferred_amount;
                         transfer.fee = fee;
                     }
-                    break;
+                    break
                 }
             }
 
