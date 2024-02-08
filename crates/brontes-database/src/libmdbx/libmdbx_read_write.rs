@@ -26,6 +26,7 @@ use brontes_types::{
 };
 use eyre::eyre;
 use itertools::Itertools;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::info;
@@ -33,9 +34,9 @@ use tracing::info;
 use crate::{
     clickhouse::Clickhouse,
     libmdbx::{
-        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, *},
+        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, *},
         types::LibmdbxData,
-        Libmdbx, LibmdbxInitializer,
+        CompressedTable, Libmdbx, LibmdbxInitializer,
     },
     AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
@@ -62,6 +63,39 @@ impl LibmdbxReadWriter {
             .await?;
 
         Ok(())
+    }
+
+    /// full range tables are tables such as token info or pool creation blocks.
+    /// given that these are full range. they will be inited for such. thus,
+    /// if we have any entries in the db, we will have the entrie range. the
+    /// only time this isn't true is if durning initialization we get a
+    /// ctrl-c or error. if that occurs, we reset the tables to avoid courpt
+    /// data.
+    pub fn init_full_range_tables(&self) -> bool {
+        [Tables::PoolCreationBlocks, Tables::AddressToProtocolInfo, Tables::TokenDecimals]
+            .into_par_iter()
+            .map(|table| match table {
+                Tables::AddressToProtocolInfo => self
+                    .has_entry::<AddressToProtocolInfo>()
+                    .unwrap_or_default(),
+                Tables::TokenDecimals => self.has_entry::<TokenDecimals>().unwrap_or_default(),
+                Tables::PoolCreationBlocks => {
+                    self.has_entry::<PoolCreationBlocks>().unwrap_or_default()
+                }
+                _ => true,
+            })
+            .any(|t| !t)
+    }
+
+    fn has_entry<TB>(&self) -> eyre::Result<bool>
+    where
+        TB: CompressedTable,
+        TB::Value: From<TB::DecompressedValue> + Into<TB::DecompressedValue>,
+    {
+        let tx = self.0.ro_tx()?;
+        let mut cur = tx.new_cursor::<TB>()?;
+
+        Ok(cur.next()?.is_some())
     }
 
     pub fn state_to_initialize(
