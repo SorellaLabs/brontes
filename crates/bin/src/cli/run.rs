@@ -6,7 +6,6 @@ use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::constants::USDT_ADDRESS_STRING;
 use clap::Parser;
-use reth_tasks::TaskSpawnerExt;
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, static_object};

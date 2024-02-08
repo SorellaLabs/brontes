@@ -203,7 +203,6 @@ impl ClassifierTestUtils {
                         action: make_fake_swap(pair),
                     });
                     tx.send(update).unwrap();
-                    ()
                 })
                 .count()
                 != 0

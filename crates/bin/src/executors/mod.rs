@@ -206,11 +206,6 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
 
-    fn possible_full_range_table_missing(&self) -> eyre::Result<()> {
-        // self.libmdbx.0
-        Ok(())
-    }
-
     async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
         // these tables are super lightweight and as such, we init them for the entire
         // range
@@ -326,18 +321,15 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         self.verify_database_fetch_missing(end_block).await?;
         let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
 
-        let mut graceful_guard = None;
         pin_mut!(build_future, shutdown);
         tokio::select! {
             res = &mut build_future => {
                 return res
             },
             guard = shutdown => {
-                graceful_guard = Some(guard);
+                drop(guard)
             }
         }
-
-        drop(graceful_guard);
         tracing::info!(
             "got shutdown signal during init process, clearing possibly bad
                            full range tables"

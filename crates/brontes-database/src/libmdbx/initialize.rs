@@ -199,43 +199,43 @@ mod tests {
             .unwrap();
 
         // TokenDecimals
-        let (c, l) = TokenDecimals::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // AddressToProtocol
-        let (c, l) = AddressToProtocolInfo::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // CexPrice
-        let (c, l) = CexPrice::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
+        let (c, l) = CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // Metadata
-        let (c, l) = BlockInfo::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
+        let (c, l) = BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // PoolCreationBlocks
-        let (c, l) = PoolCreationBlocks::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // Builder
-        let (c, l) = Builder::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = Builder::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // AddressMeta
-        let (c, l) = AddressMeta::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);

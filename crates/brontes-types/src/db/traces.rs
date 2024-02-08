@@ -74,7 +74,8 @@ pub struct LogRedefined {
     Debug, Clone, Redefined, PartialEq, serde::Serialize, rSerialize, rDeserialize, rkyv::Archive,
 )]
 #[redefined(LogData)]
-#[redefined_attr(to_source = "LogData::new_unchecked(self.topics.iter().copied().map(Into::into).collect(), self.data.into())")]
+#[redefined_attr(to_source = "LogData::new_unchecked(self.topics.iter().copied().map(Into::into).\
+                              collect(), self.data.into())")]
 pub struct LogDataRedefined {
     #[redefined(func = "src.topics().iter().copied().map(Into::into).collect()")]
     pub topics: Vec<FixedBytesRedefined<32>>,
