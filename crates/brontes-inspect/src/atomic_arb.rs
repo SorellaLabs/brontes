@@ -83,11 +83,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let actions = searcher_actions.clone();
 
         let profit = match possible_arb_type {
-            AtomicArbType::LongTail => {
-                self.process_long_tail(&info, metadata.clone(), &vec![actions])
-            }
+            AtomicArbType::LongTail => self.process_long_tail(&info, metadata.clone(), &[actions]),
             AtomicArbType::Triangle => {
-                self.process_triangle_arb(&info, metadata.clone(), &vec![actions])
+                self.process_triangle_arb(&info, metadata.clone(), &[actions])
             }
             AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_arb(
                 &info,
@@ -115,7 +113,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
     fn is_possible_arb(
         &self,
-        swaps: &Vec<NormalizedSwap>,
+        swaps: &[NormalizedSwap],
         transfers: &[NormalizedTransfer],
     ) -> Option<AtomicArbType> {
         match swaps.len() {
@@ -149,7 +147,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
-        searcher_actions: &Vec<Vec<Actions>>,
+        searcher_actions: &[Vec<Actions>],
     ) -> Option<Rational> {
         let rev_usd = self.inner.get_dex_revenue_usd(
             tx_info.tx_index,
@@ -177,12 +175,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 // is private or coinbase.transfers to the builder
                 if tx_info.is_searcher_of_type(MevType::AtomicArb) {
                     Some(profit)
+                } else if tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private {
+                    Some(profit)
                 } else {
-                    if tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private {
-                        Some(profit)
-                    } else {
-                        None
-                    }
+                    None
                 }
             }
         }
@@ -193,8 +189,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         tx_info: &TxInfo,
 
         metadata: Arc<Metadata>,
-        swaps: &Vec<NormalizedSwap>,
-        searcher_actions: &Vec<Vec<Actions>>,
+        swaps: &[NormalizedSwap],
+        searcher_actions: &[Vec<Actions>],
         jump_index: usize,
     ) -> Option<Rational> {
         let is_stable_arb = is_stable_arb(swaps, jump_index);
@@ -220,12 +216,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             // is private or coinbase.transfers to the builder
             if tx_info.is_searcher_of_type(MevType::AtomicArb) {
                 Some(profit)
+            } else if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
+                Some(profit)
             } else {
-                if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
-                    Some(profit)
-                } else {
-                    None
-                }
+                None
             }
         }
     }
@@ -234,7 +228,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
-        searcher_actions: &Vec<Vec<Actions>>,
+        searcher_actions: &[Vec<Actions>],
     ) -> Option<Rational> {
         let gas_used = tx_info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);

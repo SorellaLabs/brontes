@@ -138,7 +138,7 @@ impl Inspectors {
         &self,
         quote_token: Address,
         db: &'static LibmdbxReadWriter,
-        cex_exchanges: &Vec<CexExchange>,
+        cex_exchanges: &[CexExchange],
     ) -> &'static dyn Inspector {
         match &self {
             Self::AtomicArb => static_object(AtomicArbInspector::new(quote_token, db))
