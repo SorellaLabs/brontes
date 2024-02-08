@@ -56,7 +56,7 @@ impl DiscoveryInspector {
                         PossibleMev {
                             tx_hash: root.tx_hash,
                             tx_idx: tx_idx.try_into().unwrap(),
-                            gas_details: root.gas_details.clone(),
+                            gas_details: root.gas_details,
                             triggers,
                         },
                     ))

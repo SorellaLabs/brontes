@@ -101,9 +101,9 @@ impl PricingTestUtils {
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
-        let mut pricer = self.init_dex_pricer(block, None, rx).await?;
+        let pricer = self.init_dex_pricer(block, None, rx).await?;
 
-        let tree = classifier.build_block_tree(vec![trace], header).await;
+        let _tree = classifier.build_block_tree(vec![trace], header).await;
 
         Ok(pricer)
     }
