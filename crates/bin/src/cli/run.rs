@@ -86,8 +86,11 @@ impl RunArgs {
                 )
                 .build(task_executor, shutdown)
                 .await
-                {
-                    let _ = brontes.await;
+                .map_err(|e| {
+                    tracing::error!(%e);
+                    e
+                }) {
+                    brontes.await;
                 }
             });
 
