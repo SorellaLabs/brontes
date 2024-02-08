@@ -180,7 +180,6 @@ impl<'a> LogData<'a> {
             let mut i = 0usize;
             let mut started = false;
             loop {
-                tracing::info!(index= #index + repeating_modifier + i,"decoding log");
                 if let Some(log) = &call_info.logs.get(#index + repeating_modifier + i) {
                     if let Ok(decoded_result) = <#mod_path::#log_name
                         as ::alloy_sol_types::SolEvent>
