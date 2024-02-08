@@ -206,6 +206,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
 
     pub async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
         tracing::info!("initing critical range state");
+        self.libmdbx.initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
         // these tables are super lightweight and as such, we init them for the entire
         // range
         self.libmdbx
@@ -255,7 +256,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
     pub async fn build(self, executor: TaskExecutor) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
         let (had_end_block, end_block) = if let Some(end_block) = self.end_block {
-            (true, end_block)
+            (true, end_block + 1)
         } else {
             #[cfg(not(feature = "local"))]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
