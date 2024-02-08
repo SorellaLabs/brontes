@@ -268,7 +268,7 @@ pub mod vec_bls_pub_key {
         u: &[T],
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let st: Vec<String> = u.into_iter().map(|data| format!("{:?}", data)).collect();
+        let st: Vec<String> = u.iter().map(|data| format!("{:?}", data)).collect();
         st.serialize(serializer)
     }
 
@@ -593,7 +593,7 @@ pub mod option_contract_info {
         Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
             verified_contract,
             contract_creator: Address::from_str(&contract_creator).unwrap(),
-            protocol: protocol.map(|p| Protocol::from_str(&p).ok()).flatten(),
+            protocol: protocol.and_then(|p| Protocol::from_str(&p).ok()),
             reputation,
         }))
     }

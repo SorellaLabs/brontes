@@ -54,6 +54,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
     }
 
     /// executes the tracing of a given block
+    #[allow(unreachable_code)]
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             return Some(res)
