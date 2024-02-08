@@ -200,14 +200,8 @@ mod tests {
             .unwrap();
         assert_eq!(c, l);
 
-        // AddressToTokens
-        let (c, l) = AddressToTokens::test_initialized_data(&clickhouse, &libmdbx, None)
-            .await
-            .unwrap();
-        assert_eq!(c, l);
-
         // AddressToProtocol
-        let (c, l) = AddressToProtocol::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = AddressToProtocolInfo::test_initialized_data(&clickhouse, &libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
