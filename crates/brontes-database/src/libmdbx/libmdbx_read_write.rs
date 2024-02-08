@@ -75,6 +75,12 @@ impl LibmdbxReadWriter {
 
         let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
         if peek_cur.peek().is_none() {
+            if needs_dex_price {
+                return Err(eyre::eyre!(
+                    "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
+                ))
+            }
+
             tracing::info!("entire range missing");
 
             return Ok(vec![start_block..=end_block])
@@ -119,6 +125,17 @@ impl LibmdbxReadWriter {
                 // should never happen unless a courput db
                 panic!("database is corrupted");
             }
+        }
+
+        if block_tracking - 1 != end_block {
+            if needs_dex_price {
+                tracing::error!("block is missing dex pricing");
+                return Err(eyre::eyre!(
+                    "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
+                ))
+            }
+
+            result.push(block_tracking - 1..=end_block);
         }
 
         Ok(result)
