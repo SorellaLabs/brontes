@@ -32,7 +32,6 @@ fn run() -> eyre::Result<()> {
     let opt = Args::parse();
     match opt.command {
         Commands::Run(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
-        Commands::Init(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::QueryDb(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::AddToDb(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::TraceRange(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
