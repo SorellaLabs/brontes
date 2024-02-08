@@ -19,7 +19,7 @@ pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     parser:             &'static Parser<'static, T, DB>,
     state_collector:    StateCollector<T, DB>,
     database:           &'static DB,
-    inspectors:         &'static [&'static Box<dyn Inspector>],
+    inspectors:         &'static [&'static dyn Inspector],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
@@ -30,7 +30,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         state_collector: StateCollector<T, DB>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
-        inspectors: &'static [&'static Box<dyn Inspector>],
+        inspectors: &'static [&'static dyn Inspector],
     ) -> Self {
         Self {
             state_collector,
@@ -56,7 +56,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
             },
         }
 
-        while let Some(_) = tip.processing_futures.next().await {}
+        while (tip.processing_futures.next().await).is_some() {}
 
         drop(graceful_guard);
     }
