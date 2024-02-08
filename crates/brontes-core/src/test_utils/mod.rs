@@ -5,7 +5,7 @@ use std::{
 };
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
-use brontes_database::{clickhouse::Clickhouse, Tables};
+use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
@@ -28,6 +28,7 @@ use crate::decoding::parser::TraceParser;
 use crate::local_provider::LocalProvider;
 
 // so we only have to init critical tables once
+#[allow(clippy::declare_interior_mutable_const)]
 const INIT_LOCK: OnceLock<()> = OnceLock::new();
 
 /// Functionality to load all state needed for any testing requirements
@@ -37,8 +38,14 @@ pub struct TraceLoader {
     // store so when we trace we don't get a closed rx error
     _metrics:             UnboundedReceiver<PoirotMetricEvents>,
 }
+impl Default for TraceLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TraceLoader {
+    #[allow(clippy::borrow_interior_mutable_const)]
     pub fn new() -> Self {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
@@ -98,15 +105,14 @@ impl TraceLoader {
     ) -> Result<Metadata, TraceLoaderError> {
         if pricing {
             if let Ok(res) = self.test_metadata_with_pricing(block) {
-                return Ok(res)
+                Ok(res)
             } else {
                 self.fetch_missing_metadata(block).await?;
-                return self
-                    .test_metadata_with_pricing(block)
+                self.test_metadata_with_pricing(block)
                     .map_err(|_| TraceLoaderError::NoMetadataFound(block))
             }
         } else if let Ok(res) = self.test_metadata(block) {
-            return Ok(res)
+            Ok(res)
         } else {
             self.fetch_missing_metadata(block).await?;
             return self
@@ -116,17 +122,12 @@ impl TraceLoader {
     }
 
     async fn init_on_start(&self) -> eyre::Result<()> {
-        let clickhouse = Box::leak(Box::new(Clickhouse::default()));
+        let clickhouse = Box::leak(Box::default());
         self.libmdbx
             .initialize_tables(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
-                &[
-                    Tables::PoolCreationBlocks,
-                    Tables::TokenDecimals,
-                    //Tables::AddressToTokens,
-                    //Tables::AddressToProtocol,
-                ],
+                &[Tables::PoolCreationBlocks, Tables::TokenDecimals, Tables::AddressToProtocolInfo],
                 false,
                 None,
             )
@@ -136,7 +137,7 @@ impl TraceLoader {
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
         tracing::info!(%block, "fetching missing metadata");
 
-        let clickhouse = Box::leak(Box::new(Clickhouse::default()));
+        let clickhouse = Box::leak(Box::default());
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -171,14 +172,10 @@ impl TraceLoader {
         start_block: u64,
         end_block: u64,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
-        join_all(
-            (start_block..=end_block)
-                .into_iter()
-                .map(|block| async move {
-                    let (traces, header) = self.trace_block(block).await?;
-                    Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
-                }),
-        )
+        join_all((start_block..=end_block).map(|block| async move {
+            let (traces, header) = self.trace_block(block).await?;
+            Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
+        }))
         .await
         .into_iter()
         .collect()
@@ -199,15 +196,11 @@ impl TraceLoader {
         start_block: u64,
         end_block: u64,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
-        join_all(
-            (start_block..=end_block)
-                .into_iter()
-                .map(|block| async move {
-                    let (traces, header) = self.trace_block(block).await?;
-                    let metadata = self.get_metadata(block, false).await?;
-                    Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
-                }),
-        )
+        join_all((start_block..=end_block).map(|block| async move {
+            let (traces, header) = self.trace_block(block).await?;
+            let metadata = self.get_metadata(block, false).await?;
+            Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
+        }))
         .await
         .into_iter()
         .collect()
@@ -355,7 +348,7 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
         let brontes_db_endpoint =
             env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
-            .expect(&format!("failed to open db path {}", brontes_db_endpoint))
+            .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint))
     })
 }
 
@@ -372,31 +365,34 @@ fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-fn init_trace_parser<'a>(
+#[cfg(not(feature = "local"))]
+fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &'a LibmdbxReadWriter,
+    libmdbx: &LibmdbxReadWriter,
     max_tasks: u32,
-) -> TraceParser<'a, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    #[cfg(feature = "local")]
-    let tracer = {
-        let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
-        let db_port = env::var("RETH_PORT").expect("No DB port.env");
-        let url = format!("{db_endpoint}:{db_port}");
-        Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>
-    };
-    #[cfg(not(feature = "local"))]
-    let tracer = {
-        let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-        let executor = TaskManager::new(handle.clone());
-        let client = TracingClient::new(
-            std::path::Path::new(&db_path),
-            max_tasks as u64,
-            executor.executor(),
-        );
-        handle.spawn(executor);
-        Box::new(client) as Box<dyn TracingProvider>
-    };
+) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
+    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+    let executor = TaskManager::new(handle.clone());
+    let client =
+        TracingClient::new(std::path::Path::new(&db_path), max_tasks as u64, executor.executor());
+    handle.spawn(executor);
+    let tracer = Box::new(client) as Box<dyn TracingProvider>;
+
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
+}
+
+#[cfg(feature = "local")]
+fn init_trace_parser(
+    _handle: Handle,
+    metrics_tx: UnboundedSender<PoirotMetricEvents>,
+    libmdbx: &LibmdbxReadWriter,
+    _max_tasks: u32,
+) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
+    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+    let db_port = env::var("RETH_PORT").expect("No DB port.env");
+    let url = format!("{db_endpoint}:{db_port}");
+    let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
 
     TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
 }
