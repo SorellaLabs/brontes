@@ -22,6 +22,7 @@ action_impl!(
     _call_data: executeCall,
     logs_data: UniswapXexecuteCallLogs,
     _db_tx: &DB| {
+        tracing::info!("x");
 
         let fill_logs = logs_data.Fill_field;
 
@@ -53,6 +54,7 @@ action_impl!(
     logs_data: UniswapXexecuteBatchCallLogs,
     _db_tx: &DB| {
 
+        tracing::info!("x");
         let fill_logs = logs_data.Fill_field;
 
         let solver = fill_logs[0].filler;
@@ -82,6 +84,7 @@ action_impl!(
     logs_data: UniswapXexecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
+        tracing::info!("x");
 
 
         let solver = fill_logs[0].filler;
@@ -112,6 +115,7 @@ action_impl!(
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
 
+        tracing::info!("x");
         let solver = fill_logs[0].filler;
 
 
