@@ -13,3 +13,4 @@ discovery_impl!(
         vec![DiscoveredPool::new(vec![token_a, token_b], deployed_address, Protocol::PancakeSwapV3)]
     }
 );
+// Add v2 : 0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73
