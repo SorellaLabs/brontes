@@ -42,6 +42,7 @@ jobs:
         - uses: dtolnay/rust-toolchain@nightly
           with:
               toolchain: nightly-2024-02-03
+              components: rustfmt
         - uses: Swatinem/rust-cache@v2
           with:
             cache-on-failure: true

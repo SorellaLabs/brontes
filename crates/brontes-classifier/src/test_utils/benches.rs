@@ -30,6 +30,13 @@ pub struct ClassifierBenchUtils {
     rt:                    tokio::runtime::Runtime,
     _dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
+
+impl Default for ClassifierBenchUtils {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClassifierBenchUtils {
     pub fn new() -> Self {
         let (tx, rx) = unbounded_channel();
@@ -56,7 +63,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (vec![trace.clone()], header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header))
+                    black_box(self.classifier.build_block_tree(trace, header).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -80,7 +87,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (traces.clone(), header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header))
+                    black_box(self.classifier.build_block_tree(trace, header).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -103,7 +110,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (traces.clone(), header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header))
+                    black_box(self.classifier.build_block_tree(trace, header).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -111,6 +118,7 @@ impl ClassifierBenchUtils {
         Ok(())
     }
 
+    #[allow(clippy::unit_arg)]
     pub fn bench_tree_operations_tx(
         &self,
         bench_name: &str,
@@ -132,6 +140,7 @@ impl ClassifierBenchUtils {
         Ok(())
     }
 
+    #[allow(clippy::unit_arg)]
     pub fn bench_tree_operations(
         &self,
         bench_name: &str,

@@ -157,7 +157,7 @@ fn value_parse(sol_value: &[DynSolValue], tuple: bool) -> String {
     let ty = if tuple { String::from("(") } else { String::from("[") };
 
     let unclosed = sol_value
-        .into_iter()
+        .iter()
         .map(|t| match t {
             DynSolValue::Bool(bool) => bool.to_string(),
             DynSolValue::Int(i, _) => i.to_string(),
@@ -167,9 +167,9 @@ fn value_parse(sol_value: &[DynSolValue], tuple: bool) -> String {
             DynSolValue::Function(f) => f.to_string(),
             DynSolValue::String(s) => s.to_string(),
             DynSolValue::Bytes(b) => alloy_primitives::Bytes::from(b.clone()).to_string(),
-            DynSolValue::Tuple(t) => value_parse(&t, true),
-            DynSolValue::Array(a) => value_parse(&a, false),
-            DynSolValue::FixedArray(a) => value_parse(&a, false),
+            DynSolValue::Tuple(t) => value_parse(t, true),
+            DynSolValue::Array(a) => value_parse(a, false),
+            DynSolValue::FixedArray(a) => value_parse(a, false),
             DynSolValue::CustomStruct { .. } => unreachable!("only eip-712"),
         })
         .fold(ty, |a, b| a + "," + &b);

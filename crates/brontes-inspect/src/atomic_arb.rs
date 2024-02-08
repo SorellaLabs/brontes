@@ -87,20 +87,16 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             AtomicArbType::Triangle => {
                 self.process_triangle_arb(&info, metadata.clone(), &[actions])
             }
-            AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_arb(
-                &info,
-                metadata.clone(),
-                &swaps,
-                &vec![actions],
-                jump_index,
-            ),
+            AtomicArbType::CrossPair(jump_index) => {
+                self.process_cross_pair_arb(&info, metadata.clone(), &swaps, &[actions], jump_index)
+            }
         }?;
 
         let header = self.inner.build_bundle_header(
             &info,
             profit.to_float(),
             PriceAt::Average,
-            &vec![searcher_actions],
+            &[searcher_actions],
             &[info.gas_details],
             metadata,
             MevType::AtomicArb,
@@ -163,24 +159,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let is_profitable = profit > Rational::ZERO;
 
-        if is_profitable {
-            Some(profit)
-        } else {
+        if is_profitable
+            || tx_info.is_searcher_of_type(MevType::AtomicArb)
+            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
+        {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
-            if tx_info.is_searcher_of_type(MevType::AtomicArb) {
-                Some(profit)
-            } else {
-                // If the arb is not profitable, check if this is a know searcher or if the tx
-                // is private or coinbase.transfers to the builder
-                if tx_info.is_searcher_of_type(MevType::AtomicArb) {
-                    Some(profit)
-                } else if tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private {
-                    Some(profit)
-                } else {
-                    None
-                }
-            }
+            Some(profit)
+        } else {
+            None
         }
     }
 
@@ -214,9 +201,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         } else {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
-            if tx_info.is_searcher_of_type(MevType::AtomicArb) {
-                Some(profit)
-            } else if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
+            if tx_info.is_searcher_of_type(MevType::AtomicArb)
+                || tx_info.is_private
+                || tx_info.gas_details.coinbase_transfer.is_some()
+            {
                 Some(profit)
             } else {
                 None

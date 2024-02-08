@@ -99,6 +99,7 @@ pub struct BlockMetadata {
 }
 
 impl BlockMetadata {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         block_num: u64,
         block_hash: U256,

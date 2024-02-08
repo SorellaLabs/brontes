@@ -109,30 +109,27 @@ impl NormalizedLiquidation {
 
         writeln!(
             f,
-            "{}",
-            format!(
-                "{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
-                 {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
-                 {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}",
-                "Protocol",
-                protocol,
-                "Pool",
-                pool_address,
-                "Liquidator",
-                liquidator_address,
-                "Debtor",
-                debtor_address,
-                "Collateral",
-                collateral_asset_symbol,
-                "Debt",
-                debt_asset_symbol,
-                "Covered Debt",
-                covered_debt_formatted,
-                "Liquidated Collateral",
-                liquidated_collateral_formatted,
-                indent = indent,
-                width = max_field_name_length + spaces + 1
-            )
+            "{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+             {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+             {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}",
+            "Protocol",
+            protocol,
+            "Pool",
+            pool_address,
+            "Liquidator",
+            liquidator_address,
+            "Debtor",
+            debtor_address,
+            "Collateral",
+            collateral_asset_symbol,
+            "Debt",
+            debt_asset_symbol,
+            "Covered Debt",
+            covered_debt_formatted,
+            "Liquidated Collateral",
+            liquidated_collateral_formatted,
+            indent = indent,
+            width = max_field_name_length + spaces + 1
         )?;
 
         Ok(())
