@@ -34,13 +34,13 @@ where
     }
 }
 
-impl<T> Into<TableRow<T>> for CompressedTableRow<T>
+impl<T> From<CompressedTableRow<T>> for TableRow<T>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
-    fn into(self) -> TableRow<T> {
-        (self.0, self.1.into())
+    fn from(val: CompressedTableRow<T>) -> TableRow<T> {
+        (val.0, val.1.into())
     }
 }
 

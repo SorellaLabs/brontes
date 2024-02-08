@@ -33,7 +33,7 @@ pub const START_OF_CHAINBOUND_MEMPOOL_DATA: u64 = 17193367;
 pub const SCP_MAIN_CEX_DEX_BOT: Address =
     Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C"));
 
-pub const EXECUTE_FFS_YO: Bytes = Bytes::from_static(&[0x78, 0xe1, 0x11, 0xf6]);
+pub const EXECUTE_FFS_YO: [u8; 4] = [0x78, 0xe1, 0x11, 0xf6];
 
 pub const EURO_STABLES: [&str; 2] = [
     "EURT", // Tether Euro
