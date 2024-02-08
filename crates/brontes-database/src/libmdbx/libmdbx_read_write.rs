@@ -467,6 +467,13 @@ impl LibmdbxReadWriter {
         Ok(())
     }
 
+    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
+        for block in range {
+            self.init_state_updating(block, flag)?;
+        }
+        Ok(())
+    }
+
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
         let res = tx
