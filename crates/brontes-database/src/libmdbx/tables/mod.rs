@@ -11,7 +11,7 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::InitializedStateMeta,
+        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -144,6 +144,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
+                        Some(CEX_FLAG),
                     )
                     .await
             }
@@ -152,6 +153,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
                         block_range,
                         clear_table,
+                        Some(META_FLAG),
                     )
                     .await
             }

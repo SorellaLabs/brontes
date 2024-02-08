@@ -19,9 +19,9 @@ use crate::{
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
-    libmdbx:    &'static LibmdbxReadWriter,
-    clickhouse: &'static Clickhouse,
-    tracer:     Arc<TP>,
+    pub(crate) libmdbx: &'static LibmdbxReadWriter,
+    clickhouse:         &'static Clickhouse,
+    tracer:             Arc<TP>,
 }
 
 impl<TP: TracingProvider> LibmdbxInitializer<TP> {
@@ -94,6 +94,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         &self,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
+        mark_init: Option<u8>,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -157,6 +158,9 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 };
 
                 info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
+                if let Some(flag) = mark_init {
+                    libmdbx.inited_range(start..=end, flag)?;
+                }
 
                 Ok::<(), eyre::Report>(())
             }
