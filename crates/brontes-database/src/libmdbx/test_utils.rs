@@ -91,7 +91,7 @@ pub async fn compare_clickhouse_libmdbx_data<T, D>(
     clickhouse: &Clickhouse,
     libmdbx: &LibmdbxReadWriter,
     block_range: Option<(u64, u64)>,
-) -> eyre::Result<(usize, usize)>
+) -> eyre::Result<()>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -105,5 +105,5 @@ where
         .walk_range(..)?
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok((clickhouse_data.len(), libmdbx_data.len()))
+    Ok(())
 }
