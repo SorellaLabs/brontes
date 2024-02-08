@@ -40,7 +40,7 @@
 //
 //         for pool_address in res.0 {
 //             let Ok(protocol_info) =
-// binding_tx.get::<AddressToProtocolInfo>(pool_address) else {                 
+// binding_tx.get::<AddressToProtocolInfo>(pool_address) else {
 // continue             };
 //             map.insert(
 //                 (pool_address, protocol_info.protocol),
