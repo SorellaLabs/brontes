@@ -14,11 +14,11 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
+    libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter},
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
-use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
+use futures::{future, future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::TaskExecutor;
@@ -206,7 +206,6 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
 
     pub async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
         tracing::info!("initing critical range state");
-        self.libmdbx.initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
         // these tables are super lightweight and as such, we init them for the entire
         // range
         self.libmdbx
@@ -232,10 +231,10 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             !self.with_dex_pricing,
         )?;
 
-        tracing::info!("initing missing ranges");
         join_all(state_to_init.into_iter().map(|range| async move {
             let start = range.start();
             let end = range.end();
+        tracing::info!(start, end, "initing missing range");
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,
@@ -256,7 +255,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
     pub async fn build(self, executor: TaskExecutor) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
         let (had_end_block, end_block) = if let Some(end_block) = self.end_block {
-            (true, end_block + 1)
+            (true, end_block)
         } else {
             #[cfg(not(feature = "local"))]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
