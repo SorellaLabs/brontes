@@ -160,7 +160,7 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
         let swaps: Vec<(FixedString, ClickhouseVecNormalizedSwap, usize)> = value
             .0
             .into_iter()
-            .zip(value.1.into_iter())
+            .zip(value.1)
             .map(|(tx, swaps)| {
                 let num_swaps = swaps.len();
                 (format!("{:?}", tx).into(), swaps.into(), num_swaps)
@@ -171,7 +171,6 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
 
         swaps.into_iter().for_each(|(tx, inner_swaps, num_swaps)| {
             let tx_repeated = (0..num_swaps)
-                .into_iter()
                 .map(|_| tx.clone())
                 .collect::<Vec<FixedString>>();
 

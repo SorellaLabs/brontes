@@ -1,7 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
-    path::Path,
     sync::{Arc, OnceLock},
 };
 
@@ -104,20 +103,18 @@ impl TraceLoader {
                     .test_metadata_with_pricing(block)
                     .map_err(|_| TraceLoaderError::NoMetadataFound(block))
             }
+        } else if let Ok(res) = self.test_metadata(block) {
+            return Ok(res)
         } else {
-            if let Ok(res) = self.test_metadata(block) {
-                return Ok(res)
-            } else {
-                self.fetch_missing_metadata(block).await?;
-                return self
-                    .test_metadata(block)
-                    .map_err(|_| TraceLoaderError::NoMetadataFound(block))
-            }
+            self.fetch_missing_metadata(block).await?;
+            return self
+                .test_metadata(block)
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
         }
     }
 
     async fn init_on_start(&self) -> eyre::Result<()> {
-        let clickhouse = Arc::new(Clickhouse::default());
+        let clickhouse = Box::leak(Box::new(Clickhouse::default()));
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -137,10 +134,10 @@ impl TraceLoader {
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
         tracing::info!(%block, "fetching missing metadata");
 
-        let clickhouse = Arc::new(Clickhouse::default());
+        let clickhouse = Box::leak(Box::new(Clickhouse::default()));
         self.libmdbx
             .initialize_tables(
-                clickhouse.clone(),
+                clickhouse,
                 self.tracing_provider.get_tracer(),
                 &[Tables::BlockInfo, Tables::CexPrice],
                 false,
@@ -391,12 +388,14 @@ fn init_trace_parser<'a>(
     #[cfg(not(feature = "local"))]
     let tracer = {
         let executor = TaskManager::new(handle.clone());
-        let client = TracingClient::new(Path::new(&db_path), max_tasks as u64, executor.executor());
+        let client = TracingClient::new(
+            std::path::Path::new(&db_path),
+            max_tasks as u64,
+            executor.executor(),
+        );
         handle.spawn(executor);
         Box::new(client) as Box<dyn TracingProvider>
     };
 
-    let call = Box::new(|_: &_, _: &_| true);
-
-    TraceParser::new(libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
 }

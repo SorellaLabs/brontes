@@ -10,7 +10,7 @@ pub trait IterExt: Iterator {
         let mut a: FromA = Default::default();
         let mut b: FromB = Default::default();
 
-        while let Some(next) = self.next() {
+        for next in self {
             match next {
                 (Some(e), None) => a.extend(vec![e]),
                 (None, Some(e)) => b.extend(vec![e]),

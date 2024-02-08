@@ -34,10 +34,7 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone {
 
 impl NormalizedAction for Actions {
     fn is_classified(&self) -> bool {
-        match self {
-            Actions::Unclassified(_) => false,
-            _ => true,
-        }
+        !matches!(self, Actions::Unclassified(_))
     }
 
     fn get_action(&self) -> &Actions {

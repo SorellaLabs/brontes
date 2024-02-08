@@ -4,7 +4,7 @@ use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
-use reth_primitives::{Address, BlockNumberOrTag, Header, B256};
+use reth_primitives::{BlockNumberOrTag, Header, B256};
 use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
 
 use self::parser::TraceParser;
@@ -37,12 +37,10 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         libmdbx: &'a DB,
         tracing: T,
-        should_fetch: Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
     ) -> Self {
         let executor = Executor::new();
 
-        let parser =
-            TraceParser::new(libmdbx, should_fetch, Arc::new(tracing), Arc::new(metrics_tx));
+        let parser = TraceParser::new(libmdbx, Arc::new(tracing), Arc::new(metrics_tx));
 
         Self { executor, parser }
     }

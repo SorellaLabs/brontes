@@ -483,11 +483,7 @@ fn add_edge(
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
-    if weights
-        .iter()
-        .find(|w| w.pool_addr == edge_info.pool_addr)
-        .is_some()
-    {
+    if weights.iter().any(|w| w.pool_addr == edge_info.pool_addr) {
         return false
     }
 

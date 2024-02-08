@@ -187,10 +187,10 @@ mod tests {
         #[cfg(feature = "local")]
         let tracing_client = Arc::new(init_tracing().unwrap());
 
-        let clickhouse = Arc::new(init_clickhouse());
+        let clickhouse = Box::leak(Box::new(init_clickhouse()));
         let libmdbx = init_libmdbx().unwrap();
 
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse.clone(), tracing_client);
+        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client);
 
         let tables = Tables::ALL;
         intializer
