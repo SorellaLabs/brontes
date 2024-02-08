@@ -208,22 +208,23 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         tracing::info!("initing critical range state");
         // these tables are super lightweight and as such, we init them for the entire
         // range
-        self.libmdbx
-            .initialize_tables(
-                self.clickhouse,
-                self.parser.get_tracer(),
-                &[
-                    Tables::PoolCreationBlocks,
-                    Tables::AddressToProtocolInfo,
-                    Tables::TokenDecimals,
-                    Tables::PoolCreationBlocks,
-                    Tables::Builder,
-                    Tables::AddressMeta,
-                ],
-                false,
-                None,
-            )
-            .await?;
+        if self.libmdbx.init_full_range_tables() {
+            self.libmdbx
+                .initialize_tables(
+                    self.clickhouse,
+                    self.parser.get_tracer(),
+                    &[
+                        Tables::PoolCreationBlocks,
+                        Tables::AddressToProtocolInfo,
+                        Tables::TokenDecimals,
+                        Tables::Builder,
+                        Tables::AddressMeta,
+                    ],
+                    false,
+                    None,
+                )
+                .await?;
+        }
 
         tracing::info!(start_block=%self.start_block, %end_block, "verifying db fetching state that is missing");
         let state_to_init = self.libmdbx.state_to_initialize(
