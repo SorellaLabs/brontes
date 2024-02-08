@@ -12,9 +12,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::Clickhouse,
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
