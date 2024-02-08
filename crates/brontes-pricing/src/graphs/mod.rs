@@ -106,15 +106,12 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
             return edges
         }
 
-        let paths = self
-            .all_pair_graph
+        self.all_pair_graph
             .get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections)
             .into_iter()
             .flatten()
             .flatten()
-            .collect_vec();
-
-        paths
+            .collect_vec()
     }
 
     pub fn add_subgraph_for_verification(

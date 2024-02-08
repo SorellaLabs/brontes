@@ -115,7 +115,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
         .iter_mut()
         .enumerate()
         .for_each(|(idx, mint)| {
-            if &sandwich.frontrun_tx_hash[idx] == &jit.frontrun_mint_tx_hash {
+            if sandwich.frontrun_tx_hash[idx] == jit.frontrun_mint_tx_hash {
                 *mint = Some(jit.frontrun_mints.clone())
             }
         });
@@ -126,7 +126,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
         .iter_mut()
         .enumerate()
         .for_each(|(idx, mint)| {
-            if &sandwich.frontrun_tx_hash[idx] == &jit.backrun_burn_tx_hash {
+            if sandwich.frontrun_tx_hash[idx] == jit.backrun_burn_tx_hash {
                 *mint = Some(jit.backrun_burns.clone())
             }
         });
@@ -160,7 +160,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
     // Create new classified MEV data
     let new_classified = BundleHeader {
         tx_index:      classified_sandwich.tx_index,
-        tx_hash:       *sandwich.frontrun_tx_hash.get(0).unwrap_or_default(),
+        tx_hash:       *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
         mev_type:      MevType::JitSandwich,
         block_number:  classified_sandwich.block_number,
         eoa:           jit_classified.eoa,
@@ -261,7 +261,7 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
         let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
-        let backrun_tx_hash_repeated = vec![&self.backrun_tx_hash]
+        let backrun_tx_hash_repeated = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()
             .map(|tx| FixedString::from(format!("{:?}", &tx)))
