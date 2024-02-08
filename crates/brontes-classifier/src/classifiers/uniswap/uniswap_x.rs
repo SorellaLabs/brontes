@@ -177,7 +177,7 @@ mod tests {
             user_swaps:          vec![
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 2,
+                    trace_index: 3,
                     from:        Address::new(hex!(
                         "
             86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
@@ -201,7 +201,7 @@ mod tests {
                 },
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 3,
+                    trace_index: 5,
                     from:        Address::new(hex!(
                         "
                     569d9f244e4ed4f0731f39675492740dcdab6b15"
@@ -217,7 +217,7 @@ mod tests {
                     token_in:    TokenInfoWithAddress::usdt(),
                     amount_in:   U256::from_str("106496770").unwrap().to_scaled_rational(6),
                     token_out:   TokenInfoWithAddress::native_eth(),
-                    amount_out:  U256::from_str("1569952967947850")
+                    amount_out:  U256::from_str("43925992451078510")
                         .unwrap()
                         .to_scaled_rational(18),
                     msg_value:   U256::ZERO,
