@@ -51,7 +51,7 @@ jobs:
       - name: Get branch names.
         id: branch-names
         uses: tj-actions/branch-names@v8
-      # init server args
+      # init server args 
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/ 
