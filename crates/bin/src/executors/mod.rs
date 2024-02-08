@@ -78,6 +78,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         }
     }
 
+    #[allow(clippy::async_yields_async)]
     async fn build_range_executors(
         &self,
         executor: TaskExecutor,
@@ -200,7 +201,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             rest_pairs,
         );
         let pricing = WaitingForPricerFuture::new(pricer, executor);
-        let fetcher = MetadataFetcher::new(tip.then(|| self.clickhouse), Some(pricing), None);
+        let fetcher = MetadataFetcher::new(tip.then_some(self.clickhouse), Some(pricing), None);
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
@@ -281,8 +282,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         let futures = FuturesUnordered::new();
 
         if had_end_block {
-            (&self)
-                .build_range_executors(executor.clone(), end_block, false)
+            self.build_range_executors(executor.clone(), end_block, false)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -294,8 +294,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                     ));
                 });
         } else {
-            (&self)
-                .build_range_executors(executor.clone(), end_block, true)
+            self.build_range_executors(executor.clone(), end_block, true)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -344,7 +343,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                            full range tables"
         );
 
-        return Err(eyre::eyre!("shutdown"))
+        Err(eyre::eyre!("shutdown"))
     }
 }
 

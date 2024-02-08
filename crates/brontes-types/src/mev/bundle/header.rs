@@ -105,8 +105,8 @@ impl Display for TokenProfits {
         let mut profits_by_collector: HashMap<Address, Vec<TokenProfit>> = HashMap::new();
         for profit in &self.profits {
             profits_by_collector
-                .entry(profit.profit_collector.clone())
-                .or_insert_with(Vec::new)
+                .entry(profit.profit_collector)
+                .or_default()
                 .push(profit.clone());
         }
 
@@ -116,18 +116,18 @@ impl Display for TokenProfits {
                 if profit.amount >= 0.0 {
                     writeln!(
                         f,
-                        "    Gained: {} {} (worth ${})",
-                        format!("{:.7}", profit.amount).to_string().green(),
+                        "    Gained: {:.7} {} (worth ${:.3})",
+                        profit.amount.to_string().green(),
                         profit.token.inner.symbol.bold(),
-                        format!("{:.3}", profit.usd_value)
+                        profit.usd_value.to_string()
                     )?;
                 } else {
                     writeln!(
                         f,
-                        "    Lost: {} {} (worth ${})",
-                        format!("{:.7}", profit.amount.abs()).to_string().red(),
+                        "    Lost: {:.7} {} (worth ${:.3})",
+                        profit.amount.abs().to_string().red(),
                         profit.token.inner.symbol.bold(),
-                        format!("{:.3}", profit.usd_value.abs())
+                        profit.usd_value.abs()
                     )?;
                 }
             }
