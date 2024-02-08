@@ -9,6 +9,7 @@ use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::constants::USDT_ADDRESS_STRING;
 use clap::Parser;
+use reth_tasks::TaskSpawnerExt;
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, static_object};
@@ -77,21 +78,29 @@ impl RunArgs {
         ));
 
         let executor = task_executor.clone();
-        BrontesRunConfig::new(
-            self.start_block,
-            self.end_block,
-            max_tasks,
-            self.min_batch_size,
-            quote_asset,
-            self.run_dex_pricing,
-            inspectors,
-            clickhouse,
-            parser,
-            libmdbx,
-        )
-        .build(task_executor)
-        .await?
-        .await;
+        let result = executor
+            .clone()
+            .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
+                if let Ok(brontes) = BrontesRunConfig::new(
+                    self.start_block,
+                    self.end_block,
+                    max_tasks,
+                    self.min_batch_size,
+                    quote_asset,
+                    self.run_dex_pricing,
+                    inspectors,
+                    clickhouse,
+                    parser,
+                    libmdbx,
+                )
+                .build(task_executor, shutdown)
+                .await
+                {
+                    let _ = brontes.await;
+                }
+            });
+
+        result.await?;
 
         Ok(())
     }
