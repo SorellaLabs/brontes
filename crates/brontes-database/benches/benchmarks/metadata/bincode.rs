@@ -6,7 +6,7 @@ use std::{
 use alloy_rlp::{Decodable, Encodable};
 use bincode::{config, Decode as BincodeDecode, Encode as BincodeEncode};
 use brontes_database::libmdbx::types::LibmdbxData;
-use brontes_types::serde_primitives::{option_address, u256};
+use brontes_types::serde_utils::{option_address, u256};
 use bytes::{Buf, BufMut, Bytes};
 use reth_db::{
     table::{Compress, Decompress},
@@ -23,13 +23,13 @@ use crate::setup::tables::MetadataBincode;
 
 #[serde_as]
 #[derive(Debug, Clone, Row, Serialize, Deserialize)]
-pub struct MetadataBincodeData {
+pub struct BlockInfo {
     pub block_number: u64,
     //#[serde(flatten)]
     pub inner:        MetadataBincodeInner,
 }
 
-impl LibmdbxData<MetadataBincode> for MetadataBincodeData {
+impl LibmdbxData<BlockInfo> for BlockInfo {
     fn into_key_val(
         &self,
     ) -> (
@@ -348,9 +348,9 @@ impl Decompress for MetadataBincodeInner {
     }
 }
 
-impl From<MetadataBench> for MetadataBincodeData {
+impl From<MetadataBench> for BlockInfo {
     fn from(value: MetadataBench) -> Self {
-        MetadataBincodeData {
+        BlockInfo {
             block_number: value.block_number,
             inner:        MetadataBincodeInner {
                 block_hash:             value.block_hash,
