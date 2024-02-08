@@ -39,7 +39,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        self.setup_all_tables()?;
+        // self.setup_all_tables()?;
         join_all(
             tables
                 .iter()
@@ -50,13 +50,13 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         .collect::<eyre::Result<_>>()
     }
 
-    fn setup_all_tables(&self) -> eyre::Result<()> {
-        for table in Tables::ALL {
-            table.init_table(self.libmdbx)?;
-        }
-
-        Ok(())
-    }
+    // fn setup_all_tables(&self) -> eyre::Result<()> {
+    //     for table in Tables::ALL {
+    //         table.init_table(self.libmdbx)?;
+    //     }
+    //
+    //     Ok(())
+    // }
 
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
