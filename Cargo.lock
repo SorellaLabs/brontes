@@ -173,7 +173,7 @@ dependencies = [
 [[package]]
 name = "alloy-eips"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -184,7 +184,7 @@ dependencies = [
 [[package]]
 name = "alloy-genesis"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
@@ -206,7 +206,7 @@ dependencies = [
 [[package]]
 name = "alloy-json-rpc"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-primitives",
  "serde",
@@ -217,7 +217,7 @@ dependencies = [
 [[package]]
 name = "alloy-network"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-eips",
  "alloy-json-rpc",
@@ -256,7 +256,7 @@ dependencies = [
 [[package]]
 name = "alloy-providers"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-network",
  "alloy-primitives",
@@ -297,7 +297,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-client"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
@@ -314,7 +314,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-engine-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -327,7 +327,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-trace-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
@@ -338,7 +338,7 @@ dependencies = [
 [[package]]
 name = "alloy-rpc-types"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -397,7 +397,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-json-rpc",
  "base64 0.21.7",
@@ -413,7 +413,7 @@ dependencies = [
 [[package]]
 name = "alloy-transport-http"
 version = "0.1.0"
-source = "git+https://github.com/alloy-rs/alloy.git#1737429f1f50fe7cb8aacc070831088bf3290320"
+source = "git+https://github.com/alloy-rs/alloy.git#974d488bab5e21e9f17452a39a4bfa56677367b2"
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
@@ -2056,9 +2056,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.4.18"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e578d6ec4194633722ccf9544794b71b1385c3c027efe0c55db226fc880865c"
+checksum = "80c21025abd42669a92efc996ef13cfb2c5c627858421ea58d5c3b331a6c134f"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -2066,21 +2066,21 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.4.18"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4df4df40ec50c46000231c914968278b1eb05098cf8f1b3a518a95030e71d1c7"
+checksum = "458bf1f341769dfcf849846f65dffdf9146daa56bcd2a47cb4e1de9915567c99"
 dependencies = [
  "anstream",
  "anstyle",
  "clap_lex",
- "strsim 0.10.0",
+ "strsim 0.11.0",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "4.4.7"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf9804afaaf59a91e75b022a30fb7229a7901f60c755489cc61c9b423b836442"
+checksum = "307bc0538d5f0f83b8248db3087aa92fe504e4691294d0c96c0eabc33f47ba47"
 dependencies = [
  "heck 0.4.1",
  "proc-macro2",
@@ -2090,9 +2090,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "702fc72eb24e5a1e48ce58027a675bc24edd52096d5397d4aea7c6dd9eca0bd1"
+checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 
 [[package]]
 name = "clickhouse"
@@ -2549,7 +2549,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "4.1.1"
-source = "git+https://github.com/dalek-cryptography/curve25519-dalek.git?rev=f08bbb7#f08bbb7f57e906fd852edc0f9f901a536f4ee8a9"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek.git?rev=0cd099a9fb8ff9f6fedc8723d44dbb1c743e9d35#0cd099a9fb8ff9f6fedc8723d44dbb1c743e9d35"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -2564,8 +2564,8 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek-derive"
-version = "0.1.1"
-source = "git+https://github.com/dalek-cryptography/curve25519-dalek.git?rev=f08bbb7#f08bbb7f57e906fd852edc0f9f901a536f4ee8a9"
+version = "0.1.0"
+source = "git+https://github.com/dalek-cryptography/curve25519-dalek.git?rev=0cd099a9fb8ff9f6fedc8723d44dbb1c743e9d35#0cd099a9fb8ff9f6fedc8723d44dbb1c743e9d35"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2935,8 +2935,9 @@ dependencies = [
 
 [[package]]
 name = "ed25519-dalek"
-version = "2.1.0"
-source = "git+https://github.com/dalek-cryptography/curve25519-dalek.git?rev=f08bbb7#f08bbb7f57e906fd852edc0f9f901a536f4ee8a9"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a3daa8e81a3963a60642bcc1f90a670680bd4a77535faa384e9d1c79d620871"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
@@ -4451,9 +4452,9 @@ checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
 
 [[package]]
 name = "jobserver"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c37f63953c4c63420ed5fd3d6d398c719489b9f872b9fa683262f8edd363c7d"
+checksum = "ab46a6e9526ddef3ae7f787c06f0f2600639ba80ea3eade3d8e670a2230f51d6"
 dependencies = [
  "libc",
 ]
@@ -5330,19 +5331,18 @@ checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
 
 [[package]]
 name = "num-integer"
-version = "0.1.45"
+version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
+checksum = "7969661fd2958a5cb096e56c8e1ad0444ac2bbcd0061bd28660485a44879858f"
 dependencies = [
- "autocfg",
  "num-traits",
 ]
 
 [[package]]
 name = "num-iter"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d03e6c028c5dc5cac6e2dec0efda81fc887605bb3d884578bb6d6bf7514e252"
+checksum = "d869c01cc0c455284163fd0092f1f93835385ccab5a98a0dcc497b2f8bf055a9"
 dependencies = [
  "autocfg",
  "num-integer",
@@ -5363,9 +5363,9 @@ dependencies = [
 
 [[package]]
 name = "num-traits"
-version = "0.2.17"
+version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39e3200413f237f41ab11ad6d161bc7239c84dcb631773ccd7de3dfe4b5c267c"
+checksum = "da0df0e5185db44f69b44f26786fe401b6c293d1907744beaa7fa62b2e5a517a"
 dependencies = [
  "autocfg",
  "libm",
@@ -7461,7 +7461,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "4.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#53718f203ae653827d73291474f7fed38a9bc9c2"
+source = "git+https://github.com/bluealloy/revm?branch=main#4ab334160c9b8c3209addda72ddc96893e24ce5c"
 dependencies = [
  "auto_impl",
  "cfg-if",
@@ -7499,7 +7499,7 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "2.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#53718f203ae653827d73291474f7fed38a9bc9c2"
+source = "git+https://github.com/bluealloy/revm?branch=main#4ab334160c9b8c3209addda72ddc96893e24ce5c"
 dependencies = [
  "revm-primitives 2.0.0",
  "serde",
@@ -7524,7 +7524,7 @@ dependencies = [
 [[package]]
 name = "revm-precompile"
 version = "3.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#53718f203ae653827d73291474f7fed38a9bc9c2"
+source = "git+https://github.com/bluealloy/revm?branch=main#4ab334160c9b8c3209addda72ddc96893e24ce5c"
 dependencies = [
  "aurora-engine-modexp",
  "blst",
@@ -7557,7 +7557,7 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "2.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#53718f203ae653827d73291474f7fed38a9bc9c2"
+source = "git+https://github.com/bluealloy/revm?branch=main#4ab334160c9b8c3209addda72ddc96893e24ce5c"
 dependencies = [
  "alloy-primitives",
  "auto_impl",
@@ -8609,6 +8609,12 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "strsim"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ee073c9e4cd00e28217186dbe12796d692868f432bf2e97ee73bed0c56dfa01"
 
 [[package]]
 name = "strum"

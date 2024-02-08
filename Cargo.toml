@@ -150,9 +150,8 @@ num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 
-# revert to 2.1.0 as 2.1.1 was not building
 [patch.crates-io]
-ed25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek.git", rev = "f08bbb7" }
+curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek.git", rev = "0cd099a9fb8ff9f6fedc8723d44dbb1c743e9d35" }
 
 [profile.dev]
 opt-level = 0           # No optimizations
