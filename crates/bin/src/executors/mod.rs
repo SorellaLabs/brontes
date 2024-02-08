@@ -17,7 +17,7 @@ use brontes_database::{
     libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter},
 };
 use brontes_inspect::Inspector;
-use brontes_pricing::{BrontesBatchPricer, GraphManager};
+use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use futures::{future, future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
@@ -174,6 +174,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
 
         let pairs = self.libmdbx.protocols_created_before(start_block).unwrap();
+
         let rest_pairs = self
             .libmdbx
             .protocols_created_range(start_block + 1, end_block)
@@ -182,6 +183,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             .flat_map(|(_, pools)| {
                 pools
                     .into_iter()
+                    .filter(|(_, p, _)| p.has_state_updater())
                     .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                     .collect::<Vec<_>>()
             })
@@ -205,10 +207,10 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
     }
 
     pub async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
-        tracing::info!("initing critical range state");
         // these tables are super lightweight and as such, we init them for the entire
         // range
         if self.libmdbx.init_full_range_tables() {
+            tracing::info!("initing critical range state");
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,

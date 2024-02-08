@@ -31,6 +31,7 @@ pub trait UpdatableProtocol {
 }
 
 pub trait LoadState {
+    fn has_state_updater(&self) -> bool;
     fn try_load_state<T: TracingProvider>(
         self,
         address: Address,
@@ -41,6 +42,10 @@ pub trait LoadState {
 }
 
 impl LoadState for Protocol {
+    fn has_state_updater(&self) -> bool {
+        matches!(self, Self::UniswapV2 | Self::UniswapV3 | Self::SushiSwapV2 | Self::SushiSwapV3)
+    }
+
     async fn try_load_state<T: TracingProvider>(
         self,
         address: Address,

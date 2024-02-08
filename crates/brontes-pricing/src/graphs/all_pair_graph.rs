@@ -13,7 +13,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, info};
 
 use super::yens::yen;
-use crate::{PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
+use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EdgeWithInsertBlock {
@@ -85,6 +85,9 @@ impl AllPairGraph {
 
         let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in all_pool_data {
+            if !dex.has_state_updater() {
+                continue
+            }
             // because this is undirected, doesn't matter what order the nodes are connected
             // so we sort so we can just have a collection of edges for just one
             // way
