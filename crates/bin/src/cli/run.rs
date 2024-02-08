@@ -90,8 +90,11 @@ impl RunArgs {
                     tracing::error!(%e);
                     e
                 }) {
-                    brontes.await;
+                    if let Err(e) = brontes.await {
+                        tracing::error!(%e);
+                    }
                 }
+                .await;
             });
 
         result.await?;
