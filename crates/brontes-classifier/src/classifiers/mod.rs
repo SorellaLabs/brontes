@@ -22,6 +22,9 @@ pub use pancakeswap::*;
 pub mod maker;
 pub use maker::*;
 
+pub mod zerox;
+pub use zerox::*;
+
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Decoder,
