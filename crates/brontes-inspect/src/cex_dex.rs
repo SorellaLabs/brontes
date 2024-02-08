@@ -399,7 +399,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .get_dex_revenue_usd(
                 tx_info.tx_index,
                 PriceAt::Average,
-                &vec![possible_cex_dex
+                &[possible_cex_dex
                     .swaps
                     .iter()
                     .map(|s| s.to_action())
@@ -408,11 +408,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             )
             .unwrap_or_default();
 
-        if profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) <= Rational::ZERO {
-            false
-        } else {
-            true
-        }
+        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) > Rational::ZERO
     }
 }
 
@@ -434,7 +430,7 @@ impl PossibleCexDex {
     pub fn build_cex_dex_type(&self, info: &TxInfo) -> BundleData {
         BundleData::CexDex(CexDex {
             tx_hash:          info.tx_hash,
-            gas_details:      self.gas_details.clone(),
+            gas_details:      self.gas_details,
             swaps:            self.swaps.clone(),
             stat_arb_details: self.arb_details.clone(),
             pnl:              self.pnl.clone(),
