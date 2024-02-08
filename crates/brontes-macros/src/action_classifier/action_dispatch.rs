@@ -60,7 +60,6 @@ impl ActionDispatch {
                     if call_info.call_data.len() < 4 {
                         return None
                     }
-                    tracing::info!("decoding {protocol_byte} protocol");
 
                     let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
                         &call_info.call_data[0..4]);
