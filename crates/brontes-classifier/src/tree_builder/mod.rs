@@ -303,8 +303,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![DexPriceMsg::Update(results.0)], results.1)
         } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
             return transfer
-        }
-        {
+        } else {
             return (vec![], self.classify_eth_transfer(trace, tx_idx))
         }
     }
