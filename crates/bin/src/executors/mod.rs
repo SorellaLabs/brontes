@@ -234,7 +234,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         join_all(state_to_init.into_iter().map(|range| async move {
             let start = range.start();
             let end = range.end();
-        tracing::info!(start, end, "initing missing range");
+            tracing::info!(start, end, "initing missing range");
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,
