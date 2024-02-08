@@ -11,6 +11,7 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
+        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -27,7 +28,7 @@ use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData};
+use crate::libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData, LibmdbxReadWriter};
 
 mod const_sql;
 use alloy_primitives::Address;
@@ -37,7 +38,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 12;
+pub const NUM_TABLES: usize = 13;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -70,6 +71,20 @@ macro_rules! tables {
                         TableType::Table
                     },)*
                 }
+            }
+
+            pub fn init_table(&self, db: &LibmdbxReadWriter) -> eyre::Result<()> {
+                match self {
+                    $(
+                        Tables::$table => {
+                            let tx = db.0.rw_tx()?;
+                            tx.get_dbi::<$table>()?;
+                            tx.commit()?;
+                        }
+                    ),*
+                }
+
+                Ok(())
             }
 
         }
@@ -129,6 +144,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
+                        Some(CEX_FLAG),
                     )
                     .await
             }
@@ -137,6 +153,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
                         block_range,
                         clear_table,
+                        Some(META_FLAG),
                     )
                     .await
             }
@@ -155,6 +172,7 @@ impl Tables {
                     .await
             }
             Tables::Searcher => Ok(()),
+            Tables::InitializedState => Ok(()),
         }
     }
 }
@@ -171,7 +189,8 @@ tables!(
     TxTraces,
     Builder,
     AddressMeta,
-    Searcher
+    Searcher,
+    InitializedState
 );
 
 /// Must be in this order when defining
@@ -575,6 +594,23 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table InitializedState {
+        Data {
+            key: u64,
+            value: InitializedStateMeta,
+            compressed_value: InitializedStateMeta
+        },
+        Init {
+            init_size: None,
+            init_method: Other
         },
         CLI {
             can_insert: False
