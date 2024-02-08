@@ -1,6 +1,7 @@
 use std::{collections::HashSet, fmt, fmt::Display};
 
 use alloy_primitives::TxHash;
+use colored::Colorize;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use redefined::self_convert_redefined;
@@ -191,6 +192,7 @@ impl Display for GasDetails {
         )
     }
 }
+
 self_convert_redefined!(GasDetails);
 
 impl GasDetails {
@@ -214,6 +216,51 @@ impl GasDetails {
 
     pub fn coinbase_transfer(&self) -> u128 {
         self.coinbase_transfer.unwrap_or_default()
+    }
+
+    // Pretty print after 'spaces' spaces
+    pub fn pretty_print_with_spaces(&self, f: &mut fmt::Formatter, spaces: usize) -> fmt::Result {
+        let space_str = " ".repeat(spaces);
+        let labels = [
+            (
+                "Coinbase Transfer",
+                self.coinbase_transfer
+                    .map(|amount| format!("{} ETH", amount))
+                    .unwrap_or_else(|| "None".to_string()),
+            ),
+            ("Priority Fee", format!("{} Wei", self.priority_fee)),
+            ("Gas Used", self.gas_used.to_string()),
+            ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
+            ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
+        ];
+
+        let max_label_length = labels
+            .iter()
+            .map(|(label, _)| label.len())
+            .max()
+            .unwrap_or(0);
+
+        for (label, value) in &labels {
+            writeln!(
+                f,
+                "{}",
+                self.format_line_with_spaces(label, value, max_label_length, &space_str)
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn format_line_with_spaces(
+        &self,
+        label: &str,
+        value: &str,
+        max_label_length: usize,
+        leading_spaces: &str,
+    ) -> String {
+        let padded_label = format!("{:<width$} :", label, width = max_label_length);
+        let formatted_value = format!("    {}", value).bright_yellow();
+        format!("{}{}{}", leading_spaces, padded_label, formatted_value)
     }
 }
 
