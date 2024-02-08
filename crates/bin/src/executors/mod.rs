@@ -1,7 +1,6 @@
 mod range;
 mod shared;
 use brontes_database::Tables;
-use reth_db::Tables;
 mod tip;
 use std::{
     collections::HashMap,
@@ -15,11 +14,11 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter},
+    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager};
-use futures::{future, future::join_all, stream::FuturesUnordered, Future, StreamExt};
+use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::TaskExecutor;
@@ -59,7 +58,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         with_dex_pricing: bool,
 
         inspectors: &'static [&'static dyn Inspector],
-        clickhouse: Option<&'static Clickhouse>,
+        clickhouse: &'static Clickhouse,
 
         parser: &'static Parser<'static, T, LibmdbxReadWriter>,
         libmdbx: &'static LibmdbxReadWriter,
@@ -82,6 +81,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         &self,
         executor: TaskExecutor,
         end_block: u64,
+        tip: bool,
     ) -> Vec<RangeExecutorWithPricing<T, LibmdbxReadWriter>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -108,6 +108,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                                 executor.clone(),
                                 *start_block,
                                 *end_block,
+                                tip,
                             )
                             .await
                         } else {
@@ -135,7 +136,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         start_block: u64,
     ) -> TipInspector<T, LibmdbxReadWriter> {
         let state_collector = self
-            .state_collector_dex_price(executor, start_block, start_block)
+            .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
         TipInspector::new(
             start_block,
@@ -166,6 +167,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         executor: TaskExecutor,
         start_block: u64,
         end_block: u64,
+        tip: bool,
     ) -> StateCollector<T, LibmdbxReadWriter> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
@@ -197,7 +199,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             rest_pairs,
         );
         let pricing = WaitingForPricerFuture::new(pricer, executor);
-        let fetcher = MetadataFetcher::new(Some(self.clickhouse), Some(pricing), None);
+        let fetcher = MetadataFetcher::new(tip.then(|| self.clickhouse), Some(pricing), None);
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
@@ -230,7 +232,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         )?;
 
         tracing::info!("initing missing ranges");
-        join_all(state_to_init.into_iter().map(|range| async {
+        join_all(state_to_init.into_iter().map(|range| async move {
             let start = range.start();
             let end = range.end();
             self.libmdbx
@@ -266,7 +268,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
 
         if had_end_block {
             (&self)
-                .build_range_executors(executor.clone(), end_block)
+                .build_range_executors(executor.clone(), end_block, false)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -279,7 +281,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                 });
         } else {
             (&self)
-                .build_range_executors(executor.clone(), end_block)
+                .build_range_executors(executor.clone(), end_block, true)
                 .await
                 .into_iter()
                 .for_each(|block_range| {

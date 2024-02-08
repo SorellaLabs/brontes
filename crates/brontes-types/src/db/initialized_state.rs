@@ -2,6 +2,13 @@ use redefined::self_convert_redefined;
 use serde::{Deserialize, Serialize};
 
 use crate::implement_table_value_codecs_with_zc;
+
+pub const META_FLAG: u8 = 0b1;
+pub const CEX_FLAG: u8 = 0b10;
+pub const TRACE_FLAG: u8 = 0b100;
+pub const DEX_PRICE_FLAG: u8 = 0b1000;
+pub const SKIP_FLAG: u8 = 0b10000;
+
 #[derive(
     Debug,
     Default,
@@ -33,47 +40,26 @@ impl InitializedStateMeta {
     ) -> Self {
         let mut this = 0u8;
         if should_skip {
-            this |= 0b10000;
+            this |= SKIP_FLAG;
         }
         if has_dex_price {
-            this |= 0b1000
+            this |= DEX_PRICE_FLAG
         }
         if has_traces {
-            this |= 0b100
+            this |= TRACE_FLAG
         }
         if has_cex_price {
-            this |= 0b10
+            this |= CEX_FLAG
         }
         if has_meta {
-            this |= 0b1
+            this |= META_FLAG
         }
 
         Self(this)
     }
 
-    #[inline(always)]
-    pub fn set_meta(&mut self) {
-        self.0 |= 0b1
-    }
-
-    #[inline(always)]
-    pub fn set_cex(&mut self) {
-        self.0 |= 0b10
-    }
-
-    #[inline(always)]
-    pub fn set_traces(&mut self) {
-        self.0 |= 0b100
-    }
-
-    #[inline(always)]
-    pub fn set_dex_price(&mut self) {
-        self.0 |= 0b1000
-    }
-
-    #[inline(always)]
-    pub fn set_skippable(&mut self) {
-        self.0 |= 0b10000
+    pub fn set(&mut self, this: u8) {
+        self.0 |= this
     }
 
     #[cfg(not(feature = "local"))]
