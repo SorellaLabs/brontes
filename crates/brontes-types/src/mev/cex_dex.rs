@@ -150,9 +150,9 @@ pub struct StatArbDetails {
 impl fmt::Display for StatArbDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Arb Leg Details:")?;
-        writeln!(f, "    - Price on {}: {}", self.cex_exchange, self.cex_price.clone().to_float())?;
-        writeln!(f, "    - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;
-        write!(f, "    - Pnl pre-gas: {}", self.pnl_pre_gas)
+        writeln!(f, "   - Price on {}: {}", self.cex_exchange, self.cex_price.clone().to_float())?;
+        writeln!(f, "   - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;
+        write!(f, "   - Pnl pre-gas: {}", self.pnl_pre_gas)
     }
 }
 
@@ -168,7 +168,7 @@ impl fmt::Display for StatArbPnl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "\n     - Maker: {}\n     - Taker: {}",
+            "\n - Maker: {}\n - Taker: {}",
             self.maker_profit.clone().to_float(),
             self.taker_profit.clone().to_float()
         )?;

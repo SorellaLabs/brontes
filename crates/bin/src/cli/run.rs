@@ -67,7 +67,7 @@ impl RunArgs {
         let clickhouse = static_object(Clickhouse::default());
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 
-        let tracer = get_tracing_provider(&Path::new(&db_path), max_tasks, task_executor.clone());
+        let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 
         let parser = static_object(DParser::new(
             metrics_tx,

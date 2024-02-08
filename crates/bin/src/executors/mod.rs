@@ -48,10 +48,10 @@ pub struct BrontesRunConfig<T: TracingProvider> {
 }
 
 impl<T: TracingProvider> BrontesRunConfig<T> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
         end_block: Option<u64>,
-
         max_tasks: u64,
         min_batch_size: u64,
         quote_asset: Address,
@@ -319,6 +319,6 @@ impl Future for Brontes {
         }
 
         cx.waker().wake_by_ref();
-        return Poll::Pending
+        Poll::Pending
     }
 }
