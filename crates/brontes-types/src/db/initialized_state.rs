@@ -76,12 +76,12 @@ impl InitializedStateMeta {
 
     #[inline(always)]
     pub fn has_dex_price(&self) -> bool {
-        self.0 >> 3 == 1
+        (self.0 << 4) >> 7 == 1
     }
 
     #[inline(always)]
     pub fn should_ignore(&self) -> bool {
-        self.0 >> 4 == 1
+        (self.0 << 3) >> 7 == 1
     }
 }
 
