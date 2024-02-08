@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
+use alloy_primitives::U256;
 use malachite::Rational;
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
@@ -16,6 +17,7 @@ pub struct NormalizedLoan {
     pub loaned_token: TokenInfoWithAddress,
     pub loan_amount:  Rational,
     pub collateral:   HashMap<TokenInfoWithAddress, Rational>,
+    pub msg_value:    U256,
 }
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
@@ -27,4 +29,5 @@ pub struct NormalizedRepayment {
     pub repayed_token:    TokenInfoWithAddress,
     pub repayment_amount: Rational,
     pub collateral:       HashMap<TokenInfoWithAddress, Rational>,
+    pub msg_value:        U256,
 }

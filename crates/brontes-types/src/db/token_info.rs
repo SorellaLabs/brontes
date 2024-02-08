@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use crate::{
-    db::redefined_types::primitives::AddressRedefined, implement_table_value_codecs_with_zc,
+    constants::{USDT_ADDRESS, WETH_ADDRESS},
+    db::redefined_types::primitives::AddressRedefined,
+    implement_table_value_codecs_with_zc,
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
@@ -19,6 +21,22 @@ pub struct TokenInfoWithAddress {
     #[redefined(same_fields)]
     pub inner:   TokenInfo,
     pub address: Address,
+}
+
+impl TokenInfoWithAddress {
+    pub fn native_eth() -> Self {
+        Self {
+            inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
+            address: WETH_ADDRESS,
+        }
+    }
+
+    pub fn usdt() -> Self {
+        Self {
+            inner:   TokenInfo { decimals: 6, symbol: "USDT".to_string() },
+            address: USDT_ADDRESS,
+        }
+    }
 }
 
 impl Display for TokenInfoWithAddress {
