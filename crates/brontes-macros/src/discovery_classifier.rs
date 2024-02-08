@@ -4,7 +4,7 @@ use syn::{parse::Parse, ExprClosure, Ident, Index, Path, Token};
 
 pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let MacroParse { decoder_name, function_call_path, factory_address, address_call_function } =
-        syn::parse2(token_stream.into())?;
+        syn::parse2(token_stream)?;
 
     is_proper_address(&factory_address)?;
     let stripped_address = &factory_address.to_string()[2..];
@@ -108,7 +108,7 @@ impl Parse for MacroParse {
 }
 
 pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
-    let DiscoveryDispatch { struct_name, rest } = syn::parse2(input.into())?;
+    let DiscoveryDispatch { struct_name, rest } = syn::parse2(input)?;
 
     let (var_name, fn_name): (Vec<_>, Vec<_>) = rest
         .iter()

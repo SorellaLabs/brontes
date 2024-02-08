@@ -993,17 +993,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
 #[cfg(test)]
 pub mod test {
 
-    use std::{
-        pin::Pin,
-        task::{RawWaker, RawWakerVTable, Waker},
-    };
-
     use alloy_primitives::{hex, Address, FixedBytes};
-    use futures::future::poll_fn;
-    use serial_test::serial;
-
-    use super::*;
-    use crate::test_utils::PricingTestUtils;
 
     pub const USDC_ADDRESS: Address =
         Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));

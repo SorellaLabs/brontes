@@ -1,6 +1,6 @@
 use alloy_rlp::{Decodable, Encodable};
 use brontes_database::libmdbx::types::{LibmdbxData, ReturnKV};
-use brontes_types::serde_primitives::{option_address, u256};
+use brontes_types::serde_utils::{option_address, u256};
 use bytes::BufMut;
 use reth_db::{
     table::{Compress, Decompress},

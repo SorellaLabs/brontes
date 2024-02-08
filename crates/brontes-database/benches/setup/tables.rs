@@ -5,7 +5,7 @@ use reth_db::{table::Table, TableType};
 
 use crate::{
     benchmarks::metadata::{
-        bincode::{MetadataBincodeData, MetadataBincodeInner},
+        bincode::{BlockInfo, MetadataBincodeInner},
         rlp::{MetadataRLPData, MetadataRLPInner},
         zero_copy::{MetadataRkyvData, MetadataRkyvInner},
         MetadataBench,
@@ -115,11 +115,6 @@ where
 bench_table!(
     /// rlp metadata
     ( MetadataRLP ) u64 | MetadataRLPInner | MetadataBench
-);
-
-bench_table!(
-    /// bincode metadata
-    ( MetadataBincode ) u64 | MetadataBincodeInner | MetadataBench
 );
 
 bench_table!(
