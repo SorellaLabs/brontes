@@ -20,7 +20,7 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
-
+use alloy_primitives::U256;
 mod graphs;
 pub mod protocols;
 pub mod types;
@@ -859,6 +859,7 @@ const fn make_fake_swap(pair: Pair) -> Actions {
         token_out:   t_out,
         amount_in:   Rational::ZERO,
         amount_out:  Rational::ZERO,
+        msg_value:   U256::ZERO,
     })
 }
 

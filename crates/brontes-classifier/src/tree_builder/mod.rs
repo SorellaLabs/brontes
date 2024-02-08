@@ -1,6 +1,7 @@
 use std::{cmp::min, sync::Arc};
 
-use brontes_types::ToScaledRational;
+use alloy_primitives::U256;
+use brontes_types::{normalized_actions::NormalizedEthTransfer, ToScaledRational};
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
@@ -58,7 +59,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
 
         Self::prune_tree(&mut tree);
-        finish_classification(&mut tree, further_classification_requests);
+        self.finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
@@ -300,50 +301,78 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
             return (vec![DexPriceMsg::Update(results.0)], results.1)
-        } else if let Ok(mut transfer) = try_decode_transfer(
+        } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
+            return transfer
+        }
+        {
+            return (vec![], self.classify_eth_transfer(trace, tx_idx))
+        }
+    }
+
+    async fn classify_transfer(
+        &self,
+        tx_idx: u64,
+        trace: &TransactionTraceWithLogs,
+        block: u64,
+    ) -> Option<(Vec<DexPriceMsg>, Actions)> {
+        // Determine the appropriate address based on whether it's a delegate call
+        let token_address =
+            if trace.is_delegate_call() { trace.get_from_addr() } else { trace.get_to_address() };
+
+        // Attempt to decode the transfer
+        match try_decode_transfer(
             tx_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
-            {
-                if trace.is_delegate_call() {
-                    // if we got delegate, the actual token address
-                    // is the from addr (proxy) for pool swaps. without
-                    // this our math gets fucked
-                    trace.get_from_addr()
-                } else {
-                    trace.get_to_address()
-                }
-            },
+            token_address,
             self.libmdbx,
             &self.provider,
             block,
         )
         .await
         {
-            // go through the log to look for descrepency of transfer amount
-            for log in &trace.logs {
-                if let Some((addr, from, to, amount)) = decode_transfer(log) {
-                    if addr != transfer.token.address || transfer.from != from || transfer.to != to
-                    {
-                        continue
-                    }
+            Ok(mut transfer) => {
+                // go through the log to look for discrepancy of transfer amount
+                for log in &trace.logs {
+                    if let Some((addr, from, to, amount)) = decode_transfer(log) {
+                        if addr != transfer.token.address
+                            || transfer.from != from
+                            || transfer.to != to
+                        {
+                            continue
+                        }
 
-                    let decimals = transfer.token.decimals;
-                    let log_am = amount.to_scaled_rational(decimals);
+                        let decimals = transfer.token.decimals;
+                        let log_am = amount.to_scaled_rational(decimals);
 
-                    if log_am != transfer.amount {
-                        let transferred_amount = min(&log_am, &transfer.amount).clone();
-                        let fee = (&log_am - &transfer.amount).abs();
-                        transfer.amount = transferred_amount;
-                        transfer.fee = fee;
+                        if log_am != transfer.amount {
+                            let transferred_amount = min(&log_am, &transfer.amount).clone();
+                            let fee = (&log_am - &transfer.amount).abs();
+                            transfer.amount = transferred_amount;
+                            transfer.fee = fee;
+                        }
+                        break
                     }
-                    break
                 }
-            }
 
-            return (vec![], Actions::Transfer(transfer))
+                // Return the adjusted transfer as an action
+                Some((vec![], Actions::Transfer(transfer)))
+            }
+            Err(_) => None,
         }
-        (vec![], Actions::Unclassified(trace))
+    }
+
+    fn classify_eth_transfer(&self, trace: TransactionTraceWithLogs, trace_index: u64) -> Actions {
+        if trace.get_calldata().is_empty() && trace.get_msg_value() > U256::ZERO {
+            return Actions::EthTransfer(NormalizedEthTransfer {
+                from: trace.get_from_addr(),
+                to: trace.get_to_address(),
+                value: trace.get_msg_value(),
+                trace_index,
+            })
+        } else {
+            Actions::Unclassified(trace)
+        }
     }
 
     async fn classify_create(
@@ -388,16 +417,17 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             .send(DexPriceMsg::Closed)
             .unwrap();
     }
-}
 
-/// This function is used to finalize the classification of complex actions
-/// that contain nested sub-actions that are required to finalize the higher
-/// level classification (e.g: flashloan actions)
-fn finish_classification(
-    tree: &mut BlockTree<Actions>,
-    further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
-) {
-    tree.collect_and_classify(&further_classification_requests)
+    /// This function is used to finalize the classification of complex actions
+    /// that contain nested sub-actions that are required to finalize the higher
+    /// level classification (e.g: flashloan actions)
+    fn finish_classification(
+        &self,
+        tree: &mut BlockTree<Actions>,
+        further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
+    ) {
+        tree.collect_and_classify(&further_classification_requests)
+    }
 }
 
 pub struct TxTreeResult {
@@ -480,6 +510,7 @@ pub mod test {
             liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
             pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
             trace_index:           6,
+            msg_value:             U256::ZERO,
         });
 
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {

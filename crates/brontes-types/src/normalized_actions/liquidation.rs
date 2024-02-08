@@ -1,5 +1,6 @@
 use std::fmt::{self, Debug};
 
+use alloy_primitives::U256;
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
@@ -33,6 +34,7 @@ pub struct NormalizedLiquidation {
     pub debt_asset:            TokenInfoWithAddress,
     pub covered_debt:          Rational,
     pub liquidated_collateral: Rational,
+    pub msg_value:             U256,
 }
 
 impl fmt::Display for NormalizedLiquidation {

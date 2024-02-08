@@ -55,12 +55,14 @@ pub struct NormalizedSwap {
     pub trace_index: u64,
     pub from:        Address,
     pub recipient:   Address,
-    // If pool address is zero, then this is a p2p / CoW style swap, possibly within a batch
+    /// For batch swaps (e.g. UniswapX, CowSwap), the pool address is the
+    /// address of the solver / filler
     pub pool:        Address,
     pub token_in:    TokenInfoWithAddress,
     pub token_out:   TokenInfoWithAddress,
     pub amount_in:   Rational,
     pub amount_out:  Rational,
+    pub msg_value:   U256,
 }
 
 impl NormalizedSwap {
