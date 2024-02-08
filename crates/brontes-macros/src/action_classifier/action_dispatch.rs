@@ -53,11 +53,17 @@ impl ActionDispatch {
                         ::brontes_types::normalized_actions::Actions
                     )> {
 
+
                     let protocol_byte = db_tx.get_protocol(call_info.target_address)
                         .ok()?.to_byte();
 
+                    if call_info.call_data.len() < 4{
+                        println!("got calldata less than required len");
+                    }
+
                     let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
                         &call_info.call_data[0..4]);
+
                     let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(
                         &call_info.call_data[0..4]).0;
 
