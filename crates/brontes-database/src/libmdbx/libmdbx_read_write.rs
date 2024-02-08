@@ -75,6 +75,8 @@ impl LibmdbxReadWriter {
 
         let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
         if peek_cur.peek().is_none() {
+            tracing::info!("entire range missing");
+
             return Ok(vec![start_block..=end_block])
         }
 
@@ -87,6 +89,7 @@ impl LibmdbxReadWriter {
                 let state = has_info.1;
                 // if we are missing the block, we add it to the range
                 if block != block_tracking {
+                    tracing::info!(block, block_tracking, "block != tracking");
                     result.push(block_tracking..=block);
                     block_tracking = block + 1;
 
@@ -109,6 +112,7 @@ impl LibmdbxReadWriter {
                 }
 
                 if !state.is_init() {
+                    tracing::info!(?state, "state isn't init");
                     result.push(block..=block);
                 }
             } else {
@@ -438,24 +442,6 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
         let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
         state.set(flag);
-        self.0
-            .write_table::<InitializedState, InitializedStateData>(&vec![
-                InitializedStateData::new(block, state),
-            ])?;
-
-        Ok(())
-    }
-
-    fn init_state_updating_multiple<const N: usize>(
-        &self,
-        block: u64,
-        flags: [u8; N],
-    ) -> eyre::Result<()> {
-        let tx = self.0.ro_tx()?;
-        let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
-        for flag in flags {
-            state.set(flag);
-        }
         self.0
             .write_table::<InitializedState, InitializedStateData>(&vec![
                 InitializedStateData::new(block, state),
