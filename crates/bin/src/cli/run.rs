@@ -88,22 +88,20 @@ impl RunArgs {
         }
 
         // check to make sure that we have the dex-prices for the range
-        if !self.run_dex_pricing {
-            if self.end_block.is_none() {
-                return Err(eyre::eyre!("need end block if we aren't running the dex pricing"))
-            }
+        if !self.run_dex_pricing && self.end_block.is_none() {
+            return Err(eyre::eyre!("need end block if we aren't running the dex pricing"))
         }
 
         let clickhouse = (self.end_block.is_none()).then(|| static_object(Clickhouse::default()));
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 
-        let tracer = get_tracing_provider(&Path::new(&db_path), max_tasks, task_executor.clone());
+        let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 
         let parser = static_object(DParser::new(
             metrics_tx,
             libmdbx,
             tracer.clone(),
-            Box::new(|address, db_tx| db_tx.get_protocol(*address).unwrap().is_none()),
+            Box::new(|address, db_tx| db_tx.get_protocol(*address).is_err()),
         ));
 
         BrontesRunConfig::new(

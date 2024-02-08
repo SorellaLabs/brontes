@@ -41,23 +41,23 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxReader + LibmdbxWrite
     pub quote_asset:      Address,
     pub with_dex_pricing: bool,
 
-    pub inspectors: &'static [&'static Box<dyn Inspector>],
+    pub inspectors: &'static [&'static dyn Inspector],
     pub clickhouse: Option<&'static Clickhouse>,
     pub parser:     &'static Parser<'static, T, DB>,
     pub libmdbx:    &'static DB,
 }
 
 impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, DB> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
         end_block: Option<u64>,
-
         max_tasks: u64,
         min_batch_size: u64,
         quote_asset: Address,
         with_dex_pricing: bool,
 
-        inspectors: &'static [&'static Box<dyn Inspector>],
+        inspectors: &'static [&'static dyn Inspector],
         clickhouse: Option<&'static Clickhouse>,
         parser: &'static Parser<'static, T, DB>,
         libmdbx: &'static DB,
@@ -189,8 +189,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
     pub async fn build(self, executor: TaskExecutor) -> Brontes {
         let futures = FuturesUnordered::new();
         if let Some(end_block) = self.end_block {
-            (&self)
-                .build_range_executors(executor.clone(), end_block)
+            self.build_range_executors(executor.clone(), end_block)
                 .into_iter()
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -206,8 +205,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesRunConfig<T, 
             #[cfg(feature = "local")]
             let chain_tip = self.parser.get_latest_block_number().await.unwrap();
 
-            (&self)
-                .build_range_executors(executor.clone(), chain_tip)
+            self.build_range_executors(executor.clone(), chain_tip)
                 .into_iter()
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -244,6 +242,6 @@ impl Future for Brontes {
         }
 
         cx.waker().wake_by_ref();
-        return Poll::Pending
+        Poll::Pending
     }
 }

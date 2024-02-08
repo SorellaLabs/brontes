@@ -17,6 +17,9 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
+pub type ClickhouseMetadataFuture =
+    FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;
+
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     clickhouse:         Option<&'static Clickhouse>,
@@ -24,8 +27,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader
     /// we will drain this in the case we aren't running a dex pricer to avoid
     /// being terrible on memory
     no_price_chan:      Option<UnboundedReceiver<DexPriceMsg>>,
-    clickhouse_futures:
-        FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>,
+    clickhouse_futures: ClickhouseMetadataFuture,
 
     result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,
 }
@@ -57,7 +59,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
 
     fn clear_no_price_channel(&mut self) {
         if let Some(chan) = self.no_price_chan.as_mut() {
-            while let Ok(_) = chan.try_recv() {}
+            while chan.try_recv().is_ok() {}
         }
     }
 
@@ -119,6 +121,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataF
             return res
         }
 
-        return std::task::Poll::Pending
+        std::task::Poll::Pending
     }
 }

@@ -15,7 +15,7 @@ use tracing::info;
 
 pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
     match max_tasks {
-        Some(max_tasks) => max_tasks as u64,
+        Some(max_tasks) => max_tasks,
         None => {
             let cpus = num_cpus::get_physical();
             (cpus as f64 * 0.30) as u64 // 30% of physical cores
@@ -32,9 +32,9 @@ pub fn init_inspectors(
     db: &'static LibmdbxReadWriter,
     inspectors: Option<Vec<Inspectors>>,
     cex_exchanges: Option<Vec<String>>,
-) -> &'static [&'static Box<dyn Inspector>] {
+) -> &'static [&'static dyn Inspector] {
     let cex_exchanges: Vec<CexExchange> = cex_exchanges
-        .unwrap_or_else(Vec::new)
+        .unwrap_or_default()
         .into_iter()
         .map(|s| s.into())
         .collect();

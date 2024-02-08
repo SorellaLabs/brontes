@@ -15,14 +15,14 @@ use tracing::{error, info};
 
 pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
     db: &DB,
-    inspectors: &[&Box<dyn Inspector>],
+    inspectors: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) {
     let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
 
-    if let Err(e) = db.write_dex_quotes(metadata.block_num.clone(), metadata.dex_quotes.clone()) {
+    if let Err(e) = db.write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone()) {
         tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
     }
 
@@ -65,19 +65,15 @@ fn output_mev_and_update_searcher_info<DB: LibmdbxWriter + LibmdbxReader>(
         let result = database.try_fetch_searcher_info(mev.header.eoa);
 
         let mut searcher_info = match result {
-            Ok(Some(info)) => info,
-            Ok(None) => SearcherInfo::default(),
-            Err(e) => {
-                error!("Failed to query searcher table: {:?}, table has not been initialized!", e);
-                continue;
-            }
+            Ok(info) => info,
+            Err(_) => SearcherInfo::default(),
         };
 
         // Update the searcher info with the current MEV details
         searcher_info.pnl += mev.header.profit_usd;
         searcher_info.total_bribed += mev.header.bribe_usd;
         if !searcher_info.mev.contains(&mev.header.mev_type) {
-            searcher_info.mev.push(mev.header.mev_type.clone());
+            searcher_info.mev.push(mev.header.mev_type);
         }
         searcher_info.last_active = block_number;
 
