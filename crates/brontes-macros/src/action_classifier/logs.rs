@@ -3,6 +3,7 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{Index, Path};
 
+#[derive(Debug)]
 pub struct LogConfig {
     pub can_repeat:    bool,
     pub ignore_before: bool,
@@ -31,6 +32,7 @@ impl<'a> LogData<'a> {
         fn_call_path: &'a Path,
         log_config: &'a [LogConfig],
     ) -> Self {
+        println!("{log_config:?}");
         let mut mod_path = fn_call_path.clone();
         mod_path.segments.pop().unwrap();
         mod_path.segments.pop_punct();
