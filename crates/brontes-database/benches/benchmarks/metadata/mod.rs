@@ -11,7 +11,7 @@ use arrow::{
     datatypes::{DataType, Field, Schema},
     record_batch::RecordBatch,
 };
-use brontes_types::serde_primitives::{option_address, u256};
+use brontes_types::serde_utils::{option_address, u256};
 use parquet::data_type::AsBytes;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
