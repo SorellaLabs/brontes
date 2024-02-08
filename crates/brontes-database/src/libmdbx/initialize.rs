@@ -131,7 +131,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                     .inner()
                     .query_many::<D>(
                         T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
-                        &(start, end),
+                        &(start, end + 1),
                     )
                     .await;
 
