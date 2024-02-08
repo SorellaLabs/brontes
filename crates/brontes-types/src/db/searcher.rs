@@ -21,10 +21,25 @@ pub struct SearcherInfo {
     pub last_active:  u64,
 }
 
+impl SearcherInfo {
+    pub fn contains_searcher_type(&self, mev_type: MevType) -> bool {
+        self.mev.contains(&mev_type)
+    }
+}
+
 implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
 
 #[derive(
-    Debug, Default, PartialEq, Clone, Serialize, Deserialize, rSerialize, rDeserialize, Archive,
+    Debug,
+    Default,
+    PartialEq,
+    Clone,
+    Serialize,
+    Deserialize,
+    rSerialize,
+    rDeserialize,
+    Archive,
+    Copy,
 )]
 pub enum Fund {
     #[default]
