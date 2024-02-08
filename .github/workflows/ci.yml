@@ -80,5 +80,5 @@ jobs:
 
       - name: cargo test
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly-2024-02-03 && cargo update && cargo +nightly test'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly-2024-02-03 && cargo +nightly test'" 
 
