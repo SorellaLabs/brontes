@@ -3,7 +3,6 @@ use std::{cmp::min, sync::Arc};
 use brontes_types::ToScaledRational;
 mod tree_pruning;
 mod utils;
-
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -18,7 +17,7 @@ use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -239,6 +238,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         {
                             error!("failed to insert discovered pool into libmdbx");
                         }
+                        info!(
+                            "Discovered new {} pool: 
+                            \nAddress:{} 
+                            \nToken 0: {}
+                            \nToken 1: {}",
+                            pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+                        );
                     }
                 }
                 rest => {
