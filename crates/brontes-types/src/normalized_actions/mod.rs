@@ -1,4 +1,5 @@
 pub mod batch;
+pub mod eth_transfer;
 pub mod flashloan;
 pub mod lending;
 pub mod liquidation;
@@ -10,6 +11,7 @@ use std::fmt::Debug;
 
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
+pub use eth_transfer::*;
 pub use flashloan::*;
 pub use lending::*;
 pub use liquidation::*;
@@ -53,6 +55,7 @@ impl NormalizedAction for Actions {
             Self::Liquidation(_) => true,
             Self::Collect(_) => false,
             Self::SelfDestruct(_) => false,
+            Self::EthTransfer(_) => false,
             Self::Unclassified(_) => false,
             Self::Revert => false,
         }
@@ -71,13 +74,16 @@ impl NormalizedAction for Actions {
                     | action.is_transfer()
                     | action.is_collect()
             }),
-            Actions::Batch(_) => Box::new(|action: &Actions| action.is_swap() | action.is_burn()),
+            Actions::Batch(_) => Box::new(|action: &Actions| {
+                action.is_swap() | action.is_transfer() | action.is_eth_transfer()
+            }),
             Actions::Mint(_) => unreachable!(),
             Actions::Burn(_) => unreachable!(),
             Actions::Transfer(_) => unreachable!(),
             Actions::Liquidation(_) => Box::new(|action: &Actions| action.is_transfer()),
             Actions::Collect(_) => unreachable!(),
             Actions::SelfDestruct(_) => unreachable!(),
+            Actions::EthTransfer(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
             Actions::Revert => unreachable!(),
         }
@@ -95,6 +101,7 @@ impl NormalizedAction for Actions {
             Self::Liquidation(t) => t.trace_index,
             Self::Collect(c) => c.trace_index,
             Self::SelfDestruct(c) => c.trace_index,
+            Self::EthTransfer(e) => e.trace_index,
             Self::Unclassified(u) => u.trace_idx,
             Self::Revert => unreachable!(),
         }
@@ -107,13 +114,14 @@ impl NormalizedAction for Actions {
                 unreachable!("Swap With fee never requires complex classification")
             }
             Self::FlashLoan(f) => f.finish_classification(actions),
-            Self::Batch(_) => todo!(),
+            Self::Batch(f) => f.finish_classification(actions),
             Self::Mint(_) => unreachable!(),
             Self::Burn(_) => unreachable!(),
             Self::Transfer(_) => unreachable!(),
             Self::Liquidation(l) => l.finish_classification(actions),
             Self::Collect(_) => unreachable!("Collect type never requires complex classification"),
             Self::SelfDestruct(_) => unreachable!(),
+            Self::EthTransfer(_) => unreachable!(),
             Self::Unclassified(_) => {
                 unreachable!("Unclassified type never requires complex classification")
             }
@@ -136,6 +144,7 @@ pub enum Actions {
     Liquidation(NormalizedLiquidation),
     Unclassified(TransactionTraceWithLogs),
     SelfDestruct(SelfdestructWithIndex),
+    EthTransfer(NormalizedEthTransfer),
     Revert,
 }
 
@@ -152,6 +161,7 @@ impl InsertRow for Actions {
             Actions::Collect(_) => NormalizedCollect::COLUMN_NAMES,
             Actions::Liquidation(_) => NormalizedLiquidation::COLUMN_NAMES,
             Actions::SelfDestruct(_) => todo!("joe pls dome this"),
+            Actions::EthTransfer(_) => todo!("joe pls dome this"),
             Actions::Unclassified(..) | Actions::Revert => panic!(),
         }
     }
@@ -173,6 +183,7 @@ impl Serialize for Actions {
             Actions::Collect(c) => c.serialize(serializer),
             Actions::Liquidation(c) => c.serialize(serializer),
             Actions::SelfDestruct(sd) => sd.serialize(serializer),
+            Actions::EthTransfer(et) => et.serialize(serializer),
             Actions::Unclassified(trace) => (trace).serialize(serializer),
             _ => unreachable!(),
         }
@@ -206,7 +217,8 @@ collect_action_fn!(
     transfer,
     collect,
     self_destruct,
-    unclassified
+    unclassified,
+    eth_transfer
 );
 
 impl Actions {
@@ -334,5 +346,9 @@ impl Actions {
 
     pub fn is_unclassified(&self) -> bool {
         matches!(self, Actions::Unclassified(_))
+    }
+
+    pub fn is_eth_transfer(&self) -> bool {
+        matches!(self, Actions::EthTransfer(_))
     }
 }
