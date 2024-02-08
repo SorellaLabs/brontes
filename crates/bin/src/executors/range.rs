@@ -3,7 +3,6 @@ use std::{
     task::{Context, Poll},
 };
 
-
 use brontes_core::decoding::TracingProvider;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
