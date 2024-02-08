@@ -88,7 +88,7 @@ action_impl!(
             solver,
             settlement_contract: info.target_address,
             user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
-            solver_swaps: Some(Vec::new()),
+            solver_swaps: None,
             msg_value: info.msg_value
         })
     }
