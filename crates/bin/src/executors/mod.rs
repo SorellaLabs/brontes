@@ -214,6 +214,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                 self.parser.get_tracer(),
                 &[
                     Tables::PoolCreationBlocks,
+                    Tables::AddressToProtocolInfo,
                     Tables::TokenDecimals,
                     Tables::PoolCreationBlocks,
                     Tables::Builder,
