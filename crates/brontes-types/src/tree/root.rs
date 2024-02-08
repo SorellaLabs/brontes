@@ -86,7 +86,7 @@ impl<V: NormalizedAction> Root<V> {
         self.head
             .collect(&mut result, call, &|data| data.data.clone());
 
-        result.sort_by(|a, b| a.get_trace_index().cmp(&b.get_trace_index()));
+        result.sort_by_key(|a| a.get_trace_index());
 
         result
     }
@@ -100,7 +100,7 @@ impl<V: NormalizedAction> Root<V> {
     }
 
     pub fn collect_child_traces_and_classify(&mut self, heads: &Vec<u64>) {
-        heads.into_iter().for_each(|search_head| {
+        heads.iter().for_each(|search_head| {
             self.head
                 .get_all_children_for_complex_classification(*search_head)
         });

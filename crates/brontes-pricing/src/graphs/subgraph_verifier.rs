@@ -46,7 +46,7 @@ pub struct SubgraphVerifier {
 
 impl SubgraphVerifier {
     pub fn new() -> Self {
-        return Self {
+        Self {
             pending_subgraphs:           HashMap::new(),
             subgraph_verification_state: HashMap::new(),
         }
@@ -103,7 +103,7 @@ impl SubgraphVerifier {
         all_graph: &AllPairGraph,
     ) {
         removals
-            .into_iter()
+            .iter()
             .filter_map(|(k, v)| {
                 // look for edges that have been complety removed
                 if all_graph.edge_count(k.0, k.1) == v.len() {
@@ -201,7 +201,8 @@ impl SubgraphVerifier {
                 (pair, block, frayed, self.pending_subgraphs.remove(&pair))
             })
             .filter_map(|(pair, block, frayed, subgraph)| {
-                let Some(mut subgraph) = subgraph else { return None };
+                let mut subgraph = subgraph?;
+
                 if let Some(frayed) = frayed {
                     let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
                     if subgraph.in_rundown {
@@ -350,7 +351,7 @@ impl SubgraphVerificationState {
             .0
             .values()
             .flat_map(|node| {
-                node.into_iter()
+                node.iter()
                     .map(|n| (n.pair, n.liquidity.clone()))
                     .collect_vec()
             })
@@ -365,7 +366,7 @@ impl SubgraphVerificationState {
             .0
             .values()
             .flat_map(|node| {
-                node.into_iter()
+                node.iter()
                     .map(|n| (n.pair, n.pool_address, n.liquidity.clone()))
                     .collect_vec()
             })

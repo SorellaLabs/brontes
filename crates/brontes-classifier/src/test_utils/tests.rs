@@ -53,6 +53,11 @@ pub struct ClassifierTestUtils {
 
     dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
+impl Default for ClassifierTestUtils {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ClassifierTestUtils {
     pub fn new() -> Self {
@@ -181,7 +186,7 @@ impl ClassifierTestUtils {
         block: u64,
         quote_token: Address,
         quotes: Option<&DexQuotes>,
-        needs_tokens: &Vec<Address>,
+        needs_tokens: &[Address],
         tx: UnboundedSender<DexPriceMsg>,
     ) -> bool {
         if let Some(quote) = quotes {
@@ -216,7 +221,7 @@ impl ClassifierTestUtils {
                     });
                     tx.send(update).unwrap();
                 });
-            return true
+            true
         }
     }
 
@@ -226,9 +231,7 @@ impl ClassifierTestUtils {
     ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
-        let tree = self.classifier.build_block_tree(vec![trace], header).await;
-
-        Ok(tree)
+        Ok(self.classifier.build_block_tree(vec![trace], header).await)
     }
 
     pub async fn build_tree_tx_with_pricing(
@@ -279,12 +282,9 @@ impl ClassifierTestUtils {
                 .await?
                 .into_iter()
                 .map(|block_info| async move {
-                    let tree = self
-                        .classifier
+                    self.classifier
                         .build_block_tree(block_info.traces, block_info.header)
-                        .await;
-
-                    tree
+                        .await
                 }),
         )
         .await)
