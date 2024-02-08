@@ -65,13 +65,13 @@ impl InitializedStateMeta {
     #[cfg(not(feature = "local"))]
     #[inline(always)]
     pub fn is_init(&self) -> bool {
-        self.0 == 0b11 || self.should_ignore()
+        (self.0 << 6) >> 6 == 0b11 || self.should_ignore()
     }
 
     #[cfg(feature = "local")]
     #[inline(always)]
     pub fn is_init(&self) -> bool {
-        self.0 == 0b111 || self.should_ignore()
+        (self.0 << 5) >> 5 == 0b111 || self.should_ignore()
     }
 
     #[inline(always)]
