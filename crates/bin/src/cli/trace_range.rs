@@ -43,13 +43,13 @@ impl TraceArgs {
         let _clickhouse = static_object(Clickhouse::default());
 
         let tracer =
-            get_tracing_provider(&Path::new(&db_path), max_tasks, ctx.task_executor.clone());
+            get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
 
         let parser = static_object(DParser::new(
             metrics_tx,
             libmdbx,
             tracer.clone(),
-            Box::new(|address, db_tx| db_tx.get_protocol(*address).unwrap().is_none()),
+            Box::new(|address, db_tx| db_tx.get_protocol(*address).is_err()),
         ));
 
         let amount = (self.end_block - self.start_block) as f64;

@@ -29,8 +29,7 @@ impl<V: NormalizedAction> Root<V> {
         let to_address = self.head.data.get_action().get_to_address();
 
         let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
-            Ok(Some(metadata)) => metadata.is_verified(),
-            Ok(None) => false,
+            Ok(metadata) => metadata.is_verified(),
             Err(_) => false,
         };
 
