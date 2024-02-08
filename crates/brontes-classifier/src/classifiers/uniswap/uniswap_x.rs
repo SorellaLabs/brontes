@@ -172,7 +172,7 @@ mod tests {
             B256::from(hex!("3d8fbccb1b0b7f8140f255f0980d897d87394903ad7bf4d08534402d2bf35872"));
 
         let eq_action = Actions::Batch(NormalizedBatch {
-            protocol:            Protocol::AaveV3,
+            protocol:            Protocol::UniswapX,
             trace_index:         1,
             solver:              Address::new(hex!(
                 "
