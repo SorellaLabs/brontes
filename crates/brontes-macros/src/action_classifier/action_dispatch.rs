@@ -61,6 +61,10 @@ impl ActionDispatch {
                         return None
                     }
 
+                    if protocol_byte == 9 {
+                        tracing::info!(?call_info, "call info for unix");
+                    }
+
                     let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
                         &call_info.call_data[0..4]);
 

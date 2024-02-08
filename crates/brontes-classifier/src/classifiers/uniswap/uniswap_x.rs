@@ -238,7 +238,10 @@ mod tests {
 
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
             collect_current_node:  node.data.is_batch(),
-            child_node_to_collect: node.subactions.iter().any(|action| action.is_batch()),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .any(|action| action.is_batch()),
         };
 
         classifier_utils

@@ -32,7 +32,6 @@ impl<'a> LogData<'a> {
         fn_call_path: &'a Path,
         log_config: &'a [LogConfig],
     ) -> Self {
-        println!("{log_config:?}");
         let mut mod_path = fn_call_path.clone();
         mod_path.segments.pop().unwrap();
         mod_path.segments.pop_punct();
