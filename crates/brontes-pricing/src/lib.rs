@@ -755,7 +755,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                             DiscoveredPool { protocol, tokens, pool_address },
                             _block,
                         ) => {
-                            if tokens.len() == 2 {
+                            if tokens.len() == 2 && protocol.has_state_updater() {
                                 self.new_graph_pairs
                                     .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
                             };
