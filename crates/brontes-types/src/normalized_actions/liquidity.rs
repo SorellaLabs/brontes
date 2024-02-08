@@ -251,7 +251,7 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
             .enumerate()
             .filter_map(|(idx, tx_hash)| value.1[idx].as_ref().map(|burn| (tx_hash, burn.clone())))
             .map(|(tx_hash, burn)| {
-                let tx_hashes_repeated: Vec<FixedString> = vec![tx_hash]
+                let tx_hashes_repeated: Vec<FixedString> = [tx_hash]
                     .repeat(burn.len())
                     .into_iter()
                     .map(|t| format!("{:?}", t).into())
