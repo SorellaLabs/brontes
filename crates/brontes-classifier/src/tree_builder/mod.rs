@@ -193,7 +193,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         )
         .await
         .into_iter()
-        .filter_map(|f| f)
+        .flatten()
         .collect_vec()
     }
 
@@ -484,7 +484,7 @@ pub mod test {
         for i in &swap {
             if let Actions::Transfer(t) = i {
                 if swaps.get(&t.token).map(|i| i.contains(&t.amount)) == Some(true) {
-                    assert!(false, "found a transfer that was part of a swap");
+                    panic!("found a transfer that was part of a swap");
                 }
             }
         }

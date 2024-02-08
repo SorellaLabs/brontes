@@ -4,13 +4,15 @@ use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
+#[cfg(feature = "dyn-decode")]
+use alloy_primitives::Address;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
 };
 use futures::future::join_all;
-use reth_primitives::{Address, Header, B256};
+use reth_primitives::{Header, B256};
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
@@ -28,8 +30,6 @@ use crate::errors::TraceParseError;
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     libmdbx:               &'db DB,
-    #[allow(unused)]
-    should_fetch:          Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
@@ -37,11 +37,10 @@ pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWrite
 impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db, T, DB> {
     pub fn new(
         libmdbx: &'db DB,
-        should_fetch: Box<dyn Fn(&Address, &DB) -> bool + Send + Sync>,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        Self { libmdbx, tracer, metrics_tx, should_fetch }
+        Self { libmdbx, tracer, metrics_tx }
     }
 
     pub fn get_tracer(&self) -> Arc<T> {
@@ -55,6 +54,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
     }
 
     /// executes the tracing of a given block
+    #[allow(unreachable_code)]
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             return Some(res)
@@ -128,7 +128,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
             }
         };
 
-        let db_tx = self.libmdbx.ro_tx().unwrap();
         let json = if let Some(trace) = &trace {
             let addresses = trace
                 .iter()
@@ -140,7 +139,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
                             _ => None,
                         })
                 })
-                .filter(|addr| (self.should_fetch)(addr, &db_tx))
+                .filter(|addr| self.libmdbx.get_protocol(*addr).is_err())
                 .collect::<Vec<Address>>();
             info!("addresses for dyn decoding: {:#?}", addresses);
             //self.libmdbx.get_abis(addresses).await.unwrap()

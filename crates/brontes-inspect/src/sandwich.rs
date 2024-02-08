@@ -564,8 +564,7 @@ mod tests {
                 config,
                 Some(Box::new(|bundle: &Bundle| {
                     let BundleData::Sandwich(ref sando) = bundle.data else {
-                        assert!(false, "given bundle wasn't a sandwich");
-                        return
+                        panic!("given bundle wasn't a sandwich");
                     };
                     assert!(sando.frontrun_tx_hash.len() == 2, "didn't find the big mac");
                 })),

@@ -673,7 +673,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
-        if self.completed_block >= self.current_block + 1 {
+        if self.completed_block > self.current_block {
             return None
         }
 
@@ -755,7 +755,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                             DiscoveredPool { protocol, tokens, pool_address },
                             _block,
                         ) => {
-                            if tokens.len() == 2 {
+                            if tokens.len() == 2 && protocol.has_state_updater() {
                                 self.new_graph_pairs
                                     .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
                             };
@@ -863,11 +863,13 @@ const fn make_fake_swap(pair: Pair) -> Actions {
     })
 }
 
+type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>);
+
 fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     quote: Address,
     updates: Vec<PoolUpdate>,
-) -> (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>) {
+) -> GraphSeachParRes {
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
         .map(|msg| {
@@ -888,10 +890,12 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
     (state, pools)
 }
 
+type ParStateQueryRes = Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>)>;
+
 fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>,
-) -> Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>)> {
+) -> ParStateQueryRes {
     pairs
         .into_par_iter()
         .map(|(pair, block, ignore, frayed_ends)| {
@@ -916,12 +920,14 @@ fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
         .collect::<Vec<_>>()
 }
 
+type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>);
+
 fn on_new_pool_pair<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     msg: PoolUpdate,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
-) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>) {
+) -> NewPoolPair {
     let block = msg.block;
 
     let mut buf_pending = Vec::new();
@@ -964,12 +970,14 @@ fn on_new_pool_pair<DB: LibmdbxWriter + LibmdbxReader>(
     (buf_pending, path_pending)
 }
 
+type LoadingReturns = Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64))>;
+
 fn queue_loading_returns<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
     pair: Pair,
     trigger_update: PoolUpdate,
-) -> Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64))> {
+) -> LoadingReturns {
     if pair.0 == pair.1 {
         return None
     }

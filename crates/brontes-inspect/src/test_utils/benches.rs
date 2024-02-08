@@ -39,7 +39,7 @@ impl InspectorBenchUtils {
                 i.init_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();
@@ -83,7 +83,7 @@ impl InspectorBenchUtils {
         let inspector = inspector.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let mut trees =
@@ -132,7 +132,7 @@ impl InspectorBenchUtils {
         let inspector = inspector.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let (tree, prices) =
@@ -173,7 +173,7 @@ impl InspectorBenchUtils {
         let inspector = inspector.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let mut trees = self
@@ -215,7 +215,7 @@ impl InspectorBenchUtils {
                 i.init_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();
@@ -271,7 +271,7 @@ impl InspectorBenchUtils {
                 i.init_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();

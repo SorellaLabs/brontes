@@ -19,15 +19,15 @@ use crate::{
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
-    libmdbx:    &'static LibmdbxReadWriter,
-    clickhouse: Arc<Clickhouse>,
-    tracer:     Arc<TP>,
+    pub(crate) libmdbx: &'static LibmdbxReadWriter,
+    clickhouse:         &'static Clickhouse,
+    tracer:             Arc<TP>,
 }
 
 impl<TP: TracingProvider> LibmdbxInitializer<TP> {
     pub fn new(
         libmdbx: &'static LibmdbxReadWriter,
-        clickhouse: Arc<Clickhouse>,
+        clickhouse: &'static Clickhouse,
         tracer: Arc<TP>,
     ) -> Self {
         Self { libmdbx, clickhouse, tracer }
@@ -85,6 +85,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         &self,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
+        mark_init: Option<u8>,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -122,7 +123,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
-            let clickhouse = self.clickhouse.clone();
+            let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
 
             async move {
@@ -148,11 +149,14 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 };
 
                 info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
+                if let Some(flag) = mark_init {
+                    libmdbx.inited_range(start..=end, flag)?;
+                }
 
                 Ok::<(), eyre::Report>(())
             }
         }))
-        .unordered_buffer_map(4, |fut| tokio::spawn(fut))
+        .unordered_buffer_map(4, tokio::spawn)
         .collect::<Vec<_>>()
         .await
         .into_iter()
@@ -183,10 +187,10 @@ mod tests {
         #[cfg(feature = "local")]
         let tracing_client = Arc::new(init_tracing().unwrap());
 
-        let clickhouse = Arc::new(init_clickhouse());
+        let clickhouse = Box::leak(Box::new(init_clickhouse()));
         let libmdbx = init_libmdbx().unwrap();
 
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse.clone(), tracing_client);
+        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client);
 
         let tables = Tables::ALL;
         intializer
@@ -195,43 +199,43 @@ mod tests {
             .unwrap();
 
         // TokenDecimals
-        let (c, l) = TokenDecimals::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // AddressToProtocol
-        let (c, l) = AddressToProtocolInfo::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // CexPrice
-        let (c, l) = CexPrice::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
+        let (c, l) = CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // Metadata
-        let (c, l) = BlockInfo::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
+        let (c, l) = BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // PoolCreationBlocks
-        let (c, l) = PoolCreationBlocks::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // Builder
-        let (c, l) = Builder::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = Builder::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
 
         // AddressMeta
-        let (c, l) = AddressMeta::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);

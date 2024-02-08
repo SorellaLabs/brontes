@@ -123,13 +123,14 @@ where
     })
 }
 
+type DijkstrasRes<N, C, E> = (FxIndexMap<N, (usize, C, E)>, Option<usize>);
 fn run_dijkstra<N, C, E, FN, IN, FS, PV>(
     start: &N,
     successors: &mut FN,
     path_value: &mut PV,
     stop: &mut FS,
     max_iter: usize,
-) -> (FxIndexMap<N, (usize, C, E)>, Option<usize>)
+) -> DijkstrasRes<N, C, E>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,

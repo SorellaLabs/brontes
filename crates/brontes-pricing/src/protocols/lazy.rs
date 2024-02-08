@@ -128,7 +128,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     ) {
         self.protocol_address_to_parent_pairs
             .entry(address)
-            .or_insert(vec![])
+            .or_default()
             .push((block, parent_pair));
 
         match self.parent_pair_state_loading.entry(parent_pair) {
@@ -263,6 +263,11 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
 pub struct MultiBlockPoolFutures(
     HashMap<u64, FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>>,
 );
+impl Default for MultiBlockPoolFutures {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl MultiBlockPoolFutures {
     pub fn new() -> Self {
