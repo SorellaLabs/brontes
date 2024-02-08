@@ -121,6 +121,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
+type JitUnzip =
+    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
@@ -134,11 +136,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect): (
-            Vec<Option<NormalizedMint>>,
-            Vec<Option<NormalizedBurn>>,
-            Vec<Option<NormalizedCollect>>,
-        ) = searcher_actions
+        let (mints, burns, collect): JitUnzip = searcher_actions
             .clone()
             .into_iter()
             .flatten()

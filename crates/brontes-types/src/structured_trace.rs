@@ -31,10 +31,7 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 
     fn is_create(&self) -> bool {
-        match &self.trace.action {
-            Action::Create(_) => true,
-            _ => false,
-        }
+        matches!(&self.trace.action, Action::Create(_))
     }
 
     fn is_delegate_call(&self) -> bool {

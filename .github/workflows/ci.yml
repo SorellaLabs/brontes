@@ -8,7 +8,8 @@ on:
 name: CI
 
 jobs:
-  build-fmt: 
+  clippy:
+    name: "clippy"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,31 +28,47 @@ jobs:
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-
       - name: "clippy all"
         run: cargo clippy --workspace --lib --examples --tests --benches --all-features
         env:
           RUSTFLAGS: -D warnings
 
-      - name: cargo fmt
-        run: cargo +nightly clippy -- -D clippy::all && cargo +nightly fmt --all -- --check 
+  build:
+      name: "build and fmt"
+      runs-on: ubuntu-latest
+      timeout-minutes: 30
+      steps:
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@nightly
+          with:
+              toolchain: nightly-2024-02-03
+              components: rustfmt
+        - uses: Swatinem/rust-cache@v2
+          with:
+            cache-on-failure: true
+
+        # allow for downloads
+        - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+          shell: bash
+        - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+          shell: bash
+
+        - name: "build nightly"
+          run: cargo build --workspace --all-features
+          env:
+            RUSTFLAGS: -D warnings
+
+        - name: "cargo fmt"
+          run: cargo fmt --all --check
+
   test: 
     runs-on: ubuntu-latest
+    if: always()
+    needs: [clippy, build]
     steps:
       - name: Get branch names.
         id: branch-names
         uses: tj-actions/branch-names@v8
-      # init server args 
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/ 
@@ -63,5 +80,5 @@ jobs:
 
       - name: cargo test
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly-2024-01-22 && cargo update && cargo +nightly test'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly-2024-02-03 && cargo update && cargo +nightly test'" 
 

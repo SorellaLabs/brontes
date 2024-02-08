@@ -65,7 +65,7 @@ async fn query_missing_data<T: TracingProvider>(
             d,
             symbol.map(|s| s._0).unwrap_or_else(|_| {
                 symbol_autistic
-                    .map(|s| String::from_utf8((&s._0).to_vec()).unwrap_or_default())
+                    .map(|s| String::from_utf8((s._0).to_vec()).unwrap_or_default())
                     .unwrap_or_default()
             }),
         )

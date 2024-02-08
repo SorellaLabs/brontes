@@ -156,7 +156,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// for every action index of a transaction index, This function grabs all
     /// child nodes of the action index if and only if they are specified in
     /// the classification function of the action index node.
-    pub fn collect_and_classify(&mut self, search_params: &Vec<Option<(usize, Vec<u64>)>>) {
+    pub fn collect_and_classify(&mut self, search_params: &[Option<(usize, Vec<u64>)>]) {
         let mut roots_with_search_params = self
             .tx_roots
             .iter_mut()

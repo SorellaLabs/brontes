@@ -166,7 +166,7 @@ impl<'a> LogData<'a> {
             quote!(
              if <#mod_path::#next_log
                 as ::alloy_sol_types::SolEvent>
-                    ::decode_log_data(&log.data, false).ok().is_some()
+                    ::decode_log_data(&log.data, false).is_ok()
                     && started {
                     break
                 }
@@ -180,9 +180,9 @@ impl<'a> LogData<'a> {
             let mut started = false;
             loop {
                 if let Some(log) = &call_info.logs.get(#index + repeating_modifier + i) {
-                    if let Some(decoded_result) = <#mod_path::#log_name
+                    if let Ok(decoded_result) = <#mod_path::#log_name
                         as ::alloy_sol_types::SolEvent>
-                            ::decode_log_data(&log.data, false).ok() {
+                            ::decode_log_data(&log.data, false) {
                             started = true;
                             #on_result
                     };
@@ -243,10 +243,10 @@ impl<'a> LogData<'a> {
                             loop {
                                 if let Some(log) = &call_info.logs.get(
                                     #indexes + repeating_modifier + i) {
-                                    if let Some(decoded) =
+                                    if let Ok(decoded) =
                                         <#mod_path::#log_name as
                                         ::alloy_sol_types::SolEvent>
-                                        ::decode_log_data(&log.data, false).ok() {
+                                        ::decode_log_data(&log.data, false) {
                                             started = true;
                                             repeating_results.push(decoded);
                                     } else if started  {
@@ -277,9 +277,9 @@ impl<'a> LogData<'a> {
                 quote!(
                 'possible: {
                         if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier) {
-                            if let Some(decoded) = <#mod_path::#log_name
+                            if let Ok(decoded) = <#mod_path::#log_name
                                 as ::alloy_sol_types::SolEvent>
-                                ::decode_log_data(&log.data, false).ok() {
+                                ::decode_log_data(&log.data, false) {
                                     log_res.#log_field_name = Some(decoded);
                                     break 'possible
                             }

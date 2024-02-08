@@ -77,10 +77,7 @@ impl<V: NormalizedAction> Node<V> {
 
             let collect_fn = |node: &Node<V>| TreeSearchArgs {
                 collect_current_node:  (classification)(&node.data),
-                child_node_to_collect: node
-                    .get_all_sub_actions()
-                    .iter()
-                    .any(|i| (classification)(i)),
+                child_node_to_collect: node.get_all_sub_actions().iter().any(&classification),
             };
             self.collect(&mut results, &collect_fn, &|a| (a.index, a.data.clone()));
             // Now that we have the child actions of interest we can finalize the parent
@@ -109,7 +106,7 @@ impl<V: NormalizedAction> Node<V> {
         let mut cur_inner_node = iter.next().unwrap();
         let mut next_inner_node = iter.next().unwrap();
 
-        while let Some(next_node) = iter.next() {
+        for next_node in iter {
             // check if past nodes are the head
             if cur_inner_node.index == head {
                 return cur_inner_node.get_all_children_for_complex_classification(head)
@@ -148,7 +145,7 @@ impl<V: NormalizedAction> Node<V> {
         T: Fn(&Self) -> TreeSearchArgs,
         F: Fn(&mut Self),
     {
-        let TreeSearchArgs { collect_current_node, child_node_to_collect } = find(&self);
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } = find(self);
 
         if !child_node_to_collect {
             return false
@@ -259,9 +256,9 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node<V>> {
         if self.inner.last()?.index == tx_index {
-            return Some(self)
+            Some(self)
         } else {
-            return self.inner.last()?.get_immediate_parent_node(tx_index)
+            self.inner.last()?.get_immediate_parent_node(tx_index)
         }
     }
 
