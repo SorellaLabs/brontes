@@ -325,7 +325,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
         if tx
             .new_cursor::<DexPrice>()?
             .walk_range(start_key..=end_key)?
-            .into_iter()
             .all(|f| f.is_err())
         {
             return Err(eyre::eyre!("subgraph not inited at this block range"))

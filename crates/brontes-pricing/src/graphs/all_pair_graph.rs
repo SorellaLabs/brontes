@@ -147,19 +147,14 @@ impl AllPairGraph {
         pool_pair: Pair,
         pool_addr: Address,
     ) -> Option<(Address, Protocol, Pair)> {
-        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return None };
-        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return None };
+        let n0 = self.token_to_index.get(&pool_pair.0)?;
+        let n1 = self.token_to_index.get(&pool_pair.1)?;
 
-        let Some(edge) = self.graph.find_edge((*n0).into(), (*n1).into()) else { return None };
-        let Some(weights) = self.graph.edge_weight_mut(edge) else {
-            return None;
-        };
-
-        let Some(bad_pool) = weights.iter().find(|e| e.pool_addr == pool_addr).cloned() else {
-            return None;
-        };
+        let edge = self.graph.find_edge((*n0).into(), (*n1).into())?;
+        let weights = self.graph.edge_weight_mut(edge)?;
+        let bad_pool = weights.iter().find(|e| e.pool_addr == pool_addr).cloned()?;
         weights.retain(|e| e.pool_addr != pool_addr);
-        if weights.len() == 0 {
+        if weights.is_empty() {
             self.graph.remove_edge(edge);
         }
 

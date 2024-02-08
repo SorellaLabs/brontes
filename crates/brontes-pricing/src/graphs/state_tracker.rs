@@ -76,7 +76,7 @@ impl StateTracker {
         edges: &Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
         edges
-            .into_iter()
+            .iter()
             .filter_map(|edge| {
                 self.verification_edge_state
                     .get(&edge.pool_addr)
@@ -88,7 +88,7 @@ impl StateTracker {
                             .filter(|state| state.last_update == block)
                             .map(|_| None)
                     })
-                    .or_else(|| Some(Some(edge.info)))?
+                    .or(Some(Some(edge.info)))?
             })
             .collect_vec()
     }

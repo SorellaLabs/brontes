@@ -82,8 +82,7 @@ impl DexQuotes {
     pub fn has_quote(&self, pair: &Pair, tx: usize) -> bool {
         self.0
             .get(tx)
-            .map(|i| i.as_ref().map(|i| i.get(pair).is_some()))
-            .flatten()
+            .and_then(|i| i.as_ref().map(|i| i.get(pair).is_some()))
             .unwrap_or(false)
     }
 
