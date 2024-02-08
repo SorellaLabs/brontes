@@ -33,6 +33,14 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         Self { libmdbx, clickhouse, tracer }
     }
 
+    pub fn setup_all_tables(&self) -> eyre::Result<()> {
+        for table in Tables::ALL {
+            table.init_table(self.libmdbx)?;
+        }
+
+        Ok(())
+    }
+
     pub async fn initialize(
         &self,
         tables: &[Tables],

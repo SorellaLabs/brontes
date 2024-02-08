@@ -9,9 +9,7 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
-        dex::{
-            make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
-        },
+        dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
@@ -30,9 +28,7 @@ use eyre::eyre;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
-
 use tracing::info;
-
 
 use crate::{
     clickhouse::Clickhouse,
