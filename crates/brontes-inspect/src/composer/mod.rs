@@ -59,7 +59,7 @@ pub struct ComposerResults {
 }
 
 pub async fn compose_mev_results(
-    orchestra: &[&Box<dyn Inspector>],
+    orchestra: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
@@ -75,7 +75,7 @@ pub async fn compose_mev_results(
 }
 
 async fn run_inspectors(
-    orchestra: &[&Box<dyn Inspector>],
+    orchestra: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
@@ -106,7 +106,7 @@ async fn run_inspectors(
         .collect::<Vec<_>>();
 
     let mut possible_mev_collection =
-        PossibleMevCollection(possible_mev_txes.into_iter().map(|(_, v)| v).collect());
+        PossibleMevCollection(possible_mev_txes.into_values().collect());
     possible_mev_collection
         .0
         .sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
