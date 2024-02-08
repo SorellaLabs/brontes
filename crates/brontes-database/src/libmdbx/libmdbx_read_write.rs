@@ -10,8 +10,9 @@ use brontes_types::{
         builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
         dex::{
-            decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
+            make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
         },
+        initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -29,10 +30,10 @@ use eyre::eyre;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
-use reth_libmdbx::RO;
+
 use tracing::info;
 
-use super::cursor::CompressedCursor;
+
 use crate::{
     clickhouse::Clickhouse,
     libmdbx::{
@@ -40,7 +41,7 @@ use crate::{
         types::LibmdbxData,
         Libmdbx, LibmdbxInitializer,
     },
-    AddressToProtocolInfo, CompressedTable, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
+    AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -92,8 +93,17 @@ impl LibmdbxReadWriter {
                 if block != block_tracking {
                     result.push(block_tracking..=block);
                     block_tracking = block + 1;
+
+                    if needs_dex_price {
+                        return Err(eyre::eyre!(
+                            "Block is missing dex pricing, please run with flag \
+                             `--run-dex-pricing`"
+                        ))
+                    }
+
                     continue
                 }
+
                 block_tracking += 1;
                 if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
                     tracing::error!("block is missing dex pricing");
@@ -112,159 +122,6 @@ impl LibmdbxReadWriter {
         }
 
         Ok(result)
-    }
-
-    #[cfg(not(feature = "local"))]
-    pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
-        self.validate_metadata_and_cex(start_block, end_block)
-    }
-
-    // local also needs to have tx traces
-    #[cfg(feature = "local")]
-    pub fn valid_range_state(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
-        let meta_and_cex_pass = self.validate_metadata_and_cex(start_block, end_block)?;
-
-        // local part
-        let tx = self.0.ro_tx()?;
-        let trace_cur = tx.new_cursor::<TxTraces>()?;
-        let res = self.validate_range("tx traces", trace_cur, start_block, end_block, |b| *b)?;
-
-        return Ok(meta_and_cex_pass && res)
-    }
-
-    pub fn has_dex_pricing_for_range(
-        &self,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<bool> {
-        let start_key = make_key(start_block, 0);
-        let end_key = make_key(end_block, u16::MAX);
-        let tx = self.0.ro_tx()?;
-        let cursor = tx.cursor_read::<DexPrice>()?;
-        self.validate_range("dex pricing", cursor, start_key, end_key, |key| decompose_key(*key).0)
-            .map_err(|e| {
-                tracing::error!("please run range with flag `--run-dex-pricing`");
-                e
-            })
-    }
-
-    //TODO: Batch & parallelize the data validation + return correct logs for
-    // specific blocks that are missing data.
-    fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
-        let tx = self.0.ro_tx()?;
-
-        let cex_cur = tx.new_cursor::<CexPrice>()?;
-        let meta_cur = tx.new_cursor::<BlockInfo>()?;
-
-        let (cex_pass, meta_pass) = rayon::join(
-            || self.validate_range("cex pricing", cex_cur, start_block, end_block, |b| *b),
-            || self.validate_range("metadata", meta_cur, start_block, end_block, |b| *b),
-        );
-        let (cex_pass, meta_pass) = (cex_pass?, meta_pass?);
-
-        return Ok(cex_pass && meta_pass)
-    }
-
-    fn validate_range<T: CompressedTable>(
-        &self,
-        table_name: &str,
-        mut cursor: CompressedCursor<T, RO>,
-        start_key: T::Key,
-        end_key: T::Key,
-        decode_key: impl Fn(&T::Key) -> u64,
-    ) -> eyre::Result<bool>
-    where
-        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        T::Key: Clone,
-    {
-        let range = decode_key(&end_key) - decode_key(&start_key);
-        let mut res = true;
-        let mut missing = Vec::new();
-        let mut cur_block = decode_key(&start_key);
-        let cur = cursor.walk_range(start_key.clone()..=end_key.clone())?;
-        let mut peek_cur = cur.peekable();
-        if peek_cur.peek().is_none() {
-            tracing::error!("missing entire block range for table {}", table_name);
-            return Err(eyre::eyre!("no data for entire range"))
-        }
-
-        // because for some ranges, not every item is for a block. so we only
-        // increment our counter if we know its a block update
-        let mut last_updated_block = decode_key(&peek_cur.peek().unwrap().as_ref().unwrap().0) - 1;
-
-        for entry in peek_cur {
-            if cur_block % 1000 == 0 {
-                tracing::info!(
-                    "{} validation {:.2}% completed",
-                    table_name,
-                    (cur_block - decode_key(&start_key)) as f64 / (range as f64) * 100.0
-                );
-            }
-
-            if let Ok(field) = entry {
-                let key = decode_key(&field.0);
-                while key > cur_block {
-                    missing.push(cur_block);
-                    res = false;
-                    cur_block += 1;
-                }
-
-                // need todo this due to dex pricing
-                if key != last_updated_block {
-                    cur_block += 1;
-                    last_updated_block = key;
-                }
-            } else {
-                missing.push(cur_block);
-                res = false;
-                tracing::error!("error on db entry");
-                break
-            }
-        }
-
-        if cur_block - 1 != decode_key(&end_key) {
-            res = false
-        }
-
-        if !res {
-            // put into block ranges so printout is less spammy.
-            let mut i = 0usize;
-            let mut ranges = vec![vec![]];
-            let mut prev = 0;
-
-            for mb in missing {
-                // new range
-                let prev_block = if prev == 0 { mb } else { prev + 1 };
-
-                if prev_block != mb {
-                    if i != 0 {
-                        i += 1;
-                    }
-                    let entry = vec![mb];
-                    ranges.push(entry);
-                // extend prev range
-                } else {
-                    ranges.get_mut(i).unwrap().push(mb);
-                }
-                prev = mb;
-            }
-
-            let mut missing_ranges = ranges
-                .into_iter()
-                .filter_map(|range| {
-                    let start = range.first()?;
-                    let end = range.last()?;
-                    Some(format!("{}-{}", start, end))
-                })
-                .fold(String::new(), |acc, x| acc + "\n" + &x);
-
-            if cur_block - 1 != decode_key(&end_key) {
-                missing_ranges += &format!("\n{}-{}", cur_block - 1, decode_key(&end_key));
-            }
-
-            tracing::error!("missing {} for blocks: {}", table_name, missing_ranges);
-        }
-        Ok(res)
     }
 }
 
@@ -291,7 +148,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
+        self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
 
         Ok(BlockMetadata::new(
@@ -310,7 +169,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
+        self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
 
@@ -474,6 +335,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
     fn write_dex_quotes(&self, block_num: u64, quotes: Option<DexQuotes>) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
+            self.init_state_updating(block_num, DEX_PRICE_FLAG)?;
             let data = quotes
                 .0
                 .into_iter()
@@ -569,25 +431,67 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
     fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
+        self.0.write_table(&vec![table])?;
 
-        Ok(self.0.write_table(&vec![table])?)
+        self.init_state_updating(block, TRACE_FLAG)
     }
 }
 
 impl LibmdbxReadWriter {
+    fn init_state_updating(&self, block: u64, flag: u8) -> eyre::Result<()> {
+        let tx = self.0.ro_tx()?;
+        let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
+        state.set(flag);
+        self.0
+            .write_table::<InitializedState, InitializedStateData>(&vec![
+                InitializedStateData::new(block, state),
+            ])?;
+
+        Ok(())
+    }
+
+    fn init_state_updating_multiple<const N: usize>(
+        &self,
+        block: u64,
+        flags: [u8; N],
+    ) -> eyre::Result<()> {
+        let tx = self.0.ro_tx()?;
+        let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
+        for flag in flags {
+            state.set(flag);
+        }
+        self.0
+            .write_table::<InitializedState, InitializedStateData>(&vec![
+                InitializedStateData::new(block, state),
+            ])?;
+
+        Ok(())
+    }
+
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
-        tx.get::<BlockInfo>(block_num)?
-            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num))
+        let res = tx
+            .get::<BlockInfo>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num));
+
+        if res.is_err() {
+            self.init_state_updating(block_num, SKIP_FLAG)?;
+        }
+        res
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         let tx = self.0.ro_tx()?;
-        Ok(CexPriceMap(
-            tx.get::<CexPrice>(block_num)?
-                .ok_or_else(|| eyre!("Failed to fetch cexquotes's for block {}", block_num))?
-                .0,
-        ))
+        let res = tx
+            .get::<CexPrice>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch cexquotes's for block {}", block_num))
+            .map(|e| e.0);
+
+        if res.is_err() {
+            self.init_state_updating(block_num, SKIP_FLAG)?;
+        }
+
+        Ok(CexPriceMap(res?))
     }
 
     pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
