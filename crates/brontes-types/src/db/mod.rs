@@ -1,5 +1,5 @@
 pub mod address_metadata;
-pub mod address_to_tokens;
+pub mod address_to_protocol_info;
 pub mod builder;
 pub mod cex;
 pub mod clickhouse;

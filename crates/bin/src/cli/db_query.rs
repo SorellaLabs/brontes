@@ -72,8 +72,7 @@ impl DatabaseQuery {
                 DexPrice,
                 MevBlocks,
                 TokenDecimals,
-                AddressToTokens,
-                AddressToProtocol,
+                AddressToProtocolInfo,
                 PoolCreationBlocks,
                 Builder,
                 AddressMeta,
@@ -91,8 +90,7 @@ impl DatabaseQuery {
                 DexPrice,
                 MevBlocks,
                 TokenDecimals,
-                AddressToTokens,
-                AddressToProtocol,
+                AddressToProtocolInfo,
                 Builder,
                 AddressMeta,
                 Searcher,
@@ -123,10 +121,8 @@ where
     let end = T::into_key(end);
 
     let mut res = Vec::new();
-    for entry in cursor.walk_range(start..end)? {
-        if let Ok(entry) = entry {
-            res.push(entry.1)
-        }
+    for entry in cursor.walk_range(start..end)?.flatten() {
+        res.push(entry.1);
     }
 
     Ok(res)

@@ -32,7 +32,7 @@ pub fn init_inspectors(
     db: &'static LibmdbxReadWriter,
     inspectors: Option<Vec<Inspectors>>,
     cex_exchanges: Option<Vec<String>>,
-) -> &'static [&'static Box<dyn Inspector>] {
+) -> &'static [&'static dyn Inspector] {
     let cex_exchanges: Vec<CexExchange> = cex_exchanges
         .unwrap_or_else(Vec::new)
         .into_iter()

@@ -4,7 +4,7 @@ use syn::{parse::Parse, ExprClosure, Ident, Index, Path, Token};
 
 pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let MacroParse { decoder_name, function_call_path, factory_address, address_call_function } =
-        syn::parse2(token_stream.into())?;
+        syn::parse2(token_stream)?;
 
     is_proper_address(&factory_address)?;
     let stripped_address = &factory_address.to_string()[2..];
@@ -36,23 +36,19 @@ pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
 
             impl crate::FactoryDecoder for #decoder_name {
 
-                fn decode_new_pool<T: ::brontes_types::traits::TracingProvider>(
+                async fn decode_new_pool<T: ::brontes_types::traits::TracingProvider>(
                     &self,
                     tracer: ::std::sync::Arc<T>,
                     deployed_address: ::alloy_primitives::Address,
                     parent_calldata: ::alloy_primitives::Bytes,
-                ) -> impl ::std::future::Future<
-                    Output = Vec<::brontes_pricing::types::DiscoveredPool
-                        >> + Send {
-                    async move {
-                        let Ok(decoded_data) = <#function_call_path
-                            as ::alloy_sol_types::SolCall>::abi_decode(&parent_calldata[..], false)
-                            else {
-                                ::tracing::error!("{} failed to decode calldata", #decoder_name_str);
-                                return Vec::new();
-                        };
-                        (#address_call_function)(deployed_address, decoded_data, tracer).await
-                    }
+                ) -> Vec<::brontes_pricing::types::DiscoveredPool>{
+                    let Ok(decoded_data) = <#function_call_path
+                        as ::alloy_sol_types::SolCall>::abi_decode(&parent_calldata[..], false)
+                        else {
+                            ::tracing::error!("{} failed to decode calldata", #decoder_name_str);
+                            return Vec::new();
+                    };
+                    (#address_call_function)(deployed_address, decoded_data, tracer).await
                 }
             }
         }
@@ -112,7 +108,7 @@ impl Parse for MacroParse {
 }
 
 pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
-    let DiscoveryDispatch { struct_name, rest } = syn::parse2(input.into())?;
+    let DiscoveryDispatch { struct_name, rest } = syn::parse2(input)?;
 
     let (var_name, fn_name): (Vec<_>, Vec<_>) = rest
         .iter()
@@ -136,16 +132,13 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
         pub struct #struct_name(#(pub #name,)*);
 
         impl crate::FactoryDecoderDispatch for #struct_name {
-            fn dispatch<T: ::brontes_types::traits::TracingProvider>(
+            async fn dispatch<T: ::brontes_types::traits::TracingProvider>(
                     &self,
                     tracer: ::std::sync::Arc<T>,
                     factory: ::alloy_primitives::Address,
                     deployed_address: ::alloy_primitives::Address,
                     parent_calldata: ::alloy_primitives::Bytes,
-                ) -> impl ::std::future::Future<
-                Output = Vec<::brontes_pricing::types::DiscoveredPool
-                    >> + Send  {
-                async move {
+                ) ->Vec<::brontes_pricing::types::DiscoveredPool> {
                     if parent_calldata.len() < 4 {
                         ::tracing::debug!(?deployed_address, ?factory, "invalid calldata length");
                         return Vec::new()
@@ -172,7 +165,6 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                             }
                         )*
                         _ => Vec::new()
-                    }
                 }
             }
         }

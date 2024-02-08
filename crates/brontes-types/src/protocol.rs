@@ -1,9 +1,10 @@
 use redefined::self_convert_redefined;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::implement_table_value_codecs_with_zc;
 
-macro_rules! to_byte {
+macro_rules! utils {
     ($(#[$attr:meta])* pub enum $name:ident { $(
                 $(#[$fattr:meta])*
                 $varient:ident,
@@ -26,12 +27,22 @@ macro_rules! to_byte {
                     ) +
                 }
             }
+            pub fn parse_string(str: String) -> Self {
+                let lower = str.to_lowercase();
+                paste::paste!(
+                match lower.as_str(){
+                    $(
+                        stringify!([<$varient:lower>]) => return Self::$varient,
+                    )+
+                    e @ _ => panic!("no var for {}",e)
+                }
+                );
+            }
         }
-
     };
 }
 
-to_byte!(
+utils!(
     #[allow(non_camel_case_types)]
     #[derive(
         Debug,
@@ -43,9 +54,9 @@ to_byte!(
         Hash,
         Serialize,
         Deserialize,
-        rkyv::Serialize,
-        rkyv::Deserialize,
-        rkyv::Archive,
+        rSerialize,
+        rDeserialize,
+        Archive,
         strum::Display,
         strum::EnumString,
     )]

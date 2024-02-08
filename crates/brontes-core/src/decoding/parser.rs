@@ -50,11 +50,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
 
     pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         let traces = self.libmdbx.load_trace(block_num).ok()?;
-        if let Some(trace) = traces {
-            return Some((trace, self.tracer.header_by_number(block_num).await.ok()??))
-        }
 
-        return None
+        return Some((traces, self.tracer.header_by_number(block_num).await.ok()??))
     }
 
     /// executes the tracing of a given block

@@ -1,7 +1,7 @@
-use alloy_primitives::Address;
 use brontes_macros::action_impl;
 use brontes_types::{
     normalized_actions::{NormalizedFlashLoan, NormalizedLiquidation},
+    structured_trace::CallInfo,
     utils::ToScaledRational,
     Protocol,
 };
@@ -13,27 +13,24 @@ action_impl!(
     Liquidation,
     [],
     call_data: true,
-    |trace_index,
-    _from_address: Address,
-    target_address: Address,
-    msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: liquidationCallCall,
     db_tx: &DB| {
-
-        let debt_info = db_tx.try_fetch_token_info(call_data.debtAsset).ok()??;
-        let collateral_info = db_tx.try_fetch_token_info(call_data.collateralAsset).ok()??;
+        let debt_info = db_tx.try_fetch_token_info(call_data.debtAsset)?;
+        let collateral_info = db_tx.try_fetch_token_info(call_data.collateralAsset)?;
 
         let covered_debt = call_data.debtToCover.to_scaled_rational(debt_info.decimals);
 
-        return Some(NormalizedLiquidation {
+        return Ok(NormalizedLiquidation {
             protocol: Protocol::AaveV2,
-            trace_index,
-            pool: target_address,
-            liquidator: msg_sender,
+            trace_index: info.trace_idx,
+            pool: info.target_address,
+            liquidator: info.msg_sender,
             debtor: call_data.user,
             collateral_asset: collateral_info,
             debt_asset: debt_info,
-            covered_debt: covered_debt,
+            covered_debt,
             // filled in later
             liquidated_collateral: Rational::ZERO,
         })
@@ -46,26 +43,23 @@ action_impl!(
     FlashLoan,
     [],
     call_data: true,
-    |trace_index,
-    _from_address: Address,
-    target_address: Address,
-    msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: flashLoanCall,
     db_tx: &DB| {
         let (amounts, assets): (Vec<_>, Vec<_>) = call_data.assets
             .iter()
             .zip(call_data.amounts.iter())
             .filter_map(|(asset, amount)| {
-                let token_info = db_tx.try_fetch_token_info(*asset).ok()??;
+                let token_info = db_tx.try_fetch_token_info(*asset).ok()?;
                 Some((amount.to_scaled_rational(token_info.decimals),token_info))
         }).unzip();
 
-
-        return Some(NormalizedFlashLoan {
+        return Ok(NormalizedFlashLoan {
             protocol: Protocol::AaveV2,
-            trace_index,
-            from: msg_sender,
-            pool: target_address,
+            trace_index: info.trace_idx,
+            from: info.msg_sender,
+            pool: info.target_address,
             receiver_contract: call_data.receiverAddress,
             assets ,
             amounts,
