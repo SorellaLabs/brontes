@@ -27,14 +27,14 @@ impl TokenInfoWithAddress {
     pub fn native_eth() -> Self {
         Self {
             inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
-            address: WETH_ADDRESS.into(),
+            address: WETH_ADDRESS,
         }
     }
 
     pub fn usdt() -> Self {
         Self {
             inner:   TokenInfo { decimals: 6, symbol: "USDT".to_string() },
-            address: USDT_ADDRESS.into(),
+            address: USDT_ADDRESS,
         }
     }
 }

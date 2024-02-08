@@ -25,14 +25,14 @@ action_impl!(
 
         let fill_logs = logs_data.Fill_field;
 
-        let solver = fill_logs[0].filler.clone();
+        let solver = fill_logs[0].filler;
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(|fill| Fill::into_swap(fill)).collect(),
+            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
             solver_swaps: None,
             msg_value: info.msg_value
 
@@ -55,14 +55,14 @@ action_impl!(
 
         let fill_logs = logs_data.Fill_field;
 
-        let solver = fill_logs[0].filler.clone();
+        let solver = fill_logs[0].filler;
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(|fill| Fill::into_swap(fill)).collect(),
+            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
             solver_swaps: None,
             msg_value: info.msg_value,
         })
@@ -84,14 +84,14 @@ action_impl!(
         let fill_logs = logs_data.Fill_field;
 
 
-        let solver = fill_logs[0].filler.clone();
+        let solver = fill_logs[0].filler;
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(|fill| Fill::into_swap(fill)).collect(),
+            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
             solver_swaps: Some(Vec::new()),
             msg_value: info.msg_value
         })
@@ -112,7 +112,7 @@ action_impl!(
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
 
-        let solver = fill_logs[0].filler.clone();
+        let solver = fill_logs[0].filler;
 
 
 
@@ -121,7 +121,7 @@ action_impl!(
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(|fill| Fill::into_swap(fill)).collect(),
+            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
             solver_swaps: None,
             msg_value: info.msg_value
         })
@@ -134,8 +134,8 @@ impl Fill {
     /// classification stage. See: [`Finish
     /// Classification`](brontes_types::NormalizedBatch::normalized_actions::finish_classification)
     pub fn into_swap(fill_log: &Fill) -> NormalizedSwap {
-        let solver = fill_log.filler.clone();
-        let swapper = fill_log.swapper.clone();
+        let solver = fill_log.filler;
+        let swapper = fill_log.swapper;
 
         NormalizedSwap {
             protocol:    Protocol::UniswapX,

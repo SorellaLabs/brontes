@@ -300,7 +300,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
-            return (vec![DexPriceMsg::Update(results.0)], results.1)
+            (vec![DexPriceMsg::Update(results.0)], results.1)
         } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
             return transfer
         } else {
@@ -363,7 +363,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
     fn classify_eth_transfer(&self, trace: TransactionTraceWithLogs, trace_index: u64) -> Actions {
         if trace.get_calldata().is_empty() && trace.get_msg_value() > U256::ZERO {
-            return Actions::EthTransfer(NormalizedEthTransfer {
+            Actions::EthTransfer(NormalizedEthTransfer {
                 from: trace.get_from_addr(),
                 to: trace.get_to_address(),
                 value: trace.get_msg_value(),
