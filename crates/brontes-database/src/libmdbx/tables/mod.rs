@@ -28,7 +28,7 @@ use reth_db::table::Table;
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData};
+use crate::libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData, LibmdbxReadWriter};
 
 mod const_sql;
 use alloy_primitives::Address;
@@ -71,6 +71,20 @@ macro_rules! tables {
                         TableType::Table
                     },)*
                 }
+            }
+
+            pub fn init_table(&self, db: &LibmdbxReadWriter) -> eyre::Result<()> {
+                match self {
+                    $(
+                        Tables::$table => {
+                            let tx = db.0.rw_tx()?;
+                            tx.get_dbi::<$table>()?;
+                            tx.commit()?;
+                        }
+                    ),*
+                }
+
+                Ok(())
             }
 
         }
