@@ -7,7 +7,7 @@ use std::{
     },
 };
 
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::{Address, TxHash, U256};
 use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
     TxTracesWithHeaderAnd,
@@ -584,5 +584,6 @@ const fn make_fake_swap(pair: Pair) -> Actions {
         token_out:   t_out,
         amount_in:   Rational::ZERO,
         amount_out:  Rational::ZERO,
+        msg_value:   U256::ZERO,
     })
 }

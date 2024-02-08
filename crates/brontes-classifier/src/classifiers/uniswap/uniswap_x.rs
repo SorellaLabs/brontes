@@ -156,42 +156,78 @@ impl Fill {
 mod tests {
     use std::str::FromStr;
 
-    use brontes_types::normalized_actions::Actions;
-    use malachite::Rational;
+    use alloy_primitives::{hex, Address, B256, U256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_pricing::Protocol::UniswapX;
+    use brontes_types::{normalized_actions::Actions, Node, ToScaledRational, TreeSearchArgs};
+    use serial_test::serial;
 
     use super::*;
 
     #[tokio::test]
     #[serial]
-    async fn test_batch_classifier_with_call_back() {
+    async fn test_batch_classifier_with_call_back_eth() {
         let classifier_utils = ClassifierTestUtils::new();
         let execute_batch_with_callback =
             B256::from(hex!("3d8fbccb1b0b7f8140f255f0980d897d87394903ad7bf4d08534402d2bf35872"));
 
-        let eq_action = Actions::Liquidation(NormalizedBatch {
+        let eq_action = Actions::Batch(NormalizedBatch {
             protocol:            Protocol::AaveV3,
             trace_index:         1,
             solver:              Address::new(hex!(
                 "
-            0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"
+            919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"
             )),
             settlement_contract: Address::new(hex!("6000da47483062A0D734Ba3dc7576Ce6A0B645C4")),
-            user_swaps:          vec![NormalizedSwap {
-                protocol:    UniswapX,
-                trace_index: 2,
-                from:        Address::new(hex!(
-                    "
+            user_swaps:          vec![
+                NormalizedSwap {
+                    protocol:    UniswapX,
+                    trace_index: 2,
+                    from:        Address::new(hex!(
+                        "
             86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
-                )),
-                recipient:   Address::new(hex!(
-                    "
-                    0x86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
-                )),
-                pool:        Address::new(hex!(
-                    "
-                    6000da47483062A0D734Ba3dc7576Ce6A0B645C4"
-                )),
-            }],
+                    )),
+                    recipient:   Address::new(hex!(
+                        "
+                    86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
+                    )),
+                    pool:        Address::new(hex!(
+                        "
+                    919f9173e2dc833ec708812b4f1cb11b1a17efde"
+                    )),
+                    token_in:    TokenInfoWithAddress::usdt(),
+                    amount_in:   U256::from_str("2400058669").unwrap().to_scaled_rational(6),
+                    token_out:   TokenInfoWithAddress::native_eth(),
+                    amount_out:  U256::from_str("1045065358997285550")
+                        .unwrap()
+                        .to_scaled_rational(18),
+
+                    msg_value: U256::ZERO,
+                },
+                NormalizedSwap {
+                    protocol:    UniswapX,
+                    trace_index: 3,
+                    from:        Address::new(hex!(
+                        "
+                    569d9f244e4ed4f0731f39675492740dcdab6b15"
+                    )),
+                    recipient:   Address::new(hex!(
+                        "
+                    569d9f244e4ed4f0731f39675492740dcdab6b15"
+                    )),
+                    pool:        Address::new(hex!(
+                        "
+                    919f9173e2dc833ec708812b4f1cb11b1a17efde"
+                    )),
+                    token_in:    TokenInfoWithAddress::usdt(),
+                    amount_in:   U256::from_str("106496770").unwrap().to_scaled_rational(6),
+                    token_out:   TokenInfoWithAddress::native_eth(),
+                    amount_out:  U256::from_str("1569952967947850")
+                        .unwrap()
+                        .to_scaled_rational(18),
+                    msg_value:   U256::ZERO,
+                },
+            ],
             solver_swaps:        None,
             msg_value:           U256::ZERO,
         });

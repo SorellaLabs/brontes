@@ -77,9 +77,9 @@ impl NormalizedAction for Actions {
                     | action.is_transfer()
                     | action.is_collect()
             }),
-            Actions::Batch(_) => {
-                Box::new(|action: &Actions| action.is_swap() | action.is_transfer())
-            }
+            Actions::Batch(_) => Box::new(|action: &Actions| {
+                action.is_swap() | action.is_transfer() | action.is_eth_transfer()
+            }),
             Actions::Mint(_) => unreachable!(),
             Actions::Burn(_) => unreachable!(),
             Actions::Transfer(_) => unreachable!(),

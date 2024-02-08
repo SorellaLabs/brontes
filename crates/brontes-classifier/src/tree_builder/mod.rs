@@ -440,7 +440,7 @@ pub struct TxTreeResult {
 pub mod test {
     use std::collections::{HashMap, HashSet};
 
-    use alloy_primitives::{hex, Address, B256};
+    use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
         db::token_info::TokenInfoWithAddress,
         normalized_actions::{Actions, NormalizedLiquidation},

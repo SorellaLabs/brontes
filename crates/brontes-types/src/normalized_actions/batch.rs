@@ -6,7 +6,7 @@ use sorella_db_databases::{clickhouse, clickhouse::Row};
 use tracing::error;
 
 pub use super::{Actions, NormalizedSwap};
-use crate::Protocol;
+use crate::{db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Protocol};
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBatch {
@@ -35,6 +35,20 @@ impl NormalizedBatch {
                         } else if t.from == self.solver && t.to == user_swap.from {
                             user_swap.token_out = t.token.clone();
                             user_swap.amount_out = t.amount.clone();
+                            nodes_to_prune.push(*trace_index);
+                        }
+                    }
+                }
+                Actions::EthTransfer(et) => {
+                    for user_swap in &mut self.user_swaps {
+                        if et.from == user_swap.from && et.to == self.settlement_contract {
+                            user_swap.trace_index = *trace_index;
+                            user_swap.token_in = TokenInfoWithAddress::native_eth();
+                            user_swap.amount_in = et.clone().value.to_scaled_rational(18);
+                            nodes_to_prune.push(*trace_index);
+                        } else if et.from == self.settlement_contract && et.to == user_swap.from {
+                            user_swap.token_out = TokenInfoWithAddress::native_eth();
+                            user_swap.amount_out = et.clone().value.to_scaled_rational(18);
                             nodes_to_prune.push(*trace_index);
                         }
                     }
