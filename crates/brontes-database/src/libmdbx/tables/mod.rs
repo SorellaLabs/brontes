@@ -38,7 +38,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 12;
+pub const NUM_TABLES: usize = 13;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -170,6 +170,7 @@ impl Tables {
                     .await
             }
             Tables::Searcher => Ok(()),
+            Tables::InitializedState => Ok(()),
         }
     }
 }
@@ -186,7 +187,8 @@ tables!(
     TxTraces,
     Builder,
     AddressMeta,
-    Searcher
+    Searcher,
+    InitializedState
 );
 
 /// Must be in this order when defining
