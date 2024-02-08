@@ -64,7 +64,7 @@ pub(crate) fn build_mev_header(
     tree: Arc<BlockTree<Actions>>,
     pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,
-    orchestra_data: &Vec<Bundle>,
+    orchestra_data: &[Bundle],
 ) -> MevBlock {
     let cum_mev_priority_fee_paid = orchestra_data
         .iter()

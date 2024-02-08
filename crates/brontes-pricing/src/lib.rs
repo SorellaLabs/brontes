@@ -994,11 +994,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
 pub mod test {
 
     use alloy_primitives::{hex, Address, FixedBytes};
-    
-    
-
-    
-    
 
     pub const USDC_ADDRESS: Address =
         Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));

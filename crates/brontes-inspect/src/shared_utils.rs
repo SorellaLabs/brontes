@@ -164,7 +164,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         info: &TxInfo,
         profit_usd: f64,
         at: PriceAt,
-        actions: &Vec<Vec<Actions>>,
+        actions: &[Vec<Actions>],
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,

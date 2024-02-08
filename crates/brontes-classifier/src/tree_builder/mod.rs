@@ -207,7 +207,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(block_number, root_head, tx_index as u64, trace, trace_index)
+            .classify_node(block_number, root_head, tx_index, trace, trace_index)
             .await;
 
         // Here we are marking more complex actions that require data
