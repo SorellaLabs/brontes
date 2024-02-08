@@ -14,15 +14,14 @@ use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::{
     decoding::{Parser, TracingProvider},
-    executor,
 };
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter},
+    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use futures::{future, future::join_all, stream::FuturesUnordered, Future, StreamExt};
+use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
@@ -102,10 +101,9 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                 .enumerate()
                 .map(|(batch_id, mut chunk)| {
                     let executor = executor.clone();
+                    let start_block = chunk.next().unwrap();
+                    let end_block = chunk.last().unwrap_or(start_block);
                     async move {
-                        let start_block = chunk.next().unwrap();
-                        let end_block = chunk.last().unwrap_or(start_block);
-
                         tracing::info!(batch_id, start_block, end_block, "starting batch");
 
                         let state_collector = if self.with_dex_pricing {
@@ -277,7 +275,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
     }
 
     async fn build_internal(
-        mut self,
+        self,
         executor: TaskExecutor,
         had_end_block: bool,
         end_block: u64,
@@ -322,10 +320,11 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
     }
 
     pub async fn build(
-        mut self,
+        self,
         executor: TaskExecutor,
         shutdown: GracefulShutdown,
     ) -> eyre::Result<Brontes> {
+        // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
         self.verify_database_fetch_missing(end_block).await?;
         let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
@@ -338,7 +337,6 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             },
             guard = shutdown => {
                 graceful_guard = Some(guard);
-                None
             }
         }
 
