@@ -293,7 +293,8 @@ impl Actions {
                 reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
                 reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
             },
-            _ => unreachable!(),
+            Actions::EthTransfer(t) => t.to,
+            Actions::Revert => unreachable!(),
         }
     }
 
