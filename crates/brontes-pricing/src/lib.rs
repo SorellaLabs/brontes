@@ -919,12 +919,14 @@ fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
         .collect::<Vec<_>>()
 }
 
+type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>);
+
 fn on_new_pool_pair<DB: LibmdbxWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     msg: PoolUpdate,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
-) -> (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>) {
+) -> NewPoolPair {
     let block = msg.block;
 
     let mut buf_pending = Vec::new();
