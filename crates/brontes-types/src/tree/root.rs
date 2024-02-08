@@ -99,7 +99,7 @@ impl<V: NormalizedAction> Root<V> {
         self.head.modify_node_if_contains_childs(find, modify);
     }
 
-    pub fn collect_child_traces_and_classify(&mut self, heads: &Vec<u64>) {
+    pub fn collect_child_traces_and_classify(&mut self, heads: &[u64]) {
         heads.iter().for_each(|search_head| {
             self.head
                 .get_all_children_for_complex_classification(*search_head)

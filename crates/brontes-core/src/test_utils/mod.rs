@@ -11,7 +11,9 @@ use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::T
 use futures::future::join_all;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
+#[cfg(not(feature = "local"))]
 use reth_tasks::TaskManager;
+#[cfg(not(feature = "local"))]
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
 use tokio::{
@@ -376,8 +378,6 @@ fn init_trace_parser<'a>(
     libmdbx: &'a LibmdbxReadWriter,
     max_tasks: u32,
 ) -> TraceParser<'a, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-
     #[cfg(feature = "local")]
     let tracer = {
         let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
@@ -387,6 +387,7 @@ fn init_trace_parser<'a>(
     };
     #[cfg(not(feature = "local"))]
     let tracer = {
+        let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
         let executor = TaskManager::new(handle.clone());
         let client = TracingClient::new(
             std::path::Path::new(&db_path),
