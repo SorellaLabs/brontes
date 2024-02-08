@@ -21,9 +21,13 @@ use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::info;
 
+pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
+
+pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
+
 pub struct WaitingForPricerFuture<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
-    receiver: Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>,
-    tx:       Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>,
+    receiver: PricingReceiver<T, DB>,
+    tx:       PricingSender<T, DB>,
 
     pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, Metadata)>,
     task_executor:            TaskExecutor,

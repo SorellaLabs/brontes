@@ -120,7 +120,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             profit_usd,
             PriceAt::After,
             &vec![actions],
-            &vec![info.gas_details],
+            &[info.gas_details],
             metadata,
             MevType::Liquidation,
         );
@@ -130,7 +130,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             trigger:             b256!(),
             liquidation_swaps:   swaps,
             liquidations:        liqs,
-            gas_details:         info.gas_details.clone(),
+            gas_details:         info.gas_details,
         };
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })

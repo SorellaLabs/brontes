@@ -3,7 +3,6 @@ use std::{cmp::min, sync::Arc};
 use brontes_types::ToScaledRational;
 mod tree_pruning;
 mod utils;
-
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -18,7 +17,7 @@ use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -71,7 +70,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         tx_roots: Vec<TxTreeResult>,
         tree: &mut BlockTree<Actions>,
     ) -> Vec<Option<(usize, Vec<u64>)>> {
-        let further_classification_requests = tx_roots
+        tx_roots
             .into_iter()
             .map(|root_data| {
                 tree.insert_root(root_data.root);
@@ -80,9 +79,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 });
                 root_data.further_classification_requests
             })
-            .collect_vec();
-
-        further_classification_requests
+            .collect_vec()
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
@@ -210,7 +207,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(block_number, root_head, tx_index as u64, trace, trace_index)
+            .classify_node(block_number, root_head, tx_index, trace, trace_index)
             .await;
 
         // Here we are marking more complex actions that require data
@@ -241,6 +238,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         {
                             error!("failed to insert discovered pool into libmdbx");
                         }
+                        info!(
+                            "Discovered new {} pool: 
+                            \nAddress:{} 
+                            \nToken 0: {}
+                            \nToken 1: {}",
+                            pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+                        );
                     }
                 }
                 rest => {
@@ -268,17 +272,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Revert)
         }
         match trace.action_type() {
-            Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index).await,
+            Action::Call(_) => self.classify_call(block, tx_idx, trace, trace_index).await,
             Action::Create(_) => {
-                return self
-                    .classify_create(block, root_head, tx_idx, trace, trace_index)
+                self.classify_create(block, root_head, tx_idx, trace, trace_index)
                     .await
             }
             Action::Selfdestruct(sd) => {
-                return (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+                (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
             }
-            Action::Reward(_) => return (vec![], Actions::Unclassified(trace)),
-        };
+            Action::Reward(_) => (vec![], Actions::Unclassified(trace)),
+        }
     }
 
     async fn classify_call(
@@ -369,7 +372,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Unclassified(trace));
         };
 
-        return (
+        (
             DiscoveryProtocols::default()
                 .dispatch(self.provider.clone(), from_address, created_addr, calldata)
                 .await
@@ -407,11 +410,11 @@ pub struct TxTreeResult {
 pub mod test {
     use std::collections::{HashMap, HashSet};
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{hex, Address, B256};
     use brontes_types::{
         db::token_info::TokenInfoWithAddress,
         normalized_actions::{Actions, NormalizedLiquidation},
-        Protocol, TreeSearchArgs,
+        Node, Protocol, TreeSearchArgs,
     };
     use malachite::Rational;
     use serial_test::serial;
@@ -479,16 +482,13 @@ pub mod test {
             trace_index:           6,
         });
 
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_liquidation(),
+            child_node_to_collect: node.subactions.iter().any(|action| action.is_liquidation()),
+        };
+
         classifier_utils
-            .contains_action(
-                aave_v3_liquidation,
-                0,
-                eq_action,
-                TreeSearchArgs {
-                    collect_current_node:  Actions::liquidation_collect_fn(),
-                    child_node_to_collect: Actions::liquidation_child_fn(),
-                },
-            )
+            .contains_action(aave_v3_liquidation, 0, eq_action, search_fn)
             .await
             .unwrap();
     }
