@@ -366,6 +366,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             || (!info.is_classified
                 && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
                     || info.is_cex_dex_call))
+            || info.is_searcher_of_type(MevType::CexDex)
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
