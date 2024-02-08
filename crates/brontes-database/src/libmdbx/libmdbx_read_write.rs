@@ -67,10 +67,7 @@ impl LibmdbxReadWriter {
 
     /// full range tables are tables such as token info or pool creation blocks.
     /// given that these are full range. they will be inited for such. thus,
-    /// if we have any entries in the db, we will have the entrie range. the
-    /// only time this isn't true is if durning initialization we get a
-    /// ctrl-c or error. if that occurs, we reset the tables to avoid courpt
-    /// data.
+    /// if we have any entries in the db, we will have the entrie range.
     pub fn init_full_range_tables(&self) -> bool {
         [Tables::PoolCreationBlocks, Tables::AddressToProtocolInfo, Tables::TokenDecimals]
             .into_par_iter()

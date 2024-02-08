@@ -76,6 +76,7 @@ impl RunArgs {
             Box::new(|address, db_tx| db_tx.get_protocol(*address).is_err()),
         ));
 
+        let executor = task_executor.clone();
         BrontesRunConfig::new(
             self.start_block,
             self.end_block,

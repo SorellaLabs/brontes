@@ -1,6 +1,7 @@
 mod range;
 mod shared;
 use brontes_database::Tables;
+use futures::pin_mut;
 mod tip;
 use std::{
     collections::HashMap,
@@ -11,7 +12,10 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    executor,
+};
 use brontes_database::{
     clickhouse::Clickhouse,
     libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter},
@@ -21,7 +25,7 @@ use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use futures::{future, future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::TaskExecutor;
+use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
 pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
@@ -92,13 +96,14 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
         join_all(
-            futures::stream::iter(self.start_block..=end_block)
+            (self.start_block..=end_block)
                 .chunks(chunk_size.try_into().unwrap())
+                .into_iter()
                 .enumerate()
-                .map(|(batch_id, chunk)| {
+                .map(|(batch_id, mut chunk)| {
                     let executor = executor.clone();
                     async move {
-                        let start_block = chunk.first().unwrap();
+                        let start_block = chunk.next().unwrap();
                         let end_block = chunk.last().unwrap_or(start_block);
 
                         tracing::info!(batch_id, start_block, end_block, "starting batch");
@@ -106,8 +111,8 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                         let state_collector = if self.with_dex_pricing {
                             self.state_collector_dex_price(
                                 executor.clone(),
-                                *start_block,
-                                *end_block,
+                                start_block,
+                                end_block,
                                 tip,
                             )
                             .await
@@ -116,16 +121,14 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                         };
 
                         RangeExecutorWithPricing::new(
-                            *start_block,
-                            *end_block,
+                            start_block,
+                            end_block,
                             state_collector,
                             self.libmdbx,
                             self.inspectors,
                         )
                     }
-                })
-                .collect::<Vec<_>>()
-                .await,
+                }),
         )
         .await
     }
@@ -206,7 +209,12 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
 
-    pub async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
+    fn possible_full_range_table_missing(&self) -> eyre::Result<()> {
+        // self.libmdbx.0
+        Ok(())
+    }
+
+    async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
         // these tables are super lightweight and as such, we init them for the entire
         // range
         if self.libmdbx.init_full_range_tables() {
@@ -256,9 +264,8 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         Ok(())
     }
 
-    pub async fn build(self, executor: TaskExecutor) -> eyre::Result<Brontes> {
-        let futures = FuturesUnordered::new();
-        let (had_end_block, end_block) = if let Some(end_block) = self.end_block {
+    async fn get_end_block(&self) -> (bool, u64) {
+        if let Some(end_block) = self.end_block {
             (true, end_block)
         } else {
             #[cfg(not(feature = "local"))]
@@ -266,9 +273,16 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             #[cfg(feature = "local")]
             let chain_tip = self.parser.get_latest_block_number().await.unwrap();
             (false, chain_tip)
-        };
+        }
+    }
 
-        self.verify_database_fetch_missing(end_block).await?;
+    async fn build_internal(
+        mut self,
+        executor: TaskExecutor,
+        had_end_block: bool,
+        end_block: u64,
+    ) -> eyre::Result<Brontes> {
+        let futures = FuturesUnordered::new();
 
         if had_end_block {
             (&self)
@@ -305,6 +319,36 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         }
 
         Ok(Brontes(futures))
+    }
+
+    pub async fn build(
+        mut self,
+        executor: TaskExecutor,
+        shutdown: GracefulShutdown,
+    ) -> eyre::Result<Brontes> {
+        let (had_end_block, end_block) = self.get_end_block().await;
+        self.verify_database_fetch_missing(end_block).await?;
+        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
+
+        let mut graceful_guard = None;
+        pin_mut!(build_future, shutdown);
+        tokio::select! {
+            res = &mut build_future => {
+                return res
+            },
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+                None
+            }
+        }
+
+        drop(graceful_guard);
+        tracing::info!(
+            "got shutdown signal during init process, clearing possibly bad
+                           full range tables"
+        );
+
+        return Err(eyre::eyre!("shutdown"))
     }
 }
 
