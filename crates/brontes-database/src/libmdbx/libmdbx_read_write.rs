@@ -234,6 +234,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             let res = result?.1;
             for addr in res.0.into_iter() {
                 let Some(protocol_info) = tx.get::<AddressToProtocolInfo>(addr)? else {
+                    tracing::error!(?addr, "failed to get protocol info for given address");
                     continue;
                 };
 
