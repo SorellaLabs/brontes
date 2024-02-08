@@ -33,7 +33,7 @@ pub mod vec_address {
     };
 
     pub fn serialize<S: Serializer, T: Into<Address> + Debug>(
-        u: &Vec<T>,
+        u: &[T],
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let st: Vec<String> = u
@@ -63,7 +63,7 @@ pub mod vec_u256 {
         ser::{Serialize, Serializer},
     };
 
-    pub fn serialize<S: Serializer>(u: &Vec<U256>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(u: &[U256], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
             .map(|u| u.to_le_bytes())
             .collect::<Vec<[u8; 32]>>()
@@ -88,7 +88,7 @@ pub(crate) mod vec_vec_u256 {
         ser::{Serialize, Serializer},
     };
 
-    pub fn serialize<S: Serializer>(u: &Vec<Vec<U256>>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(u: &[Vec<U256>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
             .map(|u| u.iter().map(|u| u.to_le_bytes()).collect::<Vec<_>>())
             .collect::<Vec<Vec<[u8; 32]>>>()
@@ -119,10 +119,7 @@ pub(crate) mod vec_vec_fixed_string {
     };
     use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
-    pub fn serialize<S: Serializer>(
-        u: &Vec<Vec<Address>>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(u: &[Vec<Address>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
             .map(|addrs| {
                 addrs
@@ -165,7 +162,7 @@ pub(crate) mod vec_vec_b256 {
     };
     use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
-    pub fn serialize<S: Serializer>(u: &Vec<Vec<B256>>, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(u: &[Vec<B256>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
             .map(|addrs| {
                 addrs
@@ -237,10 +234,10 @@ pub mod vec_b256 {
     };
 
     pub fn serialize<S: Serializer, T: Into<B256> + Debug>(
-        u: &Vec<T>,
+        u: &[T],
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let st: Vec<String> = u.into_iter().map(|data| format!("{:?}", data)).collect();
+        let st: Vec<String> = u.iter().map(|data| format!("{:?}", data)).collect();
         st.serialize(serializer)
     }
 
@@ -268,10 +265,10 @@ pub mod vec_bls_pub_key {
     };
 
     pub fn serialize<S: Serializer, T: Into<BlsPublicKey> + Debug>(
-        u: &Vec<T>,
+        u: &[T],
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let st: Vec<String> = u.into_iter().map(|data| format!("{:?}", data)).collect();
+        let st: Vec<String> = u.iter().map(|data| format!("{:?}", data)).collect();
         st.serialize(serializer)
     }
 
@@ -415,7 +412,7 @@ pub mod vec_txhash {
     };
     #[allow(dead_code)]
     pub fn serialize<S: Serializer, D: Into<TxHash> + Debug>(
-        u: &Vec<D>,
+        u: &[D],
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         let data = u.iter().map(|t| format!("{:?}", t)).collect::<Vec<_>>();
@@ -596,7 +593,7 @@ pub mod option_contract_info {
         Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
             verified_contract,
             contract_creator: Address::from_str(&contract_creator).unwrap(),
-            protocol: protocol.map(|p| Protocol::from_str(&p).ok()).flatten(),
+            protocol: protocol.and_then(|p| Protocol::from_str(&p).ok()),
             reputation,
         }))
     }
@@ -607,18 +604,15 @@ pub mod socials {
     use serde::de::{Deserialize, Deserializer};
 
     use crate::db::address_metadata::Socials;
+    type SocalDecode =
+        (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
 
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let (twitter, twitter_followers, website_url, crunchbase, linkedin): (
-            Option<String>,
-            Option<u64>,
-            Option<String>,
-            Option<String>,
-            Option<String>,
-        ) = Deserialize::deserialize(deserializer)?;
+        let (twitter, twitter_followers, website_url, crunchbase, linkedin): SocalDecode =
+            Deserialize::deserialize(deserializer)?;
 
         Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
     }

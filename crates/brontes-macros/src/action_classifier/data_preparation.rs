@@ -16,6 +16,7 @@ pub struct CallDataParsing<'a> {
 }
 
 impl<'a> CallDataParsing<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         logs: bool,
         call_data: bool,
