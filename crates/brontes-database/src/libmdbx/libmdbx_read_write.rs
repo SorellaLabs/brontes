@@ -5,7 +5,9 @@ use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
-        address_to_tokens::PoolTokens,
+        address_metadata::AddressMetadata,
+        address_to_protocol_info::ProtocolInfo,
+        builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
         dex::{
             decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
@@ -13,6 +15,7 @@ use brontes_types::{
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
+        searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
         traits::{LibmdbxReader, LibmdbxWriter},
@@ -37,8 +40,7 @@ use crate::{
         types::LibmdbxData,
         Libmdbx, LibmdbxInitializer,
     },
-    AddressToProtocol, AddressToTokens, CompressedTable, PoolCreationBlocks, SubGraphs,
-    TokenDecimals, TxTraces,
+    AddressToProtocolInfo, CompressedTable, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -77,9 +79,8 @@ impl LibmdbxReadWriter {
 
         // local part
         let tx = self.0.ro_tx()?;
-        let mut trace_cur = tx.new_cursor::<TxTraces>()?;
-        let mut res =
-            self.validate_range("tx traces", trace_cur, start_block, end_block, |b| *b)?;
+        let trace_cur = tx.new_cursor::<TxTraces>()?;
+        let res = self.validate_range("tx traces", trace_cur, start_block, end_block, |b| *b)?;
 
         return Ok(meta_and_cex_pass && res)
     }
@@ -100,6 +101,8 @@ impl LibmdbxReadWriter {
             })
     }
 
+    //TODO: Batch & parallelize the data validation + return correct logs for
+    // specific blocks that are missing data.
     fn validate_metadata_and_cex(&self, start_block: u64, end_block: u64) -> eyre::Result<bool> {
         let tx = self.0.ro_tx()?;
 
@@ -112,7 +115,7 @@ impl LibmdbxReadWriter {
         );
         let (cex_pass, meta_pass) = (cex_pass?, meta_pass?);
 
-        return Ok(cex_pass && meta_pass)
+        Ok(cex_pass && meta_pass)
     }
 
     fn validate_range<T: CompressedTable>(
@@ -223,14 +226,20 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.fetch_dex_quotes(block)
     }
 
-    fn load_trace(&self, block_num: u64) -> eyre::Result<Option<Vec<TxTrace>>> {
+    fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>> {
         let tx = self.0.ro_tx()?;
-        Ok(tx.get::<TxTraces>(block_num)?.and_then(|i| i.traces))
+        tx.get::<TxTraces>(block_num)?
+            .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
+            .map(|i| {
+                i.traces
+                    .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
+            })?
     }
 
-    fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>> {
+    fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         let tx = self.0.ro_tx()?;
-        Ok(tx.get::<AddressToProtocol>(address)?)
+        tx.get::<AddressToProtocolInfo>(address)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
     }
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -274,11 +283,17 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    fn try_get_token_info(&self, address: Address) -> eyre::Result<Option<TokenInfoWithAddress>> {
+    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let tx = self.0.ro_tx()?;
-        Ok(tx
-            .get::<TokenDecimals>(address)?
-            .map(|inner| TokenInfoWithAddress { inner, address }))
+        tx.get::<TokenDecimals>(address)?
+            .map(|inner| TokenInfoWithAddress { inner, address })
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
+    }
+
+    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
+        let tx = self.0.ro_tx()?;
+        tx.get::<Searcher>(searcher_eoa)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", searcher_eoa))
     }
 
     fn protocols_created_before(
@@ -293,13 +308,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
         for result in cursor.walk_range(0..=block_num)? {
             let res = result?.1;
             for addr in res.0.into_iter() {
-                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
+                let Some(protocol_info) = tx.get::<AddressToProtocolInfo>(addr)? else {
                     continue;
                 };
-                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
-                    continue;
-                };
-                map.insert((addr, protocol), Pair(info.token0, info.token1));
+
+                map.insert(
+                    (addr, protocol_info.protocol),
+                    Pair(protocol_info.token0, protocol_info.token1),
+                );
             }
         }
 
@@ -322,16 +338,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
             let result = result?;
             let (block, res) = (result.0, result.1);
             for addr in res.0.into_iter() {
-                let Some(protocol) = tx.get::<AddressToProtocol>(addr)? else {
-                    continue;
-                };
-                let Some(info) = tx.get::<AddressToTokens>(addr)? else {
+                let Some(protocol_info) = tx.get::<AddressToProtocolInfo>(addr)? else {
                     continue;
                 };
                 map.entry(block).or_insert(vec![]).push((
                     addr,
-                    protocol,
-                    Pair(info.token0, info.token1),
+                    protocol_info.protocol,
+                    Pair(protocol_info.token0, protocol_info.token1),
                 ));
             }
         }
@@ -373,12 +386,32 @@ impl LibmdbxReader for LibmdbxReadWriter {
         last.ok_or_else(|| eyre::eyre!("no pair found"))
     }
 
-    fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>> {
-        Ok(self.0.ro_tx()?.get::<AddressToTokens>(address)?)
+    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<AddressMetadata> {
+        self.0
+            .ro_tx()?
+            .get::<AddressMeta>(address)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in address metadata", address))
+    }
+
+    fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
+        self.0
+            .ro_tx()?
+            .get::<Builder>(builder_coinbase_addr)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in builder info", builder_coinbase_addr))
     }
 }
 
 impl LibmdbxWriter for LibmdbxReadWriter {
+    fn write_searcher_info(
+        &self,
+        searcher_eoa: Address,
+        searcher_info: SearcherInfo,
+    ) -> eyre::Result<()> {
+        let data = SearcherData::new(searcher_eoa, searcher_info);
+        self.0.write_table::<Searcher, SearcherData>(&vec![data])?;
+        Ok(())
+    }
+
     fn save_mev_blocks(
         &self,
         block_number: u64,
@@ -454,11 +487,24 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         tokens: [Address; 2],
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        // add to default table
         self.0
-            .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData::new(address, classifier_name),
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+                AddressToProtocolInfoData::new(
+                    address,
+                    ProtocolInfo {
+                        protocol:   classifier_name,
+                        init_block: block,
+                        token0:     tokens[0],
+                        token1:     tokens[1],
+                        token2:     None,
+                        token3:     None,
+                        token4:     None,
+                    },
+                ),
             ])?;
 
+        // add to pool creation block
         let tx = self.0.ro_tx()?;
         let mut addrs = tx
             .get::<PoolCreationBlocks>(block)?
@@ -469,19 +515,6 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         self.0
             .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
                 PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
-            ])?;
-
-        self.0
-            .write_table::<AddressToTokens, AddressToTokensData>(&vec![
-                AddressToTokensData::new(
-                    address,
-                    PoolTokens {
-                        token0: tokens[0],
-                        token1: tokens[1],
-                        init_block: block,
-                        ..Default::default()
-                    },
-                ),
             ])?;
 
         Ok(())

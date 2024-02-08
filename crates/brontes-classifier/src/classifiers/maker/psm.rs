@@ -1,6 +1,8 @@
 use alloy_primitives::{hex, Address};
 use brontes_macros::action_impl;
-use brontes_types::{normalized_actions::NormalizedSwap, Protocol, ToScaledRational};
+use brontes_types::{
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, Protocol, ToScaledRational,
+};
 
 pub const USDC_PSM_ADDRESS: Address = Address::new(hex!(
     "89B78CfA322F6C5dE0aBcEecab66Aee45393cC5A
@@ -18,21 +20,18 @@ action_impl!(
     [BuyGem],
     call_data: true,
     logs: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: buyGemCall,
     log_data: MakerPSMbuyGemCallLogs,
     db_tx: &DB| {
 
         // For the PSM, the token0 should always be set to DAI and token1 is the gem (USDC or USDP)
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
-
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         // The amount of gem token being bought
         let amount_out = call_data.gemAmt.to_scaled_rational(t1_info.decimals);
@@ -45,12 +44,12 @@ action_impl!(
         let amount_in = &amount_out + &amount_out * fee_amount;
 
 
-        Some(NormalizedSwap {
+        Ok(NormalizedSwap {
             protocol: Protocol::MakerPSM,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.usr,
-            pool: target_address,
+            pool: info.target_address,
             token_in: t0_info,
             token_out: t1_info,
             amount_in,
@@ -68,19 +67,17 @@ action_impl!(
     [SellGem],
     call_data: true,
     logs: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: sellGemCall,
     log_data: MakerPSMsellGemCallLogs,
     db_tx: &DB| {
         // For the PSM, the token0 is DAI and token1 is the gem (USDC or USDP)
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
 
         // The amount of gem asset being sold
@@ -95,12 +92,12 @@ action_impl!(
         let amount_out = &amount_in - (&amount_in * fee_amount);
 
 
-        Some(NormalizedSwap {
+        Ok(NormalizedSwap {
             protocol: Protocol::MakerPSM,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.usr,
-            pool: target_address,
+            pool: info.target_address,
             token_in: t0_info,
             token_out: t1_info,
             amount_in,

@@ -1,6 +1,7 @@
 use std::{collections::HashSet, fmt, fmt::Display};
 
 use alloy_primitives::TxHash;
+use colored::Colorize;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use redefined::self_convert_redefined;
@@ -10,7 +11,7 @@ use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
 use crate::{
-    db::metadata::Metadata,
+    db::{metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::{Actions, NormalizedAction},
     TreeSearchArgs, TxInfo,
 };
@@ -24,12 +25,20 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
-    pub fn get_tx_info(&self, block_number: u64) -> TxInfo {
+    pub fn get_tx_info<DB: LibmdbxReader>(&self, block_number: u64, database: &DB) -> TxInfo {
+        let to_address = self.head.data.get_action().get_to_address();
+
+        let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
+            Ok(metadata) => metadata.is_verified(),
+            Err(_) => false,
+        };
+        let searcher_info = database.try_fetch_searcher_info(self.head.address).ok();
+
         TxInfo::new(
             block_number,
             self.position as u64,
             self.head.address,
-            self.head.data.get_action().get_to_address(),
+            to_address,
             self.tx_hash,
             self.gas_details,
             self.head.data.is_classified(),
@@ -38,6 +47,8 @@ impl<V: NormalizedAction> Root<V> {
                 Actions::Unclassified(data) if data.is_cex_dex_call()
             ),
             self.private,
+            is_verified_contract,
+            searcher_info,
         )
     }
 
@@ -181,6 +192,7 @@ impl Display for GasDetails {
         )
     }
 }
+
 self_convert_redefined!(GasDetails);
 
 impl GasDetails {
@@ -204,6 +216,51 @@ impl GasDetails {
 
     pub fn coinbase_transfer(&self) -> u128 {
         self.coinbase_transfer.unwrap_or_default()
+    }
+
+    // Pretty print after 'spaces' spaces
+    pub fn pretty_print_with_spaces(&self, f: &mut fmt::Formatter, spaces: usize) -> fmt::Result {
+        let space_str = " ".repeat(spaces);
+        let labels = [
+            (
+                "Coinbase Transfer",
+                self.coinbase_transfer
+                    .map(|amount| format!("{} ETH", amount))
+                    .unwrap_or_else(|| "None".to_string()),
+            ),
+            ("Priority Fee", format!("{} Wei", self.priority_fee)),
+            ("Gas Used", self.gas_used.to_string()),
+            ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
+            ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
+        ];
+
+        let max_label_length = labels
+            .iter()
+            .map(|(label, _)| label.len())
+            .max()
+            .unwrap_or(0);
+
+        for (label, value) in &labels {
+            writeln!(
+                f,
+                "{}",
+                self.format_line_with_spaces(label, value, max_label_length, &space_str)
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn format_line_with_spaces(
+        &self,
+        label: &str,
+        value: &str,
+        max_label_length: usize,
+        leading_spaces: &str,
+    ) -> String {
+        let padded_label = format!("{:<width$} :", label, width = max_label_length);
+        let formatted_value = format!("    {}", value).bright_yellow();
+        format!("{}{}{}", leading_spaces, padded_label, formatted_value)
     }
 }
 

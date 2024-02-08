@@ -48,6 +48,7 @@ pub struct TokenInfo {
     pub decimals: u8,
     pub symbol:   String,
 }
+
 impl TokenInfo {
     pub fn new(decimals: u8, symbol: String) -> Self {
         Self { symbol, decimals }

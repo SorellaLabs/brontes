@@ -47,19 +47,19 @@ impl<'a> LogData<'a> {
             Vec<_>,
         ) = self
             .log_config
-            .into_iter()
+            .iter()
             .enumerate()
-            .filter_map(|(i, LogConfig { can_repeat, log_ident, ignore_before })| {
+            .map(|(i, LogConfig { can_repeat, log_ident, ignore_before })| {
                 // is possible, need to increment count
 
                 let idx = if *ignore_before { Index::from(0) } else { Index::from(i) };
-                Some((
+                (
                     idx,
                     *can_repeat,
                     *ignore_before,
                     Ident::new(&(log_ident.to_string() + "_field"), Span::call_site()),
                     log_ident.clone(),
-                ))
+                )
             })
             .multiunzip();
 
@@ -179,7 +179,7 @@ impl<'a> LogData<'a> {
             let mut i = 0usize;
             let mut started = false;
             loop {
-                if let Some(log) = &logs.get(#index + repeating_modifier + i) {
+                if let Some(log) = &call_info.logs.get(#index + repeating_modifier + i) {
                     if let Some(decoded_result) = <#mod_path::#log_name
                         as ::alloy_sol_types::SolEvent>
                             ::decode_log_data(&log.data, false).ok() {
@@ -241,7 +241,8 @@ impl<'a> LogData<'a> {
                         let mut i = 0usize;
                             let mut started = false;
                             loop {
-                                if let Some(log) = &logs.get(#indexes + repeating_modifier + i) {
+                                if let Some(log) = &call_info.logs.get(
+                                    #indexes + repeating_modifier + i) {
                                     if let Some(decoded) =
                                         <#mod_path::#log_name as
                                         ::alloy_sol_types::SolEvent>
@@ -275,7 +276,7 @@ impl<'a> LogData<'a> {
             } else {
                 quote!(
                 'possible: {
-                        if let Some(log) = &logs.get(#indexes + repeating_modifier) {
+                        if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier) {
                             if let Some(decoded) = <#mod_path::#log_name
                                 as ::alloy_sol_types::SolEvent>
                                 ::decode_log_data(&log.data, false).ok() {
@@ -283,8 +284,8 @@ impl<'a> LogData<'a> {
                                     break 'possible
                             }
                             else {
-                                ::tracing::error!(?from_address,
-                                                  ?target_address,
+                                ::tracing::error!(?call_info.from_address,
+                                                  ?call_info.target_address,
                                                   ?self,
                                                   "decoding a default log failed, this should never occur,
                                                   please make a issue if you come across this"

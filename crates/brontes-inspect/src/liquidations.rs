@@ -44,7 +44,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         liq_txs
             .into_par_iter()
             .filter_map(|(tx_hash, liq)| {
-                let info = tree.get_tx_info(tx_hash)?;
+                let info = tree.get_tx_info(tx_hash, self.inner.db)?;
 
                 self.calculate_liquidation(info, metadata.clone(), liq)
             })
@@ -120,7 +120,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             profit_usd,
             PriceAt::After,
             &vec![actions],
-            &vec![info.gas_details],
+            &[info.gas_details],
             metadata,
             MevType::Liquidation,
         );
@@ -130,7 +130,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             trigger:             b256!(),
             liquidation_swaps:   swaps,
             liquidations:        liqs,
-            gas_details:         info.gas_details.clone(),
+            gas_details:         info.gas_details,
         };
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })

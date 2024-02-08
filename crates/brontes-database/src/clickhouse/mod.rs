@@ -156,7 +156,6 @@ impl Clickhouse {
             .query_one::<ClickhouseTimesFlow>(TIMES_FLOW, &(block_num))
             .await
             .unwrap()
-            .into()
     }
 
     async fn get_cex_token_prices(&self, _p2p_time: u64) -> CexPriceMap {

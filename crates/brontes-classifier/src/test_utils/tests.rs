@@ -14,14 +14,17 @@ use brontes_core::{
 };
 use brontes_database::{
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
-    AddressToProtocol, AddressToProtocolData,
+    AddressToProtocolInfo, AddressToProtocolInfoData,
 };
 use brontes_pricing::{
     types::{DexPriceMsg, DiscoveredPool, PoolUpdate},
     BrontesBatchPricer, GraphManager, Protocol,
 };
 use brontes_types::{
-    db::{dex::DexQuotes, token_info::TokenInfoWithAddress, traits::LibmdbxWriter},
+    db::{
+        address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
+        traits::LibmdbxWriter,
+    },
     normalized_actions::NormalizedSwap,
     pair::Pair,
     structured_trace::TraceActions,
@@ -61,7 +64,7 @@ impl ClassifierTestUtils {
     }
 
     pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
-        self.libmdbx.try_get_token_info(address).unwrap().unwrap()
+        self.libmdbx.try_fetch_token_info(address).unwrap()
     }
 
     pub fn new_with_rt(handle: Handle) -> Self {
@@ -454,15 +457,15 @@ impl ClassifierTestUtils {
     pub async fn test_protocol_classification(
         &self,
         tx_hash: TxHash,
-        protocol: Protocol,
+        protocol: ProtocolInfo,
         address: Address,
         cmp_fn: impl Fn(Option<(PoolUpdate, Actions)>),
     ) -> Result<(), ClassifierTestUtilsError> {
         // write protocol to libmdbx
         self.libmdbx
             .0
-            .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData { key: address, value: protocol },
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+                AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
 
         let TxTracesWithHeaderAnd { trace, block, .. } =
@@ -476,24 +479,9 @@ impl ClassifierTestUtils {
 
         let dispatcher = ProtocolClassifications::default();
 
-        let from_address = trace.get_from_addr();
-        let target_address = trace.get_to_address();
+        let call_info = trace.get_callframe_info();
 
-        let call_data = trace.get_calldata();
-        let return_bytes = trace.get_return_calldata();
-
-        let result = dispatcher.dispatch(
-            0,
-            call_data.clone(),
-            return_bytes.clone(),
-            from_address,
-            target_address,
-            trace.msg_sender,
-            &trace.logs,
-            self.trace_loader.libmdbx,
-            block,
-            0,
-        );
+        let result = dispatcher.dispatch(call_info, self.trace_loader.libmdbx, block, 0);
 
         cmp_fn(result);
 

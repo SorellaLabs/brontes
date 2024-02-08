@@ -7,6 +7,7 @@ use brontes_database::{
 use clap::Parser;
 use itertools::Itertools;
 use reth_db::mdbx::RO;
+use reth_interfaces::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]
 pub struct DatabaseQuery {
@@ -71,8 +72,7 @@ impl DatabaseQuery {
                 DexPrice,
                 MevBlocks,
                 TokenDecimals,
-                AddressToTokens,
-                AddressToProtocol,
+                AddressToProtocolInfo,
                 PoolCreationBlocks,
                 Builder,
                 AddressMeta,
@@ -90,8 +90,7 @@ impl DatabaseQuery {
                 DexPrice,
                 MevBlocks,
                 TokenDecimals,
-                AddressToTokens,
-                AddressToProtocol,
+                AddressToProtocolInfo,
                 Builder,
                 AddressMeta,
                 Searcher,
@@ -122,10 +121,8 @@ where
     let end = T::into_key(end);
 
     let mut res = Vec::new();
-    for entry in cursor.walk_range(start..end)? {
-        if let Ok(entry) = entry {
-            res.push(entry.1)
-        }
+    for entry in cursor.walk_range(start..end)?.flatten() {
+        res.push(entry.1);
     }
 
     Ok(res)
@@ -133,5 +130,5 @@ where
 
 #[inline(always)]
 fn process_single_query<T>(res: Option<T>) -> eyre::Result<T> {
-    Ok(res.ok_or_else(|| reth_db::DatabaseError::Read(-1))?)
+    Ok(res.ok_or_else(|| reth_db::DatabaseError::Read(DatabaseErrorInfo::from(-1)))?)
 }

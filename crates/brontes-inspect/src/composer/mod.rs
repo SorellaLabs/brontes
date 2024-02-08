@@ -59,7 +59,7 @@ pub struct ComposerResults {
 }
 
 pub async fn compose_mev_results(
-    orchestra: &[&Box<dyn Inspector>],
+    orchestra: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
@@ -75,7 +75,7 @@ pub async fn compose_mev_results(
 }
 
 async fn run_inspectors(
-    orchestra: &[&Box<dyn Inspector>],
+    orchestra: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
@@ -106,7 +106,7 @@ async fn run_inspectors(
         .collect::<Vec<_>>();
 
     let mut possible_mev_collection =
-        PossibleMevCollection(possible_mev_txes.into_iter().map(|(_, v)| v).collect());
+        PossibleMevCollection(possible_mev_txes.into_values().collect());
     possible_mev_collection
         .0
         .sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
@@ -304,6 +304,31 @@ pub mod tests {
             hex!("3b4138bac9dc9fa4e39d8d14c6ecd7ec0144fe26b120ea799317aa15fa35ddcd").into(),
             hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
             hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
+        ]);
+
+        inspector_util.run_composer(config, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn test_jit_sandwich_2() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
+
+        let config = ComposerRunConfig::new(
+            vec![Inspectors::Sandwich, Inspectors::Jit],
+            MevType::JitSandwich,
+        )
+        .with_dex_prices()
+        .with_gas_paid_usd(14.93)
+        .with_expected_profit_usd(7.71)
+        .needs_tokens(vec![
+            hex!("423f4e6138E475D85CF7Ea071AC92097Ed631eea").into(),
+            hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
+        ])
+        .with_mev_tx_hashes(vec![
+            hex!("034b65deaaad439551ceace508d90893a50d171900818708c8ae3e0c0a5aac23").into(),
+            hex!("aa416cb4655c702c389677a3ffdc55ae542d4db6a11ba39655254211fd962cc9").into(),
+            hex!("77fd88d4658fd22ba3447ce6b343e75ad20d2defd743fdf2396eb3eb0fba6156").into(),
         ]);
 
         inspector_util.run_composer(config, None).await.unwrap();

@@ -5,6 +5,8 @@ use reth_primitives::{Address, Header, B256};
 use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use tracing::error;
+
+use crate::db::traits::LibmdbxReader;
 pub mod node;
 pub mod root;
 pub mod tx_info;
@@ -34,11 +36,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
-    pub fn get_tx_info(&self, tx_hash: B256) -> Option<TxInfo> {
+    pub fn get_tx_info<DB: LibmdbxReader>(&self, tx_hash: B256, database: &DB) -> Option<TxInfo> {
         self.tx_roots
             .par_iter()
             .find_any(|r| r.tx_hash == tx_hash)
-            .map(|root| root.get_tx_info(self.header.number))
+            .map(|root| root.get_tx_info(self.header.number, database))
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
@@ -52,15 +54,14 @@ impl<V: NormalizedAction> BlockTree<V> {
             .map(|root| &root.gas_details)
     }
 
-    pub fn get_prev_tx(&self, hash: B256) -> B256 {
-        let (index, _) = self
-            .tx_roots
-            .iter()
-            .enumerate()
-            .find(|(_, h)| h.tx_hash == hash)
-            .unwrap();
+    pub fn get_prev_tx(&self, hash: B256) -> Option<B256> {
+        let index = self.tx_roots.iter().position(|h| h.tx_hash == hash)?;
 
-        self.tx_roots[index - 1].tx_hash
+        if index == 0 {
+            None
+        } else {
+            Some(self.tx_roots[index - 1].tx_hash)
+        }
     }
 
     pub fn insert_root(&mut self, root: Root<V>) {

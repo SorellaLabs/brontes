@@ -36,11 +36,11 @@ type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
-    pub(crate) fn calculate_token_deltas(&self, actions: &Vec<Vec<Actions>>) -> SwapTokenDeltas {
+    pub(crate) fn calculate_token_deltas(&self, actions: &[Vec<Actions>]) -> SwapTokenDeltas {
         // Address and there token delta's
         let mut deltas = HashMap::new();
 
-        for action in actions.into_iter().flatten() {
+        for action in actions.iter().flatten() {
             if !action.is_swap() {
                 continue
             }
@@ -153,17 +153,19 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
         addr_usd_deltas
             .iter()
-            .filter_map(|(addr, value)| (*value > Rational::ZERO).then(|| *addr))
+            .filter(|&(_, value)| *value > Rational::ZERO)
+            .map(|(&addr, _)| addr)
             .collect()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn build_bundle_header(
         &self,
         info: &TxInfo,
         profit_usd: f64,
         at: PriceAt,
-        actions: &Vec<Vec<Actions>>,
-        gas_details: &Vec<GasDetails>,
+        actions: &[Vec<Actions>],
+        gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
@@ -198,7 +200,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         tx_index: u64,
         at: PriceAt,
-        bundle_actions: &Vec<Vec<Actions>>,
+        bundle_actions: &[Vec<Actions>],
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
         let deltas = self.calculate_token_deltas(bundle_actions);
@@ -216,7 +218,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         tx_index: u64,
         at: PriceAt,
-        bundle_actions: &Vec<Vec<Actions>>,
+        bundle_actions: &[Vec<Actions>],
         metadata: Arc<Metadata>,
         pricing: bool,
     ) -> Option<TokenProfits> {
@@ -227,7 +229,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
-        Some(self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing)?)
+        self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing)
     }
 
     pub fn get_token_profits(
@@ -244,7 +246,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .filter_map(|collector| deltas.get(&collector).map(|d| (collector, d)))
             .flat_map(|(collector, token_amounts)| {
                 token_amounts
-                    .into_iter()
+                    .iter()
                     .zip(vec![collector].into_iter().cycle())
             })
             .filter_map(|((token, amount), collector)| {
@@ -256,7 +258,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 Some(TokenProfit {
                     profit_collector: collector,
-                    token:            self.db.try_get_token_info(*token).ok()??,
+                    token:            self.db.try_fetch_token_info(*token).ok()?,
                     amount:           amount.clone().to_float(),
                     usd_value:        usd_value.to_float(),
                 })

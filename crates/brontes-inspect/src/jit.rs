@@ -73,7 +73,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         return None
                     }
 
-                    let info = [tree.get_tx_info(frontrun_tx)?, tree.get_tx_info(backrun_tx)?];
+                    let info = [
+                        tree.get_tx_info(frontrun_tx, self.inner.db)?,
+                        tree.get_tx_info(backrun_tx, self.inner.db)?,
+                    ];
 
                     if victims
                         .iter()
@@ -103,7 +106,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     let victim_info = victims
                         .into_iter()
-                        .map(|v| tree.get_tx_info(v).unwrap())
+                        .map(|v| tree.get_tx_info(v, self.inner.db).unwrap())
                         .collect_vec();
 
                     self.calculate_jit(
@@ -167,8 +170,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         );
 
         let (hashes, gas_details): (Vec<_>, Vec<_>) = info
-            .into_iter()
-            .map(|info| info.split_to_storage_info())
+            .iter()
+            .map(|info| info.clone().split_to_storage_info())
             .unzip();
 
         let (victim_hashes, victim_gas_details): (Vec<_>, Vec<_>) = victim_info
@@ -246,7 +249,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 1 {
+                            if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
                                     eoa:                   root.head.address,
@@ -276,7 +279,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 1 {
+                            if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
                                     eoa:                   root.head.address,
@@ -307,13 +310,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         set.into_iter().collect()
     }
 
-    fn get_bribes(&self, price: Arc<Metadata>, gas: &Vec<GasDetails>) -> Rational {
+    fn get_bribes(&self, price: Arc<Metadata>, gas: &[GasDetails]) -> Rational {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
     }
 
-    fn get_collect_amount<'a>(
+    fn get_collect_amount(
         &self,
         idx: usize,
         collect: Vec<NormalizedCollect>,

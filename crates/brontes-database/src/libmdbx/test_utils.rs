@@ -12,7 +12,7 @@ use sorella_db_databases::{clickhouse::DbRow, Database};
 use tokio::runtime::Handle;
 
 use super::{
-    implementation::compressed_wrappers::utils::CompressedTableRow, types::LibmdbxData, Libmdbx,
+    implementation::compressed_wrappers::utils::CompressedTableRow, types::LibmdbxData,
     LibmdbxReadWriter,
 };
 use crate::{clickhouse::Clickhouse, CompressedTable};

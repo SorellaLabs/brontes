@@ -42,7 +42,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         join_all(
             tables
                 .iter()
-                .map(|table| table.initialize_table(&self, block_range, clear_tables)),
+                .map(|table| table.initialize_table(self, block_range, clear_tables)),
         )
         .await
         .into_iter()
@@ -112,7 +112,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
             .filter_map(
-                |chk| if chk.len() != 0 { Some((chk[0], chk[chk.len() - 1])) } else { None },
+                |chk| if !chk.is_empty() { Some((chk[0], chk[chk.len() - 1])) } else { None },
             )
             .collect_vec();
 
@@ -144,7 +144,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 let num = {
                     let mut n = num_chunks.lock().unwrap();
                     *n -= 1;
-                    n.clone() + 1
+                    *n + 1
                 };
 
                 info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
@@ -200,14 +200,8 @@ mod tests {
             .unwrap();
         assert_eq!(c, l);
 
-        // AddressToTokens
-        let (c, l) = AddressToTokens::test_initialized_data(&clickhouse, &libmdbx, None)
-            .await
-            .unwrap();
-        assert_eq!(c, l);
-
         // AddressToProtocol
-        let (c, l) = AddressToProtocol::test_initialized_data(&clickhouse, &libmdbx, None)
+        let (c, l) = AddressToProtocolInfo::test_initialized_data(&clickhouse, &libmdbx, None)
             .await
             .unwrap();
         assert_eq!(c, l);
@@ -225,10 +219,9 @@ mod tests {
         assert_eq!(c, l);
 
         // PoolCreationBlocks
-        let (c, l) =
-            PoolCreationBlocks::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
-                .await
-                .unwrap();
+        let (c, l) = PoolCreationBlocks::test_initialized_data(&clickhouse, &libmdbx, None)
+            .await
+            .unwrap();
         assert_eq!(c, l);
 
         // Builder
