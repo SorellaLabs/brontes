@@ -57,8 +57,8 @@ impl ActionDispatch {
                     let protocol_byte = db_tx.get_protocol(call_info.target_address)
                         .ok()?.to_byte();
 
-                    if call_info.call_data.len() < 4{
-                        println!("got calldata less than required len");
+                    if call_info.call_data.len() < 4 {
+                        return None
                     }
 
                     let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
