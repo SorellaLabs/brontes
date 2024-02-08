@@ -70,11 +70,7 @@ impl StateTracker {
         pool_state.mark_state_as_finalized(block);
     }
 
-    pub fn missing_state(
-        &self,
-        block: u64,
-        edges: &Vec<SubGraphEdge>,
-    ) -> Vec<PoolPairInfoDirection> {
+    pub fn missing_state(&self, block: u64, edges: &[SubGraphEdge]) -> Vec<PoolPairInfoDirection> {
         edges
             .iter()
             .filter_map(|edge| {

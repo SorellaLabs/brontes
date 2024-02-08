@@ -70,12 +70,7 @@ impl RunArgs {
 
         let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 
-        let parser = static_object(DParser::new(
-            metrics_tx,
-            libmdbx,
-            tracer.clone(),
-            Box::new(|address, db_tx| db_tx.get_protocol(*address).is_err()),
-        ));
+        let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()));
 
         let executor = task_executor.clone();
         let result = executor
