@@ -34,6 +34,7 @@ action_impl!(
             covered_debt,
             // filled in later
             liquidated_collateral: Rational::ZERO,
+            msg_value: info.msg_value,
         })
     }
 );
@@ -69,6 +70,7 @@ action_impl!(
             child_actions: vec![],
             repayments: vec![],
             fees_paid: vec![],
+            msg_value: info.msg_value,
 
 
         })
@@ -103,6 +105,7 @@ action_impl!(
             child_actions: vec![],
             repayments: vec![],
             fees_paid: vec![],
+            msg_value: info.msg_value,
 
 
         })

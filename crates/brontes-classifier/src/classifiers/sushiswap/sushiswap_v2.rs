@@ -42,6 +42,7 @@ action_impl!(
                 token_out: t0_info,
                 amount_in,
                 amount_out,
+                msg_value: info.msg_value
             })
         } else {
             let amount_in = logs.amount0In.to_scaled_rational(t0_info.decimals);
@@ -56,6 +57,7 @@ action_impl!(
                 token_out: t1_info,
                 amount_in,
                 amount_out,
+                msg_value: info.msg_value
             })
         }
     }

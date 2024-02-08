@@ -31,17 +31,17 @@ pub struct NormalizedFlashLoan {
     pub child_actions: Vec<Actions>,
     pub repayments:    Vec<NormalizedTransfer>,
     pub fees_paid:     Vec<Rational>,
+    pub msg_value:     U256,
 }
 
 impl NormalizedFlashLoan {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         let mut nodes_to_prune = Vec::new();
         let mut a_token_addresses = Vec::new();
-        let mut repay_tranfers = Vec::new();
+        let mut repay_transfers = Vec::new();
 
         for (index, action) in actions.into_iter() {
             match &action {
-                // Use a reference to `action` here
                 Actions::Swap(_)
                 | Actions::FlashLoan(_)
                 | Actions::Liquidation(_)
@@ -60,10 +60,10 @@ impl NormalizedFlashLoan {
                         }
                     }
                     // if the receiver contract is sending the token to the AToken address then this
-                    // is the flashloan repayement
+                    // is the flashloan repayment
                     else if t.from == self.receiver_contract && a_token_addresses.contains(&t.to)
                     {
-                        repay_tranfers.push(t.clone());
+                        repay_transfers.push(t.clone());
                         nodes_to_prune.push(index);
                     } else {
                         self.child_actions.push(action);
@@ -78,7 +78,7 @@ impl NormalizedFlashLoan {
         // //TODO: deal with diff aave modes, where part of the flashloan is taken on as
         // // debt by the OnBehalfOf address
         // for (i, amount) in self.amounts.iter().enumerate() {
-        //     let repay_amount = repay_tranfers
+        //     let repay_amount = repay_transfers
         //         .iter()
         //         .find(|t| t.token == self.assets[i])
         //         .map_or(U256::ZERO, |t| t.amount);
@@ -87,7 +87,7 @@ impl NormalizedFlashLoan {
         // }
 
         self.fees_paid = fees;
-        self.repayments = repay_tranfers;
+        self.repayments = repay_transfers;
 
         nodes_to_prune
     }
