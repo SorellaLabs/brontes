@@ -130,6 +130,7 @@ pub struct DecodedParams {
 
 self_convert_redefined!(DecodedParams);
 
+#[derive(Debug, Clone)]
 pub struct CallFrameInfo<'a> {
     pub trace_idx:      u64,
     pub call_data:      Bytes,
