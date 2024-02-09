@@ -300,6 +300,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
+            tracing::info!("protocol classification");
             (vec![DexPriceMsg::Update(results.0)], results.1)
         } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
             return transfer
