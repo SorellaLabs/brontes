@@ -318,7 +318,7 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     writeln!(f, "\n{}", bundle.header.token_profits)?;
 
 
-    std::process::exit(0);
+    // std::process::exit(0);
     
     Ok(())
 }
