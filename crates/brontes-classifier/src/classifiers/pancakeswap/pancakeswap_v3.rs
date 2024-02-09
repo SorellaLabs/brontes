@@ -157,3 +157,64 @@ action_impl!(
         })
     }
 );
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, Address, B256, U256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node,
+        Protocol::PancakeSwapV3, ToScaledRational, TreeSearchArgs,
+    };
+    use serial_test::serial;
+
+    use super::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn test_pancake_v3_swap() {
+        let classifier_utils = ClassifierTestUtils::new();
+        let swap =
+            B256::from(hex!("4a6cd8a23c0c832ccd645269a1a26b90f998b8f7837330fc38c92e090ec745f2"));
+
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol:    PancakeSwapV3,
+            trace_index: 2,
+            from:        Address::new(hex!(
+                "
+                f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67"
+            )),
+            recipient:   Address::new(hex!(
+                "
+                f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67"
+            )),
+            pool:        Address::new(hex!(
+                "2E8135bE71230c6B1B4045696d41C09Db0414226
+                "
+            )),
+            token_in:    TokenInfoWithAddress::weth(),
+            amount_in:   U256::from_str("212242932691433838")
+                .unwrap()
+                .to_scaled_rational(18),
+            token_out:   TokenInfoWithAddress::usdc(),
+            amount_out:  U256::from_str("529489490").unwrap().to_scaled_rational(6),
+
+            msg_value: U256::ZERO,
+        });
+
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .any(|action| action.is_swap()),
+        };
+
+        classifier_utils
+            .contains_action(swap, 60, eq_action, search_fn)
+            .await
+            .unwrap();
+    }
+}
