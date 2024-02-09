@@ -31,6 +31,13 @@ impl TokenInfoWithAddress {
         }
     }
 
+    pub fn weth() -> Self {
+        Self {
+            inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
+            address: WETH_ADDRESS,
+        }
+    }
+
     pub fn usdt() -> Self {
         Self {
             inner:   TokenInfo { decimals: 6, symbol: "USDT".to_string() },
