@@ -17,7 +17,7 @@ use brontes_database::{
     AddressToProtocolInfo, AddressToProtocolInfoData,
 };
 use brontes_pricing::{
-    types::{DexPriceMsg, DiscoveredPool, PoolUpdate},
+    types::{DexPriceMsg, PoolUpdate},
     BrontesBatchPricer, GraphManager, Protocol,
 };
 use brontes_types::{
@@ -25,7 +25,7 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
         traits::LibmdbxWriter,
     },
-    normalized_actions::NormalizedSwap,
+    normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
     structured_trace::TraceActions,
     tree::{BlockTree, Node},
@@ -458,7 +458,7 @@ impl ClassifierTestUtils {
         tx_hash: TxHash,
         protocol: ProtocolInfo,
         address: Address,
-        cmp_fn: impl Fn(Option<(PoolUpdate, Actions)>),
+        cmp_fn: impl Fn(Option<Actions>),
     ) -> Result<(), ClassifierTestUtilsError> {
         // write protocol to libmdbx
         self.libmdbx
@@ -482,7 +482,7 @@ impl ClassifierTestUtils {
 
         let result = dispatcher.dispatch(call_info, self.trace_loader.libmdbx, block, 0);
 
-        cmp_fn(result);
+        cmp_fn(result.map(|i| i.1));
 
         Ok(())
     }
@@ -491,7 +491,7 @@ impl ClassifierTestUtils {
         &self,
         tx: TxHash,
         created_pool: Address,
-        cmp_fn: impl Fn(Vec<DiscoveredPool>),
+        cmp_fn: impl Fn(Vec<NormalizedNewPool>),
     ) -> Result<(), ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, .. } = self.get_tx_trace_with_header(tx).await?;
 
@@ -523,9 +523,10 @@ impl ClassifierTestUtils {
         let dispatcher = DiscoveryProtocols::default();
         let call_data = call.input.clone();
         let tracer = self.trace_loader.get_provider();
+        let idx = found_trace.trace_idx;
 
         let res = dispatcher
-            .dispatch(tracer.clone(), from_address, created_addr, call_data.clone())
+            .dispatch(tracer.clone(), from_address, created_addr, idx, call_data.clone())
             .await;
 
         cmp_fn(res);

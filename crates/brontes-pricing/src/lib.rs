@@ -21,7 +21,7 @@
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
 use alloy_primitives::U256;
-use brontes_types::normalized_actions::pool::{NormalizedPoolConfigUpdate};
+use brontes_types::normalized_actions::pool::NormalizedPoolConfigUpdate;
 mod graphs;
 pub mod protocols;
 pub mod types;

@@ -209,6 +209,7 @@ impl ClassifierBenchUtils {
                         tracer.clone(),
                         from_address,
                         created_addr,
+                        found_trace.trace_idx,
                         call_data.clone(),
                     ))
                     .await;

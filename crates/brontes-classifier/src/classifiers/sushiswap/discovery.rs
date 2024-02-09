@@ -1,6 +1,6 @@
 use alloy_primitives::Address;
 use brontes_macros::discovery_impl;
-use brontes_pricing::{Protocol};
+use brontes_pricing::Protocol;
 
 discovery_impl!(
     SushiSwapV2Decoder,
