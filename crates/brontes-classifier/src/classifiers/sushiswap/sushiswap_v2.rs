@@ -92,7 +92,7 @@ action_impl!(
             recipient: call_data.to,
             from: info.from_address,
             trace_index: info.trace_idx,
-            to: info.target_address,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -123,10 +123,10 @@ action_impl!(
 
         Ok(NormalizedBurn {
             protocol: Protocol::SushiSwapV2,
-            recipient: call_data.to,
-            to: info.target_address,
             trace_index: info.trace_idx,
             from: info.from_address,
+            recipient: call_data.to,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
