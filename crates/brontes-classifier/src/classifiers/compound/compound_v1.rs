@@ -1,4 +1,4 @@
-use alloy_primitives::{b256, Address};
+use alloy_primitives::{b256, Address, hex};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedLiquidation, utils::ToScaledRational};
@@ -19,7 +19,10 @@ action_impl!(
     log_data: CompoundV2liquidateBorrowCallLogs,
     db_tx: &DB | {
         let logs = log_data.LiquidateBorrow_field;
-        let debt_asset: Address = Address::from_word(b256!("0000000000000000000000004Ddc2D193948926D02f9B1fE9e1daa0718270ED5"));
+        let debt_asset = Address::new(hex!(
+            "4Ddc2D193948926D02f9B1fE9e1daa0718270ED5
+            "
+        ));;
         let debt_info = db_tx.try_get_token_info(debt_asset).ok()??;
         let collateral_info = db_tx.try_get_token_info(call_data.cTokenCollateral).ok()??;
 
