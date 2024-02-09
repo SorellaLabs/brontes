@@ -81,7 +81,7 @@ alloy-rlp = { version = "0.3.4" }
 alloy-rlp-derive = { version = "0.3.4" }
 alloy-primitives = { version = "0.6.0", features = ["rlp"] }
 alloy-json-abi = "0.6.0"
-alloy-dyn-abi = "0.6.0"
+alloy-dyn-abi = "0.6.0 "
 
 # Async
 tokio = "1.13.0"
@@ -97,7 +97,7 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
 colored = "2.0"
 
 # Metrics
-metrics-exporter-prometheus = "0.12.1"
+metrics-exporter-prometheus = "=0.12.1"
 metrics-util = "0.15.0"
 metrics-process = "=1.0.14"
 
@@ -145,7 +145,10 @@ auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
 derive_more = "0.99.17"
-rkyv = { version = "0.7", features = ["validation"] }
+rkyv = { git = "https://github.com/rkyv/rkyv.git", rev = "da1cd71", features = [
+  "alloc",
+  "bytecheck",
+] }
 num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"

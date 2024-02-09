@@ -46,8 +46,7 @@ alloy-rlp = { workspace = true, features = ["arrayvec"] }
 
 # pathfinding 
 pathfinding = "4.8.1"
-rustc-hash = "1.1.0"
-indexmap = "2.1.0"
+indexmap = "=2.2.2"
 
 # misc
 phf.workspace = true
@@ -79,7 +78,7 @@ rkyv.workspace = true
 serial_test.workspace = true
 brontes-pricing = { workspace = true, features = ["testing"] }
 brontes-core = { workspace = true, features = ["tests"] }
-brontes-database  = { workspace = true, features = ["tests"] }
+brontes-database = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-inspect.workspace = true
 brontes-types.workspace = true
