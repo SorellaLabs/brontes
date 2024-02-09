@@ -56,7 +56,7 @@ pub struct NormalizedSwap {
     pub from:        Address,
     pub recipient:   Address,
     /// For batch swaps (e.g. UniswapX, CowSwap), the pool address is the
-    /// address of the solver / filler
+    /// address of the settlement contract
     pub pool:        Address,
     pub token_in:    TokenInfoWithAddress,
     pub token_out:   TokenInfoWithAddress,
