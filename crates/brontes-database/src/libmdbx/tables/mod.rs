@@ -235,7 +235,7 @@ macro_rules! compressed_table {
                 clickhouse: &crate::clickhouse::Clickhouse,
                 libmdbx: &crate::libmdbx::LibmdbxReadWriter,
                 block_range: Option<(u64, u64)>
-            ) -> eyre::Result<(usize, usize)> {
+            ) -> eyre::Result<()> {
                 paste::paste!{
                     crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
                         ::<$table_name,[<$table_name Data>]>(clickhouse, libmdbx, block_range).await
