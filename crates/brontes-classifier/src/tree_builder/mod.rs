@@ -294,6 +294,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         _trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
+            tracing::info!("static call");
             return (vec![], Actions::Unclassified(trace))
         }
         let call_info = trace.get_callframe_info();
