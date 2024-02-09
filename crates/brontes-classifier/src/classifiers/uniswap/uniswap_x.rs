@@ -73,7 +73,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeBatchWithCallbackCall,
     Batch,
-    [..Fill*],
+    [Fill*],
     call_data: true,
     logs: true,
     |
