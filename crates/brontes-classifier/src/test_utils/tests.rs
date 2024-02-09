@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     ops::Deref,
-    pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
         Arc,

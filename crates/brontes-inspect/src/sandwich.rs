@@ -447,7 +447,7 @@ fn get_possible_sandwich_duplicate_contracts(
 mod tests {
 
     use alloy_primitives::hex;
-    use serial_test::serial;
+    
 
     use super::*;
     use crate::{

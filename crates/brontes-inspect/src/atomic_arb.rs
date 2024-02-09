@@ -306,7 +306,7 @@ enum AtomicArbType {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
-    use serial_test::serial;
+    
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},

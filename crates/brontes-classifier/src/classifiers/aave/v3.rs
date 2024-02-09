@@ -121,7 +121,7 @@ mod tests {
         Node, Protocol, TreeSearchArgs,
     };
     use malachite::Rational;
-    use serial_test::serial;
+    
 
     use crate::test_utils::ClassifierTestUtils;
 

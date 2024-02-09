@@ -656,7 +656,7 @@ pub mod test {
     use alloy_primitives::{hex, Address};
     use brontes_types::{constants::USDC_ADDRESS, Protocol};
     use futures::StreamExt;
-    use serial_test::serial;
+    
 
     use super::*;
     use crate::test_utils::PricingTestUtils;
