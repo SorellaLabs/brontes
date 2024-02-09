@@ -1,7 +1,10 @@
 use std::{cmp::min, sync::Arc};
 
 use alloy_primitives::U256;
-use brontes_types::{normalized_actions::NormalizedEthTransfer, ToScaledRational};
+use brontes_types::{
+    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
+    ToScaledRational,
+};
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
@@ -219,7 +222,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             further_classification_requests.push(classification.get_trace_index());
         }
 
-        // if we have a new discoverd pool
         update.into_iter().for_each(|update| {
             match update {
                 pool @ DexPriceMsg::DiscoveredPool(_) => {
@@ -385,32 +387,31 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 // insert the pool returning if it has token values.
                 .filter(|pool| !self.contains_pool(pool.pool_address))
                 .filter_map(|pool| {
-                    if self
-                        .libmdbx
-                        .insert_pool(
-                            block,
-                            pool.pool_address,
-                            [pool.tokens[0], pool.tokens[1]],
-                            pool.protocol,
-                        )
-                        .is_err()
-                    {
-                        error!("failed to insert discovered pool into libmdbx");
-                    }
-                    info!(
-                        "Discovered new {} pool: 
-                            \nAddress:{} 
-                            \nToken 0: {}
-                            \nToken 1: {}",
-                        pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
-                    );
-
+                    self.insert_new_pool(block, &pool);
                     pool.try_into().ok()
                 })
                 .map(DexPriceMsg::DiscoveredPool)
                 .collect::<Vec<_>>(),
             Actions::Unclassified(trace),
         )
+    }
+
+    fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+        if self
+            .libmdbx
+            .insert_pool(block, pool.pool_address, [pool.tokens[0], pool.tokens[1]], pool.protocol)
+            .is_err()
+        {
+            error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
+        } else {
+            info!(
+                "Discovered new {} pool: 
+                            \nAddress:{} 
+                            \nToken 0: {}
+                            \nToken 1: {}",
+                pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+            );
+        }
     }
 
     pub fn close(&self) {
