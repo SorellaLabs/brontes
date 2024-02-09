@@ -81,7 +81,9 @@ impl LibmdbxReadWriter {
                 }
                 _ => true,
             })
-            .any(|t| !t)
+            .collect::<Vec<_>>()
+            .iter()
+            .any(|t| !*t)
     }
 
     fn has_entry<TB>(&self) -> eyre::Result<bool>

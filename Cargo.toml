@@ -74,8 +74,8 @@ revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", 
 ], default-features = false }
 
 
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "80206e7" }
 # Alloy
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
 alloy-sol-types = { version = "0.6.0", features = ["json"] }
 alloy-sol-macro = { version = "0.6.0", features = ["json"] }
 alloy-rlp = { version = "0.3.4" }

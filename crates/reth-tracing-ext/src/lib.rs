@@ -145,10 +145,10 @@ impl TracingClient {
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let config = TracingInspectorConfig {
             record_logs:              true,
-            record_steps:             true,
-            record_state_diff:        true,
+            record_steps:             false,
+            record_state_diff:        false,
             record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
-            record_memory_snapshots:  true,
+            record_memory_snapshots:  false,
             record_call_return_data:  true,
             exclude_precompile_calls: true,
         };
@@ -157,7 +157,6 @@ impl TracingClient {
             .trace_block_with(block_id, config, move |tx_info, inspector, res, _, _| {
                 // this is safe as there the exact same memory layout. This is needed as we need
                 // access to the internal fields of the struct that arent public
-                tracing::info!(target: "brontes", ?inspector, ?res);
                 let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
 
                 Ok(localized.into_trace_results(tx_info, &res))
@@ -189,7 +188,6 @@ pub struct TracingInspectorLocal {
 impl TracingInspectorLocal {
     pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
         let gas_used = res.gas_used().into();
-
         let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
         TxTrace {

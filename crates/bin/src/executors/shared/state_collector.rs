@@ -94,6 +94,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
             }
         }
 
+        if self.mark_as_finished.load(SeqCst)
+            && self.metadata_fetcher.is_finished()
+            && self.collection_future.is_none()
+        {
+            return Poll::Ready(None)
+        }
+
         self.metadata_fetcher.poll_next_unpin(cx)
     }
 }
