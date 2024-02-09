@@ -271,6 +271,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.trace.error.is_some() {
+            tracing::info!("call revert");
             return (vec![], Actions::Revert)
         }
         match trace.action_type() {
@@ -305,8 +306,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             tracing::info!("protocol classification");
             (vec![DexPriceMsg::Update(results.0)], results.1)
         } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
+            tracing::info!("transfer");
             return transfer
         } else {
+            tracing::info!("fallback");
             return (vec![], self.classify_eth_transfer(trace, tx_idx))
         }
     }
