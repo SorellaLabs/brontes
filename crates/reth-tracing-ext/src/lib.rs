@@ -152,6 +152,8 @@ impl TracingClient {
             record_call_return_data:  true,
             exclude_precompile_calls: true,
         };
+        // TraceApi::new(self.eth_api, eth_api, blocking_task_guard)
+        // self.api.
 
         self.api
             .trace_block_with(block_id, config, move |tx_info, inspector, res, _, _| {
@@ -191,7 +193,6 @@ impl TracingInspectorLocal {
         let gas_used = res.gas_used().into();
 
         let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
-        tracing::info!(target: "brontes", ?trace);
 
         TxTrace {
             trace: trace.unwrap_or_default(),
