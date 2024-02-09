@@ -6,6 +6,7 @@ use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_to_tokens::PoolTokens,
+        builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
         dex::{
             decompose_key, make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes,
@@ -33,7 +34,7 @@ use super::cursor::CompressedCursor;
 use crate::{
     clickhouse::Clickhouse,
     libmdbx::{
-        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, *},
+        tables::{BlockInfo, Builder, CexPrice, DexPrice, MevBlocks, *},
         types::LibmdbxData,
         Libmdbx, LibmdbxInitializer,
     },
@@ -375,6 +376,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>> {
         Ok(self.0.ro_tx()?.get::<AddressToTokens>(address)?)
+    }
+
+    fn get_builder_info(&self, address: Address) -> eyre::Result<Option<BuilderInfo>> {
+        Ok(self.0.ro_tx()?.get::<Builder>(address)?)
     }
 }
 

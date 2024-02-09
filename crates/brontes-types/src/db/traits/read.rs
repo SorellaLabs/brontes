@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 
 use crate::{
     db::{
-        address_to_tokens::PoolTokens, dex::DexQuotes, metadata::Metadata,
+        address_to_tokens::PoolTokens, builder::BuilderInfo, dex::DexQuotes, metadata::Metadata,
         token_info::TokenInfoWithAddress,
     },
     pair::Pair,
@@ -45,4 +45,5 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_protocol_tokens(&self, address: Address) -> eyre::Result<Option<PoolTokens>>;
     fn get_protocol(&self, address: Address) -> eyre::Result<Option<Protocol>>;
     fn load_trace(&self, block_num: u64) -> eyre::Result<Option<Vec<TxTrace>>>;
+    fn get_builder_info(&self, address: Address) -> eyre::Result<Option<BuilderInfo>>;
 }

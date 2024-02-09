@@ -6,11 +6,13 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_pricing::errors::AmmError;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
     normalized_actions::Actions,
     pair::Pair,
+    traits::TracingProvider,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
 };
@@ -18,6 +20,7 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
+use reth_primitives::U256;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
@@ -155,6 +158,52 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .iter()
             .filter_map(|(addr, value)| (*value > Rational::ZERO).then(|| *addr))
             .collect()
+    }
+
+    pub async fn calculate_builder_profit<M: TracingProvider>(
+        &self,
+        bid_adjustment: bool,
+        builder_address: Address,
+        middleware: Arc<M>,
+        block_number: Option<u64>,
+    ) -> Result<U256, AmmError> {
+        let builder_profit;
+        let start_builder_balance = middleware
+            .get_balance(
+                builder_address,
+                block_number
+                    .map(|num| num.checked_sub(1).unwrap_or(num))
+                    .map(Into::into),
+            )
+            .await?;
+        let end_builder_balance = middleware
+            .get_balance(builder_address, block_number.map(Into::into))
+            .await?;
+
+        if bid_adjustment {
+            let builder_collateral_address = self
+                .db
+                .get_builder_info(builder_address)?
+                .unwrap()
+                .ultrasound_relay_collateral_address;
+            let start_collateral_balance = middleware
+                .get_balance(
+                    builder_collateral_address.unwrap(),
+                    block_number
+                        .map(|num| num.checked_sub(1).unwrap_or(num))
+                        .map(Into::into),
+                )
+                .await?;
+            let end_collateral_balance = middleware
+                .get_balance(builder_collateral_address.unwrap(), block_number.map(Into::into))
+                .await?;
+            let bid_adjustment_calcs = start_collateral_balance - end_collateral_balance;
+            builder_profit = end_builder_balance - start_builder_balance - bid_adjustment_calcs;
+        } else {
+            builder_profit = end_builder_balance - start_builder_balance;
+        }
+
+        Ok(builder_profit)
     }
 
     pub fn build_bundle_header(
