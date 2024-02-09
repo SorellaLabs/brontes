@@ -145,15 +145,13 @@ impl TracingClient {
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let config = TracingInspectorConfig {
             record_logs:              true,
-            record_steps:             false,
-            record_state_diff:        false,
+            record_steps:             true,
+            record_state_diff:        true,
             record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
-            record_memory_snapshots:  false,
+            record_memory_snapshots:  true,
             record_call_return_data:  true,
             exclude_precompile_calls: true,
         };
-        // TraceApi::new(self.eth_api, eth_api, blocking_task_guard)
-        // self.api.
 
         self.api
             .trace_block_with(block_id, config, move |tx_info, inspector, res, _, _| {
