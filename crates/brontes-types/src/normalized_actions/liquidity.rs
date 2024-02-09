@@ -26,8 +26,8 @@ pub struct NormalizedMint {
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
-    pub to:          Address,
     pub recipient:   Address,
+    pub pool:        Address,
     pub token:       Vec<TokenInfoWithAddress>,
     pub amount:      Vec<Rational>,
 }
@@ -39,8 +39,8 @@ pub struct NormalizedBurn {
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
-    pub to:          Address,
     pub recipient:   Address,
+    pub pool:        Address,
     pub token:       Vec<TokenInfoWithAddress>,
     pub amount:      Vec<Rational>,
 }
@@ -51,9 +51,9 @@ pub struct NormalizedCollect {
     #[redefined(same_fields)]
     pub protocol:    Protocol,
     pub trace_index: u64,
-    pub to:          Address,
     pub from:        Address,
     pub recipient:   Address,
+    pub pool:        Address,
     pub token:       Vec<TokenInfoWithAddress>,
     pub amount:      Vec<Rational>,
 }
