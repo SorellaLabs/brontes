@@ -53,7 +53,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
     }
 
     pub fn is_collecting_state(&self) -> bool {
-        self.collection_future.is_some() 
+        self.collection_future.is_some()
     }
 
     pub fn fetch_state_for(&mut self, block: u64) {

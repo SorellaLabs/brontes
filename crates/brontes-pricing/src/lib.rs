@@ -783,6 +783,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
+                            tracing::info!("poll close");
                             return Poll::Ready(self.on_close())
                         }
                         break
