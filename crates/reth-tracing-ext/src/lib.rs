@@ -157,6 +157,7 @@ impl TracingClient {
             .trace_block_with(block_id, config, move |tx_info, inspector, res, _, _| {
                 // this is safe as there the exact same memory layout. This is needed as we need
                 // access to the internal fields of the struct that arent public
+                tracing::info!(target: "brontes", ?inspector);
                 let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
 
                 Ok(localized.into_trace_results(tx_info, &res))
