@@ -83,6 +83,7 @@ brontes-database = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-inspect.workspace = true
 brontes-types.workspace = true
+brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true

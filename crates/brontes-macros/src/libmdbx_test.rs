@@ -13,6 +13,7 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
     let block = item.block;
 
     Ok(quote!(
+        #[test]
         #(#attrs)*
         #vis
         #sig

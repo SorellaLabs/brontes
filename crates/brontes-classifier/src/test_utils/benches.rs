@@ -31,6 +31,12 @@ pub struct ClassifierBenchUtils {
     _dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
 
+impl Default for ClassifierBenchUtils {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClassifierBenchUtils {
     pub fn new() -> Self {
         let (tx, rx) = unbounded_channel();

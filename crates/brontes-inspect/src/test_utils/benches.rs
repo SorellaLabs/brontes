@@ -13,6 +13,7 @@ pub struct InspectorBenchUtils {
     quote_address:        Address,
     rt:                   tokio::runtime::Runtime,
 }
+
 impl InspectorBenchUtils {
     pub fn new(quote_address: Address) -> Self {
         let rt = tokio::runtime::Builder::new_multi_thread()
