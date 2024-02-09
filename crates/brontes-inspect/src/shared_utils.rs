@@ -162,12 +162,25 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     pub async fn calculate_builder_profit<M: TracingProvider>(
         &self,
-        bid_adjustment: bool,
         builder_address: Address,
         middleware: Arc<M>,
         block_number: Option<u64>,
     ) -> Result<U256, AmmError> {
         let builder_profit;
+        let builder_collateral_address = self
+            .db
+            .get_builder_info(builder_address)?
+            .unwrap()
+            .ultrasound_relay_collateral_address;
+        let bid_adjustment = match self.db.load_trace(block_number.unwrap()) {
+            Ok(Some(traces)) => traces.iter().any(|trace| {
+                trace.trace.iter().any(|trace_with_logs| {
+                    trace_with_logs.msg_sender == builder_collateral_address.unwrap()
+                })
+            }),
+            _ => false,
+        };
+
         let start_builder_balance = middleware
             .get_balance(
                 builder_address,
@@ -181,11 +194,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .await?;
 
         if bid_adjustment {
-            let builder_collateral_address = self
-                .db
-                .get_builder_info(builder_address)?
-                .unwrap()
-                .ultrasound_relay_collateral_address;
             let start_collateral_balance = middleware
                 .get_balance(
                     builder_collateral_address.unwrap(),
