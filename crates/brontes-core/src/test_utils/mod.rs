@@ -1,6 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
+    pin::Pin,
     sync::{Arc, OnceLock},
 };
 
@@ -8,7 +9,7 @@ pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWri
 use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
-use futures::future::join_all;
+use futures::{future::join_all, Future};
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(not(feature = "local"))]
@@ -27,9 +28,15 @@ use crate::decoding::parser::TraceParser;
 #[cfg(feature = "local")]
 use crate::local_provider::LocalProvider;
 
-// so we only have to init critical tables once
-#[allow(clippy::declare_interior_mutable_const)]
-const INIT_LOCK: OnceLock<()> = OnceLock::new();
+pub trait InThreadScope {
+    type This;
+
+    fn db_scope<
+        F: FnOnce(Self::This) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>> + Send,
+    >(
+        run: F,
+    );
+}
 
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
@@ -38,50 +45,18 @@ pub struct TraceLoader {
     // store so when we trace we don't get a closed rx error
     _metrics:             UnboundedReceiver<PoirotMetricEvents>,
 }
-impl Default for TraceLoader {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl TraceLoader {
-    #[allow(clippy::borrow_interior_mutable_const)]
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
         let handle = tokio::runtime::Handle::current();
-        let tracing_provider = init_trace_parser(handle.clone(), a, libmdbx, 10);
+        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
 
         let this = Self { libmdbx, tracing_provider, _metrics: b };
-
-        let this = if INIT_LOCK.get().is_none() {
-            tracing::info!("initing critical tables");
-            let this = std::thread::spawn(|| {
-                tokio::runtime::Builder::new_multi_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap()
-                    .block_on(async {
-                        this.init_on_start().await.unwrap();
-                        this
-                    })
-            })
-            .join()
-            .unwrap();
-            let _ = INIT_LOCK.get_or_init(|| ());
-            this
-        } else {
-            this
-        };
+        this.init_on_start().await.unwrap();
 
         this
-    }
-
-    pub fn new_with_rt(handle: Handle) -> Self {
-        let libmdbx = get_db_handle();
-        let (a, b) = unbounded_channel();
-        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
-        Self { libmdbx, tracing_provider, _metrics: b }
     }
 
     pub fn get_provider(&self) -> Arc<Box<dyn TracingProvider>> {
@@ -123,15 +98,22 @@ impl TraceLoader {
 
     async fn init_on_start(&self) -> eyre::Result<()> {
         let clickhouse = Box::leak(Box::default());
-        self.libmdbx
-            .initialize_tables(
-                clickhouse,
-                self.tracing_provider.get_tracer(),
-                &[Tables::PoolCreationBlocks, Tables::TokenDecimals, Tables::AddressToProtocolInfo],
-                false,
-                None,
-            )
-            .await
+        if !self.libmdbx.init_full_range_tables() {
+            self.libmdbx
+                .initialize_tables(
+                    clickhouse,
+                    self.tracing_provider.get_tracer(),
+                    &[
+                        Tables::PoolCreationBlocks,
+                        Tables::TokenDecimals,
+                        Tables::AddressToProtocolInfo,
+                    ],
+                    false,
+                    None,
+                )
+                .await?;
+        }
+        Ok(())
     }
 
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {

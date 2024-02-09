@@ -1728,6 +1728,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "brontes-inspect",
+ "brontes-macros",
  "brontes-pricing",
  "brontes-types",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",

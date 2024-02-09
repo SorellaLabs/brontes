@@ -151,10 +151,9 @@ mod tests {
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_aave_v3_liquidation() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_mev_tx_hashes(vec![hex!(
@@ -172,10 +171,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_aave_v2_liquidation() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_mev_tx_hashes(vec![hex!(

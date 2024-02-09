@@ -378,12 +378,11 @@ mod tests {
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_jit() {
         // eth price in usdc
         // 2146.65037178
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .with_block(18539312)
@@ -393,10 +392,9 @@ mod tests {
         test_utils.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_only_jit() {
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .needs_tokens(vec![

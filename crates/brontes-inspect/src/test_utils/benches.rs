@@ -20,7 +20,7 @@ impl InspectorBenchUtils {
             .build()
             .unwrap();
 
-        let classifier_inspector = ClassifierTestUtils::new_with_rt(rt.handle().clone());
+        let classifier_inspector = rt.block_on(ClassifierTestUtils::new());
         Self { classifier_inspector, quote_address, rt }
     }
 

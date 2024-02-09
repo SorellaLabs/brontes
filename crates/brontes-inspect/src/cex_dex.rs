@@ -473,10 +473,9 @@ mod tests {
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
 
@@ -489,10 +488,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_eoa_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
 
@@ -505,10 +503,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_not_triangular_arb_false_positive() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f").into();
 
@@ -520,10 +517,9 @@ mod tests {
         inspector_util.assert_no_mev(config).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_not_triangular_arb_false_positive_simple() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("31a1572dad67e949cff13d6ede0810678f25a30c6a3c67424453133bb822bd26").into();
 
