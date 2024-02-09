@@ -145,9 +145,8 @@ auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
 derive_more = "0.99.17"
-rkyv = { git = "https://github.com/rkyv/rkyv.git", rev = "da1cd71", features = [
-  "alloc",
-  "bytecheck",
+rkyv = { git = "https://github.com/rkyv/rkyv.git", branch = "0.7-hashbrown-0.14", features = [
+  "validation",
 ] }
 num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }

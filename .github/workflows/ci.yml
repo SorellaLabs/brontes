@@ -59,7 +59,7 @@ jobs:
 
   test: 
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     needs: [clippy, build]
     steps:
       - name: Get branch names.

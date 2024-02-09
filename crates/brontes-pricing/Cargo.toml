@@ -46,6 +46,7 @@ alloy-rlp = { workspace = true, features = ["arrayvec"] }
 
 # pathfinding 
 pathfinding = "4.8.1"
+rustc-hash = "1.1.0"
 indexmap = "=2.2.2"
 
 # misc
