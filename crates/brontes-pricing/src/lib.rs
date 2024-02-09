@@ -21,6 +21,7 @@
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
 use alloy_primitives::U256;
+use brontes_types::normalized_actions::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 mod graphs;
 pub mod protocols;
 pub mod types;
@@ -753,11 +754,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                 match self.update_rx.poll_recv(cx).map(|inner| {
                     inner.and_then(|action| match action {
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
-                        DexPriceMsg::DiscoveredPool(
-                            DiscoveredPool { protocol, tokens, pool_address },
-                            _block,
-                        ) => {
-                            if tokens.len() == 2 && protocol.has_state_updater() {
+                        DexPriceMsg::DiscoveredPool(NormalizedPoolConfigUpdate {
+                            protocol,
+                            tokens,
+                            pool_address,
+                            ..
+                        }) => {
+                            if protocol.has_state_updater() {
                                 self.new_graph_pairs
                                     .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
                             };

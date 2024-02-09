@@ -1,9 +1,13 @@
 use std::{fmt::Debug, sync::Arc};
 
 use alloy_primitives::{Address, Bytes};
+use brontes_core::LibmdbxWriter;
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
-use brontes_types::{structured_trace::CallFrameInfo, traits::TracingProvider};
+use brontes_pricing::types::DexPriceMsg;
+use brontes_types::{
+    normalized_actions::pool::NormalizedNewPool, structured_trace::CallFrameInfo,
+    traits::TracingProvider,
+};
 use futures::Future;
 
 pub mod tree_builder;
@@ -47,22 +51,24 @@ sol! {
 }
 
 pub trait ActionCollection: Sync + Send {
-    fn dispatch<DB: LibmdbxReader>(
+    fn dispatch<DB: LibmdbxReader + LibmdbxWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
         db_tx: &DB,
         block: u64,
         tx_idx: u64,
-    ) -> Option<(PoolUpdate, Actions)>;
+    ) -> Option<(DexPriceMsg, Actions)>;
 }
 
 pub trait IntoAction: Debug + Send + Sync {
     #[allow(clippy::too_many_arguments)]
-    fn decode_trace_data<DB: LibmdbxReader>(
+    fn decode_trace_data<DB: LibmdbxReader + LibmdbxWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
+        block: u64,
+        tx_idx: u64,
         db_tx: &DB,
-    ) -> eyre::Result<Actions>;
+    ) -> eyre::Result<DexPriceMsg>;
 }
 
 pub trait FactoryDecoder {
@@ -70,8 +76,9 @@ pub trait FactoryDecoder {
         &self,
         tracer: Arc<T>,
         deployed_address: Address,
+        trace_idx: u64,
         parent_calldata: Bytes,
-    ) -> impl Future<Output = Vec<DiscoveredPool>> + Send;
+    ) -> impl Future<Output = Vec<NormalizedNewPool>> + Send;
 }
 
 pub trait FactoryDecoderDispatch: Sync + Send {
@@ -80,6 +87,7 @@ pub trait FactoryDecoderDispatch: Sync + Send {
         tracer: Arc<T>,
         factory: Address,
         deployed_address: Address,
+        trace_idx: u64,
         parent_calldata: Bytes,
-    ) -> impl Future<Output = Vec<DiscoveredPool>> + Send;
+    ) -> impl Future<Output = Vec<NormalizedNewPool>> + Send;
 }

@@ -21,6 +21,7 @@ pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
         mod #mod_name {
             use #function_call_path;
             use super::*;
+            use ::brontes_types::normalized_actions::pool::NormalizedNewPool;
 
             pub const fn #fn_name() -> [u8; 24] {
                     ::alloy_primitives::FixedBytes::new(::alloy_primitives::hex!(#stripped_address))
@@ -40,15 +41,17 @@ pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
                     &self,
                     tracer: ::std::sync::Arc<T>,
                     deployed_address: ::alloy_primitives::Address,
+                    trace_idx: u64,
                     parent_calldata: ::alloy_primitives::Bytes,
-                ) -> Vec<::brontes_pricing::types::DiscoveredPool>{
+                ) -> Vec<::brontes_types::normalized_actions::pool::NormalizedNewPool>{
                     let Ok(decoded_data) = <#function_call_path
                         as ::alloy_sol_types::SolCall>::abi_decode(&parent_calldata[..], false)
                         else {
                             ::tracing::error!("{} failed to decode calldata", #decoder_name_str);
                             return Vec::new();
                     };
-                    (#address_call_function)(deployed_address, decoded_data, tracer).await
+                    (#address_call_function)(deployed_address, trace_idx, decoded_data, tracer)
+                        .await
                 }
             }
         }
@@ -137,8 +140,9 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                     tracer: ::std::sync::Arc<T>,
                     factory: ::alloy_primitives::Address,
                     deployed_address: ::alloy_primitives::Address,
+                    trace_idx: u64,
                     parent_calldata: ::alloy_primitives::Bytes,
-                ) ->Vec<::brontes_pricing::types::DiscoveredPool> {
+                ) ->Vec<::brontes_types::normalized_actions::pool::NormalizedNewPool> {
                     if parent_calldata.len() < 4 {
                         ::tracing::debug!(?deployed_address, ?factory, "invalid calldata length");
                         return Vec::new()
@@ -160,6 +164,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                                     &self.#i,
                                     tracer,
                                     deployed_address,
+                                    trace_idx,
                                     parent_calldata,
                                 ).await
                             }

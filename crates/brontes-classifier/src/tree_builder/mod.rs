@@ -219,35 +219,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             further_classification_requests.push(classification.get_trace_index());
         }
 
-        // if we have a discovered pool, check if its new
+        // if we have a new discoverd pool
         update.into_iter().for_each(|update| {
             match update {
-                DexPriceMsg::DiscoveredPool(pool, block) => {
-                    if !self.contains_pool(pool.pool_address) {
-                        self.pricing_update_sender
-                            .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
-                            .unwrap();
-
-                        if self
-                            .libmdbx
-                            .insert_pool(
-                                block_number,
-                                pool.pool_address,
-                                [pool.tokens[0], pool.tokens[1]],
-                                pool.protocol,
-                            )
-                            .is_err()
-                        {
-                            error!("failed to insert discovered pool into libmdbx");
-                        }
-                        info!(
-                            "Discovered new {} pool: 
-                            \nAddress:{} 
-                            \nToken 0: {}
-                            \nToken 1: {}",
-                            pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
-                        );
-                    }
+                DexPriceMsg::DiscoveredPool(pool) => {
+                    self.pricing_update_sender
+                        .send(DexPriceMsg::DiscoveredPool(pool.clone()))
+                        .unwrap();
                 }
                 rest => {
                     pool_updates.push(rest);
@@ -301,7 +279,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
-            (vec![DexPriceMsg::Update(results.0)], results.1)
+            (vec![results.0], results.1)
         } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
             return transfer
         } else {
@@ -403,10 +381,35 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
         (
             DiscoveryProtocols::default()
-                .dispatch(self.provider.clone(), from_address, created_addr, calldata)
+                .dispatch(self.provider.clone(), from_address, created_addr, trace_index, calldata)
                 .await
                 .into_iter()
-                .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
+                // insert the pool returning if it has token values.
+                .filter(|pool| !self.contains_pool(pool.pool_address))
+                .filter_map(|pool| {
+                    if self
+                        .libmdbx
+                        .insert_pool(
+                            block,
+                            pool.pool_address,
+                            [pool.tokens[0], pool.tokens[1]],
+                            pool.protocol,
+                        )
+                        .is_err()
+                    {
+                        error!("failed to insert discovered pool into libmdbx");
+                    }
+                    info!(
+                        "Discovered new {} pool: 
+                            \nAddress:{} 
+                            \nToken 0: {}
+                            \nToken 1: {}",
+                        pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+                    );
+
+                    pool.try_into().ok()
+                })
+                .map(DexPriceMsg::DiscoveredPool)
                 .collect::<Vec<_>>(),
             Actions::Unclassified(trace),
         )
