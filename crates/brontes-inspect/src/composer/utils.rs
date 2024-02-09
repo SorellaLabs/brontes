@@ -76,8 +76,7 @@ pub(crate) fn build_mev_header(
         .sum();
 
     let builder_eth_profit = Rational::from_signeds(
-        (pre_processing.total_bribe as i128 + pre_processing.cumulative_priority_fee as i128)
-            - (metadata.proposer_mev_reward.unwrap_or_default() as i128),
+        calculate_builder_profit() as i128,
         10i128.pow(18),
     );
 
