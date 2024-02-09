@@ -74,7 +74,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         tx_roots
             .into_iter()
             .map(|root_data| {
-                tracing::info!("processing root");
                 tree.insert_root(root_data.root);
                 root_data.pool_updates.into_iter().for_each(|update| {
                     self.pricing_update_sender.send(update).unwrap();
