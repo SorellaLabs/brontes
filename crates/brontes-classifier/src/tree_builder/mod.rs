@@ -222,10 +222,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         // if we have a new discoverd pool
         update.into_iter().for_each(|update| {
             match update {
-                DexPriceMsg::DiscoveredPool(pool) => {
-                    self.pricing_update_sender
-                        .send(DexPriceMsg::DiscoveredPool(pool.clone()))
-                        .unwrap();
+                pool @ DexPriceMsg::DiscoveredPool(_) => {
+                    self.pricing_update_sender.send(pool).unwrap();
                 }
                 rest => {
                     pool_updates.push(rest);

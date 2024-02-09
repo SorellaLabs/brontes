@@ -21,7 +21,7 @@
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
 use alloy_primitives::U256;
-use brontes_types::normalized_actions::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
+use brontes_types::normalized_actions::pool::{NormalizedPoolConfigUpdate};
 mod graphs;
 pub mod protocols;
 pub mod types;
@@ -62,7 +62,7 @@ pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::error;
-use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
+use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
 
