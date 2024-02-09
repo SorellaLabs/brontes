@@ -64,10 +64,8 @@ pub struct CexPriceMapRedefined {
 
 impl CexPriceMapRedefined {
     fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
-        let srd: HashMap<_, _> = map.into();
-
         Self {
-            map: srd
+            map: map
                 .into_iter()
                 .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
                 .collect::<Vec<_>>(),
@@ -184,7 +182,7 @@ impl CexPriceMap {
                     let combined_price =
                         (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
                     let combined_quote = CexQuote {
-                        exchange:  exchange.clone(),
+                        exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
                         price:     combined_price,
                         token0:    pair.0,
@@ -209,6 +207,8 @@ impl CexPriceMap {
             .or_else(|| self.get_quote_via_intermediary(pair, exchange))
     }
 }
+
+type CexPriceMapDeser = Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)>;
 //TODO: Joe remove the extra string for token_0 it should just be
 // base_token_addr
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
@@ -216,8 +216,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
     where
         D: serde::Deserializer<'de>,
     {
-        let map: Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)> =
-            serde::Deserialize::deserialize(deserializer)?;
+        let map: CexPriceMapDeser = serde::Deserialize::deserialize(deserializer)?;
 
         let mut cex_price_map = HashMap::new();
 

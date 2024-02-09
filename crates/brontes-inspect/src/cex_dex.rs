@@ -145,7 +145,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     &tx_info,
                     possible_cex_dex.pnl.taker_profit.clone().to_float(),
                     PriceAt::After,
-                    &vec![possible_cex_dex.get_swaps()],
+                    &[possible_cex_dex.get_swaps()],
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,
