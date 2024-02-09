@@ -54,7 +54,7 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
         .map_err(|_| eyre::eyre!("v2 state call failed"))
         .await?;
 
-    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false)?;
+    let mut return_data = data_constructorCall::abi_decode_returns(&res, false)?;
     *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
     Ok(())
 }

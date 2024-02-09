@@ -54,6 +54,7 @@ action_impl!(
             token_out: t1_info,
             amount_in,
             amount_out,
+            msg_value: info.msg_value,
         })
 
     }
@@ -102,6 +103,7 @@ action_impl!(
             token_out: t1_info,
             amount_in,
             amount_out,
+            msg_value: info.msg_value,
         })
     }
 );

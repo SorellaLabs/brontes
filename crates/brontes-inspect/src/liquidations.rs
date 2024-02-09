@@ -107,7 +107,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let rev_usd = self.inner.get_dex_revenue_usd(
             info.tx_index,
             PriceAt::After,
-            &vec![actions.clone()],
+            &[actions.clone()],
             metadata.clone(),
         )? + liq_profit;
 
@@ -119,7 +119,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             &info,
             profit_usd,
             PriceAt::After,
-            &vec![actions],
+            &[actions],
             &[info.gas_details],
             metadata,
             MevType::Liquidation,

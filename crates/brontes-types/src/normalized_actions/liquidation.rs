@@ -1,5 +1,6 @@
 use std::fmt::{self, Debug};
 
+use alloy_primitives::U256;
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
@@ -33,6 +34,7 @@ pub struct NormalizedLiquidation {
     pub debt_asset:            TokenInfoWithAddress,
     pub covered_debt:          Rational,
     pub liquidated_collateral: Rational,
+    pub msg_value:             U256,
 }
 
 impl fmt::Display for NormalizedLiquidation {
@@ -109,30 +111,27 @@ impl NormalizedLiquidation {
 
         writeln!(
             f,
-            "{}",
-            format!(
-                "{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
-                 {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
-                 {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}",
-                "Protocol",
-                protocol,
-                "Pool",
-                pool_address,
-                "Liquidator",
-                liquidator_address,
-                "Debtor",
-                debtor_address,
-                "Collateral",
-                collateral_asset_symbol,
-                "Debt",
-                debt_asset_symbol,
-                "Covered Debt",
-                covered_debt_formatted,
-                "Liquidated Collateral",
-                liquidated_collateral_formatted,
-                indent = indent,
-                width = max_field_name_length + spaces + 1
-            )
+            "{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+             {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+             {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}",
+            "Protocol",
+            protocol,
+            "Pool",
+            pool_address,
+            "Liquidator",
+            liquidator_address,
+            "Debtor",
+            debtor_address,
+            "Collateral",
+            collateral_asset_symbol,
+            "Debt",
+            debt_asset_symbol,
+            "Covered Debt",
+            covered_debt_formatted,
+            "Liquidated Collateral",
+            liquidated_collateral_formatted,
+            indent = indent,
+            width = max_field_name_length + spaces + 1
         )?;
 
         Ok(())

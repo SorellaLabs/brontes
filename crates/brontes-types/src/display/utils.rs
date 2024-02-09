@@ -546,7 +546,7 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     writeln!(
         f,
         " - {}: {}",
-        format!("Burn Transaction").bright_magenta(),
+        "Burn Transaction".to_string().bright_magenta(),
         format_etherscan_url(&jit_data.backrun_burn_tx_hash)
     )?;
 

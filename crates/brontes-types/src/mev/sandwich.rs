@@ -208,7 +208,7 @@ impl Serialize for Sandwich {
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
         let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
-        let backrun_tx_hash_repeated = vec![&self.backrun_tx_hash]
+        let backrun_tx_hash_repeated = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()
             .map(|tx| FixedString::from(format!("{:?}", &tx)))
