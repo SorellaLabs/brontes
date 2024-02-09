@@ -308,7 +308,7 @@ impl PairSubGraph {
                 let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
-                if liq0 < Rational::from(MIN_LIQUIDITY_USDC) {
+                if liq0 < MIN_LIQUIDITY_USDC {
                     let bad_edge = BadEdge {
                         pair,
                         pool_address: info.pool_addr,
@@ -483,11 +483,7 @@ fn add_edge(
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
-    if weights
-        .iter()
-        .find(|w| w.pool_addr == edge_info.pool_addr)
-        .is_some()
-    {
+    if weights.iter().any(|w| w.pool_addr == edge_info.pool_addr) {
         return false
     }
 

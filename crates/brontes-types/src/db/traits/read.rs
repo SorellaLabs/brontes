@@ -13,6 +13,8 @@ use crate::{
     Protocol, SubGraphEdge,
 };
 
+pub type ProtocolCreatedRange = HashMap<u64, Vec<(Address, Protocol, Pair)>>;
+
 #[auto_impl::auto_impl(&)]
 pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata>;
@@ -42,7 +44,7 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, Protocol, Pair)>>>;
+    ) -> eyre::Result<ProtocolCreatedRange>;
 
     fn try_load_pair_before(
         &self,

@@ -2,7 +2,6 @@ use clap::{Parser, Subcommand};
 
 mod db_insert;
 mod db_query;
-mod init;
 mod run;
 mod trace_range;
 mod utils;
@@ -23,10 +22,6 @@ pub enum Commands {
     /// Runs brontes
     #[command(name = "run")]
     Run(run::RunArgs),
-    /// Initializes the local libmdx database & downloads metadata from
-    /// Sorella's MEV DB
-    #[command(name = "init")]
-    Init(init::Init),
     #[command(name = "db")]
     QueryDb(db_query::DatabaseQuery),
     #[command(name = "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2")]

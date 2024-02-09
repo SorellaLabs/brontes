@@ -3,7 +3,6 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
 use brontes_core::decoding::TracingProvider;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
@@ -25,7 +24,6 @@ pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + Libm
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
     pub fn new(
-        _quote_asset: Address,
         start_block: u64,
         end_block: u64,
         state_collector: StateCollector<T, DB>,

@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use alloy_primitives::B256;
 use brontes_classifier::test_utils::ClassifierBenchUtils;
+use brontes_types::TreeSearchArgs;
 use criterion::{criterion_group, Criterion};
 
 fn bench_collect_tx(c: &mut Criterion) {
@@ -13,8 +14,9 @@ fn bench_collect_tx(c: &mut Criterion) {
                 .unwrap(),
             c,
             |tree| {
-                tree.collect_all(|n| {
-                    (n.data.is_transfer(), n.get_all_sub_actions().iter().any(|t| t.is_transfer()))
+                tree.collect_all(|n| TreeSearchArgs {
+                    collect_current_node:  n.data.is_transfer(),
+                    child_node_to_collect: n.get_all_sub_actions().iter().any(|t| t.is_transfer()),
                 });
             },
         )
@@ -25,8 +27,9 @@ fn bench_collect_block(c: &mut Criterion) {
     let utils = ClassifierBenchUtils::new();
     utils
         .bench_tree_operations("collect block", 18672183, c, |tree| {
-            tree.collect_all(|n| {
-                (n.data.is_transfer(), n.get_all_sub_actions().iter().any(|t| t.is_transfer()))
+            tree.collect_all(|n| TreeSearchArgs {
+                collect_current_node:  n.data.is_transfer(),
+                child_node_to_collect: n.get_all_sub_actions().iter().any(|t| t.is_transfer()),
             });
         })
         .unwrap();

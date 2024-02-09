@@ -56,7 +56,7 @@ impl SubGraphRegistry {
         subgraph
             .get_all_pools()
             .flat_map(|e| {
-                e.into_iter()
+                e.iter()
                     .flat_map(|e| vec![e.token_0, e.token_1])
                     .collect_vec()
             })

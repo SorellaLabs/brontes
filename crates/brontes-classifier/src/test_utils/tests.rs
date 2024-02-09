@@ -7,7 +7,7 @@ use std::{
     },
 };
 
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::{Address, TxHash, U256};
 use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
     TxTracesWithHeaderAnd,
@@ -52,6 +52,11 @@ pub struct ClassifierTestUtils {
     classifier:   Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
 
     dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
+}
+impl Default for ClassifierTestUtils {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ClassifierTestUtils {
@@ -181,7 +186,7 @@ impl ClassifierTestUtils {
         block: u64,
         quote_token: Address,
         quotes: Option<&DexQuotes>,
-        needs_tokens: &Vec<Address>,
+        needs_tokens: &[Address],
         tx: UnboundedSender<DexPriceMsg>,
     ) -> bool {
         if let Some(quote) = quotes {
@@ -198,7 +203,6 @@ impl ClassifierTestUtils {
                         action: make_fake_swap(pair),
                     });
                     tx.send(update).unwrap();
-                    ()
                 })
                 .count()
                 != 0
@@ -216,7 +220,7 @@ impl ClassifierTestUtils {
                     });
                     tx.send(update).unwrap();
                 });
-            return true
+            true
         }
     }
 
@@ -226,9 +230,7 @@ impl ClassifierTestUtils {
     ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
-        let tree = self.classifier.build_block_tree(vec![trace], header).await;
-
-        Ok(tree)
+        Ok(self.classifier.build_block_tree(vec![trace], header).await)
     }
 
     pub async fn build_tree_tx_with_pricing(
@@ -279,12 +281,9 @@ impl ClassifierTestUtils {
                 .await?
                 .into_iter()
                 .map(|block_info| async move {
-                    let tree = self
-                        .classifier
+                    self.classifier
                         .build_block_tree(block_info.traces, block_info.header)
-                        .await;
-
-                    tree
+                        .await
                 }),
         )
         .await)
@@ -584,5 +583,6 @@ const fn make_fake_swap(pair: Pair) -> Actions {
         token_out:   t_out,
         amount_in:   Rational::ZERO,
         amount_out:  Rational::ZERO,
+        msg_value:   U256::ZERO,
     })
 }
