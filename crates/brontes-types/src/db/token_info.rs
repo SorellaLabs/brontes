@@ -26,7 +26,7 @@ pub struct TokenInfoWithAddress {
 impl TokenInfoWithAddress {
     pub fn native_eth() -> Self {
         Self {
-            inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
+            inner:   TokenInfo { decimals: 18, symbol: "ETH".to_string() },
             address: WETH_ADDRESS,
         }
     }
