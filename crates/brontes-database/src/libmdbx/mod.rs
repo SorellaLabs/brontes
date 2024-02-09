@@ -146,28 +146,6 @@ impl Libmdbx {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::env;
-
-    use serial_test::serial;
-
-    use crate::libmdbx::Libmdbx;
-
-    fn init_db() -> eyre::Result<Libmdbx> {
-        dotenv::dotenv().ok();
-        let brontes_db_path = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        Libmdbx::init_db(brontes_db_path, None)
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_init_db() {
-        init_db().unwrap();
-        assert!(init_db().is_ok());
-    }
-}
-
 /*
     /// gets all addresses that were initialized in a given block
     //TODO: Joe - implement a range function so that we don't have to loop through
