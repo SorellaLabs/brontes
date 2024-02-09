@@ -68,7 +68,7 @@ action_impl!(
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: user_swaps,
+            user_swaps,
             solver_swaps: None,
             msg_value: info.msg_value,
         })

@@ -281,10 +281,10 @@ impl Actions {
             Actions::SwapWithFee(s) => s.pool,
             Actions::FlashLoan(f) => f.pool,
             Actions::Batch(b) => b.settlement_contract,
-            Actions::Mint(m) => m.to,
-            Actions::Burn(b) => b.to,
+            Actions::Mint(m) => m.pool,
+            Actions::Burn(b) => b.pool,
             Actions::Transfer(t) => t.to,
-            Actions::Collect(c) => c.to,
+            Actions::Collect(c) => c.pool,
             Actions::Liquidation(c) => c.pool,
             Actions::SelfDestruct(c) => c.get_refund_address(),
             Actions::Unclassified(t) => match &t.trace.action {

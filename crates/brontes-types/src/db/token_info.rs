@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use crate::{
-    constants::{USDT_ADDRESS, WETH_ADDRESS},
+    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
 };
@@ -42,6 +42,13 @@ impl TokenInfoWithAddress {
         Self {
             inner:   TokenInfo { decimals: 6, symbol: "USDT".to_string() },
             address: USDT_ADDRESS,
+        }
+    }
+
+    pub fn usdc() -> Self {
+        Self {
+            inner:   TokenInfo { decimals: 6, symbol: "USDC".to_string() },
+            address: USDC_ADDRESS,
         }
     }
 }
