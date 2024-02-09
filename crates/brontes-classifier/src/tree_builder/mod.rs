@@ -52,6 +52,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         traces: Vec<TxTrace>,
         header: Header,
     ) -> BlockTree<Actions> {
+        tracing::info!("building block tree");
         let tx_roots = self.build_all_tx_trees(traces, &header).await;
         let mut tree = BlockTree::new(header, tx_roots.len());
 
