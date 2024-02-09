@@ -53,7 +53,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
     }
 
     pub fn is_collecting_state(&self) -> bool {
-        self.collection_future.is_some() && !self.metadata_fetcher.is_finished()
+        self.collection_future.is_some() 
     }
 
     pub fn fetch_state_for(&mut self, block: u64) {
@@ -92,13 +92,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
                     self.collection_future = Some(collection_future);
                 }
             }
-        }
-
-        if self.mark_as_finished.load(SeqCst)
-            && self.metadata_fetcher.is_finished()
-            && self.collection_future.is_none()
-        {
-            return Poll::Ready(None)
         }
 
         self.metadata_fetcher.poll_next_unpin(cx)
