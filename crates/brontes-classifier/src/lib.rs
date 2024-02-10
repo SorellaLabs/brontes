@@ -71,7 +71,7 @@ pub trait IntoAction: Debug + Send + Sync {
     ) -> eyre::Result<DexPriceMsg>;
 }
 
-pub trait FactoryDecoder {
+pub trait FactoryDiscovery {
     fn decode_new_pool<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
@@ -81,7 +81,7 @@ pub trait FactoryDecoder {
     ) -> impl Future<Output = Vec<NormalizedNewPool>> + Send;
 }
 
-pub trait FactoryDecoderDispatch: Sync + Send {
+pub trait FactoryDiscoveryDispatch: Sync + Send {
     fn dispatch<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
