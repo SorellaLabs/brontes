@@ -14,7 +14,7 @@ use brontes_core::{
 };
 use brontes_database::{
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
-    AddressToProtocolInfo, AddressToProtocolInfoData,
+    AddressToProtocolInfo, AddressToProtocolInfoData, TokenDecimals, TokenDecimalsData,
 };
 use brontes_pricing::{
     types::{DexPriceMsg, PoolUpdate},
@@ -515,6 +515,37 @@ impl ClassifierTestUtils {
         cmp_fn(res);
 
         Ok(())
+    }
+
+    pub fn ensure_protocol(
+        &self,
+        protocol: Protocol,
+        address: Address,
+        token0: Address,
+        token1: Address,
+    ) {
+        self.libmdbx
+            .0
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+                AddressToProtocolInfoData {
+                    key:   address,
+                    value: ProtocolInfo { protocol, token0, token1, ..Default::default() },
+                },
+            ])
+            .unwrap();
+    }
+
+    pub fn ensure_token(&self, token: TokenInfoWithAddress) {
+        self.libmdbx
+            .0
+            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+                key:   token.address,
+                value: brontes_types::db::token_info::TokenInfo {
+                    decimals: token.decimals,
+                    symbol:   token.symbol.clone(),
+                },
+            }])
+            .unwrap();
     }
 }
 

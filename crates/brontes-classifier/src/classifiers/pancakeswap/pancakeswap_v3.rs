@@ -174,24 +174,24 @@ mod tests {
     #[brontes_macros::test]
     async fn test_pancake_v3_swap() {
         let classifier_utils = ClassifierTestUtils::new().await;
+        classifier_utils.ensure_protocol(
+            Protocol::PancakeSwapV3,
+            Address::new(hex!("2E8135bE71230c6B1B4045696d41C09Db0414226")),
+            TokenInfoWithAddress::weth().address,
+            TokenInfoWithAddress::usdc().address,
+        );
+        classifier_utils.ensure_token(TokenInfoWithAddress::weth());
+        classifier_utils.ensure_token(TokenInfoWithAddress::usdc());
+
         let swap =
             B256::from(hex!("4a6cd8a23c0c832ccd645269a1a26b90f998b8f7837330fc38c92e090ec745f2"));
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    PancakeSwapV3,
             trace_index: 115,
-            from:        Address::new(hex!(
-                "
-                f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67"
-            )),
-            recipient:   Address::new(hex!(
-                "
-                f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67"
-            )),
-            pool:        Address::new(hex!(
-                "2E8135bE71230c6B1B4045696d41C09Db0414226
-                "
-            )),
+            from:        Address::new(hex!("f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67")),
+            recipient:   Address::new(hex!("f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67")),
+            pool:        Address::new(hex!("2E8135bE71230c6B1B4045696d41C09Db0414226")),
             token_in:    TokenInfoWithAddress::weth(),
             amount_in:   U256::from_str("212242932691433838")
                 .unwrap()

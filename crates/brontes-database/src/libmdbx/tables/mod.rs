@@ -403,7 +403,7 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table AddressToProtocolInfo{
+    Table AddressToProtocolInfo {
         #[serde_as]
         Data {
             #[serde(with = "address_string")]
