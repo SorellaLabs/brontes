@@ -1,7 +1,6 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
-    pin::Pin,
     sync::{Arc, OnceLock},
 };
 
@@ -9,7 +8,7 @@ pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWri
 use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
-use futures::{future::join_all, Future};
+use futures::future::join_all;
 #[cfg(not(feature = "local"))]
 use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
@@ -31,16 +30,6 @@ use tracing_subscriber::filter::Directive;
 use crate::decoding::parser::TraceParser;
 #[cfg(feature = "local")]
 use crate::local_provider::LocalProvider;
-
-pub trait InThreadScope {
-    type This;
-
-    fn db_scope<
-        F: FnOnce(Self::This) -> Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>> + Send,
-    >(
-        run: F,
-    );
-}
 
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
