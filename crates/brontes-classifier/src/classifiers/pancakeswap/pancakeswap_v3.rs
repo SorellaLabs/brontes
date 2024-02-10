@@ -211,7 +211,7 @@ mod tests {
         };
 
         classifier_utils
-            .contains_action(swap, 5, eq_action, search_fn)
+            .contains_action(swap, 1, eq_action, search_fn)
             .await
             .unwrap();
     }
