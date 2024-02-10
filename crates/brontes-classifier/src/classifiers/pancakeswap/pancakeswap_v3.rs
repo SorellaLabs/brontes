@@ -168,7 +168,6 @@ mod tests {
         db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node,
         Protocol::PancakeSwapV3, ToScaledRational, TreeSearchArgs,
     };
-    use serial_test::serial;
 
     use super::*;
 
