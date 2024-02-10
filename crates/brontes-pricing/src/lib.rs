@@ -877,8 +877,8 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
 ) -> GraphSeachParRes {
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
-        .map(|msg| {
-            let pair = msg.get_pair(quote).unwrap();
+        .filter_map(|msg| {
+            let pair = msg.get_pair(quote)?;
             let pair0 = Pair(pair.0, quote);
             let pair1 = Pair(pair.1, quote);
 
@@ -888,7 +888,7 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
                 (!graph.has_subgraph(pair0)).then_some(pair0),
                 (!graph.has_subgraph(pair1)).then_some(pair1),
             );
-            (state, path)
+            Some((state, path))
         })
         .unzip();
 
