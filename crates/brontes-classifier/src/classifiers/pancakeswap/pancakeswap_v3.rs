@@ -165,7 +165,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::{TokenInfo, TokenInfoWithAddress},
+        db::token_info::{self, TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
         Node,
         Protocol::PancakeSwapV3,
@@ -180,8 +180,8 @@ mod tests {
         classifier_utils.ensure_protocol(
             Protocol::PancakeSwapV3,
             Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
-            TokenInfoWithAddress::usdt().address,
             Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
+            TokenInfoWithAddress::usdt().address,
         );
         let token_info = TokenInfoWithAddress {
             address: Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
@@ -199,12 +199,12 @@ mod tests {
             from:        Address::new(hex!("1b81D678ffb9C0263b24A97847620C99d213eB14")),
             recipient:   Address::new(hex!("6Dbe61E7c69AF3bF5d20C15494bD69eD1905A335")),
             pool:        Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
-            token_in:    TokenInfoWithAddress::usdt(),
-            amount_in:   U256::from_str("1568955344").unwrap().to_scaled_rational(6),
-            token_out:   token_info,
-            amount_out:  U256::from_str("8888693999999999016960")
+            token_in:    token_info,
+            amount_in:   U256::from_str("8888693999999999016960")
                 .unwrap()
                 .to_scaled_rational(18),
+            token_out:   TokenInfoWithAddress::usdt(),
+            amount_out:  U256::from_str("1568955344").unwrap().to_scaled_rational(6),
             msg_value:   U256::ZERO,
         });
 
