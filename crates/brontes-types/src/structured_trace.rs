@@ -139,6 +139,7 @@ pub struct CallFrameInfo<'a> {
     pub msg_value:      U256,
 }
 
+#[derive(Debug, Clone)]
 pub struct CallInfo {
     pub trace_idx:      u64,
     pub target_address: Address,

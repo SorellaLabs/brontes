@@ -63,7 +63,6 @@ impl From<&TraceParseError> for TraceParseErrorKind {
                     TraceParseErrorKind::EthApiUnknownSafeOrFinalizedBlock
                 }
                 EthApiError::ExecutionTimedOut(_) => TraceParseErrorKind::EthApiExecutionTimedOut,
-                EthApiError::CallInputError(_) => TraceParseErrorKind::EthApiCallInputError,
 
                 EthApiError::PoolError(_) => TraceParseErrorKind::EthApiPoolError,
                 EthApiError::UnknownBlockNumber => TraceParseErrorKind::EthApiUnknownBlockNumber,

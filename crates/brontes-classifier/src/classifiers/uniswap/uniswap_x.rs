@@ -54,7 +54,6 @@ action_impl!(
     _call_data: executeBatchCall,
     logs_data: UniswapXexecuteBatchCallLogs,
     _db_tx: &DB| {
-
         let fill_logs = logs_data.Fill_field;
 
         let solver = fill_logs[0].filler;
@@ -93,7 +92,7 @@ action_impl!(
 
         let user_swaps = fill_logs.iter()
         .map(|fill| Fill::into_swap(fill, info.target_address))
-        .collect();
+        .collect::<Vec<_>>();
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
@@ -101,7 +100,7 @@ action_impl!(
             solver,
             settlement_contract: info.target_address,
             user_swaps,
-            solver_swaps: Some(Vec::new()),
+            solver_swaps: None,
             msg_value: info.msg_value
         })
     }
@@ -120,7 +119,6 @@ action_impl!(
     logs_data: UniswapXexecuteWithCallbackCallLogs,
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
-
         let solver = fill_logs[0].filler;
 
         let user_swaps = fill_logs.iter()
@@ -170,14 +168,12 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
     use brontes_types::{normalized_actions::Actions, Node, ToScaledRational, TreeSearchArgs};
-    use serial_test::serial;
 
     use super::*;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_batch_classifier_with_call_back_eth() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let execute_batch_with_callback =
             B256::from(hex!("3d8fbccb1b0b7f8140f255f0980d897d87394903ad7bf4d08534402d2bf35872"));
 
@@ -192,7 +188,7 @@ mod tests {
             user_swaps:          vec![
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 2,
+                    trace_index: 3,
                     from:        Address::new(hex!(
                         "
             86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
@@ -216,7 +212,7 @@ mod tests {
                 },
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 3,
+                    trace_index: 5,
                     from:        Address::new(hex!(
                         "
                     569d9f244e4ed4f0731f39675492740dcdab6b15"
@@ -253,16 +249,15 @@ mod tests {
             .unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_batch_classifier_weth() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let execute_batch_with_callback =
             B256::from(hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d"));
 
         let eq_action = Actions::Batch(NormalizedBatch {
             protocol:            Protocol::UniswapX,
-            trace_index:         1,
+            trace_index:         0,
             solver:              Address::new(hex!("ff8Ba4D1fC3762f6154cc942CCF30049A2A0cEC6")),
             settlement_contract: Address::new(hex!("6000da47483062A0D734Ba3dc7576Ce6A0B645C4")),
             user_swaps:          vec![NormalizedSwap {

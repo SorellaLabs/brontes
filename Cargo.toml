@@ -33,33 +33,33 @@ reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/brontes-tracing" }
 
 # Reth
-reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "3421672" }
-reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "3421672" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "3421672" }
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "3421672" }
-reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "3421672" }
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "3421672" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "3421672" }
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "3421672" }
-reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "3421672" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "3421672" }
-reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "3421672" }
-reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "3421672" }
-reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "3421672" }
-reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "3421672" }
+reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "cc1c02a" }
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "cc1c02a" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "cc1c02a" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "cc1c02a" }
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "cc1c02a" }
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "cc1c02a" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "cc1c02a" }
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "cc1c02a" }
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "cc1c02a" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "cc1c02a" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "cc1c02a" }
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "cc1c02a" }
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "cc1c02a" }
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "cc1c02a" }
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [
   "test-utils",
-], rev = "3421672" }
+], rev = "cc1c02a" }
 reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
   "test-utils",
-], rev = "3421672" }
-reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "3421672" }
-reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "3421672" }
-reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "3421672" }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "3421672" }
-reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "3421672" }
-reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "3421672" }
-codecs-derive = { git = "https://github.com/paradigmxyz/reth", package = "codecs-derive", rev = "3421672" }
+], rev = "cc1c02a" }
+reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "cc1c02a" }
+reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "cc1c02a" }
+reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "cc1c02a" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "cc1c02a" }
+reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "cc1c02a" }
+reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "cc1c02a" }
+codecs-derive = { git = "https://github.com/paradigmxyz/reth", package = "codecs-derive", rev = "cc1c02a" }
 
 # ruint
 ruint = "1.9.0"
@@ -74,6 +74,7 @@ revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", 
 ], default-features = false }
 
 
+
 # Alloy
 alloy-sol-types = { version = "0.6.0", features = ["json"] }
 alloy-sol-macro = { version = "0.6.0", features = ["json"] }
@@ -81,7 +82,16 @@ alloy-rlp = { version = "0.3.4" }
 alloy-rlp-derive = { version = "0.3.4" }
 alloy-primitives = { version = "0.6.0", features = ["rlp"] }
 alloy-json-abi = "0.6.0"
-alloy-dyn-abi = "0.6.0"
+alloy-dyn-abi = "0.6.0 "
+# Alloy core
+
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
 
 # Async
 tokio = "1.13.0"
@@ -97,9 +107,9 @@ tracing-subscriber = { version = "0.3.17", default-features = false, features = 
 colored = "2.0"
 
 # Metrics
-metrics-exporter-prometheus = "0.12.1"
+metrics-exporter-prometheus = "=0.12.1"
 metrics-util = "0.15.0"
-metrics-process = "1.0.9"
+metrics-process = "=1.0.14"
 
 # Logging
 env_logger = "0.10.0"
@@ -145,14 +155,12 @@ auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
 derive_more = "0.99.17"
-rkyv = { version = "0.7", features = ["validation"] }
+rkyv = { git = "https://github.com/rkyv/rkyv.git", branch = "0.7-hashbrown-0.14", features = [
+  "validation",
+] }
 num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
-
-# revert to 2.1.0 as 2.1.1 was not building
-[patch.crates-io]
-ed25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek.git", rev = "f08bbb7" }
 
 [profile.dev]
 opt-level = 0           # No optimizations

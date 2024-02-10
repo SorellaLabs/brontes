@@ -9,10 +9,14 @@ use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
+#[cfg(not(feature = "local"))]
+use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(not(feature = "local"))]
 use reth_tasks::TaskManager;
+#[cfg(not(feature = "local"))]
+use reth_tracing_ext::init_db;
 #[cfg(not(feature = "local"))]
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
@@ -27,10 +31,6 @@ use crate::decoding::parser::TraceParser;
 #[cfg(feature = "local")]
 use crate::local_provider::LocalProvider;
 
-// so we only have to init critical tables once
-#[allow(clippy::declare_interior_mutable_const)]
-const INIT_LOCK: OnceLock<()> = OnceLock::new();
-
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
     pub libmdbx:          &'static LibmdbxReadWriter,
@@ -38,50 +38,18 @@ pub struct TraceLoader {
     // store so when we trace we don't get a closed rx error
     _metrics:             UnboundedReceiver<PoirotMetricEvents>,
 }
-impl Default for TraceLoader {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl TraceLoader {
-    #[allow(clippy::borrow_interior_mutable_const)]
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
         let handle = tokio::runtime::Handle::current();
-        let tracing_provider = init_trace_parser(handle.clone(), a, libmdbx, 10);
+        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
 
         let this = Self { libmdbx, tracing_provider, _metrics: b };
-
-        let this = if INIT_LOCK.get().is_none() {
-            tracing::info!("initing critical tables");
-            let this = std::thread::spawn(|| {
-                tokio::runtime::Builder::new_multi_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap()
-                    .block_on(async {
-                        this.init_on_start().await.unwrap();
-                        this
-                    })
-            })
-            .join()
-            .unwrap();
-            let _ = INIT_LOCK.get_or_init(|| ());
-            this
-        } else {
-            this
-        };
+        this.init_on_start().await.unwrap();
 
         this
-    }
-
-    pub fn new_with_rt(handle: Handle) -> Self {
-        let libmdbx = get_db_handle();
-        let (a, b) = unbounded_channel();
-        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
-        Self { libmdbx, tracing_provider, _metrics: b }
     }
 
     pub fn get_provider(&self) -> Arc<Box<dyn TracingProvider>> {
@@ -123,15 +91,22 @@ impl TraceLoader {
 
     async fn init_on_start(&self) -> eyre::Result<()> {
         let clickhouse = Box::leak(Box::default());
-        self.libmdbx
-            .initialize_tables(
-                clickhouse,
-                self.tracing_provider.get_tracer(),
-                &[Tables::PoolCreationBlocks, Tables::TokenDecimals, Tables::AddressToProtocolInfo],
-                false,
-                None,
-            )
-            .await
+        if !self.libmdbx.init_full_range_tables() {
+            self.libmdbx
+                .initialize_tables(
+                    clickhouse,
+                    self.tracing_provider.get_tracer(),
+                    &[
+                        Tables::PoolCreationBlocks,
+                        Tables::TokenDecimals,
+                        Tables::AddressToProtocolInfo,
+                    ],
+                    false,
+                    None,
+                )
+                .await?;
+        }
+        Ok(())
     }
 
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
@@ -340,8 +315,10 @@ pub struct BlockTracesWithHeaderAnd<T> {
 
 // done because we can only have 1 instance of libmdbx or we error
 static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
+#[cfg(not(feature = "local"))]
+static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
-fn get_db_handle() -> &'static LibmdbxReadWriter {
+pub fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
         let _ = dotenv::dotenv();
         init_tracing();
@@ -352,10 +329,20 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
     })
 }
 
+#[cfg(not(feature = "local"))]
+pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
+    RETH_DB_HANDLE
+        .get_or_init(|| {
+            let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+            Arc::new(init_db(db_path).unwrap())
+        })
+        .clone()
+}
+
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
-fn init_tracing() {
+pub fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
     // all, Debug includes all but Trace, ...)
     let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
@@ -366,16 +353,15 @@ fn init_tracing() {
 }
 
 #[cfg(not(feature = "local"))]
-fn init_trace_parser(
+pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
     let executor = TaskManager::new(handle.clone());
     let client =
-        TracingClient::new(std::path::Path::new(&db_path), max_tasks as u64, executor.executor());
+        TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 
@@ -383,7 +369,7 @@ fn init_trace_parser(
 }
 
 #[cfg(feature = "local")]
-fn init_trace_parser(
+pub fn init_trace_parser(
     _handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
