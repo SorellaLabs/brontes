@@ -653,13 +653,10 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 
 #[cfg(test)]
 pub mod test {
-    use alloy_primitives::{hex, Address};
-    use brontes_types::{constants::USDC_ADDRESS, Protocol};
-    use futures::StreamExt;
-    use serial_test::serial;
+    use alloy_primitives::Address;
+    use brontes_types::Protocol;
 
     use super::*;
-    use crate::test_utils::PricingTestUtils;
 
     #[derive(Debug)]
     struct MockPoolState {
@@ -757,18 +754,5 @@ pub mod test {
         let price = graph.fetch_price(&state_map).unwrap();
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn price_price_graph_for_shit() {
-        let utils = PricingTestUtils::new(USDC_ADDRESS);
-        let mut pricer = utils
-            .setup_dex_pricer_for_tx(
-                hex!("ebabf4a04fede867f7f681e30b4f5a79451e9d9e5bd1e50b4b455df8355571b6").into(),
-            )
-            .await
-            .unwrap();
-        pricer.next().await;
     }
 }

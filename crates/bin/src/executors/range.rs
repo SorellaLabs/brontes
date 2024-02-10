@@ -46,8 +46,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPri
 
         let mut graceful_guard = None;
         tokio::select! {
-            _= &mut data_batching => {
-
+            _ = &mut data_batching => {
             },
             guard = shutdown => {
                 graceful_guard = Some(guard);

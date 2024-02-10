@@ -17,6 +17,7 @@ reth-rpc.workspace = true
 
 # alloy
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
+alloy-rpc-types.workspace = true
 
 # tracing
 tracing.workspace = true
