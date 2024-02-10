@@ -121,14 +121,12 @@ mod tests {
         Node, Protocol, TreeSearchArgs,
     };
     use malachite::Rational;
-    use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_aave_v3_liquidation() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let aave_v3_liquidation =
             B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
 

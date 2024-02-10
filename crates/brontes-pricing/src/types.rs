@@ -1,7 +1,10 @@
 use std::fmt::Debug;
 
 use alloy_primitives::{Address, Log};
-use brontes_types::{normalized_actions::Actions, pair::Pair};
+use brontes_types::{
+    normalized_actions::{pool::NormalizedPoolConfigUpdate, Actions},
+    pair::Pair,
+};
 use malachite::Rational;
 
 use crate::{
@@ -107,8 +110,19 @@ impl PoolVariants {
 #[derive(Debug, Clone)]
 pub enum DexPriceMsg {
     Update(PoolUpdate),
-    DiscoveredPool(DiscoveredPool, u64),
+    /// we only send pool config update if the pool is valid and has tokens
+    DiscoveredPool(NormalizedPoolConfigUpdate),
     Closed,
+}
+
+impl DexPriceMsg {
+    pub fn get_action(&self) -> Actions {
+        match self {
+            Self::Update(u) => u.action.clone(),
+            Self::DiscoveredPool(p) => Actions::PoolConfigUpdate(p.clone()),
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

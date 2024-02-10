@@ -1,7 +1,10 @@
 use std::{cmp::min, sync::Arc};
 
 use alloy_primitives::U256;
-use brontes_types::{normalized_actions::NormalizedEthTransfer, ToScaledRational};
+use brontes_types::{
+    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
+    ToScaledRational,
+};
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
@@ -219,35 +222,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             further_classification_requests.push(classification.get_trace_index());
         }
 
-        // if we have a discovered pool, check if its new
         update.into_iter().for_each(|update| {
             match update {
-                DexPriceMsg::DiscoveredPool(pool, block) => {
-                    if !self.contains_pool(pool.pool_address) {
-                        self.pricing_update_sender
-                            .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
-                            .unwrap();
-
-                        if self
-                            .libmdbx
-                            .insert_pool(
-                                block_number,
-                                pool.pool_address,
-                                [pool.tokens[0], pool.tokens[1]],
-                                pool.protocol,
-                            )
-                            .is_err()
-                        {
-                            error!("failed to insert discovered pool into libmdbx");
-                        }
-                        info!(
-                            "Discovered new {} pool: 
-                            \nAddress:{} 
-                            \nToken 0: {}
-                            \nToken 1: {}",
-                            pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
-                        );
-                    }
+                pool @ DexPriceMsg::DiscoveredPool(_) => {
+                    self.pricing_update_sender.send(pool).unwrap();
                 }
                 rest => {
                     pool_updates.push(rest);
@@ -301,7 +279,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
-            (vec![DexPriceMsg::Update(results.0)], results.1)
+            (vec![results.0], results.1)
         } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
             return transfer
         } else {
@@ -403,13 +381,37 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
         (
             DiscoveryProtocols::default()
-                .dispatch(self.provider.clone(), from_address, created_addr, calldata)
+                .dispatch(self.provider.clone(), from_address, created_addr, trace_index, calldata)
                 .await
                 .into_iter()
-                .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
+                // insert the pool returning if it has token values.
+                .filter(|pool| !self.contains_pool(pool.pool_address))
+                .filter_map(|pool| {
+                    self.insert_new_pool(block, &pool);
+                    pool.try_into().ok()
+                })
+                .map(DexPriceMsg::DiscoveredPool)
                 .collect::<Vec<_>>(),
             Actions::Unclassified(trace),
         )
+    }
+
+    fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+        if self
+            .libmdbx
+            .insert_pool(block, pool.pool_address, [pool.tokens[0], pool.tokens[1]], pool.protocol)
+            .is_err()
+        {
+            error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
+        } else {
+            info!(
+                "Discovered new {} pool: 
+                            \nAddress:{} 
+                            \nToken 0: {}
+                            \nToken 1: {}",
+                pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+            );
+        }
     }
 
     pub fn close(&self) {
@@ -445,14 +447,12 @@ pub mod test {
         db::token_info::TokenInfoWithAddress, normalized_actions::Actions, TreeSearchArgs,
     };
     use malachite::Rational;
-    use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_remove_swap_transfer() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let jared_tx =
             B256::from(hex!("d40905a150eb45f04d11c05b5dd820af1b381b6807ca196028966f5a3ba94b8d"));
 

@@ -168,14 +168,12 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
     use brontes_types::{normalized_actions::Actions, Node, ToScaledRational, TreeSearchArgs};
-    use serial_test::serial;
 
     use super::*;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_batch_classifier_with_call_back_eth() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let execute_batch_with_callback =
             B256::from(hex!("3d8fbccb1b0b7f8140f255f0980d897d87394903ad7bf4d08534402d2bf35872"));
 
