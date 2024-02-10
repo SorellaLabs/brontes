@@ -92,7 +92,7 @@ action_impl!(
 
         let user_swaps = fill_logs.iter()
         .map(|fill| Fill::into_swap(fill, info.target_address))
-        .collect();
+        .collect::<Vec<_>>();
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
@@ -249,10 +249,9 @@ mod tests {
             .unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_batch_classifier_weth() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let execute_batch_with_callback =
             B256::from(hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d"));
 
