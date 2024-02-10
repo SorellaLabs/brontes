@@ -499,6 +499,8 @@ impl ClassifierTestUtils {
 
         let Action::Call(call) = &p_trace.trace.action else { panic!() };
 
+        tracing::info(?found_trace, ?p_trace);
+
         let from_address = found_trace.get_from_addr();
         let created_addr = found_trace.get_create_output();
         let calldata = call.input.clone();
