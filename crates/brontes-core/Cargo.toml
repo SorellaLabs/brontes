@@ -44,9 +44,9 @@ alloy-sol-macro.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
-alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "80206e7" }
+alloy-providers.workspace = true 
 alloy-rpc-types.workspace = true
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "80206e7" }
+alloy-transport-http.workspace = true 
 
 # Serde 
 serde.workspace = true

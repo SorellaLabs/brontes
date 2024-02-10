@@ -172,10 +172,9 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_pancake_v3_swap() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let swap =
             B256::from(hex!("4a6cd8a23c0c832ccd645269a1a26b90f998b8f7837330fc38c92e090ec745f2"));
 

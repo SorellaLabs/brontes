@@ -228,10 +228,10 @@ macro_rules! compressed_table {
             }
         }
 
-        #[cfg(test)]
+        #[cfg(feature = "tests")]
         #[allow(unused)]
         impl $table_name {
-            pub(crate) async fn test_initialized_data(
+            pub async fn test_initialized_data(
                 clickhouse: &crate::clickhouse::Clickhouse,
                 libmdbx: &crate::libmdbx::LibmdbxReadWriter,
                 block_range: Option<(u64, u64)>

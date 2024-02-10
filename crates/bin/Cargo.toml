@@ -43,13 +43,14 @@ reth-interfaces.workspace = true
 alloy-primitives.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
-alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
-alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
-alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
-alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
-alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
+
+alloy-providers.workspace = true 
+alloy-transport-http.workspace = true 
+alloy-transport.workspace = true
+alloy-network.workspace = true 
+alloy-json-rpc.workspace = true
+alloy-rpc-types.workspace = true
+alloy-rpc-client.workspace = true
 
 # tracing
 tracing.workspace = true

@@ -168,29 +168,24 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use brontes_core::test_utils::{get_db_handle, init_trace_parser, init_tracing};
+    use brontes_database::libmdbx::{
+        initialize::LibmdbxInitializer, tables::*, test_utils::init_clickhouse,
+    };
+    use tokio::sync::mpsc::unbounded_channel;
 
-    use serial_test::serial;
-
-    use self::test_utils::*;
-    use super::LibmdbxInitializer;
-    use crate::libmdbx::*;
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_intialize_clickhouse_no_args_tables() {
+        init_tracing();
         let block_range = (17000000, 17000100);
 
-        #[cfg(not(feature = "local"))]
-        let tracing_client =
-            Arc::new(init_tracing(tokio::runtime::Handle::current().clone()).unwrap());
-        #[cfg(feature = "local")]
-        let tracing_client = Arc::new(init_tracing().unwrap());
-
         let clickhouse = Box::leak(Box::new(init_clickhouse()));
-        let libmdbx = init_libmdbx().unwrap();
+        let libmdbx = get_db_handle();
+        let (tx, _rx) = unbounded_channel();
+        let tracing_client =
+            init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4);
 
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client);
+        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         let tables = Tables::ALL;
         intializer

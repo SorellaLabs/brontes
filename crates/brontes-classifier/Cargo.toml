@@ -23,7 +23,7 @@ futures.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-rpc-types.workspace = true 
 alloy-rlp.workspace = true
 
 # reth

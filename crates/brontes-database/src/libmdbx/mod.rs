@@ -30,8 +30,8 @@ pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
 pub mod utils;
-// s
-#[cfg(test)]
+
+#[cfg(feature = "tests")]
 pub mod test_utils;
 
 #[derive(Debug)]

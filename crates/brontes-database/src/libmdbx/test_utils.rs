@@ -1,7 +1,5 @@
-use std::{env, fmt::Debug};
+use std::fmt::Debug;
 
-#[cfg(feature = "local")]
-use brontes_core::local_provider::LocalProvider;
 #[cfg(not(feature = "local"))]
 use reth_tasks::TaskManager;
 #[cfg(not(feature = "local"))]
@@ -11,37 +9,14 @@ use sorella_db_databases::{clickhouse::DbRow, Database};
 #[cfg(not(feature = "local"))]
 use tokio::runtime::Handle;
 
-use super::{
-    implementation::compressed_wrappers::utils::CompressedTableRow, types::LibmdbxData,
-    LibmdbxReadWriter,
+use crate::{
+    clickhouse::Clickhouse,
+    libmdbx::{
+        implementation::compressed_wrappers::utils::CompressedTableRow, types::LibmdbxData,
+        LibmdbxReadWriter,
+    },
+    CompressedTable,
 };
-use crate::{clickhouse::Clickhouse, CompressedTable};
-
-pub fn init_libmdbx() -> eyre::Result<&'static LibmdbxReadWriter> {
-    dotenv::dotenv().ok();
-    let brontes_test_db_path =
-        env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
-    Ok(Box::leak(Box::new(LibmdbxReadWriter::init_db(brontes_test_db_path, None)?)))
-}
-
-#[cfg(not(feature = "local"))]
-pub fn init_tracing(handle: Handle) -> eyre::Result<TracingClient> {
-    dotenv::dotenv().ok();
-
-    let task_manager = TaskManager::new(handle);
-    let reth_db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-
-    Ok(TracingClient::new(&std::path::Path::new(&reth_db_path), 10, task_manager.executor()))
-}
-
-#[cfg(feature = "local")]
-pub fn init_tracing() -> eyre::Result<LocalProvider> {
-    dotenv::dotenv().ok();
-
-    let reth_http_endpoint = env::var("RETH_ENDPOINT").expect("No RETH_ENDPOINT in .env");
-
-    Ok(LocalProvider::new(reth_http_endpoint))
-}
 
 pub fn init_clickhouse() -> Clickhouse {
     dotenv::dotenv().ok();

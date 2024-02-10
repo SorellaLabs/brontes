@@ -318,7 +318,7 @@ static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
 #[cfg(not(feature = "local"))]
 static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
-fn get_db_handle() -> &'static LibmdbxReadWriter {
+pub fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
         let _ = dotenv::dotenv();
         init_tracing();
@@ -330,7 +330,7 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
 }
 
 #[cfg(not(feature = "local"))]
-fn get_reth_db_handle() -> Arc<DatabaseEnv> {
+pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
     RETH_DB_HANDLE
         .get_or_init(|| {
             let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
@@ -342,7 +342,7 @@ fn get_reth_db_handle() -> Arc<DatabaseEnv> {
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
-fn init_tracing() {
+pub fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
     // all, Debug includes all but Trace, ...)
     let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
@@ -353,7 +353,7 @@ fn init_tracing() {
 }
 
 #[cfg(not(feature = "local"))]
-fn init_trace_parser(
+pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
@@ -369,7 +369,7 @@ fn init_trace_parser(
 }
 
 #[cfg(feature = "local")]
-fn init_trace_parser(
+pub fn init_trace_parser(
     _handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
