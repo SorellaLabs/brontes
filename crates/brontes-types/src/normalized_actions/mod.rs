@@ -4,6 +4,7 @@ pub mod flashloan;
 pub mod lending;
 pub mod liquidation;
 pub mod liquidity;
+pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
@@ -23,6 +24,7 @@ use sorella_db_databases::clickhouse::{DbRow, InsertRow};
 pub use swaps::*;
 pub use transfer::*;
 
+use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
@@ -58,6 +60,8 @@ impl NormalizedAction for Actions {
             Self::EthTransfer(_) => false,
             Self::Unclassified(_) => false,
             Self::Revert => false,
+            Self::NewPool(_) => false,
+            Self::PoolConfigUpdate(_) => false,
         }
     }
 
@@ -86,6 +90,8 @@ impl NormalizedAction for Actions {
             Actions::EthTransfer(_) => unreachable!(),
             Actions::Unclassified(_) => unreachable!(),
             Actions::Revert => unreachable!(),
+            Actions::NewPool(_) => unreachable!(),
+            Actions::PoolConfigUpdate(_) => unreachable!(),
         }
     }
 
@@ -104,6 +110,8 @@ impl NormalizedAction for Actions {
             Self::EthTransfer(e) => e.trace_index,
             Self::Unclassified(u) => u.trace_idx,
             Self::Revert => unreachable!(),
+            Actions::NewPool(_) => unreachable!(),
+            Actions::PoolConfigUpdate(_) => unreachable!(),
         }
     }
 
@@ -126,6 +134,8 @@ impl NormalizedAction for Actions {
                 unreachable!("Unclassified type never requires complex classification")
             }
             Self::Revert => unreachable!("a revert should never require complex classification"),
+            Self::NewPool(_) => unreachable!(),
+            Self::PoolConfigUpdate(_) => unreachable!(),
         }
     }
 }
@@ -145,6 +155,8 @@ pub enum Actions {
     Unclassified(TransactionTraceWithLogs),
     SelfDestruct(SelfdestructWithIndex),
     EthTransfer(NormalizedEthTransfer),
+    NewPool(NormalizedNewPool),
+    PoolConfigUpdate(NormalizedPoolConfigUpdate),
     Revert,
 }
 
@@ -162,6 +174,8 @@ impl InsertRow for Actions {
             Actions::Liquidation(_) => NormalizedLiquidation::COLUMN_NAMES,
             Actions::SelfDestruct(_) => todo!("joe pls dome this"),
             Actions::EthTransfer(_) => todo!("joe pls dome this"),
+            Actions::NewPool(_) => todo!(),
+            Actions::PoolConfigUpdate(_) => todo!(),
             Actions::Unclassified(..) | Actions::Revert => panic!(),
         }
     }
@@ -295,6 +309,8 @@ impl Actions {
             },
             Actions::EthTransfer(t) => t.to,
             Actions::Revert => unreachable!(),
+            Actions::NewPool(p) => p.pool_address,
+            Actions::PoolConfigUpdate(p) => p.pool_address,
         }
     }
 

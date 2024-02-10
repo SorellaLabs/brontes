@@ -38,53 +38,55 @@ impl ActionDispatch {
         let match_stmt = expand_match_dispatch(&rest, &var_name, i);
 
         Ok(quote!(
-            #[derive(Default, Debug)]
-            pub struct #struct_name(#(pub #name,)*);
+                    #[derive(Default, Debug)]
+                    pub struct #struct_name(#(pub #name,)*);
 
-            impl crate::ActionCollection for #struct_name {
-                fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader> (
-                    &self,
-                    call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
-                    db_tx: &DB,
-                    block: u64,
-                    tx_idx: u64,
-                ) -> Option<(
-                        ::brontes_pricing::types::PoolUpdate,
-                        ::brontes_types::normalized_actions::Actions
-                    )> {
+                    impl crate::ActionCollection for #struct_name {
+                        fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader
+        + ::brontes_database::libmdbx::LibmdbxWriter
+                            > (
+                            &self,
+                            call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
+                            db_tx: &DB,
+                            block: u64,
+                            tx_idx: u64,
+                        ) -> Option<(
+                                ::brontes_pricing::types::DexPriceMsg,
+                                ::brontes_types::normalized_actions::Actions
+                            )> {
 
 
-                    let protocol_byte = db_tx.get_protocol(call_info.target_address)
-                        .map_err(|e| {
-                            tracing::info!(%e);
-                            e
-                        })
-                        .ok()?.to_byte();
+                            let protocol_byte = db_tx.get_protocol(call_info.target_address)
+                                .map_err(|e| {
+                                    tracing::info!(%e);
+                                    e
+                                })
+                                .ok()?.to_byte();
 
-                    if call_info.call_data.len() < 4 {
-                        return None
+                            if call_info.call_data.len() < 4 {
+                                return None
+                            }
+
+                            let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
+                                &call_info.call_data[0..4]);
+
+                            let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(
+                                &call_info.call_data[0..4]).0;
+
+                            let mut sig_w_byte= [0u8; 5];
+                            sig_w_byte[0..4].copy_from_slice(&sig);
+                            sig_w_byte[4] = protocol_byte;
+
+
+                            #(
+                                const #var_name: [u8; 5] = #const_fns();
+                            )*;
+
+                            #match_stmt
+
+                        }
                     }
-
-                    let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
-                        &call_info.call_data[0..4]);
-
-                    let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(
-                        &call_info.call_data[0..4]).0;
-
-                    let mut sig_w_byte= [0u8; 5];
-                    sig_w_byte[0..4].copy_from_slice(&sig);
-                    sig_w_byte[4] = protocol_byte;
-
-
-                    #(
-                        const #var_name: [u8; 5] = #const_fns();
-                    )*;
-
-                    #match_stmt
-
-                }
-            }
-        ))
+                ))
     }
 }
 
@@ -113,21 +115,17 @@ fn expand_match_dispatch(
         match sig_w_byte {
         #(
             #var_name => {
-                let logs = call_info.logs.clone().to_vec();
                 let target_address = call_info.target_address;
                  return crate::IntoAction::decode_trace_data(
                     &self.#var_idx,
                     call_info,
+                    block,
+                    tx_idx,
                     db_tx
-                // map on error
                 ).map(|res| {
-                    Some((::brontes_pricing::types::PoolUpdate {
-                        block,
-                        tx_idx,
-                        logs,
-                        action: res.clone()
-                    },
-                    res))}).unwrap_or_else(|e| {
+                    let action = res.get_action();
+                    Some((res, action))
+                 }).unwrap_or_else(|e| {
                         ::tracing::error!(error=%e,
                             "classifier: {} failed on function sig: {:?} for address: {:?}",
                             stringify!(#reg_name),
