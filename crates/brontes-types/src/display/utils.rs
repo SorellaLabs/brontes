@@ -43,7 +43,15 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
         .zip(sandwich_data.frontrun_gas_details.iter())
         .enumerate()
     {
-        writeln!(f, "\n    {}: {}", format!("Frontrun {}", i + 1).bright_blue().bold().underline(), format_etherscan_url(tx_hash))?;
+        writeln!(
+            f,
+            "\n    {}: {}",
+            format!("Frontrun {}", i + 1)
+                .bright_blue()
+                .bold()
+                .underline(),
+            format_etherscan_url(tx_hash)
+        )?;
 
         // Frontrun swaps
         writeln!(f, "      - {}:", "Swaps".bright_blue())?;
@@ -62,13 +70,23 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
                 let victim_swaps = sandwich_data.victim_swaps.get(k); // Assuming this matches victims to frontruns directly
                 let victim_gas_details = sandwich_data.victim_swaps_gas_details.get(k); // Same assumption as above
 
-                writeln!(f, "\n        {}: {}", format!("Victim {}", k + 1).bright_red().bold(), format_etherscan_url(tx_hash))?;
+                writeln!(
+                    f,
+                    "\n        {}: {}",
+                    format!("Victim {}", k + 1).bright_red().bold(),
+                    format_etherscan_url(tx_hash)
+                )?;
 
                 // Victim swaps
                 writeln!(f, "          - {}:", "Swaps".bright_blue())?;
                 if let Some(swaps) = victim_swaps {
                     for (l, swap) in swaps.iter().enumerate() {
-                        writeln!(f, "                {}: {}", format!(" - {}", l + 1).green(), swap)?;
+                        writeln!(
+                            f,
+                            "                {}: {}",
+                            format!(" - {}", l + 1).green(),
+                            swap
+                        )?;
                     }
                 }
 
@@ -149,7 +167,6 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
     writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
 
-
     // Frontrun Section
     writeln!(f, "\n{}:", "Attacks".bright_yellow().underline())?;
     for (i, (((tx_hash, swaps), mints), gas_details)) in jit_sandwich_data
@@ -160,7 +177,15 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
         .zip(jit_sandwich_data.frontrun_gas_details.iter())
         .enumerate()
     {
-        writeln!(f, "\n    {}: {}", format!("Frontrun {}", i + 1).bright_blue().bold().underline(), format_etherscan_url(tx_hash))?;
+        writeln!(
+            f,
+            "\n    {}: {}",
+            format!("Frontrun {}", i + 1)
+                .bright_blue()
+                .bold()
+                .underline(),
+            format_etherscan_url(tx_hash)
+        )?;
 
         // Frontrun swaps
         writeln!(f, "      - {}:", "Swaps".bright_blue())?;
@@ -189,13 +214,23 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
                 let victim_swaps = jit_sandwich_data.victim_swaps.get(k);
                 let victim_gas_details = jit_sandwich_data.victim_swaps_gas_details.get(k);
 
-                writeln!(f, "\n        {}: {}", format!("Victim {}", k + 1).bright_red().bold(), format_etherscan_url(tx_hash))?;
+                writeln!(
+                    f,
+                    "\n        {}: {}",
+                    format!("Victim {}", k + 1).bright_red().bold(),
+                    format_etherscan_url(tx_hash)
+                )?;
 
                 // Victim swaps
                 writeln!(f, "          - {}:", "Swaps".bright_blue())?;
                 if let Some(swaps) = victim_swaps {
                     for (l, swap) in swaps.iter().enumerate() {
-                        writeln!(f, "                {}: {}", format!(" - {}", l + 1).green(), swap)?;
+                        writeln!(
+                            f,
+                            "                {}: {}",
+                            format!(" - {}", l + 1).green(),
+                            swap
+                        )?;
                     }
                 }
 
@@ -207,7 +242,6 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
             }
         }
     }
-
 
     // Frontrun Section
     // writeln!(f, "\n{}\n", "Frontrun Transactions".bright_yellow().underline())?;
@@ -233,8 +267,8 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     //     if let Some(mint_list) = mints {
     //         let no_of_swaps: usize = swaps.len() + 1;
     //         for (j, mint) in mint_list.iter().enumerate() {
-    //             writeln!(f, "      {}: {}", format!(" - {}", j + no_of_swaps).green(), mint)?;
-    //         }
+    //             writeln!(f, "      {}: {}", format!(" - {}", j +
+    // no_of_swaps).green(), mint)?;         }
     //     }
     //     writeln!(f, "     - {}:", "Gas Details".bright_blue())?;
     //     gas_details.pretty_print_with_spaces(f, 8)?;
@@ -243,11 +277,13 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     // // Victim Section
     // writeln!(f, "\n{}", "Victim Transactions".bright_yellow().underline())?;
     // let mut idx = 0;
-    // for (i, tx_hashes) in jit_sandwich_data.victim_swaps_tx_hashes.iter().enumerate() {
-    //     writeln!(f, "\n {}:", format!("Victims of Frontrun Tx {}", i + 1).yellow())?;
-    //     for (k, tx_hash) in tx_hashes.iter().enumerate() {
+    // for (i, tx_hashes) in
+    // jit_sandwich_data.victim_swaps_tx_hashes.iter().enumerate() {
+    //     writeln!(f, "\n {}:", format!("Victims of Frontrun Tx {}", i +
+    // 1).yellow())?;     for (k, tx_hash) in tx_hashes.iter().enumerate() {
     //         let swaps = &jit_sandwich_data.victim_swaps.get(idx);
-    //         let gas_details = &jit_sandwich_data.victim_swaps_gas_details.get(idx);
+    //         let gas_details =
+    // &jit_sandwich_data.victim_swaps_gas_details.get(idx);
 
     //         writeln!(
     //             f,
@@ -259,8 +295,8 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     //         writeln!(f, "     - {}:", "Actions".bright_blue())?;
     //         if let Some(swaps) = swaps {
     //             for (j, swap) in swaps.iter().enumerate() {
-    //                 writeln!(f, "      {}: {}", format!(" - {}", j + 1).green(), swap)?;
-    //             }
+    //                 writeln!(f, "      {}: {}", format!(" - {}", j + 1).green(),
+    // swap)?;             }
     //         }
 
     //         writeln!(f, "     - {}:", "Gas Details".bright_blue())?;
@@ -317,9 +353,8 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
 
     writeln!(f, "\n{}", bundle.header.token_profits)?;
 
-
     // std::process::exit(0);
-    
+
     Ok(())
 }
 
