@@ -165,7 +165,7 @@ impl PoolUpdate {
             rest => {
                 tracing::debug!(?rest, "tried to get pair for action with no def");
                 None
-            },
+            }
         }
     }
 }
