@@ -45,8 +45,8 @@ pub struct InspectorTestUtils {
 }
 
 impl InspectorTestUtils {
-    pub fn new(quote_address: Address, max_result_difference: f64) -> Self {
-        let classifier_inspector = ClassifierTestUtils::new();
+    pub async fn new(quote_address: Address, max_result_difference: f64) -> Self {
+        let classifier_inspector = ClassifierTestUtils::new().await;
         Self { classifier_inspector, quote_address, max_result_difference }
     }
 

@@ -37,10 +37,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use thiserror::Error;
-use tokio::{
-    runtime::Handle,
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::{
     ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDecoderDispatch,
@@ -53,31 +50,16 @@ pub struct ClassifierTestUtils {
 
     dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
-impl Default for ClassifierTestUtils {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ClassifierTestUtils {
-    pub fn new() -> Self {
-        let trace_loader = TraceLoader::new();
+    pub async fn new() -> Self {
+        let trace_loader = TraceLoader::new().await;
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
-
         Self { classifier, trace_loader, dex_pricing_receiver: rx }
     }
 
     pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
         self.libmdbx.try_fetch_token_info(address).unwrap()
-    }
-
-    pub fn new_with_rt(handle: Handle) -> Self {
-        let trace_loader = TraceLoader::new_with_rt(handle);
-        let (tx, rx) = unbounded_channel();
-        let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
-
-        Self { classifier, trace_loader, dex_pricing_receiver: rx }
     }
 
     async fn init_dex_pricer(

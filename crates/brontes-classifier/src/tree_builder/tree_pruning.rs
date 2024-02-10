@@ -234,10 +234,9 @@ mod test {
     use crate::test_utils::ClassifierTestUtils;
 
     /// 7 total swaps but 1 is tax token
-    #[tokio::test]
-    #[serial_test::serial]
+    #[brontes_macros::test]
     async fn test_filter_tax_tokens() {
-        let utils = ClassifierTestUtils::new();
+        let utils = ClassifierTestUtils::new().await;
         let tree = utils
             .build_tree_tx(
                 hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),

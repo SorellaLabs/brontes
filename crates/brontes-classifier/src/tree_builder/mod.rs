@@ -445,14 +445,12 @@ pub mod test {
         db::token_info::TokenInfoWithAddress, normalized_actions::Actions, TreeSearchArgs,
     };
     use malachite::Rational;
-    use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_remove_swap_transfer() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let jared_tx =
             B256::from(hex!("d40905a150eb45f04d11c05b5dd820af1b381b6807ca196028966f5a3ba94b8d"));
 

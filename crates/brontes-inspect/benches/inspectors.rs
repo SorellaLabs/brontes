@@ -97,8 +97,7 @@ fn bench_cex_dex(c: &mut Criterion) {
         B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
             .unwrap();
 
-    let classifer_utils = ClassifierTestUtils::new_with_rt(rt.clone());
-
+    let classifer_utils = rt.block_on(ClassifierTestUtils::new());
     let metadata = rt.block_on(classifer_utils.get_metadata(0, true)).unwrap();
 
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);

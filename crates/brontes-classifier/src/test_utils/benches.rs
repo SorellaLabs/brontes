@@ -44,7 +44,7 @@ impl ClassifierBenchUtils {
             .enable_all()
             .build()
             .unwrap();
-        let trace_loader = TraceLoader::new_with_rt(rt.handle().clone());
+        let trace_loader = rt.block_on(TraceLoader::new());
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
         Self { classifier, trace_loader, _dex_pricing_receiver: rx, rt }
     }
