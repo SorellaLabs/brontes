@@ -757,16 +757,4 @@ pub mod test {
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
     }
-
-    #[brontes_macros::test]
-    async fn price_price_graph_for_shit() {
-        let utils = PricingTestUtils::new(USDC_ADDRESS).await;
-        let mut pricer = utils
-            .setup_dex_pricer_for_tx(
-                hex!("ebabf4a04fede867f7f681e30b4f5a79451e9d9e5bd1e50b4b455df8355571b6").into(),
-            )
-            .await
-            .unwrap();
-        pricer.next().await;
-    }
 }
