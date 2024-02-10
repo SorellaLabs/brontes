@@ -189,7 +189,7 @@ mod tests {
 
         let tables = Tables::ALL;
         intializer
-            .initialize(&tables, true, Some(block_range))
+            .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
 
