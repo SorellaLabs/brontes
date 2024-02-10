@@ -92,14 +92,14 @@ action_impl!(
 
         let user_swaps = fill_logs.iter()
         .map(|fill| Fill::into_swap(fill, info.target_address))
-        .collect();
+        .collect::<Vec<_>>();
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
+            user_swaps,
             solver_swaps: None,
             msg_value: info.msg_value
         })
