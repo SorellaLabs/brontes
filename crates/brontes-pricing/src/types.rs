@@ -162,7 +162,10 @@ impl PoolUpdate {
             Actions::Transfer(t) => Some(Pair(t.token.address, quote)),
             Actions::Liquidation(l) => Some(Pair(l.collateral_asset.address, l.debt_asset.address)),
             Actions::SwapWithFee(s) => Some(Pair(s.token_in.address, s.token_out.address)),
-            _ => None,
+            rest => {
+                tracing::debug!(?rest, "tried to get pair for action with no def");
+                None
+            }
         }
     }
 }
