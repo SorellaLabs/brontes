@@ -4,6 +4,7 @@ use std::{
     pin::Pin,
     sync::{Arc, OnceLock},
 };
+use reth_tracing_ext::init_db;
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
 use brontes_database::Tables;
@@ -340,7 +341,7 @@ fn get_reth_db_handle() -> Arc<DatabaseEnv> {
     RETH_DB_HANDLE.get_or_init(|| {
         let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
         Arc::new(init_db(db_path).unwrap())
-    })
+    }).clone()
 }
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
@@ -363,7 +364,6 @@ fn init_trace_parser(
     libmdbx: &LibmdbxReadWriter,
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
     let executor = TaskManager::new(handle.clone());
     let client =
         TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
