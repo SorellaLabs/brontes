@@ -165,8 +165,11 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node,
-        Protocol::PancakeSwapV3, ToScaledRational, TreeSearchArgs,
+        db::token_info::{TokenInfo, TokenInfoWithAddress},
+        normalized_actions::Actions,
+        Node,
+        Protocol::PancakeSwapV3,
+        ToScaledRational, TreeSearchArgs,
     };
 
     use super::*;
@@ -177,29 +180,31 @@ mod tests {
         classifier_utils.ensure_protocol(
             Protocol::PancakeSwapV3,
             Address::new(hex!("2E8135bE71230c6B1B4045696d41C09Db0414226")),
-            TokenInfoWithAddress::weth().address,
-            TokenInfoWithAddress::usdc().address,
+            TokenInfoWithAddress::usdt().address,
+            Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
         );
+        let token_info = TokenInfoWithAddress {
+            address: Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
+            inner:   TokenInfo { decimals: 18, symbol: "INSP".to_owned() },
+        };
         classifier_utils.ensure_token(TokenInfoWithAddress::weth());
-        classifier_utils.ensure_token(TokenInfoWithAddress::usdc());
-
+        classifier_utils.ensure_token(token_info.clone());
         let swap =
-            B256::from(hex!("4a6cd8a23c0c832ccd645269a1a26b90f998b8f7837330fc38c92e090ec745f2"));
+            B256::from(hex!("649b792d819826302eb2859a9a1b8f3bb1a78bb5c480d433cdc6cc4ab129337f"));
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    PancakeSwapV3,
-            trace_index: 115,
-            from:        Address::new(hex!("f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67")),
-            recipient:   Address::new(hex!("f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67")),
-            pool:        Address::new(hex!("2E8135bE71230c6B1B4045696d41C09Db0414226")),
-            token_in:    TokenInfoWithAddress::weth(),
-            amount_in:   U256::from_str("212242932691433838")
+            trace_index: 1,
+            from:        Address::new(hex!("1b81D678ffb9C0263b24A97847620C99d213eB14")),
+            recipient:   Address::new(hex!("6Dbe61E7c69AF3bF5d20C15494bD69eD1905A335")),
+            pool:        Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
+            token_in:    TokenInfoWithAddress::usdt(),
+            amount_in:   U256::from_str("1568955344").unwrap().to_scaled_rational(6),
+            token_out:   token_info,
+            amount_out:  U256::from_str("8888693999999999016960")
                 .unwrap()
                 .to_scaled_rational(18),
-            token_out:   TokenInfoWithAddress::usdc(),
-            amount_out:  U256::from_str("529489490").unwrap().to_scaled_rational(6),
-
-            msg_value: U256::ZERO,
+            msg_value:   U256::ZERO,
         });
 
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
@@ -211,7 +216,7 @@ mod tests {
         };
 
         classifier_utils
-            .contains_action(swap, 1, eq_action, search_fn)
+            .contains_action(swap, 0, eq_action, search_fn)
             .await
             .unwrap();
     }
