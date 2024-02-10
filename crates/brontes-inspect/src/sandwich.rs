@@ -71,8 +71,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .iter()
                         .map(|victims| {
                             victims
-                                .into_iter()
-                                .map(|v| tree.get_tx_info(*v).unwrap())
+                                .iter()
+                                .map(|v| tree.get_tx_info(*v, self.inner.db).unwrap())
                                 .collect::<Vec<_>>()
                         })
                         .collect_vec();
@@ -81,8 +81,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .iter()
                         .map(|victim| {
                             victim
-                                .into_iter()
-                                .map(|v| tree.collect(*v, search_fn.clone()))
+                                .iter()
+                                .map(|v| tree.collect(*v, search_fn))
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<_>>();
@@ -105,15 +105,15 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let frontrun_info = possible_frontruns
                         .iter()
-                        .flat_map(|pf| tree.get_tx_info(*pf))
+                        .flat_map(|pf| tree.get_tx_info(*pf, self.inner.db))
                         .collect::<Vec<_>>();
 
-                    let back_run_info = tree.get_tx_info(possible_backrun)?;
+                    let back_run_info = tree.get_tx_info(possible_backrun, self.inner.db)?;
 
                     let searcher_actions = possible_frontruns
                         .iter()
                         .chain(vec![&possible_backrun])
-                        .map(|tx| tree.collect(*tx, search_fn.clone()))
+                        .map(|tx| tree.collect(*tx, search_fn))
                         .filter(|f| !f.is_empty())
                         .collect::<Vec<Vec<Actions>>>();
 
@@ -154,7 +154,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .iter()
             .map(|actions| {
                 actions
-                    .into_iter()
+                    .iter()
                     .filter(|s| s.is_swap())
                     .map(|s| s.clone().force_swap())
                     .collect_vec()
@@ -215,7 +215,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let gas_used = frontrun_gas_details
             .iter()
-            .chain(vec![backrun_info.gas_details].iter())
+            .chain([backrun_info.gas_details].iter())
             .map(|g| g.gas_paid())
             .sum::<u128>();
 
@@ -230,16 +230,18 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let profit_usd = (rev_usd - &gas_used).to_float();
 
+        let gas_details: Vec<_> = possible_front_runs_info
+            .iter()
+            .chain(std::iter::once(&backrun_info))
+            .map(|info| info.gas_details)
+            .collect();
+
         let header = self.inner.build_bundle_header(
             &possible_front_runs_info[0],
             profit_usd,
             PriceAt::After,
             &all_actions,
-            &possible_front_runs_info
-                .iter()
-                .chain(vec![backrun_info].iter())
-                .map(|info| info.gas_details)
-                .collect(),
+            &gas_details,
             metadata,
             MevType::Sandwich,
         );
@@ -260,9 +262,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     fn has_pool_overlap(
-        front_run_swaps: &Vec<Vec<NormalizedSwap>>,
-        back_run_swaps: &Vec<NormalizedSwap>,
-        victim_actions: &Vec<Vec<Vec<Actions>>>,
+        front_run_swaps: &[Vec<NormalizedSwap>],
+        back_run_swaps: &[NormalizedSwap],
+        victim_actions: &[Vec<Vec<Actions>>],
     ) -> bool {
         //  check for pool overlap
         let mut pools = HashSet::new();
@@ -310,9 +312,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         );
 
         // Combine and deduplicate results
-        let combined_results = result_senders
-            .into_iter()
-            .chain(result_contracts.into_iter());
+        let combined_results = result_senders.into_iter().chain(result_contracts);
         let unique_results: HashSet<_> = combined_results.collect();
 
         unique_results.into_iter().collect()
@@ -447,7 +447,6 @@ fn get_possible_sandwich_duplicate_contracts(
 mod tests {
 
     use alloy_primitives::hex;
-    use serial_test::serial;
 
     use super::*;
     use crate::{
@@ -455,10 +454,9 @@ mod tests {
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_sandwich_different_contract_address() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
@@ -477,10 +475,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_sandwich_different_eoa() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
@@ -496,10 +493,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_sandwich_part_of_jit_sandwich_simple() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
@@ -516,11 +512,10 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_sandwich_part_of_jit_sandwich() {
         // this is a jit sandwich
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
@@ -538,10 +533,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_big_mac_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
@@ -564,8 +558,7 @@ mod tests {
                 config,
                 Some(Box::new(|bundle: &Bundle| {
                     let BundleData::Sandwich(ref sando) = bundle.data else {
-                        assert!(false, "given bundle wasn't a sandwich");
-                        return
+                        panic!("given bundle wasn't a sandwich");
                     };
                     assert!(sando.frontrun_tx_hash.len() == 2, "didn't find the big mac");
                 })),

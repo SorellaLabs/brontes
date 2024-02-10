@@ -8,10 +8,15 @@ use reth_blockchain_tree::{
 };
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
+use reth_node_ethereum::EthEvmConfig;
 use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
     inspectors::GasInspector,
+    revm::{
+        interpreter::InstructionResult,
+        primitives::{ExecutionResult, SpecId},
+    },
     tracing::{
         types::{CallKind, CallTraceNode},
         TracingInspectorConfig, *,
@@ -35,17 +40,14 @@ use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
-use revm::interpreter::InstructionResult;
-use revm_primitives::{ExecutionResult, SpecId};
-
 mod provider;
 
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
-    ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory>,
+    ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory<EthEvmConfig>>,
 >;
 
-pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork>;
+pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>;
 
 pub type RethTxPool = Pool<
     TransactionValidationTaskExecutor<EthTransactionValidator<Provider, EthPooledTransaction>>,
@@ -55,20 +57,23 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork>,
+    pub api:   EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
     pub trace: TraceApi<Provider, RethApi>,
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
+    pub fn new_with_db(
+        db: Arc<DatabaseEnv>,
+        max_tasks: u64,
+        task_executor: reth_tasks::TaskExecutor,
+    ) -> Self {
         let chain = MAINNET.clone();
-        let db = Arc::new(init_db(db_path).unwrap());
         let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
 
         let tree_externals = TreeExternals::new(
             provider_factory,
             Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
-            EvmProcessorFactory::new(chain.clone()),
+            EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
         );
 
         let tree_config = BlockchainTreeConfig::default();
@@ -87,6 +92,7 @@ impl TracingClient {
             provider.clone(),
             EthStateCacheConfig::default(),
             task_executor.clone(),
+            EthEvmConfig::default(),
         );
 
         let transaction_validator = EthTransactionValidatorBuilder::new(chain.clone())
@@ -101,7 +107,12 @@ impl TracingClient {
         let blocking = BlockingTaskPool::build().unwrap();
         let eth_state_config = EthStateCacheConfig::default();
         let fee_history = FeeHistoryCache::new(
-            EthStateCache::spawn_with(provider.clone(), eth_state_config, task_executor.clone()),
+            EthStateCache::spawn_with(
+                provider.clone(),
+                eth_state_config,
+                task_executor.clone(),
+                EthEvmConfig::default(),
+            ),
             FeeHistoryCacheConfig::default(),
         );
         // blocking task pool
@@ -120,6 +131,7 @@ impl TracingClient {
             Box::new(task_executor.clone()),
             blocking,
             fee_history,
+            EthEvmConfig::default(),
         );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
@@ -127,6 +139,11 @@ impl TracingClient {
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
         Self { api, trace }
+    }
+
+    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
+        let db = Arc::new(init_db(db_path).unwrap());
+        Self::new_with_db(db, max_tasks, task_executor)
     }
 
     /// Replays all transactions in a block
@@ -179,7 +196,6 @@ pub struct TracingInspectorLocal {
 impl TracingInspectorLocal {
     pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
         let gas_used = res.gas_used().into();
-
         let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
         TxTrace {
@@ -237,7 +253,7 @@ impl TracingInspectorLocal {
                         prev_trace.msg_sender
                     } else {
                         tracing::error!(
-                            target: "reth-tracing-ext",
+                            target: "brontes",
                             ?block_number,
                             ?tx_hash,
                             "couldn't find head of delegate call for block"

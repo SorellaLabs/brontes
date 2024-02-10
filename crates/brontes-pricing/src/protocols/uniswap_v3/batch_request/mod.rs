@@ -4,7 +4,7 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use futures::join;
-use reth_rpc_types::{CallInput, CallRequest};
+use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 use super::{IErc20, UniswapV3Pool};
 use crate::{errors::AmmError, protocols::make_call_request};
@@ -71,15 +71,18 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
     data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
-    let req =
-        CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
+    let req = TransactionRequest {
+        to: None,
+        input: TransactionInput::new(bytecode.into()),
+        ..Default::default()
+    };
 
     let res = middleware
         .eth_call(req, block_number.map(|i| i.into()), None, None)
         .await
         .map_err(|_| eyre::eyre!("v3 data fetch call failed"))?;
 
-    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false)?;
+    let mut return_data = data_constructorCall::abi_decode_returns(&res, false)?;
     *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
 
     let (r0, r1) = join!(
@@ -121,15 +124,18 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
     ))
     .abi_encode_raw(&mut bytecode);
 
-    let req =
-        CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
+    let req = TransactionRequest {
+        to: None,
+        input: TransactionInput::new(bytecode.into()),
+        ..Default::default()
+    };
 
     let res = middleware
         .eth_call(req, block_number.map(Into::into), None, None)
         .await
         .unwrap();
 
-    let return_data = tick_constructorCall::abi_decode_returns(&*res, false).unwrap();
+    let return_data = tick_constructorCall::abi_decode_returns(&res, false).unwrap();
 
     Ok((return_data._0, return_data._1))
 }

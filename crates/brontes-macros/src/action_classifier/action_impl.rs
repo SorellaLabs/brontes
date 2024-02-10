@@ -52,6 +52,35 @@ impl ActionMacro {
         let call_fn_name =
             Ident::new(&format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call), Span::call_site());
 
+        let dex_price_return = if action_type.to_string().to_lowercase().as_str()
+            == "poolconfigupdate"
+        {
+            quote!(
+                if db_tx.insert_pool(block,
+                    pool.pool_address,
+                    [pool.tokens[0], pool.tokens[1]],
+                    pool.protocol).is_err() {
+                ::tracing::error!(
+                    pool=?pool.pool_address,
+                                  block,
+                                  "failed to update pool config");
+            }
+
+            Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
+            )
+        } else {
+            quote!(
+                Ok(::brontes_pricing::types::DexPriceMsg::Update(
+                    ::brontes_pricing::types::PoolUpdate {
+                        block,
+                        tx_idx,
+                        logs: call_info.logs.clone().to_vec(),
+                        action: ::brontes_types::normalized_actions::Actions::#action_type(result)
+                    },
+                ))
+            )
+        };
+
         Ok(quote! {
             #[allow(unused_imports)]
             use #path_to_call;
@@ -72,19 +101,16 @@ impl ActionMacro {
             pub struct #exchange_name_w_call;
 
             impl crate::IntoAction for #exchange_name_w_call {
-                fn decode_trace_data<DB: ::brontes_database::libmdbx::LibmdbxReader>(
+                fn decode_trace_data<DB: ::brontes_database::libmdbx::LibmdbxReader
+                    + ::brontes_database::libmdbx::LibmdbxWriter>(
                     &self,
-                    index: u64,
-                    data: ::alloy_primitives::Bytes,
-                    return_data: ::alloy_primitives::Bytes,
-                    from_address: ::alloy_primitives::Address,
-                    target_address: ::alloy_primitives::Address,
-                    msg_sender: ::alloy_primitives::Address,
-                    logs: &Vec<::alloy_primitives::Log>,
+                    call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
+                    block: u64,
+                    tx_idx: u64,
                     db_tx: &DB
-                    ) -> Option<::brontes_types::normalized_actions::Actions> {
+                    ) -> ::eyre::Result<::brontes_pricing::types::DexPriceMsg> {
                     #call_data
-                    Some(::brontes_types::normalized_actions::Actions::#action_type(result))
+                    #dex_price_return
                 }
             }
         })

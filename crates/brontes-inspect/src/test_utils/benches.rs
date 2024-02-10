@@ -13,6 +13,7 @@ pub struct InspectorBenchUtils {
     quote_address:        Address,
     rt:                   tokio::runtime::Runtime,
 }
+
 impl InspectorBenchUtils {
     pub fn new(quote_address: Address) -> Self {
         let rt = tokio::runtime::Builder::new_multi_thread()
@@ -20,7 +21,7 @@ impl InspectorBenchUtils {
             .build()
             .unwrap();
 
-        let classifier_inspector = ClassifierTestUtils::new_with_rt(rt.handle().clone());
+        let classifier_inspector = rt.block_on(ClassifierTestUtils::new());
         Self { classifier_inspector, quote_address, rt }
     }
 
@@ -39,7 +40,7 @@ impl InspectorBenchUtils {
                 i.init_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();
@@ -83,7 +84,7 @@ impl InspectorBenchUtils {
         let inspector = inspector.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let mut trees =
@@ -132,7 +133,7 @@ impl InspectorBenchUtils {
         let inspector = inspector.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let (tree, prices) =
@@ -173,7 +174,7 @@ impl InspectorBenchUtils {
         let inspector = inspector.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let mut trees = self
@@ -215,7 +216,7 @@ impl InspectorBenchUtils {
                 i.init_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();
@@ -271,7 +272,7 @@ impl InspectorBenchUtils {
                 i.init_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();

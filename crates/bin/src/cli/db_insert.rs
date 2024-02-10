@@ -45,14 +45,14 @@ impl AddToDb {
             BlockInfo,
             DexPrice,
             MevBlocks,
+            AddressToProtocolInfo,
             TokenDecimals,
-            AddressToTokens,
-            AddressToProtocol,
             SubGraphs,
             TxTraces,
             Builder,
             AddressMeta,
             Searcher,
+            InitializedState,
             PoolCreationBlocks = &self.key,
             &self.value
         );

@@ -29,55 +29,60 @@ impl ActionDispatch {
             })
             .unzip();
 
-        let (i, name): (Vec<Index>, Vec<Ident>) = rest
-            .into_iter()
+        let (i, name): (Vec<Index>, Vec<&Ident>) = rest
+            .iter()
             .enumerate()
             .map(|(i, n)| (Index::from(i), n))
             .unzip();
 
-        let match_stmt = expand_match_dispatch(&var_name, i);
+        let match_stmt = expand_match_dispatch(&rest, &var_name, i);
 
         Ok(quote!(
-            #[derive(Default, Debug)]
-            pub struct #struct_name(#(pub #name,)*);
+                    #[derive(Default, Debug)]
+                    pub struct #struct_name(#(pub #name,)*);
 
-            impl crate::ActionCollection for #struct_name {
-                fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader> (
-                    &self,
-                    index: u64,
-                    data: ::alloy_primitives::Bytes,
-                    return_data: ::alloy_primitives::Bytes,
-                    from_address: ::alloy_primitives::Address,
-                    target_address: ::alloy_primitives::Address,
-                    msg_sender: ::alloy_primitives::Address,
-                    logs: &Vec<::alloy_primitives::Log>,
-                    db_tx: &DB,
-                    block: u64,
-                    tx_idx: u64,
-                ) -> Option<(
-                        ::brontes_pricing::types::PoolUpdate,
-                        ::brontes_types::normalized_actions::Actions
-                    )> {
-
-                    let protocol_byte = db_tx.get_protocol(target_address).ok()??.to_byte();
-
-                    let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(&data[0..4]);
-                    let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(&data[0..4]).0;
-
-                    let mut sig_w_byte= [0u8; 5];
-                    sig_w_byte[0..4].copy_from_slice(&sig);
-                    sig_w_byte[4] = protocol_byte;
+                    impl crate::ActionCollection for #struct_name {
+                        fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader
+        + ::brontes_database::libmdbx::LibmdbxWriter
+                            > (
+                            &self,
+                            call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
+                            db_tx: &DB,
+                            block: u64,
+                            tx_idx: u64,
+                        ) -> Option<(
+                                ::brontes_pricing::types::DexPriceMsg,
+                                ::brontes_types::normalized_actions::Actions
+                            )> {
 
 
-                    #(
-                        const #var_name: [u8; 5] = #const_fns();
-                    )*;
+                            let protocol_byte = db_tx.get_protocol(call_info.target_address)
+                                .ok()?.to_byte();
 
-                    #match_stmt
+                            if call_info.call_data.len() < 4 {
+                                return None
+                            }
 
-                }
-            }
-        ))
+                            let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
+                                &call_info.call_data[0..4]);
+
+                            let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(
+                                &call_info.call_data[0..4]).0;
+
+                            let mut sig_w_byte= [0u8; 5];
+                            sig_w_byte[0..4].copy_from_slice(&sig);
+                            sig_w_byte[4] = protocol_byte;
+
+
+                            #(
+                                const #var_name: [u8; 5] = #const_fns();
+                            )*;
+
+                            #match_stmt
+
+                        }
+                    }
+                ))
     }
 }
 
@@ -97,31 +102,29 @@ impl Parse for ActionDispatch {
     }
 }
 
-fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream {
+fn expand_match_dispatch(
+    reg_name: &[Ident],
+    var_name: &[Ident],
+    var_idx: Vec<Index>,
+) -> TokenStream {
     quote!(
         match sig_w_byte {
         #(
             #var_name => {
+                let target_address = call_info.target_address;
                  return crate::IntoAction::decode_trace_data(
                     &self.#var_idx,
-                    index,
-                    data,
-                    return_data,
-                    from_address,
-                    target_address,
-                    msg_sender,
-                    logs,
+                    call_info,
+                    block,
+                    tx_idx,
                     db_tx
                 ).map(|res| {
-                    (::brontes_pricing::types::PoolUpdate {
-                        block,
-                        tx_idx,
-                        logs: logs.clone(),
-                        action: res.clone()
-                    },
-                    res)}).or_else(|| {
-                        ::tracing::error!(
-                            "classifier failed on function sig: {:?} for address: {:?}",
+                    let action = res.get_action();
+                    Some((res, action))
+                 }).unwrap_or_else(|e| {
+                        ::tracing::error!(error=%e,
+                            "classifier: {} failed on function sig: {:?} for address: {:?}",
+                            stringify!(#reg_name),
                             ::malachite::strings::ToLowerHexString::to_lower_hex_string(
                                 &hex_selector
                             ),
@@ -133,6 +136,7 @@ fn expand_match_dispatch(var_name: &[Ident], var_idx: Vec<Index>) -> TokenStream
             )*
 
             _ => {
+            let target_address = call_info.target_address;
             ::tracing::debug!(
                 "no inspector for function selector: {:?} with contract address: {:?}",
                 ::malachite::strings::ToLowerHexString::to_lower_hex_string(

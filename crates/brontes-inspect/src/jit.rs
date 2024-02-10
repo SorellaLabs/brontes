@@ -73,7 +73,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         return None
                     }
 
-                    let info = [tree.get_tx_info(frontrun_tx)?, tree.get_tx_info(backrun_tx)?];
+                    let info = [
+                        tree.get_tx_info(frontrun_tx, self.inner.db)?,
+                        tree.get_tx_info(backrun_tx, self.inner.db)?,
+                    ];
 
                     if victims
                         .iter()
@@ -103,7 +106,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     let victim_info = victims
                         .into_iter()
-                        .map(|v| tree.get_tx_info(v).unwrap())
+                        .map(|v| tree.get_tx_info(v, self.inner.db).unwrap())
                         .collect_vec();
 
                     self.calculate_jit(
@@ -118,6 +121,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
+type JitUnzip =
+    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
@@ -131,11 +136,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect): (
-            Vec<Option<NormalizedMint>>,
-            Vec<Option<NormalizedBurn>>,
-            Vec<Option<NormalizedCollect>>,
-        ) = searcher_actions
+        let (mints, burns, collect): JitUnzip = searcher_actions
             .clone()
             .into_iter()
             .flatten()
@@ -167,8 +168,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         );
 
         let (hashes, gas_details): (Vec<_>, Vec<_>) = info
-            .into_iter()
-            .map(|info| info.split_to_storage_info())
+            .iter()
+            .map(|info| info.clone().split_to_storage_info())
             .unzip();
 
         let (victim_hashes, victim_gas_details): (Vec<_>, Vec<_>) = victim_info
@@ -246,7 +247,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 1 {
+                            if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
                                     eoa:                   root.head.address,
@@ -276,7 +277,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if victims.len() >= 1 {
+                            if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
                                     eoa:                   root.head.address,
@@ -307,13 +308,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         set.into_iter().collect()
     }
 
-    fn get_bribes(&self, price: Arc<Metadata>, gas: &Vec<GasDetails>) -> Rational {
+    fn get_bribes(&self, price: Arc<Metadata>, gas: &[GasDetails]) -> Rational {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
     }
 
-    fn get_collect_amount<'a>(
+    fn get_collect_amount(
         &self,
         idx: usize,
         collect: Vec<NormalizedCollect>,
@@ -370,32 +371,33 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
-    use serial_test::serial;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_jit() {
-        // eth price in usdc
-        // 2146.65037178
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .with_block(18539312)
+            .needs_tokens(vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
+                hex!("ed4e879087ebd0e8a77d66870012b5e0dffd0fa4").into(),
+                hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
+            ])
             .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-68.34);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_only_jit() {
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .needs_tokens(vec![

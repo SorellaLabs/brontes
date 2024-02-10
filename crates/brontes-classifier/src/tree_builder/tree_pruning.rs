@@ -27,7 +27,7 @@ pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
             // calcuate the
             let swap_data = &node.data.force_swap_ref();
             other_nodes
-                .into_iter()
+                .iter()
                 .filter_map(|(index, data)| {
                     let Actions::Transfer(transfer) = data else { return None };
                     if (transfer.amount == swap_data.amount_in
@@ -62,7 +62,7 @@ pub(crate) fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
         |other_nodes, node| {
             let Actions::Mint(mint_data) = &node.data else { unreachable!() };
             other_nodes
-                .into_iter()
+                .iter()
                 .filter_map(|(index, data)| {
                     let Actions::Transfer(transfer) = data else { return None };
                     for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
@@ -97,7 +97,7 @@ pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
         |other_nodes, node| {
             let Actions::Collect(collect_data) = &node.data else { unreachable!() };
             other_nodes
-                .into_iter()
+                .iter()
                 .filter_map(|(index, data)| {
                     let Actions::Transfer(transfer) = data else { return None };
                     for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
@@ -163,7 +163,6 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             fee_token: transfer.token.clone(),
                         });
                         node.data = swap;
-                        return
                     }
                     // adjust the amount in case
                     else if swap.token_in == transfer.token
@@ -235,10 +234,9 @@ mod test {
     use crate::test_utils::ClassifierTestUtils;
 
     /// 7 total swaps but 1 is tax token
-    #[tokio::test]
-    #[serial_test::serial]
+    #[brontes_macros::test]
     async fn test_filter_tax_tokens() {
-        let utils = ClassifierTestUtils::new();
+        let utils = ClassifierTestUtils::new().await;
         let tree = utils
             .build_tree_tx(
                 hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
@@ -253,7 +251,6 @@ mod test {
                 child_node_to_collect: node.inner.iter().any(|n| n.data.is_swap()),
             },
         );
-        tracing::info!("{:#?}", swaps);
         assert!(swaps.len() == 6, "didn't filter tax token");
     }
 }

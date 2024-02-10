@@ -35,6 +35,8 @@ use thiserror::Error;
 
 use crate::{composer::compose_mev_results, Inspectors};
 
+type StateTests = Option<Box<dyn for<'a> Fn(&'a Bundle)>>;
+
 /// Inspector Specific testing functionality
 pub struct InspectorTestUtils {
     classifier_inspector:  ClassifierTestUtils,
@@ -43,8 +45,8 @@ pub struct InspectorTestUtils {
 }
 
 impl InspectorTestUtils {
-    pub fn new(quote_address: Address, max_result_difference: f64) -> Self {
-        let classifier_inspector = ClassifierTestUtils::new();
+    pub async fn new(quote_address: Address, max_result_difference: f64) -> Self {
+        let classifier_inspector = ClassifierTestUtils::new().await;
         Self { classifier_inspector, quote_address, max_result_difference }
     }
 
@@ -106,7 +108,7 @@ impl InspectorTestUtils {
         config: InspectorTxRunConfig,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
-        let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
+        let err = || InspectorTestUtilsError::InspectorConfig(Box::new(copied.clone()));
 
         let mut quotes = None;
         let tree = if let Some(tx_hashes) = config.mev_tx_hashes {
@@ -147,13 +149,13 @@ impl InspectorTestUtils {
         metadata.dex_quotes = quotes;
 
         if metadata.dex_quotes.is_none() && config.needs_dex_prices {
-            assert!(false, "no dex quotes found in metadata. test suite will fail");
+            panic!("no dex quotes found in metadata. test suite will fail");
         }
 
         let inspector = config.expected_mev_type.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![
+            &[
                 CexExchange::Binance,
                 CexExchange::Coinbase,
                 CexExchange::Okex,
@@ -171,10 +173,10 @@ impl InspectorTestUtils {
     pub async fn run_inspector(
         &self,
         config: InspectorTxRunConfig,
-        specific_state_tests: Option<Box<dyn for<'a> Fn(&'a Bundle)>>,
+        specific_state_tests: StateTests,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
-        let err = || InspectorTestUtilsError::InspectorConfig(copied.clone());
+        let err = || InspectorTestUtilsError::InspectorConfig(Box::new(copied.clone()));
 
         let profit_usd = config.expected_profit_usd.ok_or_else(err)?;
         let gas_used_usd = config.expected_gas_usd.ok_or_else(err)?;
@@ -222,13 +224,13 @@ impl InspectorTestUtils {
         }
 
         if metadata.dex_quotes.is_none() && config.needs_dex_prices {
-            assert!(false, "no dex quotes found in metadata. test suite will fail");
+            panic!("no dex quotes found in metadata. test suite will fail");
         }
 
         let inspector = config.expected_mev_type.init_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![
+            &[
                 CexExchange::Binance,
                 CexExchange::Coinbase,
                 CexExchange::Okex,
@@ -273,10 +275,10 @@ impl InspectorTestUtils {
     pub async fn run_composer(
         &self,
         config: ComposerRunConfig,
-        specific_state_tests: Option<Box<dyn for<'a> Fn(&'a Bundle)>>,
+        specific_state_tests: StateTests,
     ) -> Result<(), InspectorTestUtilsError> {
         let copied = config.clone();
-        let err = || InspectorTestUtilsError::ComposerConfig(copied.clone());
+        let err = || InspectorTestUtilsError::ComposerConfig(Box::new(copied.clone()));
 
         let profit_usd = config.expected_profit_usd.ok_or_else(err)?;
         let gas_used_usd = config.expected_gas_usd.ok_or_else(err)?;
@@ -324,7 +326,7 @@ impl InspectorTestUtils {
         }
 
         if metadata.dex_quotes.is_none() && config.needs_dex_prices {
-            assert!(false, "no dex quotes found in metadata. test suite will fail");
+            panic!("no dex quotes found in metadata. test suite will fail");
         }
 
         let inspector = config
@@ -334,7 +336,7 @@ impl InspectorTestUtils {
                 i.init_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();
@@ -546,9 +548,9 @@ pub enum InspectorTestUtilsError {
     #[error(transparent)]
     Tracing(#[from] TraceLoaderError),
     #[error("invalid inspector tx run config: {0:?}")]
-    InspectorConfig(InspectorTxRunConfig),
+    InspectorConfig(Box<InspectorTxRunConfig>),
     #[error("invalid composer run config: {0:?}")]
-    ComposerConfig(ComposerRunConfig),
+    ComposerConfig(Box<ComposerRunConfig>),
     #[error("no inspector for type: {0}")]
     MissingInspector(MevType),
     #[error("more than one block found in inspector config. blocks: {0:?}")]

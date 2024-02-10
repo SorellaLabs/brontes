@@ -1,7 +1,8 @@
-use alloy_primitives::{Address, U256};
+use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
+    structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
 
@@ -14,21 +15,19 @@ action_impl!(
     [Swap],
     call_data: true,
     return_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     call_data: swapCall,
     return_data: swapReturn,
     db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
             (
@@ -46,16 +45,17 @@ action_impl!(
             )
         };
 
-        Some(NormalizedSwap {
+        Ok(NormalizedSwap {
             protocol: Protocol::PancakeSwapV3,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient,
-            pool: target_address,
+            pool: info.target_address,
             token_in,
             token_out,
             amount_in,
             amount_out,
+            msg_value: info.msg_value,
         })
     }
 );
@@ -66,29 +66,27 @@ action_impl!(
     [Mint],
     return_data: true,
     call_data: true,
-    |trace_index,
-     from_address: Address,
-     target_address: Address,
-     _msg_sender: Address,
-     call_data: mintCall,
+    |
+    info: CallInfo,
+    call_data: mintCall,
      return_data: mintReturn,  db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
         let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
 
-        Some(NormalizedMint {
+        Ok(NormalizedMint {
             protocol: Protocol::PancakeSwapV3,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.recipient,
-            to: target_address,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -100,29 +98,27 @@ action_impl!(
     Burn,
     [Burn],
     return_data: true,
-    |trace_index,
-    from_address: Address,
-    target_address: Address,
-    _msg_sender: Address,
+    |
+    info: CallInfo,
     return_data: burnReturn,
     db_tx: &DB| {
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
         let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
 
-        Some(NormalizedBurn {
+        Ok(NormalizedBurn {
             protocol: Protocol::PancakeSwapV3,
-            to: target_address,
-            recipient: target_address,
-            trace_index,
-            from: from_address,
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.target_address,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -136,31 +132,93 @@ action_impl!(
     call_data: true,
     return_data: true,
     |
-    trace_index,
-    from_addr: Address,
-    to_addr: Address,
-    _msg_sender: Address,
+    info: CallInfo,
     call_data: collectCall,
     return_data: collectReturn,
     db_tx: &DB
     | {
-        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
-        let [token_0, token_1] = [tokens.token0, tokens.token1];
+        let details = db_tx.get_protocol_details(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
 
-        let t0_info = db_tx.try_get_token_info(token_0).ok()??;
-        let t1_info = db_tx.try_get_token_info(token_1).ok()??;
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
         let am0 = return_data.amount0.to_scaled_rational(t0_info.decimals);
         let am1 = return_data.amount1.to_scaled_rational(t1_info.decimals);
 
-        Some(NormalizedCollect {
+        Ok(NormalizedCollect {
             protocol: Protocol::PancakeSwapV3,
-            trace_index,
-            from: from_addr,
+            trace_index: info.trace_idx,
+            from: info.from_address,
             recipient: call_data.recipient,
-            to: to_addr,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
     }
 );
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, Address, B256, U256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::{TokenInfo, TokenInfoWithAddress},
+        normalized_actions::Actions,
+        Node,
+        Protocol::PancakeSwapV3,
+        ToScaledRational, TreeSearchArgs,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_pancake_v3_swap() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        classifier_utils.ensure_protocol(
+            Protocol::PancakeSwapV3,
+            Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
+            Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
+            TokenInfoWithAddress::usdt().address,
+        );
+        let token_info = TokenInfoWithAddress {
+            address: Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
+            inner:   TokenInfo { decimals: 18, symbol: "INSP".to_owned() },
+        };
+        classifier_utils.ensure_token(TokenInfoWithAddress::usdt());
+        classifier_utils.ensure_token(token_info.clone());
+
+        let swap =
+            B256::from(hex!("649b792d819826302eb2859a9a1b8f3bb1a78bb5c480d433cdc6cc4ab129337f"));
+
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol:    PancakeSwapV3,
+            trace_index: 1,
+            from:        Address::new(hex!("1b81D678ffb9C0263b24A97847620C99d213eB14")),
+            recipient:   Address::new(hex!("6Dbe61E7c69AF3bF5d20C15494bD69eD1905A335")),
+            pool:        Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
+            token_in:    token_info,
+            amount_in:   U256::from_str("8888693999999999016960")
+                .unwrap()
+                .to_scaled_rational(18),
+            token_out:   TokenInfoWithAddress::usdt(),
+            amount_out:  U256::from_str("1568955344").unwrap().to_scaled_rational(6),
+            msg_value:   U256::ZERO,
+        });
+
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_swap(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .any(|action| action.is_swap()),
+        };
+
+        classifier_utils
+            .contains_action(swap, 0, eq_action, search_fn)
+            .await
+            .unwrap();
+    }
+}

@@ -44,7 +44,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         liq_txs
             .into_par_iter()
             .filter_map(|(tx_hash, liq)| {
-                let info = tree.get_tx_info(tx_hash)?;
+                let info = tree.get_tx_info(tx_hash, self.inner.db)?;
 
                 self.calculate_liquidation(info, metadata.clone(), liq)
             })
@@ -107,7 +107,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let rev_usd = self.inner.get_dex_revenue_usd(
             info.tx_index,
             PriceAt::After,
-            &vec![actions.clone()],
+            &[actions.clone()],
             metadata.clone(),
         )? + liq_profit;
 
@@ -119,8 +119,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             &info,
             profit_usd,
             PriceAt::After,
-            &vec![actions],
-            &vec![info.gas_details],
+            &[actions],
+            &[info.gas_details],
             metadata,
             MevType::Liquidation,
         );
@@ -130,7 +130,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             trigger:             b256!(),
             liquidation_swaps:   swaps,
             liquidations:        liqs,
-            gas_details:         info.gas_details.clone(),
+            gas_details:         info.gas_details,
         };
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
@@ -151,10 +151,9 @@ mod tests {
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_aave_v3_liquidation() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_mev_tx_hashes(vec![hex!(
@@ -172,10 +171,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_aave_v2_liquidation() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_mev_tx_hashes(vec![hex!(

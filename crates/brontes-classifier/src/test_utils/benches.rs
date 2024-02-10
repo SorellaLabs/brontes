@@ -5,9 +5,14 @@ use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
     TxTracesWithHeaderAnd,
 };
-use brontes_database::{libmdbx::LibmdbxReadWriter, AddressToProtocol, AddressToProtocolData};
-use brontes_pricing::{types::DexPriceMsg, Protocol};
-use brontes_types::{normalized_actions::Actions, structured_trace::TraceActions, tree::BlockTree};
+use brontes_database::{
+    libmdbx::LibmdbxReadWriter, AddressToProtocolInfo, AddressToProtocolInfoData,
+};
+use brontes_pricing::types::DexPriceMsg;
+use brontes_types::{
+    db::address_to_protocol_info::ProtocolInfo, normalized_actions::Actions,
+    structured_trace::TraceActions, tree::BlockTree,
+};
 use criterion::{black_box, Criterion};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
@@ -25,6 +30,13 @@ pub struct ClassifierBenchUtils {
     rt:                    tokio::runtime::Runtime,
     _dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
+
+impl Default for ClassifierBenchUtils {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClassifierBenchUtils {
     pub fn new() -> Self {
         let (tx, rx) = unbounded_channel();
@@ -32,7 +44,7 @@ impl ClassifierBenchUtils {
             .enable_all()
             .build()
             .unwrap();
-        let trace_loader = TraceLoader::new_with_rt(rt.handle().clone());
+        let trace_loader = rt.block_on(TraceLoader::new());
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
         Self { classifier, trace_loader, _dex_pricing_receiver: rx, rt }
     }
@@ -51,7 +63,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (vec![trace.clone()], header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header))
+                    black_box(self.classifier.build_block_tree(trace, header).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -75,7 +87,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (traces.clone(), header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header))
+                    black_box(self.classifier.build_block_tree(trace, header).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -98,7 +110,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (traces.clone(), header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header))
+                    black_box(self.classifier.build_block_tree(trace, header).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -106,6 +118,7 @@ impl ClassifierBenchUtils {
         Ok(())
     }
 
+    #[allow(clippy::unit_arg)]
     pub fn bench_tree_operations_tx(
         &self,
         bench_name: &str,
@@ -127,6 +140,7 @@ impl ClassifierBenchUtils {
         Ok(())
     }
 
+    #[allow(clippy::unit_arg)]
     pub fn bench_tree_operations(
         &self,
         bench_name: &str,
@@ -195,6 +209,7 @@ impl ClassifierBenchUtils {
                         tracer.clone(),
                         from_address,
                         created_addr,
+                        found_trace.trace_idx,
                         call_data.clone(),
                     ))
                     .await;
@@ -210,7 +225,7 @@ impl ClassifierBenchUtils {
         bench_name: &str,
         iters: usize,
         tx: TxHash,
-        protocol: Protocol,
+        protocol: ProtocolInfo,
         protocol_address: Address,
         c: &mut Criterion,
     ) -> Result<(), ClassifierBenchError> {
@@ -218,8 +233,8 @@ impl ClassifierBenchUtils {
         self.trace_loader
             .libmdbx
             .0
-            .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData { key: protocol_address, value: protocol },
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+                AddressToProtocolInfoData { key: protocol_address, value: protocol },
             ])?;
 
         let TxTracesWithHeaderAnd { trace, block, .. } = self
@@ -236,21 +251,11 @@ impl ClassifierBenchUtils {
 
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
-                let from_address = trace.get_from_addr();
-                let target_address = trace.get_to_address();
-
-                let call_data = trace.get_calldata();
-                let return_bytes = trace.get_return_calldata();
+                let call_info = trace.get_callframe_info();
 
                 for _ in 0..=iters {
                     black_box(dispatcher.dispatch(
-                        0,
-                        call_data.clone(),
-                        return_bytes.clone(),
-                        from_address,
-                        target_address,
-                        trace.msg_sender,
-                        &trace.logs,
+                        call_info.clone(),
                         self.trace_loader.libmdbx,
                         block,
                         0,

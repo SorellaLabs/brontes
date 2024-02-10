@@ -76,10 +76,10 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     /// * `db` - Database reader to our local libmdbx database
     /// * `cex_exchanges` - List of centralized exchanges to consider for
     ///   arbitrage.
-    pub fn new(quote: Address, db: &'db DB, cex_exchanges: &Vec<CexExchange>) -> Self {
+    pub fn new(quote: Address, db: &'db DB, cex_exchanges: &[CexExchange]) -> Self {
         Self {
             inner:         SharedInspectorUtils::new(quote, db),
-            cex_exchanges: cex_exchanges.clone(),
+            cex_exchanges: cex_exchanges.to_owned(),
         }
     }
 }
@@ -117,7 +117,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
             .into_par_iter()
             .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
-                let tx_info = tree.get_tx_info(tx)?;
+                let tx_info = tree.get_tx_info(tx, self.inner.db)?;
 
                 // For each swap in the transaction, detect potential CEX-DEX
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
@@ -145,8 +145,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     &tx_info,
                     possible_cex_dex.pnl.taker_profit.clone().to_float(),
                     PriceAt::After,
-                    &vec![possible_cex_dex.get_swaps()],
-                    &vec![tx_info.gas_details],
+                    &[possible_cex_dex.get_swaps()],
+                    &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,
                 );
@@ -336,7 +336,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             taker_profit: total_arb_pre_gas.taker_profit - gas_cost,
         };
 
-        Some(PossibleCexDex { swaps, arb_details, gas_details: gas_details.clone(), pnl })
+        Some(PossibleCexDex { swaps, arb_details, gas_details: *gas_details, pnl })
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -366,6 +366,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             || (!info.is_classified
                 && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
                     || info.is_cex_dex_call))
+            || info.is_searcher_of_type(MevType::CexDex)
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
@@ -398,7 +399,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .get_dex_revenue_usd(
                 tx_info.tx_index,
                 PriceAt::Average,
-                &vec![possible_cex_dex
+                &[possible_cex_dex
                     .swaps
                     .iter()
                     .map(|s| s.to_action())
@@ -407,11 +408,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             )
             .unwrap_or_default();
 
-        if profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) <= Rational::ZERO {
-            return false
-        } else {
-            return true
-        }
+        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) > Rational::ZERO
     }
 }
 
@@ -433,7 +430,7 @@ impl PossibleCexDex {
     pub fn build_cex_dex_type(&self, info: &TxInfo) -> BundleData {
         BundleData::CexDex(CexDex {
             tx_hash:          info.tx_hash,
-            gas_details:      self.gas_details.clone(),
+            gas_details:      self.gas_details,
             swaps:            self.swaps.clone(),
             stat_arb_details: self.arb_details.clone(),
             pnl:              self.pnl.clone(),
@@ -469,17 +466,15 @@ mod tests {
 
     use alloy_primitives::hex;
     use brontes_types::constants::USDT_ADDRESS;
-    use serial_test::serial;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
 
@@ -492,10 +487,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_eoa_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
 
@@ -508,10 +502,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_not_triangular_arb_false_positive() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f").into();
 
@@ -523,10 +516,9 @@ mod tests {
         inspector_util.assert_no_mev(config).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_not_triangular_arb_false_positive_simple() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("31a1572dad67e949cff13d6ede0810678f25a30c6a3c67424453133bb822bd26").into();
 

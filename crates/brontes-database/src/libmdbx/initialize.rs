@@ -19,15 +19,15 @@ use crate::{
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
-    libmdbx:    &'static LibmdbxReadWriter,
-    clickhouse: Arc<Clickhouse>,
-    tracer:     Arc<TP>,
+    pub(crate) libmdbx: &'static LibmdbxReadWriter,
+    clickhouse:         &'static Clickhouse,
+    tracer:             Arc<TP>,
 }
 
 impl<TP: TracingProvider> LibmdbxInitializer<TP> {
     pub fn new(
         libmdbx: &'static LibmdbxReadWriter,
-        clickhouse: Arc<Clickhouse>,
+        clickhouse: &'static Clickhouse,
         tracer: Arc<TP>,
     ) -> Self {
         Self { libmdbx, clickhouse, tracer }
@@ -42,7 +42,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         join_all(
             tables
                 .iter()
-                .map(|table| table.initialize_table(&self, block_range, clear_tables)),
+                .map(|table| table.initialize_table(self, block_range, clear_tables)),
         )
         .await
         .into_iter()
@@ -85,6 +85,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         &self,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
+        mark_init: Option<u8>,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -112,7 +113,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
             .filter_map(
-                |chk| if chk.len() != 0 { Some((chk[0], chk[chk.len() - 1])) } else { None },
+                |chk| if !chk.is_empty() { Some((chk[0], chk[chk.len() - 1])) } else { None },
             )
             .collect_vec();
 
@@ -122,7 +123,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let num_chunks = num_chunks.clone();
-            let clickhouse = self.clickhouse.clone();
+            let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
 
             async move {
@@ -130,7 +131,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                     .inner()
                     .query_many::<D>(
                         T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
-                        &(start, end),
+                        &(start, end + 1),
                     )
                     .await;
 
@@ -144,15 +145,18 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
                 let num = {
                     let mut n = num_chunks.lock().unwrap();
                     *n -= 1;
-                    n.clone() + 1
+                    *n + 1
                 };
 
                 info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
+                if let Some(flag) = mark_init {
+                    libmdbx.inited_range(start..=end, flag)?;
+                }
 
                 Ok::<(), eyre::Report>(())
             }
         }))
-        .unordered_buffer_map(4, |fut| tokio::spawn(fut))
+        .unordered_buffer_map(4, tokio::spawn)
         .collect::<Vec<_>>()
         .await
         .into_iter()
@@ -164,83 +168,64 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use brontes_core::test_utils::{get_db_handle, init_trace_parser, init_tracing};
+    use brontes_database::libmdbx::{
+        initialize::LibmdbxInitializer, tables::*, test_utils::init_clickhouse,
+    };
+    use tokio::sync::mpsc::unbounded_channel;
 
-    use serial_test::serial;
-
-    use self::test_utils::*;
-    use super::LibmdbxInitializer;
-    use crate::libmdbx::*;
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_intialize_clickhouse_no_args_tables() {
+        init_tracing();
         let block_range = (17000000, 17000100);
 
-        #[cfg(not(feature = "local"))]
+        let clickhouse = Box::leak(Box::new(init_clickhouse()));
+        let libmdbx = get_db_handle();
+        let (tx, _rx) = unbounded_channel();
         let tracing_client =
-            Arc::new(init_tracing(tokio::runtime::Handle::current().clone()).unwrap());
-        #[cfg(feature = "local")]
-        let tracing_client = Arc::new(init_tracing().unwrap());
+            init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4);
 
-        let clickhouse = Arc::new(init_clickhouse());
-        let libmdbx = init_libmdbx().unwrap();
-
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse.clone(), tracing_client);
+        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         let tables = Tables::ALL;
         intializer
-            .initialize(&tables, true, Some(block_range))
+            .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
 
         // TokenDecimals
-        let (c, l) = TokenDecimals::test_initialized_data(&clickhouse, &libmdbx, None)
+        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
-
-        // AddressToTokens
-        let (c, l) = AddressToTokens::test_initialized_data(&clickhouse, &libmdbx, None)
-            .await
-            .unwrap();
-        assert_eq!(c, l);
 
         // AddressToProtocol
-        let (c, l) = AddressToProtocol::test_initialized_data(&clickhouse, &libmdbx, None)
+        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // CexPrice
-        let (c, l) = CexPrice::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
+        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // Metadata
-        let (c, l) = BlockInfo::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
+        BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // PoolCreationBlocks
-        let (c, l) =
-            PoolCreationBlocks::test_initialized_data(&clickhouse, &libmdbx, Some(block_range))
-                .await
-                .unwrap();
-        assert_eq!(c, l);
+        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
         // Builder
-        let (c, l) = Builder::test_initialized_data(&clickhouse, &libmdbx, None)
+        Builder::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // AddressMeta
-        let (c, l) = AddressMeta::test_initialized_data(&clickhouse, &libmdbx, None)
+        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
     }
 }

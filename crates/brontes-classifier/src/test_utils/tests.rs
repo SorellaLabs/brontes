@@ -7,22 +7,25 @@ use std::{
     },
 };
 
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::{Address, TxHash, U256};
 use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
     TxTracesWithHeaderAnd,
 };
 use brontes_database::{
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
-    AddressToProtocol, AddressToProtocolData,
+    AddressToProtocolInfo, AddressToProtocolInfoData, TokenDecimals, TokenDecimalsData,
 };
 use brontes_pricing::{
-    types::{DexPriceMsg, DiscoveredPool, PoolUpdate},
+    types::{DexPriceMsg, PoolUpdate},
     BrontesBatchPricer, GraphManager, Protocol,
 };
 use brontes_types::{
-    db::{dex::DexQuotes, token_info::TokenInfoWithAddress, traits::LibmdbxWriter},
-    normalized_actions::NormalizedSwap,
+    db::{
+        address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
+        traits::LibmdbxWriter,
+    },
+    normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
     structured_trace::TraceActions,
     tree::{BlockTree, Node},
@@ -34,10 +37,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use thiserror::Error;
-use tokio::{
-    runtime::Handle,
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::{
     ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDecoderDispatch,
@@ -50,26 +50,16 @@ pub struct ClassifierTestUtils {
 
     dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
-
 impl ClassifierTestUtils {
-    pub fn new() -> Self {
-        let trace_loader = TraceLoader::new();
+    pub async fn new() -> Self {
+        let trace_loader = TraceLoader::new().await;
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
-
         Self { classifier, trace_loader, dex_pricing_receiver: rx }
     }
 
     pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
-        self.libmdbx.try_get_token_info(address).unwrap().unwrap()
-    }
-
-    pub fn new_with_rt(handle: Handle) -> Self {
-        let trace_loader = TraceLoader::new_with_rt(handle);
-        let (tx, rx) = unbounded_channel();
-        let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
-
-        Self { classifier, trace_loader, dex_pricing_receiver: rx }
+        self.libmdbx.try_fetch_token_info(address).unwrap()
     }
 
     async fn init_dex_pricer(
@@ -178,7 +168,7 @@ impl ClassifierTestUtils {
         block: u64,
         quote_token: Address,
         quotes: Option<&DexQuotes>,
-        needs_tokens: &Vec<Address>,
+        needs_tokens: &[Address],
         tx: UnboundedSender<DexPriceMsg>,
     ) -> bool {
         if let Some(quote) = quotes {
@@ -195,7 +185,6 @@ impl ClassifierTestUtils {
                         action: make_fake_swap(pair),
                     });
                     tx.send(update).unwrap();
-                    ()
                 })
                 .count()
                 != 0
@@ -213,7 +202,7 @@ impl ClassifierTestUtils {
                     });
                     tx.send(update).unwrap();
                 });
-            return true
+            true
         }
     }
 
@@ -223,9 +212,7 @@ impl ClassifierTestUtils {
     ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
-        let tree = self.classifier.build_block_tree(vec![trace], header).await;
-
-        Ok(tree)
+        Ok(self.classifier.build_block_tree(vec![trace], header).await)
     }
 
     pub async fn build_tree_tx_with_pricing(
@@ -276,12 +263,9 @@ impl ClassifierTestUtils {
                 .await?
                 .into_iter()
                 .map(|block_info| async move {
-                    let tree = self
-                        .classifier
+                    self.classifier
                         .build_block_tree(block_info.traces, block_info.header)
-                        .await;
-
-                    tree
+                        .await
                 }),
         )
         .await)
@@ -454,15 +438,15 @@ impl ClassifierTestUtils {
     pub async fn test_protocol_classification(
         &self,
         tx_hash: TxHash,
-        protocol: Protocol,
+        protocol: ProtocolInfo,
         address: Address,
-        cmp_fn: impl Fn(Option<(PoolUpdate, Actions)>),
+        cmp_fn: impl Fn(Option<Actions>),
     ) -> Result<(), ClassifierTestUtilsError> {
         // write protocol to libmdbx
         self.libmdbx
             .0
-            .write_table::<AddressToProtocol, AddressToProtocolData>(&vec![
-                AddressToProtocolData { key: address, value: protocol },
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+                AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
 
         let TxTracesWithHeaderAnd { trace, block, .. } =
@@ -476,26 +460,11 @@ impl ClassifierTestUtils {
 
         let dispatcher = ProtocolClassifications::default();
 
-        let from_address = trace.get_from_addr();
-        let target_address = trace.get_to_address();
+        let call_info = trace.get_callframe_info();
 
-        let call_data = trace.get_calldata();
-        let return_bytes = trace.get_return_calldata();
+        let result = dispatcher.dispatch(call_info, self.trace_loader.libmdbx, block, 0);
 
-        let result = dispatcher.dispatch(
-            0,
-            call_data.clone(),
-            return_bytes.clone(),
-            from_address,
-            target_address,
-            trace.msg_sender,
-            &trace.logs,
-            self.trace_loader.libmdbx,
-            block,
-            0,
-        );
-
-        cmp_fn(result);
+        cmp_fn(result.map(|i| i.1));
 
         Ok(())
     }
@@ -504,7 +473,7 @@ impl ClassifierTestUtils {
         &self,
         tx: TxHash,
         created_pool: Address,
-        cmp_fn: impl Fn(Vec<DiscoveredPool>),
+        cmp_fn: impl Fn(Vec<NormalizedNewPool>),
     ) -> Result<(), ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, .. } = self.get_tx_trace_with_header(tx).await?;
 
@@ -536,14 +505,46 @@ impl ClassifierTestUtils {
         let dispatcher = DiscoveryProtocols::default();
         let call_data = call.input.clone();
         let tracer = self.trace_loader.get_provider();
+        let idx = found_trace.trace_idx;
 
         let res = dispatcher
-            .dispatch(tracer.clone(), from_address, created_addr, call_data.clone())
+            .dispatch(tracer.clone(), from_address, created_addr, idx, call_data.clone())
             .await;
 
         cmp_fn(res);
 
         Ok(())
+    }
+
+    pub fn ensure_protocol(
+        &self,
+        protocol: Protocol,
+        address: Address,
+        token0: Address,
+        token1: Address,
+    ) {
+        self.libmdbx
+            .0
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+                AddressToProtocolInfoData {
+                    key:   address,
+                    value: ProtocolInfo { protocol, token0, token1, ..Default::default() },
+                },
+            ])
+            .unwrap();
+    }
+
+    pub fn ensure_token(&self, token: TokenInfoWithAddress) {
+        self.libmdbx
+            .0
+            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+                key:   token.address,
+                value: brontes_types::db::token_info::TokenInfo {
+                    decimals: token.decimals,
+                    symbol:   token.symbol.clone(),
+                },
+            }])
+            .unwrap();
     }
 }
 
@@ -596,5 +597,6 @@ const fn make_fake_swap(pair: Pair) -> Actions {
         token_out:   t_out,
         amount_in:   Rational::ZERO,
         amount_out:  Rational::ZERO,
+        msg_value:   U256::ZERO,
     })
 }

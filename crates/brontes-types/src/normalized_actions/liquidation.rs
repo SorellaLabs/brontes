@@ -1,5 +1,7 @@
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 
+use alloy_primitives::U256;
+use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::Address;
@@ -32,6 +34,34 @@ pub struct NormalizedLiquidation {
     pub debt_asset:            TokenInfoWithAddress,
     pub covered_debt:          Rational,
     pub liquidated_collateral: Rational,
+    pub msg_value:             U256,
+}
+
+impl fmt::Display for NormalizedLiquidation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let protocol = self.protocol.to_string().bold();
+        let pool_address = format!("{}", self.pool).cyan();
+        let liquidator_address = format!("{}", self.liquidator).cyan();
+        let debtor_address = format!("{}", self.debtor).cyan();
+        let collateral_asset_symbol = self.collateral_asset.inner.symbol.bold();
+        let debt_asset_symbol = self.debt_asset.inner.symbol.bold();
+        let covered_debt_formatted = format!("{:.4}", self.covered_debt).green();
+        let liquidated_collateral_formatted = format!("{:.4}", self.liquidated_collateral).red();
+
+        write!(
+            f,
+            "Protocol {} - Pool: {}, Liquidator: {}, Debtor: {}, Collateral: {}, Debt: {}, \
+             Covered Debt: {}, Liquidated Collateral: {}",
+            protocol,
+            pool_address,
+            liquidator_address,
+            debtor_address,
+            collateral_asset_symbol,
+            debt_asset_symbol,
+            covered_debt_formatted,
+            liquidated_collateral_formatted
+        )
+    }
 }
 
 impl NormalizedLiquidation {
@@ -53,6 +83,58 @@ impl NormalizedLiquidation {
             })
             .map(|e| vec![e])
             .unwrap_or_default()
+    }
+
+    pub fn pretty_print(&self, f: &mut fmt::Formatter<'_>, spaces: usize) -> fmt::Result {
+        let field_names = [
+            "Protocol",
+            "Pool",
+            "Liquidator",
+            "Debtor",
+            "Collateral",
+            "Debt",
+            "Covered Debt",
+            "Liquidated Collateral",
+        ];
+        let max_field_name_length = field_names.iter().map(|name| name.len()).max().unwrap_or(0);
+        let indent = " ".repeat(spaces);
+
+        let protocol = self.protocol.to_string().bright_yellow();
+        let pool_address = format!("{}", self.pool).bright_yellow();
+        let liquidator_address = format!("{}", self.liquidator).bright_yellow();
+        let debtor_address = format!("{}", self.debtor).bright_yellow();
+        let collateral_asset_symbol = self.collateral_asset.inner.symbol.clone().bright_yellow();
+        let debt_asset_symbol = self.debt_asset.inner.symbol.clone().bright_yellow();
+        let covered_debt_formatted = format!("{:.4}", self.covered_debt).bright_yellow();
+        let liquidated_collateral_formatted =
+            format!("{:.4}", self.liquidated_collateral).bright_yellow();
+
+        writeln!(
+            f,
+            "{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+             {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}\n{indent}{:width$}: \
+             {}\n{indent}{:width$}: {}\n{indent}{:width$}: {}",
+            "Protocol",
+            protocol,
+            "Pool",
+            pool_address,
+            "Liquidator",
+            liquidator_address,
+            "Debtor",
+            debtor_address,
+            "Collateral",
+            collateral_asset_symbol,
+            "Debt",
+            debt_asset_symbol,
+            "Covered Debt",
+            covered_debt_formatted,
+            "Liquidated Collateral",
+            liquidated_collateral_formatted,
+            indent = indent,
+            width = max_field_name_length + spaces + 1
+        )?;
+
+        Ok(())
     }
 }
 

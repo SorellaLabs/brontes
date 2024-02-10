@@ -1,4 +1,4 @@
-use alloy_primitives::{hex, Address, Bytes};
+use alloy_primitives::{hex, Address};
 
 pub const USDT_ADDRESS_STRING: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
@@ -33,4 +33,71 @@ pub const START_OF_CHAINBOUND_MEMPOOL_DATA: u64 = 17193367;
 pub const SCP_MAIN_CEX_DEX_BOT: Address =
     Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C"));
 
-pub const EXECUTE_FFS_YO: Bytes = Bytes::from_static(&[0x78, 0xe1, 0x11, 0xf6]);
+pub const EXECUTE_FFS_YO: [u8; 4] = [0x78, 0xe1, 0x11, 0xf6];
+
+pub const EURO_STABLES: [&str; 2] = [
+    "EURT", // Tether Euro
+    "EURS", // STASIS EURO
+];
+
+pub const GOLD_STABLES: [&str; 2] = [
+    "XAUT", // Tether Gold
+    "PAXG", // Paxos Gold
+];
+
+pub const USD_STABLES: [&str; 25] = [
+    "USDT",    // Tether
+    "USDC",    // USD Coin
+    "DAI",     // Dai
+    "TUSD",    // TrueUSD
+    "FRAX",    // Frax
+    "USDP",    // Pax Dollar
+    "BUSD",    // Binance USD
+    "MIM",     // Magic Internet Money
+    "GUSD",    // Gemini Dollar
+    "DOLA",    // Dola USD Stablecoin
+    "CRVUSD",  // Curve USD
+    "FDUSD",   // First Digital USD
+    "USDD",    // His excellency USD
+    "PYUSD",   // PaypalUSD
+    "USTC",    // TerraUSD Classic
+    "ALUSD",   // Alchemix USD
+    "USDE",    // Ethena USD
+    "LUSD",    // Liquity USD
+    "MKUSD",   // Prisma USD
+    "SUSD",    // sUSD
+    "HAY",     // Hay
+    "BEAN",    // Bean
+    "GHO",     // Aave
+    "USX",     // dForce USD
+    "MIMATIC", // MAI (Mimatic)
+];
+
+pub fn is_usd_stable(symbol: &str) -> bool {
+    USD_STABLES.contains(&symbol)
+}
+pub fn is_euro_stable(symbol: &str) -> bool {
+    EURO_STABLES.contains(&symbol)
+}
+
+pub fn is_gold_stable(symbol: &str) -> bool {
+    GOLD_STABLES.contains(&symbol)
+}
+
+pub fn get_stable_type(symbol: &str) -> Option<StableType> {
+    if USD_STABLES.contains(&symbol) {
+        Some(StableType::USD)
+    } else if EURO_STABLES.contains(&symbol) {
+        Some(StableType::EURO)
+    } else if GOLD_STABLES.contains(&symbol) {
+        Some(StableType::GOLD)
+    } else {
+        None
+    }
+}
+
+pub enum StableType {
+    USD,
+    EURO,
+    GOLD,
+}

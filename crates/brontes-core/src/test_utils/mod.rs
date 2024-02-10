@@ -1,18 +1,23 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
-    path::Path,
     sync::{Arc, OnceLock},
 };
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
-use brontes_database::{clickhouse::Clickhouse, Tables};
+use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
+#[cfg(not(feature = "local"))]
+use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
+#[cfg(not(feature = "local"))]
 use reth_tasks::TaskManager;
+#[cfg(not(feature = "local"))]
+use reth_tracing_ext::init_db;
+#[cfg(not(feature = "local"))]
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
 use tokio::{
@@ -26,9 +31,6 @@ use crate::decoding::parser::TraceParser;
 #[cfg(feature = "local")]
 use crate::local_provider::LocalProvider;
 
-// so we only have to init critical tables once
-const INIT_LOCK: OnceLock<()> = OnceLock::new();
-
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
     pub libmdbx:          &'static LibmdbxReadWriter,
@@ -38,42 +40,16 @@ pub struct TraceLoader {
 }
 
 impl TraceLoader {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
         let handle = tokio::runtime::Handle::current();
-        let tracing_provider = init_trace_parser(handle.clone(), a, libmdbx, 10);
+        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
 
         let this = Self { libmdbx, tracing_provider, _metrics: b };
-
-        let this = if INIT_LOCK.get().is_none() {
-            tracing::info!("initing critical tables");
-            let this = std::thread::spawn(|| {
-                tokio::runtime::Builder::new_multi_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap()
-                    .block_on(async {
-                        this.init_on_start().await.unwrap();
-                        this
-                    })
-            })
-            .join()
-            .unwrap();
-            let _ = INIT_LOCK.get_or_init(|| ());
-            this
-        } else {
-            this
-        };
+        this.init_on_start().await.unwrap();
 
         this
-    }
-
-    pub fn new_with_rt(handle: Handle) -> Self {
-        let libmdbx = get_db_handle();
-        let (a, b) = unbounded_channel();
-        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
-        Self { libmdbx, tracing_provider, _metrics: b }
     }
 
     pub fn get_provider(&self) -> Arc<Box<dyn TracingProvider>> {
@@ -97,50 +73,49 @@ impl TraceLoader {
     ) -> Result<Metadata, TraceLoaderError> {
         if pricing {
             if let Ok(res) = self.test_metadata_with_pricing(block) {
-                return Ok(res)
+                Ok(res)
             } else {
                 self.fetch_missing_metadata(block).await?;
-                return self
-                    .test_metadata_with_pricing(block)
+                self.test_metadata_with_pricing(block)
                     .map_err(|_| TraceLoaderError::NoMetadataFound(block))
             }
+        } else if let Ok(res) = self.test_metadata(block) {
+            Ok(res)
         } else {
-            if let Ok(res) = self.test_metadata(block) {
-                return Ok(res)
-            } else {
-                self.fetch_missing_metadata(block).await?;
-                return self
-                    .test_metadata(block)
-                    .map_err(|_| TraceLoaderError::NoMetadataFound(block))
-            }
+            self.fetch_missing_metadata(block).await?;
+            return self
+                .test_metadata(block)
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
         }
     }
 
     async fn init_on_start(&self) -> eyre::Result<()> {
-        let clickhouse = Arc::new(Clickhouse::default());
-        self.libmdbx
-            .initialize_tables(
-                clickhouse,
-                self.tracing_provider.get_tracer(),
-                &[
-                    Tables::PoolCreationBlocks,
-                    Tables::TokenDecimals,
-                    Tables::AddressToTokens,
-                    Tables::AddressToProtocol,
-                ],
-                false,
-                None,
-            )
-            .await
+        let clickhouse = Box::leak(Box::default());
+        if !self.libmdbx.init_full_range_tables() {
+            self.libmdbx
+                .initialize_tables(
+                    clickhouse,
+                    self.tracing_provider.get_tracer(),
+                    &[
+                        Tables::PoolCreationBlocks,
+                        Tables::TokenDecimals,
+                        Tables::AddressToProtocolInfo,
+                    ],
+                    false,
+                    None,
+                )
+                .await?;
+        }
+        Ok(())
     }
 
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
         tracing::info!(%block, "fetching missing metadata");
 
-        let clickhouse = Arc::new(Clickhouse::default());
+        let clickhouse = Box::leak(Box::default());
         self.libmdbx
             .initialize_tables(
-                clickhouse.clone(),
+                clickhouse,
                 self.tracing_provider.get_tracer(),
                 &[Tables::BlockInfo, Tables::CexPrice],
                 false,
@@ -172,14 +147,10 @@ impl TraceLoader {
         start_block: u64,
         end_block: u64,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
-        join_all(
-            (start_block..=end_block)
-                .into_iter()
-                .map(|block| async move {
-                    let (traces, header) = self.trace_block(block).await?;
-                    Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
-                }),
-        )
+        join_all((start_block..=end_block).map(|block| async move {
+            let (traces, header) = self.trace_block(block).await?;
+            Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
+        }))
         .await
         .into_iter()
         .collect()
@@ -200,15 +171,11 @@ impl TraceLoader {
         start_block: u64,
         end_block: u64,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
-        join_all(
-            (start_block..=end_block)
-                .into_iter()
-                .map(|block| async move {
-                    let (traces, header) = self.trace_block(block).await?;
-                    let metadata = self.get_metadata(block, false).await?;
-                    Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
-                }),
-        )
+        join_all((start_block..=end_block).map(|block| async move {
+            let (traces, header) = self.trace_block(block).await?;
+            let metadata = self.get_metadata(block, false).await?;
+            Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
+        }))
         .await
         .into_iter()
         .collect()
@@ -348,22 +315,34 @@ pub struct BlockTracesWithHeaderAnd<T> {
 
 // done because we can only have 1 instance of libmdbx or we error
 static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
+#[cfg(not(feature = "local"))]
+static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
-fn get_db_handle() -> &'static LibmdbxReadWriter {
+pub fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
         let _ = dotenv::dotenv();
         init_tracing();
         let brontes_db_endpoint =
             env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
-            .expect(&format!("failed to open db path {}", brontes_db_endpoint))
+            .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint))
     })
+}
+
+#[cfg(not(feature = "local"))]
+pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
+    RETH_DB_HANDLE
+        .get_or_init(|| {
+            let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+            Arc::new(init_db(db_path).unwrap())
+        })
+        .clone()
 }
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
-fn init_tracing() {
+pub fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes
     // all, Debug includes all but Trace, ...)
     let verbosity_level = Level::INFO; // Error >= Warn >= Info >= Debug >= Trace
@@ -373,30 +352,33 @@ fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-fn init_trace_parser<'a>(
+#[cfg(not(feature = "local"))]
+pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &'a LibmdbxReadWriter,
+    libmdbx: &LibmdbxReadWriter,
     max_tasks: u32,
-) -> TraceParser<'a, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
+    let executor = TaskManager::new(handle.clone());
+    let client =
+        TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
+    handle.spawn(executor);
+    let tracer = Box::new(client) as Box<dyn TracingProvider>;
 
-    #[cfg(feature = "local")]
-    let tracer = {
-        let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
-        let db_port = env::var("RETH_PORT").expect("No DB port.env");
-        let url = format!("{db_endpoint}:{db_port}");
-        Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>
-    };
-    #[cfg(not(feature = "local"))]
-    let tracer = {
-        let executor = TaskManager::new(handle.clone());
-        let client = TracingClient::new(Path::new(&db_path), max_tasks as u64, executor.executor());
-        handle.spawn(executor);
-        Box::new(client) as Box<dyn TracingProvider>
-    };
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
+}
 
-    let call = Box::new(|_: &_, _: &_| true);
+#[cfg(feature = "local")]
+pub fn init_trace_parser(
+    _handle: Handle,
+    metrics_tx: UnboundedSender<PoirotMetricEvents>,
+    libmdbx: &LibmdbxReadWriter,
+    _max_tasks: u32,
+) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
+    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+    let db_port = env::var("RETH_PORT").expect("No DB port.env");
+    let url = format!("{db_endpoint}:{db_port}");
+    let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
 
-    TraceParser::new(libmdbx, call, Arc::new(tracer), Arc::new(metrics_tx))
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
 }

@@ -4,7 +4,7 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use futures::TryFutureExt;
-use reth_rpc_types::{CallInput, CallRequest};
+use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 use super::UniswapV2Pool;
 use crate::errors::AmmError;
@@ -46,15 +46,18 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
     let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
     data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
-    let req =
-        CallRequest { to: None, input: CallInput::new(bytecode.into()), ..Default::default() };
+    let req = TransactionRequest {
+        to: None,
+        input: TransactionInput::new(bytecode.into()),
+        ..Default::default()
+    };
 
     let res = middleware
         .eth_call(req, block.map(|i| i.into()), None, None)
         .map_err(|_| eyre::eyre!("v2 state call failed"))
         .await?;
 
-    let mut return_data = data_constructorCall::abi_decode_returns(&*res, false)?;
+    let mut return_data = data_constructorCall::abi_decode_returns(&res, false)?;
     *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
     Ok(())
 }

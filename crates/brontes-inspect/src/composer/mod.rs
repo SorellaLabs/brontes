@@ -59,7 +59,7 @@ pub struct ComposerResults {
 }
 
 pub async fn compose_mev_results(
-    orchestra: &[&Box<dyn Inspector>],
+    orchestra: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
@@ -75,7 +75,7 @@ pub async fn compose_mev_results(
 }
 
 async fn run_inspectors(
-    orchestra: &[&Box<dyn Inspector>],
+    orchestra: &[&dyn Inspector],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
@@ -106,7 +106,7 @@ async fn run_inspectors(
         .collect::<Vec<_>>();
 
     let mut possible_mev_collection =
-        PossibleMevCollection(possible_mev_txes.into_iter().map(|(_, v)| v).collect());
+        PossibleMevCollection(possible_mev_txes.into_values().collect());
     possible_mev_collection
         .0
         .sort_by(|a, b| a.tx_idx.cmp(&b.tx_idx));
@@ -274,7 +274,6 @@ fn try_compose_mev(
 #[cfg(test)]
 pub mod tests {
     use alloy_primitives::hex;
-    use serial_test::serial;
 
     use super::*;
     use crate::{
@@ -282,10 +281,9 @@ pub mod tests {
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     pub async fn test_jit_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2).await;
 
         let config = ComposerRunConfig::new(
             vec![Inspectors::Sandwich, Inspectors::Jit],
@@ -309,10 +307,9 @@ pub mod tests {
         inspector_util.run_composer(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     pub async fn test_deduplicate() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
 
         let config = ComposerRunConfig::new(
             vec![Inspectors::AtomicArb, Inspectors::CexDex],

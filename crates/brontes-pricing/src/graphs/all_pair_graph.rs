@@ -13,7 +13,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, info};
 
 use super::yens::yen;
-use crate::{PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
+use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EdgeWithInsertBlock {
@@ -85,6 +85,9 @@ impl AllPairGraph {
 
         let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in all_pool_data {
+            if !dex.has_state_updater() {
+                continue
+            }
             // because this is undirected, doesn't matter what order the nodes are connected
             // so we sort so we can just have a collection of edges for just one
             // way
@@ -144,19 +147,14 @@ impl AllPairGraph {
         pool_pair: Pair,
         pool_addr: Address,
     ) -> Option<(Address, Protocol, Pair)> {
-        let Some(n0) = self.token_to_index.get(&pool_pair.0) else { return None };
-        let Some(n1) = self.token_to_index.get(&pool_pair.1) else { return None };
+        let n0 = self.token_to_index.get(&pool_pair.0)?;
+        let n1 = self.token_to_index.get(&pool_pair.1)?;
 
-        let Some(edge) = self.graph.find_edge((*n0).into(), (*n1).into()) else { return None };
-        let Some(weights) = self.graph.edge_weight_mut(edge) else {
-            return None;
-        };
-
-        let Some(bad_pool) = weights.iter().find(|e| e.pool_addr == pool_addr).cloned() else {
-            return None;
-        };
+        let edge = self.graph.find_edge((*n0).into(), (*n1).into())?;
+        let weights = self.graph.edge_weight_mut(edge)?;
+        let bad_pool = weights.iter().find(|e| e.pool_addr == pool_addr).cloned()?;
         weights.retain(|e| e.pool_addr != pool_addr);
-        if weights.len() == 0 {
+        if weights.is_empty() {
             self.graph.remove_edge(edge);
         }
 

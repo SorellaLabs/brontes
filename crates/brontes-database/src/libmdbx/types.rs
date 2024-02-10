@@ -27,6 +27,7 @@ pub trait LibmdbxData<T: CompressedTable>: Sized + Send + Sync
 where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
+    #[allow(clippy::wrong_self_convention)]
     fn into_key_val(&self) -> ReturnKV<T>;
 }
 
@@ -34,6 +35,7 @@ pub trait LibmdbxDupData<T: DupSort + CompressedTable>: Sized
 where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
+    #[allow(clippy::wrong_self_convention)]
     fn into_key_subkey_val(&self) -> (T::Key, T::SubKey, T::DecompressedValue);
 }
 

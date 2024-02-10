@@ -1,9 +1,12 @@
 use std::{cmp::min, sync::Arc};
 
-use brontes_types::ToScaledRational;
+use alloy_primitives::U256;
+use brontes_types::{
+    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
+    ToScaledRational,
+};
 mod tree_pruning;
 mod utils;
-use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -18,7 +21,7 @@ use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use tree_pruning::{
     account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
@@ -59,7 +62,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
 
         Self::prune_tree(&mut tree);
-        finish_classification(&mut tree, further_classification_requests);
+        self.finish_classification(&mut tree, further_classification_requests);
 
         tree.finalize_tree();
 
@@ -71,18 +74,17 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         tx_roots: Vec<TxTreeResult>,
         tree: &mut BlockTree<Actions>,
     ) -> Vec<Option<(usize, Vec<u64>)>> {
-        let further_classification_requests = tx_roots
+        tx_roots
             .into_iter()
             .map(|root_data| {
                 tree.insert_root(root_data.root);
                 root_data.pool_updates.into_iter().for_each(|update| {
+                    tracing::debug!("sending update");
                     self.pricing_update_sender.send(update).unwrap();
                 });
                 root_data.further_classification_requests
             })
-            .collect_vec();
-
-        further_classification_requests
+            .collect_vec()
     }
 
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
@@ -195,7 +197,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         )
         .await
         .into_iter()
-        .filter_map(|f| f)
+        .flatten()
         .collect_vec()
     }
 
@@ -210,7 +212,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(block_number, root_head, tx_index as u64, trace, trace_index)
+            .classify_node(block_number, root_head, tx_index, trace, trace_index)
             .await;
 
         // Here we are marking more complex actions that require data
@@ -220,45 +222,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             further_classification_requests.push(classification.get_trace_index());
         }
 
-        if let Actions::Transfer(transfer) = &classification {
-            if self
-                .libmdbx
-                .try_get_token_info(transfer.token.address)
-                .unwrap()
-                .is_none()
-            {
-                load_missing_token_info(
-                    &self.provider,
-                    self.libmdbx,
-                    block_number,
-                    transfer.token.address,
-                )
-                .await;
-            }
-        }
-
-        // if we have a discovered pool, check if its new
         update.into_iter().for_each(|update| {
             match update {
-                DexPriceMsg::DiscoveredPool(pool, block) => {
-                    if !self.contains_pool(pool.pool_address).unwrap() {
-                        self.pricing_update_sender
-                            .send(DexPriceMsg::DiscoveredPool(pool.clone(), block))
-                            .unwrap();
-
-                        if self
-                            .libmdbx
-                            .insert_pool(
-                                block_number,
-                                pool.pool_address,
-                                [pool.tokens[0], pool.tokens[1]],
-                                pool.protocol,
-                            )
-                            .is_err()
-                        {
-                            error!("failed to insert discovered pool into libmdbx");
-                        }
-                    }
+                pool @ DexPriceMsg::DiscoveredPool(_) => {
+                    self.pricing_update_sender.send(pool).unwrap();
                 }
                 rest => {
                     pool_updates.push(rest);
@@ -269,8 +236,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         classification
     }
 
-    fn contains_pool(&self, address: Address) -> eyre::Result<bool> {
-        Ok(self.libmdbx.get_protocol(address)?.is_some())
+    fn contains_pool(&self, address: Address) -> bool {
+        self.libmdbx.get_protocol(address).is_ok()
     }
 
     async fn classify_node(
@@ -285,17 +252,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Revert)
         }
         match trace.action_type() {
-            Action::Call(_) => return self.classify_call(block, tx_idx, trace, trace_index).await,
+            Action::Call(_) => self.classify_call(block, tx_idx, trace, trace_index).await,
             Action::Create(_) => {
-                return self
-                    .classify_create(block, root_head, tx_idx, trace, trace_index)
+                self.classify_create(block, root_head, tx_idx, trace, trace_index)
                     .await
             }
             Action::Selfdestruct(sd) => {
-                return (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+                (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
             }
-            Action::Reward(_) => return (vec![], Actions::Unclassified(trace)),
-        };
+            Action::Reward(_) => (vec![], Actions::Unclassified(trace)),
+        }
     }
 
     async fn classify_call(
@@ -303,82 +269,88 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        trace_index: u64,
+        _trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
             return (vec![], Actions::Unclassified(trace))
         }
-        let from_address = trace.get_from_addr();
-        let target_address = trace.get_to_address();
+        let call_info = trace.get_callframe_info();
 
-        let call_data = trace.get_calldata();
-        let return_bytes = trace.get_return_calldata();
+        if let Some(results) =
+            ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
+        {
+            (vec![results.0], results.1)
+        } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
+            return transfer
+        } else {
+            return (vec![], self.classify_eth_transfer(trace, tx_idx))
+        }
+    }
 
-        if let Some(results) = ProtocolClassifications::default().dispatch(
-            trace_index,
-            call_data,
-            return_bytes.clone(),
-            from_address,
-            target_address,
-            trace.msg_sender,
-            &trace.logs,
-            self.libmdbx,
-            block,
-            tx_idx,
-        ) {
-            return (vec![DexPriceMsg::Update(results.0)], results.1)
-        } else if let Some(mut transfer) = try_decode_transfer(
+    async fn classify_transfer(
+        &self,
+        tx_idx: u64,
+        trace: &TransactionTraceWithLogs,
+        block: u64,
+    ) -> Option<(Vec<DexPriceMsg>, Actions)> {
+        // Determine the appropriate address based on whether it's a delegate call
+        let token_address =
+            if trace.is_delegate_call() { trace.get_from_addr() } else { trace.get_to_address() };
+
+        // Attempt to decode the transfer
+        match try_decode_transfer(
             tx_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
-            {
-                if trace.is_delegate_call() {
-                    // if we got delegate, the actual token address
-                    // is the from addr (proxy) for pool swaps. without
-                    // this our math gets fucked
-                    trace.get_from_addr()
-                } else {
-                    trace.get_to_address()
-                }
-            },
+            token_address,
             self.libmdbx,
-        ) {
-            // go through the log to look for descrepency of transfer amount
-            for log in &trace.logs {
-                if let Some((addr, from, to, amount)) = decode_transfer(log) {
-                    if addr != transfer.token.address || transfer.from != from || transfer.to != to
-                    {
-                        continue
-                    }
+            &self.provider,
+            block,
+        )
+        .await
+        {
+            Ok(mut transfer) => {
+                // go through the log to look for discrepancy of transfer amount
+                for log in &trace.logs {
+                    if let Some((addr, from, to, amount)) = decode_transfer(log) {
+                        if addr != transfer.token.address
+                            || transfer.from != from
+                            || transfer.to != to
+                        {
+                            continue
+                        }
 
-                    let addr = if trace.is_delegate_call() {
-                        // if we got delegate, the actual token address
-                        // is the from addr (proxy) for pool swaps. without
-                        // this our math gets fucked
-                        trace.get_from_addr()
-                    } else {
-                        addr
-                    };
+                        let decimals = transfer.token.decimals;
+                        let log_am = amount.to_scaled_rational(decimals);
 
-                    if self.libmdbx.try_get_token_info(addr).unwrap().is_none() {
-                        load_missing_token_info(&self.provider, self.libmdbx, block, addr).await;
+                        if log_am != transfer.amount {
+                            let transferred_amount = min(&log_am, &transfer.amount).clone();
+                            let fee = (&log_am - &transfer.amount).abs();
+                            transfer.amount = transferred_amount;
+                            transfer.fee = fee;
+                        }
+                        break
                     }
-                    let decimals = transfer.token.decimals;
-                    let log_am = amount.to_scaled_rational(decimals);
-
-                    if log_am != transfer.amount {
-                        let transferred_amount = min(&log_am, &transfer.amount).clone();
-                        let fee = (&log_am - &transfer.amount).abs();
-                        transfer.amount = transferred_amount;
-                        transfer.fee = fee;
-                    }
-                    break;
                 }
-            }
 
-            return (vec![], Actions::Transfer(transfer))
+                // Return the adjusted transfer as an action
+                Some((vec![], Actions::Transfer(transfer)))
+            }
+            Err(_) => None,
         }
-        (vec![], Actions::Unclassified(trace))
+    }
+
+    fn classify_eth_transfer(&self, trace: TransactionTraceWithLogs, trace_index: u64) -> Actions {
+        if trace.get_calldata().is_empty() && trace.get_msg_value() > U256::ZERO {
+            Actions::EthTransfer(NormalizedEthTransfer {
+                from: trace.get_from_addr(),
+                to: trace.get_to_address(),
+                value: trace.get_msg_value(),
+                trace_index,
+            })
+        } else {
+            Actions::Unclassified(trace)
+        }
     }
 
     async fn classify_create(
@@ -407,15 +379,39 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Unclassified(trace));
         };
 
-        return (
+        (
             DiscoveryProtocols::default()
-                .dispatch(self.provider.clone(), from_address, created_addr, calldata)
+                .dispatch(self.provider.clone(), from_address, created_addr, trace_index, calldata)
                 .await
                 .into_iter()
-                .map(|pool| DexPriceMsg::DiscoveredPool(pool, block))
+                // insert the pool returning if it has token values.
+                .filter(|pool| !self.contains_pool(pool.pool_address))
+                .filter_map(|pool| {
+                    self.insert_new_pool(block, &pool);
+                    pool.try_into().ok()
+                })
+                .map(DexPriceMsg::DiscoveredPool)
                 .collect::<Vec<_>>(),
             Actions::Unclassified(trace),
         )
+    }
+
+    fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+        if self
+            .libmdbx
+            .insert_pool(block, pool.pool_address, [pool.tokens[0], pool.tokens[1]], pool.protocol)
+            .is_err()
+        {
+            error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
+        } else {
+            info!(
+                "Discovered new {} pool: 
+                            \nAddress:{} 
+                            \nToken 0: {}
+                            \nToken 1: {}",
+                pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+            );
+        }
     }
 
     pub fn close(&self) {
@@ -423,16 +419,17 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             .send(DexPriceMsg::Closed)
             .unwrap();
     }
-}
 
-/// This function is used to finalize the classification of complex actions
-/// that contain nested sub-actions that are required to finalize the higher
-/// level classification (e.g: flashloan actions)
-fn finish_classification(
-    tree: &mut BlockTree<Actions>,
-    further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
-) {
-    tree.collect_and_classify(&further_classification_requests)
+    /// This function is used to finalize the classification of complex actions
+    /// that contain nested sub-actions that are required to finalize the higher
+    /// level classification (e.g: flashloan actions)
+    fn finish_classification(
+        &self,
+        tree: &mut BlockTree<Actions>,
+        further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
+    ) {
+        tree.collect_and_classify(&further_classification_requests)
+    }
 }
 
 pub struct TxTreeResult {
@@ -445,21 +442,17 @@ pub struct TxTreeResult {
 pub mod test {
     use std::collections::{HashMap, HashSet};
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{hex, B256};
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress,
-        normalized_actions::{Actions, NormalizedLiquidation},
-        Protocol, TreeSearchArgs,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, TreeSearchArgs,
     };
     use malachite::Rational;
-    use serial_test::serial;
 
     use crate::test_utils::ClassifierTestUtils;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_remove_swap_transfer() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let jared_tx =
             B256::from(hex!("d40905a150eb45f04d11c05b5dd820af1b381b6807ca196028966f5a3ba94b8d"));
 
@@ -490,36 +483,9 @@ pub mod test {
         for i in &swap {
             if let Actions::Transfer(t) = i {
                 if swaps.get(&t.token).map(|i| i.contains(&t.amount)) == Some(true) {
-                    assert!(false, "found a transfer that was part of a swap");
+                    panic!("found a transfer that was part of a swap");
                 }
             }
         }
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_aave_v3_liquidation() {
-        let classifier_utils = ClassifierTestUtils::new();
-        let aave_v3_liquidation =
-            B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
-
-        let eq_action = Actions::Liquidation(NormalizedLiquidation {
-            protocol:              Protocol::AaveV3,
-            liquidated_collateral: Rational::from_signeds(165516722, 100000000),
-            covered_debt:          Rational::from_signeds(63857746423_i64, 1000000),
-            debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
-            debt_asset:            classifier_utils
-                .get_token_info(Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))),
-            collateral_asset:      classifier_utils
-                .get_token_info(Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))),
-            liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
-            pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
-            trace_index:           6,
-        });
-
-        classifier_utils
-            .contains_action(aave_v3_liquidation, 0, eq_action, Actions::liquidation_collect_fn())
-            .await
-            .unwrap();
     }
 }

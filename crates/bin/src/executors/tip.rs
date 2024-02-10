@@ -19,7 +19,7 @@ pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     parser:             &'static Parser<'static, T, DB>,
     state_collector:    StateCollector<T, DB>,
     database:           &'static DB,
-    inspectors:         &'static [&'static Box<dyn Inspector>],
+    inspectors:         &'static [&'static dyn Inspector],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
@@ -30,7 +30,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         state_collector: StateCollector<T, DB>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
-        inspectors: &'static [&'static Box<dyn Inspector>],
+        inspectors: &'static [&'static dyn Inspector],
     ) -> Self {
         Self {
             state_collector,
@@ -56,7 +56,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
             },
         }
 
-        while let Some(_) = tip.processing_futures.next().await {}
+        while (tip.processing_futures.next().await).is_some() {}
 
         drop(graceful_guard);
     }
@@ -84,12 +84,17 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
     }
 
     #[cfg(feature = "local")]
-    async fn start_block_inspector(&mut self) -> bool {
+    fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
             return false
         }
 
-        match self.parser.get_latest_block_number().await {
+        let cur_block = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async { self.parser.get_latest_block_number().await })
+        });
+
+        match cur_block {
             Ok(chain_tip) => {
                 if chain_tip > self.current_block {
                     self.current_block += 1;
@@ -120,20 +125,17 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspec
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        #[cfg(not(feature = "local"))]
-        {
-            if self.start_block_inspector() {
-                let block = self.current_block;
-                self.state_collector.fetch_state_for(block);
-            }
-            if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
-                match item {
-                    Some((tree, meta)) => self.on_price_finish(tree, meta),
-                    None => return Poll::Ready(()),
-                }
-            }
-            while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
+        if self.start_block_inspector() {
+            let block = self.current_block;
+            self.state_collector.fetch_state_for(block);
         }
+        if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
+            match item {
+                Some((tree, meta)) => self.on_price_finish(tree, meta),
+                None => return Poll::Ready(()),
+            }
+        }
+        while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
 
         Poll::Pending
     }

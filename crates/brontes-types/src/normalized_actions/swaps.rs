@@ -55,12 +55,14 @@ pub struct NormalizedSwap {
     pub trace_index: u64,
     pub from:        Address,
     pub recipient:   Address,
-    // If pool address is zero, then this is a p2p / CoW style swap, possibly within a batch
+    /// For batch swaps (e.g. UniswapX, CowSwap), the pool address is the
+    /// address of the settlement contract
     pub pool:        Address,
     pub token_in:    TokenInfoWithAddress,
     pub token_out:   TokenInfoWithAddress,
     pub amount_in:   Rational,
     pub amount_out:  Rational,
+    pub msg_value:   U256,
 }
 
 impl NormalizedSwap {
@@ -80,14 +82,15 @@ impl NormalizedSwap {
 
 impl Display for NormalizedSwap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let amount_in = format!("{:.4}", self.amount_in.clone().to_float()).red();
+        let amount_out = format!("{:.4}", self.amount_out.clone().to_float()).green();
+        let token_in_symbol = self.token_in.symbol.clone();
+        let token_out_symbol = self.token_out.symbol.clone();
+        let protocol: colored::ColoredString = self.protocol.to_string().bold();
         write!(
             f,
-            "   - {} {} for {} {} on {}",
-            self.amount_in.clone().to_float().to_string().red(),
-            self.token_in.symbol.bold(),
-            &self.amount_out.clone().to_float().to_string().green(),
-            self.token_out.symbol.bold(),
-            self.protocol.to_string().bold()
+            "Swap {} {} to {} {} via {}",
+            amount_in, token_in_symbol, amount_out, token_out_symbol, protocol
         )
     }
 }
@@ -159,7 +162,7 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
         let swaps: Vec<(FixedString, ClickhouseVecNormalizedSwap, usize)> = value
             .0
             .into_iter()
-            .zip(value.1.into_iter())
+            .zip(value.1)
             .map(|(tx, swaps)| {
                 let num_swaps = swaps.len();
                 (format!("{:?}", tx).into(), swaps.into(), num_swaps)
@@ -170,7 +173,6 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
 
         swaps.into_iter().for_each(|(tx, inner_swaps, num_swaps)| {
             let tx_repeated = (0..num_swaps)
-                .into_iter()
                 .map(|_| tx.clone())
                 .collect::<Vec<FixedString>>();
 
