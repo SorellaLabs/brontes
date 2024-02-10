@@ -155,7 +155,6 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
     use brontes_types::{normalized_actions::Actions, Node, ToScaledRational, TreeSearchArgs};
-    
 
     use super::*;
 

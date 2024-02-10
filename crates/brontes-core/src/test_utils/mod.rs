@@ -10,6 +10,7 @@ use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::{future::join_all, Future};
+use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(not(feature = "local"))]
@@ -322,6 +323,7 @@ pub struct BlockTracesWithHeaderAnd<T> {
 
 // done because we can only have 1 instance of libmdbx or we error
 static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
+static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
 fn get_db_handle() -> &'static LibmdbxReadWriter {
     DB_HANDLE.get_or_init(|| {
@@ -331,6 +333,13 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
             env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
             .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint))
+    })
+}
+
+fn get_reth_db_handle() -> Arc<DatabaseEnv> {
+    RETH_DB_HANDLE.get_or_init(|| {
+        let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+        Arc::new(init_db(db_path).unwrap())
     })
 }
 
@@ -357,7 +366,7 @@ fn init_trace_parser(
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
     let executor = TaskManager::new(handle.clone());
     let client =
-        TracingClient::new(std::path::Path::new(&db_path), max_tasks as u64, executor.executor());
+        TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 

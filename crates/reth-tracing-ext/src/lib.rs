@@ -62,9 +62,12 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
+    pub fn new_with_db(
+        db: Arc<DatabaseEnv>,
+        max_tasks: u64,
+        task_executor: reth_tasks::TaskExecutor,
+    ) -> Self {
         let chain = MAINNET.clone();
-        let db = Arc::new(init_db(db_path).unwrap());
         let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
 
         let tree_externals = TreeExternals::new(
@@ -136,6 +139,11 @@ impl TracingClient {
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
         Self { api, trace }
+    }
+
+    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
+        let db = Arc::new(init_db(db_path).unwrap());
+        Self::new_with_db(db, max_tasks, task_executor)
     }
 
     /// Replays all transactions in a block

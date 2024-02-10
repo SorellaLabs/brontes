@@ -466,7 +466,6 @@ mod tests {
 
     use alloy_primitives::hex;
     use brontes_types::constants::USDT_ADDRESS;
-    
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},

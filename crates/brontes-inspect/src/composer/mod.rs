@@ -274,7 +274,6 @@ fn try_compose_mev(
 #[cfg(test)]
 pub mod tests {
     use alloy_primitives::hex;
-    
 
     use super::*;
     use crate::{
