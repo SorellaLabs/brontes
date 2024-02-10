@@ -57,10 +57,6 @@ impl ActionDispatch {
 
 
                             let protocol_byte = db_tx.get_protocol(call_info.target_address)
-                                .map_err(|e| {
-                                    tracing::info!(%e);
-                                    e
-                                })
                                 .ok()?.to_byte();
 
                             if call_info.call_data.len() < 4 {
