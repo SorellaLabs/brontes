@@ -44,9 +44,9 @@ alloy-sol-macro.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
-alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "80206e7" }
+alloy-rpc-types.workspace = true
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "80206e7" }
 
 # Serde 
 serde.workspace = true
@@ -98,4 +98,8 @@ alloy-primitives.workspace = true
 default = []
 dyn-decode = []
 tests = []
-local = ["brontes-types/local", "reth-tracing-ext/local", "brontes-database/local"]
+local = [
+  "brontes-types/local",
+  "reth-tracing-ext/local",
+  "brontes-database/local",
+]

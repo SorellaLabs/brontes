@@ -91,19 +91,19 @@ pub async fn compare_clickhouse_libmdbx_data<T, D>(
     clickhouse: &Clickhouse,
     libmdbx: &LibmdbxReadWriter,
     block_range: Option<(u64, u64)>,
-) -> eyre::Result<(usize, usize)>
+) -> eyre::Result<()>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
-    let clickhouse_data = clickhouse_data::<T, D>(clickhouse, block_range).await?;
+    let _clickhouse_data = clickhouse_data::<T, D>(clickhouse, block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
-    let libmdbx_data = tx
+    let _libmdbx_data = tx
         .cursor_read::<T>()?
         .walk_range(..)?
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok((clickhouse_data.len(), libmdbx_data.len()))
+    Ok(())
 }

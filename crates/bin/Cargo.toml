@@ -43,13 +43,13 @@ reth-interfaces.workspace = true
 alloy-primitives.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
-alloy-providers = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-transport = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-network = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git" }
-alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git" }
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "974d488" }
 
 # tracing
 tracing.workspace = true
@@ -88,6 +88,11 @@ tests = [
   "brontes-inspect/tests",
 ]
 
-local = ["brontes-core/local", "brontes-database/local", "brontes-types/local", "reth-tracing-ext/local"]
+local = [
+  "brontes-core/local",
+  "brontes-database/local",
+  "brontes-types/local",
+  "reth-tracing-ext/local",
+]
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]

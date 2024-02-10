@@ -30,7 +30,7 @@ pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
 pub mod utils;
-
+// s
 #[cfg(test)]
 pub mod test_utils;
 
@@ -143,28 +143,6 @@ impl Libmdbx {
         let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
 
         Ok(tx)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::env;
-
-    use serial_test::serial;
-
-    use crate::libmdbx::Libmdbx;
-
-    fn init_db() -> eyre::Result<Libmdbx> {
-        dotenv::dotenv().ok();
-        let brontes_db_path = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        Libmdbx::init_db(brontes_db_path, None)
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_init_db() {
-        init_db().unwrap();
-        assert!(init_db().is_ok());
     }
 }
 

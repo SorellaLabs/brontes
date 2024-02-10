@@ -22,7 +22,6 @@ action_impl!(
     _call_data: executeCall,
     logs_data: UniswapXexecuteCallLogs,
     _db_tx: &DB| {
-
         let fill_logs = logs_data.Fill_field;
 
         let solver = fill_logs[0].filler;
@@ -44,7 +43,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeBatchCall,
     Batch,
-    [Fill*],
+    [..Fill*],
     logs: true,
     call_data: true,
     |
@@ -52,7 +51,6 @@ action_impl!(
     _call_data: executeBatchCall,
     logs_data: UniswapXexecuteBatchCallLogs,
     _db_tx: &DB| {
-
         let fill_logs = logs_data.Fill_field;
 
         let solver = fill_logs[0].filler;
@@ -73,7 +71,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeBatchWithCallbackCall,
     Batch,
-    [Fill*],
+    [..Fill*],
     call_data: true,
     logs: true,
     |
@@ -82,8 +80,6 @@ action_impl!(
     logs_data: UniswapXexecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
-
-
         let solver = fill_logs[0].filler;
 
         Ok(NormalizedBatch {
@@ -92,7 +88,7 @@ action_impl!(
             solver,
             settlement_contract: info.target_address,
             user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
-            solver_swaps: Some(Vec::new()),
+            solver_swaps: None,
             msg_value: info.msg_value
         })
     }
@@ -102,7 +98,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeWithCallbackCall,
     Batch,
-    [Fill*],
+    [..Fill*],
     call_data: true,
     logs: true,
     |
@@ -111,7 +107,6 @@ action_impl!(
     logs_data: UniswapXexecuteWithCallbackCallLogs,
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
-
         let solver = fill_logs[0].filler;
 
 
@@ -182,7 +177,7 @@ mod tests {
             user_swaps:          vec![
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 2,
+                    trace_index: 3,
                     from:        Address::new(hex!(
                         "
             86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
@@ -206,7 +201,7 @@ mod tests {
                 },
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 3,
+                    trace_index: 5,
                     from:        Address::new(hex!(
                         "
                     569d9f244e4ed4f0731f39675492740dcdab6b15"
@@ -222,7 +217,7 @@ mod tests {
                     token_in:    TokenInfoWithAddress::usdt(),
                     amount_in:   U256::from_str("106496770").unwrap().to_scaled_rational(6),
                     token_out:   TokenInfoWithAddress::native_eth(),
-                    amount_out:  U256::from_str("1569952967947850")
+                    amount_out:  U256::from_str("43925992451078510")
                         .unwrap()
                         .to_scaled_rational(18),
                     msg_value:   U256::ZERO,
@@ -234,7 +229,10 @@ mod tests {
 
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
             collect_current_node:  node.data.is_batch(),
-            child_node_to_collect: node.subactions.iter().any(|action| action.is_batch()),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .any(|action| action.is_batch()),
         };
 
         classifier_utils

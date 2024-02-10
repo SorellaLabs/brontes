@@ -188,7 +188,6 @@ pub struct TracingInspectorLocal {
 impl TracingInspectorLocal {
     pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
         let gas_used = res.gas_used().into();
-
         let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
         TxTrace {
@@ -246,7 +245,7 @@ impl TracingInspectorLocal {
                         prev_trace.msg_sender
                     } else {
                         tracing::error!(
-                            target: "reth-tracing-ext",
+                            target: "brontes",
                             ?block_number,
                             ?tx_hash,
                             "couldn't find head of delegate call for block"

@@ -3,7 +3,9 @@ use eyre::eyre;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxHash, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
+use reth_rpc_types::{
+    state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
+};
 
 use crate::TracingClient;
 
@@ -11,7 +13,7 @@ use crate::TracingClient;
 impl TracingProvider for TracingClient {
     async fn eth_call(
         &self,
-        request: CallRequest,
+        request: TransactionRequest,
         block_number: Option<BlockId>,
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,
