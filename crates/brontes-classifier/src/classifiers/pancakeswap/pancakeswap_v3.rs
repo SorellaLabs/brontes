@@ -179,7 +179,7 @@ mod tests {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::PancakeSwapV3,
-            Address::new(hex!("2E8135bE71230c6B1B4045696d41C09Db0414226")),
+            Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
             TokenInfoWithAddress::usdt().address,
             Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
         );
@@ -189,6 +189,7 @@ mod tests {
         };
         classifier_utils.ensure_token(TokenInfoWithAddress::usdt());
         classifier_utils.ensure_token(token_info.clone());
+
         let swap =
             B256::from(hex!("649b792d819826302eb2859a9a1b8f3bb1a78bb5c480d433cdc6cc4ab129337f"));
 
