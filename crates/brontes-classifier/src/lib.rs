@@ -41,6 +41,7 @@ sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
 sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
 sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
 sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
+sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);
