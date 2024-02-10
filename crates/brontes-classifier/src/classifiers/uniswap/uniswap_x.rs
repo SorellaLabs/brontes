@@ -257,7 +257,7 @@ mod tests {
 
         let eq_action = Actions::Batch(NormalizedBatch {
             protocol:            Protocol::UniswapX,
-            trace_index:         1,
+            trace_index:         0,
             solver:              Address::new(hex!("ff8Ba4D1fC3762f6154cc942CCF30049A2A0cEC6")),
             settlement_contract: Address::new(hex!("6000da47483062A0D734Ba3dc7576Ce6A0B645C4")),
             user_swaps:          vec![NormalizedSwap {

@@ -181,29 +181,15 @@ mod tests {
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    UniswapV3,
             trace_index: 2,
-            from:        Address::new(hex!(
-                "
-                A69babEF1cA67A37Ffaf7a485DfFF3382056e78C"
-            )),
-            recipient:   Address::new(hex!(
-                "
-                A69babEF1cA67A37Ffaf7a485DfFF3382056e78C"
-            )),
-            pool:        Address::new(hex!(
-                "
-                88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
-            )),
+            from:        Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
+            recipient:   Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
+            pool:        Address::new(hex!("88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")),
             token_in:    TokenInfoWithAddress::weth(),
             amount_in:   U256::from_str("39283347298163243343")
                 .unwrap()
                 .to_scaled_rational(18),
             token_out:   TokenInfoWithAddress::usdc(),
-            amount_out:  U256::from_str(
-                "
-            98019119714",
-            )
-            .unwrap()
-            .to_scaled_rational(6),
+            amount_out:  U256::from_str("98019119714").unwrap().to_scaled_rational(6),
 
             msg_value: U256::ZERO,
         });
@@ -254,7 +240,7 @@ mod tests {
         };
 
         classifier_utils
-            .contains_action(mint, 3, eq_action, search_fn)
+            .contains_action(mint, 0, eq_action, search_fn)
             .await
             .unwrap();
     }
@@ -289,7 +275,7 @@ mod tests {
         };
 
         classifier_utils
-            .contains_action(burn, 2, eq_action, search_fn)
+            .contains_action(burn, 0, eq_action, search_fn)
             .await
             .unwrap();
     }
@@ -324,7 +310,7 @@ mod tests {
         };
 
         classifier_utils
-            .contains_action(collect, 3, eq_action, search_fn)
+            .contains_action(collect, 0, eq_action, search_fn)
             .await
             .unwrap();
     }

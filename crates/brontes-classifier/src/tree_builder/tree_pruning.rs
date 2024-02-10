@@ -251,7 +251,6 @@ mod test {
                 child_node_to_collect: node.inner.iter().any(|n| n.data.is_swap()),
             },
         );
-        tracing::info!("{:#?}", swaps);
         assert!(swaps.len() == 6, "didn't filter tax token");
     }
 }
