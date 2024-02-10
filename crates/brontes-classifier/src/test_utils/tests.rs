@@ -503,6 +503,7 @@ impl ClassifierTestUtils {
         let created_addr = found_trace.get_create_output();
         let calldata = call.input.clone();
         let trace_index = found_trace.trace_idx;
+        tracing::info!(?from_address);
 
         let res = DiscoveryProtocols::default()
             .dispatch(self.get_provider(), from_address, created_addr, trace_index, calldata)
