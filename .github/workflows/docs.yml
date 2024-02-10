@@ -26,7 +26,7 @@ jobs:
         shell: bash
 
       - name: Build docs
-        run: cargo doc --lib
+        run: cargo doc --no-deps --all-features
         env:
           # Keep in sync with ./ci.yml:jobs.docs
           RUSTDOCFLAGS:
