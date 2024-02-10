@@ -410,7 +410,7 @@ compressed_table!(
             key: Address,
             #[serde(with = "protocol_info")]
             value: ProtocolInfo,
-            compressed_value:ProtocolInfoRedefined
+            compressed_value: ProtocolInfoRedefined
         },
         Init {
             init_size: None,

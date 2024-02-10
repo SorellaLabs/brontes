@@ -187,7 +187,7 @@ mod tests {
             address: Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
             inner:   TokenInfo { decimals: 18, symbol: "INSP".to_owned() },
         };
-        classifier_utils.ensure_token(TokenInfoWithAddress::weth());
+        classifier_utils.ensure_token(TokenInfoWithAddress::usdt());
         classifier_utils.ensure_token(token_info.clone());
         let swap =
             B256::from(hex!("649b792d819826302eb2859a9a1b8f3bb1a78bb5c480d433cdc6cc4ab129337f"));
