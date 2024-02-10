@@ -20,7 +20,7 @@ jobs:
         with:
           cache-on-failure: true
       - name: Build docs
-        run: cargo docs
+        run: cargo doc
         env:
           # Keep in sync with ./ci.yml:jobs.docs
           RUSTDOCFLAGS:
