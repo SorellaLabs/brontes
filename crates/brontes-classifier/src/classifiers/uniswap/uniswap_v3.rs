@@ -116,7 +116,7 @@ action_impl!(
 
         Ok(NormalizedBurn {
             protocol: Protocol::UniswapV3,
-            recipient: info.target_address,
+            recipient: info.from_address,
             pool: info.target_address,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -302,11 +302,11 @@ mod tests {
         });
 
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_burn(),
+            collect_current_node:  node.data.is_collect(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
-                .any(|action| action.is_burn()),
+                .any(|action| action.is_collect()),
         };
 
         classifier_utils
