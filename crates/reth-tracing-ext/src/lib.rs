@@ -62,9 +62,12 @@ pub struct TracingClient {
 }
 
 impl TracingClient {
-    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
+    pub fn new_with_db(
+        db: Arc<DatabaseEnv>,
+        max_tasks: u64,
+        task_executor: reth_tasks::TaskExecutor,
+    ) -> Self {
         let chain = MAINNET.clone();
-        let db = Arc::new(init_db(db_path).unwrap());
         let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
 
         let tree_externals = TreeExternals::new(
@@ -138,6 +141,11 @@ impl TracingClient {
         Self { api, trace }
     }
 
+    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
+        let db = Arc::new(init_db(db_path).unwrap());
+        Self::new_with_db(db, max_tasks, task_executor)
+    }
+
     /// Replays all transactions in a block
     pub async fn replay_block_transactions(
         &self,
@@ -188,7 +196,6 @@ pub struct TracingInspectorLocal {
 impl TracingInspectorLocal {
     pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
         let gas_used = res.gas_used().into();
-
         let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
         TxTrace {
@@ -246,7 +253,7 @@ impl TracingInspectorLocal {
                         prev_trace.msg_sender
                     } else {
                         tracing::error!(
-                            target: "reth-tracing-ext",
+                            target: "brontes",
                             ?block_number,
                             ?tx_hash,
                             "couldn't find head of delegate call for block"

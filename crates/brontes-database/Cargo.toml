@@ -95,12 +95,16 @@ rkyv.workspace = true
 auto_impl.workspace = true
 
 
+reth-tasks = { workspace = true, optional = true }
+
 [dev-dependencies]
 serial_test.workspace = true
 test-fuzz = "4"
 async-trait.workspace = true
 reth-tasks.workspace = true
-brontes-core.workspace = true
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-database = { workspace = true, features = ["tests"] }
+brontes-macros.workspace = true
 
 [build-dependencies]
 serde.workspace = true
@@ -109,5 +113,5 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-tests = []
+tests = ["reth-tasks"]
 local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
