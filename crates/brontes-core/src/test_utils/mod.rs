@@ -4,18 +4,20 @@ use std::{
     pin::Pin,
     sync::{Arc, OnceLock},
 };
-use reth_tracing_ext::init_db;
 
 pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
 use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::{future::join_all, Future};
+#[cfg(not(feature = "local"))]
 use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(not(feature = "local"))]
 use reth_tasks::TaskManager;
+#[cfg(not(feature = "local"))]
+use reth_tracing_ext::init_db;
 #[cfg(not(feature = "local"))]
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
@@ -324,6 +326,7 @@ pub struct BlockTracesWithHeaderAnd<T> {
 
 // done because we can only have 1 instance of libmdbx or we error
 static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
+#[cfg(not(feature = "local"))]
 static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
 fn get_db_handle() -> &'static LibmdbxReadWriter {
@@ -337,11 +340,14 @@ fn get_db_handle() -> &'static LibmdbxReadWriter {
     })
 }
 
+#[cfg(not(feature = "local"))]
 fn get_reth_db_handle() -> Arc<DatabaseEnv> {
-    RETH_DB_HANDLE.get_or_init(|| {
-        let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-        Arc::new(init_db(db_path).unwrap())
-    }).clone()
+    RETH_DB_HANDLE
+        .get_or_init(|| {
+            let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+            Arc::new(init_db(db_path).unwrap())
+        })
+        .clone()
 }
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
