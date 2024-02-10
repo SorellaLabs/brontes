@@ -57,6 +57,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
     #[allow(unreachable_code)]
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
+            tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
             return Some(res)
         }
         #[cfg(feature = "local")]
@@ -66,7 +67,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
         }
 
         let parity_trace = self.trace_block(block_num).await;
-
         let receipts = self.get_receipts(block_num).await;
 
         if parity_trace.0.is_none() && receipts.0.is_none() {

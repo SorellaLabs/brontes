@@ -2,12 +2,11 @@ use brontes_core::test_utils::TraceLoader;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 pub fn bench_tx_trace_parse(c: &mut Criterion) {
-    let loader = TraceLoader::new();
-
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap();
+    let loader = rt.block_on(TraceLoader::new());
 
     let block = 18793182;
 

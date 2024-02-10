@@ -3,6 +3,7 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{Index, Path};
 
+#[derive(Debug)]
 pub struct LogConfig {
     pub can_repeat:    bool,
     pub ignore_before: bool,
@@ -327,3 +328,4 @@ impl ToTokens for LogData<'_> {
         tokens.extend(log_result)
     }
 }
+// s
