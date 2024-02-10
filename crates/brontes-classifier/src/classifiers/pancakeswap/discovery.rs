@@ -5,7 +5,7 @@ use brontes_pricing::Protocol;
 discovery_impl!(
     PancakeSwapV3Decoder,
     crate::UniswapV3Factory::createPoolCall,
-    0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865,
+    0x41ff9aa7e16b8b1a8a8dc4f0efacd93d02d071c9,
     |deployed_address: Address, trace_index: u64, call_data: createPoolCall, _| async move {
         let token_a = call_data.tokenA;
         let token_b = call_data.tokenB;
