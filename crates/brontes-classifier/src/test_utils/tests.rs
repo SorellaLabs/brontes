@@ -415,6 +415,7 @@ impl ClassifierTestUtils {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
         let mut actions = root.collect(&tree_collect_fn);
+        info!(?actions);
         let action = actions.remove(action_number_in_tx);
 
         assert_eq!(eq_action, action, "got: {:#?} != given: {:#?}", action, eq_action);
