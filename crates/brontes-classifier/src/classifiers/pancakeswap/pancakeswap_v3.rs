@@ -179,7 +179,7 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    PancakeSwapV3,
-            trace_index: 2,
+            trace_index: 115,
             from:        Address::new(hex!(
                 "
                 f081470f5C6FBCCF48cC4e5B82Dd926409DcdD67"

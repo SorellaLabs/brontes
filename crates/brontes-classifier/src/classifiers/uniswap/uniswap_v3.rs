@@ -216,7 +216,7 @@ mod tests {
 
         let eq_action = Actions::Mint(NormalizedMint {
             protocol:    UniswapV3,
-            trace_index: 2,
+            trace_index: 21,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
@@ -253,7 +253,7 @@ mod tests {
 
         let eq_action = Actions::Burn(NormalizedBurn {
             protocol:    UniswapV3,
-            trace_index: 2,
+            trace_index: 12,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
@@ -284,11 +284,11 @@ mod tests {
     async fn test_uniswap_v3_collect() {
         let classifier_utils = ClassifierTestUtils::new().await;
         let collect =
-            B256::from(hex!("0089210683170b3f17201c8abeafdc4c022a26c7af1e44d351556eaa48d0fee8"));
+            B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
 
         let eq_action = Actions::Collect(NormalizedCollect {
             protocol:    UniswapV3,
-            trace_index: 2,
+            trace_index: 13,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
