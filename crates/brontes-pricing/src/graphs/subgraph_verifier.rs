@@ -282,7 +282,12 @@ impl SubgraphVerifier {
             state_tracker.mark_state_as_finalized(block, pool.pool_addr);
         });
 
-        VerificationResults::Passed(VerificationPass { pair, subgraph, prune_state: removals })
+        VerificationResults::Passed(VerificationPass {
+            pair,
+            block,
+            subgraph,
+            prune_state: removals,
+        })
     }
 }
 
@@ -307,6 +312,7 @@ impl Subgraph {
 #[derive(Debug)]
 pub struct VerificationPass {
     pub pair:        Pair,
+    pub block:       u64,
     pub subgraph:    PairSubGraph,
     pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
 }

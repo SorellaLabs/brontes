@@ -331,11 +331,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         );
     }
 
-    fn can_progress(&self) -> bool {
-        self.lazy_loader.can_progress(&self.completed_block)
-            && self.completed_block < self.current_block
-    }
-
     /// Processes the result of lazy pool state loading. It updates the graph
     /// state or handles errors.
     ///
@@ -397,8 +392,11 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                             }
                         }
                     });
-                    self.graph_manager
-                        .add_verified_subgraph(passed.pair, passed.subgraph);
+                    self.graph_manager.add_verified_subgraph(
+                        passed.pair,
+                        passed.subgraph,
+                        passed.block,
+                    );
 
                     None
                 }
@@ -595,6 +593,17 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         Some((id, triggered, force_rundown))
     }
 
+    fn can_progress(&self) -> bool {
+        self.lazy_loader.can_progress(&self.completed_block)
+            && self.completed_block < self.current_block
+    }
+
+    /// allows for pre-processing of up to 4 future blocks
+    /// before we only will focus on clearing current state
+    fn process_future_blocks(&self) -> bool {
+        self.completed_block + 5 > self.current_block
+    }
+
     // called when we try to progress to the next block
     fn try_resolve_block(&mut self) -> Option<(u64, DexQuotes)> {
         // if there are still requests for the given block or the current block isn't
@@ -714,6 +723,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
         loop {
             if let Some(new_prices) = self.poll_state_processing(cx) {
                 return new_prices
+            }
+
+            if !self.process_future_blocks() {
+                continue
             }
 
             let mut block_updates = Vec::new();

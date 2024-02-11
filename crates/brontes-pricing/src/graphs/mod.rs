@@ -165,27 +165,12 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
             .create_new_subgraph(pair, block, paths, &self.graph_state)
     }
 
-    pub fn bad_pool_state(
-        &mut self,
-        subgraph_pair: Pair,
-        pool_pair: Pair,
-        pool_address: Address,
-    ) -> (bool, Option<(Address, Protocol, Pair)>) {
-        let requery_subgraph = self.sub_graph_registry.bad_pool_state(
-            subgraph_pair.ordered(),
-            pool_pair.ordered(),
-            pool_address,
-        );
-        (
-            requery_subgraph,
-            self.all_pair_graph
-                .remove_empty_address(pool_pair, pool_address),
+    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
+        self.sub_graph_registry.add_verified_subgraph(
+            pair,
+            subgraph,
+            &self.graph_state.all_state(block),
         )
-    }
-
-    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph) {
-        self.sub_graph_registry
-            .add_verified_subgraph(pair, subgraph)
     }
 
     pub fn remove_pair_graph_address(
@@ -254,5 +239,14 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn finalize_block(&mut self, block: u64) {
         self.graph_state.finalize_block(block);
+    }
+
+    /// removes all subgraphs that have a pool that's current liquidity
+    /// is less than its liquidity when it was verified.
+    /// nothing is done as we won't bother re-verifying until pricing for the
+    /// graph is needed again
+    pub fn audit_subgraphs(&mut self) {
+        self.sub_graph_registry
+            .audit_subgraphs(self.graph_state.finalized_state())
     }
 }

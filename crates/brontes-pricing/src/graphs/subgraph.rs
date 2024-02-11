@@ -8,12 +8,12 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::price_graph_types::*;
+use brontes_types::{normalized_actions::liquidity, price_graph_types::*};
 use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
-        basic::traits::{One, Zero},
+        basic::traits::{One, OneHalf, Zero},
     },
     Rational,
 };
@@ -77,6 +77,10 @@ pub struct PairSubGraph {
     graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
     token_to_index: HashMap<Address, u16>,
 
+    /// if a nodes liquidity drops more than 50% from when validation
+    /// was last ran on this subgraph. a re_query is triggered.
+    start_nodes_liq: HashMap<Address, Rational>,
+
     start_node: u16,
     end_node:   u16,
 }
@@ -122,7 +126,51 @@ impl PairSubGraph {
         let comp = connected_components(&graph);
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
-        Self { pair, graph, start_node, end_node, token_to_index }
+        Self { pair, graph, start_node, end_node, token_to_index, start_nodes_liq: HashMap::new() }
+    }
+
+    pub fn save_last_verification_liquidity<T: ProtocolState>(
+        &mut self,
+        state: &HashMap<Address, T>,
+    ) {
+        let init_tvl = self
+            .graph
+            .edge_weights()
+            .flat_map(|weight| {
+                weight.into_iter().map(|edge| {
+                    let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
+                    let tvl_added = r0 + r1;
+
+                    (edge.pool_addr, tvl_added)
+                })
+            })
+            .collect::<HashMap<_, _>>();
+
+        self.start_nodes_liq = init_tvl;
+    }
+
+    /// checks to see if the liquidity of any pool has dropped by over 50%.
+    /// if this has happened, will send the pair for reverification
+    pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &HashMap<Address, T>) -> bool {
+        self.graph
+            .edge_weights()
+            .map(|weight| {
+                weight
+                    .into_iter()
+                    .map(|edge| {
+                        let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
+                        let tvl_added = r0 + r1;
+                        let start_tvl = self.start_nodes_liq.get(&edge.pool_addr).unwrap();
+
+                        if tvl_added < *start_tvl {
+                            tvl_added / start_tvl <= Rational::ONE_HALF
+                        } else {
+                            false
+                        }
+                    })
+                    .any(|n| n)
+            })
+            .any(|n| n)
     }
 
     pub fn extend_subgraph(&mut self, edges: Vec<SubGraphEdge>) {
