@@ -177,7 +177,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                     .add_pool(pair, pool_addr, protocol, block);
             });
 
+        tracing::debug!("search triggered by on pool updates");
         let (state, pools) = graph_search_par(&self.graph_manager, self.quote_asset, updates);
+        tracing::debug!("search triggered by on pool updates completed");
 
         state.into_iter().flatten().for_each(|(addr, update)| {
             let block = update.block;
@@ -436,6 +438,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         if pairs.is_empty() {
             return
         }
+        tracing::debug!("requerying bad state");
 
         let new_state = par_state_query(&self.graph_manager, pairs);
         if new_state.is_empty() {
@@ -466,7 +469,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 }
             });
 
-        self.try_verify_subgraph(recusing);
+        if !recusing.is_empty() {
+            self.try_verify_subgraph(recusing);
+        }
+        tracing::debug!("finished requerying bad state");
     }
 
     /// rundown occurs when we have hit a attempt limit for trying to find high
