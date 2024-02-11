@@ -77,7 +77,8 @@ pub(crate) fn build_mev_header(
         })
         .sum();
     let builder_profit = builder_profit_inspector
-        .calculate_builder_profit(pre_processing.builder_address, tree.clone()).unwrap();
+        .calculate_builder_profit(pre_processing.builder_address, tree.clone())
+        .unwrap();
 
     let builder_eth_profit = builder_profit.to_scaled_rational(18);
 
