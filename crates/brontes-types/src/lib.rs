@@ -14,8 +14,6 @@ pub mod unordered_buffer_map;
 pub mod unzip_either;
 pub use queries::make_call_request;
 pub mod structured_trace;
-#[cfg(feature = "tests")]
-pub mod test_utils;
 pub mod traits;
 pub mod tree;
 pub use tree::*;

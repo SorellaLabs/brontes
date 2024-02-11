@@ -120,7 +120,7 @@ impl DexPriceMsg {
         match self {
             Self::Update(u) => u.action.clone(),
             Self::DiscoveredPool(p) => Actions::PoolConfigUpdate(p.clone()),
-            _ => unreachable!(),
+            _ => unreachable!("called get action on closed msg"),
         }
     }
 }
