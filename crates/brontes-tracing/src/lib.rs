@@ -17,7 +17,8 @@ where
 {
     let filter = EnvFilter::builder()
         .with_default_directive(directive.into())
-        .from_env_lossy();
+        .from_env_lossy()
+        .add_directive("hyper::proto::h1=off".parse().unwrap());
 
     tracing_subscriber::fmt::layer()
         .with_ansi(true)
