@@ -30,7 +30,7 @@ sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
 
-sol!(ZeroXUniswapFeaure, "./classifier-abis/ZeroX/ZeroXUniswapFeature.json");
+sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
 
 
 // Discovery
