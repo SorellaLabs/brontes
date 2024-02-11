@@ -727,76 +727,70 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        // loop is very heavy, low amount of work needed
-        let mut work = 128;
+        if let Some(new_prices) = self.poll_state_processing(cx) {
+            return new_prices
+        }
+
+        if !self.process_future_blocks() {
+            cx.waker().wake_by_ref();
+            return Poll::Pending
+        }
+
+        let mut block_updates = Vec::new();
         loop {
-            if let Some(new_prices) = self.poll_state_processing(cx) {
-                return new_prices
-            }
-
-            if !self.process_future_blocks() {
-                continue
-            }
-
-            let mut block_updates = Vec::new();
-            loop {
-                match self.update_rx.poll_recv(cx).map(|inner| {
-                    inner.and_then(|action| match action {
-                        DexPriceMsg::Update(update) => Some(PollResult::State(update)),
-                        DexPriceMsg::DiscoveredPool(NormalizedPoolConfigUpdate {
-                            protocol,
-                            tokens,
-                            pool_address,
-                            ..
-                        }) => {
-                            if protocol.has_state_updater() {
-                                self.new_graph_pairs
-                                    .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
-                            };
-                            Some(PollResult::DiscoveredPool)
-                        }
-                        DexPriceMsg::Closed => None,
-                    })
-                }) {
-                    Poll::Ready(Some(u)) => {
-                        if let PollResult::State(update) = u {
-                            if let Some(overlap) = self.overlap_update.take() {
-                                block_updates.push(overlap);
-                            }
-                            if update.block == self.current_block {
-                                block_updates.push(update);
-                            } else {
-                                self.overlap_update = Some(update);
-                                break
-                            }
-                        }
+            match self.update_rx.poll_recv(cx).map(|inner| {
+                inner.and_then(|action| match action {
+                    DexPriceMsg::Update(update) => Some(PollResult::State(update)),
+                    DexPriceMsg::DiscoveredPool(NormalizedPoolConfigUpdate {
+                        protocol,
+                        tokens,
+                        pool_address,
+                        ..
+                    }) => {
+                        if protocol.has_state_updater() {
+                            self.new_graph_pairs
+                                .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
+                        };
+                        Some(PollResult::DiscoveredPool)
                     }
-                    Poll::Ready(None) | Poll::Pending => {
-                        if self.lazy_loader.is_empty()
-                            && self.lazy_loader.can_progress(&self.completed_block)
-                            && block_updates.is_empty()
-                            && self.finished.load(SeqCst)
-                        {
-                            return Poll::Ready(self.on_close())
+                    DexPriceMsg::Closed => None,
+                })
+            }) {
+                Poll::Ready(Some(u)) => {
+                    if let PollResult::State(update) = u {
+                        if let Some(overlap) = self.overlap_update.take() {
+                            block_updates.push(overlap);
                         }
-                        break
+                        if update.block == self.current_block {
+                            block_updates.push(update);
+                        } else {
+                            self.overlap_update = Some(update);
+                            break
+                        }
                     }
                 }
-
-                // we poll here to continuously progress state fetches as they are slow
-                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                    self.on_pool_resolve(state)
+                Poll::Ready(None) | Poll::Pending => {
+                    if self.lazy_loader.is_empty()
+                        && self.lazy_loader.can_progress(&self.completed_block)
+                        && block_updates.is_empty()
+                        && self.finished.load(SeqCst)
+                    {
+                        return Poll::Ready(self.on_close())
+                    }
+                    break
                 }
             }
 
-            self.on_pool_updates(block_updates);
-
-            work -= 1;
-            if work == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
+            // we poll here to continuously progress state fetches as they are slow
+            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                self.on_pool_resolve(state)
             }
         }
+
+        self.on_pool_updates(block_updates);
+
+        cx.waker().wake_by_ref();
+        return Poll::Pending
     }
 }
 
