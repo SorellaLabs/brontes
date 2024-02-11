@@ -129,6 +129,7 @@ fn on_orchestra_resolution(
         &orchestra_data,
     );
 
+    tracing::info!("{:#?}", orchestra_data);
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
     MEV_COMPOSABILITY_FILTER
