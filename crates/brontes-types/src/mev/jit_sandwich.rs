@@ -99,7 +99,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
                 jit = Some(j);
                 jit_classified = Some(bundle.header);
             }
-            _ => unreachable!(),
+            err => unreachable!("got bundle {err:?} in compose jit sandwich"),
         }
     }
 
