@@ -100,7 +100,6 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connections: usize,
     ) -> Vec<SubGraphEdge> {
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
-            info!("db load");
             return edges
         }
 
@@ -132,7 +131,6 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connections: usize,
     ) -> Vec<PoolPairInfoDirection> {
         if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
-            info!("db load");
             return self
                 .subgraph_verifier
                 .create_new_subgraph(pair, block, edges, &self.graph_state)
