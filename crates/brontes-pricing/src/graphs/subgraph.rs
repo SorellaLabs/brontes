@@ -8,7 +8,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{price_graph_types::*};
+use brontes_types::price_graph_types::*;
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -137,7 +137,7 @@ impl PairSubGraph {
             .graph
             .edge_weights()
             .flat_map(|weight| {
-                weight.into_iter().filter_map(|edge| {
+                weight.iter().filter_map(|edge| {
                     let (r0, r1) = state.get(&edge.pool_addr)?.tvl(edge.token_0);
                     let tvl_added = r0 + r1;
 
@@ -156,7 +156,7 @@ impl PairSubGraph {
             .edge_weights()
             .map(|weight| {
                 weight
-                    .into_iter()
+                    .iter()
                     .map(|edge| {
                         let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
                         let tvl_added = r0 + r1;

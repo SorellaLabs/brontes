@@ -41,7 +41,6 @@ use brontes_types::{
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
-
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, pre_process,
     sort_mev_by_type, BlockPreprocessing,

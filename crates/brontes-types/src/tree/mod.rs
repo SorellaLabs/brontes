@@ -1,11 +1,10 @@
-use std::{char::MAX, collections::HashMap};
+use std::collections::HashMap;
 
 use rayon::{
     prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
     ThreadPool, ThreadPoolBuilder,
 };
 use reth_primitives::{Address, Header, B256};
-use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use tracing::error;
 
