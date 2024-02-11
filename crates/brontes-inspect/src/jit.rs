@@ -40,11 +40,13 @@ impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
 
 #[async_trait]
 impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
+    type Result = Vec<Bundle>;
+
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<Bundle> {
+    ) -> Self::Result {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(

@@ -28,11 +28,13 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
 
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
+    type Result = Vec<Bundle>;
+
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
-    ) -> Vec<Bundle> {
+    ) -> Self::Result {
         let interesting_state = tree.collect_all(|node| TreeSearchArgs {
             collect_current_node:  node.data.is_swap()
                 || node.data.is_transfer()

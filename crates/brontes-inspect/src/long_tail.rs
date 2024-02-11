@@ -22,11 +22,13 @@ impl<'db, DB: LibmdbxReader> LongTailInspector<'db, DB> {
 
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
+    type Result = Vec<Bundle>;
+
     async fn process_tree(
         &self,
         _tree: Arc<BlockTree<Actions>>,
         _metadata: Arc<Metadata>,
-    ) -> Vec<Bundle> {
+    ) -> Self::Result {
         return vec![]
     }
 }
