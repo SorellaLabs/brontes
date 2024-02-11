@@ -324,10 +324,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         // if we have dex prices for a block then we have a subgraph for the block
         let (start_key, end_key) = make_filter_key_range(block);
-        if tx
+        if !tx
             .new_cursor::<DexPrice>()?
             .walk_range(start_key..=end_key)?
-            .all(|f| f.is_err())
+            .all(|f| f.is_ok())
         {
             tracing::debug!(
                 ?pair,
