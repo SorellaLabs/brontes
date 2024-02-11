@@ -70,8 +70,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
+                    tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
 
                     if searcher_actions.is_empty() {
+                        tracing::debug!("no searcher actions found");
                         return None
                     }
 
@@ -86,6 +88,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .filter(|d| !d.is_revert())
                         .any(|d| mev_executor_contract == d.get_to_address())
                     {
+                        tracing::debug!("victim address is same as mev executor contract");
                         return None
                     }
 
@@ -95,7 +98,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                             tree.collect(*victim, |node| TreeSearchArgs {
                                 collect_current_node:  node.data.is_swap(),
                                 child_node_to_collect: node
-                                    .subactions
+                                    .get_all_sub_actions()
                                     .iter()
                                     .any(|action| action.is_swap()),
                             })
@@ -103,6 +106,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .collect_vec();
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
+                        tracing::debug!("no victim actions found");
                         return None
                     }
 
@@ -155,6 +159,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
 
         if mints.is_empty() || burns.is_empty() {
+            tracing::debug!("missing mints & burns");
             return None
         }
 
@@ -362,7 +367,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter_map(|(token, amount)| {
                 Some(
                     self.inner
-                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())?
+                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())
+                        .or_else(|| {
+                            tracing::debug!(?token, "failed to get price for token");
+                            None
+                        })?
                         * amount,
                 )
             })
