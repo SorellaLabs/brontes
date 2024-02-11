@@ -77,7 +77,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut work = 256;
         loop {
-            if !self.collector.is_collecting_state() && self.current_block != self.end_block {
+            if !self.collector.is_collecting_state()
+                && self.collector.should_process_next_block()
+                && self.current_block != self.end_block
+            {
                 let block = self.current_block;
                 self.collector.fetch_state_for(block);
                 self.current_block += 1;
