@@ -40,11 +40,13 @@ pub struct PossibleSandwich {
 
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
+    type Result = Vec<Bundle>;
+
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<Bundle> {
+    ) -> Self::Result {
         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
             collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
             child_node_to_collect: node

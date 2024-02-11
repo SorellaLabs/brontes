@@ -37,7 +37,7 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
@@ -81,7 +81,7 @@ impl InspectorBenchUtils {
         needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
@@ -130,7 +130,7 @@ impl InspectorBenchUtils {
         needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
@@ -171,7 +171,7 @@ impl InspectorBenchUtils {
         inspector: Inspectors,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
@@ -213,7 +213,7 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
@@ -269,7 +269,7 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],

@@ -60,7 +60,7 @@ pub struct ComposerResults {
 }
 
 pub async fn compose_mev_results(
-    orchestra: &[&dyn Inspector],
+    orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
@@ -76,7 +76,7 @@ pub async fn compose_mev_results(
 }
 
 async fn run_inspectors(
-    orchestra: &[&dyn Inspector],
+    orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {

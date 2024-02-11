@@ -86,6 +86,8 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
 
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
+    type Result = Vec<Bundle>;
+
     /// Processes the block tree to find CEX-DEX arbitrage
     /// opportunities. This is the entry point for the inspection process,
     /// identifying transactions that include swap actions.
@@ -107,7 +109,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<Bundle> {
+    ) -> Self::Result {
         let swap_txes = tree.collect_all(|node| brontes_types::TreeSearchArgs {
             collect_current_node:  node.data.is_swap(),
             child_node_to_collect: node.subactions.iter().any(|action| action.is_swap()),
