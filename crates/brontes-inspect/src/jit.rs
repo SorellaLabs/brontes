@@ -96,7 +96,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                             tree.collect(*victim, |node| TreeSearchArgs {
                                 collect_current_node:  node.data.is_swap(),
                                 child_node_to_collect: node
-                                    .subactions
+                                    .get_all_sub_actions()
                                     .iter()
                                     .any(|action| action.is_swap()),
                             })
