@@ -23,6 +23,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
+    SubGraphsEntry,
 };
 use eyre::eyre;
 use itertools::Itertools;
@@ -433,10 +434,18 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
+
         if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
             let data = SubGraphsData::new(pair, entry);
+            self.0
+                .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+        } else {
+            let mut map = HashMap::new();
+            map.insert(block, edges);
+            let subgraph_entry = SubGraphsEntry(map);
+            let data = SubGraphsData::new(pair, subgraph_entry);
             self.0
                 .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
         }
