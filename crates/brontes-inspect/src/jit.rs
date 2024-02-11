@@ -364,7 +364,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter_map(|(token, amount)| {
                 Some(
                     self.inner
-                        .get_dex_usd_price(idx, PriceAt::Average, token, metadata.clone())?
+                        .get_dex_usd_price(idx, PriceAt::Average, token, metadata.clone())
+                        .or_else(|| {
+                            tracing::debug!(?token, "failed to get price for token");
+                            None
+                        })?
                         * amount,
                 )
             })
