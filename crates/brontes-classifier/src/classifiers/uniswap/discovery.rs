@@ -3,7 +3,7 @@ use brontes_macros::discovery_impl;
 use brontes_pricing::Protocol;
 
 discovery_impl!(
-    UniswapV2Decoder,
+    UniswapV2Discovery,
     crate::UniswapV2Factory::createPairCall,
     0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f,
     |deployed_address: Address, trace_index: u64, call_data: createPairCall, _| async move {
@@ -19,7 +19,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    UniswapV3Decoder,
+    UniswapV3Discovery,
     crate::UniswapV3Factory::createPoolCall,
     0x1F98431c8aD98523631AE4a59f267346ea31F984,
     |deployed_address: Address, trace_index: u64, call_data: createPoolCall, _| async move {
