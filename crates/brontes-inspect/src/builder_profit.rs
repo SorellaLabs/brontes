@@ -15,7 +15,7 @@ impl<DB: LibmdbxReader> BuilderProfitInspector<DB> {
         Self { inner: db }
     }
 
-    pub async fn calculate_builder_profit(
+    pub fn calculate_builder_profit(
         &self,
         builder_address: Address,
         tree: Arc<BlockTree<Actions>>,
