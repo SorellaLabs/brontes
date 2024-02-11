@@ -137,11 +137,11 @@ impl PairSubGraph {
             .graph
             .edge_weights()
             .flat_map(|weight| {
-                weight.into_iter().map(|edge| {
-                    let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
+                weight.into_iter().filter_map(|edge| {
+                    let (r0, r1) = state.get(&edge.pool_addr)?.tvl(edge.token_0);
                     let tvl_added = r0 + r1;
 
-                    (edge.pool_addr, tvl_added)
+                    Some((edge.pool_addr, tvl_added))
                 })
             })
             .collect::<HashMap<_, _>>();
