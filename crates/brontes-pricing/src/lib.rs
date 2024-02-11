@@ -726,6 +726,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
             }
 
             if !self.process_future_blocks() {
+                tracing::debug!(
+                    "processing gap to big, waiting for current dex price before processing \
+                     further"
+                );
                 continue
             }
 
