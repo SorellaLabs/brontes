@@ -307,13 +307,17 @@ impl PairSubGraph {
         state: HashMap<Address, T>,
         _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
+        tracing::debug!(?self.pair, "verification starting");
         if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
             .is_none()
         {
             tracing::error!("invalid subgraph was given");
         }
+        tracing::debug!(?self.pair, "confirmed graph is currently connected");
 
         let result = self.run_bfs_with_liquidity_params(start, &state);
+
+        tracing::debug!(?self.pair, "completed bfs with liq");
 
         self.prune_subgraph(&result.removal_state);
 
@@ -327,6 +331,7 @@ impl PairSubGraph {
             .then(|| self.disjoint_furthest_nodes())
             .unwrap_or_default();
 
+        tracing::debug!(?self.pair, "verification ending");
         // if we not disjoint, do a bad pool check.
         VerificationOutcome {
             should_requery: disjoint,
@@ -501,6 +506,7 @@ impl PairSubGraph {
     /// given a dijsoint graph. finds the point at which the disjointness
     /// occurred.
     fn disjoint_furthest_nodes(&self) -> Vec<Address> {
+        tracing::debug!(?self.pair, "grabing frayed ends");
         let mut frayed_ends = Vec::new();
         let mut visited = HashSet::new();
         let mut visit_next = VecDeque::new();
@@ -536,6 +542,7 @@ impl PairSubGraph {
             }
             visit_next.extend(next_edges);
         }
+        tracing::debug!(?self.pair, "finished grabing frayed ends");
 
         frayed_ends
     }
