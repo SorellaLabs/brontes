@@ -10,7 +10,7 @@ use brontes_types::{
 use itertools::Itertools;
 
 discovery_impl!(
-    CurveV1MetapoolBaseDecoder,
+    CurveV1MetapoolBaseDiscovery,
     crate::CurveV1MetapoolFactory::add_base_poolCall,
     0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
     |deployed_address: Address, trace_index: u64, call: add_base_poolCall, tracer: Arc<T>| {
@@ -25,7 +25,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    CurveV1MetapoolMetaDecoder,
+    CurveV1MetapoolMetaDiscovery,
     crate::CurveV1MetapoolFactory::deploy_metapoolCall,
     0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
     |deployed_address: Address, trace_index: u64, call: deploy_metapoolCall, tracer: Arc<T>| {
@@ -41,7 +41,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    CurveV2MetapoolBaseDecoder,
+    CurveV2MetapoolBaseDiscovery,
     crate::CurveV2MetapoolFactory::add_base_poolCall,
     0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
     |deployed_address: Address, trace_index: u64, call: add_base_poolCall, tracer: Arc<T>| {
@@ -56,7 +56,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    CurveV2MetapoolMetaDecoder0,
+    CurveV2MetapoolMetaDiscovery0,
     crate::CurveV2MetapoolFactory::deploy_metapool_0Call,
     0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
     |deployed_address: Address, trace_index: u64, call: deploy_metapool_0Call, tracer: Arc<T>| {
@@ -72,7 +72,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    CurveV2MetapoolMetaDecoder1,
+    CurveV2MetapoolMetaDiscovery1,
     crate::CurveV2MetapoolFactory::deploy_metapool_1Call,
     0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
     |deployed_address: Address, trace_index: u64, call: deploy_metapool_1Call, tracer: Arc<T>| {
@@ -88,7 +88,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    CurveV2MetapoolPlainDecoder0,
+    CurveV2MetapoolPlainDiscovery0,
     crate::CurveV2MetapoolFactory::deploy_plain_pool_0Call,
     0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
     |deployed_address: Address, trace_index: u64, call: deploy_plain_pool_0Call, _| {
@@ -97,7 +97,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    CurveV2MetapoolPlainDecoder1,
+    CurveV2MetapoolPlainDiscovery1,
     crate::CurveV2MetapoolFactory::deploy_plain_pool_1Call,
     0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
     |deployed_address: Address, trace_index: u64, call: deploy_plain_pool_1Call, _| {
@@ -105,7 +105,7 @@ discovery_impl!(
     }
 );
 discovery_impl!(
-    CurveV2MetapoolPlainDecoder2,
+    CurveV2MetapoolPlainDiscovery2,
     crate::CurveV2MetapoolFactory::deploy_plain_pool_2Call,
     0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
     |deployed_address: Address, trace_index: u64, call: deploy_plain_pool_2Call, _| {
@@ -114,7 +114,7 @@ discovery_impl!(
 );
 
 // discovery_impl!(
-//     CurvecrvUSDBaseDecoder,
+//     CurvecrvUSDBaseDiscovery,
 //     CurvecrvUSDFactory,
 //     BasePoolAdded,
 //     true,
@@ -126,7 +126,7 @@ discovery_impl!(
 // );
 //
 // discovery_impl!(
-//     CurvecrvUSDMetaDecoder,
+//     CurvecrvUSDMetaDiscovery,
 //     CurvecrvUSDFactory,
 //     MetaPoolDeployed,
 //     false,
@@ -141,7 +141,7 @@ discovery_impl!(
 // );
 //
 // discovery_impl!(
-//     CurvecrvUSDPlainDecoder,
+//     CurvecrvUSDPlainDiscovery,
 //     CurvecrvUSDFactory,
 //     PlainPoolDeployed,
 //     false,
