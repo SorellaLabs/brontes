@@ -99,9 +99,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connectivity_wight: usize,
         connections: usize,
     ) -> Vec<SubGraphEdge> {
-        let ordered_pair = pair.ordered();
-
-        if let Ok((_, edges)) = self.db.try_load_pair_before(block, ordered_pair.ordered()) {
+        if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
             info!("db load");
             return edges
         }
@@ -133,9 +131,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connectivity_wight: usize,
         connections: usize,
     ) -> Vec<PoolPairInfoDirection> {
-        let ordered_pair = pair.ordered();
-
-        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, ordered_pair) {
+        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
             info!("db load");
             return self
                 .subgraph_verifier
