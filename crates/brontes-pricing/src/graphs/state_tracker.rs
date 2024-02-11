@@ -44,6 +44,13 @@ impl StateTracker {
         &self.finalized_edge_state
     }
 
+    pub fn all_state(&self, block: u64) -> HashMap<Address, PoolState> {
+        self.state_for_verification(block)
+            .into_iter()
+            .chain(self.finalized_state().clone())
+            .collect()
+    }
+
     pub fn state_for_verification(&self, block: u64) -> HashMap<Address, PoolState> {
         self.verification_edge_state
             .iter()
