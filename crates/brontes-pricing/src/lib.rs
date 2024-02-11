@@ -503,6 +503,8 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 .collect_vec()
         };
 
+        tracing::debug!(?pair, ?block, subgraph_variations = queries.len(), "starting rundown");
+
         let edges = par_state_query(&self.graph_manager, queries)
             .into_iter()
             .flat_map(|e| e.2)
@@ -522,6 +524,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
                 self.try_verify_subgraph(vec![(block, id, pair)]);
             }
         }
+        tracing::debug!(?pair, ?block, "finished rundown");
     }
 
     /// Adds a subgraph for verification based on the given pair, block, and
