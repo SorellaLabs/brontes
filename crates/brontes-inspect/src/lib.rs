@@ -81,6 +81,7 @@
 //TODO: Update composer section once finished
 
 pub mod atomic_arb;
+pub mod builder_profit;
 pub mod cex_dex;
 pub mod composer;
 pub mod discovery;
@@ -106,6 +107,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
+use builder_profit::BuilderProfitInspector;
 use cex_dex::CexDexInspector;
 use jit::JitInspector;
 use liquidations::LiquidationInspector;
@@ -131,6 +133,7 @@ pub enum Inspectors {
     Liquidations,
     LongTail,
     Sandwich,
+    BuilderProfit,
 }
 
 impl Inspectors {
@@ -152,6 +155,8 @@ impl Inspectors {
             Self::Sandwich => static_object(SandwichInspector::new(quote_token, db))
                 as &'static (dyn Inspector + 'static),
             Self::Liquidations => static_object(LiquidationInspector::new(quote_token, db))
+                as &'static (dyn Inspector + 'static),
+            Self::BuilderProfit => static_object(BuilderProfitInspector::new(quote_token, db))
                 as &'static (dyn Inspector + 'static),
         }
     }

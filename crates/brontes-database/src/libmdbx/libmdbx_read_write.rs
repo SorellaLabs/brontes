@@ -33,12 +33,7 @@ use tracing::info;
 
 use crate::{
     clickhouse::Clickhouse,
-    libmdbx::{
-        tables::{BlockInfo, Builder, CexPrice, DexPrice, MevBlocks, *},
-        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, Builder *},
-        types::LibmdbxData,
-        CompressedTable, Libmdbx, LibmdbxInitializer,
-    },
+    libmdbx::{tables::*, types::LibmdbxData, CompressedTable, Libmdbx, LibmdbxInitializer},
     AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
