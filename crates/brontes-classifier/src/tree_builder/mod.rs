@@ -30,7 +30,7 @@ use utils::{decode_transfer, get_coinbase_transfer};
 use self::transfer::try_decode_transfer;
 use crate::{
     classifiers::{DiscoveryProtocols, *},
-    ActionCollection, FactoryDecoderDispatch,
+    ActionCollection, FactoryDiscoveryDispatch,
 };
 
 //TODO: Document this module

@@ -64,6 +64,7 @@ utils!(
     pub enum Protocol {
         UniswapV2,
         SushiSwapV2,
+        PancakeSwapV2,
         UniswapV3,
         SushiSwapV3,
         PancakeSwapV3,

@@ -3,7 +3,7 @@ use brontes_macros::discovery_impl;
 use brontes_pricing::Protocol;
 
 discovery_impl!(
-    PancakeSwapV3Decoder,
+    PancakeSwapV3Discovery,
     crate::PancakeSwapV3PoolDeployer::deployCall,
     0x41ff9aa7e16b8b1a8a8dc4f0efacd93d02d071c9,
     |deployed_address: Address, trace_index: u64, call_data: deployCall, _| async move {
@@ -14,6 +14,23 @@ discovery_impl!(
             pool_address: deployed_address,
             trace_index,
             protocol: Protocol::PancakeSwapV3,
+            tokens: vec![token_a, token_b],
+        }]
+    }
+);
+
+discovery_impl!(
+    PancakeSwapV2Discovery,
+    crate::UniswapV2Factory::createPairCall,
+    0x1097053Fd2ea711dad45caCcc45EfF7548fCB362,
+    |deployed_address: Address, trace_index: u64, call_data: createPairCall, _| async move {
+        let token_a = call_data.tokenA;
+        let token_b = call_data.tokenB;
+
+        vec![NormalizedNewPool {
+            pool_address: deployed_address,
+            trace_index,
+            protocol: Protocol::PancakeSwapV2,
             tokens: vec![token_a, token_b],
         }]
     }
