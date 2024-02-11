@@ -112,9 +112,6 @@ use liquidations::LiquidationInspector;
 use long_tail::LongTailInspector;
 use sandwich::SandwichInspector;
 
-#[allow(non_camel_case_types)]
-pub struct _b_ {}
-
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
     async fn process_tree(

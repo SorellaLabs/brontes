@@ -165,7 +165,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             self.get_collect_amount(info[1].tx_index as usize, fee_collect, metadata.clone());
 
         let mint = self.get_total_pricing(
-            info[0].tx_index as usize,
+            info[1].tx_index as usize,
             mints
                 .iter()
                 .map(|mint| (mint.token.iter().map(|t| t.address), mint.amount.iter())),
@@ -361,7 +361,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter_map(|(token, amount)| {
                 Some(
                     self.inner
-                        .get_dex_usd_price(idx, PriceAt::Average, token, metadata.clone())
+                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())
                         .or_else(|| {
                             tracing::debug!(?token, "failed to get price for token");
                             None
