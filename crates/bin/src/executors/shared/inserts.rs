@@ -15,7 +15,7 @@ use tracing::{error, info};
 
 pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
     db: &DB,
-    inspectors: &[&dyn Inspector],
+    inspectors: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) {
