@@ -8,7 +8,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{normalized_actions::liquidity, price_graph_types::*};
+use brontes_types::{price_graph_types::*};
 use itertools::Itertools;
 use malachite::{
     num::{
