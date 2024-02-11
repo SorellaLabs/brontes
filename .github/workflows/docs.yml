@@ -10,8 +10,8 @@ on:
   merge_group:
 
 jobs:
-  if: github.event.pull_request.draft == 'false'
   build:
+    if: github.event.pull_request.draft == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
