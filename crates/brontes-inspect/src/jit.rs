@@ -251,16 +251,14 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if !victims.is_empty() {
-                                // Create
-                                set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               victims.clone(),
-                                });
-                            }
+                            // Create
+                            set.insert(PossibleJit {
+                                eoa:                   root.head.address,
+                                frontrun_tx:           *prev_tx_hash,
+                                backrun_tx:            root.tx_hash,
+                                mev_executor_contract: root.head.data.get_to_address(),
+                                victims:               victims.clone(),
+                            });
                         }
                     }
                     // Add current transaction hash to the list of transactions for this sender
@@ -281,16 +279,14 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     for prev_tx_hash in prev_tx_hashes {
                         // Find the victims between the previous and the current transaction
                         if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if !victims.is_empty() {
-                                // Create
-                                set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               victims.clone(),
-                                });
-                            }
+                            // Create
+                            set.insert(PossibleJit {
+                                eoa:                   root.head.address,
+                                frontrun_tx:           *prev_tx_hash,
+                                backrun_tx:            root.tx_hash,
+                                mev_executor_contract: root.head.data.get_to_address(),
+                                victims:               victims.clone(),
+                            });
                         }
                     }
                     // Add current transaction hash to the list of transactions for this sender
