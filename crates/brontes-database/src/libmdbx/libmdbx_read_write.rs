@@ -402,7 +402,6 @@ impl LibmdbxWriter for LibmdbxReadWriter {
                         tx_idx: idx as u16,
                         quote:  value.into_iter().collect_vec(),
                     };
-
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
                 .collect::<Vec<_>>();
