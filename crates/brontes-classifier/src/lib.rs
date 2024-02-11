@@ -1,9 +1,12 @@
 use std::{fmt::Debug, sync::Arc};
 
 use alloy_primitives::{Address, Bytes};
-use brontes_database::libmdbx::LibmdbxReader;
-use brontes_pricing::types::{DiscoveredPool, PoolUpdate};
-use brontes_types::{structured_trace::CallFrameInfo, traits::TracingProvider};
+use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_pricing::types::DexPriceMsg;
+use brontes_types::{
+    normalized_actions::pool::NormalizedNewPool, structured_trace::CallFrameInfo,
+    traits::TracingProvider,
+};
 use futures::Future;
 
 pub mod tree_builder;
@@ -22,6 +25,7 @@ sol!(UniswapV2, "./classifier-abis/UniswapV2.json");
 sol!(SushiSwapV2, "./classifier-abis/SushiSwapV2.json");
 sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
 sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
+sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
@@ -41,6 +45,7 @@ sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
 sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
 sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
 sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
+sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);
@@ -50,39 +55,43 @@ sol! {
 }
 
 pub trait ActionCollection: Sync + Send {
-    fn dispatch<DB: LibmdbxReader>(
+    fn dispatch<DB: LibmdbxReader + LibmdbxWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
         db_tx: &DB,
         block: u64,
         tx_idx: u64,
-    ) -> Option<(PoolUpdate, Actions)>;
+    ) -> Option<(DexPriceMsg, Actions)>;
 }
 
 pub trait IntoAction: Debug + Send + Sync {
     #[allow(clippy::too_many_arguments)]
-    fn decode_trace_data<DB: LibmdbxReader>(
+    fn decode_trace_data<DB: LibmdbxReader + LibmdbxWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
+        block: u64,
+        tx_idx: u64,
         db_tx: &DB,
-    ) -> eyre::Result<Actions>;
+    ) -> eyre::Result<DexPriceMsg>;
 }
 
-pub trait FactoryDecoder {
+pub trait FactoryDiscovery {
     fn decode_new_pool<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
         deployed_address: Address,
+        trace_idx: u64,
         parent_calldata: Bytes,
-    ) -> impl Future<Output = Vec<DiscoveredPool>> + Send;
+    ) -> impl Future<Output = Vec<NormalizedNewPool>> + Send;
 }
 
-pub trait FactoryDecoderDispatch: Sync + Send {
+pub trait FactoryDiscoveryDispatch: Sync + Send {
     fn dispatch<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
         factory: Address,
         deployed_address: Address,
+        trace_idx: u64,
         parent_calldata: Bytes,
-    ) -> impl Future<Output = Vec<DiscoveredPool>> + Send;
+    ) -> impl Future<Output = Vec<NormalizedNewPool>> + Send;
 }

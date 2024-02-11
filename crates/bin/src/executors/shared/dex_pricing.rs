@@ -22,7 +22,6 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::info;
 
 pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
-
 pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
 
 pub struct WaitingForPricerFuture<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {

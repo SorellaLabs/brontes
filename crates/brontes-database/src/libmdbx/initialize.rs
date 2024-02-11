@@ -168,76 +168,64 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use brontes_core::test_utils::{get_db_handle, init_trace_parser, init_tracing};
+    use brontes_database::libmdbx::{
+        initialize::LibmdbxInitializer, tables::*, test_utils::init_clickhouse,
+    };
+    use tokio::sync::mpsc::unbounded_channel;
 
-    use serial_test::serial;
-
-    use self::test_utils::*;
-    use super::LibmdbxInitializer;
-    use crate::libmdbx::*;
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_intialize_clickhouse_no_args_tables() {
+        init_tracing();
         let block_range = (17000000, 17000100);
 
-        #[cfg(not(feature = "local"))]
-        let tracing_client =
-            Arc::new(init_tracing(tokio::runtime::Handle::current().clone()).unwrap());
-        #[cfg(feature = "local")]
-        let tracing_client = Arc::new(init_tracing().unwrap());
-
         let clickhouse = Box::leak(Box::new(init_clickhouse()));
-        let libmdbx = init_libmdbx().unwrap();
+        let libmdbx = get_db_handle();
+        let (tx, _rx) = unbounded_channel();
+        let tracing_client =
+            init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4);
 
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client);
+        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         let tables = Tables::ALL;
         intializer
-            .initialize(&tables, true, Some(block_range))
+            .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
 
         // TokenDecimals
-        let (c, l) = TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
+        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // AddressToProtocol
-        let (c, l) = AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
+        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // CexPrice
-        let (c, l) = CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // Metadata
-        let (c, l) = BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // PoolCreationBlocks
-        let (c, l) = PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // Builder
-        let (c, l) = Builder::test_initialized_data(clickhouse, libmdbx, None)
+        Builder::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
 
         // AddressMeta
-        let (c, l) = AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-        assert_eq!(c, l);
     }
 }

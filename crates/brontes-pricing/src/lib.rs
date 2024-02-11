@@ -21,6 +21,7 @@
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
 use alloy_primitives::U256;
+use brontes_types::normalized_actions::pool::NormalizedPoolConfigUpdate;
 mod graphs;
 pub mod protocols;
 pub mod types;
@@ -61,7 +62,7 @@ pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::error;
-use types::{DexPriceMsg, DiscoveredPool, PoolUpdate};
+use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
 
@@ -751,11 +752,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> Stream
                 match self.update_rx.poll_recv(cx).map(|inner| {
                     inner.and_then(|action| match action {
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
-                        DexPriceMsg::DiscoveredPool(
-                            DiscoveredPool { protocol, tokens, pool_address },
-                            _block,
-                        ) => {
-                            if tokens.len() == 2 && protocol.has_state_updater() {
+                        DexPriceMsg::DiscoveredPool(NormalizedPoolConfigUpdate {
+                            protocol,
+                            tokens,
+                            pool_address,
+                            ..
+                        }) => {
+                            if protocol.has_state_updater() {
                                 self.new_graph_pairs
                                     .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
                             };
@@ -872,8 +875,8 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
 ) -> GraphSeachParRes {
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
-        .map(|msg| {
-            let pair = msg.get_pair(quote).unwrap();
+        .filter_map(|msg| {
+            let pair = msg.get_pair(quote)?;
             let pair0 = Pair(pair.0, quote);
             let pair1 = Pair(pair.1, quote);
 
@@ -883,7 +886,7 @@ fn graph_search_par<DB: LibmdbxWriter + LibmdbxReader>(
                 (!graph.has_subgraph(pair0)).then_some(pair0),
                 (!graph.has_subgraph(pair1)).then_some(pair1),
             );
-            (state, path)
+            Some((state, path))
         })
         .unzip();
 

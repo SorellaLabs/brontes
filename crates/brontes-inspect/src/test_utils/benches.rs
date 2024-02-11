@@ -13,6 +13,7 @@ pub struct InspectorBenchUtils {
     quote_address:        Address,
     rt:                   tokio::runtime::Runtime,
 }
+
 impl InspectorBenchUtils {
     pub fn new(quote_address: Address) -> Self {
         let rt = tokio::runtime::Builder::new_multi_thread()
@@ -20,7 +21,7 @@ impl InspectorBenchUtils {
             .build()
             .unwrap();
 
-        let classifier_inspector = ClassifierTestUtils::new_with_rt(rt.handle().clone());
+        let classifier_inspector = rt.block_on(ClassifierTestUtils::new());
         Self { classifier_inspector, quote_address, rt }
     }
 

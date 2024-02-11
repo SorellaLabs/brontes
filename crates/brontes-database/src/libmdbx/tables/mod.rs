@@ -228,14 +228,14 @@ macro_rules! compressed_table {
             }
         }
 
-        #[cfg(test)]
+        #[cfg(feature = "tests")]
         #[allow(unused)]
         impl $table_name {
-            pub(crate) async fn test_initialized_data(
+            pub async fn test_initialized_data(
                 clickhouse: &crate::clickhouse::Clickhouse,
                 libmdbx: &crate::libmdbx::LibmdbxReadWriter,
                 block_range: Option<(u64, u64)>
-            ) -> eyre::Result<(usize, usize)> {
+            ) -> eyre::Result<()> {
                 paste::paste!{
                     crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
                         ::<$table_name,[<$table_name Data>]>(clickhouse, libmdbx, block_range).await
@@ -403,14 +403,14 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table AddressToProtocolInfo{
+    Table AddressToProtocolInfo {
         #[serde_as]
         Data {
             #[serde(with = "address_string")]
             key: Address,
             #[serde(with = "protocol_info")]
             value: ProtocolInfo,
-            compressed_value:ProtocolInfoRedefined
+            compressed_value: ProtocolInfoRedefined
         },
         Init {
             init_size: None,

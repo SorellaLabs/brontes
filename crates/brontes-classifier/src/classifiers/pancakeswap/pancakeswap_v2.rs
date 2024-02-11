@@ -8,8 +8,8 @@ use brontes_types::{
 };
 
 action_impl!(
-    Protocol::UniswapV2,
-    crate::UniswapV2::swapCall,
+    Protocol::PancakeSwapV2,
+    crate::PancakeSwapV2::swapCall,
     Swap,
     [..Swap],
     call_data: true,
@@ -17,7 +17,7 @@ action_impl!(
     |
     info: CallInfo,
     call_data: swapCall,
-    log_data: UniswapV2swapCallLogs,
+    log_data: PancakeSwapV2swapCallLogs,
     db_tx: &DB| {
         let logs = log_data.Swap_field;
         let recipient = call_data.to;
@@ -34,7 +34,7 @@ action_impl!(
             let amount_out = logs.amount0Out.to_scaled_rational(t0_info.decimals);
 
             return Ok(NormalizedSwap {
-            protocol: Protocol::UniswapV2,
+            protocol: Protocol::PancakeSwapV2,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,
@@ -50,7 +50,7 @@ action_impl!(
             let amount_out = logs.amount1Out.to_scaled_rational(t1_info.decimals);
 
             return Ok(NormalizedSwap {
-                protocol: Protocol::UniswapV2,
+                protocol: Protocol::PancakeSwapV2,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,
@@ -66,8 +66,8 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::UniswapV2,
-    crate::UniswapV2::mintCall,
+    Protocol::PancakeSwapV2,
+    crate::PancakeSwapV2::mintCall,
     Mint,
     [..Mint],
     logs: true,
@@ -75,7 +75,7 @@ action_impl!(
     |
      info: CallInfo,
      call_data: mintCall,
-     log_data: UniswapV2mintCallLogs,
+     log_data: PancakeSwapV2mintCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Mint_field;
         let details = db_tx.get_protocol_details(info.target_address)?;
@@ -88,7 +88,7 @@ action_impl!(
         let am1 = log_data.amount1.to_scaled_rational(t1_info.decimals);
 
         Ok(NormalizedMint {
-            protocol: Protocol::UniswapV2,
+            protocol: Protocol::PancakeSwapV2,
             recipient: call_data.to,
             from: info.from_address,
             trace_index: info.trace_idx,
@@ -99,8 +99,8 @@ action_impl!(
     }
 );
 action_impl!(
-    Protocol::UniswapV2,
-    crate::UniswapV2::burnCall,
+    Protocol::PancakeSwapV2,
+    crate::PancakeSwapV2::burnCall,
     Burn,
     [..Burn],
     call_data: true,
@@ -108,7 +108,7 @@ action_impl!(
     |
     info: CallInfo,
     call_data: burnCall,
-     log_data: UniswapV2burnCallLogs,
+     log_data: PancakeSwapV2burnCallLogs,
      db_tx: &DB| {
         let log_data = log_data.Burn_field;
         let details = db_tx.get_protocol_details(info.target_address)?;
@@ -121,7 +121,7 @@ action_impl!(
         let am1 = log_data.amount1.to_scaled_rational(t1_info.decimals);
 
         Ok(NormalizedBurn {
-            protocol: Protocol::UniswapV2,
+            protocol: Protocol::PancakeSwapV2,
             trace_index: info.trace_idx,
             from: info.from_address,
             recipient: call_data.to,
