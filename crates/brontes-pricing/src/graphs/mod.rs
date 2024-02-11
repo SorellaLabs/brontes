@@ -176,7 +176,6 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
             pool_pair.ordered(),
             pool_address,
         );
-
         (
             requery_subgraph,
             self.all_pair_graph
@@ -198,6 +197,8 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
             .remove_empty_address(pool_pair, pool_address)
     }
 
+    /// Returns all pairs that have been ignored from lowest to highest
+    /// liquidity
     pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
         self.subgraph_verifier
             .verify_subgraph_on_new_path_failure(pair)

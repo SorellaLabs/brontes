@@ -363,32 +363,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else if let LoadResult::Err { pool_address, pool_pair, block, dependent_pairs } =
-            load_result
-        {
-            self.on_state_load_error(pool_pair, pool_address, block, dependent_pairs);
+        } else if let LoadResult::Err { pool_address, pool_pair, protocol } = load_result {
+            self.new_graph_pairs
+                .insert(pool_address, (protocol, pool_pair));
         }
-    }
-
-    fn on_state_load_error(
-        &mut self,
-        pool_pair: Pair,
-        pool_address: Address,
-        block: u64,
-        dependent_pairs: Vec<Pair>,
-    ) {
-        dependent_pairs.into_iter().for_each(|parent_pair| {
-            let (re_query, bad_state) =
-                self.graph_manager
-                    .bad_pool_state(parent_pair, pool_pair, pool_address);
-
-            if re_query {
-                self.re_queue_bad_pair(parent_pair, block);
-            }
-            if let Some((address, protocol, pair)) = bad_state {
-                self.new_graph_pairs.insert(address, (protocol, pair));
-            }
-        });
     }
 
     /// Attempts to verify subgraphs for a given set of pairs and handles the
@@ -472,57 +450,78 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             .for_each(|(pair, block, missing_paths)| {
                 let edges = missing_paths.into_iter().flatten().unique().collect_vec();
                 // add regularly
-                if !edges.is_empty() {
-                    let Some((id, need_state, force_rundown)) =
-                        self.add_subgraph(pair, block, edges, true)
-                    else {
-                        return;
-                    };
-                    if force_rundown {
-                        self.rundown(pair, block);
-                        return
-                    }
-
-                    if !need_state {
-                        recusing.push((block, id, pair))
-                    }
+                if edges.is_empty() {
+                    self.rundown(pair, block);
                     return
                 }
 
-                self.rundown(pair, block);
+                let Some((id, need_state, force_rundown)) =
+                    self.add_subgraph(pair, block, edges, true)
+                else {
+                    return;
+                };
+
+                if force_rundown {
+                    self.rundown(pair, block);
+                } else if !need_state {
+                    recusing.push((block, id, pair))
+                }
             });
 
         self.try_verify_subgraph(recusing);
     }
 
+    /// rundown occurs when we have hit a attempt limit for trying to find high
+    /// liquidity nodes for a pair subgraph. when this happens, we take all
+    /// of the low liquidity nodes and generate all unique paths through each
+    /// and then add it to the subgraph. And then allow for these low liquidity
+    /// nodes as they are the only nodes for the given pair.
     fn rundown(&mut self, pair: Pair, block: u64) {
-        let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
+        let Some(ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
             return
         };
 
-        loop {
-            let popped = ignores.pop();
-            let (pair, block, edges) = par_state_query(
-                &self.graph_manager,
-                vec![(pair, block, ignores.iter().copied().collect(), vec![])],
-            )
-            .remove(0);
-            let edges = edges.into_iter().flatten().unique().collect_vec();
+        if ignores.is_empty() {
+            tracing::error!(
+                ?pair,
+                ?block,
+                "rundown for subgraph has no edges we are supposed to ignore"
+            );
+        }
 
-            if edges.is_empty() {
-                if popped.is_none() {
-                    break
-                }
-                continue
-            } else {
-                let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
-                    return;
-                };
+        // take all combinations of our ignore nodes
+        let queries = if ignores.len() > 1 {
+            ignores
+                .iter()
+                .copied()
+                .combinations(ignores.len() - 1)
+                .map(|ignores| (pair, block, ignores.into_iter().collect::<HashSet<_>>(), vec![]))
+                .collect_vec()
+        } else {
+            ignores
+                .iter()
+                .copied()
+                .map(|_| (pair, block, HashSet::new(), vec![]))
+                .collect_vec()
+        };
 
-                if !need_state {
-                    self.try_verify_subgraph(vec![(block, id, pair)]);
-                }
-                break
+        let edges = par_state_query(&self.graph_manager, queries)
+            .into_iter()
+            .flat_map(|e| e.2)
+            .flatten()
+            .unique()
+            .collect_vec();
+
+        if edges.is_empty() {
+            tracing::error!(?pair, ?block, "failed to find connection for graph");
+            return
+        } else {
+            let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
+                return;
+            };
+
+            if !need_state {
+                self.try_verify_subgraph(vec![(block, id, pair)]);
             }
         }
     }
@@ -594,36 +593,6 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
         }
 
         Some((id, triggered, force_rundown))
-    }
-
-    /// because we already have a state update for this pair in the buffer, we
-    /// don't wanna create another one
-    fn re_queue_bad_pair(&mut self, pair: Pair, block: u64) {
-        if pair.0 == pair.1 {
-            return
-        }
-
-        for pool_info in self
-            .graph_manager
-            .create_subgraph_mut(block, pair, 100, 5)
-            .into_iter()
-        {
-            let is_loading = self.lazy_loader.is_loading(&pool_info.pool_addr);
-            // load exchange only if its not loaded already
-            if is_loading {
-                self.lazy_loader
-                    .add_protocol_parent(block, None, pool_info.pool_addr, pair)
-            } else {
-                self.lazy_loader.lazy_load_exchange(
-                    pair,
-                    Pair(pool_info.token_0, pool_info.token_1),
-                    None,
-                    pool_info.pool_addr,
-                    block,
-                    pool_info.dex_type,
-                )
-            }
-        }
     }
 
     // called when we try to progress to the next block
@@ -905,7 +874,6 @@ fn par_state_query<DB: LibmdbxWriter + LibmdbxReader>(
             if frayed_ends.is_empty() {
                 return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)])
             }
-
             (
                 pair,
                 block,

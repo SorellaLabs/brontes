@@ -48,7 +48,7 @@ struct BfsArgs {
     pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
 }
 
-const MIN_LIQUIDITY_USDC: u128 = 15_000;
+const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
@@ -144,13 +144,21 @@ impl PairSubGraph {
                 .entry(token_1)
                 .or_insert_with(|| self.graph.add_node(()).index().try_into().unwrap());
 
-            // based on the direction. insert properly
-            if edge.token_0_in {
-                connections.entry((addr0, addr1)).or_default().push(edge);
-            } else {
-                connections.entry((addr1, addr0)).or_default().push(edge);
+            // make sure is proper order
+            let (addr0, addr1) = if edge.token_0_in { (addr0, addr1) } else { (addr1, addr0) };
+
+            // check if we already have this edge so we don't add duplicates
+            if let Some(g_edge) = self.graph.find_edge(addr0.into(), addr1.into()) {
+                let edge_weight = self.graph.edge_weight_mut(g_edge).unwrap();
+                if !edge_weight.contains(&edge) {
+                    edge_weight.push(edge);
+                }
+                continue
             }
+
+            connections.entry((addr0, addr1)).or_default().push(edge);
         }
+
         self.graph.extend_with_edges(
             connections
                 .into_par_iter()
@@ -294,33 +302,26 @@ impl PairSubGraph {
             }
 
             for info in node_weights {
+                let pair = Pair(info.token_0, info.token_1);
+
                 let Some(pool_state) = state.get(&info.pool_addr) else {
+                    Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
+
                     continue;
                 };
                 let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing))
                 else {
+                    Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                     continue;
                 };
 
                 let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                 let liq0 = prev_price.clone().reciprocal() * &t0;
 
-                let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
-                if liq0 < MIN_LIQUIDITY_USDC {
-                    let bad_edge = BadEdge {
-                        pair,
-                        pool_address: info.pool_addr,
-                        edge_liq: info.get_quote_token(),
-                        liquidity: liq0.clone(),
-                    };
-
-                    removal_map
-                        .removal_state
-                        .entry(pair)
-                        .or_default()
-                        .insert(bad_edge);
+                if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN {
+                    Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
                 } else {
                     let t0xt1 = &t0 * &t1;
                     pxw += pool_price * &t0xt1;
@@ -336,6 +337,22 @@ impl PairSubGraph {
 
             Some(local_weighted_price)
         })
+    }
+
+    fn bad_state(
+        pair: Pair,
+        info: &SubGraphEdge,
+        liq: Rational,
+        map: &mut HashMap<Pair, HashSet<BadEdge>>,
+    ) {
+        let bad_edge = BadEdge {
+            pair,
+            pool_address: info.pool_addr,
+            edge_liq: info.get_quote_token(),
+            liquidity: liq,
+        };
+
+        map.entry(pair).or_default().insert(bad_edge);
     }
 
     fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, HashSet<BadEdge>>) {

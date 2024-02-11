@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use alloy_primitives::Address;
 use brontes_types::{pair::Pair, ToFloatNearest};
 use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use super::{
@@ -105,9 +106,13 @@ impl SubgraphVerifier {
         removals
             .iter()
             .filter_map(|(k, v)| {
-                // look for edges that have been complety removed
+                // look for edges that have been completely removed
                 if all_graph.edge_count(k.0, k.1) == v.len() {
-                    Some(v.clone().into_iter())
+                    Some(
+                        v.clone()
+                            .into_iter()
+                            .filter(|v| v.liquidity != Rational::ZERO),
+                    )
                 } else {
                     None
                 }
@@ -175,7 +180,6 @@ impl SubgraphVerifier {
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
-
                     tracing::debug!(?pair, "requerying",);
 
                     return VerificationResults::Failed(VerificationFailed {
@@ -214,6 +218,7 @@ impl SubgraphVerifier {
                             .iter()
                             .map(|e| Pair(e.token_0, e.token_1))
                             .collect::<HashSet<_>>();
+
                         tracing::debug!(
                             ?pair,
                             "connected with {:#?}",
@@ -345,7 +350,7 @@ pub struct SubgraphVerificationState {
 }
 
 impl SubgraphVerificationState {
-    /// returns pairs to ignore from highest to lowest liquidity.
+    /// returns pairs to ignore from lowest to highest liquidity.
     fn sorted_ignore_nodes_by_liquidity(&self) -> Vec<Pair> {
         self.edges
             .0
