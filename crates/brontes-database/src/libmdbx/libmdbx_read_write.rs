@@ -328,6 +328,12 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .walk_range(start_key..=end_key)?
             .all(|f| f.is_err())
         {
+            tracing::debug!(
+                ?pair,
+                ?block,
+                "no pricing for block. cannot verify most recent subgraph is valid"
+            );
+
             return Err(eyre::eyre!("subgraph not inited at this block range"))
         }
 

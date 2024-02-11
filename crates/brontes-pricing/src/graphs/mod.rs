@@ -166,6 +166,12 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
     }
 
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
+        if let Err(e) =
+            self.db
+                .save_pair_at(block, pair, subgraph.get_all_pools().cloned().collect())
+        {
+            tracing::error!(error = e, "failed to save new subgraph pair");
+        }
         self.sub_graph_registry.add_verified_subgraph(
             pair,
             subgraph,
