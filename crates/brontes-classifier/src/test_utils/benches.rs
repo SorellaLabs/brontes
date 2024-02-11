@@ -20,7 +20,7 @@ use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 use crate::{
-    ActionCollection, Classifier, DiscoveryProtocols, FactoryDecoderDispatch,
+    ActionCollection, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
     ProtocolClassifications,
 };
 

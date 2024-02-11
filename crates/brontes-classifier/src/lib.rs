@@ -25,6 +25,7 @@ sol!(UniswapV2, "./classifier-abis/UniswapV2.json");
 sol!(SushiSwapV2, "./classifier-abis/SushiSwapV2.json");
 sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
 sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
+sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
@@ -70,7 +71,7 @@ pub trait IntoAction: Debug + Send + Sync {
     ) -> eyre::Result<DexPriceMsg>;
 }
 
-pub trait FactoryDecoder {
+pub trait FactoryDiscovery {
     fn decode_new_pool<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
@@ -80,7 +81,7 @@ pub trait FactoryDecoder {
     ) -> impl Future<Output = Vec<NormalizedNewPool>> + Send;
 }
 
-pub trait FactoryDecoderDispatch: Sync + Send {
+pub trait FactoryDiscoveryDispatch: Sync + Send {
     fn dispatch<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
