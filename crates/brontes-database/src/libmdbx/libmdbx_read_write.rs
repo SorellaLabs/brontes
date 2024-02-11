@@ -352,10 +352,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .get::<Builder>(builder_coinbase_addr)?
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in builder info", builder_coinbase_addr))
     }
-
-    fn get_builder_info(&self, address: Address) -> eyre::Result<Option<BuilderInfo>> {
-        Ok(self.0.ro_tx()?.get::<Builder>(address)?)
-    }
 }
 
 impl LibmdbxWriter for LibmdbxReadWriter {

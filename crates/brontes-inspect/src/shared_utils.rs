@@ -6,13 +6,11 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_pricing::errors::AmmError;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
     normalized_actions::Actions,
     pair::Pair,
-    traits::TracingProvider,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
 };
@@ -20,7 +18,6 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use reth_primitives::U256;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {

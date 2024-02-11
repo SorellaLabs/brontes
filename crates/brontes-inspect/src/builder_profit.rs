@@ -2,90 +2,71 @@ use std::sync::Arc;
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_pricing::errors::AmmError;
-use brontes_types::{
-    mev::{Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
-    normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
-    traits::TracingProvider,
-    tree::{BlockTree, GasDetails, Node, Root},
-};
-use reth_primitives::U256;
+use brontes_types::{mev::Bundle, normalized_actions::Actions, tree::BlockTree, TreeSearchArgs};
+use malachite::Rational;
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
-pub struct BuilderProfitInspector<'db, DB: LibmdbxReader> {
-    inner: SharedInspectorUtils<'db, DB>,
+use crate::{Inspector, Metadata};
+pub struct BuilderProfitInspector<DB: LibmdbxReader> {
+    inner: &'static DB,
 }
 
-impl<'db, DB: LibmdbxReader> BuilderProfitInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+impl<DB: LibmdbxReader> BuilderProfitInspector<DB> {
+    pub fn new(db: &'static DB) -> Self {
+        Self { inner: db }
     }
 
-    pub async fn calculate_builder_profit<M: TracingProvider>(
+    pub async fn calculate_builder_profit(
         &self,
         builder_address: Address,
-        middleware: Arc<M>,
-        block_number: Option<u64>,
-    ) -> Result<U256, AmmError> {
-        let builder_profit;
-        let builder_collateral_address = self
+        tree: Arc<BlockTree<Actions>>,
+    ) -> Result<u128, Box<dyn std::error::Error + Send + Sync>> {
+        let coinbase_transfers = tree
+            .tx_roots
+            .iter()
+            .filter_map(|root| root.gas_details.coinbase_transfer)
+            .sum::<u128>(); // Specify the type of sum
+
+        let builder_collateral_amount = self
             .inner
-            .db
-            .get_builder_info(builder_address)?
-            .unwrap()
-            .ultrasound_relay_collateral_address;
-        let txn_traces = self.inner.db.load_trace(block_number.unwrap());
-        let bid_adjustment = match txn_traces {
-            Ok(_) => txn_traces.iter().any(|traces| {
-                traces.iter().any(|trace| {
-                    trace.trace.iter().any(|trace_with_logs| {
-                        trace_with_logs.msg_sender == builder_collateral_address.unwrap()
+            .try_fetch_builder_info(builder_address)
+            .map(|builder_info| {
+                tree.collect_all(|node| TreeSearchArgs {
+                    collect_current_node:  node.data.get_from_address()
+                        == builder_info.ultrasound_relay_collateral_address.unwrap()
+                        && node.data.is_eth_transfer(),
+                    child_node_to_collect: node.get_all_sub_actions().iter().any(|sub_node| {
+                        sub_node.get_from_address()
+                            == builder_info.ultrasound_relay_collateral_address.unwrap()
+                            && sub_node.is_eth_transfer()
+                    }),
+                })
+                .iter()
+                .flat_map(|(_fixed_bytes, actions)| {
+                    actions.iter().filter_map(|action| {
+                        if let Actions::Transfer(transfer) = action {
+                            Some(transfer.amount.clone())
+                        } else {
+                            None
+                        }
                     })
                 })
-            }),
-            _ => false,
-        };
+                .map(|rational| u128::try_from(&Rational::from(rational)))
+                .filter_map(Result::ok)
+                .sum::<u128>()
+            })
+            .unwrap_or_default(); // Handle the case when try_fetch_builder_info returns None
 
-        let start_builder_balance = middleware
-            .get_balance(
-                builder_address,
-                block_number
-                    .map(|num| num.checked_sub(1).unwrap_or(num))
-                    .map(Into::into),
-            )
-            .await?;
-        let end_builder_balance = middleware
-            .get_balance(builder_address, block_number.map(Into::into))
-            .await?;
-
-        if bid_adjustment {
-            let start_collateral_balance = middleware
-                .get_balance(
-                    builder_collateral_address.unwrap(),
-                    block_number
-                        .map(|num| num.checked_sub(1).unwrap_or(num))
-                        .map(Into::into),
-                )
-                .await?;
-            let end_collateral_balance = middleware
-                .get_balance(builder_collateral_address.unwrap(), block_number.map(Into::into))
-                .await?;
-            let bid_adjustment_calcs = start_collateral_balance - end_collateral_balance;
-            builder_profit = end_builder_balance - start_builder_balance - bid_adjustment_calcs;
-        } else {
-            builder_profit = end_builder_balance - start_builder_balance;
-        }
-
-        Ok(builder_profit)
+        Ok(coinbase_transfers - builder_collateral_amount)
     }
 }
 
 #[async_trait::async_trait]
-impl<DB: LibmdbxReader> Inspector for BuilderProfitInspector<'_, DB> {
+impl<DB: LibmdbxReader> Inspector for BuilderProfitInspector<DB> {
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
+        Vec::new()
     }
 }

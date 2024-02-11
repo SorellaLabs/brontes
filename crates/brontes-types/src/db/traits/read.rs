@@ -59,5 +59,4 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo>;
 
     fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>>;
-    fn get_builder_info(&self, address: Address) -> eyre::Result<Option<BuilderInfo>>;
 }

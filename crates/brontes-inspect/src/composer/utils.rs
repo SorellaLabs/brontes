@@ -5,12 +5,11 @@ use brontes_types::{
     db::metadata::Metadata,
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
-    traits::TracingProvider,
     tree::BlockTree,
     ToScaledRational,
 };
 use itertools::Itertools;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
 use crate::builder_profit::BuilderProfitInspector;
 //TODO: Calculate priority fee & get average so we can flag outliers
@@ -61,15 +60,14 @@ pub(crate) fn pre_process(
 }
 
 //TODO: Clean up & fix
-pub(crate) fn build_mev_header<M: TracingProvider>(
+pub(crate) fn build_mev_header(
     metadata: Arc<Metadata>,
     tree: Arc<BlockTree<Actions>>,
     pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,
     orchestra_data: &[Bundle],
-    middleware: Arc<M>,
 ) -> MevBlock {
-    let builder_profit_inspector = BuilderProfitInspector::new(quote, db);
+    let builder_profit_inspector = BuilderProfitInspector::new(&db);
     let cum_mev_priority_fee_paid = orchestra_data
         .iter()
         .map(|bundle| {
@@ -78,12 +76,10 @@ pub(crate) fn build_mev_header<M: TracingProvider>(
                 .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128)
         })
         .sum();
-    let builder_profit = builder_profit_inspector.calculate_builder_profit(
-        pre_processing.builder_address,
-        middleware,
-        Some(pre_processing.metadata.block_num),
-    );
-    let builder_eth_profit = Rational::from_signeds(builder_profit as i128, 10i128.pow(18));
+    let builder_profit = builder_profit_inspector
+        .calculate_builder_profit(pre_processing.builder_address, tree.clone());
+
+    let builder_eth_profit = builder_profit.to_scaled_rational(18);
 
     MevBlock {
         block_hash: pre_processing.metadata.block_hash.into(),

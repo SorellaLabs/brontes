@@ -52,6 +52,7 @@ serde_json.workspace = true
 
 # numbers
 malachite.workspace = true
+malachite-q = "0.4.4"
 
 # misc
 strum = { workspace = true, features = ["derive"] }
