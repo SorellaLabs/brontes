@@ -68,6 +68,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
+                    tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
 
                     if searcher_actions.is_empty() {
                         tracing::debug!("no searcher actions found");
