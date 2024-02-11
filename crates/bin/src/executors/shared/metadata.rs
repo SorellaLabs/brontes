@@ -17,6 +17,8 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
+const MAX_PENDING_TREES: usize = 20;
+
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;
 
@@ -45,6 +47,13 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
             clickhouse_futures: FuturesOrdered::new(),
             result_buf: VecDeque::new(),
         }
+    }
+
+    pub fn should_process_next_block(&self) -> bool {
+        self.dex_pricer_stream
+            .as_ref()
+            .map(|pricer| pricer.pending_trees.len() < MAX_PENDING_TREES)
+            .unwrap_or(true)
     }
 
     pub fn is_finished(&self) -> bool {

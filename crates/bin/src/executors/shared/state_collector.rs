@@ -56,6 +56,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
         self.collection_future.is_some()
     }
 
+    pub fn should_process_next_block(&self) -> bool {
+        self.metadata_fetcher.should_process_next_block()
+    }
+
     pub fn fetch_state_for(&mut self, block: u64) {
         let execute_fut = self.parser.execute(block);
         self.collection_future = Some(Box::pin(async {
