@@ -7,7 +7,9 @@ use alloy_primitives::Address;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
+};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::{debug, info};
@@ -19,7 +21,7 @@ pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     parser:             &'static Parser<'static, T, DB>,
     state_collector:    StateCollector<T, DB>,
     database:           &'static DB,
-    inspectors:         &'static [&'static dyn Inspector],
+    inspectors:         &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
@@ -30,7 +32,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         state_collector: StateCollector<T, DB>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
-        inspectors: &'static [&'static dyn Inspector],
+        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     ) -> Self {
         Self {
             state_collector,

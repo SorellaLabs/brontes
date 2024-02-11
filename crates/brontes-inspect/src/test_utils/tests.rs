@@ -152,7 +152,7 @@ impl InspectorTestUtils {
             panic!("no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config.expected_mev_type.init_inspector(
+        let inspector = config.expected_mev_type.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[
@@ -227,7 +227,7 @@ impl InspectorTestUtils {
             panic!("no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config.expected_mev_type.init_inspector(
+        let inspector = config.expected_mev_type.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[
@@ -333,7 +333,7 @@ impl InspectorTestUtils {
             .inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
