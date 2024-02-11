@@ -122,12 +122,14 @@ impl<'a> LogData<'a> {
 
         (
             quote!(
+                #[allow(non_camel_case_types)]
                 struct #log_return_builder_struct_name {
                     #(
                         #log_field: Option<#log_field_ty>
                     ),*
                 }
 
+                #[allow(non_camel_case_types)]
                 struct #log_return_struct_name {
                     #(#res_struct_fields),*
                 }

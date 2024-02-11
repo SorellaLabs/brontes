@@ -502,13 +502,11 @@ impl ClassifierTestUtils {
 
         let from_address = found_trace.get_from_addr();
         let created_addr = found_trace.get_create_output();
-        let dispatcher = DiscoveryProtocols::default();
-        let call_data = call.input.clone();
-        let tracer = self.trace_loader.get_provider();
-        let idx = found_trace.trace_idx;
+        let calldata = call.input.clone();
+        let trace_index = found_trace.trace_idx;
 
-        let res = dispatcher
-            .dispatch(tracer.clone(), from_address, created_addr, idx, call_data.clone())
+        let res = DiscoveryProtocols::default()
+            .dispatch(self.get_provider(), from_address, created_addr, trace_index, calldata)
             .await;
 
         cmp_fn(res);
