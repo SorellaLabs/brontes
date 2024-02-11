@@ -29,6 +29,7 @@ discovery_dispatch!(
     UniswapV2Discovery,
     UniswapV3Discovery,
     PancakeSwapV3Discovery,
+    PancakeSwapV2Discovery,
     CurveV1MetapoolBaseDiscovery,
     CurveV1MetapoolMetaDiscovery,
     CurveV2MetapoolBaseDiscovery,
