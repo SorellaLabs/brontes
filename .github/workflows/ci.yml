@@ -8,6 +8,7 @@ on:
 name: CI
 
 jobs:
+  if: github.event.pull_request.draft == 'false'
   clippy:
     name: "clippy"
     runs-on: ubuntu-latest
