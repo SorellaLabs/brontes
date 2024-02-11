@@ -318,7 +318,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
         let tx = self.0.ro_tx()?;
         let subgraphs = tx
-            .get::<SubGraphs>(pair.ordered())?
+            .get::<SubGraphs>(pair)?
             .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
 
         // if we have dex prices for a block then we have a subgraph for the block
@@ -433,7 +433,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair.ordered())? {
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
             let data = SubGraphsData::new(pair, entry);
