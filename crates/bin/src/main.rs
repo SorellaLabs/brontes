@@ -40,7 +40,7 @@ fn run() -> eyre::Result<()> {
 
 fn init_tracing() {
     let verbosity_level = Level::INFO;
-    let directive: Directive = format!("hyper::proto::h1=off,{verbosity_level}")
+    let directive: Directive = format!("{verbosity_level}")
         .parse()
         .unwrap();
 
