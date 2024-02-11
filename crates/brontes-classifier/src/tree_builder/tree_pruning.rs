@@ -95,7 +95,9 @@ pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
         },
         |node| (node.index, node.data.clone()),
         |other_nodes, node| {
-            let Actions::Collect(collect_data) = &node.data else { unreachable!("value not collect") };
+            let Actions::Collect(collect_data) = &node.data else {
+                unreachable!("value not collect")
+            };
             other_nodes
                 .iter()
                 .filter_map(|(index, data)| {
