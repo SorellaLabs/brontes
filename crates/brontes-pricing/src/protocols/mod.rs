@@ -2,7 +2,6 @@ pub mod errors;
 pub mod lazy;
 pub mod uniswap_v2;
 pub mod uniswap_v3;
-// pub mod uniswap_v3_math;
 
 use std::{future::Future, sync::Arc};
 

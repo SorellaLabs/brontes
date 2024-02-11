@@ -23,6 +23,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
+    SubGraphsEntry,
 };
 use eyre::eyre;
 use itertools::Itertools;
@@ -318,16 +319,22 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
         let tx = self.0.ro_tx()?;
         let subgraphs = tx
-            .get::<SubGraphs>(pair.ordered())?
+            .get::<SubGraphs>(pair)?
             .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
 
         // if we have dex prices for a block then we have a subgraph for the block
         let (start_key, end_key) = make_filter_key_range(block);
-        if tx
+        if !tx
             .new_cursor::<DexPrice>()?
             .walk_range(start_key..=end_key)?
-            .all(|f| f.is_err())
+            .all(|f| f.is_ok())
         {
+            tracing::debug!(
+                ?pair,
+                ?block,
+                "no pricing for block. cannot verify most recent subgraph is valid"
+            );
+
             return Err(eyre::eyre!("subgraph not inited at this block range"))
         }
 
@@ -395,7 +402,6 @@ impl LibmdbxWriter for LibmdbxReadWriter {
                         tx_idx: idx as u16,
                         quote:  value.into_iter().collect_vec(),
                     };
-
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
                 .collect::<Vec<_>>();
@@ -427,10 +433,18 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair.ordered())? {
+
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
             let data = SubGraphsData::new(pair, entry);
+            self.0
+                .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+        } else {
+            let mut map = HashMap::new();
+            map.insert(block, edges);
+            let subgraph_entry = SubGraphsEntry(map);
+            let data = SubGraphsData::new(pair, subgraph_entry);
             self.0
                 .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
         }
