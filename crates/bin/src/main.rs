@@ -40,9 +40,7 @@ fn run() -> eyre::Result<()> {
 
 fn init_tracing() {
     let verbosity_level = Level::INFO;
-    let directive: Directive = format!("{verbosity_level}")
-        .parse()
-        .unwrap();
+    let directive: Directive = format!("{verbosity_level}").parse().unwrap();
 
     let layers = vec![brontes_tracing::stdout(directive)];
 
