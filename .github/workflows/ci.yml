@@ -50,7 +50,7 @@ jobs:
           shell: bash
 
         - name: "build nightly"
-          run: cargo build --workspace --all-features
+          run: rm -r /home/data/brontes-shared-test/* && cargo build --workspace --all-features
           env:
             RUSTFLAGS: -D warnings
 
@@ -76,5 +76,5 @@ jobs:
 
         - name: cargo test
           run: 
-            ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly && rm -r /home/data/brontes-shared-test/* && cargo build && cargo +nightly test'" 
+            ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && cargo +nightly test'" 
 
