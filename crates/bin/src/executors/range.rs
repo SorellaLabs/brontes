@@ -3,11 +3,12 @@ use std::{
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
 use brontes_core::decoding::TracingProvider;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
+};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::info;
@@ -20,17 +21,16 @@ pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + Libm
     current_block: u64,
     end_block:     u64,
     libmdbx:       &'static DB,
-    inspectors:    &'static [&'static dyn Inspector],
+    inspectors:    &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
     pub fn new(
-        _quote_asset: Address,
         start_block: u64,
         end_block: u64,
         state_collector: StateCollector<T, DB>,
         libmdbx: &'static DB,
-        inspectors: &'static [&'static dyn Inspector],
+        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     ) -> Self {
         Self {
             collector: state_collector,
@@ -48,8 +48,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPri
 
         let mut graceful_guard = None;
         tokio::select! {
-            _= &mut data_batching => {
-
+            _ = &mut data_batching => {
             },
             guard = shutdown => {
                 graceful_guard = Some(guard);

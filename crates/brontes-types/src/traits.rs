@@ -1,6 +1,8 @@
 use alloy_primitives::TxHash;
 use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
-use reth_rpc_types::{state::StateOverride, BlockOverrides, CallRequest, TransactionReceipt};
+use reth_rpc_types::{
+    state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
+};
 
 use crate::structured_trace::TxTrace;
 
@@ -9,7 +11,7 @@ use crate::structured_trace::TxTrace;
 pub trait TracingProvider: Send + Sync + 'static {
     async fn eth_call(
         &self,
-        request: CallRequest,
+        request: TransactionRequest,
         block_number: Option<BlockId>,
         state_overrides: Option<StateOverride>,
         block_overrides: Option<Box<BlockOverrides>>,

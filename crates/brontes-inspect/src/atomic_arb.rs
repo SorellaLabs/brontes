@@ -28,11 +28,13 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
 
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
+    type Result = Vec<Bundle>;
+
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
-    ) -> Vec<Bundle> {
+    ) -> Self::Result {
         let interesting_state = tree.collect_all(|node| TreeSearchArgs {
             collect_current_node:  node.data.is_swap()
                 || node.data.is_transfer()
@@ -87,20 +89,16 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             AtomicArbType::Triangle => {
                 self.process_triangle_arb(&info, metadata.clone(), &[actions])
             }
-            AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_arb(
-                &info,
-                metadata.clone(),
-                &swaps,
-                &vec![actions],
-                jump_index,
-            ),
+            AtomicArbType::CrossPair(jump_index) => {
+                self.process_cross_pair_arb(&info, metadata.clone(), &swaps, &[actions], jump_index)
+            }
         }?;
 
         let header = self.inner.build_bundle_header(
             &info,
             profit.to_float(),
             PriceAt::Average,
-            &vec![searcher_actions],
+            &[searcher_actions],
             &[info.gas_details],
             metadata,
             MevType::AtomicArb,
@@ -163,24 +161,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let is_profitable = profit > Rational::ZERO;
 
-        if is_profitable {
-            Some(profit)
-        } else {
+        if is_profitable
+            || tx_info.is_searcher_of_type(MevType::AtomicArb)
+            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
+        {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
-            if tx_info.is_searcher_of_type(MevType::AtomicArb) {
-                Some(profit)
-            } else {
-                // If the arb is not profitable, check if this is a know searcher or if the tx
-                // is private or coinbase.transfers to the builder
-                if tx_info.is_searcher_of_type(MevType::AtomicArb) {
-                    Some(profit)
-                } else if tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private {
-                    Some(profit)
-                } else {
-                    None
-                }
-            }
+            Some(profit)
+        } else {
+            None
         }
     }
 
@@ -214,9 +203,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         } else {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
-            if tx_info.is_searcher_of_type(MevType::AtomicArb) {
-                Some(profit)
-            } else if tx_info.is_private || tx_info.gas_details.coinbase_transfer.is_some() {
+            if tx_info.is_searcher_of_type(MevType::AtomicArb)
+                || tx_info.is_private
+                || tx_info.gas_details.coinbase_transfer.is_some()
+            {
                 Some(profit)
             } else {
                 None
@@ -318,17 +308,15 @@ enum AtomicArbType {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
-    use serial_test::serial;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_backrun() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
 
         let tx = hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
@@ -341,10 +329,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_simple_triangular() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
         let tx = hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
@@ -356,10 +343,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_not_false_positive_uni_router() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
         let tx = hex!("ac1127310fdec0b07e618407eabfb7cdf5ada81dc47e914c76fc759843346a0e").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
@@ -368,10 +354,9 @@ mod tests {
         inspector_util.assert_no_mev(config).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_not_false_positive_hex_usdc() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
         let tx = hex!("e4b8b358118daa26809a1ff77323d825664202c4f31a2afe923f3fe83d7eccc4").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])

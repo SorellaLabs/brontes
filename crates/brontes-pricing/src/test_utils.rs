@@ -23,8 +23,8 @@ pub struct PricingTestUtils {
 }
 
 impl PricingTestUtils {
-    pub fn new(quote_address: Address) -> Self {
-        let tracer = TraceLoader::new();
+    pub async fn new(quote_address: Address) -> Self {
+        let tracer = TraceLoader::new().await;
         Self { tracer, quote_address }
     }
 

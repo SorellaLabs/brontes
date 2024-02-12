@@ -1,10 +1,7 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
-};
+use brontes_database::{clickhouse::Clickhouse, libmdbx::LibmdbxReadWriter};
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::constants::USDT_ADDRESS_STRING;
@@ -64,61 +61,40 @@ impl RunArgs {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
-
-        // verify block range validity
-        if let Some(end_block) = self.end_block {
-            tracing::info!("verifying libmdbx state for block range");
-            if !libmdbx.valid_range_state(self.start_block, end_block)? {
-                return Err(eyre::eyre!(
-                    "Don't have all the libmdbx state to run the given block range. please init \
-                     this range first before trying to run"
-                ))
-            }
-
-            if !self.run_dex_pricing
-                && !libmdbx.has_dex_pricing_for_range(self.start_block, end_block)?
-            {
-                return Err(eyre::eyre!(
-                    "Don't have dex pricing for the given range. please run the missing blocks \
-                     with the `--run-dex-pricing` flag"
-                ))
-            }
-
-            tracing::info!("verified libmdbx state");
-        }
-
-        // check to make sure that we have the dex-prices for the range
-        if !self.run_dex_pricing && self.end_block.is_none() {
-            return Err(eyre::eyre!("need end block if we aren't running the dex pricing"))
-        }
-
-        let clickhouse = (self.end_block.is_none()).then(|| static_object(Clickhouse::default()));
+        let clickhouse = static_object(Clickhouse::default());
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 
         let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 
-        let parser = static_object(DParser::new(
-            metrics_tx,
-            libmdbx,
-            tracer.clone(),
-            Box::new(|address, db_tx| db_tx.get_protocol(*address).is_err()),
-        ));
+        let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()));
 
-        BrontesRunConfig::new(
-            self.start_block,
-            self.end_block,
-            max_tasks,
-            self.min_batch_size,
-            quote_asset,
-            self.run_dex_pricing,
-            inspectors,
-            clickhouse,
-            parser,
-            libmdbx,
-        )
-        .build(task_executor)
-        .await
-        .await;
+        let executor = task_executor.clone();
+        let result = executor
+            .clone()
+            .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
+                if let Ok(brontes) = BrontesRunConfig::new(
+                    self.start_block,
+                    self.end_block,
+                    max_tasks,
+                    self.min_batch_size,
+                    quote_asset,
+                    self.run_dex_pricing,
+                    inspectors,
+                    clickhouse,
+                    parser,
+                    libmdbx,
+                )
+                .build(task_executor, shutdown)
+                .await
+                .map_err(|e| {
+                    tracing::error!(%e);
+                    e
+                }) {
+                    brontes.await;
+                }
+            });
+
+        result.await?;
 
         Ok(())
     }

@@ -26,8 +26,8 @@ pub struct NormalizedMint {
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
-    pub to:          Address,
     pub recipient:   Address,
+    pub pool:        Address,
     pub token:       Vec<TokenInfoWithAddress>,
     pub amount:      Vec<Rational>,
 }
@@ -39,8 +39,8 @@ pub struct NormalizedBurn {
     pub protocol:    Protocol,
     pub trace_index: u64,
     pub from:        Address,
-    pub to:          Address,
     pub recipient:   Address,
+    pub pool:        Address,
     pub token:       Vec<TokenInfoWithAddress>,
     pub amount:      Vec<Rational>,
 }
@@ -51,9 +51,9 @@ pub struct NormalizedCollect {
     #[redefined(same_fields)]
     pub protocol:    Protocol,
     pub trace_index: u64,
-    pub to:          Address,
     pub from:        Address,
     pub recipient:   Address,
+    pub pool:        Address,
     pub token:       Vec<TokenInfoWithAddress>,
     pub amount:      Vec<Rational>,
 }
@@ -214,14 +214,10 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
             .into_iter()
             .enumerate()
             .filter_map(|(idx, tx_hash)| {
-                if let Some(mints) = &value.1[idx] {
-                    Some((tx_hash, mints.clone()))
-                } else {
-                    None
-                }
+                value.1[idx].as_ref().map(|mints| (tx_hash, mints.clone()))
             })
             .map(|(tx_hash, mint)| {
-                let tx_hashes_repeated: Vec<FixedString> = vec![tx_hash]
+                let tx_hashes_repeated: Vec<FixedString> = [tx_hash]
                     .repeat(mint.len())
                     .into_iter()
                     .map(|t| format!("{:?}", t).into())
@@ -253,15 +249,9 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
             .0
             .into_iter()
             .enumerate()
-            .filter_map(|(idx, tx_hash)| {
-                if let Some(burns) = &value.1[idx] {
-                    Some((tx_hash, burns.clone()))
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(idx, tx_hash)| value.1[idx].as_ref().map(|burn| (tx_hash, burn.clone())))
             .map(|(tx_hash, burn)| {
-                let tx_hashes_repeated: Vec<FixedString> = vec![tx_hash]
+                let tx_hashes_repeated: Vec<FixedString> = [tx_hash]
                     .repeat(burn.len())
                     .into_iter()
                     .map(|t| format!("{:?}", t).into())

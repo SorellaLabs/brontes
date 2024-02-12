@@ -41,6 +41,7 @@ use brontes_types::{
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
+use tracing::debug;
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, pre_process,
     sort_mev_by_type, BlockPreprocessing,
@@ -59,7 +60,7 @@ pub struct ComposerResults {
 }
 
 pub async fn compose_mev_results(
-    orchestra: &[&dyn Inspector],
+    orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
@@ -75,7 +76,7 @@ pub async fn compose_mev_results(
 }
 
 async fn run_inspectors(
-    orchestra: &[&dyn Inspector],
+    orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
@@ -129,6 +130,7 @@ fn on_orchestra_resolution(
         &orchestra_data,
     );
 
+    debug!("{:#?}", orchestra_data);
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
     MEV_COMPOSABILITY_FILTER
@@ -274,7 +276,6 @@ fn try_compose_mev(
 #[cfg(test)]
 pub mod tests {
     use alloy_primitives::hex;
-    use serial_test::serial;
 
     use super::*;
     use crate::{
@@ -282,10 +283,9 @@ pub mod tests {
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     pub async fn test_jit_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2).await;
 
         let config = ComposerRunConfig::new(
             vec![Inspectors::Sandwich, Inspectors::Jit],
@@ -309,35 +309,9 @@ pub mod tests {
         inspector_util.run_composer(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
-    pub async fn test_jit_sandwich_2() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2);
-
-        let config = ComposerRunConfig::new(
-            vec![Inspectors::Sandwich, Inspectors::Jit],
-            MevType::JitSandwich,
-        )
-        .with_dex_prices()
-        .with_gas_paid_usd(14.93)
-        .with_expected_profit_usd(7.71)
-        .needs_tokens(vec![
-            hex!("423f4e6138E475D85CF7Ea071AC92097Ed631eea").into(),
-            hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
-        ])
-        .with_mev_tx_hashes(vec![
-            hex!("034b65deaaad439551ceace508d90893a50d171900818708c8ae3e0c0a5aac23").into(),
-            hex!("aa416cb4655c702c389677a3ffdc55ae542d4db6a11ba39655254211fd962cc9").into(),
-            hex!("77fd88d4658fd22ba3447ce6b343e75ad20d2defd743fdf2396eb3eb0fba6156").into(),
-        ]);
-
-        inspector_util.run_composer(config, None).await.unwrap();
-    }
-
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     pub async fn test_deduplicate() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0);
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
 
         let config = ComposerRunConfig::new(
             vec![Inspectors::AtomicArb, Inspectors::CexDex],

@@ -43,6 +43,7 @@ action_impl!(
                 token_out: t0_info,
                 amount_in,
                 amount_out,
+                msg_value: info.msg_value
             })
         } else {
             let amount_in = logs.amount0In.to_scaled_rational(t0_info.decimals);
@@ -58,6 +59,7 @@ action_impl!(
                 token_out: t1_info,
                 amount_in,
                 amount_out,
+                msg_value: info.msg_value
             })
         }
     }
@@ -90,7 +92,7 @@ action_impl!(
             recipient: call_data.to,
             from: info.from_address,
             trace_index: info.trace_idx,
-            to: info.target_address,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -120,10 +122,10 @@ action_impl!(
 
         Ok(NormalizedBurn {
             protocol: Protocol::UniswapV2,
-            recipient: call_data.to,
-            to: info.target_address,
             trace_index: info.trace_idx,
             from: info.from_address,
+            recipient: call_data.to,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })

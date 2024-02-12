@@ -37,7 +37,7 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + Libmdbx
     };
 
     if db.try_fetch_token_info(token).is_err() {
-        load_missing_token_info(&provider, db, block, token).await
+        load_missing_token_info(provider, db, block, token).await
     }
 
     let token_info = db.try_fetch_token_info(token)?;

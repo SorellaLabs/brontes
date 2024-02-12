@@ -34,7 +34,7 @@ macro_rules! utils {
                     $(
                         stringify!([<$varient:lower>]) => return Self::$varient,
                     )+
-                    e @ _ => panic!("no var for {}",e)
+                    p => panic!("no var for {}",p)
                 }
                 );
             }
@@ -64,6 +64,7 @@ utils!(
     pub enum Protocol {
         UniswapV2,
         SushiSwapV2,
+        PancakeSwapV2,
         UniswapV3,
         SushiSwapV3,
         PancakeSwapV3,

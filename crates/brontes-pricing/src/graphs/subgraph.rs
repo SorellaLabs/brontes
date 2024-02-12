@@ -308,7 +308,7 @@ impl PairSubGraph {
                 let pair = Pair(info.token_0, info.token_1);
                 // check if below liquidity and that if we remove we don't make the graph
                 // disjoint.
-                if liq0 < Rational::from(MIN_LIQUIDITY_USDC) {
+                if liq0 < MIN_LIQUIDITY_USDC {
                     let bad_edge = BadEdge {
                         pair,
                         pool_address: info.pool_addr,
@@ -483,11 +483,7 @@ fn add_edge(
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
-    if weights
-        .iter()
-        .find(|w| w.pool_addr == edge_info.pool_addr)
-        .is_some()
-    {
+    if weights.iter().any(|w| w.pool_addr == edge_info.pool_addr) {
         return false
     }
 
@@ -657,13 +653,10 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 
 #[cfg(test)]
 pub mod test {
-    use alloy_primitives::{hex, Address};
-    use brontes_types::{constants::USDC_ADDRESS, Protocol};
-    use futures::StreamExt;
-    use serial_test::serial;
+    use alloy_primitives::Address;
+    use brontes_types::Protocol;
 
     use super::*;
-    use crate::test_utils::PricingTestUtils;
 
     #[derive(Debug)]
     struct MockPoolState {
@@ -761,18 +754,5 @@ pub mod test {
         let price = graph.fetch_price(&state_map).unwrap();
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn price_price_graph_for_shit() {
-        let utils = PricingTestUtils::new(USDC_ADDRESS);
-        let mut pricer = utils
-            .setup_dex_pricer_for_tx(
-                hex!("ebabf4a04fede867f7f681e30b4f5a79451e9d9e5bd1e50b4b455df8355571b6").into(),
-            )
-            .await
-            .unwrap();
-        pricer.next().await;
     }
 }

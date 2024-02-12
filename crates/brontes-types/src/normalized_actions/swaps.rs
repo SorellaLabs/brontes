@@ -55,12 +55,14 @@ pub struct NormalizedSwap {
     pub trace_index: u64,
     pub from:        Address,
     pub recipient:   Address,
-    // If pool address is zero, then this is a p2p / CoW style swap, possibly within a batch
+    /// For batch swaps (e.g. UniswapX, CowSwap), the pool address is the
+    /// address of the settlement contract
     pub pool:        Address,
     pub token_in:    TokenInfoWithAddress,
     pub token_out:   TokenInfoWithAddress,
     pub amount_in:   Rational,
     pub amount_out:  Rational,
+    pub msg_value:   U256,
 }
 
 impl NormalizedSwap {
@@ -160,7 +162,7 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
         let swaps: Vec<(FixedString, ClickhouseVecNormalizedSwap, usize)> = value
             .0
             .into_iter()
-            .zip(value.1.into_iter())
+            .zip(value.1)
             .map(|(tx, swaps)| {
                 let num_swaps = swaps.len();
                 (format!("{:?}", tx).into(), swaps.into(), num_swaps)
@@ -171,7 +173,6 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
 
         swaps.into_iter().for_each(|(tx, inner_swaps, num_swaps)| {
             let tx_repeated = (0..num_swaps)
-                .into_iter()
                 .map(|_| tx.clone())
                 .collect::<Vec<FixedString>>();
 

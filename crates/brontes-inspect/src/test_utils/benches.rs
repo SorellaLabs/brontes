@@ -13,6 +13,7 @@ pub struct InspectorBenchUtils {
     quote_address:        Address,
     rt:                   tokio::runtime::Runtime,
 }
+
 impl InspectorBenchUtils {
     pub fn new(quote_address: Address) -> Self {
         let rt = tokio::runtime::Builder::new_multi_thread()
@@ -20,7 +21,7 @@ impl InspectorBenchUtils {
             .build()
             .unwrap();
 
-        let classifier_inspector = ClassifierTestUtils::new_with_rt(rt.handle().clone());
+        let classifier_inspector = rt.block_on(ClassifierTestUtils::new());
         Self { classifier_inspector, quote_address, rt }
     }
 
@@ -36,10 +37,10 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();
@@ -80,10 +81,10 @@ impl InspectorBenchUtils {
         needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let mut trees =
@@ -129,10 +130,10 @@ impl InspectorBenchUtils {
         needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let (tree, prices) =
@@ -170,10 +171,10 @@ impl InspectorBenchUtils {
         inspector: Inspectors,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
-            &vec![CexExchange::Binance],
+            &[CexExchange::Binance],
         );
 
         let mut trees = self
@@ -212,10 +213,10 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();
@@ -268,10 +269,10 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
-                    &vec![CexExchange::Binance],
+                    &[CexExchange::Binance],
                 )
             })
             .collect::<Vec<_>>();

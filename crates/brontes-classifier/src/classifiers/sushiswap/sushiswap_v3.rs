@@ -56,6 +56,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
+            msg_value: info.msg_value
         })
     }
 );
@@ -87,7 +88,7 @@ action_impl!(
             trace_index: info.trace_idx,
             from: info.from_address,
             recipient: call_data.recipient,
-            to: info.target_address,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -117,10 +118,10 @@ action_impl!(
 
         Ok(NormalizedBurn {
             protocol: Protocol::SushiSwapV3,
-            to: info.target_address,
-            recipient: info.target_address,
             trace_index: info.trace_idx,
             from: info.from_address,
+            recipient: info.target_address,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })
@@ -152,7 +153,7 @@ action_impl!(
             trace_index: info.trace_idx,
             from: info.from_address,
             recipient: call_data.recipient,
-            to: info.target_address,
+            pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
         })

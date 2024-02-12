@@ -1,7 +1,9 @@
 mod action_classifier;
 mod discovery_classifier;
+mod libmdbx_test;
+
 use proc_macro::TokenStream;
-use syn::parse_macro_input;
+use syn::{parse_macro_input, ItemFn};
 
 use crate::action_classifier::{ActionDispatch, ActionMacro};
 
@@ -131,7 +133,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 /// the discovery impl macro deals with automatically parsing the data needed
 /// for discoverying new pools. The use is as followed
 /// ```ignore
-/// discovery_impl!(DecoderName, Path::To::Factory::DeployCall, factory address, Parse Fn);
+/// discovery_impl!(DiscoveryName, Path::To::Factory::DeployCall, factory address, Parse Fn);
 /// ```
 /// where Parse Fn
 /// ```ignore
@@ -151,6 +153,14 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 /// ```
 pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
     discovery_classifier::discovery_dispatch(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_attribute]
+pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(item as ItemFn);
+    libmdbx_test::parse(item)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
