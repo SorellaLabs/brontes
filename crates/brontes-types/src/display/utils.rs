@@ -150,7 +150,7 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
     bundle.header.token_profits.print_with_labels(
         f,
         Some(&make_hash_map! {
-            bundle.header.mev_contract => "Mev Contract",
+            bundle.header.mev_contract => "MEV Contract",
             bundle.header.eoa => "EOA"
         }),
     )?;
@@ -303,7 +303,7 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     bundle.header.token_profits.print_with_labels(
         f,
         Some(&make_hash_map! {
-            bundle.header.mev_contract => "Mev Contract",
+            bundle.header.mev_contract => "MEV Contract",
             bundle.header.eoa => "EOA"
         }),
     )?;
@@ -374,7 +374,7 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     bundle.header.token_profits.print_with_labels(
         f,
         Some(&make_hash_map! {
-            bundle.header.mev_contract => "Mev Contract",
+            bundle.header.mev_contract => "MEV Contract",
             bundle.header.eoa => "EOA"
         }),
     )?;
@@ -466,7 +466,7 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
     bundle.header.token_profits.print_with_labels(
         f,
         Some(&make_hash_map! {
-            bundle.header.mev_contract => "Mev Contract",
+            bundle.header.mev_contract => "MEV Contract",
             bundle.header.eoa => "EOA"
         }),
     )?;
@@ -581,7 +581,7 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     bundle.header.token_profits.print_with_labels(
         f,
         Some(&make_hash_map! {
-            bundle.header.mev_contract => "Mev Contract",
+            bundle.header.mev_contract => "MEV Contract",
             bundle.header.eoa => "EOA"
         }),
     )?;
@@ -670,7 +670,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     bundle.header.token_profits.print_with_labels(
         f,
         Some(&make_hash_map! {
-            bundle.header.mev_contract => "Mev Contract",
+            bundle.header.mev_contract => "MEV Contract",
             bundle.header.eoa => "EOA"
         }),
     )?;
