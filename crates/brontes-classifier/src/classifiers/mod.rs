@@ -73,6 +73,7 @@ action_dispatch!(
     AaveV3liquidationCallCall,
     AaveV2flashLoanCall,
     AaveV3flashLoanCall,
+    CompoundV2liquidateBorrowCall,
     AaveV3flashLoanSimpleCall,
     BalancerV1swapExactAmountInCall,
     BalancerV1swapExactAmountOutCall

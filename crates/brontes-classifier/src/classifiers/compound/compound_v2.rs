@@ -6,7 +6,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
     Protocol::CompoundV2,
-    crate::CompoundV2CEther::liquidateBorrowCall,
+    crate::CompoundV2CUsdc::liquidateBorrowCall,
     Liquidation,
     [..LiquidateBorrow],
     call_data: true,
@@ -20,7 +20,7 @@ action_impl!(
     db_tx: &DB | {
         let logs = log_data.LiquidateBorrow_field;
         let debt_asset = Address::new(hex!(
-            "4Ddc2D193948926D02f9B1fE9e1daa0718270ED5
+            "39AA39c021dfbaE8faC545936693aC917d5E7563
             "
         ));;
         let debt_info = db_tx.try_get_token_info(debt_asset).ok()??;

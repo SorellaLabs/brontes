@@ -28,6 +28,7 @@ sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(CompoundV2CEther, "./classifier-abis/CompoundV2CEther.json");
+sol!(CompoundV2CUsdc, "./classifier-abis/CompoundV2CUsdc.json");
 sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
