@@ -81,7 +81,6 @@
 //TODO: Update composer section once finished
 
 pub mod atomic_arb;
-pub mod builder_profit;
 pub mod cex_dex;
 pub mod composer;
 pub mod discovery;
@@ -132,7 +131,6 @@ pub enum Inspectors {
     Liquidations,
     LongTail,
     Sandwich,
-    BuilderProfit,
 }
 
 impl Inspectors {

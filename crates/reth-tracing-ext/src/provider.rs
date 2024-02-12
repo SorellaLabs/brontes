@@ -1,8 +1,6 @@
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
-use reth_primitives::{
-    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxHash, B256, U256,
-};
+use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxHash, B256};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
@@ -80,16 +78,6 @@ impl TracingProvider for TracingClient {
         self.trace
             .provider()
             .header_by_number(number)
-            .map_err(Into::into)
-    }
-
-    async fn get_balance(
-        &self,
-        user: Address,
-        block_number: Option<BlockId>,
-    ) -> eyre::Result<U256> {
-        EthApiServer::balance(&self.api, user, block_number)
-            .await
             .map_err(Into::into)
     }
 }

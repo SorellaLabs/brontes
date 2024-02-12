@@ -52,9 +52,10 @@ implement_table_value_codecs_with_zc!(BlockMetadataInnerRedefined);
 pub struct Metadata {
     #[deref]
     #[as_ref]
-    pub block_metadata: BlockMetadata,
-    pub cex_quotes:     CexPriceMap,
-    pub dex_quotes:     Option<DexQuotes>,
+    pub block_metadata:             BlockMetadata,
+    pub cex_quotes:                 CexPriceMap,
+    pub dex_quotes:                 Option<DexQuotes>,
+    pub builder_collateral_address: Option<Address>,
 }
 
 impl Metadata {
@@ -124,7 +125,12 @@ impl BlockMetadata {
         }
     }
 
-    pub fn into_metadata(self, cex_quotes: CexPriceMap, dex_quotes: Option<DexQuotes>) -> Metadata {
-        Metadata { block_metadata: self, cex_quotes, dex_quotes }
+    pub fn into_metadata(
+        self,
+        cex_quotes: CexPriceMap,
+        dex_quotes: Option<DexQuotes>,
+        builder_collateral_address: Option<Address>,
+    ) -> Metadata {
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_collateral_address }
     }
 }

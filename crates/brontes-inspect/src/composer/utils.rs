@@ -6,12 +6,11 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational,
+    ToScaledRational, TreeSearchArgs,
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
-use crate::builder_profit::BuilderProfitInspector;
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
     metadata:                Arc<Metadata>,
@@ -67,7 +66,6 @@ pub(crate) fn build_mev_header(
     possible_mev: PossibleMevCollection,
     orchestra_data: &[Bundle],
 ) -> MevBlock {
-    let builder_profit_inspector = BuilderProfitInspector::new(&db);
     let cum_mev_priority_fee_paid = orchestra_data
         .iter()
         .map(|bundle| {
@@ -76,11 +74,9 @@ pub(crate) fn build_mev_header(
                 .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128)
         })
         .sum();
-    let builder_profit = builder_profit_inspector
-        .calculate_builder_profit(pre_processing.builder_address, tree.clone())
-        .unwrap();
-
-    let builder_eth_profit = builder_profit.to_scaled_rational(18);
+    let builder_eth_profit = calculate_builder_profit(tree, metadata)
+        .unwrap()
+        .to_scaled_rational(18);
 
     MevBlock {
         block_hash: pre_processing.metadata.block_hash.into(),
@@ -200,4 +196,41 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
         MevType::Liquidation => mev_count.liquidation_count = Some(count),
         MevType::Unknown => (),
     }
+}
+
+pub fn calculate_builder_profit(
+    tree: Arc<BlockTree<Actions>>,
+    metadata: Arc<Metadata>,
+) -> Result<u128, Box<dyn std::error::Error + Send + Sync>> {
+    let coinbase_transfers = tree
+        .tx_roots
+        .iter()
+        .filter_map(|root| root.gas_details.coinbase_transfer)
+        .sum::<u128>(); // Specify the type of sum
+
+    let builder_collateral_amount = tree
+        .collect_all(|node| TreeSearchArgs {
+            collect_current_node:  node.data.get_from_address()
+                == metadata.builder_collateral_address.unwrap()
+                && node.data.is_eth_transfer(),
+            child_node_to_collect: node.get_all_sub_actions().iter().any(|sub_node| {
+                sub_node.get_from_address() == metadata.builder_collateral_address.unwrap()
+                    && sub_node.is_eth_transfer()
+            }),
+        })
+        .iter()
+        .flat_map(|(_fixed_bytes, actions)| {
+            actions.iter().filter_map(|action| {
+                if let Actions::Transfer(transfer) = action {
+                    Some(transfer.amount.clone())
+                } else {
+                    None
+                }
+            })
+        })
+        .map(|rational| u128::try_from(&rational))
+        .filter_map(Result::ok)
+        .sum::<u128>();
+
+    Ok(coinbase_transfers - builder_collateral_amount)
 }
