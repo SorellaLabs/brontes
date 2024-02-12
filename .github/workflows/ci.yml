@@ -76,6 +76,6 @@ jobs:
 
         - name: cargo test
           run: 
-            ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rm -r ~/brontes-test-db/* && cargo build'" 
+            ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rm -rf ~/brontes-test-db/* && cargo build'" 
             ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && cargo +nightly test'" 
 
