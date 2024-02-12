@@ -40,18 +40,23 @@ jobs:
         env:
           RUSTFLAGS: -D warnings
 
-  build:
-      name: "build and fmt"
-      runs-on: ubuntu-latest
-      timeout-minutes: 30
-      steps:
-        - uses: actions/checkout@v4
-        - uses: dtolnay/rust-toolchain@nightly
-          with:
-              components: rustfmt
-        - uses: Swatinem/rust-cache@v2
-          with:
-            cache-on-failure: true
+      - name: cargo fmt
+        run: cargo +nightly clippy -- -D clippy::all && cargo +nightly fmt --all -- --check 
+  test: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get branch names.
+        id: branch-names
+        uses: tj-actions/branch-names@v8
+      # init server args
+      - name: Init ssh config
+        run: |
+          mkdir ~/.ssh/ 
+          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion 
+          chmod 600 ~/.ssh/bastion 
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server 
+          chmod 600 ~/.ssh/brontes_server
+          echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config 
 
       - name: cargo test
         run: 
