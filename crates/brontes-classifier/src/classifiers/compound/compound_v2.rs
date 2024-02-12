@@ -1,12 +1,11 @@
-use alloy_primitives::{b256, Address, hex};
+use alloy_primitives::{Address, hex};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedLiquidation, utils::ToScaledRational};
-use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
     Protocol::CompoundV2,
-    crate::CompoundV2CUsdc::liquidateBorrowCall,
+    crate::CompoundV2CToken::liquidateBorrowCall,
     Liquidation,
     [..LiquidateBorrow],
     call_data: true,
@@ -18,11 +17,9 @@ action_impl!(
     call_data: liquidateBorrowCall,
     log_data: CompoundV2liquidateBorrowCallLogs,
     db_tx: &DB | {
+        let tokens = db_tx.get_protocol_tokens(target_address).ok()??;
+        let debt_asset = tokens.token0;
         let logs = log_data.LiquidateBorrow_field;
-        let debt_asset = Address::new(hex!(
-            "39AA39c021dfbaE8faC545936693aC917d5E7563
-            "
-        ));
         let debt_info = db_tx.try_get_token_info(debt_asset).ok()??;
         let collateral_info = db_tx.try_get_token_info(call_data.cTokenCollateral).ok()??;
 
