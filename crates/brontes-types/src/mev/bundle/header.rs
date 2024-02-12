@@ -108,7 +108,7 @@ impl TokenProfits {
         let mut profits_by_collector: HashMap<Address, Vec<&TokenProfit>> = HashMap::new();
         for profit in &self.profits {
             profits_by_collector
-                .entry(profit.profit_collector.clone())
+                .entry(profit.profit_collector)
                 .or_default()
                 .push(profit);
         }
@@ -117,6 +117,7 @@ impl TokenProfits {
             let label = labels
                 .and_then(|l| l.get(collector))
                 .map_or_else(|| collector.to_string(), |l| l.clone());
+
             writeln!(f, " - {}: ", label.bright_white())?;
 
             for profit in profits {
