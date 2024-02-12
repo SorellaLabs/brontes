@@ -49,7 +49,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node,
-        Protocol::UniswapV3, ToScaledRational, TreeSearchArgs,
+        Protocol::CompoundV2, ToScaledRational, TreeSearchArgs,
     };
 
     use super::*;
