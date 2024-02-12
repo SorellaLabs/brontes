@@ -10,7 +10,6 @@ name: CI
 jobs:
   clippy:
     name: "clippy"
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +32,6 @@ jobs:
 
   build:
       name: "build and fmt"
-      if: github.event.pull_request.draft == false
       runs-on: ubuntu-latest
       timeout-minutes: 30
       steps:
@@ -61,7 +59,7 @@ jobs:
 
   test: 
     runs-on: ubuntu-latest
-    if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     needs: [clippy, build]
     steps:
       - name: Get branch names.
@@ -78,5 +76,5 @@ jobs:
 
       - name: cargo test
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly && cargo +nightly test && git checkout main'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly && rm -r /home/data/brontes-shared-test/* && cargo build && cargo +nightly test'" 
 
