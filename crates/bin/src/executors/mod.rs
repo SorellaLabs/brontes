@@ -19,6 +19,7 @@ use brontes_database::{
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
+use brontes_types::mev::Bundle;
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
@@ -42,7 +43,7 @@ pub struct BrontesRunConfig<T: TracingProvider> {
     pub quote_asset:      Address,
     pub with_dex_pricing: bool,
 
-    pub inspectors: &'static [&'static dyn Inspector],
+    pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     pub clickhouse: &'static Clickhouse,
     pub parser:     &'static Parser<'static, T, LibmdbxReadWriter>,
     pub libmdbx:    &'static LibmdbxReadWriter,
@@ -58,7 +59,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         quote_asset: Address,
         with_dex_pricing: bool,
 
-        inspectors: &'static [&'static dyn Inspector],
+        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
         clickhouse: &'static Clickhouse,
 
         parser: &'static Parser<'static, T, LibmdbxReadWriter>,
@@ -103,7 +104,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                     let start_block = chunk.next().unwrap();
                     let end_block = chunk.last().unwrap_or(start_block);
                     async move {
-                        tracing::info!(batch_id, start_block, end_block, "starting batch");
+                        tracing::info!(batch_id, start_block, end_block, "Starting batch");
 
                         let state_collector = if self.with_dex_pricing {
                             self.state_collector_dex_price(
@@ -228,7 +229,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                 .await?;
         }
 
-        tracing::info!(start_block=%self.start_block, %end_block, "verifying db fetching state that is missing");
+        tracing::info!(start_block=%self.start_block, %end_block, "Verifying db fetching state that is missing");
         let state_to_init = self.libmdbx.state_to_initialize(
             self.start_block,
             end_block,
@@ -238,7 +239,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         join_all(state_to_init.into_iter().map(|range| async move {
             let start = range.start();
             let end = range.end();
-            tracing::info!(start, end, "initing missing range");
+            tracing::info!(start, end, "Downloading missing range");
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,

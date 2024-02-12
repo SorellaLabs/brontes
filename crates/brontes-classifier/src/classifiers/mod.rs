@@ -24,19 +24,20 @@ pub use maker::*;
 
 discovery_dispatch!(
     DiscoveryProtocols,
-    SushiSwapV2Decoder,
-    SushiSwapV3Decoder,
-    UniswapV2Decoder,
-    UniswapV3Decoder,
-    PancakeSwapV3Decoder,
-    CurveV1MetapoolBaseDecoder,
-    CurveV1MetapoolMetaDecoder,
-    CurveV2MetapoolBaseDecoder,
-    CurveV2MetapoolMetaDecoder0,
-    CurveV2MetapoolMetaDecoder1,
-    CurveV2MetapoolPlainDecoder0,
-    CurveV2MetapoolPlainDecoder1,
-    CurveV2MetapoolPlainDecoder2
+    SushiSwapV2Discovery,
+    SushiSwapV3Discovery,
+    UniswapV2Discovery,
+    UniswapV3Discovery,
+    PancakeSwapV3Discovery,
+    PancakeSwapV2Discovery,
+    CurveV1MetapoolBaseDiscovery,
+    CurveV1MetapoolMetaDiscovery,
+    CurveV2MetapoolBaseDiscovery,
+    CurveV2MetapoolMetaDiscovery0,
+    CurveV2MetapoolMetaDiscovery1,
+    CurveV2MetapoolPlainDiscovery0,
+    CurveV2MetapoolPlainDiscovery1,
+    CurveV2MetapoolPlainDiscovery2
 );
 
 action_dispatch!(
@@ -47,6 +48,9 @@ action_dispatch!(
     SushiSwapV2swapCall,
     SushiSwapV2mintCall,
     SushiSwapV2burnCall,
+    PancakeSwapV2swapCall,
+    PancakeSwapV2mintCall,
+    PancakeSwapV2burnCall,
     UniswapV3swapCall,
     UniswapV3mintCall,
     UniswapV3burnCall,
@@ -60,6 +64,9 @@ action_dispatch!(
     PancakeSwapV3burnCall,
     PancakeSwapV3collectCall,
     UniswapXexecuteCall,
+    UniswapXexecuteBatchCall,
+    UniswapXexecuteBatchWithCallbackCall,
+    UniswapXexecuteWithCallbackCall,
     CurveCryptoSwapexchange_0Call,
     CurveCryptoSwapexchange_1Call,
     CurveCryptoSwapexchange_2Call,

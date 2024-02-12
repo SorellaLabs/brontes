@@ -295,13 +295,17 @@ impl UpdatableProtocol for UniswapV3Pool {
     }
 
     fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
-        todo!()
+        todo!("syncing from actions is currently not supported for v3")
     }
 
     fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
         let event_signature = log.topics()[0];
 
-        if event_signature == SWAP_EVENT_SIGNATURE {
+        if event_signature == BURN_EVENT_SIGNATURE {
+            self.sync_from_burn_log(log)?;
+        } else if event_signature == MINT_EVENT_SIGNATURE {
+            self.sync_from_mint_log(log)?;
+        } else if event_signature == SWAP_EVENT_SIGNATURE {
             self.sync_from_swap_log(log)?;
         } else {
             Err(EventLogError::InvalidEventSignature)?
@@ -469,6 +473,7 @@ impl UniswapV3Pool {
         self.reserve_0 -= burn_event.amount0;
         self.reserve_1 -= burn_event.amount1;
 
+        #[cfg(feature = "uni-v3-ticks")]
         self.modify_position(
             burn_event.tickLower,
             burn_event.tickUpper,
@@ -483,6 +488,8 @@ impl UniswapV3Pool {
 
         self.reserve_0 += mint_event.amount0;
         self.reserve_1 += mint_event.amount1;
+
+        #[cfg(feature = "uni-v3-ticks")]
         self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
 
         Ok(())

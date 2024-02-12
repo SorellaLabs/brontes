@@ -45,8 +45,8 @@ pub struct InspectorTestUtils {
 }
 
 impl InspectorTestUtils {
-    pub fn new(quote_address: Address, max_result_difference: f64) -> Self {
-        let classifier_inspector = ClassifierTestUtils::new();
+    pub async fn new(quote_address: Address, max_result_difference: f64) -> Self {
+        let classifier_inspector = ClassifierTestUtils::new().await;
         Self { classifier_inspector, quote_address, max_result_difference }
     }
 
@@ -152,7 +152,7 @@ impl InspectorTestUtils {
             panic!("no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config.expected_mev_type.init_inspector(
+        let inspector = config.expected_mev_type.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[
@@ -227,7 +227,7 @@ impl InspectorTestUtils {
             panic!("no dex quotes found in metadata. test suite will fail");
         }
 
-        let inspector = config.expected_mev_type.init_inspector(
+        let inspector = config.expected_mev_type.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[
@@ -333,7 +333,7 @@ impl InspectorTestUtils {
             .inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],

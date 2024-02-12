@@ -3,6 +3,7 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{Index, Path};
 
+#[derive(Debug)]
 pub struct LogConfig {
     pub can_repeat:    bool,
     pub ignore_before: bool,
@@ -121,12 +122,14 @@ impl<'a> LogData<'a> {
 
         (
             quote!(
+                #[allow(non_camel_case_types)]
                 struct #log_return_builder_struct_name {
                     #(
                         #log_field: Option<#log_field_ty>
                     ),*
                 }
 
+                #[allow(non_camel_case_types)]
                 struct #log_return_struct_name {
                     #(#res_struct_fields),*
                 }
@@ -327,3 +330,4 @@ impl ToTokens for LogData<'_> {
         tokens.extend(log_result)
     }
 }
+// s

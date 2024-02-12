@@ -66,7 +66,7 @@ impl UpdatableProtocol for UniswapV2Pool {
     }
 
     fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
-        todo!()
+        todo!("syncing from actions is currently not supported for v2")
     }
 
     fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {

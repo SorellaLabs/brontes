@@ -1,4 +1,4 @@
-use alloy_primitives::U256;
+use alloy_primitives::{Address, U256};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
@@ -22,17 +22,19 @@ action_impl!(
     _call_data: executeCall,
     logs_data: UniswapXexecuteCallLogs,
     _db_tx: &DB| {
-
         let fill_logs = logs_data.Fill_field;
-
         let solver = fill_logs[0].filler;
+
+        let user_swaps = fill_logs.iter()
+        .map(|fill| Fill::into_swap(fill, info.target_address))
+        .collect();
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
+            user_swaps,
             solver_swaps: None,
             msg_value: info.msg_value
 
@@ -44,7 +46,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeBatchCall,
     Batch,
-    [Fill*],
+    [..Fill*],
     logs: true,
     call_data: true,
     |
@@ -52,28 +54,32 @@ action_impl!(
     _call_data: executeBatchCall,
     logs_data: UniswapXexecuteBatchCallLogs,
     _db_tx: &DB| {
-
         let fill_logs = logs_data.Fill_field;
 
         let solver = fill_logs[0].filler;
+
+        let user_swaps = fill_logs.iter()
+        .map(|fill| Fill::into_swap(fill, info.target_address))
+        .collect();
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
+            user_swaps,
             solver_swaps: None,
             msg_value: info.msg_value,
         })
     }
+
 );
 
 action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeBatchWithCallbackCall,
     Batch,
-    [Fill*],
+    [..Fill*],
     call_data: true,
     logs: true,
     |
@@ -82,17 +88,19 @@ action_impl!(
     logs_data: UniswapXexecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
-
-
         let solver = fill_logs[0].filler;
+
+        let user_swaps = fill_logs.iter()
+        .map(|fill| Fill::into_swap(fill, info.target_address))
+        .collect::<Vec<_>>();
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
-            solver_swaps: Some(Vec::new()),
+            user_swaps,
+            solver_swaps: None,
             msg_value: info.msg_value
         })
     }
@@ -102,7 +110,7 @@ action_impl!(
     Protocol::UniswapX,
     crate::UniswapX::executeWithCallbackCall,
     Batch,
-    [Fill*],
+    [..Fill*],
     call_data: true,
     logs: true,
     |
@@ -111,17 +119,18 @@ action_impl!(
     logs_data: UniswapXexecuteWithCallbackCallLogs,
     _db_tx: &DB| {
         let fill_logs = logs_data.Fill_field;
-
         let solver = fill_logs[0].filler;
 
-
+        let user_swaps = fill_logs.iter()
+        .map(|fill| Fill::into_swap(fill, info.target_address))
+        .collect();
 
         Ok(NormalizedBatch {
             protocol: Protocol::UniswapX,
             trace_index: info.trace_idx,
             solver,
             settlement_contract: info.target_address,
-            user_swaps: fill_logs.iter().map(Fill::into_swap).collect(),
+            user_swaps,
             solver_swaps: None,
             msg_value: info.msg_value
         })
@@ -133,8 +142,7 @@ impl Fill {
     /// have the full trade information. We'll fill this in at the final
     /// classification stage. See: [`Finish
     /// Classification`](brontes_types::NormalizedBatch::normalized_actions::finish_classification)
-    pub fn into_swap(fill_log: &Fill) -> NormalizedSwap {
-        let solver = fill_log.filler;
+    pub fn into_swap(fill_log: &Fill, settlement_contract: Address) -> NormalizedSwap {
         let swapper = fill_log.swapper;
 
         NormalizedSwap {
@@ -142,7 +150,7 @@ impl Fill {
             trace_index: 0,
             from:        swapper,
             recipient:   swapper,
-            pool:        solver,
+            pool:        settlement_contract,
             token_in:    TokenInfoWithAddress::default(),
             token_out:   TokenInfoWithAddress::default(),
             amount_in:   Rational::default(),
@@ -160,14 +168,12 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
     use brontes_types::{normalized_actions::Actions, Node, ToScaledRational, TreeSearchArgs};
-    use serial_test::serial;
 
     use super::*;
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_batch_classifier_with_call_back_eth() {
-        let classifier_utils = ClassifierTestUtils::new();
+        let classifier_utils = ClassifierTestUtils::new().await;
         let execute_batch_with_callback =
             B256::from(hex!("3d8fbccb1b0b7f8140f255f0980d897d87394903ad7bf4d08534402d2bf35872"));
 
@@ -182,7 +188,7 @@ mod tests {
             user_swaps:          vec![
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 2,
+                    trace_index: 3,
                     from:        Address::new(hex!(
                         "
             86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
@@ -193,7 +199,7 @@ mod tests {
                     )),
                     pool:        Address::new(hex!(
                         "
-                    919f9173e2dc833ec708812b4f1cb11b1a17efde"
+                        6000da47483062A0D734Ba3dc7576Ce6A0B645C4"
                     )),
                     token_in:    TokenInfoWithAddress::usdt(),
                     amount_in:   U256::from_str("2400058669").unwrap().to_scaled_rational(6),
@@ -206,7 +212,7 @@ mod tests {
                 },
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 3,
+                    trace_index: 5,
                     from:        Address::new(hex!(
                         "
                     569d9f244e4ed4f0731f39675492740dcdab6b15"
@@ -215,19 +221,69 @@ mod tests {
                         "
                     569d9f244e4ed4f0731f39675492740dcdab6b15"
                     )),
-                    pool:        Address::new(hex!(
-                        "
-                    919f9173e2dc833ec708812b4f1cb11b1a17efde"
-                    )),
+                    pool:        Address::new(hex!("6000da47483062A0D734Ba3dc7576Ce6A0B645C4")),
                     token_in:    TokenInfoWithAddress::usdt(),
                     amount_in:   U256::from_str("106496770").unwrap().to_scaled_rational(6),
                     token_out:   TokenInfoWithAddress::native_eth(),
-                    amount_out:  U256::from_str("1569952967947850")
+                    amount_out:  U256::from_str("43925992451078510")
                         .unwrap()
                         .to_scaled_rational(18),
                     msg_value:   U256::ZERO,
                 },
             ],
+            solver_swaps:        None,
+            msg_value:           U256::ZERO,
+        });
+
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_batch(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .any(|action| action.is_batch()),
+        };
+
+        classifier_utils
+            .contains_action(execute_batch_with_callback, 0, eq_action, search_fn)
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_batch_classifier_weth() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let execute_batch_with_callback =
+            B256::from(hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d"));
+
+        let eq_action = Actions::Batch(NormalizedBatch {
+            protocol:            Protocol::UniswapX,
+            trace_index:         0,
+            solver:              Address::new(hex!("ff8Ba4D1fC3762f6154cc942CCF30049A2A0cEC6")),
+            settlement_contract: Address::new(hex!("6000da47483062A0D734Ba3dc7576Ce6A0B645C4")),
+            user_swaps:          vec![NormalizedSwap {
+                protocol:    UniswapX,
+                trace_index: 2,
+                from:        Address::new(hex!(
+                    "
+                        92069F3B51FF505e519378ba8229E3D1f51d472a"
+                )),
+                recipient:   Address::new(hex!(
+                    "
+                        92069F3B51FF505e519378ba8229E3D1f51d472a"
+                )),
+                pool:        Address::new(hex!(
+                    "
+                        6000da47483062A0D734Ba3dc7576Ce6A0B645C4"
+                )),
+                token_in:    TokenInfoWithAddress::weth(),
+                amount_in:   U256::from_str("490000000000000000")
+                    .unwrap()
+                    .to_scaled_rational(18),
+                token_out:   TokenInfoWithAddress::usdt(),
+                amount_out:  U256::from_str("1182060728").unwrap().to_scaled_rational(6),
+
+                msg_value: U256::ZERO,
+            }],
             solver_swaps:        None,
             msg_value:           U256::ZERO,
         });

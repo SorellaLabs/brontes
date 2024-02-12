@@ -4,6 +4,7 @@ pub mod flashloan;
 pub mod lending;
 pub mod liquidation;
 pub mod liquidity;
+pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
@@ -23,6 +24,7 @@ use sorella_db_databases::clickhouse::{DbRow, InsertRow};
 pub use swaps::*;
 pub use transfer::*;
 
+use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
@@ -58,13 +60,13 @@ impl NormalizedAction for Actions {
             Self::EthTransfer(_) => false,
             Self::Unclassified(_) => false,
             Self::Revert => false,
+            Self::NewPool(_) => false,
+            Self::PoolConfigUpdate(_) => false,
         }
     }
 
     fn continued_classification_types(&self) -> Box<dyn Fn(&Self) -> bool + Send + Sync> {
         match self {
-            Actions::Swap(_) => unreachable!(),
-            Actions::SwapWithFee(_) => unreachable!(),
             Actions::FlashLoan(_) => Box::new(|action: &Actions| {
                 action.is_liquidation()
                     | action.is_batch()
@@ -77,15 +79,8 @@ impl NormalizedAction for Actions {
             Actions::Batch(_) => Box::new(|action: &Actions| {
                 action.is_swap() | action.is_transfer() | action.is_eth_transfer()
             }),
-            Actions::Mint(_) => unreachable!(),
-            Actions::Burn(_) => unreachable!(),
-            Actions::Transfer(_) => unreachable!(),
             Actions::Liquidation(_) => Box::new(|action: &Actions| action.is_transfer()),
-            Actions::Collect(_) => unreachable!(),
-            Actions::SelfDestruct(_) => unreachable!(),
-            Actions::EthTransfer(_) => unreachable!(),
-            Actions::Unclassified(_) => unreachable!(),
-            Actions::Revert => unreachable!(),
+            action => unreachable!("no continue_classification function for {action:?}"),
         }
     }
 
@@ -103,29 +98,18 @@ impl NormalizedAction for Actions {
             Self::SelfDestruct(c) => c.trace_index,
             Self::EthTransfer(e) => e.trace_index,
             Self::Unclassified(u) => u.trace_idx,
-            Self::Revert => unreachable!(),
+            Actions::NewPool(p) => p.trace_index,
+            Actions::PoolConfigUpdate(p) => p.trace_index,
+            Self::Revert => unreachable!("no trace index for revert"),
         }
     }
 
     fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64> {
         match self {
-            Self::Swap(_) => unreachable!("Swap type never requires complex classification"),
-            Self::SwapWithFee(_) => {
-                unreachable!("Swap With fee never requires complex classification")
-            }
             Self::FlashLoan(f) => f.finish_classification(actions),
             Self::Batch(f) => f.finish_classification(actions),
-            Self::Mint(_) => unreachable!(),
-            Self::Burn(_) => unreachable!(),
-            Self::Transfer(_) => unreachable!(),
             Self::Liquidation(l) => l.finish_classification(actions),
-            Self::Collect(_) => unreachable!("Collect type never requires complex classification"),
-            Self::SelfDestruct(_) => unreachable!(),
-            Self::EthTransfer(_) => unreachable!(),
-            Self::Unclassified(_) => {
-                unreachable!("Unclassified type never requires complex classification")
-            }
-            Self::Revert => unreachable!("a revert should never require complex classification"),
+            action => unreachable!("{action:?} never require complex classification"),
         }
     }
 }
@@ -145,6 +129,8 @@ pub enum Actions {
     Unclassified(TransactionTraceWithLogs),
     SelfDestruct(SelfdestructWithIndex),
     EthTransfer(NormalizedEthTransfer),
+    NewPool(NormalizedNewPool),
+    PoolConfigUpdate(NormalizedPoolConfigUpdate),
     Revert,
 }
 
@@ -162,6 +148,8 @@ impl InsertRow for Actions {
             Actions::Liquidation(_) => NormalizedLiquidation::COLUMN_NAMES,
             Actions::SelfDestruct(_) => todo!("joe pls dome this"),
             Actions::EthTransfer(_) => todo!("joe pls dome this"),
+            Actions::NewPool(_) => todo!(),
+            Actions::PoolConfigUpdate(_) => todo!(),
             Actions::Unclassified(..) | Actions::Revert => panic!(),
         }
     }
@@ -185,7 +173,7 @@ impl Serialize for Actions {
             Actions::SelfDestruct(sd) => sd.serialize(serializer),
             Actions::EthTransfer(et) => et.serialize(serializer),
             Actions::Unclassified(trace) => (trace).serialize(serializer),
-            _ => unreachable!(),
+            action => unreachable!("no action serialization for {action:?}"),
         }
     }
 }
@@ -225,7 +213,7 @@ impl Actions {
     pub fn force_liquidation(self) -> NormalizedLiquidation {
         match self {
             Actions::Liquidation(l) => l,
-            _ => unreachable!(),
+            _ => unreachable!("not liquidation"),
         }
     }
 
@@ -233,12 +221,12 @@ impl Actions {
         match self {
             Actions::Swap(s) => s,
             Actions::SwapWithFee(s) => s.swap,
-            _ => unreachable!(),
+            _ => unreachable!("not swap"),
         }
     }
 
     pub fn force_transfer_mut(&mut self) -> &mut NormalizedTransfer {
-        let Actions::Transfer(transfer) = self else { unreachable!() };
+        let Actions::Transfer(transfer) = self else { unreachable!("not transfer") };
         transfer
     }
 
@@ -246,7 +234,7 @@ impl Actions {
         match self {
             Actions::Swap(s) => s,
             Actions::SwapWithFee(s) => s,
-            _ => unreachable!(),
+            _ => unreachable!("not swap"),
         }
     }
 
@@ -254,7 +242,7 @@ impl Actions {
         match self {
             Actions::Swap(s) => s,
             Actions::SwapWithFee(s) => s,
-            _ => unreachable!(),
+            _ => unreachable!("not swap"),
         }
     }
 
@@ -281,10 +269,10 @@ impl Actions {
             Actions::SwapWithFee(s) => s.pool,
             Actions::FlashLoan(f) => f.pool,
             Actions::Batch(b) => b.settlement_contract,
-            Actions::Mint(m) => m.to,
-            Actions::Burn(b) => b.to,
+            Actions::Mint(m) => m.pool,
+            Actions::Burn(b) => b.pool,
             Actions::Transfer(t) => t.to,
-            Actions::Collect(c) => c.to,
+            Actions::Collect(c) => c.pool,
             Actions::Liquidation(c) => c.pool,
             Actions::SelfDestruct(c) => c.get_refund_address(),
             Actions::Unclassified(t) => match &t.trace.action {
@@ -294,7 +282,9 @@ impl Actions {
                 reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
             },
             Actions::EthTransfer(t) => t.to,
-            Actions::Revert => unreachable!(),
+            Actions::NewPool(p) => p.pool_address,
+            Actions::PoolConfigUpdate(p) => p.pool_address,
+            Actions::Revert => Address::ZERO,
         }
     }
 

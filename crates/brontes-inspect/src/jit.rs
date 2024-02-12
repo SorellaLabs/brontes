@@ -40,11 +40,13 @@ impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
 
 #[async_trait]
 impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
+    type Result = Vec<Bundle>;
+
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<Bundle> {
+    ) -> Self::Result {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
@@ -68,8 +70,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
+                    tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
 
                     if searcher_actions.is_empty() {
+                        tracing::debug!("no searcher actions found");
                         return None
                     }
 
@@ -84,6 +88,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .filter(|d| !d.is_revert())
                         .any(|d| mev_executor_contract == d.get_to_address())
                     {
+                        tracing::debug!("victim address is same as mev executor contract");
                         return None
                     }
 
@@ -93,7 +98,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                             tree.collect(*victim, |node| TreeSearchArgs {
                                 collect_current_node:  node.data.is_swap(),
                                 child_node_to_collect: node
-                                    .subactions
+                                    .get_all_sub_actions()
                                     .iter()
                                     .any(|action| action.is_swap()),
                             })
@@ -101,6 +106,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .collect_vec();
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
+                        tracing::debug!("no victim actions found");
                         return None
                     }
 
@@ -153,6 +159,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
 
         if mints.is_empty() || burns.is_empty() {
+            tracing::debug!("missing mints & burns");
             return None
         }
 
@@ -360,7 +367,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter_map(|(token, amount)| {
                 Some(
                     self.inner
-                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())?
+                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())
+                        .or_else(|| {
+                            tracing::debug!(?token, "failed to get price for token");
+                            None
+                        })?
                         * amount,
                 )
             })
@@ -371,32 +382,33 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
-    use serial_test::serial;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,
     };
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_jit() {
-        // eth price in usdc
-        // 2146.65037178
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .with_block(18539312)
+            .needs_tokens(vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
+                hex!("ed4e879087ebd0e8a77d66870012b5e0dffd0fa4").into(),
+                hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
+            ])
             .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-68.34);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
 
-    #[tokio::test]
-    #[serial]
+    #[brontes_macros::test]
     async fn test_only_jit() {
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0);
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .needs_tokens(vec![

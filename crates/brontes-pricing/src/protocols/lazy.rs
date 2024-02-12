@@ -24,10 +24,9 @@ pub enum LoadResult {
     /// for this block as it will cause incorrect data
     PoolInitOnBlock,
     Err {
-        dependent_pairs: Vec<Pair>,
-        pool_address:    Address,
-        pool_pair:       Pair,
-        block:           u64,
+        protocol:     Protocol,
+        pool_address: Address,
+        pool_pair:    Pair,
     },
 }
 impl LoadResult {
@@ -231,20 +230,15 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult { block, state: Some(state), load_result: load };
                     Poll::Ready(Some(res))
                 }
-                Err((pool_address, _dex, block, pool_pair, err)) => {
+                Err((pool_address, dex, block, pool_pair, err)) => {
                     error!(%err, ?pool_address,"lazy load failed");
 
-                    let dependent_pairs = self.remove_state_trackers(block, &pool_address);
+                    let _dependent_pairs = self.remove_state_trackers(block, &pool_address);
 
                     let res = LazyResult {
                         state: None,
                         block,
-                        load_result: LoadResult::Err {
-                            pool_pair,
-                            block,
-                            pool_address,
-                            dependent_pairs,
-                        },
+                        load_result: LoadResult::Err { pool_pair, pool_address, protocol: dex },
                     };
                     Poll::Ready(Some(res))
                 }
