@@ -1472,7 +1472,6 @@ dependencies = [
  "brontes-tracing",
  "brontes-types",
  "colored",
- "convert_case 0.6.0",
  "criterion",
  "dotenv",
  "eyre",
@@ -1482,8 +1481,6 @@ dependencies = [
  "malachite",
  "once_cell",
  "phf",
- "quote",
- "rayon",
  "reqwest",
  "reth-beacon-consensus",
  "reth-blockchain-tree",
@@ -1508,7 +1505,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "walkdir",
 ]
 
 [[package]]

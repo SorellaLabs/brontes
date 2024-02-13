@@ -106,6 +106,7 @@ impl TraceLoader {
                 )
                 .await?;
         }
+
         Ok(())
     }
 
