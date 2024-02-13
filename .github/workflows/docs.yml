@@ -1,6 +1,6 @@
 # Documentation and mdbook related jobs.
 
-name: docs 
+name: docs
 
 on:
   push:
