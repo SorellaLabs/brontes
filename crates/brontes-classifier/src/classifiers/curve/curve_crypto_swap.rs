@@ -8,14 +8,14 @@ use brontes_types::{
 use reth_primitives::U256;
 
 action_impl!(
-    Protocol::CurveCryptoSwap,
+    Protocol::CurveCryptoSwapPool,
     crate::CurveCryptoSwap::exchange_0Call,
     Swap,
     [TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurveCryptoSwapexchange_0CallLogs,
+    log: CurveCryptoSwapPoolexchange_0CallLogs,
     db_tx: &DB| {
         let log = log.TokenExchange_field;
 
@@ -29,7 +29,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,
@@ -44,7 +44,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 trace_index: info.trace_idx,
                 pool: info.target_address,
                 from: info.from_address,
@@ -60,7 +60,7 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::CurveCryptoSwap,
+    Protocol::CurveCryptoSwapPool,
     crate::CurveCryptoSwap::exchange_1Call,
     Swap,
     [TokenExchange],
@@ -69,7 +69,7 @@ action_impl!(
     |
     info: CallInfo,
     call_data: exchange_1Call,
-    log: CurveCryptoSwapexchange_1CallLogs,
+    log: CurveCryptoSwapPoolexchange_1CallLogs,
     db_tx: &DB| {
 
         let log = log.TokenExchange_field;
@@ -94,7 +94,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,
@@ -109,7 +109,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 trace_index: info.trace_idx,
                 pool: info.target_address,
                 from: info.from_address,
@@ -125,7 +125,7 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::CurveCryptoSwap,
+    Protocol::CurveCryptoSwapPool,
     crate::CurveCryptoSwap::exchange_2Call,
     Swap,
     [TokenExchange],
@@ -134,7 +134,7 @@ action_impl!(
     |
     info: CallInfo,
     call_data: exchange_2Call,
-    log: CurveCryptoSwapexchange_2CallLogs,
+    log: CurveCryptoSwapPoolexchange_2CallLogs,
     db_tx: &DB| {
 
         let log = log.TokenExchange_field;
@@ -159,7 +159,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,
@@ -174,7 +174,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,
@@ -191,14 +191,14 @@ action_impl!(
 
 // I don't know who coded this contract, but I wish them great harm.
 action_impl!(
-    Protocol::CurveCryptoSwap,
+    Protocol::CurveCryptoSwapPool,
     crate::CurveCryptoSwap::exchange_underlying_0Call,
     Swap,
     [TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurveCryptoSwapexchange_underlying_0CallLogs,
+    log: CurveCryptoSwapPoolexchange_underlying_0CallLogs,
     db_tx: &DB| {
         let log = log.TokenExchange_field;
         let details = db_tx.get_protocol_details(info.target_address)?;
@@ -220,7 +220,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t0_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t1_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,
@@ -235,7 +235,7 @@ action_impl!(
             let amount_in = log.tokens_sold.to_scaled_rational(t1_info.decimals);
             let amount_out = log.tokens_bought.to_scaled_rational(t0_info.decimals);
             return Ok(NormalizedSwap {
-                protocol: Protocol::CurveCryptoSwap,
+                protocol: Protocol::CurveCryptoSwapPool,
                 pool: info.target_address,
                 trace_index: info.trace_idx,
                 from: info.from_address,

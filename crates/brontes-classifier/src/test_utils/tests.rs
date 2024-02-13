@@ -413,16 +413,8 @@ impl ClassifierTestUtils {
         tree_collect_fn: impl Fn(&Node<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
-        assert!(!tree.tx_roots.is_empty(), "no roots found in tree");
         let root = tree.tx_roots.remove(0);
         let mut actions = root.collect(&tree_collect_fn);
-        assert!(
-            !actions.is_empty(),
-            "no actions found in tree. Make sure that you added the classifier to the dispatch \
-             and that the protocol with address you're testing is in the test db"
-        );
-        assert!(actions.len() > action_number_in_tx, "invalid action index");
-
         let action = actions.remove(action_number_in_tx);
 
         assert_eq!(eq_action, action, "got: {:#?} != given: {:#?}", action, eq_action);
@@ -436,7 +428,6 @@ impl ClassifierTestUtils {
         tree_collect_fn: impl Fn(&Node<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
-        assert!(!tree.tx_roots.is_empty(), "no roots found in tree");
         let root = tree.tx_roots.remove(0);
         let actions = root.collect(&tree_collect_fn);
 
@@ -507,9 +498,7 @@ impl ClassifierTestUtils {
             .find(|f| f.get_trace_address() == trace_addr)
             .ok_or_else(|| ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))?;
 
-        let Action::Call(call) = &p_trace.trace.action else {
-            panic!("discovery parent trace wasn't a call")
-        };
+        let Action::Call(call) = &p_trace.trace.action else { panic!() };
 
         let from_address = found_trace.get_from_addr();
         let created_addr = found_trace.get_create_output();
@@ -531,13 +520,24 @@ impl ClassifierTestUtils {
         address: Address,
         token0: Address,
         token1: Address,
+        token2: Option<Address>,
+        token3: Option<Address>,
+        token4: Option<Address>,
     ) {
         self.libmdbx
             .0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData {
                     key:   address,
-                    value: ProtocolInfo { protocol, token0, token1, ..Default::default() },
+                    value: ProtocolInfo {
+                        protocol,
+                        token0,
+                        token1,
+                        token2,
+                        token3,
+                        token4,
+                        ..Default::default()
+                    },
                 },
             ])
             .unwrap();
