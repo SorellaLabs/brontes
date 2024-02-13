@@ -1,18 +1,16 @@
-name: Feature request
-description: Suggest a feature
-labels: ["C-enhancement", "S-needs-triage"]
+name: Documentation
+description: Suggest a change to our documentation
+labels: ["C-docs", "S-needs-triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Please ensure that the feature has not already been requested in the issue tracker.
+        If you are unsure if the docs are relevant or needed, please open up a discussion first.
   - type: textarea
     attributes:
-      label: Describe the feature
+      label: Describe the change
       description: |
-        Please describe the feature and what it is aiming to solve, if relevant.
-
-        If the feature is for a crate, please include a proposed API surface.
+        Please describe the documentation you want to change or add, and if it is for end-users or contributors.
     validations:
       required: true
   - type: textarea
