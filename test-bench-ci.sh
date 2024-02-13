@@ -1,6 +1,6 @@
 #!/bin/sh
 
-function run_tests() {
+run_tests() {
   exec git pull
   exec git checkout $1
   exec git pull
@@ -9,7 +9,7 @@ function run_tests() {
   exec git checkout main
 }
 
-function run_benchmarks() {
+run_benchmarks() {
   exec rm -rf /home/data/brontes-test/*
   exec git pull
   exec git checkout $1
@@ -22,6 +22,7 @@ function run_benchmarks() {
 # simple lock to ensure only one ci can be running at once
 while [ $CI_RUNNING -eq "TRUE" ] 
 do
+
 done
 
 export CI_RUNNING="TRUE"
