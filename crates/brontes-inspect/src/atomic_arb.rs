@@ -35,13 +35,16 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        let interesting_state = tree.collect_all(|node| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap()
-                || node.data.is_transfer()
-                || node.data.is_flash_loan(),
-            child_node_to_collect: node.get_all_sub_actions().iter().any(|action| {
-                action.is_swap() || action.is_transfer() || node.data.is_flash_loan()
-            }),
+        let interesting_state = tree.collect_all(|node, info| TreeSearchArgs {
+            collect_current_node:  info
+                .get_ref(node.data)
+                .map(|action| action.is_transfer() || action.is_flash_loan() || action.is_swap())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .filter_map(|node| info.get_ref(*node))
+                .any(|action| action.is_transfer() || action.is_flash_loan() || action.is_swap()),
         });
 
         interesting_state
