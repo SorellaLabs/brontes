@@ -161,7 +161,7 @@ fn bench_sandwich_regular_block(c: &mut Criterion) {
             18500002,
             0,
             vec![Inspectors::Sandwich],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -175,7 +175,7 @@ fn bench_liquidations_regular_block(c: &mut Criterion) {
             18979710,
             0,
             vec![Inspectors::Liquidations],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -189,7 +189,7 @@ fn bench_backrun_regular_block(c: &mut Criterion) {
             18000103,
             0,
             vec![Inspectors::AtomicArb],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -203,7 +203,7 @@ fn bench_jit_regular_block(c: &mut Criterion) {
             18500009,
             0,
             vec![Inspectors::Jit],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -217,7 +217,7 @@ fn bench_cex_dex_regular_block(c: &mut Criterion) {
             18264694,
             0,
             vec![Inspectors::CexDex],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
