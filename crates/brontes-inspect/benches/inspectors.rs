@@ -100,7 +100,9 @@ fn bench_cex_dex(c: &mut Criterion) {
             .unwrap();
 
     let classifer_utils = rt.block_on(ClassifierTestUtils::new());
-    let metadata = rt.block_on(classifer_utils.get_metadata(0, true)).unwrap();
+    let metadata = rt
+        .block_on(classifer_utils.get_metadata(18264694, true))
+        .unwrap();
 
     bencher
         .bench_inspector_txes_with_meta(
