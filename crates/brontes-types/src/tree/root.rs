@@ -16,6 +16,7 @@ use crate::{
     TreeSearchArgs, TxInfo,
 };
 
+#[derive(Debug)]
 pub struct NodeData<V: NormalizedAction>(Vec<Option<V>>);
 
 impl<V: NormalizedAction> NodeData<V> {
@@ -39,9 +40,9 @@ impl<V: NormalizedAction> NodeData<V> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Root<V: NormalizedAction> {
-    pub head:        Node<V>,
+    pub head:        Node,
     pub position:    usize,
     pub tx_hash:     B256,
     pub private:     bool,
@@ -51,7 +52,13 @@ pub struct Root<V: NormalizedAction> {
 
 impl<V: NormalizedAction> Root<V> {
     pub fn get_tx_info<DB: LibmdbxReader>(&self, block_number: u64, database: &DB) -> TxInfo {
-        let to_address = self.head.data.get_action().get_to_address();
+        let to_address = self
+            .data_store
+            .get_ref(self.head.data)
+            .unwrap()
+            .clone()
+            .get_action()
+            .get_to_address();
 
         let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
             Ok(metadata) => metadata.is_verified(),
@@ -66,9 +73,12 @@ impl<V: NormalizedAction> Root<V> {
             to_address,
             self.tx_hash,
             self.gas_details,
-            self.head.data.is_classified(),
+            self.data_store
+                .get_ref(self.head.data)
+                .map(|f| f.is_classified())
+                .unwrap_or_default(),
             matches!(
-                self.head.data.get_action(),
+                self.data_store.get_ref(self.head.data).unwrap().get_action(),
                 Actions::Unclassified(data) if data.is_cex_dex_call()
             ),
             self.private,
@@ -81,7 +91,7 @@ impl<V: NormalizedAction> Root<V> {
         self.position
     }
 
-    pub fn insert(&mut self, mut node: Node<V>, data: V) {
+    pub fn insert(&mut self, mut node: Node, data: V) {
         let idx = self.data_store.add(data);
         node.data = idx;
 
@@ -90,7 +100,7 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn collect_spans<F>(&self, call: &F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node, &NodeData<V>) -> bool,
     {
         let mut result = Vec::new();
         self.head.collect_spans(&mut result, call, &self.data_store);
@@ -100,8 +110,8 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn modify_spans<T, F>(&mut self, find: &T, modify: &F)
     where
-        T: Fn(&Node<V>) -> bool,
-        F: Fn(Vec<&mut Node<V>>),
+        T: Fn(&Node, &NodeData<V>) -> bool,
+        F: Fn(Vec<&mut Node>, &mut NodeData<V>),
     {
         self.head
             .modify_node_spans(find, modify, &mut self.data_store);
@@ -109,11 +119,15 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn collect<F>(&self, call: &F) -> Vec<V>
     where
-        F: Fn(&Node<V>) -> TreeSearchArgs,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
     {
         let mut result = Vec::new();
-        self.head
-            .collect(&mut result, call, &|data| data.data.clone(), &self.data_store);
+        self.head.collect(
+            &mut result,
+            call,
+            &|data, info| info.get_ref(data.data).unwrap().clone(),
+            &self.data_store,
+        );
 
         result.sort_by_key(|a| a.get_trace_index());
 
@@ -122,8 +136,8 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F)
     where
-        T: Fn(&Node<V>) -> TreeSearchArgs,
-        F: Fn(&mut Node<V>),
+        T: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
+        F: Fn(&mut Node, &mut NodeData<V>),
     {
         self.head
             .modify_node_if_contains_childs(find, modify, &mut self.data_store);
@@ -143,38 +157,28 @@ impl<V: NormalizedAction> Root<V> {
         info: &T,
         removal: &Re,
     ) where
-        T: Fn(&Node<V>) -> R + Sync,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node<V>) -> TreeSearchArgs,
-        Re: Fn(&Node<V>) -> TreeSearchArgs + Sync,
+        T: Fn(&Node, &NodeData<V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
+        Re: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
     {
         let mut find_res = Vec::new();
-        self.head.collect(&mut find_res, find, &|data| data.clone());
+        self.head
+            .collect(&mut find_res, find, &|data, _| data.clone(), &self.data_store);
 
         let indexes = find_res
             .into_par_iter()
             .flat_map(|node| {
                 let mut bad_res = Vec::new();
-                node.collect(&mut bad_res, removal, info);
-                classify(&bad_res, &node)
+                node.collect(&mut bad_res, removal, info, &self.data_store);
+                classify(&bad_res, &node, &self.data_store)
             })
             .collect::<HashSet<_>>();
 
-        indexes
-            .into_iter()
-            .for_each(|index| self.head.remove_node_and_children(index));
-    }
-
-    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
-    where
-        T: Fn(Address, &Node<V>) -> TreeSearchArgs,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
-    {
-        // bool is used for recursion
-        let mut results = Vec::new();
-        let _ = self.head.dyn_classify(find, call, &mut results);
-
-        results
+        indexes.into_iter().for_each(|index| {
+            self.head
+                .remove_node_and_children(index, &mut self.data_store)
+        });
     }
 
     pub fn finalize(&mut self) {

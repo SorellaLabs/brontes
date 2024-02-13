@@ -1,21 +1,14 @@
+use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-use super::Root;
-use crate::{normalized_actions::NormalizedAction, NodeData, TreeSearchArgs};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots:             Vec<Root<V>>,
-    pub header:               Header,
-    pub priority_fee_std_dev: f64,
-    pub avg_priority_fee:     f64,
-}
+use super::{NodeData, Root};
+use crate::{normalized_actions::NormalizedAction, TreeSearchArgs};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Node<V: NormalizedAction> {
-    pub inner:     Vec<Node<V>>,
+pub struct Node {
+    pub inner:     Vec<Node>,
     pub finalized: bool,
     pub index:     u64,
 
@@ -25,7 +18,7 @@ pub struct Node<V: NormalizedAction> {
     pub data:          usize,
 }
 
-impl<V: NormalizedAction> Node<V> {
+impl Node {
     pub fn new(index: u64, address: Address, trace_address: Vec<usize>) -> Self {
         Self {
             index,
@@ -67,27 +60,50 @@ impl<V: NormalizedAction> Node<V> {
     ///   4 < 6 check inf
     ///   6 < inf go to 4
     ///   4 has child 6, it is found!
-    pub fn get_all_children_for_complex_classification(
+    pub fn get_all_children_for_complex_classification<V: NormalizedAction>(
         &mut self,
         head: u64,
         nodes: &mut NodeData<V>,
     ) {
         if head == self.index {
             let mut results = Vec::new();
-            let classification = self.data.continued_classification_types();
+            let classification = nodes
+                .get_mut(self.data)
+                .unwrap()
+                .continued_classification_types();
 
-            let collect_fn = |node: &Node<V>| TreeSearchArgs {
-                collect_current_node:  (classification)(&node.data),
-                child_node_to_collect: node.get_all_sub_actions().iter().any(&classification),
+            let collect_fn = |node: &Node, nodes: &NodeData<V>| TreeSearchArgs {
+                collect_current_node:  nodes
+                    .get_ref(node.data)
+                    .map(|node| (classification)(node))
+                    .unwrap_or_default(),
+                child_node_to_collect: node
+                    .get_all_sub_actions()
+                    .iter()
+                    .filter_map(|node| nodes.get_ref(*node))
+                    .any(&classification),
             };
-            self.collect(&mut results, &collect_fn, &|a| (a.index, a.data.clone()), &*nodes);
+            self.collect(
+                &mut results,
+                &collect_fn,
+                &|a, data| (a.index, data.get_ref(a.data).cloned()),
+                &*nodes,
+            );
+
+            let results = results
+                .into_iter()
+                .filter_map(|(a, b)| Some((a, b?)))
+                .collect_vec();
             // Now that we have the child actions of interest we can finalize the parent
             // node's classification which mutates the parents data in place & returns the
             // indexes of child nodes that should be removed
-            let prune_collapsed_nodes = self.data.finalize_classification(results);
+            let prune_collapsed_nodes = nodes
+                .get_mut(self.data)
+                .unwrap()
+                .finalize_classification(results);
 
             prune_collapsed_nodes.into_iter().for_each(|index| {
-                self.remove_node_and_children(index);
+                self.remove_node_and_children(index, nodes);
             });
 
             return
@@ -141,7 +157,7 @@ impl<V: NormalizedAction> Node<V> {
         error!("was not able to find node in tree, should be unreachable");
     }
 
-    pub fn modify_node_if_contains_childs<T, F>(
+    pub fn modify_node_if_contains_childs<T, F, V: NormalizedAction>(
         &mut self,
         find: &T,
         modify: &F,
@@ -176,7 +192,12 @@ impl<V: NormalizedAction> Node<V> {
         false
     }
 
-    pub fn modify_node_spans<T, F>(&mut self, find: &T, modify: &F, nodes: &mut NodeData<V>) -> bool
+    pub fn modify_node_spans<T, F, V: NormalizedAction>(
+        &mut self,
+        find: &T,
+        modify: &F,
+        nodes: &mut NodeData<V>,
+    ) -> bool
     where
         T: Fn(&Self, &NodeData<V>) -> bool,
         F: Fn(Vec<&mut Self>, &mut NodeData<V>),
@@ -220,12 +241,12 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     /// The address here is the from address for the trace
-    pub fn insert(&mut self, n: Node<V>) {
+    pub fn insert(&mut self, n: Node) {
         let trace_addr = n.trace_address.clone();
         self.get_all_inner_nodes(n, trace_addr);
     }
 
-    pub fn get_all_inner_nodes(&mut self, n: Node<V>, mut trace_addr: Vec<usize>) {
+    pub fn get_all_inner_nodes(&mut self, n: Node, mut trace_addr: Vec<usize>) {
         let log = trace_addr.clone();
         if trace_addr.len() == 1 {
             self.inner.push(n);
@@ -236,7 +257,7 @@ impl<V: NormalizedAction> Node<V> {
         }
     }
 
-    pub fn get_all_sub_actions(&self) -> &Vec<V> {
+    pub fn get_all_sub_actions(&self) -> Vec<usize> {
         if self.finalized {
             self.subactions.clone()
         } else {
@@ -245,7 +266,7 @@ impl<V: NormalizedAction> Node<V> {
                 self.inner
                     .iter()
                     .flat_map(|inner| inner.get_all_sub_actions())
-                    .collect::<Vec<V>>(),
+                    .collect::<Vec<_>>(),
             );
 
             res
@@ -253,14 +274,14 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     /// doesn't append this node to inner subactions.
-    pub fn get_all_sub_actions_exclusive(&self) -> Vec<V> {
+    pub fn get_all_sub_actions_exclusive(&self) -> Vec<usize> {
         self.inner
             .iter()
             .flat_map(|inner| inner.get_all_sub_actions())
-            .collect::<Vec<V>>()
+            .collect::<Vec<_>>()
     }
 
-    pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node<V>> {
+    pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node> {
         if self.inner.last()?.index == tx_index {
             Some(self)
         } else {
@@ -299,7 +320,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
     where
-        F: Fn(&Node<V>) -> R,
+        F: Fn(&Node) -> R,
     {
         if self.index >= lower && self.index <= upper {
             res.push(info_fn(self));
@@ -312,7 +333,11 @@ impl<V: NormalizedAction> Node<V> {
             .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
     }
 
-    pub fn remove_node_and_children(&mut self, index: u64) {
+    pub fn remove_node_and_children<V: NormalizedAction>(
+        &mut self,
+        index: u64,
+        data: &mut NodeData<V>,
+    ) {
         let mut iter = self.inner.iter_mut().enumerate();
 
         let res = loop {
@@ -322,7 +347,7 @@ impl<V: NormalizedAction> Node<V> {
                 }
 
                 if inner.index < index {
-                    inner.remove_node_and_children(index)
+                    inner.remove_node_and_children(index, data)
                 } else {
                     break None
                 }
@@ -332,14 +357,22 @@ impl<V: NormalizedAction> Node<V> {
         };
 
         if let Some(val) = res {
-            self.inner.remove(val);
+            let ret = self.inner.remove(val);
+            ret.get_all_sub_actions().into_iter().for_each(|f| {
+                data.remove(f);
+            });
         }
     }
 
     // only grabs the lowest subset of specified actions
-    pub fn collect_spans<F>(&self, result: &mut Vec<Vec<V>>, call: &F, data: &NodeData<V>) -> bool
+    pub fn collect_spans<F, V: NormalizedAction>(
+        &self,
+        result: &mut Vec<Vec<V>>,
+        call: &F,
+        data: &NodeData<V>,
+    ) -> bool
     where
-        F: Fn(&Node<V>, &NodeData<V>) -> bool,
+        F: Fn(&Node, &NodeData<V>) -> bool,
     {
         // the previous sub-action was the last one to meet the criteria
         if !call(self, data) {
@@ -357,7 +390,11 @@ impl<V: NormalizedAction> Node<V> {
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !lower_has_better {
-            let res = self.get_all_sub_actions();
+            let res = self
+                .get_all_sub_actions()
+                .into_iter()
+                .filter_map(|node| data.get_ref(node).cloned())
+                .collect::<Vec<_>>();
             result.push(res);
         }
 
@@ -367,15 +404,15 @@ impl<V: NormalizedAction> Node<V> {
 
     /// Collects all actions that match the call closure. This is useful for
     /// fetching all actions that match a certain criteria.
-    pub fn collect<F, T, R>(
+    pub fn collect<F, T, R, V: NormalizedAction>(
         &self,
         results: &mut Vec<R>,
         call: &F,
         wanted_data: &T,
         data: &NodeData<V>,
     ) where
-        F: Fn(&Node<V>, &NodeData<V>) -> TreeSearchArgs,
-        T: Fn(&Node<V>, &NodeData<V>) -> R,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
+        T: Fn(&Node, &NodeData<V>) -> R,
     {
         let TreeSearchArgs { collect_current_node, child_node_to_collect } = call(self, data);
         if collect_current_node {
