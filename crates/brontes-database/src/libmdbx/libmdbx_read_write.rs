@@ -502,13 +502,14 @@ impl LibmdbxWriter for LibmdbxReadWriter {
                 AddressToProtocolInfoData::new(
                     address,
                     ProtocolInfo {
-                        protocol:   classifier_name,
-                        init_block: block,
-                        token0:     tokens[0],
-                        token1:     tokens[1],
-                        token2:     None,
-                        token3:     None,
-                        token4:     None,
+                        protocol:       classifier_name,
+                        init_block:     block,
+                        token0:         tokens[0],
+                        token1:         tokens[1],
+                        token2:         None,
+                        token3:         None,
+                        token4:         None,
+                        curve_lp_token: None,
                     },
                 ),
             ])?;
