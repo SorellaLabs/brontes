@@ -146,6 +146,34 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+/// # Eth Curve Pool Discovery
+/// Curve is wierd since each factory contract (7 of them) has multiple
+/// implementations of each create base/plain/meta pool, so it has it's own impl
+/// ### Fields
+/// 1. `Protocol` (enum in types) - Curve version
+/// 2. Path to the `sol!` generated abi for the factory
+/// 3. `x` concatenated with the factory address
+/// 4. A tuple with the fields (x, y, z)
+///     - x: number of base pools
+///     - y: number of metapools
+///     - z: number of plain pools
+///
+/// ### Example
+/// ```
+/// curve_discovery_impl!(
+///     CurvecrvUSD,
+///     crate::raw::pools::impls::CurvecrvUSDFactory,
+///     x4f8846ae9380b90d2e71d5e3d042dff3e7ebb40d,
+///     (1, 2, 3)
+/// );
+/// ```
+pub fn curve_discovery_impl(input: TokenStream) -> TokenStream {
+    discovery_classifier::curve::curve_discovery_impl(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro]
 /// discovery dispatch macro creates a struct that automatically dispatches
 /// possible CREATE traces to the proper discovery classifier
 /// ```ignore
