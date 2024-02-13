@@ -80,5 +80,5 @@ jobs:
 
       - name: cargo test and bench
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc ./test-bench-ci.sh ${{ steps.branch-names.outputs.current_branch }}'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && ./test-bench-ci.sh ${{ steps.branch-names.outputs.current_branch }}'" 
 
