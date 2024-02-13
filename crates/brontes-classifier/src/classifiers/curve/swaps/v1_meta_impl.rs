@@ -218,7 +218,7 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol: Protocol::CurveV1MetaPool,
-            trace_index: 0,
+            trace_index: 1,
             from: Address::new(hex!("A24AD612C61076C902588C28e617461c6cA1eD54")),
             recipient: Address::new(hex!("A24AD612C61076C902588C28e617461c6cA1eD54")),
             pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
