@@ -70,8 +70,8 @@ mod tests {
                 collateral_asset:      classifier_utils
                     .get_token_info(Address::from(hex!("70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4"))),
                 liquidator:            Address::from(hex!("D911560979B78821D7b045C79E36E9CbfC2F6C6F")),
-                pool:                  Address::from(hex!("0")),
-                trace_index:           0,
+                pool:                  Address::from(hex!("0x39AA39c021dfbaE8faC545936693aC917d5E7563")),
+                trace_index:           6,
             });
 
             let search_fn = |node: &Node<Actions>| TreeSearchArgs {
