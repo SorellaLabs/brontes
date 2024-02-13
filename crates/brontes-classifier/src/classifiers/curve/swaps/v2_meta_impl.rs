@@ -42,7 +42,7 @@ action_impl!(
 
         Ok(NormalizedSwap {
             protocol: details.protocol,
-            pool: info.target_address,
+            pool: info.from_address,
             trace_index: info.trace_idx,
             from: info.msg_sender,
             recipient: info.msg_sender,
