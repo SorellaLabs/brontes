@@ -523,6 +523,7 @@ impl ClassifierTestUtils {
         token2: Option<Address>,
         token3: Option<Address>,
         token4: Option<Address>,
+        curve_lp_token: Option<Address>,
     ) {
         self.libmdbx
             .0
@@ -536,7 +537,7 @@ impl ClassifierTestUtils {
                         token2,
                         token3,
                         token4,
-                        ..Default::default()
+                        curve_lp_token,
                     },
                 },
             ])
