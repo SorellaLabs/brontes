@@ -81,7 +81,7 @@ async fn query_base_pool<T: TracingProvider>(
             let Ok(call) = make_call_request(
                 coins_1Call { arg0: U256::from(i as u64) },
                 tracer,
-                base_pool,
+                *base_pool,
                 None,
             )
             .await
