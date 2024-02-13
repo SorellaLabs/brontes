@@ -91,7 +91,7 @@ impl TraceLoader {
 
     async fn init_on_start(&self) -> eyre::Result<()> {
         let clickhouse = Box::leak(Box::default());
-        if !self.libmdbx.init_full_range_tables() {
+        if self.libmdbx.init_full_range_tables(clickhouse).await {
             self.libmdbx
                 .initialize_tables(
                     clickhouse,
