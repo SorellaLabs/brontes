@@ -38,6 +38,10 @@ impl<V: NormalizedAction> NodeData<V> {
     pub fn remove(&mut self, idx: usize) -> Option<V> {
         self.0[idx].take()
     }
+
+    pub fn replace(&mut self, idx: usize, value: V) {
+        self.0[idx] = Some(value);
+    }
 }
 
 #[derive(Debug)]
