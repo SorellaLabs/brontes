@@ -75,5 +75,5 @@ jobs:
             echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config 
         - name: cargo test
           run: 
-            ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rm -rf ~/brontes-test-db/* && source .env && cargo build --features ci'" 
+            ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rm -rf ~/brontes-test-db/* && source .env && cargo build'" 
             ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && source .env && cargo +nightly test'" 
