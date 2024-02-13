@@ -149,13 +149,10 @@ impl PoolStateWithBlock {
     }
 
     pub fn get_state(&self, block: u64) -> Option<&PoolState> {
-        for (_, state) in &self.0 {
-            if block == state.last_update {
-                return Some(state);
-            }
-        }
-
-        None
+        self.0
+            .iter()
+            .map(|(_, state)| state)
+            .find(|&state| block == state.last_update)
     }
 
     pub fn remove_state(&mut self, block: u64) -> Option<(bool, PoolState)> {
