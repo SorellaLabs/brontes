@@ -56,7 +56,7 @@ impl InspectorBenchUtils {
         let mut metadata = self
             .rt
             .block_on(self.classifier_inspector.get_metadata(block, false))
-            .unwrap_or_defauilt();
+            .unwrap_or_default();
 
         metadata.dex_quotes = prices;
 
