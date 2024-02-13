@@ -22,6 +22,9 @@ use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 const MAX_SEARCH_THREADS: usize = 3;
 
+// store data in a single lookup fasion
+pub struct NodeData<V: NormalizedAction>(Vec<V>);
+
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
     pub tx_roots:             Vec<Root<V>>,
