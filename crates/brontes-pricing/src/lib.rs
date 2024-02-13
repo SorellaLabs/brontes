@@ -518,6 +518,24 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> BrontesBatchPricer<T
             .unique()
             .collect_vec();
 
+        // if we done have any edges, lets run with no ignores.
+        let edges = if edges.is_empty() {
+            let query = ignores
+                .iter()
+                .copied()
+                .map(|_| (pair, block, HashSet::new(), vec![]))
+                .collect_vec();
+
+            par_state_query(&self.graph_manager, query)
+                .into_iter()
+                .flat_map(|e| e.2)
+                .flatten()
+                .unique()
+                .collect_vec()
+        } else {
+            edges
+        };
+
         if edges.is_empty() {
             tracing::error!(?pair, ?block, "failed to find connection for graph");
             return
