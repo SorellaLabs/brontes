@@ -28,7 +28,7 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
     structured_trace::TraceActions,
-    tree::{BlockTree, Node},
+    tree::{root::NodeData, BlockTree, Node},
     TreeSearchArgs,
 };
 use futures::{future::join_all, StreamExt};
@@ -410,7 +410,7 @@ impl ClassifierTestUtils {
         tx_hash: TxHash,
         action_number_in_tx: usize,
         eq_action: Actions,
-        tree_collect_fn: impl Fn(&Node<Actions>) -> TreeSearchArgs,
+        tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
@@ -425,7 +425,7 @@ impl ClassifierTestUtils {
     pub async fn has_no_actions(
         &self,
         tx_hash: TxHash,
-        tree_collect_fn: impl Fn(&Node<Actions>) -> TreeSearchArgs,
+        tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
