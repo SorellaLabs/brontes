@@ -1,13 +1,9 @@
-use std::str::FromStr;
-
-use itertools::Itertools;
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::quote;
-use syn::{braced, bracketed, parenthesized, parse::Parse, spanned::Spanned, token, ExprClosure, Ident, Index, LitByte, LitInt, Path, Token};
+use syn::{parenthesized, parse::Parse, Ident, LitInt, Path, Token};
 
 pub fn curve_discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
-    let parsed: CurveParse = syn::parse2(token_stream.into())?;
-
+    let parsed: CurveParse = syn::parse2(token_stream)?;
 
     let meta_pools = parsed.make_meta_pools();
     let plain_pools = parsed.make_plain_pools();
@@ -26,38 +22,53 @@ struct CurveParse {
     abi_crate_path:    Path,
     meta_pool_impls:   u8,
     plain_pool_impls:  u8,
-    factory_address:   Literal
+    factory_address:   Literal,
 }
 
 impl CurveParse {
-
-
     fn make_meta_pools(&self) -> TokenStream {
-        let full_contract_protocol = Ident::new(&format!("{}MetaPool", self.contract_protocol.to_string()), Span::call_site());
+        let full_contract_protocol =
+            Ident::new(&format!("{}MetaPool", self.contract_protocol), Span::call_site());
         let path = &self.abi_crate_path;
         let address = &self.factory_address;
 
         if self.meta_pool_impls == 1 {
-            let decoder_name = Ident::new(&format!("{}MetaDiscovery", self.contract_protocol.to_string()), Span::call_site());
-            let end_function_call_path = Ident::new(&format!("deploy_metapoolCall"), Span::call_site());
+            let decoder_name =
+                Ident::new(&format!("{}MetaDiscovery", self.contract_protocol), Span::call_site());
+            let end_function_call_path = Ident::new("deploy_metapoolCall", Span::call_site());
             let function_call_path = quote!(#path::#end_function_call_path);
 
-            return quote! {
+            quote! {
                 discovery_impl!(
                     #decoder_name,
                     #function_call_path,
                     #address,
-                    |deployed_address: Address, trace_index: u64, call: #end_function_call_path, tracer: Arc<T>| {
-                        parse_meta_pool(Protocol::#full_contract_protocol, deployed_address, call._base_pool, call._coin, trace_index, tracer)
+                    |
+                        deployed_address: Address,
+                        trace_index: u64,
+                        call: #end_function_call_path,
+                        tracer: Arc<T>
+                    | {
+                        parse_meta_pool(
+                            Protocol::#full_contract_protocol,
+                            deployed_address,
+                            call._base_pool,
+                            call._coin,
+                            trace_index,
+                            tracer
+                        )
                     }
                 );
-            };
+            }
         } else {
             let impls = (0..self.meta_pool_impls)
-                .into_iter()
                 .map(|i| {
-                    let decoder_name = Ident::new(&format!("{}MetaDiscovery{i}", self.contract_protocol.to_string()), Span::call_site());
-                    let end_function_call_path = Ident::new(&format!("deploy_metapool_{i}Call"), Span::call_site());
+                    let decoder_name = Ident::new(
+                        &format!("{}MetaDiscovery{i}", self.contract_protocol),
+                        Span::call_site(),
+                    );
+                    let end_function_call_path =
+                        Ident::new(&format!("deploy_metapool_{i}Call"), Span::call_site());
                     let function_call_path = quote!(#path::#end_function_call_path);
 
                     quote! {
@@ -65,8 +76,20 @@ impl CurveParse {
                             #decoder_name,
                             #function_call_path,
                             #address,
-                            |deployed_address: Address, trace_index: u64, call: #end_function_call_path, tracer: Arc<T>| {
-                                parse_meta_pool(Protocol::#full_contract_protocol, deployed_address, call._base_pool, call._coin, trace_index, tracer)
+                            |
+                                deployed_address: Address,
+                                trace_index: u64,
+                                call: #end_function_call_path,
+                                tracer: Arc<T>
+                            | {
+                                parse_meta_pool(
+                                    Protocol::#full_contract_protocol,
+                                    deployed_address,
+                                    call._base_pool,
+                                    call._coin,
+                                    trace_index,
+                                    tracer
+                                )
                             }
                         );
                     }
@@ -82,31 +105,46 @@ impl CurveParse {
     }
 
     fn make_plain_pools(&self) -> TokenStream {
-        let full_contract_protocol = Ident::new(&format!("{}PlainPool", self.contract_protocol.to_string()), Span::call_site());
+        let full_contract_protocol =
+            Ident::new(&format!("{}PlainPool", self.contract_protocol), Span::call_site());
         let path = &self.abi_crate_path;
         let address = &self.factory_address;
 
         if self.plain_pool_impls == 1 {
-            let decoder_name = Ident::new(&format!("{}PlainDiscovery", self.contract_protocol.to_string()), Span::call_site());
-            let end_function_call_path = Ident::new(&format!("deploy_plain_poolCall"), Span::call_site());
+            let decoder_name =
+                Ident::new(&format!("{}PlainDiscovery", self.contract_protocol), Span::call_site());
+            let end_function_call_path = Ident::new("deploy_plain_poolCall", Span::call_site());
             let function_call_path = quote!(#path::#end_function_call_path);
 
-            return quote! {
+            quote! {
                 discovery_impl!(
                     #decoder_name,
                     #function_call_path,
                     #address,
-                    |deployed_address: Address, trace_index: u64, call: #end_function_call_path, _| {
-                        parse_plain_pool(Protocol::#full_contract_protocol, deployed_address, trace_index, call._coins)
+                    |
+                        deployed_address: Address,
+                        trace_index: u64,
+                        call: #end_function_call_path,
+                        _
+                    | {
+                        parse_plain_pool(
+                            Protocol::#full_contract_protocol,
+                            deployed_address,
+                            trace_index,
+                            call._coins
+                        )
                     }
                 );
-            };
+            }
         } else {
             let impls = (0..self.plain_pool_impls)
-                .into_iter()
                 .map(|i| {
-                    let decoder_name = Ident::new(&format!("{}PlainDiscovery{i}", self.contract_protocol.to_string()), Span::call_site());
-                    let end_function_call_path = Ident::new(&format!("deploy_plain_pool_{i}Call"), Span::call_site());
+                    let decoder_name = Ident::new(
+                        &format!("{}PlainDiscovery{i}", self.contract_protocol),
+                        Span::call_site(),
+                    );
+                    let end_function_call_path =
+                        Ident::new(&format!("deploy_plain_pool_{i}Call"), Span::call_site());
                     let function_call_path = quote!(#path::#end_function_call_path);
 
                     quote! {
@@ -114,8 +152,18 @@ impl CurveParse {
                             #decoder_name,
                             #function_call_path,
                             #address,
-                            |deployed_address: Address, trace_index: u64, call: #end_function_call_path, _| {
-                                parse_plain_pool(Protocol::#full_contract_protocol, deployed_address, trace_index, call._coins)
+                            |
+                                deployed_address: Address,
+                                trace_index: u64,
+                                call: #end_function_call_path,
+                                _
+                            | {
+                                parse_plain_pool(
+                                    Protocol::#full_contract_protocol,
+                                    deployed_address,
+                                    trace_index,
+                                    call._coins
+                                )
                             }
                         );
                     }
@@ -155,10 +203,19 @@ impl Parse for CurveParse {
         let plain_pool_impls: u8 = content.parse::<LitInt>()?.to_string().parse().unwrap();
 
         if !input.is_empty() {
-            return Err(syn::Error::new(input.span(), "There should be no values after the call function"))
+            return Err(syn::Error::new(
+                input.span(),
+                "There should be no values after the call function",
+            ))
         }
 
-        Ok(Self { contract_protocol, abi_crate_path, meta_pool_impls, plain_pool_impls, factory_address })
+        Ok(Self {
+            contract_protocol,
+            abi_crate_path,
+            meta_pool_impls,
+            plain_pool_impls,
+            factory_address,
+        })
     }
 }
 

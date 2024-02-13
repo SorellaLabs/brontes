@@ -15,12 +15,18 @@ use tracing::{error, info};
 
 pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
     db: &DB,
+    // clickhouse-db (feature)
     inspectors: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) {
     let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
         compose_mev_results(inspectors, tree, metadata.clone()).await;
+
+    // insert the value to the respective table:
+    // clickhouse_db.insert_many::<T>(Vec<D>).await.unwrap()
+    // where T is the clickhouse table name
+    // and D is the clickhouse table's data type
 
     if let Err(e) = db.write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone()) {
         tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
