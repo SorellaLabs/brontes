@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
 use alloy_primitives::{Address, U256};
-use alloy_sol_types::SolCall;
 use brontes_macros::{curve_discovery_impl, discovery_impl};
 use brontes_pricing::make_call_request;
 use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, traits::TracingProvider, Protocol,
 };
-use itertools::Itertools;
 
 curve_discovery_impl!(
     CurveV1,
@@ -127,15 +125,4 @@ async fn parse_meta_pool<T: TracingProvider>(
     tokens.push(meta_token);
 
     vec![NormalizedNewPool { pool_address: deployed_address, trace_index, protocol, tokens }]
-}
-
-async fn parse_base_bool<T: TracingProvider>(
-    protocol: Protocol,
-    base_pool: Address,
-    trace_index: u64,
-    tracer: Arc<T>,
-) -> Vec<NormalizedNewPool> {
-    let tokens = query_base_pool(&tracer, &base_pool, false).await;
-
-    vec![NormalizedNewPool { pool_address: base_pool, trace_index, protocol, tokens }]
 }

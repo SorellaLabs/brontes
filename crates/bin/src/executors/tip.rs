@@ -20,6 +20,7 @@ pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     current_block:      u64,
     parser:             &'static Parser<'static, T, DB>,
     state_collector:    StateCollector<T, DB>,
+    // clickhouse db (feature)
     database:           &'static DB,
     inspectors:         &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
