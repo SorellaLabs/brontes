@@ -15,6 +15,30 @@ use crate::{
     normalized_actions::{Actions, NormalizedAction},
     TreeSearchArgs, TxInfo,
 };
+
+pub struct NodeData<V: NormalizedAction>(Vec<Option<V>>);
+
+impl<V: NormalizedAction> NodeData<V> {
+    /// adds the node data to the storage location retuning the index
+    /// that the data can be found at
+    pub fn add(&mut self, data: V) -> usize {
+        self.0.push(Some(data));
+        self.0.len() - 1
+    }
+
+    pub fn get_ref(&self, idx: usize) -> Option<&V> {
+        self.0.get(idx).and_then(|f| f.as_ref())
+    }
+
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut V> {
+        self.0.get_mut(idx).and_then(|f| f.as_mut())
+    }
+
+    pub fn remove(&mut self, idx: usize) -> Option<V> {
+        self.0[idx].take()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node<V>,
@@ -22,6 +46,7 @@ pub struct Root<V: NormalizedAction> {
     pub tx_hash:     B256,
     pub private:     bool,
     pub gas_details: GasDetails,
+    pub data_store:  NodeData<V>,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -56,7 +81,10 @@ impl<V: NormalizedAction> Root<V> {
         self.position
     }
 
-    pub fn insert(&mut self, node: Node<V>) {
+    pub fn insert(&mut self, mut node: Node<V>, data: V) {
+        let idx = self.data_store.add(data);
+        node.data = idx;
+
         self.head.insert(node)
     }
 
@@ -65,7 +93,7 @@ impl<V: NormalizedAction> Root<V> {
         F: Fn(&Node<V>) -> bool,
     {
         let mut result = Vec::new();
-        self.head.collect_spans(&mut result, call);
+        self.head.collect_spans(&mut result, call, &self.data_store);
 
         result
     }
@@ -75,7 +103,8 @@ impl<V: NormalizedAction> Root<V> {
         T: Fn(&Node<V>) -> bool,
         F: Fn(Vec<&mut Node<V>>),
     {
-        self.head.modify_node_spans(find, modify);
+        self.head
+            .modify_node_spans(find, modify, &mut self.data_store);
     }
 
     pub fn collect<F>(&self, call: &F) -> Vec<V>
@@ -84,7 +113,7 @@ impl<V: NormalizedAction> Root<V> {
     {
         let mut result = Vec::new();
         self.head
-            .collect(&mut result, call, &|data| data.data.clone());
+            .collect(&mut result, call, &|data| data.data.clone(), &self.data_store);
 
         result.sort_by_key(|a| a.get_trace_index());
 
@@ -96,13 +125,14 @@ impl<V: NormalizedAction> Root<V> {
         T: Fn(&Node<V>) -> TreeSearchArgs,
         F: Fn(&mut Node<V>),
     {
-        self.head.modify_node_if_contains_childs(find, modify);
+        self.head
+            .modify_node_if_contains_childs(find, modify, &mut self.data_store);
     }
 
     pub fn collect_child_traces_and_classify(&mut self, heads: &[u64]) {
         heads.iter().for_each(|search_head| {
             self.head
-                .get_all_children_for_complex_classification(*search_head)
+                .get_all_children_for_complex_classification(*search_head, &mut self.data_store)
         });
     }
 
