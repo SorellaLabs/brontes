@@ -251,6 +251,82 @@ mod tests {
             .unwrap();
     }
 
+    #[brontes_macros::test]
+    async fn test_curve_v2_metapool_impl_exchange_underlying0() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        classifier_utils.ensure_protocol(
+            Protocol::CurveV2MetaPool,
+            Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
+            Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
+            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+            Some(Address::new(hex!(
+                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ))),
+            Some(Address::new(hex!(
+                "dAC17F958D2ee523a2206206994597C13D831ec7"
+            ))),
+            None,
+            Some(Address::new(hex!(
+                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+            ))),
+        );
+
+        let swap = B256::from(hex!(
+            "248b8f2c6b80b138bcaeb53a4a2aea7f4dbc397313a887682cddf2909b676072"
+        ));
+
+        let token_in = TokenInfoWithAddress {
+            address: Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "STBT".to_string(),
+            },
+        };
+
+        let token_out = TokenInfoWithAddress {
+            address: Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
+            inner: TokenInfo {
+                decimals: 6,
+                symbol: "USDT".to_string(),
+            },
+        };
+
+        classifier_utils.ensure_token(token_in.clone());
+        classifier_utils.ensure_token(token_out.clone());
+
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol: Protocol::CurveV2MetaPool,
+            trace_index: 1,
+            from: Address::new(hex!("de7976D00607032445A79DC8aBe6d5b242705C1a")),
+            recipient: Address::new(hex!("de7976D00607032445A79DC8aBe6d5b242705C1a")),
+            pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
+            token_in,
+            amount_in: U256::from_str("5000000000000000000")
+                .unwrap()
+                .to_scaled_rational(18),
+            token_out,
+            amount_out: U256::from_str("4987470").unwrap().to_scaled_rational(6),
+            msg_value: U256::ZERO,
+        });
+
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node: data
+                .get_ref(node.data)
+                .map(|s| s.is_swap())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .filter_map(|d| data.get_ref(*d))
+                .any(|action| action.is_swap()),
+        };
+
+        classifier_utils
+            .contains_action(swap, 0, eq_action, search_fn)
+            .await
+            .unwrap();
+    }
+
     // #[brontes_macros::test]
     // async fn test_curve_v2_metapool_exchange_underlying1() {
     //     let classifier_utils = ClassifierTestUtils::new().await;
