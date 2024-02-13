@@ -61,6 +61,16 @@ body:
       description: This can be obtained with `brontes --version`
     validations:
       required: true
+
+  - type: input
+    id: rust-nightly-version
+    attributes:
+      label: Rust Nightly Version
+      description: Please specify the version of Rust nightly you are using (e.g., rustc 1.56.0-nightly (xxx 2021-08-xx)).
+      placeholder: rustc 1.56.0-nightly (xxx 2021-08-xx)
+    validations:
+      required: true
+
   - type: input
     attributes:
       label: If you've built Brontes from source, provide the full command you used
