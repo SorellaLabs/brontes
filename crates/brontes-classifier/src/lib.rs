@@ -32,26 +32,53 @@ sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveBase, "./classifier-abis/CurveBase.json");
 sol!(CurveV1Metapool, "./classifier-abis/CurveV1Metapool.json");
-sol!(CurveV1MetapoolImpl, "./classifier-abis/CurveV1MetapoolImpl.json");
+sol!(
+    CurveV1MetapoolImpl,
+    "./classifier-abis/CurveV1MetapoolImpl.json"
+);
 sol!(CurveV2Metapool, "./classifier-abis/CurveV2Metapool.json");
-sol!(CurveV2MetapoolImpl, "./classifier-abis/CurveV2MetapoolImpl.json");
+sol!(
+    CurveV2MetapoolImpl,
+    "./classifier-abis/CurveV2MetapoolImpl.json"
+);
 sol!(CurveV2Plain, "./classifier-abis/CurveV2Plain.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
-sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
+sol!(
+    UniswapX,
+    "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json"
+);
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
-sol!(CurveV1MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV1.json");
-sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
-sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
-sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
-sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
-sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
+sol!(
+    CurveV1MetapoolFactory,
+    "./classifier-abis/CurveMetapoolFactoryV1.json"
+);
+sol!(
+    CurveV2MetapoolFactory,
+    "./classifier-abis/CurveMetapoolFactoryV2.json"
+);
+sol!(
+    CurvecrvUSDFactory,
+    "./classifier-abis/CurveCRVUSDFactory.json"
+);
+sol!(
+    CurveCryptoSwapFactory,
+    "./classifier-abis/CurveCryptoSwapFactory.json"
+);
+sol!(
+    CurveTriCryptoFactory,
+    "./classifier-abis/CurveTriCryptoFactory.json"
+);
+sol!(
+    PancakeSwapV3PoolDeployer,
+    "./classifier-abis/PancakeSwapV3PoolDeployer.json"
+);
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

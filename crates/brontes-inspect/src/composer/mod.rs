@@ -52,8 +52,8 @@ use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]
 pub struct ComposerResults {
-    pub block_details:     MevBlock,
-    pub mev_details:       Vec<Bundle>,
+    pub block_details: MevBlock,
+    pub mev_details: Vec<Bundle>,
     /// all txes with coinbase.transfers that weren't classified
     pub possible_mev_txes: PossibleMevCollection,
 }
@@ -69,9 +69,18 @@ pub async fn compose_mev_results(
 
     let possible_arbs = possible_mev_txes.clone();
 
-    let (block_details, mev_details) =
-        on_orchestra_resolution(pre_processing, tree, possible_mev_txes, metadata, classified_mev);
-    ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
+    let (block_details, mev_details) = on_orchestra_resolution(
+        pre_processing,
+        tree,
+        possible_mev_txes,
+        metadata,
+        classified_mev,
+    );
+    ComposerResults {
+        block_details,
+        mev_details,
+        possible_mev_txes: possible_arbs,
+    }
 }
 
 async fn run_inspectors(
@@ -226,7 +235,7 @@ fn try_compose_mev(
                 if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
                     let indexes = find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes);
                     if indexes.is_empty() {
-                        break
+                        break;
                     }
                     for index in indexes {
                         let other_bundle = &other_mev_data_list[index];
@@ -235,7 +244,7 @@ fn try_compose_mev(
                         temp_removal_indices.push((other_mev_type, index));
                     }
                 } else {
-                    break
+                    break;
                 }
             }
 

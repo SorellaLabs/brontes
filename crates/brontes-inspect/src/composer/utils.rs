@@ -13,11 +13,11 @@ use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingM
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
-    metadata:                Arc<Metadata>,
-    cumulative_gas_used:     u128,
+    metadata: Arc<Metadata>,
+    cumulative_gas_used: u128,
     cumulative_priority_fee: u128,
-    total_bribe:             u128,
-    builder_address:         Address,
+    total_bribe: u128,
+    builder_address: Address,
 }
 
 /// Pre-processes the block data for the Composer.
@@ -127,10 +127,13 @@ pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> HashMap<MevType, 
     orchestra_data
         .into_iter()
         .map(|bundle| (bundle.header.mev_type, bundle))
-        .fold(HashMap::default(), |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
-            acc.entry(mev_type).or_default().push(v);
-            acc
-        })
+        .fold(
+            HashMap::default(),
+            |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
+                acc.entry(mev_type).or_default().push(v);
+                acc
+            },
+        )
 }
 
 /// Finds the index of the first classified mev in the list whose transaction
@@ -163,7 +166,10 @@ pub fn filter_and_count_bundles(
         let filtered_bundles: Vec<Bundle> = bundles
             .into_iter()
             .filter(|bundle| {
-                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::AtomicArb) {
+                if matches!(
+                    mev_type,
+                    MevType::Sandwich | MevType::Jit | MevType::AtomicArb
+                ) {
                     bundle.header.profit_usd > 0.0
                 } else {
                     true
@@ -210,7 +216,7 @@ pub fn calculate_builder_profit(
 
     let builder_collateral_amount = tree
         .collect_all(|node, data| TreeSearchArgs {
-            collect_current_node:  data.get_ref(node.data).map(|a| a.get_from_address())
+            collect_current_node: data.get_ref(node.data).map(|a| a.get_from_address())
                 == metadata
                     .builder_info
                     .as_ref()
@@ -235,7 +241,9 @@ pub fn calculate_builder_profit(
         .iter()
         .flat_map(|(_fixed_bytes, actions)| {
             actions.iter().filter_map(|action| {
-                let Actions::EthTransfer(transfer) = action else { return None };
+                let Actions::EthTransfer(transfer) = action else {
+                    return None;
+                };
                 Some(transfer.value.to::<u128>())
             })
         })

@@ -24,12 +24,15 @@ pub struct LibmdbxCursor<T: Table, K: TransactionKind> {
     /// Inner `libmdbx` cursor.
     pub(crate) inner: reth_libmdbx::Cursor<K>,
     /// Phantom data to enforce encoding/decoding.
-    _dbi:             PhantomData<T>,
+    _dbi: PhantomData<T>,
 }
 
 impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {
     pub(crate) fn new(inner: reth_libmdbx::Cursor<K>) -> Self {
-        Self { inner, _dbi: PhantomData }
+        Self {
+            inner,
+            _dbi: PhantomData,
+        }
     }
 }
 
@@ -191,7 +194,10 @@ impl<T: DupSort, K: TransactionKind> DbDupCursorRO<T> for LibmdbxCursor<T, K> {
             (None, None) => self.first().transpose(),
         };
 
-        Ok(DupWalker::<'_, T, Self> { cursor: self, start })
+        Ok(DupWalker::<'_, T, Self> {
+            cursor: self,
+            start,
+        })
     }
 }
 

@@ -33,7 +33,10 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + Libmdbx
                 .map(|t| (t._0, t._1, t._2))
         })
     else {
-        return Err(eyre::eyre!("failed to decode transfer for token: {:?}", token))
+        return Err(eyre::eyre!(
+            "failed to decode transfer for token: {:?}",
+            token
+        ));
     };
 
     if db.try_fetch_token_info(token).is_err() {
@@ -43,11 +46,11 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + Libmdbx
     let token_info = db.try_fetch_token_info(token)?;
 
     Ok(NormalizedTransfer {
-        amount:      amount.to_scaled_rational(token_info.decimals),
-        token:       token_info,
-        to:          to_addr,
-        from:        from_addr,
+        amount: amount.to_scaled_rational(token_info.decimals),
+        token: token_info,
+        to: to_addr,
+        from: from_addr,
         trace_index: idx,
-        fee:         Rational::ZERO,
+        fee: Rational::ZERO,
     })
 }

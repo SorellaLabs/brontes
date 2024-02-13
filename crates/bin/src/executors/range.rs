@@ -15,13 +15,13 @@ use tracing::info;
 
 use super::shared::{inserts::process_results, state_collector::StateCollector};
 pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
-    collector:      StateCollector<T, DB>,
+    collector: StateCollector<T, DB>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     // clickhouse db (feature)
-    current_block:  u64,
-    end_block:      u64,
-    libmdbx:        &'static DB,
-    inspectors:     &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+    current_block: u64,
+    end_block: u64,
+    libmdbx: &'static DB,
+    inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
@@ -110,7 +110,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future
             work -= 1;
             if work == 0 {
                 cx.waker().wake_by_ref();
-                return Poll::Pending
+                return Poll::Pending;
             }
         }
     }

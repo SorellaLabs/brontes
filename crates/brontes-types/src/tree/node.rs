@@ -6,13 +6,13 @@ use crate::{normalized_actions::NormalizedAction, TreeSearchArgs};
 
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub inner:         Vec<Node>,
-    pub finalized:     bool,
-    pub index:         u64,
-    pub subactions:    Vec<usize>,
+    pub inner: Vec<Node>,
+    pub finalized: bool,
+    pub index: u64,
+    pub subactions: Vec<usize>,
     pub trace_address: Vec<usize>,
-    pub address:       Address,
-    pub data:          usize,
+    pub address: Address,
+    pub data: usize,
 }
 
 impl Node {
@@ -71,7 +71,7 @@ impl Node {
                 .continued_classification_types();
 
             let collect_fn = |node: &Node, nodes: &NodeData<V>| TreeSearchArgs {
-                collect_current_node:  nodes
+                collect_current_node: nodes
                     .get_ref(node.data)
                     .map(&classification)
                     .unwrap_or_default(),
@@ -105,15 +105,15 @@ impl Node {
                 self.remove_node_and_children(index, nodes);
             });
 
-            return
+            return;
         }
 
         if self.inner.len() <= 1 {
             if let Some(inner) = self.inner.first_mut() {
-                return inner.get_all_children_for_complex_classification(head, nodes)
+                return inner.get_all_children_for_complex_classification(head, nodes);
             }
             error!("was not able to find node in tree");
-            return
+            return;
         }
 
         let mut iter = self.inner.iter_mut();
@@ -125,9 +125,9 @@ impl Node {
         for next_node in iter {
             // check if past nodes are the head
             if cur_inner_node.index == head {
-                return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+                return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
             } else if next_inner_node.index == head {
-                return next_inner_node.get_all_children_for_complex_classification(head, nodes)
+                return next_inner_node.get_all_children_for_complex_classification(head, nodes);
             }
 
             // if the next node is smaller than the head, we continue
@@ -136,21 +136,21 @@ impl Node {
                 next_inner_node = next_node;
             } else {
                 // next node is bigger than head. thus current node is proper path
-                return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+                return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
             }
         }
 
         // handle case where there are only two inner nodes to look at
         if cur_inner_node.index == head {
-            return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+            return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
         } else if next_inner_node.index == head {
-            return next_inner_node.get_all_children_for_complex_classification(head, nodes)
+            return next_inner_node.get_all_children_for_complex_classification(head, nodes);
         } else if next_inner_node.index > head {
-            return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+            return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
         }
         // handle inf case that is shown in the function docs
         else if let Some(last) = self.inner.last_mut() {
-            return last.get_all_children_for_complex_classification(head, nodes)
+            return last.get_all_children_for_complex_classification(head, nodes);
         }
 
         error!("was not able to find node in tree, should be unreachable");
@@ -166,10 +166,13 @@ impl Node {
         T: Fn(&Self, &NodeData<V>) -> TreeSearchArgs,
         F: Fn(&mut Self, &mut NodeData<V>),
     {
-        let TreeSearchArgs { collect_current_node, child_node_to_collect } = find(self, &*data);
+        let TreeSearchArgs {
+            collect_current_node,
+            child_node_to_collect,
+        } = find(self, &*data);
 
         if !child_node_to_collect {
-            return false
+            return false;
         }
 
         let lower_classification_results = self
@@ -183,9 +186,9 @@ impl Node {
             // we return false
             if collect_current_node {
                 modify(self, data);
-                return true
+                return true;
             } else {
-                return false
+                return false;
             }
         }
         false
@@ -202,7 +205,7 @@ impl Node {
         F: Fn(Vec<&mut Self>, &mut NodeData<V>),
     {
         if !find(self, &*data) {
-            return false
+            return false;
         }
 
         let lower_has_better_collect = self
@@ -309,7 +312,7 @@ impl Node {
 
     pub fn current_call_stack(&self) -> Vec<Address> {
         let Some(mut stack) = self.inner.last().map(|n| n.current_call_stack()) else {
-            return vec![self.address]
+            return vec![self.address];
         };
 
         stack.push(self.address);
@@ -324,7 +327,7 @@ impl Node {
         if self.index >= lower && self.index <= upper {
             res.push(info_fn(self));
         } else {
-            return
+            return;
         }
 
         self.inner
@@ -342,16 +345,16 @@ impl Node {
         let res = loop {
             if let Some((i, inner)) = iter.next() {
                 if inner.index == index {
-                    break Some(i)
+                    break Some(i);
                 }
 
                 if inner.index < index {
                     inner.remove_node_and_children(index, data)
                 } else {
-                    break None
+                    break None;
                 }
             } else {
-                break None
+                break None;
             }
         };
 
@@ -375,7 +378,7 @@ impl Node {
     {
         // the previous sub-action was the last one to meet the criteria
         if !call(self, data) {
-            return false
+            return false;
         }
 
         let lower_has_better_collect = self
@@ -413,7 +416,10 @@ impl Node {
         F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
         T: Fn(&Node, &NodeData<V>) -> R,
     {
-        let TreeSearchArgs { collect_current_node, child_node_to_collect } = call(self, data);
+        let TreeSearchArgs {
+            collect_current_node,
+            child_node_to_collect,
+        } = call(self, data);
         if collect_current_node {
             results.push(wanted_data(self, data))
         }

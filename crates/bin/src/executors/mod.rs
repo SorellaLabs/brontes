@@ -36,17 +36,17 @@ pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider> {
-    pub start_block:      u64,
-    pub end_block:        Option<u64>,
-    pub max_tasks:        u64,
-    pub min_batch_size:   u64,
-    pub quote_asset:      Address,
+    pub start_block: u64,
+    pub end_block: Option<u64>,
+    pub max_tasks: u64,
+    pub min_batch_size: u64,
+    pub quote_asset: Address,
     pub with_dex_pricing: bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     pub clickhouse: &'static Clickhouse,
-    pub parser:     &'static Parser<'static, T, LibmdbxReadWriter>,
-    pub libmdbx:    &'static LibmdbxReadWriter,
+    pub parser: &'static Parser<'static, T, LibmdbxReadWriter>,
+    pub libmdbx: &'static LibmdbxReadWriter,
 }
 
 impl<T: TracingProvider> BrontesRunConfig<T> {
@@ -92,7 +92,11 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         let cpus_min = range / self.min_batch_size + 1;
 
         let cpus = std::cmp::min(cpus_min, self.max_tasks);
-        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
+        let chunk_size = if cpus == 0 {
+            range + 1
+        } else {
+            (range / cpus) + 1
+        };
 
         join_all(
             (self.start_block..=end_block)
@@ -347,11 +351,11 @@ impl Future for Brontes {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.0.is_empty() {
-            return Poll::Ready(())
+            return Poll::Ready(());
         }
 
         if let Poll::Ready(None) = self.0.poll_next_unpin(cx) {
-            return Poll::Ready(())
+            return Poll::Ready(());
         }
 
         cx.waker().wake_by_ref();

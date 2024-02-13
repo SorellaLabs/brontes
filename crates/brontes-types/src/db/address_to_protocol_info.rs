@@ -27,20 +27,20 @@ use crate::{
 pub struct ProtocolInfo {
     #[serde(with = "static_bindings")]
     #[redefined(same_fields)]
-    pub protocol:       Protocol,
+    pub protocol: Protocol,
     #[serde(with = "addresss")]
-    pub token0:         Address,
+    pub token0: Address,
     #[serde(with = "addresss")]
-    pub token1:         Address,
+    pub token1: Address,
     #[serde(with = "option_addresss")]
-    pub token2:         Option<Address>,
+    pub token2: Option<Address>,
     #[serde(with = "option_addresss")]
-    pub token3:         Option<Address>,
+    pub token3: Option<Address>,
     #[serde(with = "option_addresss")]
-    pub token4:         Option<Address>,
+    pub token4: Option<Address>,
     #[serde(with = "option_addresss")]
     pub curve_lp_token: Option<Address>,
-    pub init_block:     u64,
+    pub init_block: u64,
 }
 
 impl IntoIterator for ProtocolInfo {
@@ -48,11 +48,17 @@ impl IntoIterator for ProtocolInfo {
     type Item = Address;
 
     fn into_iter(self) -> Self::IntoIter {
-        vec![Some(self.token0), Some(self.token1), self.token2, self.token3, self.token4]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>()
-            .into_iter()
+        vec![
+            Some(self.token0),
+            Some(self.token1),
+            self.token2,
+            self.token3,
+            self.token4,
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .into_iter()
     }
 }
 
