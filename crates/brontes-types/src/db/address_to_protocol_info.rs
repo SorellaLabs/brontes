@@ -66,6 +66,7 @@ impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
     fn from(value: (Vec<String>, u64, String, Option<String>)) -> Self {
         let init_block = value.1;
         let protocol = Protocol::parse_string(value.2);
+        let curve_lp_token = value.3;
         let value = value.0;
         let mut iter = value.into_iter();
         ProtocolInfo {
@@ -75,7 +76,7 @@ impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
             token2: iter.next().and_then(|a| Address::from_str(&a).ok()),
             token3: iter.next().and_then(|a| Address::from_str(&a).ok()),
             token4: iter.next().and_then(|a| Address::from_str(&a).ok()),
-            curve_lp_token: value.3,
+            curve_lp_token,
             init_block,
         }
     }
