@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{spanned::Spanned, ItemFn, ReturnType};
+use syn::{spanned::Spanned, ItemFn};
 
 pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
     let attrs = item.attrs;
@@ -9,8 +9,6 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
     if sig.asyncness.is_none() {
         return Err(syn::Error::new(sig.asyncness.span(), "function must be async"))
     }
-
-    if ReturnType::
 
     sig.asyncness = None;
     let block = item.block;
@@ -22,16 +20,12 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
         #sig
         {
             std::thread::spawn(move || {
-            if let Err(e) = tokio::runtime::Builder::new_multi_thread()
+             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .worker_threads(2)
                 .build()
                 .unwrap()
-                .block_on(async move #block) {
-                    panic!("test hit error: {e}");
-
-                }
-
+                .block_on(async move #block)
             }).join().unwrap();
         }
     ))
