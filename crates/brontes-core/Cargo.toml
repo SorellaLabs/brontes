@@ -103,3 +103,4 @@ local = [
   "reth-tracing-ext/local",
   "brontes-database/local",
 ]
+ci = []

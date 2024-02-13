@@ -22,9 +22,14 @@ fn insert_manually_defined_classifiers() {
     // don't run on local
     let _ = dotenv::dotenv();
 
-    let Ok(prod_brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else { return };
+    #[cfg(not(feature = "ci"))]
+    let Ok(prod_brontes_db_endpoint) = env::var("BRONTES_DB_PATH") else {
+        return
+    };
+
     let Ok(test_brontes_db_endpoint) = env::var("BRONTES_TEST_DB_PATH") else { return };
 
+    #[cfg(not(feature = "ci"))]
     let Ok(prod_libmdbx) = LibmdbxReadWriter::init_db(prod_brontes_db_endpoint, None) else {
         return
     };
@@ -52,6 +57,7 @@ fn insert_manually_defined_classifiers() {
                 .unwrap_or(vec![]);
 
             for t_info in &table {
+                #[cfg(not(feature = "ci"))]
                 prod_libmdbx
                     .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
                     .unwrap();
@@ -66,6 +72,7 @@ fn insert_manually_defined_classifiers() {
                 [table[0].address, table[1].address]
             };
 
+            #[cfg(not(feature = "ci"))]
             prod_libmdbx
                 .insert_pool(init_block, token_addr, token_addrs, protocol)
                 .unwrap();
