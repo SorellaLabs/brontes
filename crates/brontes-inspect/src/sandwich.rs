@@ -506,10 +506,17 @@ mod tests {
                 hex!("3e9c6cbee7c8c85a3c1bbc0cc8b9e23674f86bc7aedc51f05eb9d0eda0f6247e").into(),
                 hex!("9ee36a8a24c3eb5406e7a651525bcfbd0476445bd291622f89ebf8d13d54b7ee").into(),
             ])
-            .needs_token(hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into())
+            .needs_tokens(vec![
+                hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into(),
+                hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into(),
+                hex!("ca5b0ae1d104030a9b8f879523508efd86c14483").into(),
+                hex!("0a13a5929e5f0ff0eaba4bd9e9512c91fce40280").into(),
+                hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+                USDC_ADDRESS,
+            ])
             .with_dex_prices()
             .with_gas_paid_usd(40.26)
-            .with_expected_profit_usd(-56.444);
+            .with_expected_profit_usd(-95.19);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -528,7 +535,11 @@ mod tests {
                 hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
                 hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
             ])
-            .needs_tokens(vec![hex!("b17548c7b510427baac4e267bea62e800b247173").into()])
+            .needs_tokens(vec![
+                hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
+                hex!("ed4e879087ebd0e8a77d66870012b5e0dffd0fa4").into(),
+                hex!("50D1c9771902476076eCFc8B2A83Ad6b9355a4c9").into(),
+            ])
             .with_gas_paid_usd(90.875025)
             .with_expected_profit_usd(-9.003);
 

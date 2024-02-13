@@ -91,21 +91,15 @@ impl TraceLoader {
 
     async fn init_on_start(&self) -> eyre::Result<()> {
         let clickhouse = Box::leak(Box::default());
-        if !self.libmdbx.init_full_range_tables() {
-            self.libmdbx
-                .initialize_tables(
-                    clickhouse,
-                    self.tracing_provider.get_tracer(),
-                    &[
-                        Tables::PoolCreationBlocks,
-                        Tables::TokenDecimals,
-                        Tables::AddressToProtocolInfo,
-                    ],
-                    false,
-                    None,
-                )
-                .await?;
-        }
+        self.libmdbx
+            .initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                &[Tables::PoolCreationBlocks, Tables::TokenDecimals, Tables::AddressToProtocolInfo],
+                false,
+                None,
+            )
+            .await?;
         Ok(())
     }
 
