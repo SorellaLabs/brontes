@@ -35,12 +35,16 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(|node| TreeSearchArgs {
-            collect_current_node:  node.data.is_liquidation() || node.data.is_swap(),
+        let liq_txs = tree.collect_all(|node, info| TreeSearchArgs {
+            collect_current_node:  info
+                .get_ref(node.data)
+                .map(|node| node.is_swap() || node.is_liquidation())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .subactions
                 .iter()
-                .any(|action| action.is_liquidation() || action.is_swap()),
+                .filter_map(|node| info.get_ref(*node))
+                .any(|action| action.is_swap() || action.is_liquidation()),
         });
 
         liq_txs

@@ -20,6 +20,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
+          key: "clippy"
 
       - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
         shell: bash
@@ -43,6 +44,7 @@ jobs:
               components: rustfmt
         - uses: Swatinem/rust-cache@v2
           with:
+            key: "buildfmt"
             cache-on-failure: true
 
         # allow for downloads
@@ -76,7 +78,7 @@ jobs:
           chmod 600 ~/.ssh/brontes_server
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config 
 
-      - name: cargo test
+      - name: cargo test and bench
         run: 
-          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && git pull && rustup default nightly && cargo +nightly test && git checkout main'" 
+          ssh brontes_server -tt "cd brontes && bash --login -c 'source ~/.bashrc && ./test-bench-ci.sh ${{ steps.branch-names.outputs.current_branch }}'" 
 
