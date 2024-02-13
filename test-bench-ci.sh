@@ -20,9 +20,9 @@ run_benchmarks() {
 }
 
 # simple lock to ensure only one ci can be running at once
-while [ $CI_RUNNING -eq "TRUE" ] 
-do
-
+while [ $CI_RUNNING -eq "TRUE" ]; do
+  # noop
+  exec :
 done
 
 export CI_RUNNING="TRUE"
