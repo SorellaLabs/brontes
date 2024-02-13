@@ -55,7 +55,9 @@ impl InspectorBenchUtils {
 
         let mut metadata = self
             .rt
-            .block_on(self.classifier_inspector.get_metadata(block, false))?;
+            .block_on(self.classifier_inspector.get_metadata(block, false))
+            .unwrap_or_defauilt();
+
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
