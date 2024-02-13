@@ -8,7 +8,7 @@ use serde::{self, Serialize};
 use serde_with::serde_as;
 use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use super::{cex::CexPriceMap, dex::DexQuotes};
+use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{
     constants::{USDC_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::*,
@@ -55,6 +55,7 @@ pub struct Metadata {
     pub block_metadata: BlockMetadata,
     pub cex_quotes:     CexPriceMap,
     pub dex_quotes:     Option<DexQuotes>,
+    pub builder_info:   Option<BuilderInfo>,
 }
 
 impl Metadata {
@@ -78,6 +79,11 @@ impl Metadata {
 
     pub fn into_full_metadata(mut self, dex_quotes: DexQuotes) -> Self {
         self.dex_quotes = Some(dex_quotes);
+        self
+    }
+
+    pub fn with_builder_info(mut self, builder_info: BuilderInfo) -> Self {
+        self.builder_info = Some(builder_info);
         self
     }
 }
@@ -124,7 +130,12 @@ impl BlockMetadata {
         }
     }
 
-    pub fn into_metadata(self, cex_quotes: CexPriceMap, dex_quotes: Option<DexQuotes>) -> Metadata {
-        Metadata { block_metadata: self, cex_quotes, dex_quotes }
+    pub fn into_metadata(
+        self,
+        cex_quotes: CexPriceMap,
+        dex_quotes: Option<DexQuotes>,
+        builder_info: Option<BuilderInfo>,
+    ) -> Metadata {
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info }
     }
 }
