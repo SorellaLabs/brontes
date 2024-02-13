@@ -140,7 +140,6 @@ mod tests {
             ))),
         );
 
-        // CurveV1MetapoolImpl
         let swap = B256::from(hex!(
             "0c673f1ede30f20bb7ca3e7c05a71dcc49a8bb18498e148e3967bb7173d6794e"
         ));
