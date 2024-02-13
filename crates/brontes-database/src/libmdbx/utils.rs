@@ -14,6 +14,7 @@ pub mod protocol_info {
                 .collect::<Vec<_>>(),
             u.init_block,
             u.protocol.to_string(),
+            u.curve_lp_token,
         );
         entry.serialize(serializer)
     }
@@ -22,7 +23,8 @@ pub mod protocol_info {
     where
         D: Deserializer<'de>,
     {
-        let data: (Vec<String>, u64, String) = Deserialize::deserialize(deserializer)?;
+        let data: (Vec<String>, u64, String, Option<String>) =
+            Deserialize::deserialize(deserializer)?;
         Ok(data.into())
     }
 }
