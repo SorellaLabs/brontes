@@ -10,9 +10,9 @@ use crate::db::token_info::TokenInfoWithAddress;
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedTransfer {
     pub trace_index: u64,
-    pub from:        Address,
-    pub to:          Address,
-    pub token:       TokenInfoWithAddress,
-    pub amount:      Rational,
-    pub fee:         Rational,
+    pub from: Address,
+    pub to: Address,
+    pub token: TokenInfoWithAddress,
+    pub amount: Rational,
+    pub fee: Rational,
 }

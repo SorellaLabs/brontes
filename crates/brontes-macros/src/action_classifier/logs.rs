@@ -5,24 +5,24 @@ use syn::{Index, Path};
 
 #[derive(Debug)]
 pub struct LogConfig {
-    pub can_repeat:    bool,
+    pub can_repeat: bool,
     pub ignore_before: bool,
-    pub log_ident:     Ident,
+    pub log_ident: Ident,
 }
 
 pub struct ParsedLogConfig {
-    check_indexes:   Vec<Index>,
-    is_repeatings:   Vec<bool>,
-    ignore_befores:  Vec<bool>,
+    check_indexes: Vec<Index>,
+    is_repeatings: Vec<bool>,
+    ignore_befores: Vec<bool>,
     log_field_names: Vec<Ident>,
-    log_names:       Vec<Ident>,
+    log_names: Vec<Ident>,
 }
 
 pub struct LogData<'a> {
     exchange_name: &'a Ident,
-    action_type:   &'a Ident,
-    mod_path:      Path,
-    log_config:    &'a [LogConfig],
+    action_type: &'a Ident,
+    mod_path: Path,
+    log_config: &'a [LogConfig],
 }
 
 impl<'a> LogData<'a> {
@@ -36,7 +36,12 @@ impl<'a> LogData<'a> {
         mod_path.segments.pop().unwrap();
         mod_path.segments.pop_punct();
 
-        Self { action_type, exchange_name, log_config, mod_path }
+        Self {
+            action_type,
+            exchange_name,
+            log_config,
+            mod_path,
+        }
     }
 
     fn parse_log_config(&self) -> ParsedLogConfig {
@@ -50,21 +55,40 @@ impl<'a> LogData<'a> {
             .log_config
             .iter()
             .enumerate()
-            .map(|(i, LogConfig { can_repeat, log_ident, ignore_before })| {
-                // is possible, need to increment count
+            .map(
+                |(
+                    i,
+                    LogConfig {
+                        can_repeat,
+                        log_ident,
+                        ignore_before,
+                    },
+                )| {
+                    // is possible, need to increment count
 
-                let idx = if *ignore_before { Index::from(0) } else { Index::from(i) };
-                (
-                    idx,
-                    *can_repeat,
-                    *ignore_before,
-                    Ident::new(&(log_ident.to_string() + "_field"), Span::call_site()),
-                    log_ident.clone(),
-                )
-            })
+                    let idx = if *ignore_before {
+                        Index::from(0)
+                    } else {
+                        Index::from(i)
+                    };
+                    (
+                        idx,
+                        *can_repeat,
+                        *ignore_before,
+                        Ident::new(&(log_ident.to_string() + "_field"), Span::call_site()),
+                        log_ident.clone(),
+                    )
+                },
+            )
             .multiunzip();
 
-        ParsedLogConfig { log_names, log_field_names, check_indexes, is_repeatings, ignore_befores }
+        ParsedLogConfig {
+            log_names,
+            log_field_names,
+            check_indexes,
+            is_repeatings,
+            ignore_befores,
+        }
     }
 
     fn generate_decoded_log_struct(
@@ -75,8 +99,10 @@ impl<'a> LogData<'a> {
     ) -> (TokenStream, Ident) {
         let mod_path = &self.mod_path;
 
-        let log_return_struct_name =
-            Ident::new(&(self.exchange_name.to_string() + "Logs"), Span::call_site());
+        let log_return_struct_name = Ident::new(
+            &(self.exchange_name.to_string() + "Logs"),
+            Span::call_site(),
+        );
 
         let log_return_builder_struct_name = Ident::new(
             &(self.exchange_name.to_string() + &self.action_type.to_string() + "Builder"),
@@ -107,18 +133,17 @@ impl<'a> LogData<'a> {
             })
             .collect_vec();
 
-        let log_field_ty =
-            log_repeating
-                .iter()
-                .zip(log_ident.iter())
-                .map(|(repeating, name)| {
-                    if *repeating {
-                        quote!(Vec<#mod_path::#name>)
-                    } else {
-                        quote!(#mod_path::#name)
-                    }
-                })
-                .collect_vec();
+        let log_field_ty = log_repeating
+            .iter()
+            .zip(log_ident.iter())
+            .map(|(repeating, name)| {
+                if *repeating {
+                    quote!(Vec<#mod_path::#name>)
+                } else {
+                    quote!(#mod_path::#name)
+                }
+            })
+            .collect_vec();
 
         (
             quote!(
@@ -216,9 +241,14 @@ impl<'a> LogData<'a> {
         let mod_path = &self.mod_path;
         let mut stream = TokenStream::new();
 
-        for (enum_i, (indexes, log_field_name, log_name, repeating, ignore_before)) in
-            multizip((check_indexes, log_field_names, log_names, is_repeatings, ignore_befores))
-                .enumerate()
+        for (enum_i, (indexes, log_field_name, log_name, repeating, ignore_before)) in multizip((
+            check_indexes,
+            log_field_names,
+            log_names,
+            is_repeatings,
+            ignore_befores,
+        ))
+        .enumerate()
         {
             let res = if *repeating {
                 if *ignore_before {
@@ -311,7 +341,12 @@ impl ToTokens for LogData<'_> {
         let config = self.parse_log_config();
         let parsed_paths = self.parse_different_paths(&config);
 
-        let ParsedLogConfig { log_field_names, log_names, is_repeatings, .. } = config;
+        let ParsedLogConfig {
+            log_field_names,
+            log_names,
+            is_repeatings,
+            ..
+        } = config;
 
         let (struct_parsing, log_builder_struct) =
             self.generate_decoded_log_struct(&log_names, &log_field_names, &is_repeatings);

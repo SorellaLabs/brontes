@@ -23,12 +23,15 @@ use malachite::{
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
     #[allow(dead_code)]
-    pub(crate) db:    &'db DB,
+    pub(crate) db: &'db DB,
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
     pub fn new(quote_address: Address, db: &'db DB) -> Self {
-        SharedInspectorUtils { quote: quote_address, db }
+        SharedInspectorUtils {
+            quote: quote_address,
+            db,
+        }
     }
 }
 
@@ -42,7 +45,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         for action in actions.iter().flatten() {
             if !action.is_swap() {
-                continue
+                continue;
             }
 
             let swap = action.force_swap_ref();
@@ -117,7 +120,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(amount.clone())
+            return Some(amount.clone());
         }
 
         let pair = Pair(token_address, self.quote);
@@ -139,7 +142,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(Rational::ONE)
+            return Some(Rational::ONE);
         }
 
         let pair = Pair(token_address, self.quote);
@@ -257,14 +260,16 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 Some(TokenProfit {
                     profit_collector: collector,
-                    token:            self.db.try_fetch_token_info(*token).ok()?,
-                    amount:           amount.clone().to_float(),
-                    usd_value:        usd_value.to_float(),
+                    token: self.db.try_fetch_token_info(*token).ok()?,
+                    amount: amount.clone().to_float(),
+                    usd_value: usd_value.to_float(),
                 })
             })
             .collect();
 
-        Some(TokenProfits { profits: token_profits })
+        Some(TokenProfits {
+            profits: token_profits,
+        })
     }
 
     fn get_cex_usd_value(&self, token: Address, amount: Rational, metadata: &Metadata) -> Rational {

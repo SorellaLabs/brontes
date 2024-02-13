@@ -55,15 +55,13 @@ impl SubGraphRegistry {
         let bad_graphs = self
             .sub_graphs
             .par_iter()
-            .filter_map(
-                |(pair, graph)| {
-                    if graph.has_stale_liquidity(graph_state) {
-                        Some(*pair)
-                    } else {
-                        None
-                    }
-                },
-            )
+            .filter_map(|(pair, graph)| {
+                if graph.has_stale_liquidity(graph_state) {
+                    Some(*pair)
+                } else {
+                    None
+                }
+            })
             .collect::<Vec<_>>();
 
         self.sub_graphs.retain(|k, _| !bad_graphs.contains(k));
@@ -84,14 +82,12 @@ impl SubGraphRegistry {
             .get(&pair)
             .map(|graph| (graph.get_unordered_pair(), graph))
             .and_then(|(default_pair, graph)| Some((default_pair, graph.fetch_price(edge_state)?)))
-            .map(
-                |(default_pair, res)| {
-                    if !unordered_pair.eq_unordered(&default_pair) {
-                        res.reciprocal()
-                    } else {
-                        res
-                    }
-                },
-            )
+            .map(|(default_pair, res)| {
+                if !unordered_pair.eq_unordered(&default_pair) {
+                    res.reciprocal()
+                } else {
+                    res
+                }
+            })
     }
 }

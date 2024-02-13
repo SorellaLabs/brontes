@@ -54,9 +54,24 @@ async fn query_missing_data<T: TracingProvider>(
     missing_address: Address,
 ) -> eyre::Result<(Address, u8, String)> {
     let (decimals, symbol, symbol_autistic) = join!(
-        make_call_request(normal::decimalsCall::new(()), provider, missing_address, Some(block)),
-        make_call_request(normal::symbolCall::new(()), provider, missing_address, Some(block)),
-        make_call_request(autistic::symbolCall::new(()), provider, missing_address, Some(block))
+        make_call_request(
+            normal::decimalsCall::new(()),
+            provider,
+            missing_address,
+            Some(block)
+        ),
+        make_call_request(
+            normal::symbolCall::new(()),
+            provider,
+            missing_address,
+            Some(block)
+        ),
+        make_call_request(
+            autistic::symbolCall::new(()),
+            provider,
+            missing_address,
+            Some(block)
+        )
     );
 
     Ok(decimals.map(|d| d._0).unwrap_or_default()).map(|d| {

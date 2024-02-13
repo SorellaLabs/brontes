@@ -24,19 +24,21 @@ pub struct SandwichInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+        Self {
+            inner: SharedInspectorUtils::new(quote, db),
+        }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct PossibleSandwich {
-    eoa:                   Address,
-    possible_frontruns:    Vec<B256>,
-    possible_backrun:      B256,
+    eoa: Address,
+    possible_frontruns: Vec<B256>,
+    possible_backrun: B256,
     mev_executor_contract: Address,
     // mapping of possible frontruns to set of possible victims
     // By definition the victims of latter txes are victims of the former
-    victims:               Vec<Vec<B256>>,
+    victims: Vec<Vec<B256>>,
 }
 
 #[async_trait::async_trait]
@@ -49,7 +51,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Self::Result {
         let search_fn = |node: &Node, info: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node:  info
+            collect_current_node: info
                 .get_ref(node.data)
                 .map(|node| node.is_swap() || node.is_transfer())
                 .unwrap_or_default(),
@@ -71,7 +73,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      victims,
                  }| {
                     if victims.iter().flatten().count() == 0 {
-                        return None
+                        return None;
                     };
 
                     let victim_info = victims
@@ -98,7 +100,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .iter()
                         .any(|inner| inner.iter().any(|s| s.is_empty()))
                     {
-                        return None
+                        return None;
                     }
 
                     if victims
@@ -107,7 +109,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|v| tree.get_root(*v).unwrap().get_root_action())
                         .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
                     {
-                        return None
+                        return None;
                     }
 
                     let frontrun_info = possible_frontruns
@@ -186,10 +188,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions,
                     victim_info,
                     victim_actions,
-                )
+                );
             }
 
-            return None
+            return None;
         }
 
         let victim_swaps = victim_actions
@@ -265,7 +267,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_gas_details: backrun_info.gas_details,
         };
 
-        Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
+        Some(Bundle {
+            header,
+            data: BundleData::Sandwich(sandwich),
+        })
     }
 
     fn has_pool_overlap(
@@ -306,7 +311,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// comprehensive set of potential sandwich attacks.
     fn get_possible_sandwich(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
         if tree.tx_roots.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let tree_clone_for_senders = tree.clone();
@@ -333,7 +338,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {
-            continue
+            continue;
         }
         match duplicate_senders.entry(root.head.address) {
             // If we have not seen this sender before, we insert the tx hash into the map
@@ -348,11 +353,11 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
                     match possible_sandwiches.entry(root.head.address) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
-                                eoa:                   root.head.address,
-                                possible_frontruns:    vec![prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
+                                eoa: root.head.address,
+                                possible_frontruns: vec![prev_tx_hash],
+                                possible_backrun: root.tx_hash,
                                 mev_executor_contract: root.get_to_address(),
-                                victims:               vec![frontrun_victims],
+                                victims: vec![frontrun_victims],
                             });
                         }
                         Entry::Occupied(mut o) => {
@@ -398,7 +403,7 @@ fn get_possible_sandwich_duplicate_contracts(
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {
-            continue
+            continue;
         }
 
         match duplicate_mev_contracts.entry(root.get_to_address()) {
@@ -416,11 +421,11 @@ fn get_possible_sandwich_duplicate_contracts(
                     match possible_sandwiches.entry(root.get_to_address()) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
-                                eoa:                   *frontrun_eoa,
-                                possible_frontruns:    vec![*prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
+                                eoa: *frontrun_eoa,
+                                possible_frontruns: vec![*prev_tx_hash],
+                                possible_backrun: root.tx_hash,
                                 mev_executor_contract: root.get_to_address(),
-                                victims:               vec![frontrun_victims],
+                                victims: vec![frontrun_victims],
                             });
                         }
                         Entry::Occupied(mut o) => {
@@ -493,7 +498,9 @@ mod tests {
                 hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
             ])
             .with_dex_prices()
-            .needs_token(Address::new(hex!("28cf5263108c1c40cf30e0fe390bd9ccf929bf82")))
+            .needs_token(Address::new(hex!(
+                "28cf5263108c1c40cf30e0fe390bd9ccf929bf82"
+            )))
             .with_gas_paid_usd(16.64)
             .with_expected_profit_usd(15.648);
 

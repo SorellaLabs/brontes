@@ -9,10 +9,10 @@ use super::{
     return_data::ReturnData,
 };
 pub struct CallDataParsing<'a> {
-    call_data:   Option<CallData<'a>>,
-    log_data:    Option<LogData<'a>>,
+    call_data: Option<CallData<'a>>,
+    log_data: Option<LogData<'a>>,
     return_data: Option<ReturnData<'a>>,
-    closure:     ClosureDispatch,
+    closure: ClosureDispatch,
 }
 
 impl<'a> CallDataParsing<'a> {
@@ -30,14 +30,32 @@ impl<'a> CallDataParsing<'a> {
         let closure = ClosureDispatch::new(logs, call_data, return_data, closure);
 
         let log_data = if logs {
-            Some(LogData::new(exchange_name, action_type, fn_call_path, log_config))
+            Some(LogData::new(
+                exchange_name,
+                action_type,
+                fn_call_path,
+                log_config,
+            ))
         } else {
             None
         };
-        let call_data = if call_data { Some(CallData::new(fn_call_path)) } else { None };
-        let return_data = if return_data { Some(ReturnData::new(fn_call_path)) } else { None };
+        let call_data = if call_data {
+            Some(CallData::new(fn_call_path))
+        } else {
+            None
+        };
+        let return_data = if return_data {
+            Some(ReturnData::new(fn_call_path))
+        } else {
+            None
+        };
 
-        Self { call_data, return_data, log_data, closure }
+        Self {
+            call_data,
+            return_data,
+            log_data,
+            closure,
+        }
     }
 }
 

@@ -24,11 +24,11 @@ pub type ClickhouseMetadataFuture =
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
-    clickhouse:         Option<&'static Clickhouse>,
-    dex_pricer_stream:  Option<WaitingForPricerFuture<T, DB>>,
+    clickhouse: Option<&'static Clickhouse>,
+    dex_pricer_stream: Option<WaitingForPricerFuture<T, DB>>,
     /// we will drain this in the case we aren't running a dex pricer to avoid
     /// being terrible on memory
-    no_price_chan:      Option<UnboundedReceiver<DexPriceMsg>>,
+    no_price_chan: Option<UnboundedReceiver<DexPriceMsg>>,
     clickhouse_futures: ClickhouseMetadataFuture,
 
     result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,
@@ -80,7 +80,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
         if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
             let Ok(mut meta) = libmdbx.get_metadata(block) else {
                 tracing::error!(?block, "failed to load metadata from libmdbx");
-                return
+                return;
             };
             meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
             tracing::debug!(?block, "caching result buf");
@@ -98,7 +98,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
         } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
             let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block) else {
                 tracing::error!(?block, "failed to load metadata from libmdbx");
-                return
+                return;
             };
             meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
             tracing::debug!(?block, "waiting for dex price");
@@ -119,7 +119,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataF
         self.clear_no_price_channel();
 
         if let Some(res) = self.result_buf.pop_front() {
-            return Poll::Ready(Some(res))
+            return Poll::Ready(Some(res));
         }
         if let Some(mut pricer) = self.dex_pricer_stream.take() {
             while let Poll::Ready(Some((block, tree, meta))) =
@@ -131,7 +131,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataF
             let res = pricer.poll_next_unpin(cx);
             self.dex_pricer_stream = Some(pricer);
 
-            return res
+            return res;
         }
 
         std::task::Poll::Pending
