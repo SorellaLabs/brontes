@@ -17,7 +17,7 @@ pub struct TraceArgs {
     pub start_block: u64,
     /// block to trace to
     #[arg(long, short)]
-    pub end_block:   u64,
+    pub end_block: u64,
 }
 
 impl TraceArgs {

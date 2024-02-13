@@ -22,7 +22,9 @@ pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+        Self {
+            inner: SharedInspectorUtils::new(quote, db),
+        }
     }
 }
 
@@ -36,7 +38,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
         let interesting_state = tree.collect_all(|node, info| TreeSearchArgs {
-            collect_current_node:  info
+            collect_current_node: info
                 .get_ref(node.data)
                 .map(|action| action.is_transfer() || action.is_flash_loan() || action.is_swap())
                 .unwrap_or_default(),
@@ -107,9 +109,16 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             MevType::AtomicArb,
         );
 
-        let backrun = AtomicArb { tx_hash: info.tx_hash, gas_details: info.gas_details, swaps };
+        let backrun = AtomicArb {
+            tx_hash: info.tx_hash,
+            gas_details: info.gas_details,
+            swaps,
+        };
 
-        Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
+        Some(Bundle {
+            header,
+            data: BundleData::AtomicArb(backrun),
+        })
     }
 
     fn is_possible_arb(
@@ -268,14 +277,14 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> AtomicArbType {
     let end_token = swaps.last().unwrap().token_out.address;
 
     if start_token != end_token {
-        return AtomicArbType::LongTail
+        return AtomicArbType::LongTail;
     }
 
     let mut last_out = swaps.first().unwrap().token_out.address;
 
     for (index, swap) in swaps.iter().skip(1).enumerate() {
         if swap.token_in.address != last_out {
-            return AtomicArbType::CrossPair(index + 1)
+            return AtomicArbType::CrossPair(index + 1);
         }
         last_out = swap.token_out.address;
     }

@@ -42,7 +42,10 @@ pub trait LoadState {
 
 impl LoadState for Protocol {
     fn has_state_updater(&self) -> bool {
-        matches!(self, Self::UniswapV2 | Self::UniswapV3 | Self::SushiSwapV2 | Self::SushiSwapV3)
+        matches!(
+            self,
+            Self::UniswapV2 | Self::UniswapV3 | Self::SushiSwapV2 | Self::SushiSwapV3
+        )
     }
 
     async fn try_load_state<T: TracingProvider>(
@@ -103,7 +106,13 @@ impl LoadState for Protocol {
             }
             rest => {
                 error!(protocol=?rest, "no state updater is build for");
-                Err((address, self, block_number, pool_pair, AmmError::UnsupportedProtocol))
+                Err((
+                    address,
+                    self,
+                    block_number,
+                    pool_pair,
+                    AmmError::UnsupportedProtocol,
+                ))
             }
         }
     }

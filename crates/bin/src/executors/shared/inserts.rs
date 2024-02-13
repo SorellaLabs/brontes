@@ -20,8 +20,11 @@ pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) {
-    let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
-        compose_mev_results(inspectors, tree, metadata.clone()).await;
+    let ComposerResults {
+        block_details,
+        mev_details,
+        possible_mev_txes: _,
+    } = compose_mev_results(inspectors, tree, metadata.clone()).await;
 
     // insert the value to the respective table:
     // clickhouse_db.insert_many::<T>(Vec<D>).await.unwrap()

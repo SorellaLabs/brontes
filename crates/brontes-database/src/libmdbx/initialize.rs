@@ -20,8 +20,8 @@ const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider> {
     pub(crate) libmdbx: &'static LibmdbxReadWriter,
-    clickhouse:         &'static Clickhouse,
-    tracer:             Arc<TP>,
+    clickhouse: &'static Clickhouse,
+    tracer: Arc<TP>,
 }
 
 impl<TP: TracingProvider> LibmdbxInitializer<TP> {
@@ -30,7 +30,11 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         clickhouse: &'static Clickhouse,
         tracer: Arc<TP>,
     ) -> Self {
-        Self { libmdbx, clickhouse, tracer }
+        Self {
+            libmdbx,
+            clickhouse,
+            tracer,
+        }
     }
 
     pub async fn initialize(
@@ -112,9 +116,13 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
         let pair_ranges = block_range_chunks
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
-            .filter_map(
-                |chk| if !chk.is_empty() { Some((chk[0], chk[chk.len() - 1])) } else { None },
-            )
+            .filter_map(|chk| {
+                if !chk.is_empty() {
+                    Some((chk[0], chk[chk.len() - 1]))
+                } else {
+                    None
+                }
+            })
             .collect_vec();
 
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
