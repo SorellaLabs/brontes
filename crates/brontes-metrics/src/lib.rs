@@ -27,8 +27,8 @@ pub enum PoirotMetricEvents {
 /// receiver. Upon receiving new event, related metrics are updated.
 #[derive(Debug)]
 pub struct PoirotMetricsListener {
-    events_rx:        UnboundedReceiver<PoirotMetricEvents>,
-    tx_metrics:       TraceMetrics,
+    events_rx: UnboundedReceiver<PoirotMetricEvents>,
+    tx_metrics: TraceMetrics,
     contract_metrics: HashMap<String, DynamicContractMetrics>,
 }
 
@@ -62,7 +62,9 @@ impl Future for PoirotMetricsListener {
         let this = self.get_mut();
 
         loop {
-            let Some(event) = ready!(this.events_rx.poll_recv(cx)) else { return Poll::Ready(()) };
+            let Some(event) = ready!(this.events_rx.poll_recv(cx)) else {
+                return Poll::Ready(());
+            };
 
             this.handle_event(event);
         }

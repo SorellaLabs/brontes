@@ -195,7 +195,9 @@ impl Actions {
     }
 
     pub fn force_transfer_mut(&mut self) -> &mut NormalizedTransfer {
-        let Actions::Transfer(transfer) = self else { unreachable!("not transfer") };
+        let Actions::Transfer(transfer) = self else {
+            unreachable!("not transfer")
+        };
         transfer
     }
 
@@ -225,7 +227,7 @@ impl Actions {
     pub fn get_calldata(&self) -> Option<Bytes> {
         if let Actions::Unclassified(u) = &self {
             if let Action::Call(call) = &u.trace.action {
-                return Some(call.input.clone())
+                return Some(call.input.clone());
             }
         }
 
@@ -324,7 +326,7 @@ impl Actions {
 
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
-            return u.is_static_call()
+            return u.is_static_call();
         }
         false
     }

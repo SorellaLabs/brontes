@@ -51,15 +51,15 @@ use crate::{types::PoolState, Protocol};
 /// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
 ///   state for the generated subgraphs.
 pub struct GraphManager<DB: LibmdbxReader + LibmdbxWriter> {
-    all_pair_graph:     AllPairGraph,
+    all_pair_graph: AllPairGraph,
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
     /// deals with the verification process of our subgraphs
-    subgraph_verifier:  SubgraphVerifier,
+    subgraph_verifier: SubgraphVerifier,
     /// tracks all state needed for our subgraphs
-    graph_state:        StateTracker,
+    graph_state: StateTracker,
     /// allows us to save a load subgraphs.
-    db:                 &'static DB,
+    db: &'static DB,
 }
 
 impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
@@ -100,7 +100,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connections: usize,
     ) -> Vec<SubGraphEdge> {
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
-            return edges
+            return edges;
         }
 
         self.all_pair_graph
@@ -131,9 +131,12 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connections: usize,
     ) -> Vec<PoolPairInfoDirection> {
         if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
-            return self
-                .subgraph_verifier
-                .create_new_subgraph(pair, block, edges, &self.graph_state)
+            return self.subgraph_verifier.create_new_subgraph(
+                pair,
+                block,
+                edges,
+                &self.graph_state,
+            );
         }
 
         let paths = self
@@ -152,7 +155,7 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         // search failed
         if paths.is_empty() {
             info!(?pair, "empty search path");
-            return vec![]
+            return vec![];
         }
 
         self.subgraph_verifier
@@ -160,10 +163,11 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
     }
 
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
-        if let Err(e) =
-            self.db
-                .save_pair_at(block, pair, subgraph.get_all_pools().flatten().cloned().collect())
-        {
+        if let Err(e) = self.db.save_pair_at(
+            block,
+            pair,
+            subgraph.get_all_pools().flatten().cloned().collect(),
+        ) {
             tracing::error!(error=%e, "failed to save new subgraph pair");
         }
         self.sub_graph_registry.add_verified_subgraph(

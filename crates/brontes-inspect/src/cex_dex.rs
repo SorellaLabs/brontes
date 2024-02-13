@@ -63,7 +63,7 @@ use tracing::debug;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
-    inner:         SharedInspectorUtils<'db, DB>,
+    inner: SharedInspectorUtils<'db, DB>,
     cex_exchanges: Vec<CexExchange>,
 }
 
@@ -78,7 +78,7 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     ///   arbitrage.
     pub fn new(quote: Address, db: &'db DB, cex_exchanges: &[CexExchange]) -> Self {
         Self {
-            inner:         SharedInspectorUtils::new(quote, db),
+            inner: SharedInspectorUtils::new(quote, db),
             cex_exchanges: cex_exchanges.to_owned(),
         }
     }
@@ -111,7 +111,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Self::Result {
         let swap_txes = tree.collect_all(|node, info| brontes_types::TreeSearchArgs {
-            collect_current_node:  info
+            collect_current_node: info
                 .get_ref(node.data)
                 .map(|node| node.is_swap())
                 .unwrap_or_default(),
@@ -160,7 +160,10 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     MevType::CexDex,
                 );
 
-                Some(Bundle { header, data: cex_dex })
+                Some(Bundle {
+                    header,
+                    data: cex_dex,
+                })
             })
             .collect::<Vec<_>>()
     }
@@ -192,7 +195,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             })
             .collect();
 
-        Some(PossibleCexDexLeg { swap: swap.clone(), possible_legs })
+        Some(PossibleCexDexLeg {
+            swap: swap.clone(),
+            possible_legs,
+        })
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
@@ -234,9 +240,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         };
 
         Some(ExchangeLeg {
-            exchange:  exchange_cex_price.0,
+            exchange: exchange_cex_price.0,
             cex_price: exchange_cex_price.1,
-            pnl:       StatArbPnl { maker_profit, taker_profit },
+            pnl: StatArbPnl {
+                maker_profit,
+                taker_profit,
+            },
             is_direct: exchange_cex_price.2,
         })
     }
@@ -286,7 +295,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         if quotes.is_empty() {
             None
         } else {
-            debug!("CEX quotes found for pair: {}, {} at exchanges: {:?}", pair.0, pair.1, quotes);
+            debug!(
+                "CEX quotes found for pair: {}, {} at exchanges: {:?}",
+                pair.0, pair.1, quotes
+            );
             Some(quotes)
         }
     }
@@ -324,10 +336,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     swaps.push(swap_with_profit.swap.clone());
                     arb_details.push(StatArbDetails {
                         cex_exchange: most_profitable_leg.exchange,
-                        cex_price:    most_profitable_leg.cex_price,
+                        cex_price: most_profitable_leg.cex_price,
                         dex_exchange: swap_with_profit.swap.protocol,
-                        dex_price:    swap_with_profit.swap.swap_rate(),
-                        pnl_pre_gas:  most_profitable_leg.pnl.clone(),
+                        dex_price: swap_with_profit.swap.swap_rate(),
+                        pnl_pre_gas: most_profitable_leg.pnl.clone(),
                     });
                     total_arb_pre_gas.maker_profit += most_profitable_leg.pnl.maker_profit;
                     total_arb_pre_gas.taker_profit += most_profitable_leg.pnl.taker_profit;
@@ -335,7 +347,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             });
 
         if swaps.is_empty() {
-            return None
+            return None;
         }
 
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid());
@@ -345,7 +357,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             taker_profit: total_arb_pre_gas.taker_profit - gas_cost,
         };
 
-        Some(PossibleCexDex { swaps, arb_details, gas_details: *gas_details, pnl })
+        Some(PossibleCexDex {
+            swaps,
+            arb_details,
+            gas_details: *gas_details,
+            pnl,
+        })
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -365,7 +382,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Option<BundleData> {
         if self.is_triangular_arb(possible_cex_dex, info, metadata) {
-            return None
+            return None;
         }
 
         let has_positive_pnl = possible_cex_dex.pnl.maker_profit > Rational::ZERO
@@ -392,7 +409,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if possible_cex_dex.swaps.len() < 2 {
-            return false
+            return false;
         }
 
         let original_token = possible_cex_dex.swaps[0].token_in.address;
@@ -400,7 +417,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         // Check if there is a cycle
         if original_token != final_token {
-            return false
+            return false;
         }
 
         let profit = self
@@ -422,10 +439,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 }
 
 pub struct PossibleCexDex {
-    pub swaps:       Vec<NormalizedSwap>,
+    pub swaps: Vec<NormalizedSwap>,
     pub arb_details: Vec<StatArbDetails>,
     pub gas_details: GasDetails,
-    pub pnl:         StatArbPnl,
+    pub pnl: StatArbPnl,
 }
 
 impl PossibleCexDex {
@@ -438,17 +455,17 @@ impl PossibleCexDex {
 
     pub fn build_cex_dex_type(&self, info: &TxInfo) -> BundleData {
         BundleData::CexDex(CexDex {
-            tx_hash:          info.tx_hash,
-            gas_details:      self.gas_details,
-            swaps:            self.swaps.clone(),
+            tx_hash: info.tx_hash,
+            gas_details: self.gas_details,
+            swaps: self.swaps.clone(),
             stat_arb_details: self.arb_details.clone(),
-            pnl:              self.pnl.clone(),
+            pnl: self.pnl.clone(),
         })
     }
 }
 
 pub struct PossibleCexDexLeg {
-    pub swap:          NormalizedSwap,
+    pub swap: NormalizedSwap,
     pub possible_legs: Vec<ExchangeLeg>,
 }
 
@@ -464,9 +481,9 @@ impl PossibleCexDexLeg {
 }
 #[derive(Clone)]
 pub struct ExchangeLeg {
-    pub exchange:  CexExchange,
+    pub exchange: CexExchange,
     pub cex_price: Rational,
-    pub pnl:       StatArbPnl,
+    pub pnl: StatArbPnl,
     pub is_direct: bool,
 }
 

@@ -2,15 +2,20 @@ use quote::{quote, ToTokens};
 use syn::ExprClosure;
 
 pub struct ClosureDispatch {
-    logs:        bool,
-    call_data:   bool,
+    logs: bool,
+    call_data: bool,
     return_data: bool,
-    closure:     ExprClosure,
+    closure: ExprClosure,
 }
 
 impl ClosureDispatch {
     pub fn new(logs: bool, call_data: bool, return_data: bool, closure: ExprClosure) -> Self {
-        Self { closure, call_data, return_data, logs }
+        Self {
+            closure,
+            call_data,
+            return_data,
+            logs,
+        }
     }
 }
 

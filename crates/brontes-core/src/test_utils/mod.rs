@@ -33,10 +33,10 @@ use crate::local_provider::LocalProvider;
 
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
-    pub libmdbx:          &'static LibmdbxReadWriter,
+    pub libmdbx: &'static LibmdbxReadWriter,
     pub tracing_provider: TraceParser<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
     // store so when we trace we don't get a closed rx error
-    _metrics:             UnboundedReceiver<PoirotMetricEvents>,
+    _metrics: UnboundedReceiver<PoirotMetricEvents>,
 }
 
 impl TraceLoader {
@@ -46,7 +46,11 @@ impl TraceLoader {
         let handle = tokio::runtime::Handle::current();
         let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
 
-        let this = Self { libmdbx, tracing_provider, _metrics: b };
+        let this = Self {
+            libmdbx,
+            tracing_provider,
+            _metrics: b,
+        };
         this.init_on_start().await.unwrap();
 
         this
@@ -85,7 +89,7 @@ impl TraceLoader {
             self.fetch_missing_metadata(block).await?;
             return self
                 .test_metadata(block)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block));
         }
     }
 
@@ -140,7 +144,12 @@ impl TraceLoader {
         block: u64,
     ) -> Result<BlockTracesWithHeaderAnd<()>, TraceLoaderError> {
         let (traces, header) = self.trace_block(block).await?;
-        Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
+        Ok(BlockTracesWithHeaderAnd {
+            traces,
+            header,
+            block,
+            other: (),
+        })
     }
 
     pub async fn get_block_traces_with_header_range(
@@ -150,7 +159,12 @@ impl TraceLoader {
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
         join_all((start_block..=end_block).map(|block| async move {
             let (traces, header) = self.trace_block(block).await?;
-            Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
+            Ok(BlockTracesWithHeaderAnd {
+                traces,
+                header,
+                block,
+                other: (),
+            })
         }))
         .await
         .into_iter()
@@ -164,7 +178,12 @@ impl TraceLoader {
         let (traces, header) = self.trace_block(block).await?;
         let metadata = self.get_metadata(block, false).await?;
 
-        Ok(BlockTracesWithHeaderAnd { block, traces, header, other: metadata })
+        Ok(BlockTracesWithHeaderAnd {
+            block,
+            traces,
+            header,
+            other: metadata,
+        })
     }
 
     pub async fn get_block_traces_with_header_and_metadata_range(
@@ -175,7 +194,12 @@ impl TraceLoader {
         join_all((start_block..=end_block).map(|block| async move {
             let (traces, header) = self.trace_block(block).await?;
             let metadata = self.get_metadata(block, false).await?;
-            Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
+            Ok(BlockTracesWithHeaderAnd {
+                traces,
+                header,
+                block,
+                other: metadata,
+            })
         }))
         .await
         .into_iter()
@@ -194,7 +218,13 @@ impl TraceLoader {
         let (traces, header) = self.trace_block(block).await?;
         let trace = traces[tx_idx].clone();
 
-        Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: () })
+        Ok(TxTracesWithHeaderAnd {
+            block,
+            tx_hash,
+            trace,
+            header,
+            other: (),
+        })
     }
 
     pub async fn get_tx_traces_with_header(
@@ -211,7 +241,13 @@ impl TraceLoader {
             let (traces, header) = self.trace_block(block).await?;
             let trace = traces[tx_idx].clone();
 
-            Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: () })
+            Ok(TxTracesWithHeaderAnd {
+                block,
+                tx_hash,
+                trace,
+                header,
+                other: (),
+            })
         }))
         .await
         .into_iter()
@@ -225,8 +261,8 @@ impl TraceLoader {
                     Entry::Vacant(v) => {
                         let entry = BlockTracesWithHeaderAnd {
                             traces: vec![res.trace],
-                            block:  res.block,
-                            other:  (),
+                            block: res.block,
+                            other: (),
                             header: res.header,
                         };
                         v.insert(entry);
@@ -262,7 +298,13 @@ impl TraceLoader {
         let metadata = self.get_metadata(block, false).await?;
         let trace = traces[tx_idx].clone();
 
-        Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })
+        Ok(TxTracesWithHeaderAnd {
+            block,
+            tx_hash,
+            trace,
+            header,
+            other: metadata,
+        })
     }
 
     pub async fn get_tx_traces_with_header_and_metadata(
@@ -279,7 +321,13 @@ impl TraceLoader {
             let metadata = self.get_metadata(block, false).await?;
             let trace = traces[tx_idx].clone();
 
-            Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: metadata })
+            Ok(TxTracesWithHeaderAnd {
+                block,
+                tx_hash,
+                trace,
+                header,
+                other: metadata,
+            })
         }))
         .await
         .into_iter()
@@ -300,18 +348,18 @@ pub enum TraceLoaderError {
 }
 
 pub struct TxTracesWithHeaderAnd<T> {
-    pub block:   u64,
+    pub block: u64,
     pub tx_hash: B256,
-    pub trace:   TxTrace,
-    pub header:  Header,
-    pub other:   T,
+    pub trace: TxTrace,
+    pub header: Header,
+    pub other: T,
 }
 
 pub struct BlockTracesWithHeaderAnd<T> {
-    pub block:  u64,
+    pub block: u64,
     pub traces: Vec<TxTrace>,
     pub header: Header,
-    pub other:  T,
+    pub other: T,
 }
 
 // done because we can only have 1 instance of libmdbx or we error

@@ -24,11 +24,11 @@ const MAX_SEARCH_THREADS: usize = 3;
 
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots:             Vec<Root<V>>,
-    pub header:               Header,
+    pub tx_roots: Vec<Root<V>>,
+    pub header: Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee:     f64,
-    pub tp:                   ThreadPool,
+    pub avg_priority_fee: f64,
+    pub tp: ThreadPool,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -84,7 +84,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         if self.tx_roots.is_empty() {
             error!(block = self.header.number, "The block tree is empty");
             self.tx_roots.iter_mut().for_each(|root| root.finalize());
-            return
+            return;
         }
 
         // Initialize accumulator for total priority fee and vector of priority fees
