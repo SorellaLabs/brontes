@@ -18,7 +18,6 @@ pub use tx_info::*;
 pub mod search_args;
 pub use search_args::*;
 
-use self::root::NodeData;
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 const MAX_SEARCH_THREADS: usize = 3;

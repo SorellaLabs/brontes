@@ -166,7 +166,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node, NodeData,
         Protocol::UniswapV3, ToScaledRational, TreeSearchArgs,
     };
 
@@ -194,11 +194,15 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|s| s.is_swap())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|idx| data.get_ref(idx))
                 .any(|action| action.is_swap()),
         };
 
@@ -231,11 +235,15 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_mint(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|s| s.is_mint())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|idx| data.get_ref(idx))
                 .any(|action| action.is_mint()),
         };
 
@@ -266,11 +274,15 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_burn(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|s| s.is_burn())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|idx| data.get_ref(idx))
                 .any(|action| action.is_burn()),
         };
 
@@ -301,11 +313,15 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_collect(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|s| s.is_collect())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|idx| data.get_ref(idx))
                 .any(|action| action.is_collect()),
         };
 

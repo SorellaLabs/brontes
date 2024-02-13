@@ -235,11 +235,15 @@ mod tests {
             msg_value:           U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_batch(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|b| b.is_batch())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|node| data.get_ref(*node.data))
                 .any(|action| action.is_batch()),
         };
 
@@ -288,9 +292,16 @@ mod tests {
             msg_value:           U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_batch(),
-            child_node_to_collect: node.subactions.iter().any(|action| action.is_batch()),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|b| b.is_batch())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .filter_map(|node| data.get_ref(*node.data))
+                .any(|action| action.is_batch()),
         };
 
         classifier_utils
