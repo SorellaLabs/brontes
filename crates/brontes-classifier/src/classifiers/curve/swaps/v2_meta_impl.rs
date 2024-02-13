@@ -219,8 +219,8 @@ mod tests {
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol: Protocol::CurveV2MetaPool,
             trace_index: 1,
-            from: Address::new(hex!("31b8939C6e55A4DDaF0d6479320A0DFD9766EE9D")),
-            recipient: Address::new(hex!("31b8939C6e55A4DDaF0d6479320A0DFD9766EE9D")),
+            from: Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
+            recipient: Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
             pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             token_in,
             amount_in: U256::from_str("754647000000000000000000")
@@ -373,8 +373,8 @@ mod tests {
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol: Protocol::CurveV2MetaPool,
             trace_index: 1,
-            from: Address::new(hex!("de7976D00607032445A79DC8aBe6d5b242705C1a")),
-            recipient: Address::new(hex!("de7976D00607032445A79DC8aBe6d5b242705C1a")),
+            from: Address::new(hex!("31b8939c6e55a4ddaf0d6479320a0dfd9766ee9d")),
+            recipient: Address::new(hex!("31b8939c6e55a4ddaf0d6479320a0dfd9766ee9d")),
             pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             token_in,
             amount_in: U256::from_str("500000000").unwrap().to_scaled_rational(6),
