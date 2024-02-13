@@ -1,4 +1,6 @@
-use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{
+    cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, str::FromStr, sync::Arc,
+};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -9,7 +11,6 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
-        clickhouse,
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
@@ -27,8 +28,8 @@ use brontes_types::{
     SubGraphsEntry,
 };
 use eyre::eyre;
+use futures::{FutureExt, StreamExt};
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use sorella_db_databases::Database;
@@ -74,52 +75,64 @@ impl LibmdbxReadWriter {
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
     pub async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
-        [Tables::PoolCreationBlocks, Tables::AddressToProtocolInfo, Tables::TokenDecimals]
-            .into_par_iter()
-            .map(|table| match table {
+        futures::stream::iter([
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+        ])
+        .map(|table| async move {
+            match table {
                 Tables::AddressToProtocolInfo => self
-                    .has_clickhouse_min_max::<AddressToProtocolInfo, MIN_MAX_ADDRESS_TO_PROTOCOL>(
+                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
+                        MIN_MAX_ADDRESS_TO_PROTOCOL,
                         clickhouse,
                     )
+                    .await
                     .unwrap_or_default(),
                 Tables::TokenDecimals => self
-                    .has_clickhouse_min_max::<TokenDecimals, MIN_MAX_TOKEN_DECIMALS>(clickhouse)
+                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
+                    .await
                     .unwrap_or_default(),
                 Tables::PoolCreationBlocks => self
-                    .has_clickhouse_min_max::<PoolCreationBlocks, MIN_MAX_POOL_CREATION_BLOCKS>(
+                    .has_clickhouse_min_max::<PoolCreationBlocks>(
+                        MIN_MAX_POOL_CREATION_BLOCKS,
                         clickhouse,
                     )
+                    .await
                     .unwrap_or_default(),
                 _ => true,
-            })
-            .collect::<Vec<_>>()
-            .iter()
-            .any(|t| !t)
+            }
+        })
+        .any(|f| f.map(|f| !f))
+        .await
     }
 
-    async fn has_clickhouse_min_max<TB, const QUERY: &str>(
+    async fn has_clickhouse_min_max<TB>(
         &self,
+        query: &str,
         clickhouse: &'static Clickhouse,
     ) -> eyre::Result<bool>
     where
         TB: CompressedTable,
         TB::Value: From<TB::DecompressedValue> + Into<TB::DecompressedValue>,
+        <TB as reth_db::table::Table>::Key: FromStr + Send + Sync,
     {
         let (min, max) = clickhouse
             .inner()
-            .query_one::<(String, String)>(QUERY, &())
+            .query_one::<(String, String)>(query, &())
             .await?;
 
-        let min_parsed = min.parse::<TB::Key>()?;
-        let max_parsed = max.parse::<TB::Key>()?;
+        let Ok(min_parsed) = min.parse::<TB::Key>() else { return Ok(false) };
+
+        let Ok(max_parsed) = max.parse::<TB::Key>() else { return Ok(false) };
 
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<TB>()?;
 
-        let Some(has_min) = cur.first()?.map(|v| v.0 <= min_parsed) else { return false };
-        let Some(has_max) = cur.last()?.map(|v| v.0 >= max_parsed) else { return false };
+        let Some(has_min) = cur.first()?.map(|v| v.0 <= min_parsed) else { return Ok(false) };
+        let Some(has_max) = cur.last()?.map(|v| v.0 >= max_parsed) else { return Ok(false) };
 
-        has_min && has_max
+        Ok(has_min && has_max)
     }
 
     pub fn state_to_initialize(
