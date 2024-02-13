@@ -182,6 +182,9 @@ mod tests {
             Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
             Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
             TokenInfoWithAddress::usdt().address,
+            None,
+            None,
+            None,
         );
         let token_info = TokenInfoWithAddress {
             address: Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),

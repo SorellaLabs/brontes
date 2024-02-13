@@ -1,6 +1,7 @@
 use proc_macro2::{Literal, Span, TokenStream};
 use quote::quote;
 use syn::{parse::Parse, ExprClosure, Ident, Index, Path, Token};
+pub mod curve;
 
 pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
     let MacroParse { discovery_name, function_call_path, factory_address, address_call_function } =
