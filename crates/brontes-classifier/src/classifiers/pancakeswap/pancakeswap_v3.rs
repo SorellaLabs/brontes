@@ -167,7 +167,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node,
+        Node, NodeData,
         Protocol::PancakeSwapV3,
         ToScaledRational, TreeSearchArgs,
     };
@@ -213,11 +213,15 @@ mod tests {
             msg_value:   U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|s| s.is_swap())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|d| data.get_ref(*d))
                 .any(|action| action.is_swap()),
         };
 
