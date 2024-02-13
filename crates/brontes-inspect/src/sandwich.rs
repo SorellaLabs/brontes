@@ -69,7 +69,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     };
 
-                    let vicitim_info = victims
+                    let victim_info = victims
                         .iter()
                         .map(|victims| {
                             victims
@@ -124,7 +124,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         frontrun_info,
                         back_run_info,
                         searcher_actions,
-                        vicitim_info,
+                        victim_info,
                         victim_actions,
                     )
                 },
