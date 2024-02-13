@@ -5,7 +5,31 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for taking the time to report an occurence of Mev we failed to classify. Please provide as much detail as possible to help us investigate.
+        Thank you for taking the time to report an occurrence of Mev we failed to classify. Please provide as much detail as possible to help us investigate.
+
+  - type: dropdown
+    id: mev-type
+    attributes:
+      label: Type of MEV
+      description: What type of MEV should have been classified?
+      options:
+        - sandwich
+        - jit-sandwich
+        - jit
+        - cex-dex
+        - atomic-arbitrage
+        - liquidation
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-mev-type
+    attributes:
+      label: Other MEV Type (If "Other" selected above)
+      description: If "Other" was selected, please describe the type of MEV you believe should have been classified.
+    validations:
+      required: false
 
   - type: textarea
     id: transaction-links
