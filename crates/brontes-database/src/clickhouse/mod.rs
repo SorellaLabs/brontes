@@ -18,7 +18,7 @@ use sorella_db_databases::{
     Database,
 };
 
-use self::const_sql::*;
+pub use self::const_sql::*;
 
 #[derive(Default)]
 pub struct Clickhouse {
