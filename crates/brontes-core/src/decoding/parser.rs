@@ -5,8 +5,6 @@ use std::{path, sync::Arc};
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 use alloy_primitives::Address;
-#[cfg(feature = "dyn-decode")]
-use alloy_primitives::Address;
 use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
