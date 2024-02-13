@@ -44,9 +44,9 @@ alloy-sol-macro.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
-alloy-providers.workspace = true 
+alloy-providers.workspace = true
 alloy-rpc-types.workspace = true
-alloy-transport-http.workspace = true 
+alloy-transport-http.workspace = true
 
 # Serde 
 serde.workspace = true
@@ -70,6 +70,7 @@ lazy_static.workspace = true
 auto_impl.workspace = true
 dotenv.workspace = true
 itertools.workspace = true
+toml = "0.8.9"
 
 [dev-dependencies]
 serial_test.workspace = true
@@ -79,20 +80,6 @@ dotenv.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5", features = ["async", "async_tokio"] }
-
-
-[build-dependencies]
-rayon.workspace = true
-walkdir = "2.4.0"
-convert_case = "0.6.0"
-quote = "1.0.35"
-dotenv.workspace = true
-brontes-database.workspace = true
-serde.workspace = true
-toml = "0.8.9"
-brontes-types.workspace = true
-alloy-primitives.workspace = true
-
 
 [features]
 default = []
