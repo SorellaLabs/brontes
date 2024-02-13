@@ -191,60 +191,45 @@ mod tests {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV1MetaPool,
-            Address::new(hex!("84997FAFC913f1613F51Bb0E2b5854222900514B")),
-            Address::new(hex!("BE4fe13A73675c49A17f3524602634913C668B4C")),
-            Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
-            None,
-            None,
-            None,
-            None,
-        );
-
-        classifier_utils.ensure_protocol(
-            Protocol::CurveBasePool,
-            Address::new(hex!("bEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7")),
+            Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
+            Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
             Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
             Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            None,
-            None,
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
         let swap =
-            B256::from(hex!("3eed7ebe18acfd9f68d34710f0e279989e41d475372f14a91d0d0a98d381375e"));
-
-        let three_crv = TokenInfoWithAddress {
-            address: Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
-            inner:   TokenInfo { decimals: 18, symbol: "3Crv".to_string() },
-        };
+            B256::from(hex!("84d55076a9eb3d9d30e26dc1f498f03216d7216647a51597933901c55534e355"));
 
         let token_in = TokenInfoWithAddress {
-            address: Address::new(hex!("BE4fe13A73675c49A17f3524602634913C668B4C")),
-            inner:   TokenInfo { decimals: 18, symbol: "A".to_string() },
+            address: Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
+            inner:   TokenInfo { decimals: 18, symbol: "T".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
-            address: Address::new(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")),
-            inner:   TokenInfo { decimals: 6, symbol: "USDC".to_string() },
+            address: Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+            inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
         classifier_utils.ensure_token(token_out.clone());
-        classifier_utils.ensure_token(three_crv.clone());
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol: Protocol::CurveV1MetaPool,
             trace_index: 0,
-            from: Address::new(hex!("49fab288ccF3E237088Ba8AC9628273D616a537d")),
-            recipient: Address::new(hex!("49fab288ccF3E237088Ba8AC9628273D616a537d")),
-            pool: Address::new(hex!("84997FAFC913f1613F51Bb0E2b5854222900514B")),
+            from: Address::new(hex!("A24AD612C61076C902588C28e617461c6cA1eD54")),
+            recipient: Address::new(hex!("A24AD612C61076C902588C28e617461c6cA1eD54")),
+            pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             token_in,
-            amount_in: U256::from_str("1100000000000000000000")
+            amount_in: U256::from_str("632358995283130172936168")
                 .unwrap()
                 .to_scaled_rational(18),
             token_out,
-            amount_out: U256::from_str("1292367389").unwrap().to_scaled_rational(6),
+            amount_out: U256::from_str("605569147106308061507")
+                .unwrap()
+                .to_scaled_rational(18),
             msg_value: U256::ZERO,
         });
 
