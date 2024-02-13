@@ -210,7 +210,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
     async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
         // these tables are super lightweight and as such, we init them for the entire
         // range
-        if self.libmdbx.init_full_range_tables() {
+        if self.libmdbx.init_full_range_tables(self.clickhouse).await {
             tracing::info!("initing critical range state");
             self.libmdbx
                 .initialize_tables(
