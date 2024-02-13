@@ -18,6 +18,7 @@ pub use tx_info::*;
 pub mod search_args;
 pub use search_args::*;
 
+use self::root::NodeData;
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 const MAX_SEARCH_THREADS: usize = 3;
@@ -106,13 +107,6 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.priority_fee_std_dev = std_dev;
     }
 
-    pub fn insert_node(&mut self, node: Node<V>) {
-        self.tx_roots
-            .last_mut()
-            .expect("no root_nodes inserted")
-            .insert(node);
-    }
-
     pub fn get_hashes(&self) -> Vec<B256> {
         self.tx_roots.iter().map(|r| r.tx_hash).collect()
     }
@@ -122,7 +116,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// transaction that contain the wanted actions.
     pub fn collect_spans<F>(&self, hash: B256, call: F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node, &NodeData<V>) -> bool,
     {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect_spans(&call)
@@ -133,8 +127,8 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     pub fn modify_spans<T, F>(&mut self, find: T, modify: F)
     where
-        T: Fn(&Node<V>) -> bool + Send + Sync,
-        F: Fn(Vec<&mut Node<V>>) + Send + Sync,
+        T: Fn(&Node, &NodeData<V>) -> bool + Send + Sync,
+        F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
     {
         self.tp.install(|| {
             self.tx_roots.par_iter_mut().for_each(|root| {
@@ -145,7 +139,7 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     pub fn collect<F>(&self, hash: B256, call: F) -> Vec<V>
     where
-        F: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
     {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect(&call)
@@ -157,7 +151,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     //TODO: (Will) Write the docs for this
     pub fn collect_all<F>(&self, call: F) -> HashMap<B256, Vec<V>>
     where
-        F: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
     {
         self.tp.install(|| {
             self.tx_roots
@@ -193,7 +187,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// transaction that contain the wanted actions.
     pub fn collect_spans_all<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
     where
-        F: Fn(&Node<V>) -> bool + Send + Sync,
+        F: Fn(&Node, &NodeData<V>) -> bool + Send + Sync,
     {
         self.tp.install(|| {
             self.tx_roots
@@ -203,27 +197,10 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    //TODO: (Will) Write the docs for this
-    /// The first function parses down the tree to the point where we
-    /// are at the lowest subset of the valid action. It then the dynamically
-    /// decodes the call gets executed in order to capture the
-    pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
-    where
-        T: Fn(Address, &Node<V>) -> TreeSearchArgs + Sync,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
-    {
-        self.tp.install(|| {
-            self.tx_roots
-                .par_iter_mut()
-                .flat_map(|root| root.dyn_classify(&find, &call))
-                .collect()
-        })
-    }
-
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: T, modify: F)
     where
-        T: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
-        F: Fn(&mut Node<V>) + Send + Sync,
+        T: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
+        F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
     {
         self.tp.install(|| {
             self.tx_roots
@@ -239,10 +216,10 @@ impl<V: NormalizedAction> BlockTree<V> {
         info: WantedData,
         classify: ClassifyRemovalIndex,
     ) where
-        WantedData: Fn(&Node<V>) -> R + Sync,
-        ClassifyRemovalIndex: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        FindActionHead: Fn(&Node<V>) -> TreeSearchArgs + Sync,
-        FindRemoval: Fn(&Node<V>) -> TreeSearchArgs + Sync,
+        WantedData: Fn(&Node, &NodeData<V>) -> R + Sync,
+        ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
+        FindActionHead: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
+        FindRemoval: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
     {
         self.tp.install(|| {
             self.tx_roots.par_iter_mut().for_each(|root| {

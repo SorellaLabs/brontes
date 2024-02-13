@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use reth_primitives::{Address, Header};
 use serde::{Deserialize, Serialize};
 use tracing::error;
@@ -14,8 +15,8 @@ pub struct BlockTree<V: NormalizedAction> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Node<V: NormalizedAction> {
-    pub inner:     Vec<Node<V>>,
+pub struct Node {
+    pub inner:     Vec<Node>,
     pub finalized: bool,
     pub index:     u64,
 
@@ -73,20 +74,33 @@ impl<V: NormalizedAction> Node<V> {
     pub fn get_all_children_for_complex_classification(&mut self, head: u64) {
         if head == self.index {
             let mut results = Vec::new();
-            let classification = self.data.continued_classification_types();
+            let classification = nodes
+                .get_mut(self.data)
+                .unwrap()
+                .continued_classification_types();
 
-            let collect_fn = |node: &Node<V>| TreeSearchArgs {
-                collect_current_node:  (classification)(&node.data),
-                child_node_to_collect: node.get_all_sub_actions().iter().any(&classification),
+            let collect_fn = |node: &Node, nodes: &NodeData<V>| TreeSearchArgs {
+                collect_current_node:  nodes
+                    .get_ref(node.data)
+                    .map(|node| (classification)(node))
+                    .unwrap_or_default(),
+                child_node_to_collect: node
+                    .get_all_sub_actions()
+                    .iter()
+                    .filter_map(|node| nodes.get_ref(*node))
+                    .any(&classification),
             };
             self.collect(&mut results, &collect_fn, &|a| (a.index, a.data.clone()));
             // Now that we have the child actions of interest we can finalize the parent
             // node's classification which mutates the parents data in place & returns the
             // indexes of child nodes that should be removed
-            let prune_collapsed_nodes = self.data.finalize_classification(results);
+            let prune_collapsed_nodes = nodes
+                .get_mut(self.data)
+                .unwrap()
+                .finalize_classification(results);
 
             prune_collapsed_nodes.into_iter().for_each(|index| {
-                self.remove_node_and_children(index);
+                self.remove_node_and_children(index, nodes);
             });
 
             return
@@ -214,12 +228,12 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     /// The address here is the from address for the trace
-    pub fn insert(&mut self, n: Node<V>) {
+    pub fn insert(&mut self, n: Node) {
         let trace_addr = n.trace_address.clone();
         self.get_all_inner_nodes(n, trace_addr);
     }
 
-    pub fn get_all_inner_nodes(&mut self, n: Node<V>, mut trace_addr: Vec<usize>) {
+    pub fn get_all_inner_nodes(&mut self, n: Node, mut trace_addr: Vec<usize>) {
         let log = trace_addr.clone();
         if trace_addr.len() == 1 {
             self.inner.push(n);
@@ -239,7 +253,7 @@ impl<V: NormalizedAction> Node<V> {
                 self.inner
                     .iter()
                     .flat_map(|inner| inner.get_all_sub_actions())
-                    .collect::<Vec<V>>(),
+                    .collect::<Vec<_>>(),
             );
 
             res
@@ -247,14 +261,14 @@ impl<V: NormalizedAction> Node<V> {
     }
 
     /// doesn't append this node to inner subactions.
-    pub fn get_all_sub_actions_exclusive(&self) -> Vec<V> {
+    pub fn get_all_sub_actions_exclusive(&self) -> Vec<usize> {
         self.inner
             .iter()
             .flat_map(|inner| inner.get_all_sub_actions())
-            .collect::<Vec<V>>()
+            .collect::<Vec<_>>()
     }
 
-    pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node<V>> {
+    pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node> {
         if self.inner.last()?.index == tx_index {
             Some(self)
         } else {
@@ -293,7 +307,7 @@ impl<V: NormalizedAction> Node<V> {
 
     pub fn get_bounded_info<F, R>(&self, lower: u64, upper: u64, res: &mut Vec<R>, info_fn: &F)
     where
-        F: Fn(&Node<V>) -> R,
+        F: Fn(&Node) -> R,
     {
         if self.index >= lower && self.index <= upper {
             res.push(info_fn(self));
@@ -317,7 +331,7 @@ impl<V: NormalizedAction> Node<V> {
                 }
 
                 if inner.index < index {
-                    inner.remove_node_and_children(index)
+                    inner.remove_node_and_children(index, data)
                 } else {
                     break None
                 }
@@ -327,7 +341,10 @@ impl<V: NormalizedAction> Node<V> {
         };
 
         if let Some(val) = res {
-            self.inner.remove(val);
+            let ret = self.inner.remove(val);
+            ret.get_all_sub_actions().into_iter().for_each(|f| {
+                data.remove(f);
+            });
         }
     }
 
@@ -352,7 +369,11 @@ impl<V: NormalizedAction> Node<V> {
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
         if !lower_has_better {
-            let res = self.get_all_sub_actions();
+            let res = self
+                .get_all_sub_actions()
+                .into_iter()
+                .filter_map(|node| data.get_ref(node).cloned())
+                .collect::<Vec<_>>();
             result.push(res);
         }
 
