@@ -24,19 +24,13 @@ action_impl!(
 
         let token_in_addr = match log.sold_id {
             0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token in, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token in, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token in, found None"))?,
+            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token in, found None"))?,
             _ => unreachable!()
         };
 
         let token_out_addr = match log.bought_id {
             0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token out, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token out, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token out, found None"))?,
+            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token out, found None"))?,
             _ => unreachable!()
         };
 
@@ -190,11 +184,11 @@ mod tests {
             Protocol::CurveV2MetaPool,
             Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
-            Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
+            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            None,
-            None,
-            None,
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
         let swap =
