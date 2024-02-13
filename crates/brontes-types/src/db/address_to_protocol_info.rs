@@ -62,8 +62,8 @@ impl IntoIterator for ProtocolInfo {
     }
 }
 
-impl From<(Vec<String>, u64, String)> for ProtocolInfo {
-    fn from(value: (Vec<String>, u64, String)) -> Self {
+impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
+    fn from(value: (Vec<String>, u64, String, Option<String>)) -> Self {
         let init_block = value.1;
         let protocol = Protocol::parse_string(value.2);
         let value = value.0;
@@ -75,7 +75,7 @@ impl From<(Vec<String>, u64, String)> for ProtocolInfo {
             token2: iter.next().and_then(|a| Address::from_str(&a).ok()),
             token3: iter.next().and_then(|a| Address::from_str(&a).ok()),
             token4: iter.next().and_then(|a| Address::from_str(&a).ok()),
-            curve_lp_token: iter.next().and_then(|a| Address::from_str(&a).ok()),
+            curve_lp_token: value.3,
             init_block,
         }
     }
