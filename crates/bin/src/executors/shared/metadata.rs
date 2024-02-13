@@ -17,6 +17,8 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
+const MAX_PENDING_TREES: usize = 20;
+
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;
 
@@ -47,6 +49,13 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
         }
     }
 
+    pub fn should_process_next_block(&self) -> bool {
+        self.dex_pricer_stream
+            .as_ref()
+            .map(|pricer| pricer.pending_trees.len() < MAX_PENDING_TREES)
+            .unwrap_or(true)
+    }
+
     pub fn is_finished(&self) -> bool {
         self.result_buf.is_empty()
             && self
@@ -73,13 +82,15 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return
             };
+            meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
             tracing::debug!(?block, "caching result buf");
             self.result_buf.push_back((tree, meta));
         // need to pull the metadata from clickhouse
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
-                let meta = clickhouse.get_metadata(block).await;
+                let mut meta = clickhouse.get_metadata(block).await;
+                meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
                 (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
@@ -89,6 +100,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return
             };
+            meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
             tracing::debug!(?block, "waiting for dex price");
             pricer.add_pending_inspection(block, tree, meta);
         } else {
@@ -118,6 +130,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataF
 
             let res = pricer.poll_next_unpin(cx);
             self.dex_pricer_stream = Some(pricer);
+
             return res
         }
 

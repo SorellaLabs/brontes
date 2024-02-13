@@ -19,6 +19,7 @@ use brontes_database::{
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
+use brontes_types::mev::Bundle;
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
@@ -42,7 +43,7 @@ pub struct BrontesRunConfig<T: TracingProvider> {
     pub quote_asset:      Address,
     pub with_dex_pricing: bool,
 
-    pub inspectors: &'static [&'static dyn Inspector],
+    pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     pub clickhouse: &'static Clickhouse,
     pub parser:     &'static Parser<'static, T, LibmdbxReadWriter>,
     pub libmdbx:    &'static LibmdbxReadWriter,
@@ -58,7 +59,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         quote_asset: Address,
         with_dex_pricing: bool,
 
-        inspectors: &'static [&'static dyn Inspector],
+        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
         clickhouse: &'static Clickhouse,
 
         parser: &'static Parser<'static, T, LibmdbxReadWriter>,
@@ -209,7 +210,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
     async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
         // these tables are super lightweight and as such, we init them for the entire
         // range
-        if self.libmdbx.init_full_range_tables() {
+        if self.libmdbx.init_full_range_tables(self.clickhouse).await {
             tracing::info!("initing critical range state");
             self.libmdbx
                 .initialize_tables(

@@ -9,7 +9,7 @@ use brontes_types::{
     ToScaledRational, TreeSearchArgs,
 };
 use itertools::Itertools;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
@@ -201,7 +201,7 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 pub fn calculate_builder_profit(
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
-) -> Result<u128, Box<dyn std::error::Error + Send + Sync>> {
+) -> eyre::Result<u128> {
     let coinbase_transfers = tree
         .tx_roots
         .iter()
@@ -209,27 +209,36 @@ pub fn calculate_builder_profit(
         .sum::<u128>(); // Specify the type of sum
 
     let builder_collateral_amount = tree
-        .collect_all(|node| TreeSearchArgs {
-            collect_current_node:  node.data.get_from_address()
-                == metadata.builder_collateral_address.unwrap()
-                && node.data.is_eth_transfer(),
-            child_node_to_collect: node.get_all_sub_actions().iter().any(|sub_node| {
-                sub_node.get_from_address() == metadata.builder_collateral_address.unwrap()
-                    && sub_node.is_eth_transfer()
-            }),
+        .collect_all(|node, data| TreeSearchArgs {
+            collect_current_node:  data.get_ref(node.data).map(|a| a.get_from_address())
+                == metadata
+                    .builder_info
+                    .as_ref()
+                    .and_then(|b| b.ultrasound_relay_collateral_address)
+                && data
+                    .get_ref(node.data)
+                    .map(|d| d.is_eth_transfer())
+                    .unwrap_or_default(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .filter_map(|n| data.get_ref(*n))
+                .any(|sub_node| {
+                    Some(sub_node.get_from_address())
+                        == metadata
+                            .builder_info
+                            .as_ref()
+                            .and_then(|b| b.ultrasound_relay_collateral_address)
+                        && sub_node.is_eth_transfer()
+                }),
         })
         .iter()
         .flat_map(|(_fixed_bytes, actions)| {
             actions.iter().filter_map(|action| {
-                if let Actions::Transfer(transfer) = action {
-                    Some(transfer.amount.clone())
-                } else {
-                    None
-                }
+                let Actions::EthTransfer(transfer) = action else { return None };
+                Some(transfer.value.to::<u128>())
             })
         })
-        .map(|rational| u128::try_from(&rational))
-        .filter_map(Result::ok)
         .sum::<u128>();
 
     Ok(coinbase_transfers - builder_collateral_amount)

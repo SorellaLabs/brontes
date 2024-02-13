@@ -11,7 +11,7 @@ use crate::{composer::compose_mev_results, Inspectors};
 pub struct InspectorBenchUtils {
     classifier_inspector: ClassifierTestUtils,
     quote_address:        Address,
-    rt:                   tokio::runtime::Runtime,
+    pub rt:               tokio::runtime::Runtime,
 }
 
 impl InspectorBenchUtils {
@@ -37,7 +37,7 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
@@ -55,7 +55,9 @@ impl InspectorBenchUtils {
 
         let mut metadata = self
             .rt
-            .block_on(self.classifier_inspector.get_metadata(block, false))?;
+            .block_on(self.classifier_inspector.get_metadata(block, false))
+            .unwrap_or_default();
+
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -77,11 +79,11 @@ impl InspectorBenchUtils {
         bench_name: &str,
         tx_hashes: Vec<TxHash>,
         iters: usize,
-        inspector: Inspectors,
+        inspector_type: Inspectors,
         needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector_type.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
@@ -103,10 +105,19 @@ impl InspectorBenchUtils {
 
         let (tree, prices) = trees.remove(0);
 
-        let mut metadata = self.rt.block_on(
-            self.classifier_inspector
-                .get_metadata(tree.header.number, false),
-        )?;
+        let mut metadata = self.rt.block_on(async move {
+            let res = self
+                .classifier_inspector
+                .get_metadata(tree.header.number, false)
+                .await;
+
+            if inspector_type == Inspectors::CexDex {
+                res
+            } else {
+                Ok(res.unwrap_or_else(|_| Metadata::default()))
+            }
+        })?;
+
         metadata.dex_quotes = Some(prices);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -126,11 +137,11 @@ impl InspectorBenchUtils {
         bench_name: &str,
         block: u64,
         iters: usize,
-        inspector: Inspectors,
+        inspector_type: Inspectors,
         needed_tokens: Vec<Address>,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector_type.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
@@ -144,10 +155,18 @@ impl InspectorBenchUtils {
                     needed_tokens,
                 ))?;
 
-        let mut metadata = self.rt.block_on(
-            self.classifier_inspector
-                .get_metadata(tree.header.number, false),
-        )?;
+        let mut metadata = self.rt.block_on(async move {
+            let res = self
+                .classifier_inspector
+                .get_metadata(tree.header.number, false)
+                .await;
+
+            if inspector_type == Inspectors::CexDex {
+                res
+            } else {
+                Ok(res.unwrap_or_else(|_| Metadata::default()))
+            }
+        })?;
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
@@ -171,7 +190,7 @@ impl InspectorBenchUtils {
         inspector: Inspectors,
         c: &mut Criterion,
     ) -> Result<(), InspectorTestUtilsError> {
-        let inspector = inspector.init_inspector(
+        let inspector = inspector.init_mev_inspector(
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
@@ -213,7 +232,7 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
@@ -269,7 +288,7 @@ impl InspectorBenchUtils {
         let inspectors = inspectors
             .into_iter()
             .map(|i| {
-                i.init_inspector(
+                i.init_mev_inspector(
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],

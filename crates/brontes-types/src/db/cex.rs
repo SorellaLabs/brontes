@@ -558,7 +558,7 @@ impl CexExchange {
             CexExchange::Average => {
                 unreachable!("Cannot get fees for cross exchange average quote")
             }
-            CexExchange::Unknown => unreachable!(),
+            CexExchange::Unknown => unreachable!("Unknown cex exchange"),
         }
     }
 }

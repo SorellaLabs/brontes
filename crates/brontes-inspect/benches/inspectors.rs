@@ -24,7 +24,10 @@ fn bench_sandwich(c: &mut Criterion) {
             ],
             0,
             Inspectors::Sandwich,
-            vec![],
+            vec![
+                hex!("0588504472198e9296a248edca6ccdc40bd237cb").into(),
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+            ],
             c,
         )
         .unwrap()
@@ -44,7 +47,10 @@ fn bench_sandwich_big_mac(c: &mut Criterion) {
             ],
             0,
             Inspectors::Sandwich,
-            vec![],
+            vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
+            ],
             c,
         )
         .unwrap()
@@ -55,10 +61,10 @@ fn bench_backrun_triagular(c: &mut Criterion) {
     bencher
         .bench_inspector_txes(
             "backrun triagular",
-            vec![hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into()],
+            vec![hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into()],
             0,
             Inspectors::AtomicArb,
-            vec![],
+            vec![hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into()],
             c,
         )
         .unwrap()
@@ -71,7 +77,7 @@ fn bench_backrun_10_swaps(c: &mut Criterion) {
             vec![hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into()],
             0,
             Inspectors::AtomicArb,
-            vec![],
+            vec![hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into()],
             c,
         )
         .unwrap()
@@ -85,22 +91,25 @@ fn bench_liquidation(c: &mut Criterion) {
             vec![hex!("725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db").into()],
             0,
             Inspectors::Liquidations,
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
 }
 
 fn bench_cex_dex(c: &mut Criterion) {
-    let rt = tokio::runtime::Handle::current();
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+
+    let rt = &bencher.rt;
     let tx_hash =
         B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
             .unwrap();
 
     let classifer_utils = rt.block_on(ClassifierTestUtils::new());
-    let metadata = rt.block_on(classifer_utils.get_metadata(0, true)).unwrap();
+    let metadata = rt
+        .block_on(classifer_utils.get_metadata(18264694, true))
+        .unwrap();
 
-    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
         .bench_inspector_txes_with_meta(
             "bench cex dex, 100 per iter",
@@ -127,7 +136,10 @@ fn bench_composer(c: &mut Criterion) {
             ],
             0,
             vec![Inspectors::Sandwich, Inspectors::Jit],
-            vec![],
+            vec![
+                hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
+                hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
+            ],
             c,
         )
         .unwrap()
@@ -155,7 +167,7 @@ fn bench_sandwich_regular_block(c: &mut Criterion) {
             18500002,
             0,
             vec![Inspectors::Sandwich],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -169,7 +181,7 @@ fn bench_liquidations_regular_block(c: &mut Criterion) {
             18979710,
             0,
             vec![Inspectors::Liquidations],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -183,7 +195,7 @@ fn bench_backrun_regular_block(c: &mut Criterion) {
             18000103,
             0,
             vec![Inspectors::AtomicArb],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -197,7 +209,7 @@ fn bench_jit_regular_block(c: &mut Criterion) {
             18500009,
             0,
             vec![Inspectors::Jit],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -211,7 +223,7 @@ fn bench_cex_dex_regular_block(c: &mut Criterion) {
             18264694,
             0,
             vec![Inspectors::CexDex],
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -238,4 +250,4 @@ criterion_group!(
     bench_cex_dex_regular_block
 );
 
-criterion_main!(inspector_specific_tx_benches, inspector_full_block_benches);
+criterion_main!(inspector_full_block_benches, inspector_specific_tx_benches);

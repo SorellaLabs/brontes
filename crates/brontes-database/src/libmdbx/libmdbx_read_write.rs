@@ -1,4 +1,6 @@
-use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{
+    cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, str::FromStr, sync::Arc,
+};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -23,17 +25,26 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
+    SubGraphsEntry,
 };
 use eyre::eyre;
+use futures::{FutureExt, StreamExt};
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
+use sorella_db_databases::Database;
 use tracing::info;
 
 use crate::{
-    clickhouse::Clickhouse,
-    libmdbx::{tables::*, types::LibmdbxData, CompressedTable, Libmdbx, LibmdbxInitializer},
+    clickhouse::{
+        Clickhouse, MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS,
+        MIN_MAX_TOKEN_DECIMALS,
+    },
+    libmdbx::{
+        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, *},
+        types::LibmdbxData,
+        CompressedTable, Libmdbx, LibmdbxInitializer,
+    },
     AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
@@ -61,36 +72,67 @@ impl LibmdbxReadWriter {
         Ok(())
     }
 
-    /// full range tables are tables such as token info or pool creation blocks.
-    /// given that these are full range. they will be inited for such. thus,
-    /// if we have any entries in the db, we will have the entrie range.
-    pub fn init_full_range_tables(&self) -> bool {
-        [Tables::PoolCreationBlocks, Tables::AddressToProtocolInfo, Tables::TokenDecimals]
-            .into_par_iter()
-            .map(|table| match table {
+    /// checks the min and max values of the clickhouse db and sees if the full
+    /// range tables have the values.
+    pub async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
+        futures::stream::iter([
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+        ])
+        .map(|table| async move {
+            match table {
                 Tables::AddressToProtocolInfo => self
-                    .has_entry::<AddressToProtocolInfo>()
+                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
+                        MIN_MAX_ADDRESS_TO_PROTOCOL,
+                        clickhouse,
+                    )
+                    .await
                     .unwrap_or_default(),
-                Tables::TokenDecimals => self.has_entry::<TokenDecimals>().unwrap_or_default(),
-                Tables::PoolCreationBlocks => {
-                    self.has_entry::<PoolCreationBlocks>().unwrap_or_default()
-                }
+                Tables::TokenDecimals => self
+                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
+                    .await
+                    .unwrap_or_default(),
+                Tables::PoolCreationBlocks => self
+                    .has_clickhouse_min_max::<PoolCreationBlocks>(
+                        MIN_MAX_POOL_CREATION_BLOCKS,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
                 _ => true,
-            })
-            .collect::<Vec<_>>()
-            .iter()
-            .any(|t| !*t)
+            }
+        })
+        .any(|f| f.map(|f| !f))
+        .await
     }
 
-    fn has_entry<TB>(&self) -> eyre::Result<bool>
+    async fn has_clickhouse_min_max<TB>(
+        &self,
+        query: &str,
+        clickhouse: &'static Clickhouse,
+    ) -> eyre::Result<bool>
     where
         TB: CompressedTable,
         TB::Value: From<TB::DecompressedValue> + Into<TB::DecompressedValue>,
+        <TB as reth_db::table::Table>::Key: FromStr + Send + Sync,
     {
+        let (min, max) = clickhouse
+            .inner()
+            .query_one::<(String, String)>(query, &())
+            .await?;
+
+        let Ok(min_parsed) = min.parse::<TB::Key>() else { return Ok(false) };
+
+        let Ok(max_parsed) = max.parse::<TB::Key>() else { return Ok(false) };
+
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<TB>()?;
 
-        Ok(cur.next()?.is_some())
+        let Some(has_min) = cur.first()?.map(|v| v.0 <= min_parsed) else { return Ok(false) };
+        let Some(has_max) = cur.last()?.map(|v| v.0 >= max_parsed) else { return Ok(false) };
+
+        Ok(has_min && has_max)
     }
 
     pub fn state_to_initialize(
@@ -314,16 +356,22 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
         let tx = self.0.ro_tx()?;
         let subgraphs = tx
-            .get::<SubGraphs>(pair.ordered())?
+            .get::<SubGraphs>(pair)?
             .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
 
         // if we have dex prices for a block then we have a subgraph for the block
         let (start_key, end_key) = make_filter_key_range(block);
-        if tx
+        if !tx
             .new_cursor::<DexPrice>()?
             .walk_range(start_key..=end_key)?
-            .all(|f| f.is_err())
+            .all(|f| f.is_ok())
         {
+            tracing::debug!(
+                ?pair,
+                ?block,
+                "no pricing for block. cannot verify most recent subgraph is valid"
+            );
+
             return Err(eyre::eyre!("subgraph not inited at this block range"))
         }
 
@@ -391,7 +439,6 @@ impl LibmdbxWriter for LibmdbxReadWriter {
                         tx_idx: idx as u16,
                         quote:  value.into_iter().collect_vec(),
                     };
-
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
                 .collect::<Vec<_>>();
@@ -423,10 +470,18 @@ impl LibmdbxWriter for LibmdbxReadWriter {
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair.ordered())? {
+
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
             let data = SubGraphsData::new(pair, entry);
+            self.0
+                .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+        } else {
+            let mut map = HashMap::new();
+            map.insert(block, edges);
+            let subgraph_entry = SubGraphsEntry(map);
+            let data = SubGraphsData::new(pair, subgraph_entry);
             self.0
                 .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
         }
