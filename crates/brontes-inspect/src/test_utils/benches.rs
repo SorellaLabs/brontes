@@ -11,7 +11,7 @@ use crate::{composer::compose_mev_results, Inspectors};
 pub struct InspectorBenchUtils {
     classifier_inspector: ClassifierTestUtils,
     quote_address:        Address,
-    rt:                   tokio::runtime::Runtime,
+    pub rt:               tokio::runtime::Runtime,
 }
 
 impl InspectorBenchUtils {

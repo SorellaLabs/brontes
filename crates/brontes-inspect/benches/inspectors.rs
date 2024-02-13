@@ -92,7 +92,9 @@ fn bench_liquidation(c: &mut Criterion) {
 }
 
 fn bench_cex_dex(c: &mut Criterion) {
-    let rt = tokio::runtime::Handle::current();
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+
+    let rt = &bencher.rt;
     let tx_hash =
         B256::from_str("0x21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295")
             .unwrap();
@@ -100,7 +102,6 @@ fn bench_cex_dex(c: &mut Criterion) {
     let classifer_utils = rt.block_on(ClassifierTestUtils::new());
     let metadata = rt.block_on(classifer_utils.get_metadata(0, true)).unwrap();
 
-    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
         .bench_inspector_txes_with_meta(
             "bench cex dex, 100 per iter",
