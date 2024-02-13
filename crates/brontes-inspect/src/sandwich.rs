@@ -47,11 +47,15 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+        let search_fn = |node: &Node<Actions>, info: NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  info
+                .get_ref(node.data)
+                .map(|node| node.data.is_swap() || node.data.is_transfer())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .subactions
                 .iter()
+                .filter_map(|node| info.get_ref(*node))
                 .any(|action| action.is_swap() || action.is_transfer()),
         };
 
