@@ -158,7 +158,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .collect()
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn build_bundle_header(
         &self,
         info: &TxInfo,
