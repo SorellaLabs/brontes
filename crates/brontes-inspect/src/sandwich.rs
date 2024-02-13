@@ -500,12 +500,7 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_mev_tx_hashes(vec![
-                hex!("a203940b1d15c1c395b4b05cef9f0a05bf3c4a29fdb1bed47baddeac866e3729").into(),
-                hex!("af2143d2448a2e639637f9184bc2539428230226c281a174ba4ef4ef00e00220").into(),
-                hex!("3e9c6cbee7c8c85a3c1bbc0cc8b9e23674f86bc7aedc51f05eb9d0eda0f6247e").into(),
-                hex!("9ee36a8a24c3eb5406e7a651525bcfbd0476445bd291622f89ebf8d13d54b7ee").into(),
-            ])
+            .with_block(18500018)
             .needs_tokens(vec![
                 hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into(),
                 hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into(),
@@ -516,7 +511,7 @@ mod tests {
             ])
             .with_dex_prices()
             .with_gas_paid_usd(40.26)
-            .with_expected_profit_usd(-95.19);
+            .with_expected_profit_usd(-56.44);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
