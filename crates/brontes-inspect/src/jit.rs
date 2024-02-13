@@ -415,11 +415,7 @@ mod tests {
                 hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into(),
                 hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
             ])
-            .with_mev_tx_hashes(vec![
-                hex!("11a88cf8d0cab67c146709eae4803a65af4b7f70fba6d4b657c25b853a57b0f7").into(),
-                hex!("0424da7217b8d10b07fc31bca18558861ce8156597746f29d88813594330f6a0").into(),
-                hex!("7c8fd39012a2c25668096307c65a29f53c2398b30369c3ec45cbd75c4e16cc83").into(),
-            ])
+            .with_block(18521071)
             .with_gas_paid_usd(92.65)
             .with_expected_profit_usd(26.50);
 
