@@ -507,7 +507,9 @@ impl ClassifierTestUtils {
             .find(|f| f.get_trace_address() == trace_addr)
             .ok_or_else(|| ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))?;
 
-        let Action::Call(call) = &p_trace.trace.action else { panic!("discovery parent trace wasn't a call") };
+        let Action::Call(call) = &p_trace.trace.action else {
+            panic!("discovery parent trace wasn't a call")
+        };
 
         let from_address = found_trace.get_from_addr();
         let created_addr = found_trace.get_create_output();
