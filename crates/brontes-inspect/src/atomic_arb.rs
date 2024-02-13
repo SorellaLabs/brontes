@@ -330,12 +330,15 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_simple_triangular() {
+    async fn test_triangular_old_middle_token() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
         let tx = hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("c98835e792553e505ae46e73a6fd27a23985acca").into())
+            .needs_tokens(vec![
+                hex!("c98835e792553e505ae46e73a6fd27a23985acca").into(),
+                hex!("F1182229B71E79E504b1d2bF076C15a277311e05").into(),
+            ])
             .with_dex_prices()
             .with_expected_profit_usd(311.18)
             .with_gas_paid_usd(91.51);
