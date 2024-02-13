@@ -185,6 +185,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         let token_info = TokenInfoWithAddress {
             address: Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
