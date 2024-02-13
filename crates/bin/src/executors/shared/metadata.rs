@@ -78,7 +78,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
         self.clear_no_price_channel();
         // pull directly from libmdbx
         if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
-            let Ok(meta) = libmdbx.get_metadata(block) else {
+            let Ok(mut meta) = libmdbx.get_metadata(block) else {
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return
             };
@@ -96,7 +96,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
             self.clickhouse_futures.push_back(future);
         // don't need to pull from clickhouse, means we are running pricing
         } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
-            let Ok(meta) = libmdbx.get_metadata_no_dex_price(block) else {
+            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block) else {
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return
             };

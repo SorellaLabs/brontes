@@ -9,7 +9,7 @@ use brontes_types::{
     ToScaledRational, TreeSearchArgs,
 };
 use itertools::Itertools;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
