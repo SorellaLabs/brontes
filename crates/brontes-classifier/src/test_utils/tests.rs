@@ -538,6 +538,7 @@ impl ClassifierTestUtils {
                         token3,
                         token4,
                         curve_lp_token,
+                        init_block: 0,
                     },
                 },
             ])
