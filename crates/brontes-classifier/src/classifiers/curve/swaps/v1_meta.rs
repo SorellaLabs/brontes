@@ -27,19 +27,13 @@ action_impl!(
 
         let token_in_addr = match log.sold_id {
             0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token in, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token in, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token in, found None"))?,
+            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token in, found None"))?,
             _ => unreachable!()
         };
 
         let token_out_addr = match log.bought_id {
             0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token out, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token out, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token out, found None"))?,
+            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token out, found None"))?,
             _ => unreachable!()
         };
 
