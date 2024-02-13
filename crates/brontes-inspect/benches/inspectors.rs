@@ -24,7 +24,10 @@ fn bench_sandwich(c: &mut Criterion) {
             ],
             0,
             Inspectors::Sandwich,
-            vec![],
+            vec![
+                hex!("0588504472198e9296a248edca6ccdc40bd237cb").into(),
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+            ],
             c,
         )
         .unwrap()
@@ -44,7 +47,10 @@ fn bench_sandwich_big_mac(c: &mut Criterion) {
             ],
             0,
             Inspectors::Sandwich,
-            vec![],
+            vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
+            ],
             c,
         )
         .unwrap()
@@ -55,10 +61,10 @@ fn bench_backrun_triagular(c: &mut Criterion) {
     bencher
         .bench_inspector_txes(
             "backrun triagular",
-            vec![hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into()],
+            vec![hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into()],
             0,
             Inspectors::AtomicArb,
-            vec![hex!("c98835e792553e505ae46e73a6fd27a23985acca").into()],
+            vec![hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into()],
             c,
         )
         .unwrap()
@@ -71,7 +77,7 @@ fn bench_backrun_10_swaps(c: &mut Criterion) {
             vec![hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into()],
             0,
             Inspectors::AtomicArb,
-            vec![],
+            vec![hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into()],
             c,
         )
         .unwrap()
@@ -85,7 +91,7 @@ fn bench_liquidation(c: &mut Criterion) {
             vec![hex!("725551f77f94f0ff01046aa4f4b93669d689f7eda6bb8cd87e2be780935eb2db").into()],
             0,
             Inspectors::Liquidations,
-            vec![],
+            vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
             c,
         )
         .unwrap()
@@ -244,4 +250,4 @@ criterion_group!(
     bench_cex_dex_regular_block
 );
 
-criterion_main!(inspector_specific_tx_benches, inspector_full_block_benches);
+criterion_main!(inspector_full_block_benches, inspector_specific_tx_benches);
