@@ -58,7 +58,7 @@ fn bench_backrun_triagular(c: &mut Criterion) {
             vec![hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").into()],
             0,
             Inspectors::AtomicArb,
-            vec![],
+            vec![hex!("c98835e792553e505ae46e73a6fd27a23985acca").into()],
             c,
         )
         .unwrap()
