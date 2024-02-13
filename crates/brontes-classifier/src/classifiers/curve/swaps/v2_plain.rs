@@ -141,6 +141,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
 
         let swap =
