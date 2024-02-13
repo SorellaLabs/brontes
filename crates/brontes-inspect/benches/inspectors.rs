@@ -130,7 +130,10 @@ fn bench_composer(c: &mut Criterion) {
             ],
             0,
             vec![Inspectors::Sandwich, Inspectors::Jit],
-            vec![],
+            vec![
+                hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
+                hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
+            ],
             c,
         )
         .unwrap()
