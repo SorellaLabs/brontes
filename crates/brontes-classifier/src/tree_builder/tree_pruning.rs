@@ -8,28 +8,38 @@ use malachite::{num::basic::traits::Zero, Rational};
 
 pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
     tree.remove_duplicate_data(
-        |node| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap(),
+        |node, data| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|data| data.is_swap())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .into_iter()
+                .filter_map(|a| data.get_ref(a))
                 .any(|data| data.is_swap()),
         },
-        |node| TreeSearchArgs {
-            collect_current_node:  node.data.is_transfer(),
+        |node, data| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|data| data.is_transfer())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .into_iter()
+                .filter_map(|a| data.get_ref(a))
                 .any(|data| data.is_transfer()),
         },
-        |node| (node.index, node.data.clone()),
-        |other_nodes, node| {
+        |node, data| (node.index, data.get_ref(node.data)),
+        |other_nodes, node, data| {
             // calcuate the
-            let swap_data = &node.data.force_swap_ref();
+            let Some(swap_data) = data.get_ref(node.data) else { return vec![] };
+            let swap_data = swap_data.force_swap_ref();
+
             other_nodes
                 .iter()
                 .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data else { return None };
+                    let Actions::Transfer(transfer) = data.as_ref()? else { return None };
                     if (transfer.amount == swap_data.amount_in
                         || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
                         && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)

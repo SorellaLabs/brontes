@@ -9,6 +9,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
+    root::NodeData,
     tree::{BlockTree, GasDetails, Node, TxInfo},
     ToFloatNearest, TreeSearchArgs,
 };
@@ -47,10 +48,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let search_fn = |node: &Node<Actions>, info: NodeData<Actions>| TreeSearchArgs {
+        let search_fn = |node: &Node, info: &NodeData<Actions>| TreeSearchArgs {
             collect_current_node:  info
                 .get_ref(node.data)
-                .map(|node| node.data.is_swap() || node.data.is_transfer())
+                .map(|node| node.is_swap() || node.is_transfer())
                 .unwrap_or_default(),
             child_node_to_collect: node
                 .subactions
@@ -103,7 +104,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                     if victims
                         .iter()
                         .flatten()
-                        .map(|v| tree.get_root(*v).unwrap().head.data.clone())
+                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
                         .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
                     {
                         return None
@@ -331,7 +332,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
     let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
 
     for root in tree.tx_roots.iter() {
-        if root.head.data.is_revert() {
+        if root.get_root_action().is_revert() {
             continue
         }
         match duplicate_senders.entry(root.head.address) {
@@ -350,7 +351,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
                                 eoa:                   root.head.address,
                                 possible_frontruns:    vec![prev_tx_hash],
                                 possible_backrun:      root.tx_hash,
-                                mev_executor_contract: root.head.data.get_to_address(),
+                                mev_executor_contract: root.get_to_address(),
                                 victims:               vec![frontrun_victims],
                             });
                         }
@@ -396,11 +397,11 @@ fn get_possible_sandwich_duplicate_contracts(
     let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
 
     for root in tree.tx_roots.iter() {
-        if root.head.data.is_revert() {
+        if root.get_root_action().is_revert() {
             continue
         }
 
-        match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
+        match duplicate_mev_contracts.entry(root.get_to_address()) {
             // If this contract has not been called within this block, we insert the tx hash
             // into the map
             Entry::Vacant(duplicate_mev_contract) => {
@@ -412,13 +413,13 @@ fn get_possible_sandwich_duplicate_contracts(
                 let (prev_tx_hash, frontrun_eoa) = o.get_mut();
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
-                    match possible_sandwiches.entry(root.head.data.get_to_address()) {
+                    match possible_sandwiches.entry(root.get_to_address()) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
                                 eoa:                   *frontrun_eoa,
                                 possible_frontruns:    vec![*prev_tx_hash],
                                 possible_backrun:      root.tx_hash,
-                                mev_executor_contract: root.head.data.get_to_address(),
+                                mev_executor_contract: root.get_to_address(),
                                 victims:               vec![frontrun_victims],
                             });
                         }

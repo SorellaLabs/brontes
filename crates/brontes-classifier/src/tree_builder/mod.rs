@@ -3,7 +3,7 @@ use std::{cmp::min, sync::Arc};
 use alloy_primitives::U256;
 use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
-    ToScaledRational,
+    NodeData, ToScaledRational,
 };
 mod tree_pruning;
 mod utils;
@@ -127,7 +127,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         )
                         .await;
 
-                    let node = Node::new(0, address, classification, vec![]);
+                    let node = Node::new(0, address, vec![]);
 
                     let mut tx_root = Root {
                         position:    tx_idx,
@@ -141,6 +141,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                             priority_fee:        trace.effective_price
                                 - (header.base_fee_per_gas.unwrap() as u128),
                         },
+                        data_store:  NodeData(vec![Some(classification)]),
                     };
 
                     for (index, trace) in trace.trace.into_iter().enumerate() {
@@ -167,14 +168,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
                         let from_addr = trace.get_from_addr();
 
-                        let node = Node::new(
-                            (index + 1) as u64,
-                            from_addr,
-                            classification,
-                            trace.trace.trace_address,
-                        );
+                        let node =
+                            Node::new((index + 1) as u64, from_addr, trace.trace.trace_address);
 
-                        tx_root.insert(node);
+                        tx_root.insert(node, classification);
                     }
 
                     // Here we reverse the requests to ensure that we always classify the most

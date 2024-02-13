@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct NodeData<V: NormalizedAction>(Vec<Option<V>>);
+pub struct NodeData<V: NormalizedAction>(pub Vec<Option<V>>);
 
 impl<V: NormalizedAction> NodeData<V> {
     /// adds the node data to the storage location retuning the index
@@ -85,6 +85,18 @@ impl<V: NormalizedAction> Root<V> {
             is_verified_contract,
             searcher_info,
         )
+    }
+
+    pub fn get_to_address(&self) -> Address {
+        self.data_store
+            .get_ref(0)
+            .unwrap()
+            .get_action()
+            .get_to_address()
+    }
+
+    pub fn get_root_action(&self) -> &V {
+        self.data_store.get_ref(0).unwrap()
     }
 
     pub fn get_block_position(&self) -> usize {
