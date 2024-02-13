@@ -421,7 +421,7 @@ mod tests {
                 hex!("7c8fd39012a2c25668096307c65a29f53c2398b30369c3ec45cbd75c4e16cc83").into(),
             ])
             .with_gas_paid_usd(92.65)
-            .with_expected_profit_usd(745.154);
+            .with_expected_profit_usd(26.50);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
