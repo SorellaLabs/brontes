@@ -202,7 +202,7 @@ mod tests {
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
-                .filter_map(|idx| data.get_ref(idx))
+                .filter_map(|idx| data.get_ref(*idx))
                 .any(|action| action.is_swap()),
         };
 
@@ -243,7 +243,7 @@ mod tests {
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
-                .filter_map(|idx| data.get_ref(idx))
+                .filter_map(|idx| data.get_ref(*idx))
                 .any(|action| action.is_mint()),
         };
 
@@ -282,7 +282,7 @@ mod tests {
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
-                .filter_map(|idx| data.get_ref(idx))
+                .filter_map(|idx| data.get_ref(*idx))
                 .any(|action| action.is_burn()),
         };
 
@@ -321,7 +321,7 @@ mod tests {
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
-                .filter_map(|idx| data.get_ref(idx))
+                .filter_map(|idx| data.get_ref(*idx))
                 .any(|action| action.is_collect()),
         };
 

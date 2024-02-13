@@ -293,9 +293,16 @@ mod test {
 
         let swaps = tree.collect(
             hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-            |node| TreeSearchArgs {
-                collect_current_node:  node.data.is_swap(),
-                child_node_to_collect: node.inner.iter().any(|n| n.data.is_swap()),
+            |node, data| TreeSearchArgs {
+                collect_current_node:  data
+                    .get_ref(node.data)
+                    .map(|s| s.is_swap())
+                    .unwrap_or_default(),
+                child_node_to_collect: node
+                    .inner
+                    .iter()
+                    .filter_map(|a| data.get_ref(a.data))
+                    .any(|n| n.is_swap()),
             },
         );
         assert!(swaps.len() == 6, "didn't filter tax token");

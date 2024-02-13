@@ -167,7 +167,9 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
-    use brontes_types::{normalized_actions::Actions, Node, ToScaledRational, TreeSearchArgs};
+    use brontes_types::{
+        normalized_actions::Actions, Node, NodeData, ToScaledRational, TreeSearchArgs,
+    };
 
     use super::*;
 
@@ -243,7 +245,7 @@ mod tests {
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
-                .filter_map(|node| data.get_ref(*node.data))
+                .filter_map(|node| data.get_ref(*node))
                 .any(|action| action.is_batch()),
         };
 
@@ -300,7 +302,7 @@ mod tests {
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
-                .filter_map(|node| data.get_ref(*node.data))
+                .filter_map(|node| data.get_ref(*node))
                 .any(|action| action.is_batch()),
         };
 

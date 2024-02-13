@@ -1,8 +1,7 @@
-use reth_primitives::{Address, Header};
-use serde::{Deserialize, Serialize};
+use reth_primitives::Address;
 use tracing::error;
 
-use super::{NodeData, Root};
+use super::NodeData;
 use crate::{normalized_actions::NormalizedAction, TreeSearchArgs};
 
 #[derive(Debug, Clone)]
@@ -74,7 +73,7 @@ impl Node {
             let collect_fn = |node: &Node, nodes: &NodeData<V>| TreeSearchArgs {
                 collect_current_node:  nodes
                     .get_ref(node.data)
-                    .map(|node| (classification)(node))
+                    .map(&classification)
                     .unwrap_or_default(),
                 child_node_to_collect: node
                     .get_all_sub_actions()
@@ -82,6 +81,7 @@ impl Node {
                     .filter_map(|node| nodes.get_ref(*node))
                     .any(&classification),
             };
+
             self.collect(
                 &mut results,
                 &collect_fn,
@@ -260,7 +260,7 @@ impl Node {
         if self.finalized {
             self.subactions.clone()
         } else {
-            let mut res = vec![self.data.clone()];
+            let mut res = vec![self.data];
             res.extend(
                 self.inner
                     .iter()

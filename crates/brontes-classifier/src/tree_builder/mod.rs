@@ -464,11 +464,15 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jared_tx, |node| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+        let swap = tree.collect(jared_tx, |node, data| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|s| s.is_swap() || s.is_transfer())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .subactions
                 .iter()
+                .filter_map(|a| data.get_ref(*a))
                 .any(|action| action.is_swap() || action.is_transfer()),
         });
         let mut swaps: HashMap<TokenInfoWithAddress, HashSet<Rational>> = HashMap::default();
