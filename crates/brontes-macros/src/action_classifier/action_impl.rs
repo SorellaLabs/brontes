@@ -52,23 +52,24 @@ impl ActionMacro {
         let call_fn_name =
             Ident::new(&format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call), Span::call_site());
 
-        let dex_price_return =
-            if action_type.to_string().to_lowercase().as_str() == "poolconfigupdate" {
-                quote!(
-                    if db_tx.insert_pool(block,
-                        pool.pool_address,
-                        [pool.tokens[0], pool.tokens[1]],
-                        pool.protocol).is_err() {
-                    ::tracing::error!(
-                        pool=?pool.pool_address,
-                                      block,
-                                      "failed to update pool config");
-                }
+        let dex_price_return = if action_type.to_string().to_lowercase().as_str()
+            == "poolconfigupdate"
+        {
+            quote!(
+                if db_tx.insert_pool(block,
+                    pool.pool_address,
+                    [pool.tokens[0], pool.tokens[1]],
+                    pool.protocol).is_err() {
+                ::tracing::error!(
+                    pool=?pool.pool_address,
+                                  block,
+                                  "failed to update pool config");
+            }
 
-                Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
-                )
-            } else {
-                quote!(
+            Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
+            )
+        } else {
+            quote!(
                 Ok(::brontes_pricing::types::DexPriceMsg::Update(
                     ::brontes_pricing::types::PoolUpdate {
                         block,
@@ -78,7 +79,7 @@ impl ActionMacro {
                     },
                 ))
             )
-            };
+        };
 
         Ok(quote! {
             #[allow(unused_imports)]

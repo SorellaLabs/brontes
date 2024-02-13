@@ -17,11 +17,11 @@ use super::shared::{inserts::process_results, state_collector::StateCollector};
 pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     collector:      StateCollector<T, DB>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-
-    current_block: u64,
-    end_block:     u64,
-    libmdbx:       &'static DB,
-    inspectors:    &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+    // clickhouse db (feature)
+    current_block:  u64,
+    end_block:      u64,
+    libmdbx:        &'static DB,
+    inspectors:     &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
