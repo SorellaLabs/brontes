@@ -178,36 +178,36 @@ impl Serialize for Actions {
     }
 }
 
-macro_rules! collect_action_fn {
-    ($($action:ident),*) => {
-        impl Actions {
-            $(
-                ::paste::paste!(
-                    pub fn [<$action _collect_fn>]()
-                    -> impl Fn(&crate::tree::Node<Self>) -> (bool, bool) {
-                        |node | (node.data.[<is_ $action>](), node.get_all_sub_actions()
-                                .iter().any(|i| i.[<is_ $action>]()))
-                    }
-                );
-            )*
-        }
-    };
-}
-
-collect_action_fn!(
-    swap,
-    flash_loan,
-    liquidation,
-    batch,
-    burn,
-    revert,
-    mint,
-    transfer,
-    collect,
-    self_destruct,
-    unclassified,
-    eth_transfer
-);
+// macro_rules! collect_action_fn {
+//     ($($action:ident),*) => {
+//         impl Actions {
+//             $(
+//                 ::paste::paste!(
+//                     pub fn [<$action _collect_fn>]()
+//                     -> impl Fn(&crate::tree::Node<Self>, &) -> (bool, bool) {
+//                         |node | (node.data.[<is_ $action>](), node.get_all_sub_actions()
+//                                 .iter().any(|i| i.[<is_ $action>]()))
+//                     }
+//                 );
+//             )*
+//         }
+//     };
+// }
+//
+// collect_action_fn!(
+//     swap,
+//     flash_loan,
+//     liquidation,
+//     batch,
+//     burn,
+//     revert,
+//     mint,
+//     transfer,
+//     collect,
+//     self_destruct,
+//     unclassified,
+//     eth_transfer
+// );
 
 impl Actions {
     pub fn force_liquidation(self) -> NormalizedLiquidation {

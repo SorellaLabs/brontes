@@ -3,6 +3,7 @@ use std::{cmp::min, sync::Arc};
 use alloy_primitives::U256;
 use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
+    tree::root::NodeData,
     ToScaledRational,
 };
 mod tree_pruning;
@@ -119,6 +120,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         .process_classification(
                             header.number,
                             None,
+                            &NodeData(vec![]),
                             tx_idx as u64,
                             0,
                             root_trace,
@@ -127,7 +129,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                         )
                         .await;
 
-                    let node = Node::new(0, address, classification, vec![]);
+                    let node = Node::new(0, address, vec![]);
 
                     let mut tx_root = Root {
                         position:    tx_idx,
@@ -141,6 +143,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                             priority_fee:        trace.effective_price
                                 - (header.base_fee_per_gas.unwrap() as u128),
                         },
+                        data_store:  NodeData(vec![Some(classification)]),
                     };
 
                     for (index, trace) in trace.trace.into_iter().enumerate() {
@@ -157,6 +160,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                             .process_classification(
                                 header.number,
                                 Some(&tx_root.head),
+                                &tx_root.data_store,
                                 tx_idx as u64,
                                 (index + 1) as u64,
                                 trace.clone(),
@@ -167,14 +171,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
                         let from_addr = trace.get_from_addr();
 
-                        let node = Node::new(
-                            (index + 1) as u64,
-                            from_addr,
-                            classification,
-                            trace.trace.trace_address,
-                        );
+                        let node =
+                            Node::new((index + 1) as u64, from_addr, trace.trace.trace_address);
 
-                        tx_root.insert(node);
+                        tx_root.insert(node, classification);
                     }
 
                     // Here we reverse the requests to ensure that we always classify the most
@@ -204,7 +204,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
     async fn process_classification(
         &self,
         block_number: u64,
-        root_head: Option<&Node<Actions>>,
+        root_head: Option<&Node>,
+        node_data_store: &NodeData<Actions>,
         tx_index: u64,
         trace_index: u64,
         trace: TransactionTraceWithLogs,
@@ -212,7 +213,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(block_number, root_head, tx_index, trace, trace_index)
+            .classify_node(block_number, root_head, node_data_store, tx_index, trace, trace_index)
             .await;
 
         // Here we are marking more complex actions that require data
@@ -243,7 +244,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
     async fn classify_node(
         &self,
         block: u64,
-        root_head: Option<&Node<Actions>>,
+        root_head: Option<&Node>,
+        node_data_store: &NodeData<Actions>,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
@@ -254,7 +256,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         match trace.action_type() {
             Action::Call(_) => self.classify_call(block, tx_idx, trace, trace_index).await,
             Action::Create(_) => {
-                self.classify_create(block, root_head, tx_idx, trace, trace_index)
+                self.classify_create(block, root_head, node_data_store, tx_idx, trace, trace_index)
                     .await
             }
             Action::Selfdestruct(sd) => {
@@ -356,7 +358,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
     async fn classify_create(
         &self,
         block: u64,
-        root_head: Option<&Node<Actions>>,
+        root_head: Option<&Node>,
+        node_data_store: &NodeData<Actions>,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
@@ -375,7 +378,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             return (vec![], Actions::Unclassified(trace));
         };
 
-        let Some(calldata) = node_data.data.get_calldata() else {
+        let Some(calldata) = node_data_store
+            .get_ref(node_data.data)
+            .and_then(|res| res.get_calldata())
+        else {
             return (vec![], Actions::Unclassified(trace));
         };
 
@@ -458,11 +464,15 @@ pub mod test {
 
         let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
 
-        let swap = tree.collect(jared_tx, |node| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap() || node.data.is_transfer(),
+        let swap = tree.collect(jared_tx, |node, data| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|s| s.is_swap() || s.is_transfer())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .subactions
                 .iter()
+                .filter_map(|a| data.get_ref(*a))
                 .any(|action| action.is_swap() || action.is_transfer()),
         });
         let mut swaps: HashMap<TokenInfoWithAddress, HashSet<Rational>> = HashMap::default();

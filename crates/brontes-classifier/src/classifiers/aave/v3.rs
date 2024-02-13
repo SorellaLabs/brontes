@@ -118,6 +118,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
         normalized_actions::{Actions, NormalizedLiquidation},
+        tree::root::NodeData,
         Node, Protocol, TreeSearchArgs,
     };
     use malachite::Rational;
@@ -145,9 +146,16 @@ mod tests {
             msg_value:             U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_liquidation(),
-            child_node_to_collect: node.subactions.iter().any(|action| action.is_liquidation()),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node:  data
+                .get_ref(node.data)
+                .map(|a| a.is_liquidation())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .filter_map(|node| data.get_ref(*node))
+                .any(|action| action.is_liquidation()),
         };
 
         classifier_utils
