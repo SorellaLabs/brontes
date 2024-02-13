@@ -43,7 +43,7 @@ body:
   - type: textarea
     id: protocols-needing-classifier
     attributes:
-      label: Protocols Needing a Classifier
+      label: Protocols Needing a Classifier (Optional)
       description: If not all protocols were supported, please list which protocols need to have a classifier developed.
       placeholder: |
         - Protocol 1
