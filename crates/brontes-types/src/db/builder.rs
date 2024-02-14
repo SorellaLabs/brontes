@@ -20,7 +20,7 @@ pub struct BuilderInfo {
     #[serde(with = "vec_address")]
     searchers: Vec<Address>,
     #[serde(with = "option_addresss")]
-    ultrasound_relay_collateral_address: Option<Address>,
+    pub ultrasound_relay_collateral_address: Option<Address>,
 }
 
 implement_table_value_codecs_with_zc!(BuilderInfoRedefined);

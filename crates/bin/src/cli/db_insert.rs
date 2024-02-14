@@ -10,7 +10,7 @@ pub struct AddToDb {
     pub table: Tables,
     // key of value
     #[arg(long, short)]
-    pub key:   String,
+    pub key: String,
     // value
     #[arg(long, short)]
     pub value: String,

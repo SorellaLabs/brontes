@@ -15,18 +15,54 @@ use crate::{
     normalized_actions::{Actions, NormalizedAction},
     TreeSearchArgs, TxInfo,
 };
-#[derive(Debug, Serialize, Deserialize)]
+
+#[derive(Debug)]
+pub struct NodeData<V: NormalizedAction>(pub Vec<Option<V>>);
+
+impl<V: NormalizedAction> NodeData<V> {
+    /// adds the node data to the storage location retuning the index
+    /// that the data can be found at
+    pub fn add(&mut self, data: V) -> usize {
+        self.0.push(Some(data));
+        self.0.len() - 1
+    }
+
+    pub fn get_ref(&self, idx: usize) -> Option<&V> {
+        self.0.get(idx).and_then(|f| f.as_ref())
+    }
+
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut V> {
+        self.0.get_mut(idx).and_then(|f| f.as_mut())
+    }
+
+    pub fn remove(&mut self, idx: usize) -> Option<V> {
+        self.0[idx].take()
+    }
+
+    pub fn replace(&mut self, idx: usize, value: V) {
+        self.0[idx] = Some(value);
+    }
+}
+
+#[derive(Debug)]
 pub struct Root<V: NormalizedAction> {
-    pub head:        Node<V>,
-    pub position:    usize,
-    pub tx_hash:     B256,
-    pub private:     bool,
+    pub head: Node,
+    pub position: usize,
+    pub tx_hash: B256,
+    pub private: bool,
     pub gas_details: GasDetails,
+    pub data_store: NodeData<V>,
 }
 
 impl<V: NormalizedAction> Root<V> {
     pub fn get_tx_info<DB: LibmdbxReader>(&self, block_number: u64, database: &DB) -> TxInfo {
-        let to_address = self.head.data.get_action().get_to_address();
+        let to_address = self
+            .data_store
+            .get_ref(self.head.data)
+            .unwrap()
+            .clone()
+            .get_action()
+            .get_to_address();
 
         let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
             Ok(metadata) => metadata.is_verified(),
@@ -41,9 +77,12 @@ impl<V: NormalizedAction> Root<V> {
             to_address,
             self.tx_hash,
             self.gas_details,
-            self.head.data.is_classified(),
+            self.data_store
+                .get_ref(self.head.data)
+                .map(|f| f.is_classified())
+                .unwrap_or_default(),
             matches!(
-                self.head.data.get_action(),
+                self.data_store.get_ref(self.head.data).unwrap().get_action(),
                 Actions::Unclassified(data) if data.is_cex_dex_call()
             ),
             self.private,
@@ -52,39 +91,59 @@ impl<V: NormalizedAction> Root<V> {
         )
     }
 
+    pub fn get_to_address(&self) -> Address {
+        self.data_store
+            .get_ref(0)
+            .unwrap()
+            .get_action()
+            .get_to_address()
+    }
+
+    pub fn get_root_action(&self) -> &V {
+        self.data_store.get_ref(0).unwrap()
+    }
+
     pub fn get_block_position(&self) -> usize {
         self.position
     }
 
-    pub fn insert(&mut self, node: Node<V>) {
+    pub fn insert(&mut self, mut node: Node, data: V) {
+        let idx = self.data_store.add(data);
+        node.data = idx;
+
         self.head.insert(node)
     }
 
     pub fn collect_spans<F>(&self, call: &F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node, &NodeData<V>) -> bool,
     {
         let mut result = Vec::new();
-        self.head.collect_spans(&mut result, call);
+        self.head.collect_spans(&mut result, call, &self.data_store);
 
         result
     }
 
     pub fn modify_spans<T, F>(&mut self, find: &T, modify: &F)
     where
-        T: Fn(&Node<V>) -> bool,
-        F: Fn(Vec<&mut Node<V>>),
+        T: Fn(&Node, &NodeData<V>) -> bool,
+        F: Fn(Vec<&mut Node>, &mut NodeData<V>),
     {
-        self.head.modify_node_spans(find, modify);
+        self.head
+            .modify_node_spans(find, modify, &mut self.data_store);
     }
 
     pub fn collect<F>(&self, call: &F) -> Vec<V>
     where
-        F: Fn(&Node<V>) -> TreeSearchArgs,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
     {
         let mut result = Vec::new();
-        self.head
-            .collect(&mut result, call, &|data| data.data.clone());
+        self.head.collect(
+            &mut result,
+            call,
+            &|data, info| info.get_ref(data.data).unwrap().clone(),
+            &self.data_store,
+        );
 
         result.sort_by_key(|a| a.get_trace_index());
 
@@ -93,16 +152,17 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F)
     where
-        T: Fn(&Node<V>) -> TreeSearchArgs,
-        F: Fn(&mut Node<V>),
+        T: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
+        F: Fn(&mut Node, &mut NodeData<V>),
     {
-        self.head.modify_node_if_contains_childs(find, modify);
+        self.head
+            .modify_node_if_contains_childs(find, modify, &mut self.data_store);
     }
 
     pub fn collect_child_traces_and_classify(&mut self, heads: &[u64]) {
         heads.iter().for_each(|search_head| {
             self.head
-                .get_all_children_for_complex_classification(*search_head)
+                .get_all_children_for_complex_classification(*search_head, &mut self.data_store)
         });
     }
 
@@ -113,38 +173,32 @@ impl<V: NormalizedAction> Root<V> {
         info: &T,
         removal: &Re,
     ) where
-        T: Fn(&Node<V>) -> R + Sync,
-        C: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node<V>) -> TreeSearchArgs,
-        Re: Fn(&Node<V>) -> TreeSearchArgs + Sync,
+        T: Fn(&Node, &NodeData<V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
+        Re: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
     {
         let mut find_res = Vec::new();
-        self.head.collect(&mut find_res, find, &|data| data.clone());
+        self.head.collect(
+            &mut find_res,
+            find,
+            &|data, _| data.clone(),
+            &self.data_store,
+        );
 
         let indexes = find_res
             .into_par_iter()
             .flat_map(|node| {
                 let mut bad_res = Vec::new();
-                node.collect(&mut bad_res, removal, info);
-                classify(&bad_res, &node)
+                node.collect(&mut bad_res, removal, info, &self.data_store);
+                classify(&bad_res, &node, &self.data_store)
             })
             .collect::<HashSet<_>>();
 
-        indexes
-            .into_iter()
-            .for_each(|index| self.head.remove_node_and_children(index));
-    }
-
-    pub fn dyn_classify<T, F>(&mut self, find: &T, call: &F) -> Vec<(Address, (Address, Address))>
-    where
-        T: Fn(Address, &Node<V>) -> TreeSearchArgs,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
-    {
-        // bool is used for recursion
-        let mut results = Vec::new();
-        let _ = self.head.dyn_classify(find, call, &mut results);
-
-        results
+        indexes.into_iter().for_each(|index| {
+            self.head
+                .remove_node_and_children(index, &mut self.data_store)
+        });
     }
 
     pub fn finalize(&mut self) {
@@ -176,9 +230,9 @@ impl<V: NormalizedAction> Root<V> {
     rkyv::Archive,
 )]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<u128>,
-    pub priority_fee:        u128,
-    pub gas_used:            u128,
+    pub coinbase_transfer: Option<u128>,
+    pub priority_fee: u128,
+    pub gas_used: u128,
     pub effective_gas_price: u128,
 }
 //TODO: Fix this
@@ -230,8 +284,14 @@ impl GasDetails {
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
             ("Gas Used", self.gas_used.to_string()),
-            ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
-            ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
+            (
+                "Effective Gas Price",
+                format!("{} Wei", self.effective_gas_price),
+            ),
+            (
+                "Total Gas Paid in ETH",
+                format!("{:.7} ETH", self.gas_paid() as f64 / 1e18),
+            ),
         ];
 
         let max_label_length = labels
@@ -265,10 +325,10 @@ impl GasDetails {
 }
 
 pub struct ClickhouseVecGasDetails {
-    pub tx_hash:             Vec<FixedString>,
-    pub coinbase_transfer:   Vec<Option<u128>>,
-    pub priority_fee:        Vec<u128>,
-    pub gas_used:            Vec<u128>,
+    pub tx_hash: Vec<FixedString>,
+    pub coinbase_transfer: Vec<Option<u128>>,
+    pub priority_fee: Vec<u128>,
+    pub gas_used: Vec<u128>,
     pub effective_gas_price: Vec<u128>,
 }
 
@@ -290,10 +350,10 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .collect::<Vec<_>>();
 
         ClickhouseVecGasDetails {
-            tx_hash:             vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
-            coinbase_transfer:   vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
-            priority_fee:        vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
-            gas_used:            vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
+            tx_hash: vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
+            coinbase_transfer: vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
+            priority_fee: vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
+            gas_used: vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
             effective_gas_price: vec_vals.iter().map(|val| val.4.to_owned()).collect_vec(),
         }
     }

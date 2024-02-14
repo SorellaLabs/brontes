@@ -22,7 +22,9 @@ pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+        Self {
+            inner: SharedInspectorUtils::new(quote, db),
+        }
     }
 }
 
@@ -35,12 +37,16 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(|node| TreeSearchArgs {
-            collect_current_node:  node.data.is_liquidation() || node.data.is_swap(),
+        let liq_txs = tree.collect_all(|node, info| TreeSearchArgs {
+            collect_current_node: info
+                .get_ref(node.data)
+                .map(|node| node.is_swap() || node.is_liquidation())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .subactions
                 .iter()
-                .any(|action| action.is_liquidation() || action.is_swap()),
+                .filter_map(|node| info.get_ref(*node))
+                .any(|action| action.is_swap() || action.is_liquidation()),
         });
 
         liq_txs
@@ -63,26 +69,30 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     ) -> Option<Bundle> {
         let swaps = actions
             .iter()
-            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
+            .filter_map(|action| {
+                if let Actions::Swap(swap) = action {
+                    Some(swap)
+                } else {
+                    None
+                }
+            })
             .cloned()
             .collect::<Vec<_>>();
 
         let liqs = actions
             .iter()
-            .filter_map(
-                |action| {
-                    if let Actions::Liquidation(liq) = action {
-                        Some(liq)
-                    } else {
-                        None
-                    }
-                },
-            )
+            .filter_map(|action| {
+                if let Actions::Liquidation(liq) = action {
+                    Some(liq)
+                } else {
+                    None
+                }
+            })
             .cloned()
             .collect::<Vec<_>>();
 
         if liqs.is_empty() {
-            return None
+            return None;
         }
 
         let liq_profit = liqs
@@ -129,13 +139,16 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let new_liquidation = Liquidation {
             liquidation_tx_hash: info.tx_hash,
-            trigger:             b256!(),
-            liquidation_swaps:   swaps,
-            liquidations:        liqs,
-            gas_details:         info.gas_details,
+            trigger: b256!(),
+            liquidation_swaps: swaps,
+            liquidations: liqs,
+            gas_details: info.gas_details,
         };
 
-        Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
+        Some(Bundle {
+            header,
+            data: BundleData::Liquidation(new_liquidation),
+        })
     }
 }
 

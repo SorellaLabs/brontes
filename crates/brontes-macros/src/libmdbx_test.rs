@@ -7,7 +7,10 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
     let vis = item.vis;
     let mut sig = item.sig;
     if sig.asyncness.is_none() {
-        return Err(syn::Error::new(sig.asyncness.span(), "function must be async"))
+        return Err(syn::Error::new(
+            sig.asyncness.span(),
+            "function must be async",
+        ));
     }
     sig.asyncness = None;
     let block = item.block;

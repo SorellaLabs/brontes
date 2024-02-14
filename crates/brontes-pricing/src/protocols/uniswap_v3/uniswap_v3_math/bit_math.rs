@@ -8,7 +8,7 @@ pub fn most_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
     let mut r = 0;
 
     if x.is_zero() {
-        return Err(UniswapV3MathError::ZeroValue)
+        return Err(UniswapV3MathError::ZeroValue);
     }
 
     if x >= U256::from_str_radix("100000000000000000000000000000000", 16).unwrap() {
@@ -54,7 +54,7 @@ pub fn most_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
 
 pub fn least_significant_bit(mut x: U256) -> Result<u8, UniswapV3MathError> {
     if x.is_zero() {
-        return Err(UniswapV3MathError::ZeroValue)
+        return Err(UniswapV3MathError::ZeroValue);
     }
 
     let mut r = 255;

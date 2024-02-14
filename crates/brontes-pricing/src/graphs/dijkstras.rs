@@ -52,12 +52,22 @@ type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 /// struct Pos(i32, i32);
 ///
 /// impl Pos {
-///   fn successors(&self) -> Vec<(Pos, usize)> {
-///     let &Pos(x, y) = self;
-///     vec![Pos(x+1,y+2), Pos(x+1,y-2), Pos(x-1,y+2), Pos(x-1,y-2),
-///          Pos(x+2,y+1), Pos(x+2,y-1), Pos(x-2,y+1), Pos(x-2,y-1)]
-///          .into_iter().map(|p| (p, 1)).collect()
-///   }
+///     fn successors(&self) -> Vec<(Pos, usize)> {
+///         let &Pos(x, y) = self;
+///         vec![
+///             Pos(x + 1, y + 2),
+///             Pos(x + 1, y - 2),
+///             Pos(x - 1, y + 2),
+///             Pos(x - 1, y - 2),
+///             Pos(x + 2, y + 1),
+///             Pos(x + 2, y - 1),
+///             Pos(x - 2, y + 1),
+///             Pos(x - 2, y - 1),
+///         ]
+///         .into_iter()
+///         .map(|p| (p, 1))
+///         .collect()
+///     }
 /// }
 ///
 /// static GOAL: Pos = Pos(4, 6);
@@ -72,11 +82,24 @@ type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 /// use pathfinding::prelude::dijkstra;
 ///
 /// static GOAL: (i32, i32) = (4, 6);
-/// let result = dijkstra(&(1, 1),
-///                       |&(x, y)| vec![(x+1,y+2), (x+1,y-2), (x-1,y+2), (x-1,y-2),
-///                                      (x+2,y+1), (x+2,y-1), (x-2,y+1), (x-2,y-1)]
-///                                  .into_iter().map(|p| (p, 1)),
-///                       |&p| p == GOAL);
+/// let result = dijkstra(
+///     &(1, 1),
+///     |&(x, y)| {
+///         vec![
+///             (x + 1, y + 2),
+///             (x + 1, y - 2),
+///             (x - 1, y + 2),
+///             (x - 1, y - 2),
+///             (x + 2, y + 1),
+///             (x + 2, y - 1),
+///             (x - 2, y + 1),
+///             (x - 2, y - 1),
+///         ]
+///         .into_iter()
+///         .map(|p| (p, 1))
+///     },
+///     |&p| p == GOAL,
+/// );
 /// assert_eq!(result.expect("no path found").1, 4);
 /// ```
 // pub fn dijkstra<N, C, E, FN, IN, FS, PV>(
@@ -143,24 +166,30 @@ where
     let mut i = 0usize;
     let mut visited = HashSet::new();
     let mut to_see = BinaryHeap::new();
-    to_see.push(SmallestHolder { cost: Zero::zero(), index: 0 });
+    to_see.push(SmallestHolder {
+        cost: Zero::zero(),
+        index: 0,
+    });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
-    parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
+    parents.insert(
+        start.clone(),
+        (usize::max_value(), Zero::zero(), E::default()),
+    );
     let mut target_reached = None;
     while let Some(SmallestHolder { cost, index }) = to_see.pop() {
         if i == max_iter {
             tracing::debug!("max iter on dijkstra hit");
-            break
+            break;
         }
 
         let (node, _) = parents.get_index(index).unwrap();
         if visited.contains(node) {
-            continue
+            continue;
         }
 
         if stop(node) {
             target_reached = Some(index);
-            break
+            break;
         }
         let successors = successors(node);
         let base_node = node.clone();
@@ -169,7 +198,7 @@ where
             i += 1;
 
             if visited.contains(&successor) {
-                continue
+                continue;
             }
 
             let new_cost = cost + move_cost;
@@ -185,12 +214,15 @@ where
                         n = e.index();
                         e.insert((index, new_cost, value));
                     } else {
-                        continue
+                        continue;
                     }
                 }
             }
 
-            to_see.push(SmallestHolder { cost: new_cost, index: n });
+            to_see.push(SmallestHolder {
+                cost: new_cost,
+                index: n,
+            });
         }
         visited.insert(base_node);
     }
@@ -222,7 +254,7 @@ where
 /// ```
 /// use pathfinding::prelude::build_path;
 ///
-/// let parents = (2..=100).map(|n| (n, (n/2, 1))).collect();
+/// let parents = (2..=100).map(|n| (n, (n / 2, 1))).collect();
 /// assert_eq!(vec![1, 2, 4, 9, 18], build_path(&18, &parents));
 /// assert_eq!(vec![1], build_path(&1, &parents));
 /// assert_eq!(vec![101], build_path(&101, &parents));
@@ -245,7 +277,7 @@ where
 }
 
 struct SmallestHolder<K> {
-    cost:  K,
+    cost: K,
     index: usize,
 }
 
