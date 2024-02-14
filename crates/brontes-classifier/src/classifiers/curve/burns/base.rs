@@ -192,7 +192,7 @@ mod tests {
             token: vec![token0, token1, token2],
             amount: vec![
                 U256::from(135971).to_scaled_rational(8),
-                U256::from(27506).to_scaled_rational(8),
+                U256::from(253273).to_scaled_rational(8),
                 U256::from(2022770990903219 as u128).to_scaled_rational(18),
             ],
         });
