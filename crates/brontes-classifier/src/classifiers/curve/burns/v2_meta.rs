@@ -85,6 +85,7 @@ action_impl!(
     }
 );
 
+// could not find any V2 metapools calling this
 action_impl!(
     Protocol::CurveV2MetapoolImpl,
     crate::CurveV2MetapoolImpl::remove_liquidity_imbalance_0Call,
@@ -316,80 +317,6 @@ mod tests {
             amount: vec![
                 U256::from(627992358239302043763875 as u128).to_scaled_rational(18),
                 U256::from(579890756974932941933194 as u128).to_scaled_rational(18),
-            ],
-        });
-
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_burn())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_burn()),
-        };
-
-        classifier_utils
-            .contains_action(burn, 0, eq_action, search_fn)
-            .await
-            .unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_curve_v2_metapool_remove_liquidity_imbalanced0() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        classifier_utils.ensure_protocol(
-            Protocol::CurveV2MetaPool,
-            Address::new(hex!("2d600BbBcC3F1B6Cb9910A70BaB59eC9d5F81B9A")),
-            Address::new(hex!("64351fC9810aDAd17A690E4e1717Df5e7e085160")),
-            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
-            None,
-            Some(Address::new(hex!(
-                "5E8422345238F34275888049021821E8E08CAa1f"
-            ))),
-        );
-
-        let burn = B256::from(hex!(
-            "5c300c51cff513d5a9d987ac58a1c6497e0f65959be37a5db74dee6f4a5f57e8"
-        ));
-
-        let token0 = TokenInfoWithAddress {
-            address: Address::new(hex!("64351fC9810aDAd17A690E4e1717Df5e7e085160")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "msETH".to_string(),
-            },
-        };
-
-        let token1 = TokenInfoWithAddress {
-            address: Address::new(hex!("5E8422345238F34275888049021821E8E08CAa1f")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "frxETH".to_string(),
-            },
-        };
-
-        classifier_utils.ensure_token(token0.clone());
-        classifier_utils.ensure_token(token1.clone());
-
-        let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2MetaPool,
-            trace_index: 1,
-            from: Address::new(hex!("84119e837dbeF0f4Fb877681687A2869b220533B")),
-            recipient: Address::new(hex!("84119e837dbeF0f4Fb877681687A2869b220533B")),
-            pool: Address::new(hex!("2d600BbBcC3F1B6Cb9910A70BaB59eC9d5F81B9A")),
-            token: vec![token0, token1],
-            amount: vec![
-                U256::from(50000000000000000000 as u128).to_scaled_rational(18),
-                U256::from(50000000000000000000 as u128).to_scaled_rational(18),
             ],
         });
 
