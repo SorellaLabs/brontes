@@ -9,6 +9,3 @@ pub use v2_meta::*;
 
 mod v2_plain;
 pub use v2_plain::*;
-
-mod crvUSD_plain;
-pub use crvUSD_plain::*;
