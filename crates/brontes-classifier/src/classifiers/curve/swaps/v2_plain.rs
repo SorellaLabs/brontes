@@ -112,81 +112,89 @@ action_impl!(
     }
 );
 
-// #[cfg(test)]
-// mod tests {
-//     use std::str::FromStr;
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
 
-//     use alloy_primitives::{hex, Address, B256, U256};
-//     use brontes_classifier::test_utils::ClassifierTestUtils;
-//     use brontes_types::{
-//         db::token_info::{TokenInfo, TokenInfoWithAddress},
-//         normalized_actions::Actions,
-//         Node, ToScaledRational, TreeSearchArgs,
-//     };
+    use alloy_primitives::{hex, Address, B256, U256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::{TokenInfo, TokenInfoWithAddress},
+        normalized_actions::Actions,
+        Node, ToScaledRational, TreeSearchArgs,
+    };
 
-//     use super::*;
+    use super::*;
 
-//     #[brontes_macros::test]
-//     async fn test_curve_v2_plain_pool_exchange1() {
-//         let classifier_utils = ClassifierTestUtils::new().await;
-//         classifier_utils.ensure_protocol(
-//             Protocol::CurveV2PlainPool,
-//             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-//             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-//             Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-//             None,
-//             None,
-//             None,
-//             None,
-//         );
+    #[brontes_macros::test]
+    async fn test_curve_v2_plain_pool_exchange0() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        classifier_utils.ensure_protocol(
+            Protocol::CurveV2PlainPool,
+            Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
+            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            None,
+            None,
+            None,
+            None,
+        );
 
-//         let swap =
-//
-// B256::from(hex!("
-// 088ca9fd8ea73ecd33ba1bef7aafd1bd57a22275d15d6a79c7f3889d88ba3720"));
+        let swap = B256::from(hex!(
+            "088ca9fd8ea73ecd33ba1bef7aafd1bd57a22275d15d6a79c7f3889d88ba3720"
+        ));
 
-//         let token_in = TokenInfoWithAddress {
-//             address:
-// Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-// inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },         };
+        let token_in = TokenInfoWithAddress {
+            address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "cvxCRV".to_string(),
+            },
+        };
 
-//         let token_out = TokenInfoWithAddress {
-//             address:
-// Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-// inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },         };
+        let token_out = TokenInfoWithAddress {
+            address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "CRV".to_string(),
+            },
+        };
 
-//         classifier_utils.ensure_token(token_in.clone());
-//         classifier_utils.ensure_token(token_out.clone());
+        classifier_utils.ensure_token(token_in.clone());
+        classifier_utils.ensure_token(token_out.clone());
 
-//         let eq_action = Actions::Swap(NormalizedSwap {
-//             protocol: Protocol::CurveV2PlainPool,
-//             trace_index: 1,
-//             from:
-// Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
-// recipient: Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
-//             pool:
-// Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-// token_in,             amount_in: U256::from_str("5738343996295056106530")
-//                 .unwrap()
-//                 .to_scaled_rational(18),
-//             token_out,
-//             amount_out: U256::from_str("5632479022165211497524")
-//                 .unwrap()
-//                 .to_scaled_rational(18),
-//             msg_value: U256::ZERO,
-//         });
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol: Protocol::CurveV2PlainPool,
+            trace_index: 1,
+            from: Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
+            recipient: Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
+            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token_in,
+            amount_in: U256::from_str("5738343996295056106530")
+                .unwrap()
+                .to_scaled_rational(18),
+            token_out,
+            amount_out: U256::from_str("5632479022165211497524")
+                .unwrap()
+                .to_scaled_rational(18),
+            msg_value: U256::ZERO,
+        });
 
-//         let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-//             collect_current_node:  node.data.is_swap(),
-//             child_node_to_collect: node
-//                 .get_all_sub_actions()
-//                 .iter()
-//                 .any(|action| action.is_swap()),
-//         };
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node: data
+                .get_ref(node.data)
+                .map(|s| s.is_swap())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .filter_map(|d| data.get_ref(*d))
+                .any(|action| action.is_swap()),
+        };
 
-//         classifier_utils
-//             .contains_action(swap, 0, eq_action, search_fn)
-//             .await
-//             .unwrap();
-//     }
-// }
+        classifier_utils
+            .contains_action(swap, 0, eq_action, search_fn)
+            .await
+            .unwrap();
+    }
+}
