@@ -45,7 +45,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit> {
 
     pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     pub clickhouse: &'static Clickhouse,
-    pub parser: &'static Parser<'static, T, LibmdbxReadWriter>,
+    pub parser: &'static Parser<'static, T, DB>,
     pub libmdbx: &'static DB,
 }
 
