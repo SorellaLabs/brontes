@@ -78,6 +78,7 @@ utils!(
         CurveV2MetaPool,
         CurveV2MetapoolImpl,
         CurveV2PlainPool,
+        CurveV2PlainPoolImpl,
         CurvecrvUSDPlainPool,
         CurvecrvUSDMetaPool,
         CurveCryptoSwapPool,
