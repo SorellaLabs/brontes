@@ -95,7 +95,7 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_v1_metapool_add_liquidity0() {
+    async fn test_curve_v2_metapool_add_liquidity0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2MetaPool,
@@ -115,7 +115,7 @@ mod tests {
         );
 
         let mint = B256::from(hex!(
-            "00723506614af2c7a56057b0bd70c263198019e58aac8c10b337d2391996ea0f"
+            "f56e28f6c8f3610f1705c34a3f179dc09dafbf8cdc8695cefb683d0f32995251"
         ));
 
         let token0 = TokenInfoWithAddress {
@@ -145,8 +145,8 @@ mod tests {
             pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             token: vec![token0, token1],
             amount: vec![
-                U256::from(1000000000000000000000 as u128).to_scaled_rational(18),
-                U256::from(1000000000000000000000 as u128).to_scaled_rational(18),
+                U256::from(0 as u128).to_scaled_rational(18),
+                U256::from(100000000000000000000 as u128).to_scaled_rational(18),
             ],
         });
 
