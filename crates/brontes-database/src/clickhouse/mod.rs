@@ -1,4 +1,5 @@
 mod const_sql;
+pub mod dbms;
 pub mod errors;
 #[cfg(feature = "clickhouse-inserts")]
 mod middleware;

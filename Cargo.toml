@@ -17,9 +17,9 @@ resolver = "2"
 
 [workspace.dependencies]
 # Database
-sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
-sorella-db-types = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "joe/cleanup-clickhouse" }
+sorella-db-types = { git = "https://github.com/SorellaLabs/Database", branch = "joe/cleanup-clickhouse"  }
+
 
 # Poirot
 brontes-core = { path = "./crates/brontes-core" }

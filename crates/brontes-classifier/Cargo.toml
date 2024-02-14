@@ -83,7 +83,6 @@ brontes-macros.workspace = true
 
 [build-dependencies]
 tokio.workspace = true
-clickhouse.workspace = true
 hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true

@@ -12,7 +12,6 @@ use crate::{
     serde_utils::{addresss, option_addresss, static_bindings},
     Protocol,
 };
-database_table!(ProtocolDetails, ProtocolInfo);
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined, Hash)]
 #[redefined_attr(derive(

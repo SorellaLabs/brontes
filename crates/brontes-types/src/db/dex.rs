@@ -55,8 +55,6 @@ impl DexPrices {
     }
 }
 
-database_table!(DexQuote, DexQuotes);
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
 

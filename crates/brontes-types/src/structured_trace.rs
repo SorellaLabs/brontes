@@ -205,9 +205,16 @@ impl TransactionTraceWithLogs {
     }
 }
 
-use sorella_db_databases::{database_table, tables::DatabaseTable};
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TxTraces {
+    pub traces: Vec<TxTrace>,
+}
 
-database_table!(TxTraces, Vec<TxTrace>);
+impl From<Vec<TxTrace>> for TxTraces {
+    fn from(value: Vec<TxTrace>) -> Self {
+        Self { traces: value }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TxTrace {

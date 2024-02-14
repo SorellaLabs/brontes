@@ -29,8 +29,6 @@ use crate::{
     GasDetails,
 };
 
-database_table!(BundleHeaders, BundleHeader);
-
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]

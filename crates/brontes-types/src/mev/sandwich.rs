@@ -31,8 +31,6 @@ use crate::{
     GasDetails,
 };
 
-database_table!(Sandwiches, Sandwich);
-
 /// Represents various MEV sandwich attack strategies, including standard
 /// sandwiches and more complex variations like the "Big Mac Sandwich."
 ///

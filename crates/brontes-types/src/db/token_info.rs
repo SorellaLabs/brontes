@@ -15,8 +15,6 @@ use crate::{
     implement_table_value_codecs_with_zc,
 };
 
-database_table!(TokenInfo, TokenInfoWithAddress);
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenInfoWithAddress {
