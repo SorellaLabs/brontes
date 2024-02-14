@@ -77,6 +77,37 @@ init_block = 12904548
 [CurveV2MetapoolImpl."0x55aa9bf126bcabf0bdc17fa9e39ec9239e1ce7a9"]
 init_block = 12904527
 
+[CurveV2MetapoolImpl."33bb0e62d5e8c688e645dd46dfb48cd613250067"]
+init_block = 14979398
+
+[CurveV2MetapoolImpl."0x213be373FDff327658139C7df330817DAD2d5bBE"]
+init_block = 12904519
+
+[CurveV2MetapoolImpl."0xc4C78b08fA0c3d0a312605634461A88184Ecd630"]
+init_block = 12904549
+
+[CurveV2MetapoolImpl."0xECAaecd9d2193900b424774133B1f51ae0F29d9E"]
+init_block = 13495647
+
+[CurveV2MetapoolImpl."0x40fD58D44cFE63E8517c9Bb3ac98676838Ea56A8"]
+init_block = 13495681
+
+[CurveV2MetapoolImpl."0x33bB0e62d5e8C688E645Dd46DFb48Cd613250067"]
+init_block = 14979402
+
+[CurveV2MetapoolImpl."0x2EB24483Ef551dA247ab87Cf18e1Cc980073032D"]
+init_block = 14979402
+
+[CurveV2MetapoolImpl."0x008CFa89df5B0c780cA3462fc2602D7F8c7Ac315"]
+init_block = 16100246
+
+[CurveV2MetapoolImpl."0xAbc533EbCDdeD41215C46ee078C5818B5b0A252F"]
+init_block = 16100250
+
+
+
+
+
 
 [CurveV2PlainPool."0x4A4d7868390EF5CaC51cDA262888f34bD3025C3F"]
 init_block = 12904330
