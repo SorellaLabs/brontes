@@ -4,7 +4,6 @@ use brontes_types::{
     normalized_actions::NormalizedMint, structured_trace::CallInfo, ToScaledRational,
 };
 
-// couldn't find a V1 metapool calling this
 action_impl!(
     Protocol::CurveV1MetapoolImpl,
     crate::CurveV1MetapoolImpl::add_liquidity_0Call,
