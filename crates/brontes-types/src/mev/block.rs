@@ -37,6 +37,8 @@ pub struct MevBlock {
     pub builder_address: Address,
     pub builder_eth_profit: f64,
     pub builder_profit_usd: f64,
+    // Builder MEV profit from their vertically integrated searchers (in USD)
+    pub builder_mev_profit_usd: f64,
     pub proposer_fee_recipient: Option<Address>,
     pub proposer_mev_reward: Option<u128>,
     pub proposer_profit_usd: Option<f64>,
@@ -98,6 +100,11 @@ impl fmt::Display for MevBlock {
             f,
             "  - Builder ETH Profit: {:.6} ETH",
             format!("{:.6}", self.builder_eth_profit).color(builder_profit_color)
+        )?;
+        writeln!(
+            f,
+            "  - Builder MEV Profit: {:.6} ETH",
+            format!("{:.6}", self.builder_mev_profit_usd).green()
         )?;
 
         // Proposer section
