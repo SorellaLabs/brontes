@@ -4,7 +4,11 @@ use alloy_providers::provider::{Provider, TempProvider};
 use alloy_rpc_types::{BlockId, BlockNumberOrTag};
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
-use reth_primitives::{BlockNumber, Bytes, Header, TxHash, B256};
+use reth_db::DatabaseEnv;
+use reth_primitives::{
+    Address, BlockNumber, Bytecode, Bytes, Header, StorageValue, TxHash, B256, MAINNET,
+};
+use reth_provider::providers::ProviderFactory;
 use reth_rpc_types::{
     state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
 };
@@ -12,13 +16,15 @@ use reth_rpc_types::{
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
     provider: Arc<Provider<Http<reqwest::Client>>>,
+    db_provider: ProviderFactory<Arc<DatabaseEnv>>,
 }
 
 impl LocalProvider {
-    pub fn new(url: String) -> Self {
+    pub fn new(url: String, db: Arc<DatabaseEnv>) -> Self {
         let http = Http::new(url.parse().unwrap());
         Self {
             provider: Arc::new(Provider::new(http)),
+            db_provider: ProviderFactory::new(Arc::clone(&db), Arc::clone(&MAINNET)),
         }
     }
 }
@@ -122,5 +128,37 @@ impl TracingProvider for LocalProvider {
         };
 
         Ok(Some(header))
+    }
+
+    // DB Access Methods
+    fn get_storage(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+        storage_key: B256,
+    ) -> eyre::Result<Option<StorageValue>> {
+        let provider = match block_number {
+            Some(block_number) => self.db_provider.history_by_block_number(block_number),
+            None => self.db_provider.latest(),
+        }?;
+
+        let storage_value = provider.storage(address, storage_key)?;
+
+        Ok(storage_value)
+    }
+
+    fn get_bytecode(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+    ) -> eyre::Result<Option<Bytecode>> {
+        let provider = match block_number {
+            Some(block_number) => self.db_provider.history_by_block_number(block_number),
+            None => self.db_provider.latest(),
+        }?;
+
+        let bytecode = provider.account_code(address)?;
+
+        Ok(bytecode)
     }
 }
