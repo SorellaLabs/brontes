@@ -182,6 +182,7 @@ mod tests {
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
+        classifier_utils.ensure_token(token2.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
             protocol: Protocol::CurveBasePool,
