@@ -128,10 +128,10 @@ impl LibmdbxInit for LibmdbxReadWriter {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        // let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
-        // initializer
-        //     .initialize(tables, clear_tables, block_range)
-        //     .await?;
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize(tables, clear_tables, block_range)
+            .await?;
 
         Ok(())
     }
@@ -139,37 +139,36 @@ impl LibmdbxInit for LibmdbxReadWriter {
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
     async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
-        true
-        // futures::stream::iter([
-        //     Tables::PoolCreationBlocks,
-        //     Tables::AddressToProtocolInfo,
-        //     Tables::TokenDecimals,
-        // ])
-        // .map(|table| async move {
-        //     match table {
-        //         Tables::AddressToProtocolInfo => self
-        //             .has_clickhouse_min_max::<AddressToProtocolInfo>(
-        //                 MIN_MAX_ADDRESS_TO_PROTOCOL,
-        //                 clickhouse,
-        //             )
-        //             .await
-        //             .unwrap_or_default(),
-        //         Tables::TokenDecimals => self
-        //             .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
-        //             .await
-        //             .unwrap_or_default(),
-        //         Tables::PoolCreationBlocks => self
-        //             .has_clickhouse_min_max::<PoolCreationBlocks>(
-        //                 MIN_MAX_POOL_CREATION_BLOCKS,
-        //                 clickhouse,
-        //             )
-        //             .await
-        //             .unwrap_or_default(),
-        //         _ => true,
-        //     }
-        // })
-        // .any(|f| f.map(|f| !f))
-        // .await
+        futures::stream::iter([
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+        ])
+        .map(|table| async move {
+            match table {
+                Tables::AddressToProtocolInfo => self
+                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
+                        MIN_MAX_ADDRESS_TO_PROTOCOL,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                Tables::TokenDecimals => self
+                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
+                    .await
+                    .unwrap_or_default(),
+                Tables::PoolCreationBlocks => self
+                    .has_clickhouse_min_max::<PoolCreationBlocks>(
+                        MIN_MAX_POOL_CREATION_BLOCKS,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                _ => true,
+            }
+        })
+        .any(|f| f.map(|f| !f))
+        .await
     }
 
     fn state_to_initialize(
