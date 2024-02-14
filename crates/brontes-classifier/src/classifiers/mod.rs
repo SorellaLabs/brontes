@@ -73,6 +73,7 @@ action_dispatch!(
     UniswapXexecuteBatchWithCallbackCall,
     UniswapXexecuteWithCallbackCall,
     CurveBasePoolexchangeCall,
+    CurveBasePooladd_liquidityCall,
     CurveV1MetapoolImplexchange_0Call,
     CurveV1MetapoolImplexchange_1Call,
     CurveV1MetapoolImplexchange_underlying_0Call,
