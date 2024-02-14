@@ -44,7 +44,6 @@ action_impl!(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
 
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
@@ -57,7 +56,7 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_v1_base_exchange() {
+    async fn test_curve_base_add_liquidity() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveBasePool,
