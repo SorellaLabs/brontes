@@ -208,6 +208,7 @@ action_impl!(
     }
 );
 
+// could not find any V1 metapools calling this
 action_impl!(
     Protocol::CurveV1MetapoolImpl,
     crate::CurveV1MetapoolImpl::remove_liquidity_one_coin_1Call,
@@ -393,6 +394,68 @@ mod tests {
                 U256::from(5782689815360000000000 as u128).to_scaled_rational(18),
                 U256::from(60598295710000000000 as u128).to_scaled_rational(18),
             ],
+        });
+
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node: data
+                .get_ref(node.data)
+                .map(|s| s.is_burn())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .filter_map(|d| data.get_ref(*d))
+                .any(|action| action.is_burn()),
+        };
+
+        classifier_utils
+            .contains_action(burn, 0, eq_action, search_fn)
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_curve_base_remove_liquidity_one0() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        classifier_utils.ensure_protocol(
+            Protocol::CurveV1MetaPool,
+            Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
+            Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
+            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+            Some(Address::new(hex!(
+                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ))),
+            Some(Address::new(hex!(
+                "dAC17F958D2ee523a2206206994597C13D831ec7"
+            ))),
+            None,
+            Some(Address::new(hex!(
+                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+            ))),
+        );
+
+        let burn = B256::from(hex!(
+            "35268150b295fe4d18727b9edca12be89d6a161efae5b85965667095f440e0f0"
+        ));
+
+        let token = TokenInfoWithAddress {
+            address: Address::new(hex!("6c3f90f043a72fa612cbac8115ee7e52bde6e490")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "3Crv".to_string(),
+            },
+        };
+
+        classifier_utils.ensure_token(token.clone());
+
+        let eq_action = Actions::Burn(NormalizedBurn {
+            protocol: Protocol::CurveV1MetaPool,
+            trace_index: 1,
+            from: Address::new(hex!("b5e452a90280A978aA8DAe4306F960167c7C528A")),
+            recipient: Address::new(hex!("b5e452a90280A978aA8DAe4306F960167c7C528A")),
+            pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
+            token: vec![token],
+            amount: vec![U256::from(1976026334539568105482 as u128).to_scaled_rational(18)],
         });
 
         let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
