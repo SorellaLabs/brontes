@@ -12,9 +12,7 @@ use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use tracing::log::debug;
 
-//TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
-    metadata: Arc<Metadata>,
     cumulative_gas_used: u128,
     cumulative_priority_fee: u128,
     total_bribe: u128,
@@ -27,10 +25,7 @@ pub struct BlockPreprocessing {
 /// calculates the cumulative gas used and paid by iterating over the
 /// transaction roots in the block tree, and packages these results into a
 /// `BlockPreprocessing` struct.
-pub(crate) fn pre_process(
-    tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<Metadata>,
-) -> BlockPreprocessing {
+pub(crate) fn pre_process(tree: Arc<BlockTree<Actions>>) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
 
     let (cumulative_gas_used, cumulative_priority_fee, total_bribe) = tree.tx_roots.iter().fold(
@@ -51,7 +46,6 @@ pub(crate) fn pre_process(
     );
 
     BlockPreprocessing {
-        metadata,
         cumulative_gas_used,
         cumulative_priority_fee,
         total_bribe,
@@ -59,22 +53,25 @@ pub(crate) fn pre_process(
     }
 }
 
-//TODO: Clean up & fix
 pub(crate) fn build_mev_header(
-    metadata: Arc<Metadata>,
+    metadata: &Arc<Metadata>,
     tree: Arc<BlockTree<Actions>>,
     pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,
+    mev_count: MevCount,
     orchestra_data: &[Bundle],
 ) -> MevBlock {
-    let cum_mev_priority_fee_paid = orchestra_data
-        .iter()
-        .map(|bundle| {
-            bundle
+    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd) = orchestra_data.iter().fold(
+        (0u128, 0f64),
+        |(total_fee_paid, total_profit_usd), bundle| {
+            let fee_paid = bundle
                 .data
-                .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128)
-        })
-        .sum();
+                .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128);
+            let profit_usd = bundle.header.profit_usd;
+
+            (total_fee_paid + fee_paid, total_profit_usd + profit_usd)
+        },
+    );
 
     let (builder_eth_profit, builder_mev_profit_usd) = calculate_builder_profit(
         tree,
@@ -87,41 +84,32 @@ pub(crate) fn build_mev_header(
     let builder_eth_profit = builder_eth_profit.to_scaled_rational(18);
 
     MevBlock {
-        block_hash: pre_processing.metadata.block_hash.into(),
-        block_number: pre_processing.metadata.block_num,
-        mev_count: MevCount::default(),
-        eth_price: f64::rounding_from(&pre_processing.metadata.eth_prices, RoundingMode::Nearest).0,
+        block_hash: metadata.block_hash.into(),
+        block_number: metadata.block_num,
+        mev_count,
+        eth_price: f64::rounding_from(&metadata.eth_prices, RoundingMode::Nearest).0,
         cumulative_gas_used: pre_processing.cumulative_gas_used,
         cumulative_priority_fee: pre_processing.cumulative_priority_fee,
         total_bribe: pre_processing.total_bribe,
-        cumulative_mev_priority_fee_paid: cum_mev_priority_fee_paid,
+        cumulative_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
         builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
         builder_profit_usd: f64::rounding_from(
-            &builder_eth_profit * &pre_processing.metadata.eth_prices,
+            &builder_eth_profit * &metadata.eth_prices,
             RoundingMode::Nearest,
         )
         .0,
         builder_mev_profit_usd,
-        proposer_fee_recipient: pre_processing.metadata.proposer_fee_recipient,
-        proposer_mev_reward: pre_processing.metadata.proposer_mev_reward,
-        proposer_profit_usd: pre_processing
-            .metadata
-            .proposer_mev_reward
-            .map(|mev_reward| {
-                f64::rounding_from(
-                    mev_reward.to_scaled_rational(18) * &pre_processing.metadata.eth_prices,
-                    RoundingMode::Nearest,
-                )
-                .0
-            }),
-        //TODO: This is wron need to fix
-        cumulative_mev_profit_usd: f64::rounding_from(
-            (cum_mev_priority_fee_paid + pre_processing.total_bribe).to_scaled_rational(18)
-                * &pre_processing.metadata.eth_prices,
-            RoundingMode::Nearest,
-        )
-        .0,
+        proposer_fee_recipient: metadata.proposer_fee_recipient,
+        proposer_mev_reward: metadata.proposer_mev_reward,
+        proposer_profit_usd: metadata.proposer_mev_reward.map(|mev_reward| {
+            f64::rounding_from(
+                mev_reward.to_scaled_rational(18) * &metadata.eth_prices,
+                RoundingMode::Nearest,
+            )
+            .0
+        }),
+        cumulative_mev_profit_usd,
         possible_mev,
     }
 }
@@ -218,12 +206,11 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 /// Accounts for ultrasound relay bid adjustments & vertically integrated builder profit
 pub fn calculate_builder_profit(
     tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<Metadata>,
+    metadata: &Arc<Metadata>,
     cumulative_priority_fee: u128,
     total_bribe: u128,
-    bundles: &[Bundle], // Note: Unused for now, but may be integrated in future logic
+    bundles: &[Bundle],
 ) -> (i128, f64) {
-    // Return type changed to u128 to not return an error
     let builder_address = tree.header.beneficiary;
     let builder_payments: i128 = (cumulative_priority_fee + total_bribe) as i128;
 
@@ -253,7 +240,6 @@ pub fn calculate_builder_profit(
         })
         .sum::<i128>();
 
-    // Attempt to retrieve builder info, log if unavailable
     let builder_info = match metadata.builder_info.as_ref() {
         Some(info) => info,
         None => {
@@ -292,7 +278,7 @@ pub fn calculate_builder_profit(
     };
 
     let payment_from_collateral_addr: i128 = tree.tx_roots.last().map_or(0, |root| {
-        if root.get_to_address() == collateral_address
+        if root.get_from_address() == collateral_address
             && root.get_to_address() == metadata.block_metadata.proposer_fee_recipient.unwrap()
         {
             match root.get_root_action() {
