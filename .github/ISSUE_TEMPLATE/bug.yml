@@ -80,7 +80,7 @@ body:
     id: terms
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct]()
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/SorellaLabs/brontes/blob/main/CONTRIBUTING.md#code-of-conduct)
       options:
         - label: I agree to follow the Code of Conduct
           required: true
