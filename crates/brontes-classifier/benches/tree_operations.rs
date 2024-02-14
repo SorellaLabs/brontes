@@ -15,7 +15,7 @@ fn bench_collect_tx(c: &mut Criterion) {
             c,
             |tree| {
                 tree.collect_all(|n, data| TreeSearchArgs {
-                    collect_current_node:  data
+                    collect_current_node: data
                         .get_ref(n.data)
                         .map(|a| a.is_transfer())
                         .unwrap_or_default(),
@@ -35,7 +35,7 @@ fn bench_collect_block(c: &mut Criterion) {
     utils
         .bench_tree_operations("collect block", 18672183, c, |tree| {
             tree.collect_all(|n, data| TreeSearchArgs {
-                collect_current_node:  data
+                collect_current_node: data
                     .get_ref(n.data)
                     .map(|a| a.is_transfer())
                     .unwrap_or_default(),

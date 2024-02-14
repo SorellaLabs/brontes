@@ -178,37 +178,6 @@ impl Serialize for Actions {
     }
 }
 
-// macro_rules! collect_action_fn {
-//     ($($action:ident),*) => {
-//         impl Actions {
-//             $(
-//                 ::paste::paste!(
-//                     pub fn [<$action _collect_fn>]()
-//                     -> impl Fn(&crate::tree::Node<Self>, &) -> (bool, bool) {
-//                         |node | (node.data.[<is_ $action>](), node.get_all_sub_actions()
-//                                 .iter().any(|i| i.[<is_ $action>]()))
-//                     }
-//                 );
-//             )*
-//         }
-//     };
-// }
-//
-// collect_action_fn!(
-//     swap,
-//     flash_loan,
-//     liquidation,
-//     batch,
-//     burn,
-//     revert,
-//     mint,
-//     transfer,
-//     collect,
-//     self_destruct,
-//     unclassified,
-//     eth_transfer
-// );
-
 impl Actions {
     pub fn force_liquidation(self) -> NormalizedLiquidation {
         match self {
@@ -226,7 +195,9 @@ impl Actions {
     }
 
     pub fn force_transfer_mut(&mut self) -> &mut NormalizedTransfer {
-        let Actions::Transfer(transfer) = self else { unreachable!("not transfer") };
+        let Actions::Transfer(transfer) = self else {
+            unreachable!("not transfer")
+        };
         transfer
     }
 
@@ -256,7 +227,7 @@ impl Actions {
     pub fn get_calldata(&self) -> Option<Bytes> {
         if let Actions::Unclassified(u) = &self {
             if let Action::Call(call) = &u.trace.action {
-                return Some(call.input.clone())
+                return Some(call.input.clone());
             }
         }
 
@@ -285,6 +256,31 @@ impl Actions {
             Actions::NewPool(p) => p.pool_address,
             Actions::PoolConfigUpdate(p) => p.pool_address,
             Actions::Revert => Address::ZERO,
+        }
+    }
+
+    pub fn get_from_address(&self) -> Address {
+        match self {
+            Actions::Swap(s) => s.from,
+            Actions::SwapWithFee(s) => s.from,
+            Actions::FlashLoan(f) => f.from,
+            Actions::Batch(b) => b.solver,
+            Actions::Mint(m) => m.from,
+            Actions::Burn(b) => b.from,
+            Actions::Transfer(t) => t.from,
+            Actions::Collect(c) => c.from,
+            Actions::Liquidation(c) => c.liquidator,
+            Actions::SelfDestruct(c) => c.get_address(),
+            Actions::Unclassified(t) => match &t.trace.action {
+                reth_rpc_types::trace::parity::Action::Call(c) => c.to,
+                reth_rpc_types::trace::parity::Action::Create(_) => Address::ZERO,
+                reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
+                reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
+            },
+            Actions::EthTransfer(t) => t.from,
+            Actions::Revert => unreachable!(),
+            Actions::NewPool(_) => Address::ZERO,
+            Actions::PoolConfigUpdate(_) => Address::ZERO,
         }
     }
 
@@ -330,7 +326,7 @@ impl Actions {
 
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
-            return u.is_static_call()
+            return u.is_static_call();
         }
         false
     }

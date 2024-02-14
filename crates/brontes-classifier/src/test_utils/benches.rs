@@ -25,9 +25,9 @@ use crate::{
 };
 
 pub struct ClassifierBenchUtils {
-    trace_loader:          TraceLoader,
-    classifier:            Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
-    rt:                    tokio::runtime::Runtime,
+    trace_loader: TraceLoader,
+    classifier: Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
+    rt: tokio::runtime::Runtime,
     _dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
 
@@ -46,7 +46,12 @@ impl ClassifierBenchUtils {
             .unwrap();
         let trace_loader = rt.block_on(TraceLoader::new());
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
-        Self { classifier, trace_loader, _dex_pricing_receiver: rx, rt }
+        Self {
+            classifier,
+            trace_loader,
+            _dex_pricing_receiver: rx,
+            rt,
+        }
     }
 
     pub fn bench_tx_tree_building(
@@ -135,7 +140,9 @@ impl ClassifierBenchUtils {
             .block_on(self.classifier.build_block_tree(vec![trace], header));
         let tree = Arc::new(tree);
 
-        c.bench_function(bench_name, move |b| b.iter(|| black_box(bench_fn(tree.clone()))));
+        c.bench_function(bench_name, move |b| {
+            b.iter(|| black_box(bench_fn(tree.clone())))
+        });
 
         Ok(())
     }
@@ -156,7 +163,9 @@ impl ClassifierBenchUtils {
             .block_on(self.classifier.build_block_tree(traces, header));
         let tree = Arc::new(tree);
 
-        c.bench_function(bench_name, move |b| b.iter(|| black_box(bench_fn(tree.clone()))));
+        c.bench_function(bench_name, move |b| {
+            b.iter(|| black_box(bench_fn(tree.clone())))
+        });
 
         Ok(())
     }
@@ -185,7 +194,7 @@ impl ClassifierBenchUtils {
         if trace_addr.len() > 1 {
             trace_addr.pop().unwrap();
         } else {
-            return Err(ClassifierBenchError::ProtocolDiscoveryError(created_pool))
+            return Err(ClassifierBenchError::ProtocolDiscoveryError(created_pool));
         };
 
         let p_trace = trace
@@ -194,7 +203,9 @@ impl ClassifierBenchUtils {
             .find(|f| f.get_trace_address() == trace_addr)
             .ok_or_else(|| ClassifierBenchError::ProtocolDiscoveryError(created_pool))?;
 
-        let Action::Call(call) = &p_trace.trace.action else { panic!() };
+        let Action::Call(call) = &p_trace.trace.action else {
+            panic!()
+        };
 
         c.bench_function(bench_name, move |b| {
             b.to_async(&self.rt).iter(|| async move {
@@ -234,7 +245,10 @@ impl ClassifierBenchUtils {
             .libmdbx
             .0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
-                AddressToProtocolInfoData { key: protocol_address, value: protocol },
+                AddressToProtocolInfoData {
+                    key: protocol_address,
+                    value: protocol,
+                },
             ])?;
 
         let TxTracesWithHeaderAnd { trace, block, .. } = self

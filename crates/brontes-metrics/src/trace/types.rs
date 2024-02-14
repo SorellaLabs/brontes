@@ -24,13 +24,17 @@ impl From<TraceMetricEvent> for PoirotMetricEvents {
 #[derive(Clone, Debug)]
 pub struct BlockStats {
     pub block_num: u64,
-    pub txs:       Vec<TransactionStats>,
-    pub err:       Option<TraceParseErrorKind>,
+    pub txs: Vec<TransactionStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl BlockStats {
     pub fn new(block_num: u64, err: Option<TraceParseErrorKind>) -> Self {
-        Self { block_num, txs: Vec::new(), err }
+        Self {
+            block_num,
+            txs: Vec::new(),
+            err,
+        }
     }
 
     pub fn trace(&self) {
@@ -47,10 +51,10 @@ impl BlockStats {
 #[derive(Clone, Debug)]
 pub struct TransactionStats {
     pub block_num: u64,
-    pub tx_hash:   B256,
-    pub tx_idx:    u16,
-    pub traces:    Vec<TraceStats>,
-    pub err:       Option<TraceParseErrorKind>,
+    pub tx_hash: B256,
+    pub tx_idx: u16,
+    pub traces: Vec<TraceStats>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TransactionStats {
@@ -60,7 +64,13 @@ impl TransactionStats {
         tx_idx: u16,
         err: Option<TraceParseErrorKind>,
     ) -> Self {
-        Self { block_num, tx_hash, tx_idx, traces: Vec::new(), err }
+        Self {
+            block_num,
+            tx_hash,
+            tx_idx,
+            traces: Vec::new(),
+            err,
+        }
     }
 
     pub fn trace(&self) {
@@ -77,10 +87,10 @@ impl TransactionStats {
 #[derive(Clone, Copy, Debug)]
 pub struct TraceStats {
     pub block_num: u64,
-    pub tx_hash:   B256,
-    pub tx_idx:    u16,
+    pub tx_hash: B256,
+    pub tx_idx: u16,
     pub trace_idx: u16,
-    pub err:       Option<TraceParseErrorKind>,
+    pub err: Option<TraceParseErrorKind>,
 }
 
 impl TraceStats {
@@ -91,16 +101,26 @@ impl TraceStats {
         trace_idx: u16,
         err: Option<TraceParseErrorKind>,
     ) -> Self {
-        Self { block_num, tx_hash, tx_idx, trace_idx, err }
+        Self {
+            block_num,
+            tx_hash,
+            tx_idx,
+            trace_idx,
+            err,
+        }
     }
 
     pub fn trace(&self, total_len: usize) {
         let tx_hash = format!("{:#x}", self.tx_hash);
         let message = format!(
             "{}",
-            format!("Starting Transaction Trace {} / {}", self.trace_idx + 1, &total_len)
-                .bright_blue()
-                .bold()
+            format!(
+                "Starting Transaction Trace {} / {}",
+                self.trace_idx + 1,
+                &total_len
+            )
+            .bright_blue()
+            .bold()
         );
         debug!(message = message, tx_hash = tx_hash);
     }

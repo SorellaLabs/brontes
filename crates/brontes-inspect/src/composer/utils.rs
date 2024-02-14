@@ -6,18 +6,18 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational,
+    ToScaledRational, TreeSearchArgs,
 };
 use itertools::Itertools;
-use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode, Rational};
+use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
 //TODO: Calculate priority fee & get average so we can flag outliers
 pub struct BlockPreprocessing {
-    metadata:                Arc<Metadata>,
-    cumulative_gas_used:     u128,
+    metadata: Arc<Metadata>,
+    cumulative_gas_used: u128,
     cumulative_priority_fee: u128,
-    total_bribe:             u128,
-    builder_address:         Address,
+    total_bribe: u128,
+    builder_address: Address,
 }
 
 /// Pre-processes the block data for the Composer.
@@ -74,12 +74,9 @@ pub(crate) fn build_mev_header(
                 .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128)
         })
         .sum();
-
-    let builder_eth_profit = Rational::from_signeds(
-        (pre_processing.total_bribe as i128 + pre_processing.cumulative_priority_fee as i128)
-            - (metadata.proposer_mev_reward.unwrap_or_default() as i128),
-        10i128.pow(18),
-    );
+    let builder_eth_profit = calculate_builder_profit(tree, metadata)
+        .unwrap()
+        .to_scaled_rational(18);
 
     MevBlock {
         block_hash: pre_processing.metadata.block_hash.into(),
@@ -130,10 +127,13 @@ pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> HashMap<MevType, 
     orchestra_data
         .into_iter()
         .map(|bundle| (bundle.header.mev_type, bundle))
-        .fold(HashMap::default(), |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
-            acc.entry(mev_type).or_default().push(v);
-            acc
-        })
+        .fold(
+            HashMap::default(),
+            |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
+                acc.entry(mev_type).or_default().push(v);
+                acc
+            },
+        )
 }
 
 /// Finds the index of the first classified mev in the list whose transaction
@@ -166,7 +166,10 @@ pub fn filter_and_count_bundles(
         let filtered_bundles: Vec<Bundle> = bundles
             .into_iter()
             .filter(|bundle| {
-                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::AtomicArb) {
+                if matches!(
+                    mev_type,
+                    MevType::Sandwich | MevType::Jit | MevType::AtomicArb
+                ) {
                     bundle.header.profit_usd > 0.0
                 } else {
                     true
@@ -199,4 +202,52 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
         MevType::Liquidation => mev_count.liquidation_count = Some(count),
         MevType::Unknown => (),
     }
+}
+
+pub fn calculate_builder_profit(
+    tree: Arc<BlockTree<Actions>>,
+    metadata: Arc<Metadata>,
+) -> eyre::Result<u128> {
+    let coinbase_transfers = tree
+        .tx_roots
+        .iter()
+        .filter_map(|root| root.gas_details.coinbase_transfer)
+        .sum::<u128>(); // Specify the type of sum
+
+    let builder_collateral_amount = tree
+        .collect_all(|node, data| TreeSearchArgs {
+            collect_current_node: data.get_ref(node.data).map(|a| a.get_from_address())
+                == metadata
+                    .builder_info
+                    .as_ref()
+                    .and_then(|b| b.ultrasound_relay_collateral_address)
+                && data
+                    .get_ref(node.data)
+                    .map(|d| d.is_eth_transfer())
+                    .unwrap_or_default(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .filter_map(|n| data.get_ref(*n))
+                .any(|sub_node| {
+                    Some(sub_node.get_from_address())
+                        == metadata
+                            .builder_info
+                            .as_ref()
+                            .and_then(|b| b.ultrasound_relay_collateral_address)
+                        && sub_node.is_eth_transfer()
+                }),
+        })
+        .iter()
+        .flat_map(|(_fixed_bytes, actions)| {
+            actions.iter().filter_map(|action| {
+                let Actions::EthTransfer(transfer) = action else {
+                    return None;
+                };
+                Some(transfer.value.to::<u128>())
+            })
+        })
+        .sum::<u128>();
+
+    Ok(coinbase_transfers - builder_collateral_amount)
 }

@@ -33,8 +33,8 @@ const CONFIG_FILE_NAME: &str = "classifier_config.toml";
 /// to decode each call for later analysis.
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    libmdbx:               &'db DB,
-    pub tracer:            Arc<T>,
+    libmdbx: &'db DB,
+    pub tracer: Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
@@ -44,7 +44,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        let this = Self { libmdbx, tracer, metrics_tx };
+        let this = Self {
+            libmdbx,
+            tracer,
+            metrics_tx,
+        };
         this.store_config_data();
 
         this
@@ -106,12 +110,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
-            return Some(res)
+            return Some(res);
         }
         #[cfg(feature = "local")]
         {
             tracing::error!("no block found in db");
-            return None
+            return None;
         }
 
         let parity_trace = self.trace_block(block_num).await;
@@ -126,11 +130,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
             let _ = self
                 .metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
-            return None
+            return None;
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
-            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .fill_metadata(
+                parity_trace.0.unwrap(),
+                parity_trace.1,
+                receipts.0.unwrap(),
+                block_num,
+            )
             .await;
         #[cfg(not(feature = "dyn-decode"))]
         let traces = self
@@ -344,7 +353,7 @@ fn workspace_dir() -> path::PathBuf {
 
 #[derive(Debug, Deserialize, Default)]
 pub struct TokenInfoWithAddressToml {
-    pub symbol:   String,
+    pub symbol: String,
     pub decimals: u8,
-    pub address:  Address,
+    pub address: Address,
 }

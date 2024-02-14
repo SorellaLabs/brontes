@@ -24,9 +24,9 @@ pub enum LoadResult {
     /// for this block as it will cause incorrect data
     PoolInitOnBlock,
     Err {
-        protocol:     Protocol,
+        protocol: Protocol,
         pool_address: Address,
-        pool_pair:    Pair,
+        pool_pair: Pair,
     },
 }
 impl LoadResult {
@@ -36,8 +36,8 @@ impl LoadResult {
 }
 
 pub struct LazyResult {
-    pub state:       Option<PoolState>,
-    pub block:       u64,
+    pub state: Option<PoolState>,
+    pub block: u64,
     pub load_result: LoadResult,
 }
 
@@ -97,7 +97,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             .retain(|pair, (block, id, deps)| {
                 if deps.is_empty() {
                     res.push((*block, *id, *pair));
-                    return false
+                    return false;
                 }
                 true
             });
@@ -174,7 +174,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                 entry.retain(|(target_block, pair)| {
                     if *target_block == block {
                         finished_pairs.push(*pair);
-                        return false
+                        return false;
                     }
                     true
                 });
@@ -227,7 +227,11 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                 Ok((block, addr, state, load)) => {
                     self.remove_state_trackers(block, &addr);
 
-                    let res = LazyResult { block, state: Some(state), load_result: load };
+                    let res = LazyResult {
+                        block,
+                        state: Some(state),
+                        load_result: load,
+                    };
                     Poll::Ready(Some(res))
                 }
                 Err((pool_address, dex, block, pool_pair, err)) => {
@@ -238,7 +242,11 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult {
                         state: None,
                         block,
-                        load_result: LoadResult::Err { pool_pair, pool_address, protocol: dex },
+                        load_result: LoadResult::Err {
+                            pool_pair,
+                            pool_address,
+                            protocol: dex,
+                        },
                     };
                     Poll::Ready(Some(res))
                 }
@@ -289,7 +297,7 @@ impl Stream for MultiBlockPoolFutures {
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         if self.0.is_empty() {
-            return Poll::Ready(None)
+            return Poll::Ready(None);
         }
 
         let (mut result, empty): (Vec<_>, Vec<_>) = self
@@ -304,7 +312,7 @@ impl Stream for MultiBlockPoolFutures {
                 };
 
                 if futures.is_empty() {
-                    return (res, Some(*block))
+                    return (res, Some(*block));
                 }
 
                 (res, None)
@@ -317,7 +325,7 @@ impl Stream for MultiBlockPoolFutures {
         });
 
         if let Some(result) = result.pop() {
-            return Poll::Ready(Some(result))
+            return Poll::Ready(Some(result));
         }
 
         Poll::Pending

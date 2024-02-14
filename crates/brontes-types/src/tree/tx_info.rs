@@ -4,17 +4,17 @@ use crate::{db::searcher::SearcherInfo, mev::MevType, GasDetails};
 
 #[derive(Debug, Clone)]
 pub struct TxInfo {
-    pub block_number:         u64,
-    pub tx_index:             u64,
-    pub eoa:                  Address,
-    pub mev_contract:         Address,
-    pub tx_hash:              TxHash,
-    pub gas_details:          GasDetails,
-    pub is_classified:        bool,
-    pub is_cex_dex_call:      bool,
-    pub is_private:           bool,
+    pub block_number: u64,
+    pub tx_index: u64,
+    pub eoa: Address,
+    pub mev_contract: Address,
+    pub tx_hash: TxHash,
+    pub gas_details: GasDetails,
+    pub is_classified: bool,
+    pub is_cex_dex_call: bool,
+    pub is_private: bool,
     pub is_verified_contract: bool,
-    pub searcher_info:        Option<SearcherInfo>,
+    pub searcher_info: Option<SearcherInfo>,
 }
 
 impl TxInfo {
