@@ -6,7 +6,7 @@ use brontes_types::{
 
 action_impl!(
     Protocol::CurveV2PlainPool,
-    crate::CurveV2Plain::exchange_0Call,
+    crate::CurveV2PlainImpl::exchange_0Call,
     Swap,
     [..TokenExchange],
     logs: true,
@@ -60,7 +60,7 @@ action_impl!(
 
 action_impl!(
     Protocol::CurveV2PlainPool,
-    crate::CurveV2Plain::exchange_1Call,
+    crate::CurveV2PlainImpl::exchange_1Call,
     Swap,
     [..TokenExchange],
     logs: true,

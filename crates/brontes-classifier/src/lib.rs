@@ -42,6 +42,7 @@ sol!(
     "./classifier-abis/CurveV2MetapoolImpl.json"
 );
 sol!(CurveV2Plain, "./classifier-abis/CurveV2Plain.json");
+sol!(CurveV2PlainImpl, "./classifier-abis/CurveV2PlainImpl.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
