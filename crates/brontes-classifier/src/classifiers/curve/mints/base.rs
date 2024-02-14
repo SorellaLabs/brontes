@@ -3,7 +3,6 @@ use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::NormalizedMint, structured_trace::CallInfo, ToScaledRational,
 };
-use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
     Protocol::CurveBasePool,
@@ -21,18 +20,13 @@ action_impl!(
         let details = db_tx.get_protocol_details(info.target_address)?;
 
         let amounts = log.token_amounts;
-        let (tokens, mut token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
             Ok((token, amounts[i].to_scaled_rational(decimals)))
         }
         ).collect::<eyre::Result<Vec<_>>>()?.into_iter().unzip();
-
-        (tokens.len()..amounts.len()).for_each(|_| {
-            token_amts.push(Rational::ZERO);
-        });
-
 
         Ok(NormalizedMint {
             protocol: Protocol::CurveBasePool,
@@ -68,7 +62,9 @@ mod tests {
             Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
             Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            None,
+            Some(Address::new(hex!(
+                "fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"
+            ))),
             None,
             None,
             None,
@@ -94,6 +90,14 @@ mod tests {
             },
         };
 
+        let token2 = TokenInfoWithAddress {
+            address: Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "sBTC".to_string(),
+            },
+        };
+
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
@@ -103,11 +107,11 @@ mod tests {
             from: Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
             recipient: Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
             pool: Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
-            token: vec![token0, token1],
+            token: vec![token0, token1, token2],
             amount: vec![
                 U256::from(0).to_scaled_rational(8),
                 U256::from(27506).to_scaled_rational(8),
-                U256::from(0).to_scaled_rational(8),
+                U256::from(0).to_scaled_rational(18),
             ],
         });
 
