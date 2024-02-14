@@ -121,13 +121,13 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, ToScaledRational, TreeSearchArgs,
+        Node, NodeData, ToScaledRational, TreeSearchArgs,
     };
 
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_v2_plain_pool_exchange0() {
+    async fn test_curve_v2_plain_pool_exchange1() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2PlainPool,
