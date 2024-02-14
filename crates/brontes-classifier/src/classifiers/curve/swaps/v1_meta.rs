@@ -4,6 +4,7 @@ use brontes_types::{
     normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
 
+// couldn't find a V1 metapool calling this
 action_impl!(
     Protocol::CurveV1MetapoolImpl,
     crate::CurveV1MetapoolImpl::exchange_0Call,
@@ -100,6 +101,7 @@ action_impl!(
     }
 );
 
+// couldn't find a V1 metapool calling this
 action_impl!(
     Protocol::CurveV1MetapoolImpl,
     crate::CurveV1MetapoolImpl::exchange_underlying_0Call,
@@ -223,7 +225,7 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_v1_metapool_impl_exchange0() {
+    async fn test_curve_v1_metapool_exchange0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV1MetaPool,
@@ -301,7 +303,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_v1_metapool_impl_exchange_underlying0() {
+    async fn test_curve_v1_metapool_exchange_underlying0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV1MetaPool,
