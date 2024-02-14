@@ -19,7 +19,6 @@ use crate::{
 };
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
-database_table!(Liquidations, Liquidation);
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]

@@ -6,6 +6,7 @@ use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
+use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use crate::constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT};
 pub trait TraceActions {
@@ -205,9 +206,16 @@ impl TransactionTraceWithLogs {
     }
 }
 
-use sorella_db_databases::{database_table, tables::DatabaseTable};
+#[derive(Debug, Clone, PartialEq, Row, Serialize, Deserialize)]
+pub struct TxTraces {
+    pub traces: Vec<TxTrace>,
+}
 
-database_table!(TxTraces, Vec<TxTrace>);
+impl From<Vec<TxTrace>> for TxTraces {
+    fn from(value: Vec<TxTrace>) -> Self {
+        Self { traces: value }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TxTrace {

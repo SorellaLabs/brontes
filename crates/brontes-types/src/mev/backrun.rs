@@ -24,8 +24,6 @@ use crate::{
     GasDetails,
 };
 
-database_table!(AtomicArbs, AtomicArb);
-
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]

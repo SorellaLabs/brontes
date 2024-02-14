@@ -22,7 +22,6 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
-database_table!(JitSandwich, JitLiquiditySandwich);
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]

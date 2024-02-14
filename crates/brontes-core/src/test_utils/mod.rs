@@ -5,7 +5,7 @@ use std::{
 };
 
 pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
-use brontes_database::Tables;
+use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
@@ -414,7 +414,11 @@ pub fn init_trace_parser(
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 
-    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
+    handle.block_on(TraceParser::new(
+        libmdbx,
+        Arc::new(tracer),
+        Arc::new(metrics_tx),
+    ))
 }
 
 #[cfg(feature = "local")]

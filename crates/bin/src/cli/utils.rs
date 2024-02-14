@@ -3,7 +3,9 @@ use std::{env, path::Path};
 use alloy_primitives::Address;
 #[cfg(feature = "local")]
 use brontes_core::local_provider::LocalProvider;
-use brontes_database::{clickhouse::ClickhouseMiddleware, libmdbx::LibmdbxReadWriter};
+#[cfg(feature = "clickhouse-inserts")]
+use brontes_database::clickhouse::ClickhouseMiddleware;
+use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{db::cex::CexExchange, mev::Bundle};
 use itertools::Itertools;
@@ -15,12 +17,12 @@ use tracing::info;
 
 #[cfg(not(feature = "clickhouse-inserts"))]
 pub fn load_database(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
-    LibmdbxReadWriter::init_db(brontes_db_endpoint, None)
+    LibmdbxReadWriter::init_db(db_endpoint, None)
 }
 
 #[cfg(feature = "clickhouse-inserts")]
 pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?;
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
     let clickhouse = Clickhouse::default();
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
 }
