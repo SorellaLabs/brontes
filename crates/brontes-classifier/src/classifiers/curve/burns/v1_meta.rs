@@ -308,7 +308,7 @@ mod tests {
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV1MetapoolImpl,
+            protocol: Protocol::CurveV1MetaPool,
             trace_index: 1,
             from: Address::new(hex!("95e0022e62A9e13fc9F38A3E288521f2FD042357")),
             recipient: Address::new(hex!("95e0022e62A9e13fc9F38A3E288521f2FD042357")),
