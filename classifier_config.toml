@@ -143,10 +143,10 @@ init_block = 12904145
 init_block = 17258001
 
 [CurvecrvUSDPlainPoolImpl."0x36dc03c0e12a1c241306a6a8f327fe28ba2be5b0"]
-init_block = 18540913
+init_block = 18277096
 
 [CurvecrvUSDPlainPoolImpl."0x0c9d8c7e486e822c29488ff51bff0167b4650953"]
-init_block = 18248614
+init_block = 18163376
 
 [CurvecrvUSDPlainPoolImpl."0x7ca46a636b02d4abc66883d7ff164bde506dc66a"]
-init_block = 18248614
+init_block = 18163373
