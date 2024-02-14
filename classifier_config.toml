@@ -111,23 +111,23 @@ init_block = 16100250
 #
 #
 
-[CurveV2PlainPool."0x4A4d7868390EF5CaC51cDA262888f34bD3025C3F"]
+[CurveV2PlainPoolImpl."0x4A4d7868390EF5CaC51cDA262888f34bD3025C3F"]
 init_block = 12904330
 
-[CurveV2PlainPool."0x50b085f2e5958c4a87baf93a8ab79f6bec068494"]
+[CurveV2PlainPoolImpl."0x50b085f2e5958c4a87baf93a8ab79f6bec068494"]
 init_block = 12904718
 
-[CurveV2PlainPool."0xe5f4b89e0a16578b3e0e7581327bdb4c712e44de"]
+[CurveV2PlainPoolImpl."0xe5f4b89e0a16578b3e0e7581327bdb4c712e44de"]
 init_block = 12904718
 
-[CurveV2PlainPool."0x9b52f13df69d79ec5aab6d1ace3157d29b409cc3"]
+[CurveV2PlainPoolImpl."0x9b52f13df69d79ec5aab6d1ace3157d29b409cc3"]
 init_block = 12904716
 
-[CurveV2PlainPool."0x6326debbaa15bcfe603d831e7d75f4fc10d9b43e"]
+[CurveV2PlainPoolImpl."0x6326debbaa15bcfe603d831e7d75f4fc10d9b43e"]
 init_block = 12904329
 
-[CurveV2PlainPool."0x24d937143d3f5cf04c72ba112735151a8cae2262"]
+[CurveV2PlainPoolImpl."0x24d937143d3f5cf04c72ba112735151a8cae2262"]
 init_block = 12904328
 
-[CurveV2PlainPool."0x6523ac15ec152cb70a334230f6c5d62c5bd963f1"]
+[CurveV2PlainPoolImpl."0x6523ac15ec152cb70a334230f6c5d62c5bd963f1"]
 init_block = 12904145

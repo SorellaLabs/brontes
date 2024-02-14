@@ -5,14 +5,14 @@ use brontes_types::{
 };
 
 action_impl!(
-    Protocol::CurveV2PlainPool,
+    Protocol::CurveV2PlainPoolImpl,
     crate::CurveV2PlainImpl::exchange_0Call,
     Swap,
     [..TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplexchange_0CallLogs,
+    log: CurveV2PlainImplexchange_0CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
@@ -59,14 +59,14 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::CurveV2PlainPool,
+    Protocol::CurveV2PlainPoolImpl,
     crate::CurveV2PlainImpl::exchange_1Call,
     Swap,
     [..TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplexchange_1CallLogs,
+    log: CurveV2PlainImplexchange_1CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
