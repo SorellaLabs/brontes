@@ -31,18 +31,19 @@ sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
 sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveBase, "./classifier-abis/CurveBase.json");
-sol!(CurveV1Metapool, "./classifier-abis/CurveV1Metapool.json");
 sol!(
     CurveV1MetapoolImpl,
     "./classifier-abis/CurveV1MetapoolImpl.json"
 );
-sol!(CurveV2Metapool, "./classifier-abis/CurveV2Metapool.json");
 sol!(
     CurveV2MetapoolImpl,
     "./classifier-abis/CurveV2MetapoolImpl.json"
 );
-sol!(CurveV2Plain, "./classifier-abis/CurveV2Plain.json");
 sol!(CurveV2PlainImpl, "./classifier-abis/CurveV2PlainImpl.json");
+sol!(
+    CurvecrvUSDPlainImpl,
+    "./classifier-abis/CurvecrvUSDPlainImpl.json"
+);
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
