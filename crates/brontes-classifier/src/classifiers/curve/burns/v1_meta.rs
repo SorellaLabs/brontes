@@ -184,10 +184,7 @@ action_impl!(
 
         let token = match call_data.i {
             0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token out, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token out, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token out, found None"))?,
+            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for burn token, found None"))?,
             _ => unreachable!()
         };
 
@@ -230,9 +227,9 @@ action_impl!(
         let token = match call_data.i {
             0 => details.token0,
             1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token out, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token out, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token out, found None"))?,
+            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for burn token, found None"))?,
+            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for burn token, found None"))?,
+            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for burn token, found None"))?,
             _ => unreachable!()
         };
 
