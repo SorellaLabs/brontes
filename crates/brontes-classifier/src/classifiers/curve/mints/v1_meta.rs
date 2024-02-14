@@ -1,211 +1,82 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
+    normalized_actions::NormalizedMint, structured_trace::CallInfo, ToScaledRational,
 };
 
 // couldn't find a V1 metapool calling this
 action_impl!(
     Protocol::CurveV1MetapoolImpl,
-    crate::CurveV1MetapoolImpl::exchange_0Call,
-    Swap,
-    [..TokenExchange],
+    crate::CurveV1MetapoolImpl::add_liquidity_0Call,
+    Mint,
+    [..AddLiquidity],
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_0CallLogs,
+    log: CurveV1MetapoolImpladd_liquidity_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.AddLiquidity_field;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
+        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let protocol = details.protocol;
 
-        let token_in_addr = match log.sold_id {
-            0 => details.token0,
-            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token in, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_out_addr = match log.bought_id {
-            0 => details.token0,
-            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token out, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_in = db_tx.try_fetch_token_info(token_in_addr)?;
-        let token_out = db_tx.try_fetch_token_info(token_out_addr)?;
-
-        let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
-        let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
+        let amounts = log.token_amounts;
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        {
+            let token = db_tx.try_fetch_token_info(t)?;
+            let decimals = token.decimals;
+            Ok((token, amounts[i].to_scaled_rational(decimals)))
+        }
+        ).collect::<eyre::Result<Vec<_>>>()?.into_iter().unzip();
 
 
-        Ok(NormalizedSwap {
-            protocol: details.protocol,
+        Ok(NormalizedMint {
+            protocol,
             trace_index: info.trace_idx,
             pool: info.from_address,
             from: info.msg_sender,
             recipient: info.msg_sender,
-            token_in,
-            token_out,
-            amount_in,
-            amount_out,
-            msg_value: info.msg_value
+            token: tokens,
+            amount: token_amts,
         })
     }
 );
 
 action_impl!(
     Protocol::CurveV1MetapoolImpl,
-    crate::CurveV1MetapoolImpl::exchange_1Call,
-    Swap,
-    [..TokenExchange],
+    crate::CurveV1MetapoolImpl::add_liquidity_1Call,
+    Mint,
+    [..AddLiquidity],
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_1CallLogs,
+    log: CurveV1MetapoolImpladd_liquidity_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.AddLiquidity_field;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
+        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let protocol = details.protocol;
 
-        let token_in_addr = match log.sold_id {
-            0 => details.token0,
-            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token in, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_out_addr = match log.bought_id {
-            0 => details.token0,
-            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for token out, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_in = db_tx.try_fetch_token_info(token_in_addr)?;
-        let token_out = db_tx.try_fetch_token_info(token_out_addr)?;
-
-        let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
-        let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
+        let amounts = log.token_amounts;
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        {
+            let token = db_tx.try_fetch_token_info(t)?;
+            let decimals = token.decimals;
+            Ok((token, amounts[i].to_scaled_rational(decimals)))
+        }
+        ).collect::<eyre::Result<Vec<_>>>()?.into_iter().unzip();
 
 
-        Ok(NormalizedSwap {
-            protocol: details.protocol,
+        Ok(NormalizedMint {
+            protocol,
             trace_index: info.trace_idx,
             pool: info.from_address,
             from: info.msg_sender,
             recipient: info.msg_sender,
-            token_in,
-            token_out,
-            amount_in,
-            amount_out,
-            msg_value: info.msg_value
-        })
-    }
-);
-
-// couldn't find a V1 metapool calling this
-action_impl!(
-    Protocol::CurveV1MetapoolImpl,
-    crate::CurveV1MetapoolImpl::exchange_underlying_0Call,
-    Swap,
-    [..TokenExchangeUnderlying],
-    logs: true,
-    |
-    info: CallInfo,
-    log: CurveV1MetapoolImplexchange_underlying_0CallLogs,
-    db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
-
-        let details = db_tx.get_protocol_details(info.from_address)?;
-
-        let token_in_addr = match log.sold_id {
-            0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token in, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token in, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token in, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_out_addr = match log.bought_id {
-            0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token out, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token out, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token out, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_in = db_tx.try_fetch_token_info(token_in_addr)?;
-        let token_out = db_tx.try_fetch_token_info(token_out_addr)?;
-
-        let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
-        let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
-
-
-        Ok(NormalizedSwap {
-            protocol: details.protocol,
-            trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
-            token_in,
-            token_out,
-            amount_in,
-            amount_out,
-            msg_value: info.msg_value
-        })
-    }
-);
-
-action_impl!(
-    Protocol::CurveV1MetapoolImpl,
-    crate::CurveV1MetapoolImpl::exchange_underlying_1Call,
-    Swap,
-    [..TokenExchangeUnderlying],
-    logs: true,
-    |
-    info: CallInfo,
-    log: CurveV1MetapoolImplexchange_underlying_1CallLogs,
-    db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
-
-        let details = db_tx.get_protocol_details(info.from_address)?;
-
-        let token_in_addr = match log.sold_id {
-            0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token in, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token in, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token in, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_out_addr = match log.bought_id {
-            0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token out, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token out, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token out, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_in = db_tx.try_fetch_token_info(token_in_addr)?;
-        let token_out = db_tx.try_fetch_token_info(token_out_addr)?;
-
-        let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
-        let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
-
-
-        Ok(NormalizedSwap {
-            protocol: details.protocol,
-            trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
-            token_in,
-            token_out,
-            amount_in,
-            amount_out,
-            msg_value: info.msg_value
+            token: tokens,
+            amount: token_amts,
         })
     }
 );
@@ -225,7 +96,7 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_v1_metapool_exchange0() {
+    async fn test_curve_v1_metapool_add_liquidity0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV1MetaPool,
@@ -244,11 +115,11 @@ mod tests {
             ))),
         );
 
-        let swap = B256::from(hex!(
-            "0c673f1ede30f20bb7ca3e7c05a71dcc49a8bb18498e148e3967bb7173d6794e"
+        let mint = B256::from(hex!(
+            "00723506614af2c7a56057b0bd70c263198019e58aac8c10b337d2391996ea0f"
         ));
 
-        let token_in = TokenInfoWithAddress {
+        let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
             inner: TokenInfo {
                 decimals: 18,
@@ -256,7 +127,7 @@ mod tests {
             },
         };
 
-        let token_out = TokenInfoWithAddress {
+        let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("6c3f90f043a72fa612cbac8115ee7e52bde6e490")),
             inner: TokenInfo {
                 decimals: 18,
@@ -264,46 +135,42 @@ mod tests {
             },
         };
 
-        classifier_utils.ensure_token(token_in.clone());
-        classifier_utils.ensure_token(token_out.clone());
+        classifier_utils.ensure_token(token0.clone());
+        classifier_utils.ensure_token(token1.clone());
 
-        let eq_action = Actions::Swap(NormalizedSwap {
-            protocol: Protocol::CurveV1MetaPool,
-            trace_index: 1,
-            from: Address::new(hex!("41ce1Af5B4eF2E124028dea59580817898def508")),
-            recipient: Address::new(hex!("41ce1Af5B4eF2E124028dea59580817898def508")),
+        let eq_action = Actions::Mint(NormalizedMint {
+            protocol: Protocol::CurveBasePool,
+            trace_index: 0,
+            from: Address::new(hex!("1a734e9bDa6893915928eE8edBA75cA17536d385")),
+            recipient: Address::new(hex!("1a734e9bDa6893915928eE8edBA75cA17536d385")),
             pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
-            token_in,
-            amount_in: U256::from_str("108987327295834489846250")
-                .unwrap()
-                .to_scaled_rational(18),
-            token_out,
-            amount_out: U256::from_str("846346204017353217859")
-                .unwrap()
-                .to_scaled_rational(18),
-            msg_value: U256::ZERO,
+            token: vec![token0, token1],
+            amount: vec![
+                U256::from(1000000000000000000000 as u128).to_scaled_rational(18),
+                U256::from(1000000000000000000000 as u128).to_scaled_rational(8),
+            ],
         });
 
         let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
             collect_current_node: data
                 .get_ref(node.data)
-                .map(|s| s.is_swap())
+                .map(|s| s.is_mint())
                 .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
                 .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_swap()),
+                .any(|action| action.is_mint()),
         };
 
         classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
+            .contains_action(mint, 0, eq_action, search_fn)
             .await
-            .unwrap()
+            .unwrap();
     }
 
     #[brontes_macros::test]
-    async fn test_curve_v1_metapool_exchange_underlying0() {
+    async fn test_curve_v1_metapool_add_liquidity1() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV1MetaPool,
@@ -322,11 +189,11 @@ mod tests {
             ))),
         );
 
-        let swap = B256::from(hex!(
-            "84d55076a9eb3d9d30e26dc1f498f03216d7216647a51597933901c55534e355"
+        let mint = B256::from(hex!(
+            "00723506614af2c7a56057b0bd70c263198019e58aac8c10b337d2391996ea0f"
         ));
 
-        let token_in = TokenInfoWithAddress {
+        let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
             inner: TokenInfo {
                 decimals: 18,
@@ -334,48 +201,44 @@ mod tests {
             },
         };
 
-        let token_out = TokenInfoWithAddress {
-            address: Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+        let token1 = TokenInfoWithAddress {
+            address: Address::new(hex!("6c3f90f043a72fa612cbac8115ee7e52bde6e490")),
             inner: TokenInfo {
                 decimals: 18,
-                symbol: "DAI".to_string(),
+                symbol: "3Crv".to_string(),
             },
         };
 
-        classifier_utils.ensure_token(token_in.clone());
-        classifier_utils.ensure_token(token_out.clone());
+        classifier_utils.ensure_token(token0.clone());
+        classifier_utils.ensure_token(token1.clone());
 
-        let eq_action = Actions::Swap(NormalizedSwap {
-            protocol: Protocol::CurveV1MetaPool,
-            trace_index: 1,
-            from: Address::new(hex!("A24AD612C61076C902588C28e617461c6cA1eD54")),
-            recipient: Address::new(hex!("A24AD612C61076C902588C28e617461c6cA1eD54")),
-            pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
-            token_in,
-            amount_in: U256::from_str("632358995283130172936168")
-                .unwrap()
-                .to_scaled_rational(18),
-            token_out,
-            amount_out: U256::from_str("605569147106308061507")
-                .unwrap()
-                .to_scaled_rational(18),
-            msg_value: U256::ZERO,
+        let eq_action = Actions::Mint(NormalizedMint {
+            protocol: Protocol::CurveBasePool,
+            trace_index: 0,
+            from: Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
+            recipient: Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
+            pool: Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
+            token: vec![token0, token1],
+            amount: vec![
+                U256::from(1000000000000000000000 as u128).to_scaled_rational(18),
+                U256::from(1000000000000000000000 as u128).to_scaled_rational(8),
+            ],
         });
 
         let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
             collect_current_node: data
                 .get_ref(node.data)
-                .map(|s| s.is_swap())
+                .map(|s| s.is_mint())
                 .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
                 .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_swap()),
+                .any(|action| action.is_mint()),
         };
 
         classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
+            .contains_action(mint, 0, eq_action, search_fn)
             .await
             .unwrap();
     }
