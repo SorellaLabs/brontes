@@ -1,7 +1,6 @@
 #!/bin/sh
 
 run_tests() {
-  exec | 
     git pull
     git checkout $1
     git pull
@@ -11,7 +10,6 @@ run_tests() {
 }
 
 run_benchmarks() {
-  exec | 
     rm -rf /home/data/brontes-test/*
     git pull
     git checkout $1
