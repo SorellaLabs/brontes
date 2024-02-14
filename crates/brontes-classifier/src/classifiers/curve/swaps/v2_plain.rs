@@ -12,7 +12,7 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainImplexchange_0CallLogs,
+    log: CurveV2PlainPoolImplexchange_0CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
@@ -66,7 +66,7 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainImplexchange_1CallLogs,
+    log: CurveV2PlainPoolImplexchange_1CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
