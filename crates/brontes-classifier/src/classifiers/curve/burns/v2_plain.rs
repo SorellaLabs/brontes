@@ -17,7 +17,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidity_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
@@ -34,9 +34,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.target_address,
-            from: info.from_address,
-            recipient: info.from_address,
+            pool: info.from_address,
+            from: info.msg_sender,
+            recipient: info.msg_sender,
             token: tokens,
             amount: token_amts,
         })
@@ -58,7 +58,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidity_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
@@ -73,9 +73,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.target_address,
-            from: info.from_address,
-            recipient: info.from_address,
+            pool: info.from_address,
+            from: info.msg_sender,
+            recipient: info.msg_sender,
             token: tokens,
             amount: token_amts,
         })
@@ -97,7 +97,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityImbalance_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
@@ -112,9 +112,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.target_address,
-            from: info.from_address,
-            recipient: info.from_address,
+            pool: info.from_address,
+            from: info.msg_sender,
+            recipient: info.msg_sender,
             token: tokens,
             amount: token_amts,
         })
@@ -136,7 +136,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityImbalance_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
@@ -151,9 +151,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.target_address,
-            from: info.from_address,
-            recipient: info.from_address,
+            pool: info.from_address,
+            from: info.msg_sender,
+            recipient: info.msg_sender,
             token: tokens,
             amount: token_amts,
         })
@@ -176,7 +176,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityOne_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let token = match call_data.i {
@@ -195,9 +195,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.target_address,
-            from: info.from_address,
-            recipient: info.from_address,
+            pool: info.from_address,
+            from: info.msg_sender,
+            recipient: info.msg_sender,
             token: vec![token_info],
             amount: vec![amt],
         })
@@ -221,7 +221,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityOne_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let token = match call_data.i {
@@ -240,9 +240,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.target_address,
-            from: info.from_address,
-            recipient: info.from_address,
+            pool: info.from_address,
+            from: info.msg_sender,
+            recipient: info.msg_sender,
             token: vec![token_info],
             amount: vec![amt],
         })
