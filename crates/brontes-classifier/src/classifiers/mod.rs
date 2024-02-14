@@ -75,7 +75,7 @@ action_dispatch!(
     CurveBasePoolexchangeCall,
     CurveBasePooladd_liquidityCall,
     CurveBasePoolremove_liquidityCall,
-    CurveBasePoolremove_liquidity_imbalancedCall,
+    CurveBasePoolremove_liquidity_imbalanceCall,
     CurveBasePoolremove_liquidity_one_coinCall,
     CurveV1MetapoolImplexchange_0Call,
     CurveV1MetapoolImplexchange_1Call,
