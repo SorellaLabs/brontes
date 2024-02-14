@@ -138,7 +138,7 @@ mod tests {
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Mint(NormalizedMint {
-            protocol: Protocol::CurveBasePool,
+            protocol: Protocol::CurveV1MetaPool,
             trace_index: 1,
             from: Address::new(hex!("1a734e9bDa6893915928eE8edBA75cA17536d385")),
             recipient: Address::new(hex!("1a734e9bDa6893915928eE8edBA75cA17536d385")),
