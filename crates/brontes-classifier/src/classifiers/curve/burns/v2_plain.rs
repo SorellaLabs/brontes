@@ -17,7 +17,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidity_field;
 
-        let details = db_tx.get_protocol_details(info.from_address)?;
+        let details = db_tx.get_protocol_details(info.target_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
@@ -59,7 +59,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidity_field;
 
-        let details = db_tx.get_protocol_details(info.from_address)?;
+        let details = db_tx.get_protocol_details(info.target_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
@@ -99,7 +99,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityImbalance_field;
 
-        let details = db_tx.get_protocol_details(info.from_address)?;
+        let details = db_tx.get_protocol_details(info.target_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
@@ -139,7 +139,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityImbalance_field;
 
-        let details = db_tx.get_protocol_details(info.from_address)?;
+        let details = db_tx.get_protocol_details(info.target)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
@@ -180,7 +180,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityOne_field;
 
-        let details = db_tx.get_protocol_details(info.from_address)?;
+        let details = db_tx.get_protocol_details(info.target_address)?;
         let protocol = details.protocol;
 
         let token = match call_data.i {
@@ -222,7 +222,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityOne_field;
 
-        let details = db_tx.get_protocol_details(info.from_address)?;
+        let details = db_tx.get_protocol_details(info.target)?;
         let protocol = details.protocol;
 
         let token = match call_data.i {
