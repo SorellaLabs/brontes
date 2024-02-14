@@ -11,8 +11,6 @@ use serde_with::serde_as;
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
-    database_table,
-    tables::DatabaseTable,
 };
 
 use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};

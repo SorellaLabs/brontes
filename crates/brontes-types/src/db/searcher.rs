@@ -4,8 +4,6 @@ use serde::{self, Deserialize, Serialize};
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{tables, Row},
-    database_table,
-    tables::DatabaseTable,
 };
 
 use super::builder::BuilderInfo;
