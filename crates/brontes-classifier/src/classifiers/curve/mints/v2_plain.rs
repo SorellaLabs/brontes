@@ -1,9 +1,7 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::{NormalizedMint, NormalizedSwap},
-    structured_trace::CallInfo,
-    ToScaledRational,
+    normalized_actions::NormalizedMint, structured_trace::CallInfo, ToScaledRational,
 };
 
 action_impl!(

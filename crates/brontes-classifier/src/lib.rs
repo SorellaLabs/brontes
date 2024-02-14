@@ -30,7 +30,9 @@ sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
 sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
 sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
-sol!(CurveBase, "./classifier-abis/CurveBase.json");
+sol!(CurveBase2, "./classifier-abis/CurveBase2.json");
+sol!(CurveBase3, "./classifier-abis/CurveBase3.json");
+sol!(CurveBase4, "./classifier-abis/CurveBase4.json");
 sol!(
     CurveV1MetapoolImpl,
     "./classifier-abis/CurveV1MetapoolImpl.json"
