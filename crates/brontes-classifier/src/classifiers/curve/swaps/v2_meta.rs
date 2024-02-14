@@ -221,7 +221,7 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_v2_metapool_impl_exchange0() {
+    async fn test_curve_v2_metapool_exchange0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2MetaPool,
@@ -299,7 +299,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_v2_metapool_impl_exchange1() {
+    async fn test_curve_v2_metapool_exchange1() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2MetaPool,
@@ -373,7 +373,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_v2_metapool_impl_exchange_underlying0() {
+    async fn test_curve_v2_metapool_exchange_underlying0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2MetaPool,
@@ -449,7 +449,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_v2_metapool_impl_exchange_underlying1() {
+    async fn test_curve_v2_metapool_exchange_underlying1() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2MetaPool,
