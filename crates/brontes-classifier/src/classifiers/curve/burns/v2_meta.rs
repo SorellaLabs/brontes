@@ -436,10 +436,10 @@ mod tests {
         ));
 
         let token = TokenInfoWithAddress {
-            address: Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
+            address: Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
             inner: TokenInfo {
                 decimals: 18,
-                symbol: "STBT".to_string(),
+                symbol: "3Crv".to_string(),
             },
         };
 
