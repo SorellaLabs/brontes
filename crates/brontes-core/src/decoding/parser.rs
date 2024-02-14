@@ -5,7 +5,7 @@ use std::{path, sync::Arc};
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -32,13 +32,13 @@ const CONFIG_FILE_NAME: &str = "classifier_config.toml";
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 //#[derive(Clone)]
-pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx: &'db DB,
     pub tracer: Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db, T, DB> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, DB> {
     pub fn new(
         libmdbx: &'db DB,
         tracer: Arc<T>,

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
 use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
     Inspector,
@@ -13,7 +13,7 @@ use brontes_types::{
 };
 use tracing::{error, info};
 
-pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
+pub async fn process_results<DB: DBWriter + LibmdbxReader>(
     db: &DB,
     // clickhouse-db (feature)
     inspectors: &[&dyn Inspector<Result = Vec<Bundle>>],
@@ -38,7 +38,7 @@ pub async fn process_results<DB: LibmdbxWriter + LibmdbxReader>(
     insert_mev_results(db, block_details, mev_details);
 }
 
-fn insert_mev_results<DB: LibmdbxWriter + LibmdbxReader>(
+fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     database: &DB,
     block_details: MevBlock,
     mev_details: Vec<Bundle>,
@@ -58,7 +58,7 @@ fn insert_mev_results<DB: LibmdbxWriter + LibmdbxReader>(
     }
 }
 
-fn output_mev_and_update_searcher_info<DB: LibmdbxWriter + LibmdbxReader>(
+fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
     block_number: u64,
     mev_details: &Vec<Bundle>,

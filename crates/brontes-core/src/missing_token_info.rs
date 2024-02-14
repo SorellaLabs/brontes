@@ -3,7 +3,7 @@ use std::sync::Arc;
 use alloy_primitives::Address;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
-use brontes_database::libmdbx::LibmdbxWriter;
+use brontes_database::libmdbx::DBWriter;
 use brontes_types::make_call_request;
 use futures::{join, stream::FuturesUnordered, StreamExt};
 use tracing::error;
@@ -22,7 +22,7 @@ sol!(
     }
 );
 
-pub async fn load_missing_token_info<T: TracingProvider, W: LibmdbxWriter>(
+pub async fn load_missing_token_info<T: TracingProvider, W: DBWriter>(
     provider: &Arc<T>,
     db: &W,
     block: u64,
@@ -32,7 +32,7 @@ pub async fn load_missing_token_info<T: TracingProvider, W: LibmdbxWriter>(
     on_decimal_query_resolution(db, data);
 }
 
-pub async fn load_missing_token_infos<T: TracingProvider, W: LibmdbxWriter>(
+pub async fn load_missing_token_infos<T: TracingProvider, W: DBWriter>(
     provider: &Arc<T>,
     db: &W,
     block: u64,
@@ -87,7 +87,7 @@ async fn query_missing_data<T: TracingProvider>(
     })
 }
 
-fn on_decimal_query_resolution<W: LibmdbxWriter>(
+fn on_decimal_query_resolution<W: DBWriter>(
     database: &W,
     result: eyre::Result<(Address, u8, String)>,
 ) {

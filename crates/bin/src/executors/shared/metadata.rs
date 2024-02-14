@@ -6,7 +6,7 @@ use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     db::{
         metadata::Metadata,
-        traits::{LibmdbxReader, LibmdbxWriter},
+        traits::{LibmdbxReader, DBWriter},
     },
     normalized_actions::Actions,
     traits::TracingProvider,
@@ -23,7 +23,7 @@ pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;
 
 /// deals with all cases on how we get and finalize our metadata
-pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
+pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     clickhouse: Option<&'static Clickhouse>,
     dex_pricer_stream: Option<WaitingForPricerFuture<T, DB>>,
     /// we will drain this in the case we aren't running a dex pricer to avoid
@@ -34,7 +34,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader
     result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> MetadataFetcher<T, DB> {
     pub fn new(
         clickhouse: Option<&'static Clickhouse>,
         dex_pricer_stream: Option<WaitingForPricerFuture<T, DB>>,
@@ -109,7 +109,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> MetadataFetcher<T, D
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for MetadataFetcher<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Stream for MetadataFetcher<T, DB> {
     type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(

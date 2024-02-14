@@ -4,7 +4,7 @@ use alloy_primitives::{Address, Bytes};
 use alloy_sol_types::SolCall;
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
-    db::traits::{LibmdbxReader, LibmdbxWriter},
+    db::traits::{LibmdbxReader, DBWriter},
     normalized_actions::NormalizedTransfer,
     traits::TracingProvider,
     ToScaledRational,
@@ -16,7 +16,7 @@ alloy_sol_macro::sol!(
     function transferFrom(address, address, uint) returns(bool);
 );
 
-pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter>(
+pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWriter>(
     idx: u64,
     calldata: Bytes,
     from: Address,

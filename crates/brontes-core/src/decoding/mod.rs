@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
@@ -27,12 +27,12 @@ use reth_primitives::BlockId;
 pub type ParserFuture<'a> =
     Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
 
-pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     executor: Executor,
     parser: TraceParser<'a, T, DB>,
 }
 
-impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB> {
+impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
     pub fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         libmdbx: &'a DB,

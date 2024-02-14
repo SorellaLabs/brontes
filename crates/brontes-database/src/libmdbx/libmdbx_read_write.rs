@@ -19,7 +19,7 @@ use brontes_types::{
         searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
-        traits::{LibmdbxReader, LibmdbxWriter},
+        traits::{LibmdbxReader, DBWriter},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
@@ -410,8 +410,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 }
 
-impl LibmdbxWriter for LibmdbxReadWriter {
-    fn write_searcher_info(
+impl DBWriter for LibmdbxReadWriter {
+    type Inner = Self;
+    fn inner(&self) -> &Self::Inner {
+        unreachable!()
+    }
+
+    async fn write_searcher_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
@@ -421,7 +426,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn save_mev_blocks(
+    async fn save_mev_blocks(
         &self,
         block_number: u64,
         block: MevBlock,
@@ -434,7 +439,11 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn write_dex_quotes(&self, block_num: u64, quotes: Option<DexQuotes>) -> eyre::Result<()> {
+    async fn write_dex_quotes(
+        &self,
+        block_num: u64,
+        quotes: Option<DexQuotes>,
+    ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
             self.init_state_updating(block_num, DEX_PRICE_FLAG)?;
             let data = quotes
@@ -467,7 +476,12 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
+    async fn write_token_info(
+        &self,
+        address: Address,
+        decimals: u8,
+        symbol: String,
+    ) -> eyre::Result<()> {
         Ok(self
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData::new(
@@ -476,7 +490,12 @@ impl LibmdbxWriter for LibmdbxReadWriter {
             )])?)
     }
 
-    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
+    async fn save_pair_at(
+        &self,
+        block: u64,
+        pair: Pair,
+        edges: Vec<SubGraphEdge>,
+    ) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
 
         if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
@@ -497,7 +516,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn insert_pool(
+    async fn insert_pool(
         &self,
         block: u64,
         address: Address,
@@ -538,7 +557,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+    async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         let table = TxTracesData::new(
             block,
             TxTracesInner {

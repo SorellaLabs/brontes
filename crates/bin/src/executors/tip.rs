@@ -5,7 +5,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
 use brontes_inspect::Inspector;
 use brontes_types::{
     db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
@@ -16,7 +16,7 @@ use tracing::{debug, info};
 
 use super::shared::{inserts::process_results, state_collector::StateCollector};
 
-pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     current_block: u64,
     parser: &'static Parser<'static, T, DB>,
     state_collector: StateCollector<T, DB>,
@@ -26,7 +26,7 @@ pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> TipInspector<T, DB> {
     pub fn new(
         current_block: u64,
         _quote_asset: Address,
@@ -124,7 +124,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> Future for TipInspector<T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

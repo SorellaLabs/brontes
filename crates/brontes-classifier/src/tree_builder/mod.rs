@@ -8,7 +8,7 @@ use brontes_types::{
 };
 mod tree_pruning;
 mod utils;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedAction, SelfdestructWithIndex},
@@ -36,13 +36,13 @@ use crate::{
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
-pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx: &'db DB,
     provider: Arc<T>,
     pricing_update_sender: UnboundedSender<DexPriceMsg>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db, T, DB> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, DB> {
     pub fn new(
         libmdbx: &'db DB,
         pricing_update_sender: UnboundedSender<DexPriceMsg>,

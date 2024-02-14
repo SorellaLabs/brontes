@@ -4,7 +4,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use alloy_primitives::{Address, Bytes};
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, structured_trace::CallFrameInfo,
@@ -92,7 +92,7 @@ sol! {
 }
 
 pub trait ActionCollection: Sync + Send {
-    fn dispatch<DB: LibmdbxReader + LibmdbxWriter>(
+    fn dispatch<DB: LibmdbxReader + DBWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
         db_tx: &DB,
@@ -103,7 +103,7 @@ pub trait ActionCollection: Sync + Send {
 
 pub trait IntoAction: Debug + Send + Sync {
     #[allow(clippy::too_many_arguments)]
-    fn decode_trace_data<DB: LibmdbxReader + LibmdbxWriter>(
+    fn decode_trace_data<DB: LibmdbxReader + DBWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
         block: u64,

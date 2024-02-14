@@ -23,7 +23,7 @@ use brontes_pricing::{
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
-        traits::LibmdbxWriter,
+        traits::DBWriter,
     },
     normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
