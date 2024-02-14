@@ -14,7 +14,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::{Actions, NormalizedMint},
+        normalized_actions::{Actions, NormalizedBurn},
         Node, NodeData, Protocol, ToScaledRational, TreeSearchArgs,
     };
 
