@@ -103,6 +103,8 @@ action_dispatch!(
     CurveV2MetapoolImplremove_liquidity_one_coin_1Call,
     CurveV2PlainPoolImplexchange_0Call,
     CurveV2PlainPoolImplexchange_1Call,
+    CurveV2PlainpoolImpladd_liquidity_0Call,
+    CurveV2PlainpoolImpladd_liquidity_1Call,
     MakerPSMbuyGemCall,
     MakerPSMsellGemCall,
     AaveV2liquidationCallCall,
