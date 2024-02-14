@@ -8,3 +8,6 @@ pub use swaps::*;
 
 mod mints;
 pub use mints::*;
+
+mod burns;
+pub use burns::*;
