@@ -80,6 +80,7 @@ impl TokenProfits {
             }
         }
     }
+
     //TODO: Alternatively we could do something like this, but I'm not sure it's
     // even necessary
 
@@ -96,42 +97,61 @@ impl TokenProfits {
         }
     }
      */
-}
 
-impl Display for TokenProfits {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", "Token Deltas:\n".bold().bright_white().underline())?;
+    pub fn print_with_labels(
+        &self,
+        f: &mut fmt::Formatter,
+        labels: Option<&HashMap<Address, String>>,
+    ) -> fmt::Result {
+        writeln!(
+            f,
+            "\n{}",
+            "Token Deltas:\n".bold().bright_white().underline()
+        )?;
 
-        let mut profits_by_collector: HashMap<Address, Vec<TokenProfit>> = HashMap::new();
+        let mut profits_by_collector: HashMap<Address, Vec<&TokenProfit>> = HashMap::new();
         for profit in &self.profits {
             profits_by_collector
                 .entry(profit.profit_collector)
                 .or_default()
-                .push(profit.clone());
+                .push(profit);
         }
 
-        for (collector, profits) in profits_by_collector {
-            writeln!(f, " - Address {}: ", collector.to_string().bright_white())?;
+        for (collector, profits) in &profits_by_collector {
+            let label = labels
+                .and_then(|l| l.get(collector))
+                .map_or_else(|| collector.to_string(), |l| l.clone());
+
+            writeln!(f, " - {}: ", label.bright_white())?;
+
             for profit in profits {
-                if profit.amount >= 0.0 {
-                    writeln!(
-                        f,
-                        "    Gained: {:.7} {} (worth ${:.3})",
-                        profit.amount.to_string().green(),
-                        profit.token.inner.symbol.bold(),
-                        profit.usd_value.to_string()
-                    )?;
+                let amount_display = if profit.amount >= 0.0 {
+                    format!("{:.7}", profit.amount).green()
                 } else {
-                    writeln!(
-                        f,
-                        "    Lost: {:.7} {} (worth ${:.3})",
-                        profit.amount.abs().to_string().red(),
-                        profit.token.inner.symbol.bold(),
-                        profit.usd_value.abs()
-                    )?;
-                }
+                    format!("{:.7}", profit.amount.abs()).red()
+                };
+                writeln!(
+                    f,
+                    "    {}: {} {} (worth ${:.3})",
+                    if profit.amount >= 0.0 {
+                        "Gained"
+                    } else {
+                        "Lost"
+                    },
+                    amount_display,
+                    profit.token.inner.symbol.bold(),
+                    profit.usd_value.abs()
+                )?;
             }
         }
+
+        Ok(())
+    }
+}
+
+impl Display for TokenProfits {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.print_with_labels(f, None)?;
 
         Ok(())
     }
