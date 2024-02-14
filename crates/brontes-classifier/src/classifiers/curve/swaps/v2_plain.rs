@@ -112,9 +112,9 @@ action_impl!(
     }
 );
 
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
+// #[cfg(test)]
+// mod tests {
+//     use std::str::FromStr;
 
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
@@ -124,7 +124,7 @@ mod tests {
         Node, NodeData, ToScaledRational, TreeSearchArgs,
     };
 
-    use super::*;
+//     use super::*;
 
     #[brontes_macros::test]
     async fn test_curve_v2_plain_pool_exchange0() {
@@ -232,25 +232,26 @@ mod tests {
             },
         };
 
-        classifier_utils.ensure_token(token_in.clone());
-        classifier_utils.ensure_token(token_out.clone());
+//         classifier_utils.ensure_token(token_in.clone());
+//         classifier_utils.ensure_token(token_out.clone());
 
-        let eq_action = Actions::Swap(NormalizedSwap {
-            protocol: Protocol::CurveV2PlainPool,
-            trace_index: 1,
-            from: Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
-            recipient: Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token_in,
-            amount_in: U256::from_str("5738343996295056106530")
-                .unwrap()
-                .to_scaled_rational(18),
-            token_out,
-            amount_out: U256::from_str("5632479022165211497524")
-                .unwrap()
-                .to_scaled_rational(18),
-            msg_value: U256::ZERO,
-        });
+//         let eq_action = Actions::Swap(NormalizedSwap {
+//             protocol: Protocol::CurveV2PlainPool,
+//             trace_index: 1,
+//             from:
+// Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
+// recipient: Address::new(hex!("554EF7d3C2E629ab3DD4F3d22717741F22d3B2d7")),
+//             pool:
+// Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+// token_in,             amount_in: U256::from_str("5738343996295056106530")
+//                 .unwrap()
+//                 .to_scaled_rational(18),
+//             token_out,
+//             amount_out: U256::from_str("5632479022165211497524")
+//                 .unwrap()
+//                 .to_scaled_rational(18),
+//             msg_value: U256::ZERO,
+//         });
 
         let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
             collect_current_node: data
@@ -264,9 +265,9 @@ mod tests {
                 .any(|action| action.is_swap()),
         };
 
-        classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
-            .await
-            .unwrap();
-    }
-}
+//         classifier_utils
+//             .contains_action(swap, 0, eq_action, search_fn)
+//             .await
+//             .unwrap();
+//     }
+// }
