@@ -309,8 +309,8 @@ mod tests {
         let eq_action = Actions::Burn(NormalizedBurn {
             protocol: Protocol::CurveV2MetaPool,
             trace_index: 1,
-            from: Address::new(hex!("d236A1a8340DE9d4f91C7bDB72eF0e4B3a90e4fd")),
-            recipient: Address::new(hex!("d236A1a8340DE9d4f91C7bDB72eF0e4B3a90e4fd")),
+            from: Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
+            recipient: Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
             pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             token: vec![token0, token1],
             amount: vec![
