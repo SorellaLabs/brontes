@@ -81,7 +81,7 @@ action_dispatch!(
     CurveV1MetapoolImplexchange_1Call,
     CurveV1MetapoolImplexchange_underlying_0Call,
     CurveV1MetapoolImplexchange_underlying_1Call,
-    CurveV1MetapoolImpladd_liquidity_1Call,
+    CurveV1MetapoolImpladd_liquidity_0Call,
     CurveV1MetapoolImpladd_liquidity_1Call,
     CurveV2MetapoolImplexchange_0Call,
     CurveV2MetapoolImplexchange_1Call,
