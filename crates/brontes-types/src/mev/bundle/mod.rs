@@ -34,7 +34,7 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Bundle {
     pub header: BundleHeader,
-    pub data:   BundleData,
+    pub data: BundleData,
 }
 
 impl fmt::Display for Bundle {
@@ -73,16 +73,16 @@ impl fmt::Display for Bundle {
 #[allow(non_camel_case_types)]
 #[serde(rename_all = "lowercase")]
 pub enum MevType {
-    Sandwich    = 1,
-    AtomicArb   = 5,
+    Sandwich = 1,
+    AtomicArb = 5,
     #[serde(rename = "jit_sandwich")]
     JitSandwich = 3,
-    Jit         = 2,
+    Jit = 2,
     #[serde(rename = "cex_dex")]
-    CexDex      = 0,
+    CexDex = 0,
     Liquidation = 4,
     #[default]
-    Unknown     = 6,
+    Unknown = 6,
 }
 
 self_convert_redefined!(MevType);

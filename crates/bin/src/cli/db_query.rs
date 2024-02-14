@@ -19,7 +19,7 @@ pub struct DatabaseQuery {
     /// --key 80
     /// or --key 80..100
     #[arg(long, short)]
-    pub key:   String,
+    pub key: String,
 }
 
 impl DatabaseQuery {

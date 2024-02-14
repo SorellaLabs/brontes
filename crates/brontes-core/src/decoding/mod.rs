@@ -29,7 +29,7 @@ pub type ParserFuture<'a> =
 
 pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     executor: Executor,
-    parser:   TraceParser<'a, T, DB>,
+    parser: TraceParser<'a, T, DB>,
 }
 
 impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB> {

@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
 use alloy_primitives::{Address, U256};
-use alloy_sol_types::SolCall;
 use brontes_macros::{curve_discovery_impl, discovery_impl};
 use brontes_pricing::make_call_request;
 use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, traits::TracingProvider, Protocol,
 };
-use itertools::Itertools;
 
 curve_discovery_impl!(
     CurveV1,
@@ -79,21 +77,23 @@ async fn query_base_pool<T: TracingProvider>(
     loop {
         let addr = if is_meta {
             let Ok(call) = make_call_request(
-                coins_1Call { arg0: U256::from(i as u64) },
+                coins_1Call {
+                    arg0: U256::from(i as u64),
+                },
                 tracer,
-                base_pool,
+                *base_pool,
                 None,
             )
             .await
             else {
-                break
+                break;
             };
             call._0
         } else {
             let Ok(call) =
                 make_call_request(coins_0Call { arg0: i }, tracer, *base_pool, None).await
             else {
-                break
+                break;
             };
             call._0
         };
@@ -112,7 +112,12 @@ async fn parse_plain_pool<const N: usize>(
 ) -> Vec<NormalizedNewPool> {
     let tokens = tokens.into_iter().filter(|t| t != &Address::ZERO).collect();
 
-    vec![NormalizedNewPool { pool_address: deployed_address, trace_index, protocol, tokens }]
+    vec![NormalizedNewPool {
+        pool_address: deployed_address,
+        trace_index,
+        protocol,
+        tokens,
+    }]
 }
 
 async fn parse_meta_pool<T: TracingProvider>(
@@ -126,16 +131,10 @@ async fn parse_meta_pool<T: TracingProvider>(
     let mut tokens = query_base_pool(&tracer, &base_pool, true).await;
     tokens.push(meta_token);
 
-    vec![NormalizedNewPool { pool_address: deployed_address, trace_index, protocol, tokens }]
-}
-
-async fn parse_base_bool<T: TracingProvider>(
-    protocol: Protocol,
-    base_pool: Address,
-    trace_index: u64,
-    tracer: Arc<T>,
-) -> Vec<NormalizedNewPool> {
-    let tokens = query_base_pool(&tracer, &base_pool, false).await;
-
-    vec![NormalizedNewPool { pool_address: base_pool, trace_index, protocol, tokens }]
+    vec![NormalizedNewPool {
+        pool_address: deployed_address,
+        trace_index,
+        protocol,
+        tokens,
+    }]
 }

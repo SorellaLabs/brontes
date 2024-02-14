@@ -118,6 +118,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
         normalized_actions::{Actions, NormalizedLiquidation},
+        tree::root::NodeData,
         Node, Protocol, TreeSearchArgs,
     };
     use malachite::Rational;
@@ -127,27 +128,37 @@ mod tests {
     #[brontes_macros::test]
     async fn test_aave_v3_liquidation() {
         let classifier_utils = ClassifierTestUtils::new().await;
-        let aave_v3_liquidation =
-            B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
+        let aave_v3_liquidation = B256::from(hex!(
+            "dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"
+        ));
 
         let eq_action = Actions::Liquidation(NormalizedLiquidation {
-            protocol:              Protocol::AaveV3,
+            protocol: Protocol::AaveV3,
             liquidated_collateral: Rational::from_signeds(165516722, 100000000),
-            covered_debt:          Rational::from_signeds(63857746423_i64, 1000000),
-            debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
-            debt_asset:            classifier_utils
-                .get_token_info(Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))),
-            collateral_asset:      classifier_utils
-                .get_token_info(Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))),
-            liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
-            pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
-            trace_index:           6,
-            msg_value:             U256::ZERO,
+            covered_debt: Rational::from_signeds(63857746423_i64, 1000000),
+            debtor: Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),
+            debt_asset: classifier_utils.get_token_info(Address::from(hex!(
+                "a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+            ))),
+            collateral_asset: classifier_utils.get_token_info(Address::from(hex!(
+                "2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+            ))),
+            liquidator: Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
+            pool: Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
+            trace_index: 6,
+            msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_liquidation(),
-            child_node_to_collect: node.subactions.iter().any(|action| action.is_liquidation()),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node: data
+                .get_ref(node.data)
+                .map(|a| a.is_liquidation())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .subactions
+                .iter()
+                .filter_map(|node| data.get_ref(*node))
+                .any(|action| action.is_liquidation()),
         };
 
         classifier_utils

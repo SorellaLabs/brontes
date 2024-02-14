@@ -466,7 +466,9 @@ pub mod option_r_address {
         let data = des.map(|d| Address::from_str(&d));
 
         if let Some(d) = data {
-            Ok(Some(AddressRedefined::from_source(d.map_err(serde::de::Error::custom)?)))
+            Ok(Some(AddressRedefined::from_source(
+                d.map_err(serde::de::Error::custom)?,
+            )))
         } else {
             Ok(None)
         }
@@ -604,8 +606,13 @@ pub mod socials {
     use serde::de::{Deserialize, Deserializer};
 
     use crate::db::address_metadata::Socials;
-    type SocalDecode =
-        (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
+    type SocalDecode = (
+        Option<String>,
+        Option<u64>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    );
 
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
@@ -614,6 +621,13 @@ pub mod socials {
         let (twitter, twitter_followers, website_url, crunchbase, linkedin): SocalDecode =
             Deserialize::deserialize(deserializer)?;
 
-        Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
+        Ok(Socials {
+            twitter,
+            twitter_followers,
+            website_url,
+            crunchbase,
+            linkedin,
+        }
+        .into())
     }
 }

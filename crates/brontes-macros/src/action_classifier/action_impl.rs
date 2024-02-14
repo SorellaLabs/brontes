@@ -9,19 +9,19 @@ use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME}
 
 pub struct ActionMacro {
     // required for all
-    protocol_path:        Path,
-    path_to_call:         Path,
-    action_type:          Ident,
+    protocol_path: Path,
+    path_to_call: Path,
+    action_type: Ident,
     exchange_name_w_call: Ident,
-    log_types:            Vec<LogConfig>,
+    log_types: Vec<LogConfig>,
     /// wether we want logs or not
-    give_logs:            bool,
+    give_logs: bool,
     /// wether we want return data or not
-    give_returns:         bool,
+    give_returns: bool,
     /// wether we want call_data or not
-    give_call_data:       bool,
+    give_call_data: bool,
     /// The closure that we use to construct the normalized type
-    call_function:        ExprClosure,
+    call_function: ExprClosure,
 }
 
 impl ActionMacro {
@@ -49,26 +49,29 @@ impl ActionMacro {
             call_function,
         );
 
-        let call_fn_name =
-            Ident::new(&format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call), Span::call_site());
+        let call_fn_name = Ident::new(
+            &format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call),
+            Span::call_site(),
+        );
 
-        let dex_price_return =
-            if action_type.to_string().to_lowercase().as_str() == "poolconfigupdate" {
-                quote!(
-                    if db_tx.insert_pool(block,
-                        pool.pool_address,
-                        [pool.tokens[0], pool.tokens[1]],
-                        pool.protocol).is_err() {
-                    ::tracing::error!(
-                        pool=?pool.pool_address,
-                                      block,
-                                      "failed to update pool config");
-                }
+        let dex_price_return = if action_type.to_string().to_lowercase().as_str()
+            == "poolconfigupdate"
+        {
+            quote!(
+                if db_tx.insert_pool(block,
+                    pool.pool_address,
+                    [pool.tokens[0], pool.tokens[1]],
+                    pool.protocol).is_err() {
+                ::tracing::error!(
+                    pool=?pool.pool_address,
+                                  block,
+                                  "failed to update pool config");
+            }
 
-                Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
-                )
-            } else {
-                quote!(
+            Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
+            )
+        } else {
+            quote!(
                 Ok(::brontes_pricing::types::DexPriceMsg::Update(
                     ::brontes_pricing::types::PoolUpdate {
                         block,
@@ -78,7 +81,7 @@ impl ActionMacro {
                     },
                 ))
             )
-            };
+        };
 
         Ok(quote! {
             #[allow(unused_imports)]
@@ -159,25 +162,25 @@ impl Parse for ActionMacro {
 fn parse_closure(input: &mut syn::parse::ParseStream) -> syn::Result<ExprClosure> {
     let call_function: ExprClosure = input.parse()?;
     if call_function.asyncness.is_some() {
-        return Err(syn::Error::new(input.span(), "closure cannot be async"))
+        return Err(syn::Error::new(input.span(), "closure cannot be async"));
     }
 
     if !input.is_empty() {
         return Err(syn::Error::new(
             input.span(),
             "There should be no values after the call function",
-        ))
+        ));
     }
 
     if call_function.asyncness.is_some() {
-        return Err(syn::Error::new(input.span(), "closure cannot be async"))
+        return Err(syn::Error::new(input.span(), "closure cannot be async"));
     }
 
     if !input.is_empty() {
         return Err(syn::Error::new(
             input.span(),
             "There should be no values after the call function",
-        ))
+        ));
     }
 
     Ok(call_function)
@@ -216,14 +219,17 @@ fn parse_config(input: &mut syn::parse::ParseStream) -> syn::Result<(bool, bool,
 
 fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path> {
     let protocol_path: Path = input.parse().map_err(|_| {
-        syn::Error::new(input.span(), "No Protocol Found, Should be Protocol::<ProtocolVarient>")
+        syn::Error::new(
+            input.span(),
+            "No Protocol Found, Should be Protocol::<ProtocolVarient>",
+        )
     })?;
 
     if protocol_path.segments.len() < 2 {
         return Err(syn::Error::new(
             protocol_path.span(),
             "incorrect path, Should be Protocol::<ProtocolVarient>",
-        ))
+        ));
     }
 
     let should_protocol = &protocol_path.segments[protocol_path.segments.len() - 2].ident;
@@ -231,7 +237,7 @@ fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path>
         return Err(syn::Error::new(
             should_protocol.span(),
             "incorrect path, Should be Protocol::<ProtocolVarient>",
-        ))
+        ));
     }
     Ok(protocol_path)
 }
@@ -248,7 +254,7 @@ fn parse_decode_fn_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path
         return Err(syn::Error::new(
             fn_path.span(),
             "incorrect path, Should be <crate>::<path_to>::ProtocolModName::FnCall",
-        ))
+        ));
     }
 
     Ok(fn_path)
@@ -278,7 +284,11 @@ fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<LogConfig>
             can_repeat = true;
         }
 
-        log_types.push(LogConfig { ignore_before, can_repeat, log_ident: log_type });
+        log_types.push(LogConfig {
+            ignore_before,
+            can_repeat,
+            log_ident: log_type,
+        });
 
         let Ok(_) = content.parse::<Token![,]>() else {
             break;
