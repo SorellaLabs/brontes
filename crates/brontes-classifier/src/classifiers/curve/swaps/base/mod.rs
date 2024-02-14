@@ -1,64 +1,11 @@
-use brontes_macros::action_impl;
-use brontes_pricing::Protocol;
-use brontes_types::{
-    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
-};
+mod base2;
+pub use base2::*;
 
-action_impl!(
-    Protocol::CurveBasePool,
-    crate::CurveBase::exchangeCall,
-    Swap,
-    [..TokenExchange],
-    logs: true,
-    |
-    info: CallInfo,
-    log: CurveBasePoolexchangeCallLogs,
-    db_tx: &DB
-    |{
-        let log = log.TokenExchange_field;
+mod base3;
+pub use base3::*;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
-
-        let token_in_addr = match log.sold_id {
-            0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token in, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token in, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token in, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_out_addr = match log.bought_id {
-            0 => details.token0,
-            1 => details.token1,
-            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for token out, found None"))?,
-            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for token out, found None"))?,
-            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for token out, found None"))?,
-            _ => unreachable!()
-        };
-
-        let token_in = db_tx.try_fetch_token_info(token_in_addr)?;
-        let token_out = db_tx.try_fetch_token_info(token_out_addr)?;
-
-        let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
-        let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
-
-
-        Ok(NormalizedSwap {
-            protocol: Protocol::CurveBasePool,
-            trace_index: info.trace_idx,
-            pool: info.target_address,
-            from: info.from_address,
-            recipient: info.from_address,
-            token_in,
-            token_out,
-            amount_in,
-            amount_out,
-            msg_value: info.msg_value
-        })
-
-    }
-);
+mod base4;
+pub use base4::*;
 
 #[cfg(test)]
 mod tests {
@@ -68,17 +15,15 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs,
+        normalized_actions::{Actions, NormalizedSwap},
+        Node, NodeData, Protocol, ToScaledRational, TreeSearchArgs,
     };
 
-    use super::*;
-
     #[brontes_macros::test]
-    async fn test_curve_v1_base_exchange() {
+    async fn test_curve_base_exchange() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
-            Protocol::CurveBasePool,
+            Protocol::CurveBasePool3,
             Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
             Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
@@ -112,7 +57,7 @@ mod tests {
         classifier_utils.ensure_token(token_out.clone());
 
         let eq_action = Actions::Swap(NormalizedSwap {
-            protocol: Protocol::CurveBasePool,
+            protocol: Protocol::CurveBasePool3,
             trace_index: 0,
             from: Address::new(hex!("0F5cd3C453A7FCD7735eB2f0493F36D41398A4a0")),
             recipient: Address::new(hex!("0F5cd3C453A7FCD7735eB2f0493F36D41398A4a0")),
