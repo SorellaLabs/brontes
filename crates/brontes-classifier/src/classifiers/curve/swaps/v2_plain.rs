@@ -16,7 +16,7 @@ action_impl!(
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
 
         let token_in_addr = match log.sold_id {
             0 => details.token0,
@@ -44,8 +44,8 @@ action_impl!(
 
 
         Ok(NormalizedSwap {
-            protocol: Protocol::CurveV2PlainPool,
-            pool: info.target_address,
+            protocol: details.protocol,
+            pool: info.from_address,
             trace_index: info.trace_idx,
             from: info.msg_sender,
             recipient: info.msg_sender,
@@ -70,7 +70,7 @@ action_impl!(
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details(info.from_address)?;
 
         let token_in_addr = match log.sold_id {
             0 => details.token0,
@@ -98,8 +98,8 @@ action_impl!(
 
 
         Ok(NormalizedSwap {
-            protocol: Protocol::CurveV2PlainPool,
-            pool: info.target_address,
+            protocol: details.protocol,
+            pool: info.from_address,
             trace_index: info.trace_idx,
             from: info.msg_sender,
             recipient: info.msg_sender,
