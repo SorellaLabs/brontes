@@ -103,7 +103,11 @@ impl TokenProfits {
         f: &mut fmt::Formatter,
         labels: Option<&HashMap<Address, String>>,
     ) -> fmt::Result {
-        writeln!(f, "\n{}", "Token Deltas:\n".bold().bright_white().underline())?;
+        writeln!(
+            f,
+            "\n{}",
+            "Token Deltas:\n".bold().bright_white().underline()
+        )?;
 
         let mut profits_by_collector: HashMap<Address, Vec<&TokenProfit>> = HashMap::new();
         for profit in &self.profits {
@@ -129,7 +133,11 @@ impl TokenProfits {
                 writeln!(
                     f,
                     "    {}: {} {} (worth ${:.3})",
-                    if profit.amount >= 0.0 { "Gained" } else { "Lost" },
+                    if profit.amount >= 0.0 {
+                        "Gained"
+                    } else {
+                        "Lost"
+                    },
                     amount_display,
                     profit.token.inner.symbol.bold(),
                     profit.usd_value.abs()
