@@ -127,6 +127,78 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
+    async fn test_curve_v2_plain_pool_exchange0() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        classifier_utils.ensure_protocol(
+            Protocol::CurveV2PlainPool,
+            Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
+            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let swap = B256::from(hex!(
+            "ae902afa8e19c08948c71ad3fe8be6eb7eb04ecd683ce577768fc6bdc0af0f4d"
+        ));
+
+        let token_in = TokenInfoWithAddress {
+            address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "CRV".to_string(),
+            },
+        };
+
+        let token_out = TokenInfoWithAddress {
+            address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "cvxCRV".to_string(),
+            },
+        };
+
+        classifier_utils.ensure_token(token_in.clone());
+        classifier_utils.ensure_token(token_out.clone());
+
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol: Protocol::CurveV2PlainPool,
+            trace_index: 1,
+            from: Address::new(hex!("4D4Ef453CF782926825F5768499C7e02DaA3A9E7")),
+            recipient: Address::new(hex!("4D4Ef453CF782926825F5768499C7e02DaA3A9E7")),
+            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token_in,
+            amount_in: U256::from_str("1111892484733123139009")
+                .unwrap()
+                .to_scaled_rational(18),
+            token_out,
+            amount_out: U256::from_str("1180110845900664914819")
+                .unwrap()
+                .to_scaled_rational(18),
+            msg_value: U256::ZERO,
+        });
+
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node: data
+                .get_ref(node.data)
+                .map(|s| s.is_swap())
+                .unwrap_or_default(),
+            child_node_to_collect: node
+                .get_all_sub_actions()
+                .iter()
+                .filter_map(|d| data.get_ref(*d))
+                .any(|action| action.is_swap()),
+        };
+
+        classifier_utils
+            .contains_action(swap, 0, eq_action, search_fn)
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
     async fn test_curve_v2_plain_pool_exchange1() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
