@@ -72,6 +72,7 @@ action_dispatch!(
     UniswapXexecuteBatchCall,
     UniswapXexecuteBatchWithCallbackCall,
     UniswapXexecuteWithCallbackCall,
+<<<<<<< HEAD
     CurveBasePool2exchangeCall,
     CurveBasePool3exchangeCall,
     CurveBasePool4exchangeCall,
@@ -86,6 +87,11 @@ action_dispatch!(
     CurveBasePool3remove_liquidity_one_coinCall,
     CurveBasePool4remove_liquidityCall,
     CurveBasePool4remove_liquidity_imbalanceCall,
+=======
+    CurveBasePoolexchangeCall,
+    //CurveV1MetaPoolexchange_1Call,
+    //CurveV1MetaPoolexchange_underlying_1Call,
+>>>>>>> main
     CurveV1MetapoolImplexchange_0Call,
     CurveV1MetapoolImplexchange_1Call,
     CurveV1MetapoolImplexchange_underlying_0Call,
@@ -104,6 +110,7 @@ action_dispatch!(
     CurveV2MetapoolImpladd_liquidity_1Call,
     CurveV2MetapoolImplexchange_underlying_0Call,
     CurveV2MetapoolImplexchange_underlying_1Call,
+<<<<<<< HEAD
     CurveV2MetapoolImplremove_liquidity_0Call,
     CurveV2MetapoolImplremove_liquidity_1Call,
     CurveV2MetapoolImplremove_liquidity_imbalance_0Call,
@@ -120,6 +127,12 @@ action_dispatch!(
     CurveV2PlainPoolImplremove_liquidity_imbalance_1Call,
     CurveV2PlainPoolImplremove_liquidity_one_coin_0Call,
     CurveV2PlainPoolImplremove_liquidity_one_coin_1Call,
+=======
+    // CurveCryptoSwapPoolexchange_0Call,
+    // CurveCryptoSwapPoolexchange_1Call,
+    // CurveCryptoSwapPoolexchange_2Call,
+    // CurveCryptoSwapPoolexchange_underlying_0Call,
+>>>>>>> main
     MakerPSMbuyGemCall,
     MakerPSMsellGemCall,
     AaveV2liquidationCallCall,
