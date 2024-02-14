@@ -51,9 +51,9 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac1f845298e95f983ff1944b728ae08b8cebab80d684f0a832ed0fc74dfa27e2"
+checksum = "b169f7a6d4742236a0a00c541b845991d0ac43e546831af1249753ab4c3aa3a0"
 dependencies = [
  "cfg-if",
  "cipher 0.4.4",
@@ -129,9 +129,9 @@ checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
 
 [[package]]
 name = "alloy-chains"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45625825df98039a6dced71fedca82e69a8a0177453e21faeed47b9a6f16a178"
+checksum = "146dc3f33a9e282751a62ddd6687292c504605cc285a49500541e5d1e5b7617b"
 dependencies = [
  "alloy-rlp",
  "arbitrary",
@@ -156,7 +156,7 @@ dependencies = [
  "itoa",
  "serde",
  "serde_json",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -367,7 +367,7 @@ version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4dd124ec0a456ec5e9dcca5b6e8b011bc723cc410d4d9a66bf032770feaeef4b"
 dependencies = [
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -2162,17 +2162,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clickhouse-table-macro"
-version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3501874ac2a66500a95533a462a29df3fa9ce690"
-dependencies = [
- "dotenv",
- "proc-macro2",
- "quote",
- "syn 2.0.48",
-]
-
-[[package]]
 name = "cobs"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2576,12 +2565,12 @@ dependencies = [
 
 [[package]]
 name = "darling"
-version = "0.20.5"
+version = "0.20.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc5d6b04b3fd0ba9926f945895de7d806260a2d7431ba82e7edaecb043c4c6b8"
+checksum = "c376d08ea6aa96aafe61237c7200d1241cb177b7d3a542d791f2d118e9cbb955"
 dependencies = [
- "darling_core 0.20.5",
- "darling_macro 0.20.5",
+ "darling_core 0.20.6",
+ "darling_macro 0.20.6",
 ]
 
 [[package]]
@@ -2600,9 +2589,9 @@ dependencies = [
 
 [[package]]
 name = "darling_core"
-version = "0.20.5"
+version = "0.20.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04e48a959bcd5c761246f5d090ebc2fbf7b9cd527a492b07a67510c108f1e7e3"
+checksum = "33043dcd19068b8192064c704b3f83eb464f91f1ff527b44a4e2b08d9cdb8855"
 dependencies = [
  "fnv",
  "ident_case",
@@ -2625,11 +2614,11 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.20.5"
+version = "0.20.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d1545d67a2149e1d93b7e5c7752dce5a7426eb5d1357ddcfd89336b94444f77"
+checksum = "c5a91391accf613803c2a9bf9abccdbaa07c54b4244a5b64883f9c3c137c86be"
 dependencies = [
- "darling_core 0.20.5",
+ "darling_core 0.20.6",
  "quote",
  "syn 2.0.48",
 ]
@@ -3115,7 +3104,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fda3bf123be441da5260717e0661c25a2fd9cb2b2c1d20bf2e05580047158ab"
 dependencies = [
- "aes 0.8.3",
+ "aes 0.8.4",
  "ctr 0.9.2",
  "digest 0.10.7",
  "hex",
@@ -3861,9 +3850,9 @@ checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "hermit-abi"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0c62115964e08cb8039170eb33c1d0e2388a256930279edca206fff675f82c3"
+checksum = "bd5256b483761cd23699d0da46cc6fd2ee3be420bbe6d020ae4a091e70b7e9fd"
 
 [[package]]
 name = "hex"
@@ -5832,9 +5821,9 @@ dependencies = [
 
 [[package]]
 name = "pkg-config"
-version = "0.3.29"
+version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2900ede94e305130c13ddd391e0ab7cbaeb783945ae07a279c268cb05109c6cb"
+checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "platforms"
@@ -6633,7 +6622,7 @@ name = "reth-ecies"
 version = "0.1.0-alpha.17"
 source = "git+https://github.com/paradigmxyz/reth?rev=b4bb7f0#b4bb7f0425fdc0ca70f5e50e623fd03acd4bf517"
 dependencies = [
- "aes 0.8.3",
+ "aes 0.8.4",
  "alloy-rlp",
  "block-padding",
  "byteorder",
@@ -7356,7 +7345,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "5.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#5670ee4860c3f29e656408be53cc4b10407fe139"
+source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
 dependencies = [
  "auto_impl",
  "cfg-if",
@@ -7396,7 +7385,7 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "2.1.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#5670ee4860c3f29e656408be53cc4b10407fe139"
+source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
 dependencies = [
  "revm-primitives 2.0.0 (git+https://github.com/bluealloy/revm?branch=main)",
  "serde",
@@ -7423,7 +7412,7 @@ dependencies = [
 [[package]]
 name = "revm-precompile"
 version = "4.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#5670ee4860c3f29e656408be53cc4b10407fe139"
+source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
 dependencies = [
  "aurora-engine-modexp",
  "c-kzg",
@@ -7460,7 +7449,7 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "2.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#5670ee4860c3f29e656408be53cc4b10407fe139"
+source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
 dependencies = [
  "alloy-primitives",
  "auto_impl",
@@ -8080,7 +8069,7 @@ version = "3.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "865f9743393e638991566a8b7a479043c2c8da94a33e0a31f18214c9cae0a64d"
 dependencies = [
- "darling 0.20.5",
+ "darling 0.20.6",
  "proc-macro2",
  "quote",
  "syn 2.0.48",
@@ -8332,13 +8321,12 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3501874ac2a66500a95533a462a29df3fa9ce690"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
 dependencies = [
  "async-recursion",
  "async-trait",
  "chrono",
  "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs?branch=master)",
- "clickhouse-table-macro",
  "dotenv",
  "dyn-clone",
  "erased-serde",
@@ -8351,6 +8339,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sorella-db-macros",
  "sorella-db-metrics",
  "sorella-db-metrics-derive",
  "sorella-db-tracing",
@@ -8362,9 +8351,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "sorella-db-macros"
+version = "0.1.0"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
+dependencies = [
+ "dotenv",
+ "itertools 0.11.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
+]
+
+[[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3501874ac2a66500a95533a462a29df3fa9ce690"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
 dependencies = [
  "eyre",
  "futures",
@@ -8381,7 +8382,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3501874ac2a66500a95533a462a29df3fa9ce690"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8393,7 +8394,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3501874ac2a66500a95533a462a29df3fa9ce690"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
 dependencies = [
  "serde",
  "serde_json",
@@ -8407,7 +8408,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3501874ac2a66500a95533a462a29df3fa9ce690"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
@@ -8747,7 +8748,7 @@ version = "4.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4da89cfe93508da3676114d5a15aa26e29aa88d5230e22bc5ea5f3c1f08ef5f6"
 dependencies = [
- "darling 0.20.5",
+ "darling 0.20.6",
  "if_chain",
  "itertools 0.12.1",
  "once_cell",
@@ -9015,7 +9016,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit 0.22.4",
+ "toml_edit 0.22.5",
 ]
 
 [[package]]
@@ -9035,7 +9036,7 @@ checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
  "indexmap 2.2.2",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -9046,7 +9047,7 @@ checksum = "70f427fce4d84c72b5b732388bf4a9f4531b53f74e2887e3ecb2481f68f66d81"
 dependencies = [
  "indexmap 2.2.2",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -9057,20 +9058,20 @@ checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
 dependencies = [
  "indexmap 2.2.2",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
 name = "toml_edit"
-version = "0.22.4"
+version = "0.22.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c9ffdf896f8daaabf9b66ba8e77ea1ed5ed0f72821b398aba62352e95062951"
+checksum = "99e68c159e8f5ba8a28c4eb7b0c0c190d77bb479047ca713270048145a9ad28a"
 dependencies = [
  "indexmap 2.2.2",
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow",
+ "winnow 0.6.1",
 ]
 
 [[package]]
@@ -9852,9 +9853,18 @@ checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winnow"
-version = "0.5.39"
+version = "0.5.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5389a154b01683d28c77f8f68f49dea75f0a4da32557a58f68ee51ebba472d29"
+checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d90f4e0f530c4c69f62b80d839e9ef3855edc9cba471a160c4d692deed62b401"
 dependencies = [
  "memchr",
 ]
@@ -10053,7 +10063,7 @@ version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "760394e246e4c28189f19d488c058bf16f564016aefac5d32bb1f3b51d5e9261"
 dependencies = [
- "aes 0.8.3",
+ "aes 0.8.4",
  "byteorder",
  "bzip2",
  "constant_time_eq",
