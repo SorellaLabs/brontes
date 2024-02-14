@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_v1_metapool_remove_liquidity_imbalanced0() {
+    async fn test_curve_v2_metapool_remove_liquidity_imbalanced0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2MetaPool,
@@ -412,7 +412,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_base_remove_liquidity_one0() {
+    async fn test_curve_v2_metapool_remove_liquidity_one0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2MetaPool,
