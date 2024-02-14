@@ -139,14 +139,14 @@ mod tests {
 
         let eq_action = Actions::Mint(NormalizedMint {
             protocol: Protocol::CurveBasePool,
-            trace_index: 0,
+            trace_index: 1,
             from: Address::new(hex!("1a734e9bDa6893915928eE8edBA75cA17536d385")),
             recipient: Address::new(hex!("1a734e9bDa6893915928eE8edBA75cA17536d385")),
             pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             token: vec![token0, token1],
             amount: vec![
                 U256::from(1000000000000000000000 as u128).to_scaled_rational(18),
-                U256::from(1000000000000000000000 as u128).to_scaled_rational(8),
+                U256::from(1000000000000000000000 as u128).to_scaled_rational(18),
             ],
         });
 
