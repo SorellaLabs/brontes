@@ -4,16 +4,13 @@ use std::{
 };
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
+use clickhouse::Row;
 use malachite::{num::basic::traits::One, Rational};
 use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse::{self, DbRow, Row},
-    database_table,
-    tables::DatabaseTable,
-};
+use sorella_db_databases::{database_table, tables::DatabaseTable};
 use tracing::error;
 
 use crate::{

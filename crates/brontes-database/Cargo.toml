@@ -48,6 +48,7 @@ malachite = { workspace = true, features = ["naturals_and_integers"] }
 # sorella-db
 sorella-db-databases.workspace = true
 sorella-db-types.workspace = true
+clickhouse.workspace = true
 
 # serde
 serde = { workspace = true, features = ["derive"] }

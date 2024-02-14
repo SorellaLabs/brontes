@@ -1,8 +1,8 @@
 use alloy_primitives::Address;
+use clickhouse::Row;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row, database_table, tables::DatabaseTable};
 
 use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc};
 

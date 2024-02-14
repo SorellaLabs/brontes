@@ -1,7 +1,7 @@
 use core::panic;
 use std::{collections::VecDeque, pin::Pin, task::Poll};
 
-use brontes_database::clickhouse::Clickhouse;
+use brontes_database::clickhouse::{Clickhouse, ClickhouseHandle};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     db::{
@@ -17,14 +17,16 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
+/// Limits the amount we work ahead in the processing. This is done
+/// as the Pricer is a slow process
 const MAX_PENDING_TREES: usize = 20;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;
 
 /// deals with all cases on how we get and finalize our metadata
-pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
-    clickhouse: Option<&'static Clickhouse>,
+pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> {
+    clickhouse: Option<&'static CH>,
     dex_pricer_stream: Option<WaitingForPricerFuture<T, DB>>,
     /// we will drain this in the case we aren't running a dex pricer to avoid
     /// being terrible on memory
@@ -34,9 +36,11 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,
 }
 
-impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> MetadataFetcher<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
+    MetadataFetcher<T, DB>
+{
     pub fn new(
-        clickhouse: Option<&'static Clickhouse>,
+        clickhouse: Option<&'static CH>,
         dex_pricer_stream: Option<WaitingForPricerFuture<T, DB>>,
         no_price_chan: Option<UnboundedReceiver<DexPriceMsg>>,
     ) -> Self {
@@ -109,7 +113,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> MetadataFetcher<T, DB> {
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Stream for MetadataFetcher<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
+    for MetadataFetcher<T, DB>
+{
     type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(

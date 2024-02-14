@@ -15,6 +15,7 @@
 use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
+use clickhouse::Row;
 use derive_more::Display;
 use malachite::{
     num::{
@@ -25,7 +26,6 @@ use malachite::{
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
-use sorella_db_databases::clickhouse::{self, Row};
 
 use crate::{
     constants::*,

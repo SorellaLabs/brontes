@@ -39,6 +39,7 @@ serde_repr.workspace = true
 
 # database
 sorella-db-databases.workspace = true
+clickhouse.workspace = true
 
 # misc
 phf.workspace = true
@@ -76,7 +77,6 @@ brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
-
 
 
 [features]

@@ -19,6 +19,7 @@ resolver = "2"
 # Database
 sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
 sorella-db-types = { git = "https://github.com/SorellaLabs/Database", branch = "main"  }
+clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs.git" }
 
 
 # Poirot

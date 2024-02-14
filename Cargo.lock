@@ -1524,6 +1524,7 @@ dependencies = [
  "brontes-pricing",
  "brontes-types",
  "bytes",
+ "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
  "codecs-derive",
  "criterion",
  "derive_more",
@@ -1594,7 +1595,7 @@ dependencies = [
  "brontes-macros",
  "brontes-pricing",
  "brontes-types",
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs)",
+ "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
  "convert_case 0.6.0",
  "criterion",
  "dotenv",
@@ -1743,6 +1744,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "bytes",
+ "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
  "colored",
  "derive_more",
  "dotenv",
@@ -2112,11 +2114,11 @@ dependencies = [
 [[package]]
 name = "clickhouse"
 version = "0.11.5"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
 dependencies = [
  "bstr",
  "bytes",
- "clickhouse-derive 0.1.1 (git+https://github.com/SorellaLabs/clickhouse.rs)",
+ "clickhouse-derive 0.1.1 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
  "clickhouse-rs-cityhash-sys",
  "futures",
  "hyper",
@@ -2146,7 +2148,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.1.1"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
 dependencies = [
  "proc-macro2",
  "quote",

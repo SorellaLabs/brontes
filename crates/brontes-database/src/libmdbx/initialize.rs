@@ -4,30 +4,30 @@ use std::{
 };
 
 use brontes_types::{traits::TracingProvider, unordered_buffer_map::BrontesStreamExt};
+use clickhouse::DbRow;
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
 use serde::Deserialize;
-use sorella_db_databases::{clickhouse::DbRow, Database};
 use tracing::{error, info};
 
 use super::tables::Tables;
 use crate::{
-    clickhouse::Clickhouse,
+    clickhouse::ClickhouseHandle,
     libmdbx::{types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
 };
 
 const DEFAULT_START_BLOCK: u64 = 0;
 
-pub struct LibmdbxInitializer<TP: TracingProvider> {
+pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
     pub(crate) libmdbx: &'static LibmdbxReadWriter,
-    clickhouse: &'static Clickhouse,
+    clickhouse: &'static CH,
     tracer: Arc<TP>,
 }
 
-impl<TP: TracingProvider> LibmdbxInitializer<TP> {
+impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub fn new(
         libmdbx: &'static LibmdbxReadWriter,
-        clickhouse: &'static Clickhouse,
+        clickhouse: &'static CH,
         tracer: Arc<TP>,
     ) -> Self {
         Self {
@@ -66,14 +66,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             self.libmdbx.0.clear_table::<T>()?;
         }
 
-        let data = self
-            .clickhouse
-            .inner()
-            .query_many::<D>(
-                T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
-                &(),
-            )
-            .await;
+        let data = self.clickhouse.query_many::<T, D>().await;
 
         match data {
             Ok(d) => self.libmdbx.0.write_table(&d)?,
@@ -135,13 +128,7 @@ impl<TP: TracingProvider> LibmdbxInitializer<TP> {
             let libmdbx = self.libmdbx;
 
             async move {
-                let data = clickhouse
-                    .inner()
-                    .query_many::<D>(
-                        T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
-                        &(start, end + 1),
-                    )
-                    .await;
+                let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
 
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
