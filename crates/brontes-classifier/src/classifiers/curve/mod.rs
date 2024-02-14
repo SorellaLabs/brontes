@@ -1,9 +1,13 @@
 #[allow(non_snake_case)]
 #[allow(non_camel_case_types)]
-mod curve_crypto_swap;
 mod discovery;
-mod swaps;
-mod utils;
-pub use curve_crypto_swap::*;
 pub use discovery::*;
+
+pub(crate) mod swaps;
 pub use swaps::*;
+
+pub(crate) mod mints;
+pub use mints::*;
+
+pub(crate) mod burns;
+pub use burns::*;
