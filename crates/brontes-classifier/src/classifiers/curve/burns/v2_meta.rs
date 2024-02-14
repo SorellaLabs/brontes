@@ -315,8 +315,8 @@ mod tests {
             pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             token: vec![token0, token1],
             amount: vec![
-                U256::from(627992358239302043763875 as u128).to_scaled_rational(18),
-                U256::from(579890756974932941933194 as u128).to_scaled_rational(18),
+                U256::from(627992358239302043763875_u128).to_scaled_rational(18),
+                U256::from(579890756974932941933194_u128).to_scaled_rational(18),
             ],
         });
 
@@ -379,7 +379,7 @@ mod tests {
             recipient: Address::new(hex!("3F7734E28ed8856B89e13137bd2E9112C40ebD51")),
             pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             token: vec![token],
-            amount: vec![U256::from(183708410783845567136 as u128).to_scaled_rational(18)],
+            amount: vec![U256::from(183708410783845567136_u128).to_scaled_rational(18)],
         });
 
         let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {

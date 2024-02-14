@@ -314,8 +314,8 @@ mod tests {
             pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             token: vec![token0, token1],
             amount: vec![
-                U256::from(125377210391915440945 as u128).to_scaled_rational(18),
-                U256::from(2121542034308448729 as u128).to_scaled_rational(18),
+                U256::from(125377210391915440945_u128).to_scaled_rational(18),
+                U256::from(2121542034308448729_u128).to_scaled_rational(18),
             ],
         });
 
@@ -388,8 +388,8 @@ mod tests {
             pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             token: vec![token0, token1],
             amount: vec![
-                U256::from(5782689815360000000000 as u128).to_scaled_rational(18),
-                U256::from(60598295710000000000 as u128).to_scaled_rational(18),
+                U256::from(5782689815360000000000_u128).to_scaled_rational(18),
+                U256::from(60598295710000000000_u128).to_scaled_rational(18),
             ],
         });
 
@@ -452,7 +452,7 @@ mod tests {
             recipient: Address::new(hex!("b5e452a90280A978aA8DAe4306F960167c7C528A")),
             pool: Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             token: vec![token],
-            amount: vec![U256::from(1976026334539568105482 as u128).to_scaled_rational(18)],
+            amount: vec![U256::from(1976026334539568105482_u128).to_scaled_rational(18)],
         });
 
         let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
