@@ -15,11 +15,9 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs,
+        normalized_actions::{Actions, NormalizedSwap},
+        Node, NodeData, Protocol, ToScaledRational, TreeSearchArgs,
     };
-
-    use super::*;
 
     #[brontes_macros::test]
     async fn test_curve_base_exchange() {
