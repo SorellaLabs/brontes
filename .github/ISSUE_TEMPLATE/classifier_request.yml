@@ -1,0 +1,79 @@
+name: New Protocol Classifier Request
+description: Request to add support for a new protocol classifier in Brontes.
+labels: ["classifier-request", "S-needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## New Protocol Classifier Request
+        Thank you for your interest in contributing to Brontes by requesting support for a new protocol classifier. Please provide as much detail as possible to help us understand and implement the requested classifier.
+
+  - type: input
+    id: protocol-name
+    attributes:
+      label: Protocol Name
+      description: What is the name of the protocol for which you are requesting a classifier?
+    validations:
+      required: true
+
+  - type: textarea
+    id: protocol-description
+    attributes:
+      label: Protocol Description
+      description: Please provide a brief description of the protocol.
+    validations:
+      required: true
+
+  - type: textarea
+    id: functions-to-support
+    attributes:
+      label: Functions to Support
+      description: List the specific functions (method signatures) that need to be supported by the classifier.
+      placeholder: "function1(signature),\nfunction2(signature),\n..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: normalized-action-types
+    attributes:
+      label: Normalized Action Types
+      description: What normalized action types do you anticipate for these functions?
+      placeholder: "NormalizedSwap,\nNormalizedBurn,\n..."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: proxy
+    attributes:
+      label: Is it a Proxy?
+      description: Indicate if the protocol functions as a proxy in any transactions.
+      options:
+        - label: Yes
+        - label: No
+    validations:
+      required: true
+
+  - type: textarea
+    id: discovery-mechanism
+    attributes:
+      label: Discovery Mechanism Requirements
+      description: Describe any specific requirements for contract discovery.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Provide any additional context or information that might aid in the development of this classifier.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/SorellaLabs/brontes/blob/main/CONTRIBUTING.md#code-of-conduct).
+      options:
+        - label: I agree to follow the Code of Conduct.
+          required: true
