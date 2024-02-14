@@ -39,7 +39,7 @@ pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
 }
 
 impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, DB> {
-    pub fn new(
+    pub async fn new(
         libmdbx: &'db DB,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
@@ -49,14 +49,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             tracer,
             metrics_tx,
         };
-        this.store_config_data();
+        this.store_config_data().await;
 
         this
     }
 
     /// loads up the `classifier_config.toml` and ensures the values are in the
     /// database
-    fn store_config_data(&self) {
+    async fn store_config_data(&self) {
         let mut workspace_dir = workspace_dir();
         workspace_dir.push(CONFIG_FILE_NAME);
 
@@ -79,6 +79,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
                 for t_info in &table {
                     self.libmdbx
                         .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
+                        .await
                         .unwrap();
                 }
 
@@ -90,6 +91,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
 
                 self.libmdbx
                     .insert_pool(init_block, token_addr, token_addrs, protocol)
+                    .await
                     .unwrap();
             }
         }

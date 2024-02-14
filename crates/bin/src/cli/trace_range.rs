@@ -42,7 +42,7 @@ impl TraceArgs {
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
 
-        let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()));
+        let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         let amount = (self.end_block - self.start_block) as f64;
 

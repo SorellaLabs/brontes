@@ -33,14 +33,14 @@ pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
 }
 
 impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
-    pub fn new(
+    pub async fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         libmdbx: &'a DB,
         tracing: T,
     ) -> Self {
         let executor = Executor::new();
 
-        let parser = TraceParser::new(libmdbx, Arc::new(tracing), Arc::new(metrics_tx));
+        let parser = TraceParser::new(libmdbx, Arc::new(tracing), Arc::new(metrics_tx)).await;
 
         Self { executor, parser }
     }

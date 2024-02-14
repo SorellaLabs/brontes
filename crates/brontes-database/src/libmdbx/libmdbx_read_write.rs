@@ -490,12 +490,7 @@ impl DBWriter for LibmdbxReadWriter {
             )])?)
     }
 
-    async fn save_pair_at(
-        &self,
-        block: u64,
-        pair: Pair,
-        edges: Vec<SubGraphEdge>,
-    ) -> eyre::Result<()> {
+    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
 
         if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {

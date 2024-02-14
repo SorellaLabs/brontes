@@ -38,7 +38,7 @@ pub async fn process_results<DB: DBWriter + LibmdbxReader>(
         tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
     }
 
-    insert_mev_results(db, block_details, mev_details);
+    insert_mev_results(db, block_details, mev_details).await;
 }
 
 async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
@@ -52,7 +52,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         block_details.to_string()
     );
 
-    output_mev_and_update_searcher_info(database, block_details.block_number, &mev_details);
+    output_mev_and_update_searcher_info(database, block_details.block_number, &mev_details).await;
 
     // Attempt to save the MEV block details
     if let Err(e) = database

@@ -408,24 +408,29 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         };
 
         (
-            DiscoveryProtocols::default()
-                .dispatch(
-                    self.provider.clone(),
-                    from_address,
-                    created_addr,
-                    trace_index,
-                    calldata,
-                )
-                .await
-                .into_iter()
-                // insert the pool returning if it has token values.
-                .filter(|pool| !self.contains_pool(pool.pool_address))
-                .filter_map(|pool| {
-                    self.insert_new_pool(block, &pool);
-                    pool.try_into().ok()
-                })
-                .map(DexPriceMsg::DiscoveredPool)
-                .collect::<Vec<_>>(),
+            join_all(
+                DiscoveryProtocols::default()
+                    .dispatch(
+                        self.provider.clone(),
+                        from_address,
+                        created_addr,
+                        trace_index,
+                        calldata,
+                    )
+                    .await
+                    .into_iter()
+                    // insert the pool returning if it has token values.
+                    .filter(|pool| !self.contains_pool(pool.pool_address))
+                    .map(|pool| async {
+                        self.insert_new_pool(block, &pool).await;
+                        pool.try_into().ok()
+                    }),
+            )
+            .await
+            .into_iter()
+            .flatten()
+            .map(DexPriceMsg::DiscoveredPool)
+            .collect_vec(),
             Actions::Unclassified(trace),
         )
     }
