@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;

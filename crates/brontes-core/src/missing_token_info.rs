@@ -29,7 +29,7 @@ pub async fn load_missing_token_info<T: TracingProvider, W: DBWriter>(
     missing_address: Address,
 ) {
     let data = query_missing_data(provider, block, missing_address).await;
-    on_decimal_query_resolution(db, data);
+    on_decimal_query_resolution(db, data).await;
 }
 
 pub async fn load_missing_token_infos<T: TracingProvider, W: DBWriter>(
@@ -44,7 +44,7 @@ pub async fn load_missing_token_infos<T: TracingProvider, W: DBWriter>(
         .for_each(|addr| pending_decimals.push(query_missing_data(provider, block, addr)));
 
     while let Some(res) = pending_decimals.next().await {
-        on_decimal_query_resolution(db, res);
+        on_decimal_query_resolution(db, res).await;
     }
 }
 
@@ -87,13 +87,13 @@ async fn query_missing_data<T: TracingProvider>(
     })
 }
 
-fn on_decimal_query_resolution<W: DBWriter>(
+async fn on_decimal_query_resolution<W: DBWriter>(
     database: &W,
     result: eyre::Result<(Address, u8, String)>,
 ) {
     match result {
         Ok((address, decimals, symbol)) => {
-            if let Err(e) = database.write_token_info(address, decimals, symbol) {
+            if let Err(e) = database.write_token_info(address, decimals, symbol).await {
                 error!(error= %e, "failed to write token info into database");
             }
         }

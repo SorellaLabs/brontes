@@ -33,12 +33,7 @@ pub trait DBWriter: Send + Sync + Unpin + 'static {
         self.inner().write_token_info(address, decimals, symbol)
     }
 
-    fn save_pair_at(
-        &self,
-        block: u64,
-        pair: Pair,
-        edges: Vec<SubGraphEdge>,
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync {
+    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         self.inner().save_pair_at(block, pair, edges)
     }
 

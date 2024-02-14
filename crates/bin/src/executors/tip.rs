@@ -5,7 +5,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
 use brontes_types::{
     db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,

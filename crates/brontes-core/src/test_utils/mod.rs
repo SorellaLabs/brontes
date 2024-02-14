@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, DBWriter};
+pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
 use brontes_database::Tables;
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};

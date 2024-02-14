@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-pub use brontes_types::db::traits::{LibmdbxReader, DBWriter};
+pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
 pub mod initialize;
 mod libmdbx_read_write;

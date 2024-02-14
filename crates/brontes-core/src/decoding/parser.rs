@@ -5,7 +5,7 @@ use std::{path, sync::Arc};
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -153,6 +153,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         if self
             .libmdbx
             .save_traces(block_num, traces.0.clone())
+            .await
             .is_err()
         {
             error!(%block_num, "failed to store traces for block");

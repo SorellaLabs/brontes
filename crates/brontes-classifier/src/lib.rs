@@ -4,7 +4,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use alloy_primitives::{Address, Bytes};
-use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, structured_trace::CallFrameInfo,

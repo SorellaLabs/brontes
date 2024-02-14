@@ -8,7 +8,7 @@ use brontes_types::{
 };
 mod tree_pruning;
 mod utils;
-use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedAction, SelfdestructWithIndex},
@@ -430,7 +430,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         )
     }
 
-    fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+    async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
         if self
             .libmdbx
             .insert_pool(
@@ -439,6 +439,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 [pool.tokens[0], pool.tokens[1]],
                 pool.protocol,
             )
+            .await
             .is_err()
         {
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");

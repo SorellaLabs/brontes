@@ -6,7 +6,7 @@ use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     db::{
         metadata::Metadata,
-        traits::{LibmdbxReader, DBWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::Actions,
     traits::TracingProvider,

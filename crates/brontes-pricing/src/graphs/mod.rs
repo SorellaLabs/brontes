@@ -9,7 +9,7 @@ mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{
-    db::traits::{LibmdbxReader, DBWriter},
+    db::traits::{DBWriter, LibmdbxReader},
     pair::Pair,
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };

@@ -11,7 +11,7 @@ use brontes_types::{
     db::{
         dex::DexQuotes,
         metadata::Metadata,
-        traits::{LibmdbxReader, DBWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::Actions,
     tree::BlockTree,

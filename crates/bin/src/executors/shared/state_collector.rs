@@ -12,7 +12,7 @@ use brontes_core::decoding::Parser;
 use brontes_types::{
     db::{
         metadata::Metadata,
-        traits::{LibmdbxReader, DBWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::Actions,
     traits::TracingProvider,

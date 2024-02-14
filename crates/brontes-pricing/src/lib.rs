@@ -44,7 +44,7 @@ use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
         token_info::TokenInfoWithAddress,
-        traits::{LibmdbxReader, DBWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,

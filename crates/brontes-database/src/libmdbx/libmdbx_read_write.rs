@@ -19,7 +19,7 @@ use brontes_types::{
         searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
-        traits::{LibmdbxReader, DBWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,

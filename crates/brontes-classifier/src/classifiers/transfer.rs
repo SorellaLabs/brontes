@@ -4,7 +4,7 @@ use alloy_primitives::{Address, Bytes};
 use alloy_sol_types::SolCall;
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
-    db::traits::{LibmdbxReader, DBWriter},
+    db::traits::{DBWriter, LibmdbxReader},
     normalized_actions::NormalizedTransfer,
     traits::TracingProvider,
     ToScaledRational,

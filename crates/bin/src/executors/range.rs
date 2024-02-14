@@ -4,7 +4,7 @@ use std::{
 };
 
 use brontes_core::decoding::TracingProvider;
-use brontes_database::libmdbx::{LibmdbxReader, DBWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
 use brontes_types::{
     db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
@@ -69,9 +69,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> RangeExecutorWithPricing<
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future
-    for RangeExecutorWithPricing<T, DB>
-{
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future for RangeExecutorWithPricing<T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
