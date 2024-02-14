@@ -46,8 +46,8 @@ action_impl!(
             protocol: details.protocol,
             pool: info.from_address,
             trace_index: info.trace_idx,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            from: log.buyer,
+            recipient: log.buyer,
             token_in,
             token_out,
             amount_in,
@@ -99,8 +99,8 @@ action_impl!(
             protocol: details.protocol,
             pool: info.from_address,
             trace_index: info.trace_idx,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            from: log.buyer,
+            recipient: log.buyer,
             token_in,
             token_out,
             amount_in,
@@ -143,18 +143,18 @@ mod tests {
         ));
 
         let token_in = TokenInfoWithAddress {
-            address: Address::new(hex!("f939E0A03FB07F59A73314E73794Be0E57ac1b4E")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "crvUSD".to_string(),
-            },
-        };
-
-        let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("83F20F44975D03b1b09e64809B757c47f942BEeA")),
             inner: TokenInfo {
                 decimals: 18,
                 symbol: "sDAI".to_string(),
+            },
+        };
+
+        let token_out = TokenInfoWithAddress {
+            address: Address::new(hex!("f939E0A03FB07F59A73314E73794Be0E57ac1b4E")),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "crvUSD".to_string(),
             },
         };
 
@@ -163,7 +163,7 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol: Protocol::CurvecrvUSDPlainPool,
-            trace_index: 1,
+            trace_index: 3,
             from: Address::new(hex!("71C91A8950f6a3025EdC754b2f44291E011AA45C")),
             recipient: Address::new(hex!("71C91A8950f6a3025EdC754b2f44291E011AA45C")),
             pool: Address::new(hex!("1539c2461d7432cc114b0903f1824079bfca2c92")),
