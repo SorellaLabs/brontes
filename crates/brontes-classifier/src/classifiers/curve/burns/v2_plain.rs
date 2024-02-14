@@ -18,11 +18,10 @@ action_impl!(
         let log = log.RemoveLiquidity_field;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -35,9 +34,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            pool: info.target_address,
+            from: info.from_address,
+            recipient: info.from_address,
             token: tokens,
             amount: token_amts,
         })
@@ -60,11 +59,10 @@ action_impl!(
         let log = log.RemoveLiquidity_field;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -75,9 +73,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            pool: info.target_address,
+            from: info.from_address,
+            recipient: info.from_address,
             token: tokens,
             amount: token_amts,
         })
@@ -100,11 +98,10 @@ action_impl!(
         let log = log.RemoveLiquidityImbalance_field;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -115,9 +112,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            pool: info.target_address,
+            from: info.from_address,
+            recipient: info.from_address,
             token: tokens,
             amount: token_amts,
         })
@@ -140,11 +137,10 @@ action_impl!(
         let log = log.RemoveLiquidityImbalance_field;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -155,9 +151,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            pool: info.target_address,
+            from: info.from_address,
+            recipient: info.from_address,
             token: tokens,
             amount: token_amts,
         })
@@ -185,7 +181,10 @@ action_impl!(
 
         let token = match call_data.i {
             0 => details.token0,
-            1 => details.curve_lp_token.ok_or(eyre::eyre!("Expected curve_lp_token for burn token, found None"))?,
+            1 => details.token1,
+            2 => details.token2.ok_or(eyre::eyre!("Expected token2 for burn token, found None"))?,
+            3 => details.token3.ok_or(eyre::eyre!("Expected token3 for burn token, found None"))?,
+            4 => details.token4.ok_or(eyre::eyre!("Expected token4 for burn token, found None"))?,
             _ => unreachable!()
         };
 
@@ -196,9 +195,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            pool: info.target_address,
+            from: info.from_address,
+            recipient: info.from_address,
             token: vec![token_info],
             amount: vec![amt],
         })
@@ -241,9 +240,9 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol,
             trace_index: info.trace_idx,
-            pool: info.from_address,
-            from: info.msg_sender,
-            recipient: info.msg_sender,
+            pool: info.target_address,
+            from: info.from_address,
+            recipient: info.from_address,
             token: vec![token_info],
             amount: vec![amt],
         })
