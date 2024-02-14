@@ -12,7 +12,7 @@ pub fn flip_tick(
     tick_spacing: i32,
 ) -> Result<(), UniswapV3MathError> {
     if (tick % tick_spacing) != 0 {
-        return Err(UniswapV3MathError::TickSpacingError)
+        return Err(UniswapV3MathError::TickSpacingError);
     }
 
     let (word_pos, bit_pos) = position(tick / tick_spacing);

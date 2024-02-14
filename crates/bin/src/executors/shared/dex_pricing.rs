@@ -26,10 +26,10 @@ pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, 
 
 pub struct WaitingForPricerFuture<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
     receiver: PricingReceiver<T, DB>,
-    tx:       PricingSender<T, DB>,
+    tx: PricingSender<T, DB>,
 
     pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, Metadata)>,
-    task_executor:            TaskExecutor,
+    task_executor: TaskExecutor,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> WaitingForPricerFuture<T, DB> {
@@ -42,7 +42,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> WaitingForPr
         });
 
         task_executor.spawn_critical("dex pricer", fut);
-        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
+        Self {
+            pending_trees: HashMap::default(),
+            task_executor,
+            tx,
+            receiver: rx,
+        }
     }
 
     pub fn is_done(&self) -> bool {
@@ -81,7 +86,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
                 info!(target:"brontes","Collected dex prices for block: {}", block);
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
-                    return Poll::Ready(None)
+                    return Poll::Ready(None);
                 };
 
                 if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
@@ -90,10 +95,10 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
 
                 let finalized_meta = meta.into_full_metadata(prices);
 
-                return Poll::Ready(Some((tree, finalized_meta)))
+                return Poll::Ready(Some((tree, finalized_meta)));
             } else {
                 // means we have completed chunks
-                return Poll::Ready(None)
+                return Poll::Ready(None);
             }
         }
 

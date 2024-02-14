@@ -9,7 +9,9 @@ pub fn decode_input_with_abi(
     abi: &JsonAbi,
     trace: &TransactionTrace,
 ) -> Result<Option<DecodedCallData>, TraceParseError> {
-    let Action::Call(ref action) = trace.action else { return Ok(None) };
+    let Action::Call(ref action) = trace.action else {
+        return Ok(None);
+    };
 
     for functions in abi.functions.values() {
         for function in functions {
@@ -67,9 +69,9 @@ pub fn decode_input_with_abi(
 
                 return Ok(Some(DecodedCallData {
                     function_name: function.name.clone(),
-                    call_data:     input_results,
-                    return_data:   output,
-                }))
+                    call_data: input_results,
+                    return_data: output,
+                }));
             }
         }
     }
@@ -85,42 +87,42 @@ fn decode_params(
         DynSolValue::Bool(bool) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Bool.sol_type_name().to_string(),
-            value:      bool.to_string(),
+            value: bool.to_string(),
         }),
         DynSolValue::Int(i, size) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Int(size).to_string(),
-            value:      i.to_string(),
+            value: i.to_string(),
         }),
         DynSolValue::Uint(i, size) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Uint(size).to_string(),
-            value:      i.to_string(),
+            value: i.to_string(),
         }),
         DynSolValue::FixedBytes(word, size) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::FixedBytes(size).to_string(),
-            value:      word.to_string(),
+            value: word.to_string(),
         }),
         DynSolValue::Address(address) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Address.to_string(),
-            value:      format!("{:?}", address),
+            value: format!("{:?}", address),
         }),
         DynSolValue::Function(function) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Function.to_string(),
-            value:      function.to_string(),
+            value: function.to_string(),
         }),
         DynSolValue::Bytes(bytes) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::Bytes.to_string(),
-            value:      alloy_primitives::Bytes::from(bytes).to_string(),
+            value: alloy_primitives::Bytes::from(bytes).to_string(),
         }),
         DynSolValue::String(string) => output.push(DecodedParams {
             field_name: field_name.remove(0),
             field_type: DynSolType::String.to_string(),
-            value:      string,
+            value: string,
         }),
         DynSolValue::Array(ref array) => {
             let string_val = value_parse(array, false);
@@ -128,7 +130,7 @@ fn decode_params(
             output.push(DecodedParams {
                 field_name: field_name.remove(0),
                 field_type: type_name,
-                value:      string_val,
+                value: string_val,
             })
         }
         DynSolValue::FixedArray(ref fixed_array) => {
@@ -137,7 +139,7 @@ fn decode_params(
             output.push(DecodedParams {
                 field_name: field_name.remove(0),
                 field_type: type_name,
-                value:      string_val,
+                value: string_val,
             })
         }
         DynSolValue::Tuple(ref tuple) => {
@@ -146,7 +148,7 @@ fn decode_params(
             output.push(DecodedParams {
                 field_name: field_name.remove(0),
                 field_type: type_name,
-                value:      string_val,
+                value: string_val,
             })
         }
         DynSolValue::CustomStruct { .. } => unreachable!("only eip-712"),
@@ -154,7 +156,11 @@ fn decode_params(
 }
 
 fn value_parse(sol_value: &[DynSolValue], tuple: bool) -> String {
-    let ty = if tuple { String::from("(") } else { String::from("[") };
+    let ty = if tuple {
+        String::from("(")
+    } else {
+        String::from("[")
+    };
 
     let unclosed = sol_value
         .iter()

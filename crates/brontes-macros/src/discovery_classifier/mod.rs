@@ -4,15 +4,25 @@ use syn::{parse::Parse, ExprClosure, Ident, Index, Path, Token};
 pub mod curve;
 
 pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
-    let MacroParse { discovery_name, function_call_path, factory_address, address_call_function } =
-        syn::parse2(token_stream)?;
+    let MacroParse {
+        discovery_name,
+        function_call_path,
+        factory_address,
+        address_call_function,
+    } = syn::parse2(token_stream)?;
 
     is_proper_address(&factory_address)?;
     let stripped_address = &factory_address.to_string()[2..];
     let discovery_name_str = discovery_name.to_string();
-    let mod_name = Ident::new(&format!("{}_mod", discovery_name_str), discovery_name.span());
+    let mod_name = Ident::new(
+        &format!("{}_mod", discovery_name_str),
+        discovery_name.span(),
+    );
 
-    let fn_name = Ident::new(&format!("__{}_address_and_fn", discovery_name), Span::call_site());
+    let fn_name = Ident::new(
+        &format!("__{}_address_and_fn", discovery_name),
+        Span::call_site(),
+    );
 
     Ok(quote! (
         pub use #mod_name::#discovery_name;
@@ -65,13 +75,16 @@ fn is_proper_address(possible_address: &Literal) -> syn::Result<()> {
         return Err(syn::Error::new(
             possible_address.span(),
             "given factory address is invalid. Needs to start with 0x",
-        ))
+        ));
     }
     if stred.len() != 42 {
         return Err(syn::Error::new(
             possible_address.span(),
-            format!("given factory address length is incorrect got: {} wanted: 40", stred.len()),
-        ))
+            format!(
+                "given factory address length is incorrect got: {} wanted: 40",
+                stred.len()
+            ),
+        ));
     }
 
     Ok(())
@@ -79,9 +92,9 @@ fn is_proper_address(possible_address: &Literal) -> syn::Result<()> {
 
 struct MacroParse {
     // required for all
-    discovery_name:        Ident,
-    function_call_path:    Path,
-    factory_address:       Literal,
+    discovery_name: Ident,
+    function_call_path: Path,
+    factory_address: Literal,
     /// The closure that we use to get the address of the pool
     address_call_function: ExprClosure,
 }
@@ -104,10 +117,15 @@ impl Parse for MacroParse {
             return Err(syn::Error::new(
                 input.span(),
                 "There should be no values after the call function",
-            ))
+            ));
         }
 
-        Ok(Self { discovery_name, factory_address, function_call_path, address_call_function })
+        Ok(Self {
+            discovery_name,
+            factory_address,
+            function_call_path,
+            address_call_function,
+        })
     }
 }
 
@@ -180,7 +198,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
 struct DiscoveryDispatch {
     // required for all
     struct_name: Ident,
-    rest:        Vec<Ident>,
+    rest: Vec<Ident>,
 }
 impl Parse for DiscoveryDispatch {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
@@ -193,7 +211,7 @@ impl Parse for DiscoveryDispatch {
             return Err(syn::Error::new(
                 Span::call_site(),
                 "no discovery implementations to dispatch to",
-            ))
+            ));
         }
 
         Ok(Self { rest, struct_name })

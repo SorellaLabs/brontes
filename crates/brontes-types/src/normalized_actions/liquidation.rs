@@ -25,16 +25,16 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedLiquidation {
     #[redefined(same_fields)]
-    pub protocol:              Protocol,
-    pub trace_index:           u64,
-    pub pool:                  Address,
-    pub liquidator:            Address,
-    pub debtor:                Address,
-    pub collateral_asset:      TokenInfoWithAddress,
-    pub debt_asset:            TokenInfoWithAddress,
-    pub covered_debt:          Rational,
+    pub protocol: Protocol,
+    pub trace_index: u64,
+    pub pool: Address,
+    pub liquidator: Address,
+    pub debtor: Address,
+    pub collateral_asset: TokenInfoWithAddress,
+    pub debt_asset: TokenInfoWithAddress,
+    pub covered_debt: Rational,
     pub liquidated_collateral: Rational,
-    pub msg_value:             U256,
+    pub msg_value: U256,
 }
 
 impl fmt::Display for NormalizedLiquidation {
@@ -75,7 +75,7 @@ impl NormalizedLiquidation {
                     // tbd tho
                     if transfer.to == self.liquidator {
                         self.liquidated_collateral = transfer.amount;
-                        return Some(index)
+                        return Some(index);
                     }
                 }
 
@@ -139,13 +139,13 @@ impl NormalizedLiquidation {
 }
 
 pub struct ClickhouseVecNormalizedLiquidation {
-    pub trace_index:           Vec<u64>,
-    pub pool:                  Vec<FixedString>,
-    pub liquidator:            Vec<FixedString>,
-    pub debtor:                Vec<FixedString>,
-    pub collateral_asset:      Vec<FixedString>,
-    pub debt_asset:            Vec<FixedString>,
-    pub covered_debt:          Vec<[u8; 32]>,
+    pub trace_index: Vec<u64>,
+    pub pool: Vec<FixedString>,
+    pub liquidator: Vec<FixedString>,
+    pub debtor: Vec<FixedString>,
+    pub collateral_asset: Vec<FixedString>,
+    pub debt_asset: Vec<FixedString>,
+    pub covered_debt: Vec<[u8; 32]>,
     pub liquidated_collateral: Vec<[u8; 32]>,
 }
 

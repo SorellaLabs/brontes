@@ -10,13 +10,13 @@ use crate::{db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Proto
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBatch {
-    pub protocol:            Protocol,
-    pub trace_index:         u64,
-    pub solver:              Address,
+    pub protocol: Protocol,
+    pub trace_index: u64,
+    pub solver: Address,
     pub settlement_contract: Address,
-    pub user_swaps:          Vec<NormalizedSwap>,
-    pub solver_swaps:        Option<Vec<NormalizedSwap>>,
-    pub msg_value:           U256,
+    pub user_swaps: Vec<NormalizedSwap>,
+    pub solver_swaps: Option<Vec<NormalizedSwap>>,
+    pub msg_value: U256,
 }
 
 impl NormalizedBatch {
@@ -71,7 +71,10 @@ impl NormalizedBatch {
                     }
                 }
                 _ => {
-                    error!("Unexpected action in final batch classification: {:?}", action);
+                    error!(
+                        "Unexpected action in final batch classification: {:?}",
+                        action
+                    );
                 }
             }
         }

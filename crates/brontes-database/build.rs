@@ -20,7 +20,11 @@ fn main() {
 fn write_clickhouse_sql() {
     let dest_path = Path::new("./src/clickhouse/const_sql.rs");
     let mut f = File::create(dest_path).unwrap();
-    writeln!(f, "pub use clickhouse_mod::*;\n#[rustfmt::skip]\nmod clickhouse_mod {{").unwrap();
+    writeln!(
+        f,
+        "pub use clickhouse_mod::*;\n#[rustfmt::skip]\nmod clickhouse_mod {{"
+    )
+    .unwrap();
 
     for entry in fs::read_dir(CLICKHOUSE_FILE_DIRECTORY).unwrap() {
         let entry = entry.unwrap();
@@ -44,7 +48,11 @@ fn write_clickhouse_sql() {
 fn write_libmdbx_sql() {
     let dest_path = Path::new("./src/libmdbx/tables/const_sql.rs");
     let mut f = File::create(dest_path).unwrap();
-    writeln!(f, "pub use libmdbx_mod::*;\n#[rustfmt::skip]\nmod libmdbx_mod{{").unwrap();
+    writeln!(
+        f,
+        "pub use libmdbx_mod::*;\n#[rustfmt::skip]\nmod libmdbx_mod{{"
+    )
+    .unwrap();
 
     for entry in fs::read_dir(LIBMDBX_SQL_FILE_DIRECTORY).unwrap() {
         let entry = entry.unwrap();

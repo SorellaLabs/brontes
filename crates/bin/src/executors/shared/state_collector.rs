@@ -30,9 +30,9 @@ type CollectionFut<'a> =
 pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
     mark_as_finished: Arc<AtomicBool>,
     metadata_fetcher: MetadataFetcher<T, DB>,
-    classifier:       &'static Classifier<'static, T, DB>,
-    parser:           &'static Parser<'static, T, DB>,
-    db:               &'static DB,
+    classifier: &'static Classifier<'static, T, DB>,
+    parser: &'static Parser<'static, T, DB>,
+    db: &'static DB,
 
     collection_future: Option<CollectionFut<'static>>,
 }
@@ -45,7 +45,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
         parser: &'static Parser<'static, T, DB>,
         db: &'static DB,
     ) -> Self {
-        Self { mark_as_finished, metadata_fetcher, classifier, parser, db, collection_future: None }
+        Self {
+            mark_as_finished,
+            metadata_fetcher,
+            classifier,
+            parser,
+            db,
+            collection_future: None,
+        }
     }
 
     pub fn get_shutdown(&self) -> Arc<AtomicBool> {
@@ -90,7 +97,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
                 }
                 Poll::Ready(Err(e)) => {
                     tracing::error!(error = %e, "state collector");
-                    return Poll::Ready(None)
+                    return Poll::Ready(None);
                 }
                 Poll::Pending => {
                     self.collection_future = Some(collection_future);
@@ -102,7 +109,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
             && self.metadata_fetcher.is_finished()
             && self.collection_future.is_none()
         {
-            return Poll::Ready(None)
+            return Poll::Ready(None);
         }
 
         self.metadata_fetcher.poll_next_unpin(cx)
