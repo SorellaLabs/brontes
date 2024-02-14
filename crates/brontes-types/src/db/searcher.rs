@@ -15,7 +15,6 @@ use crate::{
 
 database_table!(SearcherInfos, SearcherInfo);
 
-
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherInfo {

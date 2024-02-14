@@ -150,7 +150,6 @@ impl Clickhouse {
         tokens: [Address; 2],
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        self.client
 
         Ok(())
     }
