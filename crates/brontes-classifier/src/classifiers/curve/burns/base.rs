@@ -232,7 +232,7 @@ mod tests {
         );
 
         let burn = B256::from(hex!(
-            "9de52c88215f3252d27c7778f265b52600fd49e0a8c31b48047299dbba0cabf0"
+            "3f17151032cb3e3ae039b140e465c3cf3f9ff8cb593109817dd0526eb0300150"
         ));
 
         let token0 = TokenInfoWithAddress {
