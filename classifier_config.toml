@@ -104,11 +104,12 @@ init_block = 16100246
 [CurveV2MetapoolImpl."0xAbc533EbCDdeD41215C46ee078C5818B5b0A252F"]
 init_block = 16100250
 
-
-
-
-
-
+#
+#
+#
+# Curve V2 Plain Pool Implementation Contracts
+#
+#
 
 [CurveV2PlainPool."0x4A4d7868390EF5CaC51cDA262888f34bD3025C3F"]
 init_block = 12904330
@@ -121,8 +122,6 @@ init_block = 12904718
 
 [CurveV2PlainPool."0x9b52f13df69d79ec5aab6d1ace3157d29b409cc3"]
 init_block = 12904716
-
-
 
 [CurveV2PlainPool."0x6326debbaa15bcfe603d831e7d75f4fc10d9b43e"]
 init_block = 12904329
