@@ -5,7 +5,7 @@ run_tests() {
     git checkout $1
     git pull
     rustup default nightly
-    cargo +nightly test
+    if cargo +nightly test; then : ; else exit; fi
     git checkout main
 }
 
@@ -15,10 +15,9 @@ run_benchmarks() {
     git checkout $1
     git pull
     rustup default nightly
-    cargo +nightly bench 
+    if cargo +nightly bench; then : ; else exit; fi
     git checkout main
 }
 
 run_tests
 run_benchmarks
-
