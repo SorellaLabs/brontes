@@ -122,15 +122,23 @@ impl LibmdbxReadWriter {
             .query_one::<(String, String)>(query, &())
             .await?;
 
-        let Ok(min_parsed) = min.parse::<TB::Key>() else { return Ok(false) };
+        let Ok(min_parsed) = min.parse::<TB::Key>() else {
+            return Ok(false);
+        };
 
-        let Ok(max_parsed) = max.parse::<TB::Key>() else { return Ok(false) };
+        let Ok(max_parsed) = max.parse::<TB::Key>() else {
+            return Ok(false);
+        };
 
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<TB>()?;
 
-        let Some(has_min) = cur.first()?.map(|v| v.0 <= min_parsed) else { return Ok(false) };
-        let Some(has_max) = cur.last()?.map(|v| v.0 >= max_parsed) else { return Ok(false) };
+        let Some(has_min) = cur.first()?.map(|v| v.0 <= min_parsed) else {
+            return Ok(false);
+        };
+        let Some(has_max) = cur.last()?.map(|v| v.0 >= max_parsed) else {
+            return Ok(false);
+        };
 
         Ok(has_min && has_max)
     }
@@ -149,12 +157,12 @@ impl LibmdbxReadWriter {
             if needs_dex_price {
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ))
+                ));
             }
 
             tracing::info!("entire range missing");
 
-            return Ok(vec![start_block..=end_block])
+            return Ok(vec![start_block..=end_block]);
         }
 
         let mut result = Vec::new();
@@ -174,10 +182,10 @@ impl LibmdbxReadWriter {
                         return Err(eyre::eyre!(
                             "Block is missing dex pricing, please run with flag \
                              `--run-dex-pricing`"
-                        ))
+                        ));
                     }
 
-                    continue
+                    continue;
                 }
 
                 block_tracking += 1;
@@ -185,7 +193,7 @@ impl LibmdbxReadWriter {
                     tracing::error!("block is missing dex pricing");
                     return Err(eyre::eyre!(
                         "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                    ))
+                    ));
                 }
 
                 if !state.is_init() {
@@ -203,7 +211,7 @@ impl LibmdbxReadWriter {
                 tracing::error!("block is missing dex pricing");
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ))
+                ));
             }
 
             result.push(block_tracking - 1..=end_block);
@@ -252,7 +260,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             max(eth_prices.price.0, eth_prices.price.1),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None))
+        .into_metadata(cex_quotes, None, None))
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -275,7 +283,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 max(eth_prices.price.0, eth_prices.price.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes))
+            .into_metadata(cex_quotes, Some(dex_quotes), None)
         })
     }
 
@@ -372,14 +380,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 "no pricing for block. cannot verify most recent subgraph is valid"
             );
 
-            return Err(eyre::eyre!("subgraph not inited at this block range"))
+            return Err(eyre::eyre!("subgraph not inited at this block range"));
         }
 
         let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
 
         for (cur_block, update) in subgraphs.0 {
             if cur_block > block {
-                break
+                break;
             }
             last = Some((pair, update))
         }
@@ -437,7 +445,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
                 .map(|(idx, value)| {
                     let index = DexQuoteWithIndex {
                         tx_idx: idx as u16,
-                        quote:  value.into_iter().collect_vec(),
+                        quote: value.into_iter().collect_vec(),
                     };
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
@@ -502,13 +510,14 @@ impl LibmdbxWriter for LibmdbxReadWriter {
                 AddressToProtocolInfoData::new(
                     address,
                     ProtocolInfo {
-                        protocol:   classifier_name,
+                        protocol: classifier_name,
                         init_block: block,
-                        token0:     tokens[0],
-                        token1:     tokens[1],
-                        token2:     None,
-                        token3:     None,
-                        token4:     None,
+                        token0: tokens[0],
+                        token1: tokens[1],
+                        token2: None,
+                        token3: None,
+                        token4: None,
+                        curve_lp_token: None,
                     },
                 ),
             ])?;
@@ -530,7 +539,12 @@ impl LibmdbxWriter for LibmdbxReadWriter {
     }
 
     fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
+        let table = TxTracesData::new(
+            block,
+            TxTracesInner {
+                traces: Some(traces),
+            },
+        );
         self.0.write_table(&vec![table])?;
 
         self.init_state_updating(block, TRACE_FLAG)
@@ -559,9 +573,12 @@ impl LibmdbxReadWriter {
 
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
-        let res = tx
-            .get::<BlockInfo>(block_num)?
-            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num));
+        let res = tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
+            eyre!(
+                "Failed to fetch Metadata's block info for block {}",
+                block_num
+            )
+        });
 
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;

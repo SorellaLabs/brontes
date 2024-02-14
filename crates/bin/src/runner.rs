@@ -16,13 +16,19 @@ where
     F: Future<Output = Result<(), E>>,
     E: Send + Sync + From<std::io::Error> + From<reth_tasks::PanickedTaskError> + 'static,
 {
-    let AsyncCliRunner { context, task_manager, tokio_runtime } = AsyncCliRunner::new()?;
+    let AsyncCliRunner {
+        context,
+        task_manager,
+        tokio_runtime,
+    } = AsyncCliRunner::new()?;
     // initalize prometheus if we don't already have a endpoint
     tokio_runtime.block_on(try_initialize_prometheus());
 
     // Executes the command until it finished or ctrl-c was fired
-    let task_manager = tokio_runtime
-        .block_on(run_to_completion_or_panic(task_manager, run_until_ctrl_c(command(context))))?;
+    let task_manager = tokio_runtime.block_on(run_to_completion_or_panic(
+        task_manager,
+        run_until_ctrl_c(command(context)),
+    ))?;
 
     // after the command has finished or exit signal was received we shutdown the
     // task manager which fires the shutdown signal to all tasks spawned via the
@@ -121,8 +127,8 @@ where
 }
 
 struct AsyncCliRunner {
-    context:       CliContext,
-    task_manager:  TaskManager,
+    context: CliContext,
+    task_manager: TaskManager,
     tokio_runtime: tokio::runtime::Runtime,
 }
 
@@ -135,7 +141,11 @@ impl AsyncCliRunner {
         let tokio_runtime = tokio_runtime()?;
         let task_manager = TaskManager::new(tokio_runtime.handle().clone());
         let task_executor = task_manager.executor();
-        Ok(Self { context: CliContext { task_executor }, task_manager, tokio_runtime })
+        Ok(Self {
+            context: CliContext { task_executor },
+            task_manager,
+            tokio_runtime,
+        })
     }
 }
 

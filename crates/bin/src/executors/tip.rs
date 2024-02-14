@@ -17,11 +17,12 @@ use tracing::{debug, info};
 use super::shared::{inserts::process_results, state_collector::StateCollector};
 
 pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    current_block:      u64,
-    parser:             &'static Parser<'static, T, DB>,
-    state_collector:    StateCollector<T, DB>,
-    database:           &'static DB,
-    inspectors:         &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+    current_block: u64,
+    parser: &'static Parser<'static, T, DB>,
+    state_collector: StateCollector<T, DB>,
+    // clickhouse db (feature)
+    database: &'static DB,
+    inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
@@ -66,7 +67,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
     #[cfg(not(feature = "local"))]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
-            return false
+            return false;
         }
 
         match self.parser.get_latest_block_number() {
@@ -88,7 +89,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
     #[cfg(feature = "local")]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
-            return false
+            return false;
         }
 
         let cur_block = tokio::task::block_in_place(|| {

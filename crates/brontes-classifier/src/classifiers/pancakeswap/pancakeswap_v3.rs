@@ -167,7 +167,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node,
+        Node, NodeData,
         Protocol::PancakeSwapV3,
         ToScaledRational, TreeSearchArgs,
     };
@@ -185,38 +185,47 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         let token_info = TokenInfoWithAddress {
             address: Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
-            inner:   TokenInfo { decimals: 18, symbol: "INSP".to_owned() },
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "INSP".to_owned(),
+            },
         };
 
         classifier_utils.ensure_token(TokenInfoWithAddress::usdt());
         classifier_utils.ensure_token(token_info.clone());
 
-        let swap =
-            B256::from(hex!("649b792d819826302eb2859a9a1b8f3bb1a78bb5c480d433cdc6cc4ab129337f"));
+        let swap = B256::from(hex!(
+            "649b792d819826302eb2859a9a1b8f3bb1a78bb5c480d433cdc6cc4ab129337f"
+        ));
 
         let eq_action = Actions::Swap(NormalizedSwap {
-            protocol:    PancakeSwapV3,
+            protocol: PancakeSwapV3,
             trace_index: 1,
-            from:        Address::new(hex!("1b81D678ffb9C0263b24A97847620C99d213eB14")),
-            recipient:   Address::new(hex!("6Dbe61E7c69AF3bF5d20C15494bD69eD1905A335")),
-            pool:        Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
-            token_in:    token_info,
-            amount_in:   U256::from_str("8888693999999999016960")
+            from: Address::new(hex!("1b81D678ffb9C0263b24A97847620C99d213eB14")),
+            recipient: Address::new(hex!("6Dbe61E7c69AF3bF5d20C15494bD69eD1905A335")),
+            pool: Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
+            token_in: token_info,
+            amount_in: U256::from_str("8888693999999999016960")
                 .unwrap()
                 .to_scaled_rational(18),
-            token_out:   TokenInfoWithAddress::usdt(),
-            amount_out:  U256::from_str("1568955344").unwrap().to_scaled_rational(6),
-            msg_value:   U256::ZERO,
+            token_out: TokenInfoWithAddress::usdt(),
+            amount_out: U256::from_str("1568955344").unwrap().to_scaled_rational(6),
+            msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node: data
+                .get_ref(node.data)
+                .map(|s| s.is_swap())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|d| data.get_ref(*d))
                 .any(|action| action.is_swap()),
         };
 

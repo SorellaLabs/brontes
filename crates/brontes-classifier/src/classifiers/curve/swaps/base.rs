@@ -1,11 +1,7 @@
-use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    constants::{ETH_ADDRESS, WETH_ADDRESS},
-    normalized_actions::NormalizedSwap,
-    structured_trace::CallInfo,
-    ToScaledRational,
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
 
 action_impl!(
@@ -73,7 +69,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, ToScaledRational, TreeSearchArgs,
+        Node, NodeData, ToScaledRational, TreeSearchArgs,
     };
 
     use super::*;
@@ -89,19 +85,27 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
 
-        let swap =
-            B256::from(hex!("6987133dd8ee7f5f76615a7484418905933625305a948350b38e924a905c0ef6"));
+        let swap = B256::from(hex!(
+            "6987133dd8ee7f5f76615a7484418905933625305a948350b38e924a905c0ef6"
+        ));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            inner:   TokenInfo { decimals: 8, symbol: "WBTC".to_string() },
+            inner: TokenInfo {
+                decimals: 8,
+                symbol: "WBTC".to_string(),
+            },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
-            inner:   TokenInfo { decimals: 8, symbol: "renBTC".to_string() },
+            inner: TokenInfo {
+                decimals: 8,
+                symbol: "renBTC".to_string(),
+            },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -120,11 +124,15 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-            collect_current_node:  node.data.is_swap(),
+        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
+            collect_current_node: data
+                .get_ref(node.data)
+                .map(|s| s.is_swap())
+                .unwrap_or_default(),
             child_node_to_collect: node
                 .get_all_sub_actions()
                 .iter()
+                .filter_map(|d| data.get_ref(*d))
                 .any(|action| action.is_swap()),
         };
 

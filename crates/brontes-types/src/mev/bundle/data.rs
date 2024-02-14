@@ -18,7 +18,7 @@ use crate::{
 
 pub struct BundleDataWithRevenue {
     pub revenue: f64,
-    pub data:    BundleData,
+    pub data: BundleData,
 }
 
 #[derive(Debug, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]

@@ -21,11 +21,11 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
-    pub eoa:                   Address,
-    pub frontrun_tx:           B256,
-    pub backrun_tx:            B256,
+    pub eoa: Address,
+    pub frontrun_tx: B256,
+    pub backrun_tx: B256,
     pub mev_executor_contract: Address,
-    pub victims:               Vec<B256>,
+    pub victims: Vec<B256>,
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -34,7 +34,9 @@ pub struct JitInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+        Self {
+            inner: SharedInspectorUtils::new(quote, db),
+        }
     }
 }
 
@@ -60,13 +62,20 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
-                            tree.collect(tx, |node| TreeSearchArgs {
-                                collect_current_node:  node.data.is_mint()
-                                    || node.data.is_burn()
-                                    || node.data.is_collect(),
-                                child_node_to_collect: node.subactions.iter().any(|action| {
-                                    action.is_mint() || action.is_collect() || node.data.is_burn()
-                                }),
+                            tree.collect(tx, |node, info| TreeSearchArgs {
+                                collect_current_node: info
+                                    .get_ref(node.data)
+                                    .map(|node| {
+                                        node.is_mint() || node.is_burn() || node.is_collect()
+                                    })
+                                    .unwrap_or_default(),
+                                child_node_to_collect: node
+                                    .subactions
+                                    .iter()
+                                    .filter_map(|node| info.get_ref(*node))
+                                    .any(|action| {
+                                        action.is_mint() || action.is_collect() || action.is_burn()
+                                    }),
                             })
                         })
                         .collect::<Vec<Vec<Actions>>>();
@@ -74,7 +83,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     if searcher_actions.is_empty() {
                         tracing::debug!("no searcher actions found");
-                        return None
+                        return None;
                     }
 
                     let info = [
@@ -84,22 +93,26 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     if victims
                         .iter()
-                        .map(|v| tree.get_root(*v).unwrap().head.data.clone())
+                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
                         .filter(|d| !d.is_revert())
                         .any(|d| mev_executor_contract == d.get_to_address())
                     {
                         tracing::debug!("victim address is same as mev executor contract");
-                        return None
+                        return None;
                     }
 
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.collect(*victim, |node| TreeSearchArgs {
-                                collect_current_node:  node.data.is_swap(),
+                            tree.collect(*victim, |node, data| TreeSearchArgs {
+                                collect_current_node: data
+                                    .get_ref(node.data)
+                                    .map(|node| node.is_swap())
+                                    .unwrap_or_default(),
                                 child_node_to_collect: node
                                     .get_all_sub_actions()
                                     .iter()
+                                    .filter_map(|node| data.get_ref(*node))
                                     .any(|action| action.is_swap()),
                             })
                         })
@@ -107,7 +120,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
                         tracing::debug!("no victim actions found");
-                        return None
+                        return None;
                     }
 
                     let victim_info = victims
@@ -127,8 +140,11 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
-type JitUnzip =
-    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
+type JitUnzip = (
+    Vec<Option<NormalizedMint>>,
+    Vec<Option<NormalizedBurn>>,
+    Vec<Option<NormalizedCollect>>,
+);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
@@ -160,7 +176,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");
-            return None
+            return None;
         }
 
         let jit_fee =
@@ -221,14 +237,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burns: burns,
         };
 
-        Some(Bundle { header, data: BundleData::Jit(jit_details) })
+        Some(Bundle {
+            header,
+            data: BundleData::Jit(jit_details),
+        })
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {
         let iter = tree.tx_roots.iter();
 
         if iter.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let mut set: HashSet<PossibleJit> = HashSet::new();
@@ -238,11 +257,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
 
         for root in iter {
-            if root.head.data.is_revert() {
-                continue
+            if root.get_root_action().is_revert() {
+                continue;
             }
 
-            match duplicate_mev_contracts.entry(root.head.data.get_to_address()) {
+            match duplicate_mev_contracts.entry(root.get_to_address()) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
                     v.insert(vec![root.tx_hash]);
@@ -257,11 +276,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               victims.clone(),
+                                    eoa: root.head.address,
+                                    frontrun_tx: *prev_tx_hash,
+                                    backrun_tx: root.tx_hash,
+                                    mev_executor_contract: root.get_to_address(),
+                                    victims: victims.clone(),
                                 });
                             }
                         }
@@ -287,11 +306,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.head.data.get_to_address(),
-                                    victims:               victims.clone(),
+                                    eoa: root.head.address,
+                                    frontrun_tx: *prev_tx_hash,
+                                    backrun_tx: root.tx_hash,
+                                    mev_executor_contract: root.get_to_address(),
+                                    victims: victims.clone(),
                                 });
                             }
                         }
