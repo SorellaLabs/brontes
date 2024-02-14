@@ -3,11 +3,11 @@
 mod discovery;
 pub use discovery::*;
 
-mod swaps;
+pub(crate) mod swaps;
 pub use swaps::*;
 
-mod mints;
+pub(crate) mod mints;
 pub use mints::*;
 
-mod burns;
+pub(crate) mod burns;
 pub use burns::*;
