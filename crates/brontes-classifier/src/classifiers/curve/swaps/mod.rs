@@ -1,4 +1,4 @@
-mod base;
+pub(crate) mod base;
 pub use base::*;
 
 mod v1_meta;
