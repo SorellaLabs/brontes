@@ -7,10 +7,17 @@ use brontes_types::{
 };
 
 use super::Clickhouse;
+use crate::libmdbx::LibmdbxInit;
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
     client: Clickhouse,
     inner: I,
+}
+
+impl<I: DBWriter> ClickhouseMiddleware<I> {
+    pub fn new(client: Clickhouse, inner: I) -> Self {
+        Self { inner, client }
+    }
 }
 
 impl<I: DBWriter> DBWriter for ClickhouseMiddleware<I> {
@@ -94,5 +101,34 @@ impl<I: DBWriter> DBWriter for ClickhouseMiddleware<I> {
         self.client.save_traces(block, traces.clone()).await?;
 
         self.inner().save_traces(block, traces).await
+    }
+}
+
+impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
+    async fn initialize_tables<T: brontes_types::traits::TracingProvider>(
+        &'static self,
+        clickhouse: &'static Clickhouse,
+        tracer: std::sync::Arc<T>,
+        tables: &[crate::Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
+            .await
+    }
+
+    async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
+        self.inner.init_full_range_tables(clickhouse).await
+    }
+
+    fn state_to_initialize(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        needs_dex_price: bool,
+    ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
+        self.inner
+            .state_to_initialize(start_block, end_block, needs_dex_price)
     }
 }

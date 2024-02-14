@@ -8,7 +8,7 @@ use clap::Parser;
 use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 
-use super::{determine_max_tasks, get_env_vars, static_object};
+use super::{determine_max_tasks, get_env_vars, load_database, static_object};
 use crate::{cli::get_tracing_provider, runner::CliContext};
 #[derive(Debug, Parser)]
 pub struct TraceArgs {
@@ -36,8 +36,7 @@ impl TraceArgs {
         BRONTES_DB_PATH in .env",
         );
 
-        let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
-        let _clickhouse = static_object(Clickhouse::default());
+        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
 
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());

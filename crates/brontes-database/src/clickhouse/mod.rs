@@ -1,7 +1,7 @@
 mod const_sql;
 pub mod errors;
+#[cfg(feature = "clickhouse-inserts")]
 mod middleware;
-
 use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
@@ -18,6 +18,7 @@ use brontes_types::{
     structured_trace::{TxTrace, TxTraces},
     Protocol,
 };
+#[cfg(feature = "clickhouse-inserts")]
 pub use middleware::*;
 use sorella_db_databases::{
     clickhouse::{
@@ -150,7 +151,6 @@ impl Clickhouse {
         tokens: [Address; 2],
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-
         Ok(())
     }
 

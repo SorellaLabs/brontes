@@ -116,3 +116,4 @@ alloy-primitives.workspace = true
 [features]
 tests = ["reth-tasks"]
 local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
+clickhouse-inserts = ["brontes-database/clickhouse-inserts"]

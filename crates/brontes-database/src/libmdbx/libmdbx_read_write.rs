@@ -48,63 +48,37 @@ use crate::{
     AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
-pub struct LibmdbxReadWriter(pub Libmdbx);
-
-impl LibmdbxReadWriter {
-    pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
-        Ok(Self(Libmdbx::init_db(path, log_level)?))
-    }
-
+pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     /// initializes all the tables with data via the CLI
-    pub async fn initialize_tables<T: TracingProvider>(
+    fn initialize_tables<T: TracingProvider>(
         &'static self,
         clickhouse: &'static Clickhouse,
         tracer: Arc<T>,
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-    ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
-        initializer
-            .initialize(tables, clear_tables, block_range)
-            .await?;
-
-        Ok(())
-    }
+    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync;
 
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
-    pub async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
-        futures::stream::iter([
-            Tables::PoolCreationBlocks,
-            Tables::AddressToProtocolInfo,
-            Tables::TokenDecimals,
-        ])
-        .map(|table| async move {
-            match table {
-                Tables::AddressToProtocolInfo => self
-                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
-                        MIN_MAX_ADDRESS_TO_PROTOCOL,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                Tables::TokenDecimals => self
-                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
-                    .await
-                    .unwrap_or_default(),
-                Tables::PoolCreationBlocks => self
-                    .has_clickhouse_min_max::<PoolCreationBlocks>(
-                        MIN_MAX_POOL_CREATION_BLOCKS,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                _ => true,
-            }
-        })
-        .any(|f| f.map(|f| !f))
-        .await
+    fn init_full_range_tables(
+        &self,
+        clickhouse: &'static Clickhouse,
+    ) -> impl Future<Output = bool> + Send + Sync;
+
+    fn state_to_initialize(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        needs_dex_price: bool,
+    ) -> eyre::Result<Vec<RangeInclusive<u64>>>;
+}
+
+pub struct LibmdbxReadWriter(pub Libmdbx);
+
+impl LibmdbxReadWriter {
+    pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
+        Ok(Self(Libmdbx::init_db(path, log_level)?))
     }
 
     async fn has_clickhouse_min_max<TB>(
@@ -142,8 +116,61 @@ impl LibmdbxReadWriter {
 
         Ok(has_min && has_max)
     }
+}
+impl LibmdbxInit for LibmdbxReadWriter {
+    /// initializes all the tables with data via the CLI
+    async fn initialize_tables<T: TracingProvider>(
+        &'static self,
+        clickhouse: &'static Clickhouse,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize(tables, clear_tables, block_range)
+            .await?;
 
-    pub fn state_to_initialize(
+        Ok(())
+    }
+
+    /// checks the min and max values of the clickhouse db and sees if the full
+    /// range tables have the values.
+    async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
+        futures::stream::iter([
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+        ])
+        .map(|table| async move {
+            match table {
+                Tables::AddressToProtocolInfo => self
+                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
+                        MIN_MAX_ADDRESS_TO_PROTOCOL,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                Tables::TokenDecimals => self
+                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
+                    .await
+                    .unwrap_or_default(),
+                Tables::PoolCreationBlocks => self
+                    .has_clickhouse_min_max::<PoolCreationBlocks>(
+                        MIN_MAX_POOL_CREATION_BLOCKS,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                _ => true,
+            }
+        })
+        .any(|f| f.map(|f| !f))
+        .await
+    }
+
+    fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,

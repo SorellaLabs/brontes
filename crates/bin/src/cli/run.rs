@@ -8,7 +8,7 @@ use brontes_types::constants::USDT_ADDRESS_STRING;
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
-use super::{determine_max_tasks, get_env_vars, static_object};
+use super::{determine_max_tasks, get_env_vars, load_database, static_object};
 use crate::{
     cli::{get_tracing_provider, init_inspectors},
     runner::CliContext,
@@ -60,7 +60,8 @@ impl RunArgs {
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
-        let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
+        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+
         let clickhouse = static_object(Clickhouse::default());
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 

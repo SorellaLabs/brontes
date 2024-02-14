@@ -15,7 +15,7 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
+    libmdbx::{LibmdbxInit, LibmdbxReadWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
@@ -35,7 +35,7 @@ use crate::cli::static_object;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-pub struct BrontesRunConfig<T: TracingProvider> {
+pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit> {
     pub start_block: u64,
     pub end_block: Option<u64>,
     pub max_tasks: u64,
@@ -46,10 +46,10 @@ pub struct BrontesRunConfig<T: TracingProvider> {
     pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     pub clickhouse: &'static Clickhouse,
     pub parser: &'static Parser<'static, T, LibmdbxReadWriter>,
-    pub libmdbx: &'static LibmdbxReadWriter,
+    pub libmdbx: &'static DB,
 }
 
-impl<T: TracingProvider> BrontesRunConfig<T> {
+impl<T: TracingProvider, DB: LibmdbxInit> BrontesRunConfig<T, DB> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
@@ -62,8 +62,8 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
         clickhouse: &'static Clickhouse,
 
-        parser: &'static Parser<'static, T, LibmdbxReadWriter>,
-        libmdbx: &'static LibmdbxReadWriter,
+        parser: &'static Parser<'static, T, DB>,
+        libmdbx: &'static DB,
     ) -> Self {
         Self {
             clickhouse,
@@ -85,7 +85,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         executor: TaskExecutor,
         end_block: u64,
         tip: bool,
-    ) -> Vec<RangeExecutorWithPricing<T, LibmdbxReadWriter>> {
+    ) -> Vec<RangeExecutorWithPricing<T, DB>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block;
@@ -139,7 +139,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         &self,
         executor: TaskExecutor,
         start_block: u64,
-    ) -> TipInspector<T, LibmdbxReadWriter> {
+    ) -> TipInspector<T, DB> {
         let state_collector = self
             .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
@@ -153,7 +153,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         )
     }
 
-    fn state_collector_no_dex_price(&self) -> StateCollector<T, LibmdbxReadWriter> {
+    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB> {
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
 
@@ -173,7 +173,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         start_block: u64,
         end_block: u64,
         tip: bool,
-    ) -> StateCollector<T, LibmdbxReadWriter> {
+    ) -> StateCollector<T, DB> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
