@@ -25,6 +25,9 @@ use crate::{
     GasDetails,
 };
 
+use sorella_db_databases::{tables::DatabaseTable, database_table};
+database_table!(CexDexs, CexDex);
+
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]

@@ -308,6 +308,25 @@ macro_rules! compressed_table {
             }
         }
 
+        #[cfg(feature = "clickhouse-inserts")]
+        $(#[$dattrs])*
+        pub struct [<$table_name ClickhouseData>] {
+            $(#[$kattrs])*
+            pub key: $key,
+            $(#[$vattrs])*
+            pub value: $val
+        }
+
+        #[cfg(feature = "clickhouse-inserts")]
+        impl [<$table_name ClickhouseData>] {
+            pub fn new(key: $key, value: $val) -> Self {
+                [<$table_name Data>] {
+                    key,
+                    value
+                }
+            }
+        }
+
         );
     } $($tail)*);
     };

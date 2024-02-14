@@ -7,13 +7,15 @@ use alloy_primitives::Address;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
+use sorella_db_databases::{clickhouse, clickhouse::Row, database_table, tables::DatabaseTable};
 
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
 };
+
+database_table!(TokenInfo, TokenInfoWithAddress);
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]

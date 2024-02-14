@@ -1,15 +1,21 @@
 mod const_sql;
 pub mod errors;
 mod middleware;
+
 use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{
-        cex::CexPriceMap, clickhouse::*, dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo,
+        cex::CexPriceMap,
+        clickhouse::*,
+        dex::{DexQuote, DexQuoteTable, DexQuotes},
+        metadata::Metadata,
+        searcher::{SearcherInfo, SearcherInfos},
+        token_info::{DBTokenInfo, TokenInfo, TokenInfoWithAddress},
     },
-    mev::{Bundle, BundleData, Mev, MevBlock},
+    mev::{Bundle, BundleData, Mev, MevBlock, MevBlocks},
     pair::Pair,
-    structured_trace::TxTrace,
+    structured_trace::{TxTrace, TxTraces},
     Protocol,
 };
 pub use middleware::*;
@@ -17,9 +23,10 @@ use sorella_db_databases::{
     clickhouse::{
         config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
     },
-    tables::DatabaseTables,
+    tables::{DatabaseTables, DexTokens},
     Database,
 };
+use sorella_db_types::ethereum::raw::DexTokensDB;
 
 pub use self::const_sql::*;
 
@@ -91,6 +98,10 @@ impl Clickhouse {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
+        self.client
+            .insert_one::<SearcherInfos>(&searcher_info)
+            .await?;
+
         Ok(())
     }
 
@@ -100,6 +111,7 @@ impl Clickhouse {
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
+        self.client.insert_one::<MevBlocks>(&block).await?;
         Ok(())
     }
 
@@ -108,6 +120,10 @@ impl Clickhouse {
         block_num: u64,
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
+        if let Some(quotes) = quotes {
+            self.client.insert_one::<DexQuoteTable>(&quotes).await?;
+        }
+
         Ok(())
     }
 
@@ -117,6 +133,13 @@ impl Clickhouse {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
+        self.client
+            .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
+                address,
+                inner: TokenInfo { symbol, decimals },
+            })
+            .await?;
+
         Ok(())
     }
 
@@ -127,10 +150,14 @@ impl Clickhouse {
         tokens: [Address; 2],
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        self.client
+
         Ok(())
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+        self.client.insert_one::<TxTraces>(&traces).await?;
+
         Ok(())
     }
 }

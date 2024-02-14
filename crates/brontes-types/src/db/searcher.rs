@@ -1,12 +1,20 @@
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
+use sorella_db_databases::{
+    clickhouse,
+    clickhouse::{tables, Row},
+    database_table,
+    tables::DatabaseTable,
+};
 
 use super::builder::BuilderInfo;
 use crate::{
     db::builder::BuilderInfoRedefined, implement_table_value_codecs_with_zc, mev::MevType,
 };
+
+database_table!(SearcherInfos, SearcherInfo);
+
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]

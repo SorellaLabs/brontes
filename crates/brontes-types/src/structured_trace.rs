@@ -205,8 +205,11 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+use sorella_db_databases::{database_table, tables::DatabaseTable};
 
+database_table!(TxTraces, Vec<TxTrace>);
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TxTrace {
     pub trace: Vec<TransactionTraceWithLogs>,
     pub tx_hash: B256,

@@ -6,7 +6,11 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
+use sorella_db_databases::{
+    clickhouse::{fixed_string::FixedString, DbRow},
+    database_table,
+    tables::DatabaseTable,
+};
 
 use super::{Mev, MevType};
 use crate::{
@@ -15,6 +19,7 @@ use crate::{
 };
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
+database_table!(Liquidations, Liquidation);
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]

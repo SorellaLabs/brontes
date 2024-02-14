@@ -11,6 +11,8 @@ use serde_with::serde_as;
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
+    database_table,
+    tables::DatabaseTable,
 };
 
 use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};
@@ -20,6 +22,8 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
+
+database_table!(MevBlockTable, MevBlock);
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Redefined)]

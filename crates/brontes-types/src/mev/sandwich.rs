@@ -6,7 +6,11 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
+use sorella_db_databases::{
+    clickhouse::{fixed_string::FixedString, DbRow},
+    database_table,
+    tables::DatabaseTable,
+};
 
 /*
 
@@ -26,6 +30,8 @@ use crate::{
     },
     GasDetails,
 };
+
+database_table!(Sandwiches, Sandwich);
 
 /// Represents various MEV sandwich attack strategies, including standard
 /// sandwiches and more complex variations like the "Big Mac Sandwich."

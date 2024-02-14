@@ -13,6 +13,8 @@ use serde_with::serde_as;
 use sorella_db_databases::{
     clickhouse,
     clickhouse::{fixed_string::FixedString, Row},
+    database_table,
+    tables::DatabaseTable,
 };
 
 use super::MevType;
@@ -26,6 +28,8 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
+
+database_table!(BundleHeaders, BundleHeader);
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Default, Redefined)]

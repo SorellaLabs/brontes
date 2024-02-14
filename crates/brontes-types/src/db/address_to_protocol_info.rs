@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
+use sorella_db_databases::{clickhouse, clickhouse::Row, database_table, tables::DatabaseTable};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
@@ -12,6 +12,7 @@ use crate::{
     serde_utils::{addresss, option_addresss, static_bindings},
     Protocol,
 };
+database_table!(ProtocolDetails, ProtocolInfo);
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined, Hash)]
 #[redefined_attr(derive(
