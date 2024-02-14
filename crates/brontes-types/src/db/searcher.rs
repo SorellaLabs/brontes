@@ -1,10 +1,7 @@
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{tables, Row},
-};
+use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use super::builder::BuilderInfo;
 use crate::{
