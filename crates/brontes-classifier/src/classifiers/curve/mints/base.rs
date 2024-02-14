@@ -3,6 +3,7 @@ use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::NormalizedMint, structured_trace::CallInfo, ToScaledRational,
 };
+use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
     Protocol::CurveBasePool,
@@ -19,14 +20,18 @@ action_impl!(
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
-        let token_addrs = details.into_iter().collect::<Vec<_>>();
-        let (tokens, amounts): (Vec<_>, Vec<_>) = log.token_amounts.into_iter().enumerate().map(|(i, a)|
+        let amounts = log.token_amounts;
+        let (tokens, mut token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
         {
-            let token = db_tx.try_fetch_token_info(token_addrs[i])?;
+            let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
-            Ok((token, a.to_scaled_rational(decimals)))
+            Ok((token, amounts[i].to_scaled_rational(decimals)))
         }
         ).collect::<eyre::Result<Vec<_>>>()?.into_iter().unzip();
+
+        (tokens.len()..amounts.len()).for_each(|_| {
+            token_amts.push(Rational::ZERO);
+        });
 
 
         Ok(NormalizedMint {
@@ -36,7 +41,7 @@ action_impl!(
             from: info.from_address,
             recipient: info.from_address,
             token: tokens,
-            amount: amounts,
+            amount: token_amts,
         })
 
     }
