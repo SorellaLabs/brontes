@@ -137,7 +137,7 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_base_remote_liquidity() {
+    async fn test_curve_base_remove_liquidity() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveBasePool,
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_base_remote_liquidity_imbalanced() {
+    async fn test_curve_base_remove_liquidity_imbalanced() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveBasePool,
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_base_remote_liquidity_one() {
+    async fn test_curve_base_remove_liquidity_one() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveBasePool,
