@@ -150,7 +150,7 @@ mod tests {
         classifier_utils.ensure_token(token_out.clone());
 
         let eq_action = Actions::Swap(NormalizedSwap {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol: Protocol::CurvecrvUSDPlainPool,
             trace_index: 1,
             from: Address::new(hex!("71C91A8950f6a3025EdC754b2f44291E011AA45C")),
             recipient: Address::new(hex!("71C91A8950f6a3025EdC754b2f44291E011AA45C")),
