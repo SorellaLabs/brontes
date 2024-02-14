@@ -83,7 +83,6 @@ action_impl!(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
 
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
