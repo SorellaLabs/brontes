@@ -48,8 +48,8 @@ body:
       label: Is it a Proxy?
       description: Indicate if the protocol functions as a proxy in any transactions.
       options:
-        - label: Yes
-        - label: No
+        - label: "Yes"
+        - label: "No"
     validations:
       required: true
 
