@@ -9,12 +9,12 @@ use brontes_types::{
     db::{
         cex::CexPriceMap,
         clickhouse::*,
-        dex::{DexQuote, DexQuoteTable, DexQuotes},
+        dex::{DexQuote, DexQuotes},
         metadata::Metadata,
-        searcher::{SearcherInfo, SearcherInfos},
-        token_info::{DBTokenInfo, TokenInfo, TokenInfoWithAddress},
+        searcher::SearcherInfo,
+        token_info::{TokenInfo, TokenInfoWithAddress},
     },
-    mev::{Bundle, BundleData, Mev, MevBlock, MevBlocks},
+    mev::{Bundle, BundleData, Mev, MevBlock},
     pair::Pair,
     structured_trace::{TxTrace, TxTraces},
     Protocol,
@@ -28,13 +28,16 @@ use sorella_db_databases::{
     tables::{DatabaseTables, DexTokens},
     Database,
 };
-use sorella_db_types::ethereum::raw::DexTokensDB;
 
 pub use self::const_sql::*;
+use self::dbms::{
+    BrontesClickhouseTables, ClickhouseDexQuotes, ClickhouseMevBlocks, ClickhouseSearcherInfo,
+    ClickhouseTxTraces,
+};
 
 #[derive(Default)]
 pub struct Clickhouse {
-    client: ClickhouseClient,
+    client: ClickhouseClient<BrontesClickhouseTables>,
 }
 
 impl Clickhouse {
@@ -43,7 +46,7 @@ impl Clickhouse {
         Self { client }
     }
 
-    pub fn inner(&self) -> &ClickhouseClient {
+    pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
         &self.client
     }
 
@@ -101,7 +104,7 @@ impl Clickhouse {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         self.client
-            .insert_one::<SearcherInfos>(&searcher_info)
+            .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
             .await?;
 
         Ok(())
@@ -113,7 +116,9 @@ impl Clickhouse {
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        self.client.insert_one::<MevBlocks>(&block).await?;
+        self.client
+            .insert_one::<ClickhouseMevBlocks>(&block)
+            .await?;
         Ok(())
     }
 
@@ -123,7 +128,9 @@ impl Clickhouse {
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
-            self.client.insert_one::<DexQuoteTable>(&quotes).await?;
+            self.client
+                .insert_one::<ClickhouseDexQuotes>(&quotes)
+                .await?;
         }
 
         Ok(())
@@ -135,12 +142,12 @@ impl Clickhouse {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
-                address,
-                inner: TokenInfo { symbol, decimals },
-            })
-            .await?;
+        // self.client
+        //     .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
+        //         address,
+        //         inner: TokenInfo { symbol, decimals },
+        //     })
+        //     .await?;
 
         Ok(())
     }
@@ -156,7 +163,9 @@ impl Clickhouse {
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        self.client.insert_one::<TxTraces>(&traces).await?;
+        self.client
+            .insert_one::<ClickhouseTxTraces>(&(traces.into()))
+            .await?;
 
         Ok(())
     }

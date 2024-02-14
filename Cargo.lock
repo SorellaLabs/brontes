@@ -8323,7 +8323,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#d0eefabfb34bfcc84e933a5490474da2116bbf3f"
+source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#b2e3ab62512415ac4523f43412259ca2db8c082d"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -8355,7 +8355,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#d0eefabfb34bfcc84e933a5490474da2116bbf3f"
+source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#b2e3ab62512415ac4523f43412259ca2db8c082d"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8367,7 +8367,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#d0eefabfb34bfcc84e933a5490474da2116bbf3f"
+source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#b2e3ab62512415ac4523f43412259ca2db8c082d"
 dependencies = [
  "eyre",
  "futures",
@@ -8384,7 +8384,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#d0eefabfb34bfcc84e933a5490474da2116bbf3f"
+source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#b2e3ab62512415ac4523f43412259ca2db8c082d"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8396,7 +8396,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#d0eefabfb34bfcc84e933a5490474da2116bbf3f"
+source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#b2e3ab62512415ac4523f43412259ca2db8c082d"
 dependencies = [
  "serde",
  "serde_json",
@@ -8410,7 +8410,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#d0eefabfb34bfcc84e933a5490474da2116bbf3f"
+source = "git+https://github.com/SorellaLabs/Database?branch=joe/cleanup-clickhouse#b2e3ab62512415ac4523f43412259ca2db8c082d"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",

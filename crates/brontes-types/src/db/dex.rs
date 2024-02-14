@@ -9,7 +9,11 @@ use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{database_table, tables::DatabaseTable};
+use sorella_db_databases::{
+    clickhouse::{self, DbRow, Row},
+    database_table,
+    tables::DatabaseTable,
+};
 use tracing::error;
 
 use crate::{
@@ -55,7 +59,7 @@ impl DexPrices {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {
