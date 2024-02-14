@@ -222,7 +222,7 @@ action_impl!(
     |{
         let log = log.RemoveLiquidityOne_field;
 
-        let details = db_tx.get_protocol_details(info.target)?;
+        let details = db_tx.get_protocol_details(info.target_address)?;
         let protocol = details.protocol;
 
         let token = match call_data.i {
