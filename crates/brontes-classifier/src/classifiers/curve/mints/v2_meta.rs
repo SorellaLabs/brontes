@@ -145,8 +145,8 @@ mod tests {
             pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             token: vec![token0, token1],
             amount: vec![
-                U256::from(0 as u128).to_scaled_rational(18),
-                U256::from(100000000000000000000 as u128).to_scaled_rational(18),
+                U256::from(0_u128).to_scaled_rational(18),
+                U256::from(100000000000000000000_u128).to_scaled_rational(18),
             ],
         });
 
