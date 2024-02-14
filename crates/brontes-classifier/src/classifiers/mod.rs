@@ -83,6 +83,8 @@ action_dispatch!(
     CurveV2MetapoolImplexchange_underlying_1Call,
     CurveV2PlainPoolImplexchange_0Call,
     CurveV2PlainPoolImplexchange_1Call,
+    CurvecrvUSDPlainPoolImplexchange_0Call,
+    CurvecrvUSDPlainPoolImplexchange_1Call,
     // CurveCryptoSwapPoolexchange_0Call,
     // CurveCryptoSwapPoolexchange_1Call,
     // CurveCryptoSwapPoolexchange_2Call,

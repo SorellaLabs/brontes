@@ -5,14 +5,14 @@ use brontes_types::{
 };
 
 action_impl!(
-    Protocol::CurvecrvUSDPlainPool,
+    Protocol::CurvecrvUSDPlainPoolImpl,
     crate::CurvecrvUSDPlainImpl::exchange_0Call,
     Swap,
     [..TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurvecrvUSDPlainPoolexchange_0CallLogs,
+    log: CurvecrvUSDPlainPoolImplexchange_0CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
@@ -52,14 +52,14 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::CurvecrvUSDPlainPool,
+    Protocol::CurvecrvUSDPlainPoolImpl,
     crate::CurvecrvUSDPlainImpl::exchange_1Call,
     Swap,
     [..TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurvecrvUSDPlainPoolexchange_1CallLogs,
+    log: CurvecrvUSDPlainPoolImplexchange_1CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
@@ -116,7 +116,7 @@ mod tests {
     async fn test_curve_crv_usd_plain_pool_exchange0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
-            Protocol::CurveV2PlainPool,
+            Protocol::CurvecrvUSDPlainPool,
             Address::new(hex!("1539c2461d7432cc114b0903f1824079bfca2c92")),
             Address::new(hex!("f939E0A03FB07F59A73314E73794Be0E57ac1b4E")),
             Address::new(hex!("83F20F44975D03b1b09e64809B757c47f942BEeA")),
