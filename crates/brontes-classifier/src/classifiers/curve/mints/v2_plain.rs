@@ -5,14 +5,14 @@ use brontes_types::{
 };
 
 action_impl!(
-    Protocol::CurvecrvUSDPlainPoolImpl,
-    crate::CurvecrvUSDPlainImpl::exchange_0Call,
+    Protocol::CurveV2PlainPoolImpl,
+    crate::CurveV2PlainImpl::exchange_0Call,
     Swap,
     [..TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurvecrvUSDPlainPoolImplexchange_0CallLogs,
+    log: CurveV2PlainPoolImplexchange_0CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
@@ -42,11 +42,12 @@ action_impl!(
         let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
         let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
 
+
         Ok(NormalizedSwap {
             protocol: details.protocol,
             pool: info.from_address,
             trace_index: info.trace_idx,
-            from: log.buyer,
+            from: info.msg_sender,
             recipient: info.msg_sender,
             token_in,
             token_out,
@@ -58,14 +59,14 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::CurvecrvUSDPlainPoolImpl,
-    crate::CurvecrvUSDPlainImpl::exchange_1Call,
+    Protocol::CurveV2PlainPoolImpl,
+    crate::CurveV2PlainImpl::exchange_1Call,
     Swap,
     [..TokenExchange],
     logs: true,
     |
     info: CallInfo,
-    log: CurvecrvUSDPlainPoolImplexchange_1CallLogs,
+    log: CurveV2PlainPoolImplexchange_1CallLogs,
     db_tx: &DB|{
         let log = log.TokenExchange_field;
 
@@ -95,11 +96,12 @@ action_impl!(
         let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
         let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
 
+
         Ok(NormalizedSwap {
             protocol: details.protocol,
             pool: info.from_address,
             trace_index: info.trace_idx,
-            from: log.buyer,
+            from: info.msg_sender,
             recipient: info.msg_sender,
             token_in,
             token_out,
@@ -125,13 +127,13 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_crv_usd_plain_pool_exchange0() {
+    async fn test_curve_v2_plain_pool_exchange0() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
-            Protocol::CurvecrvUSDPlainPool,
-            Address::new(hex!("1539c2461d7432cc114b0903f1824079bfca2c92")),
-            Address::new(hex!("f939E0A03FB07F59A73314E73794Be0E57ac1b4E")),
-            Address::new(hex!("83F20F44975D03b1b09e64809B757c47f942BEeA")),
+            Protocol::CurveV2PlainPool,
+            Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
+            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
             None,
             None,
             None,
@@ -139,22 +141,22 @@ mod tests {
         );
 
         let swap = B256::from(hex!(
-            "6ee69de7d6718a43359e1c7f579dd4ec6958a1079a7343a978391884c2306ede"
+            "ae902afa8e19c08948c71ad3fe8be6eb7eb04ecd683ce577768fc6bdc0af0f4d"
         ));
 
         let token_in = TokenInfoWithAddress {
-            address: Address::new(hex!("83F20F44975D03b1b09e64809B757c47f942BEeA")),
+            address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
             inner: TokenInfo {
                 decimals: 18,
-                symbol: "sDAI".to_string(),
+                symbol: "CRV".to_string(),
             },
         };
 
         let token_out = TokenInfoWithAddress {
-            address: Address::new(hex!("f939E0A03FB07F59A73314E73794Be0E57ac1b4E")),
+            address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
             inner: TokenInfo {
                 decimals: 18,
-                symbol: "crvUSD".to_string(),
+                symbol: "cvxCRV".to_string(),
             },
         };
 
@@ -162,17 +164,17 @@ mod tests {
         classifier_utils.ensure_token(token_out.clone());
 
         let eq_action = Actions::Swap(NormalizedSwap {
-            protocol: Protocol::CurvecrvUSDPlainPool,
-            trace_index: 3,
-            from: Address::new(hex!("71C91A8950f6a3025EdC754b2f44291E011AA45C")),
-            recipient: Address::new(hex!("71C91A8950f6a3025EdC754b2f44291E011AA45C")),
-            pool: Address::new(hex!("1539c2461d7432cc114b0903f1824079bfca2c92")),
+            protocol: Protocol::CurveV2PlainPool,
+            trace_index: 1,
+            from: Address::new(hex!("4D4Ef453CF782926825F5768499C7e02DaA3A9E7")),
+            recipient: Address::new(hex!("4D4Ef453CF782926825F5768499C7e02DaA3A9E7")),
+            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             token_in,
-            amount_in: U256::from_str("1949941364975630672628")
+            amount_in: U256::from_str("1111892484733123139009")
                 .unwrap()
                 .to_scaled_rational(18),
             token_out,
-            amount_out: U256::from_str("858368064339421192")
+            amount_out: U256::from_str("1180110845900664914819")
                 .unwrap()
                 .to_scaled_rational(18),
             msg_value: U256::ZERO,
@@ -197,7 +199,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_crv_usd_plain_pool_exchange1() {
+    async fn test_curve_v2_plain_pool_exchange1() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2PlainPool,
