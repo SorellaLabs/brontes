@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, hex};
+use alloy_primitives::{hex, Address};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedLiquidation, utils::ToScaledRational};
@@ -60,28 +60,30 @@ mod tests {
         let compound_v2_liquidation =
             B256::from(hex!("3a3ba6b0a6b69a8e316e1c20f97b9ce2de790b2f3bf90aaef5b29b06aafa5fda"));
 
-            let eq_action = Actions::Liquidation(NormalizedLiquidation {
-                protocol:              Protocol::CompoundV2,
-                liquidated_collateral: Rational::from_signeds(48779241727, 100000000),
-                covered_debt:          Rational::from_signeds(6140057900131_i64, 1000000),
-                debtor:                Address::from(hex!("De74395831F3Ba9EdC7cBEE1fcB441cf24c0AF4d")),
-                debt_asset:            classifier_utils
-                    .get_token_info(Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))),
-                collateral_asset:      classifier_utils
-                    .get_token_info(Address::from(hex!("70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4"))),
-                liquidator:            Address::from(hex!("D911560979B78821D7b045C79E36E9CbfC2F6C6F")),
-                pool:                  Address::from(hex!("0x39AA39c021dfbaE8faC545936693aC917d5E7563")),
-                trace_index:           6,
-            });
+        let eq_action = Actions::Liquidation(NormalizedLiquidation {
+            protocol:              Protocol::CompoundV2,
+            liquidated_collateral: Rational::from_signeds(48779241727, 100000000),
+            covered_debt:          Rational::from_signeds(6140057900131_i64, 1000000),
+            debtor:                Address::from(hex!("De74395831F3Ba9EdC7cBEE1fcB441cf24c0AF4d")),
+            debt_asset:            classifier_utils
+                .get_token_info(Address::from(hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))),
+            collateral_asset:      classifier_utils
+                .get_token_info(Address::from(hex!("70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4"))),
+            liquidator:            Address::from(hex!("D911560979B78821D7b045C79E36E9CbfC2F6C6F")),
+            pool:                  Address::from(hex!(
+                "0x39AA39c021dfbaE8faC545936693aC917d5E7563"
+            )),
+            trace_index:           6,
+        });
 
-            let search_fn = |node: &Node<Actions>| TreeSearchArgs {
-                collect_current_node:  node.data.is_liquidation(),
-                child_node_to_collect: node.subactions.iter().any(|action| action.is_liquidation()),
-            };
-    
-            classifier_utils
-                .contains_action(compound_v2_liquidation, 0, eq_action, search_fn)
-                .await
-                .unwrap();
+        let search_fn = |node: &Node<Actions>| TreeSearchArgs {
+            collect_current_node:  node.data.is_liquidation(),
+            child_node_to_collect: node.subactions.iter().any(|action| action.is_liquidation()),
+        };
+
+        classifier_utils
+            .contains_action(compound_v2_liquidation, 0, eq_action, search_fn)
+            .await
+            .unwrap();
     }
 }
