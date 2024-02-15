@@ -1,3 +1,4 @@
+#[cfg(feature = "local-clickhouse")]
 mod const_sql;
 #[cfg(feature = "local-clickhouse")]
 pub mod db_client;
