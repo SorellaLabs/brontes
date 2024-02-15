@@ -30,7 +30,7 @@ use brontes_types::{
 use eyre::eyre;
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
-use futures::FutureExt;
+use futures::StreamExt;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
