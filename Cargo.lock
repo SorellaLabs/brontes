@@ -8324,7 +8324,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3bec362ad05addf5aa0a80a0824afce216325b18"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -8356,7 +8356,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3bec362ad05addf5aa0a80a0824afce216325b18"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8368,7 +8368,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3bec362ad05addf5aa0a80a0824afce216325b18"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
 dependencies = [
  "eyre",
  "futures",
@@ -8385,7 +8385,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3bec362ad05addf5aa0a80a0824afce216325b18"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8397,7 +8397,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3bec362ad05addf5aa0a80a0824afce216325b18"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
 dependencies = [
  "serde",
  "serde_json",
@@ -8411,7 +8411,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#3bec362ad05addf5aa0a80a0824afce216325b18"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",

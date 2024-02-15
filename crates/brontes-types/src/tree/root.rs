@@ -90,6 +90,9 @@ impl<V: NormalizedAction> Root<V> {
             searcher_info,
         )
     }
+    pub fn get_from_address(&self) -> Address {
+        self.head.address
+    }
 
     pub fn get_to_address(&self) -> Address {
         self.data_store
