@@ -579,7 +579,7 @@ pub mod option_contract_info {
     use alloy_primitives::Address;
     use serde::de::{Deserialize, Deserializer};
 
-    use crate::{db::address_metadata::ContractInfo, Protocol};
+    use crate::db::address_metadata::ContractInfo;
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where

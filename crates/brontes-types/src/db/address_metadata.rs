@@ -8,7 +8,6 @@ use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
     serde_utils::{addresss, option_contract_info, socials},
-    Protocol,
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
