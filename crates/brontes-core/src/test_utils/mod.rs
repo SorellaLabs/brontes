@@ -48,7 +48,7 @@ impl TraceLoader {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
         let handle = tokio::runtime::Handle::current();
-        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
+        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10).await;
 
         let this = Self {
             libmdbx,
@@ -406,7 +406,7 @@ pub fn init_tracing() {
 }
 
 #[cfg(feature = "local-reth")]
-pub fn init_trace_parser(
+pub async fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
@@ -418,15 +418,11 @@ pub fn init_trace_parser(
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 
-    handle.block_on(TraceParser::new(
-        libmdbx,
-        Arc::new(tracer),
-        Arc::new(metrics_tx),
-    ))
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx)).await
 }
 
 #[cfg(not(feature = "local-reth"))]
-pub fn init_trace_parser(
+pub async fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
@@ -437,11 +433,7 @@ pub fn init_trace_parser(
     let url = format!("{db_endpoint}:{db_port}");
     let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
 
-    handle.block_on(TraceParser::new(
-        libmdbx,
-        Arc::new(tracer),
-        Arc::new(metrics_tx),
-    ))
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx)).await
 }
 
 #[cfg(feature = "local-clickhouse")]
