@@ -55,6 +55,7 @@ sol!(
     "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json"
 );
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
+sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
@@ -83,6 +84,7 @@ sol!(
     PancakeSwapV3PoolDeployer,
     "./classifier-abis/PancakeSwapV3PoolDeployer.json"
 );
+sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

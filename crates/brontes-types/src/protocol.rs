@@ -87,6 +87,7 @@ utils!(
         CurvecrvUSDPlainPoolImpl,
         CurveCryptoSwapPool,
         CurveTriCryptoPool,
+        CompoundV2,
         MakerPSM,
         #[default]
         Unknown,

@@ -42,7 +42,8 @@ discovery_dispatch!(
     CurvecrvUSDMetaDiscovery0,
     CurvecrvUSDMetaDiscovery1,
     CurveCryptoSwapDiscovery,
-    CurveTriCryptoDiscovery
+    CurveTriCryptoDiscovery,
+    CompoundV2Discovery,
 );
 
 action_dispatch!(
@@ -128,5 +129,6 @@ action_dispatch!(
     AaveV3flashLoanCall,
     AaveV3flashLoanSimpleCall,
     BalancerV1swapExactAmountInCall,
-    BalancerV1swapExactAmountOutCall
+    BalancerV1swapExactAmountOutCall,
+    CompoundV2CTokenliquidateBorrowCall,
 );
