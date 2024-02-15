@@ -117,17 +117,19 @@ impl ClickhouseHandle for Clickhouse {
         todo!()
     }
 
-    async fn query_many_range<T, D>(
-        &self,
-        _start_block: u64,
-        _end_block: u64,
-    ) -> eyre::Result<Vec<D>>
+    async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
-        todo!()
+        self.client
+            .query_many::<D>(
+                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                &(start_block, end_block),
+            )
+            .await
+            .map_err(Into::into)
     }
 
     async fn query_many<T, D>(&self) -> eyre::Result<Vec<D>>
@@ -136,7 +138,13 @@ impl ClickhouseHandle for Clickhouse {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
-        todo!()
+        self.client
+            .query_many::<D>(
+                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                &(),
+            )
+            .await
+            .map_err(Into::into)
     }
 
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
