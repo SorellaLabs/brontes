@@ -1,0 +1,18 @@
+[package]
+name = "brontes-analytics"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+# brontes
+brontes-types.workspace = true
+brontes-database.workspace = true
+reth-tracing-ext.workspace = true
+
+
+# alloy 
+alloy-primitives.workspace = true
+
+# eyre
+eyre.workspace = true

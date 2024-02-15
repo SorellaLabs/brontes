@@ -11,6 +11,7 @@ members = [
   "crates/brontes-database",
   "crates/brontes-macros",
   "crates/brontes-pricing",
+  "crates/brontes-analytics"
 ]
 
 resolver = "2"
@@ -20,7 +21,7 @@ resolver = "2"
 sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
 
-# Poirot
+# Brontes
 brontes-core = { path = "./crates/brontes-core" }
 brontes-inspect = { path = "./crates/brontes-inspect" }
 brontes-types = { path = "./crates/brontes-types/" }
@@ -31,6 +32,7 @@ brontes-macros = { path = "./crates/brontes-macros/" }
 brontes-pricing = { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/brontes-tracing" }
+brontes-analytics = { path = "./crates/brontes-analytics" }
 
 # Reth
 reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "b4bb7f0" }

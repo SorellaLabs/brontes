@@ -1,8 +1,8 @@
 pub mod data;
 pub mod header;
-
 use std::fmt::{self, Debug};
 
+use alloy_primitives::Address;
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
@@ -35,6 +35,12 @@ use crate::{
 pub struct Bundle {
     pub header: BundleHeader,
     pub data: BundleData,
+}
+
+impl Bundle {
+    pub fn get_searcher_address(&self) -> Address {
+        self.header.eoa
+    }
 }
 
 impl fmt::Display for Bundle {

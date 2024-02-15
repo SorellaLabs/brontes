@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
 
 use crate::{
-    db::{dex::DexQuotes, searcher::SearcherInfo},
+    db::{builder::BuilderInfo, dex::DexQuotes, searcher::SearcherInfo},
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
@@ -24,6 +24,12 @@ pub trait LibmdbxWriter: Send + Sync + Unpin + 'static {
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
+    ) -> eyre::Result<()>;
+
+    fn write_builder_info(
+        &self,
+        builder_address: Address,
+        builder_info: BuilderInfo,
     ) -> eyre::Result<()>;
 
     fn insert_pool(

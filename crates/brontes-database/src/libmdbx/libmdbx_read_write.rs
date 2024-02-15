@@ -408,6 +408,22 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .get::<Builder>(builder_coinbase_addr)?
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in builder info", builder_coinbase_addr))
     }
+
+    fn try_fetch_mev_blocks(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<MevBlocks>()?;
+        let mut res = Vec::new();
+
+        for entry in cursor.walk_range(start_block..end_block)?.flatten() {
+            res.push(entry.1);
+        }
+
+        Ok(res)
+    }
 }
 
 impl LibmdbxWriter for LibmdbxReadWriter {
@@ -548,6 +564,16 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         self.0.write_table(&vec![table])?;
 
         self.init_state_updating(block, TRACE_FLAG)
+    }
+
+    fn write_builder_info(
+        &self,
+        builder_address: Address,
+        builder_info: BuilderInfo,
+    ) -> eyre::Result<()> {
+        let data = BuilderData::new(builder_address, builder_info);
+        self.0.write_table::<Builder, BuilderData>(&vec![data])?;
+        Ok(())
     }
 }
 

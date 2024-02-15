@@ -5,7 +5,8 @@ use alloy_primitives::Address;
 use crate::{
     db::{
         address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo, dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo,
+        builder::BuilderInfo, dex::DexQuotes, metadata::Metadata,
+        mev_block::MevBlockWithClassified, searcher::SearcherInfo,
         token_info::TokenInfoWithAddress,
     },
     pair::Pair,
@@ -34,6 +35,12 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn try_fetch_token_decimals(&self, address: Address) -> eyre::Result<u8> {
         self.try_fetch_token_info(address).map(|info| info.decimals)
     }
+
+    fn try_fetch_mev_blocks(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>>;
 
     fn protocols_created_before(
         &self,

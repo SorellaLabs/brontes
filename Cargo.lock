@@ -1362,6 +1362,7 @@ dependencies = [
  "alloy-transport",
  "alloy-transport-http",
  "async-scoped",
+ "brontes-analytics",
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
@@ -1403,6 +1404,17 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "brontes-analytics"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "brontes-database",
+ "brontes-types",
+ "eyre",
+ "reth-tracing-ext",
 ]
 
 [[package]]
@@ -8321,7 +8333,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#b86752bbf486571061f15f2241a2b84d60e26dfe"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -8353,7 +8365,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#b86752bbf486571061f15f2241a2b84d60e26dfe"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8365,7 +8377,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#b86752bbf486571061f15f2241a2b84d60e26dfe"
 dependencies = [
  "eyre",
  "futures",
@@ -8382,7 +8394,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#b86752bbf486571061f15f2241a2b84d60e26dfe"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8394,7 +8406,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#b86752bbf486571061f15f2241a2b84d60e26dfe"
 dependencies = [
  "serde",
  "serde_json",
@@ -8408,7 +8420,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#c9352e3acfe50eacd78b6c95e81a98fad62ce533"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#b86752bbf486571061f15f2241a2b84d60e26dfe"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
