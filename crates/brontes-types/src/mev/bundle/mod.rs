@@ -3,6 +3,7 @@ pub mod header;
 
 use std::fmt::{self, Debug};
 
+use clickhouse::Row;
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
@@ -12,10 +13,6 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{InsertRow, Row},
-};
 use strum::{Display, EnumIter};
 
 use crate::display::utils::{
@@ -101,9 +98,7 @@ impl MevType {
     }
 }
 
-pub trait Mev:
-    InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
-{
+pub trait Mev: erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone {
     fn mev_type(&self) -> MevType;
 
     /// The total amount of gas paid by the bundle in wei

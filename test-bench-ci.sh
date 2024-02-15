@@ -1,26 +1,23 @@
 #!/bin/sh
 
 run_tests() {
-  exec | 
     git pull
     git checkout $1
     git pull
     rustup default nightly
-    cargo +nightly test
+    if cargo +nightly test --features sorella-server; then : ; else exit; fi
     git checkout main
 }
 
 run_benchmarks() {
-  exec | 
     rm -rf /home/data/brontes-test/*
     git pull
     git checkout $1
     git pull
     rustup default nightly
-    cargo +nightly bench 
+    if cargo +nightly bench --features sorella-server; then : ; else exit; fi
     git checkout main
 }
 
 run_tests
 run_benchmarks
-

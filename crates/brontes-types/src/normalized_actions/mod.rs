@@ -10,8 +10,10 @@ pub mod swaps;
 pub mod transfer;
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
+use clickhouse::InsertRow;
 pub use eth_transfer::*;
 pub use flashloan::*;
 pub use lending::*;
@@ -20,7 +22,6 @@ pub use liquidity::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{DbRow, InsertRow};
 pub use swaps::*;
 pub use transfer::*;
 

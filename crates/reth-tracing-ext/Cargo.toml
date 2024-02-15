@@ -47,4 +47,4 @@ tokio = { version = "1.28.2", features = ["full"] }
 
 [features]
 tests = []
-local = ["brontes-types/local"]
+local-reth = ["brontes-types/local-reth"]

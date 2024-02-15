@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use alloy_primitives::Address;
+use clickhouse::Row;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,

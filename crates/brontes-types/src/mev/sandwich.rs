@@ -1,20 +1,14 @@
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
-/*
-
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use crate::db::redefined_types::primitives::*;
-use redefined::Redefined;
-
-*/
 use super::{Mev, MevType};
 use crate::{db::redefined_types::primitives::*, normalized_actions::*, ClickhouseVecGasDetails};
 #[allow(unused_imports)]
