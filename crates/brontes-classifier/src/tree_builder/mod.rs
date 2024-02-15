@@ -8,7 +8,7 @@ use brontes_types::{
 };
 mod tree_pruning;
 mod utils;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedAction, SelfdestructWithIndex},
@@ -36,13 +36,13 @@ use crate::{
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
-pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx: &'db DB,
     provider: Arc<T>,
     pricing_update_sender: UnboundedSender<DexPriceMsg>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db, T, DB> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, DB> {
     pub fn new(
         libmdbx: &'db DB,
         pricing_update_sender: UnboundedSender<DexPriceMsg>,
@@ -408,29 +408,34 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         };
 
         (
-            DiscoveryProtocols::default()
-                .dispatch(
-                    self.provider.clone(),
-                    from_address,
-                    created_addr,
-                    trace_index,
-                    calldata,
-                )
-                .await
-                .into_iter()
-                // insert the pool returning if it has token values.
-                .filter(|pool| !self.contains_pool(pool.pool_address))
-                .filter_map(|pool| {
-                    self.insert_new_pool(block, &pool);
-                    pool.try_into().ok()
-                })
-                .map(DexPriceMsg::DiscoveredPool)
-                .collect::<Vec<_>>(),
+            join_all(
+                DiscoveryProtocols::default()
+                    .dispatch(
+                        self.provider.clone(),
+                        from_address,
+                        created_addr,
+                        trace_index,
+                        calldata,
+                    )
+                    .await
+                    .into_iter()
+                    // insert the pool returning if it has token values.
+                    .filter(|pool| !self.contains_pool(pool.pool_address))
+                    .map(|pool| async {
+                        self.insert_new_pool(block, &pool).await;
+                        pool.try_into().ok()
+                    }),
+            )
+            .await
+            .into_iter()
+            .flatten()
+            .map(DexPriceMsg::DiscoveredPool)
+            .collect_vec(),
             Actions::Unclassified(trace),
         )
     }
 
-    fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+    async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
         if self
             .libmdbx
             .insert_pool(
@@ -439,6 +444,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 [pool.tokens[0], pool.tokens[1]],
                 pool.protocol,
             )
+            .await
             .is_err()
         {
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");

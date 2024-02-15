@@ -23,7 +23,7 @@ use brontes_pricing::{
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
-        traits::LibmdbxWriter,
+        traits::DBWriter,
     },
     normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
@@ -256,6 +256,7 @@ impl ClassifierTestUtils {
             if let Some((p_block, pricing)) = pricer.next().await {
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(pricing.clone()))
+                    .await
                     .unwrap();
                 Some(pricing)
             } else {
@@ -354,6 +355,7 @@ impl ClassifierTestUtils {
             while let Some((p_block, quotes)) = pricer.next().await {
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(quotes.clone()))
+                    .await
                     .unwrap();
 
                 prices.push(quotes);
@@ -412,6 +414,7 @@ impl ClassifierTestUtils {
                 // because we have pricing for full block. we store it
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(pricing.clone()))
+                    .await
                     .unwrap();
                 Some(pricing)
             } else {
@@ -432,8 +435,23 @@ impl ClassifierTestUtils {
         tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
+        assert!(
+            !tree.tx_roots.is_empty(),
+            "empty tree. most likely a invalid hash"
+        );
+
         let root = tree.tx_roots.remove(0);
         let mut actions = root.collect(&tree_collect_fn);
+        assert!(
+            !actions.is_empty(),
+            "no actions collected. protocol is either missing
+                from db or not added to dispatch"
+        );
+        assert!(
+            actions.len() > action_number_in_tx,
+            "incorrect action index"
+        );
+
         let action = actions.remove(action_number_in_tx);
 
         assert_eq!(
@@ -561,7 +579,8 @@ impl ClassifierTestUtils {
         token4: Option<Address>,
         curve_lp_token: Option<Address>,
     ) {
-        self.libmdbx
+        if let Err(e) = self
+            .libmdbx
             .0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData {
@@ -578,11 +597,14 @@ impl ClassifierTestUtils {
                     },
                 },
             ])
-            .unwrap();
+        {
+            tracing::error!(error=%e, %protocol, ?address, "failed to ensure protocol is in db");
+        }
     }
 
     pub fn ensure_token(&self, token: TokenInfoWithAddress) {
-        self.libmdbx
+        if let Err(e) = self
+            .libmdbx
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
                 key: token.address,
@@ -591,7 +613,9 @@ impl ClassifierTestUtils {
                     symbol: token.symbol.clone(),
                 },
             }])
-            .unwrap();
+        {
+            tracing::error!(error=%e, ?token, "failed to ensure token is in db");
+        }
     }
 }
 

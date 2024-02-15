@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use alloy_primitives::{Address, Log, U256};
+use clickhouse::Row;
 use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
@@ -205,8 +206,18 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Row, Serialize, Deserialize)]
+pub struct TxTraces {
+    pub traces: Vec<TxTrace>,
+}
 
+impl From<Vec<TxTrace>> for TxTraces {
+    fn from(value: Vec<TxTrace>) -> Self {
+        Self { traces: value }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TxTrace {
     pub trace: Vec<TransactionTraceWithLogs>,
     pub tx_hash: B256,

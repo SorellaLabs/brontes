@@ -55,4 +55,5 @@ where
     type DecompressedValue: Debug + PartialEq;
     const INIT_CHUNK_SIZE: Option<usize>;
     const INIT_QUERY: Option<&'static str>;
+    const HTTP_ENDPOINT: Option<&'static str>;
 }

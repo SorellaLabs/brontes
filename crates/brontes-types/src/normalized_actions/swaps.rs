@@ -5,6 +5,7 @@ use std::{
 };
 
 use alloy_primitives::{TxHash, U256};
+use clickhouse::{fixed_string::FixedString, Row};
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -12,10 +13,6 @@ use redefined::Redefined;
 use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, Row},
-};
 
 use super::Actions;
 use crate::{

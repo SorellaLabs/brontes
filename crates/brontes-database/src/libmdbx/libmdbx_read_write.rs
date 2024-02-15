@@ -1,6 +1,6 @@
-use std::{
-    cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, str::FromStr, sync::Arc,
-};
+#[cfg(feature = "local-clickhouse")]
+use std::str::FromStr;
+use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -19,7 +19,7 @@ use brontes_types::{
         searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
-        traits::{LibmdbxReader, LibmdbxWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
@@ -28,25 +28,55 @@ use brontes_types::{
     SubGraphsEntry,
 };
 use eyre::eyre;
-use futures::{FutureExt, StreamExt};
+use futures::{Future, FutureExt, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
+#[cfg(feature = "local-clickhouse")]
 use sorella_db_databases::Database;
 use tracing::info;
 
+#[cfg(feature = "local-clickhouse")]
+use crate::clickhouse::{
+    MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS, MIN_MAX_TOKEN_DECIMALS,
+};
+#[cfg(feature = "local-clickhouse")]
+use crate::libmdbx::CompressedTable;
 use crate::{
-    clickhouse::{
-        Clickhouse, MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS,
-        MIN_MAX_TOKEN_DECIMALS,
-    },
+    clickhouse::ClickhouseHandle,
     libmdbx::{
         tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, *},
         types::LibmdbxData,
-        CompressedTable, Libmdbx, LibmdbxInitializer,
+        Libmdbx, LibmdbxInitializer,
     },
     AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
+
+pub trait LibmdbxInit: LibmdbxReader + DBWriter {
+    /// initializes all the tables with data via the CLI
+    fn initialize_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
+
+    /// checks the min and max values of the clickhouse db and sees if the full
+    /// range tables have the values.
+    fn init_full_range_tables<CH: ClickhouseHandle>(
+        &self,
+        clickhouse: &'static CH,
+    ) -> impl Future<Output = bool> + Send;
+
+    fn state_to_initialize(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        needs_dex_price: bool,
+    ) -> eyre::Result<Vec<RangeInclusive<u64>>>;
+}
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
 
@@ -55,62 +85,11 @@ impl LibmdbxReadWriter {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
     }
 
-    /// initializes all the tables with data via the CLI
-    pub async fn initialize_tables<T: TracingProvider>(
-        &'static self,
-        clickhouse: &'static Clickhouse,
-        tracer: Arc<T>,
-        tables: &[Tables],
-        clear_tables: bool,
-        block_range: Option<(u64, u64)>, // inclusive of start only
-    ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
-        initializer
-            .initialize(tables, clear_tables, block_range)
-            .await?;
-
-        Ok(())
-    }
-
-    /// checks the min and max values of the clickhouse db and sees if the full
-    /// range tables have the values.
-    pub async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
-        futures::stream::iter([
-            Tables::PoolCreationBlocks,
-            Tables::AddressToProtocolInfo,
-            Tables::TokenDecimals,
-        ])
-        .map(|table| async move {
-            match table {
-                Tables::AddressToProtocolInfo => self
-                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
-                        MIN_MAX_ADDRESS_TO_PROTOCOL,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                Tables::TokenDecimals => self
-                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
-                    .await
-                    .unwrap_or_default(),
-                Tables::PoolCreationBlocks => self
-                    .has_clickhouse_min_max::<PoolCreationBlocks>(
-                        MIN_MAX_POOL_CREATION_BLOCKS,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                _ => true,
-            }
-        })
-        .any(|f| f.map(|f| !f))
-        .await
-    }
-
-    async fn has_clickhouse_min_max<TB>(
+    #[cfg(feature = "local-clickhouse")]
+    async fn has_clickhouse_min_max<TB, CH: ClickhouseHandle>(
         &self,
         query: &str,
-        clickhouse: &'static Clickhouse,
+        clickhouse: &'static CH,
     ) -> eyre::Result<bool>
     where
         TB: CompressedTable,
@@ -142,8 +121,68 @@ impl LibmdbxReadWriter {
 
         Ok(has_min && has_max)
     }
+}
 
-    pub fn state_to_initialize(
+impl LibmdbxInit for LibmdbxReadWriter {
+    /// initializes all the tables with data via the CLI
+    async fn initialize_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize(tables, clear_tables, block_range)
+            .await?;
+
+        Ok(())
+    }
+
+    /// checks the min and max values of the clickhouse db and sees if the full
+    /// range tables have the values.
+    #[cfg(feature = "local-clickhouse")]
+    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
+        futures::stream::iter([
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+        ])
+        .map(|table| async move {
+            match table {
+                Tables::AddressToProtocolInfo => self
+                    .has_clickhouse_min_max::<AddressToProtocolInfo, CH>(
+                        MIN_MAX_ADDRESS_TO_PROTOCOL,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                Tables::TokenDecimals => self
+                    .has_clickhouse_min_max::<TokenDecimals, CH>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
+                    .await
+                    .unwrap_or_default(),
+                Tables::PoolCreationBlocks => self
+                    .has_clickhouse_min_max::<PoolCreationBlocks, CH>(
+                        MIN_MAX_POOL_CREATION_BLOCKS,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                _ => true,
+            }
+        })
+        .any(|f| f.map(|f| !f))
+        .await
+    }
+
+    #[cfg(not(feature = "local-clickhouse"))]
+    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, _clickhouse: &'static CH) -> bool {
+        true
+    }
+
+    fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,
@@ -410,8 +449,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 }
 
-impl LibmdbxWriter for LibmdbxReadWriter {
-    fn write_searcher_info(
+impl DBWriter for LibmdbxReadWriter {
+    type Inner = Self;
+    fn inner(&self) -> &Self::Inner {
+        unreachable!()
+    }
+
+    async fn write_searcher_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
@@ -421,7 +465,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn save_mev_blocks(
+    async fn save_mev_blocks(
         &self,
         block_number: u64,
         block: MevBlock,
@@ -434,7 +478,11 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn write_dex_quotes(&self, block_num: u64, quotes: Option<DexQuotes>) -> eyre::Result<()> {
+    async fn write_dex_quotes(
+        &self,
+        block_num: u64,
+        quotes: Option<DexQuotes>,
+    ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
             self.init_state_updating(block_num, DEX_PRICE_FLAG)?;
             let data = quotes
@@ -467,7 +515,12 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
+    async fn write_token_info(
+        &self,
+        address: Address,
+        decimals: u8,
+        symbol: String,
+    ) -> eyre::Result<()> {
         Ok(self
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData::new(
@@ -497,7 +550,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn insert_pool(
+    async fn insert_pool(
         &self,
         block: u64,
         address: Address,
@@ -538,7 +591,7 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+    async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         let table = TxTracesData::new(
             block,
             TxTracesInner {
@@ -633,7 +686,7 @@ impl LibmdbxReadWriter {
     }
 }
 
-fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
+pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
     if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
         eth_usdt
     } else {

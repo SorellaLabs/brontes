@@ -4,20 +4,24 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-pub use brontes_database::libmdbx::{LibmdbxReadWriter, LibmdbxReader, LibmdbxWriter};
-use brontes_database::Tables;
+#[cfg(feature = "local-clickhouse")]
+use brontes_database::clickhouse::Clickhouse;
+#[cfg(not(feature = "local-clickhouse"))]
+use brontes_database::clickhouse::ClickhouseHttpClient;
+pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
+use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_tasks::TaskManager;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_tracing_ext::init_db;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
 use tokio::{
@@ -28,7 +32,7 @@ use tracing::Level;
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::parser::TraceParser;
-#[cfg(feature = "local")]
+#[cfg(not(feature = "local-reth"))]
 use crate::local_provider::LocalProvider;
 
 /// Functionality to load all state needed for any testing requirements
@@ -44,7 +48,7 @@ impl TraceLoader {
         let libmdbx = get_db_handle();
         let (a, b) = unbounded_channel();
         let handle = tokio::runtime::Handle::current();
-        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10);
+        let tracing_provider = init_trace_parser(handle, a, libmdbx, 10).await;
 
         let this = Self {
             libmdbx,
@@ -94,7 +98,7 @@ impl TraceLoader {
     }
 
     async fn init_on_start(&self) -> eyre::Result<()> {
-        let clickhouse = Box::leak(Box::default());
+        let clickhouse = Box::leak(Box::new(load_clickhouse()));
         if self.libmdbx.init_full_range_tables(clickhouse).await {
             self.libmdbx
                 .initialize_tables(
@@ -117,7 +121,7 @@ impl TraceLoader {
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
         tracing::info!(%block, "fetching missing metadata");
 
-        let clickhouse = Box::leak(Box::default());
+        let clickhouse = Box::leak(Box::new(load_clickhouse()));
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -364,7 +368,7 @@ pub struct BlockTracesWithHeaderAnd<T> {
 
 // done because we can only have 1 instance of libmdbx or we error
 static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
 pub fn get_db_handle() -> &'static LibmdbxReadWriter {
@@ -378,7 +382,7 @@ pub fn get_db_handle() -> &'static LibmdbxReadWriter {
     })
 }
 
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
     RETH_DB_HANDLE
         .get_or_init(|| {
@@ -401,8 +405,8 @@ pub fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-#[cfg(not(feature = "local"))]
-pub fn init_trace_parser(
+#[cfg(feature = "local-reth")]
+pub async fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
@@ -414,12 +418,12 @@ pub fn init_trace_parser(
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 
-    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx)).await
 }
 
-#[cfg(feature = "local")]
-pub fn init_trace_parser(
-    _handle: Handle,
+#[cfg(not(feature = "local-reth"))]
+pub async fn init_trace_parser(
+    handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
     _max_tasks: u32,
@@ -429,5 +433,17 @@ pub fn init_trace_parser(
     let url = format!("{db_endpoint}:{db_port}");
     let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
 
-    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
+    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx)).await
+}
+
+#[cfg(feature = "local-clickhouse")]
+pub fn load_clickhouse() -> Clickhouse {
+    Clickhouse::default()
+}
+
+#[cfg(not(feature = "local-clickhouse"))]
+pub fn load_clickhouse() -> ClickhouseHttpClient {
+    let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
+    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
+    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
 }

@@ -11,7 +11,7 @@ use brontes_types::{
     db::{
         dex::DexQuotes,
         metadata::Metadata,
-        traits::{LibmdbxReader, LibmdbxWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::Actions,
     tree::BlockTree,
@@ -24,7 +24,7 @@ use tracing::info;
 pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
 pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
 
-pub struct WaitingForPricerFuture<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
+pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     receiver: PricingReceiver<T, DB>,
     tx: PricingSender<T, DB>,
 
@@ -32,7 +32,7 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: LibmdbxWriter + Libmdb
     task_executor: TaskExecutor,
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> WaitingForPricerFuture<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
     pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: TaskExecutor) -> Self {
         let (tx, rx) = channel(2);
         let tx_clone = tx.clone();
@@ -72,7 +72,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter + Unpin> WaitingForPr
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader + Unpin> Stream
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
     for WaitingForPricerFuture<T, DB>
 {
     type Item = (BlockTree<Actions>, Metadata);
