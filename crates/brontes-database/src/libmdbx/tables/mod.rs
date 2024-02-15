@@ -235,14 +235,14 @@ macro_rules! compressed_table {
         #[cfg(feature = "tests")]
         #[allow(unused)]
         impl $table_name {
-            pub async fn test_initialized_data(
-                clickhouse: &crate::clickhouse::Clickhouse,
+            pub async fn test_initialized_data<CH: ClickhouseHandle>(
+                clickhouse: &CH,
                 libmdbx: &crate::libmdbx::LibmdbxReadWriter,
                 block_range: Option<(u64, u64)>
             ) -> eyre::Result<()> {
                 paste::paste!{
                     crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
-                        ::<$table_name,[<$table_name Data>]>(clickhouse, libmdbx, block_range).await
+                        ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
                 }
             }
         }

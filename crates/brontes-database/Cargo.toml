@@ -125,4 +125,8 @@ local-reth = [
   "reth-tracing-ext/local-reth",
   "brontes-types/local-reth",
 ]
-local-clickhouse = ["sorella-db-databases", "sorella-db-types"]
+local-clickhouse = [
+  "sorella-db-databases",
+  "sorella-db-types",
+  "brontes-database/local-clickhouse",
+]

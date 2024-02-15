@@ -94,7 +94,7 @@ impl TraceLoader {
     }
 
     async fn init_on_start(&self) -> eyre::Result<()> {
-        let clickhouse = Box::leak(Box::default());
+        let clickhouse = Box::leak(Box::new(load_clickhouse()));
         if self.libmdbx.init_full_range_tables(clickhouse).await {
             self.libmdbx
                 .initialize_tables(
@@ -117,7 +117,7 @@ impl TraceLoader {
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
         tracing::info!(%block, "fetching missing metadata");
 
-        let clickhouse = Box::leak(Box::default());
+        let clickhouse = Box::leak(Box::new(load_clickhouse()));
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -423,7 +423,7 @@ pub fn init_trace_parser(
 
 #[cfg(not(feature = "local-reth"))]
 pub fn init_trace_parser(
-    _handle: Handle,
+    handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
     _max_tasks: u32,
@@ -433,5 +433,21 @@ pub fn init_trace_parser(
     let url = format!("{db_endpoint}:{db_port}");
     let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
 
-    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
+    handle.block_on(TraceParser::new(
+        libmdbx,
+        Arc::new(tracer),
+        Arc::new(metrics_tx),
+    ))
+}
+
+#[cfg(feature = "local-clickhouse")]
+pub fn load_clickhouse() -> Clickhosue {
+    Clickhouse::default()
+}
+
+#[cfg(not(feature = "local-clickhouse"))]
+pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
+    let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
+    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
+    brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
 }

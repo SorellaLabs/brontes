@@ -6,7 +6,9 @@ pub mod dbms;
 pub mod errors;
 #[cfg(feature = "local-clickhouse")]
 pub use db_client::*;
+#[cfg(not(feature = "local-clickhouse"))]
 pub mod http_client;
+#[cfg(not(feature = "local-clickhouse"))]
 pub use http_client::*;
 
 #[cfg(feature = "local-clickhouse")]
@@ -24,6 +26,7 @@ use serde::Deserialize;
 
 use crate::{libmdbx::types::LibmdbxData, CompressedTable};
 
+#[auto_impl::auto_impl(&, &mut)]
 pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     fn get_metadata(
         &self,

@@ -1,25 +1,34 @@
+#[cfg(not(feature = "local-clickhouse"))]
+use std::env;
 use std::fmt::Debug;
 
+use clickhouse::DbRow;
 use serde::Deserialize;
-use sorella_db_databases::{clickhouse::DbRow, Database};
 
+#[cfg(feature = "local-clickhouse")]
+use crate::clickhouse::Clickhouse;
 use crate::{
-    clickhouse::Clickhouse,
+    clickhouse::ClickhouseHandle,
     libmdbx::{
         implementation::compressed_wrappers::utils::CompressedTableRow, types::LibmdbxData,
         LibmdbxReadWriter,
     },
     CompressedTable,
 };
-
-pub fn init_clickhouse() -> Clickhouse {
-    dotenv::dotenv().ok();
-
+#[cfg(feature = "local-clickhouse")]
+pub fn load_clickhouse() -> Clickhosue {
     Clickhouse::default()
 }
 
-pub async fn clickhouse_data<T, D>(
-    clickhouse: &Clickhouse,
+#[cfg(not(feature = "local-clickhouse"))]
+pub fn load_clickhouse() -> crate::clickhouse::ClickhouseHttpClient {
+    let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
+    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
+    crate::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
+}
+
+pub async fn clickhouse_data<T, D, CH: ClickhouseHandle>(
+    clickhouse: &CH,
     block_range: Option<(u64, u64)>,
 ) -> eyre::Result<Vec<CompressedTableRow<T>>>
 where
@@ -28,21 +37,9 @@ where
     D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
     let data = if let Some(rang) = block_range {
-        clickhouse
-            .inner()
-            .query_many::<D>(
-                T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
-                &rang,
-            )
-            .await?
+        clickhouse.query_many_range::<T, D>(rang.0, rang.1).await?
     } else {
-        clickhouse
-            .inner()
-            .query_many::<D>(
-                T::INIT_QUERY.expect("Should only be called on clickhouse tables"),
-                &(),
-            )
-            .await?
+        clickhouse.query_many::<T, D>().await?
     };
 
     let table_row = data
@@ -56,8 +53,8 @@ where
     Ok(table_row)
 }
 
-pub async fn compare_clickhouse_libmdbx_data<T, D>(
-    clickhouse: &Clickhouse,
+pub async fn compare_clickhouse_libmdbx_data<T, D, CH: ClickhouseHandle>(
+    clickhouse: &CH,
     libmdbx: &LibmdbxReadWriter,
     block_range: Option<(u64, u64)>,
 ) -> eyre::Result<()>
@@ -66,7 +63,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
-    let _clickhouse_data = clickhouse_data::<T, D>(clickhouse, block_range).await?;
+    let _clickhouse_data = clickhouse_data::<T, D, CH>(clickhouse, block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
     let _libmdbx_data = tx
