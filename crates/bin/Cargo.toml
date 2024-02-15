@@ -82,6 +82,7 @@ itertools.workspace = true
 
 
 [features]
+sorella-server = ["local-reth", "local-clickhouse"]
 tests = [
   "brontes-core/tests",
   "brontes-database/tests",
