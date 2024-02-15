@@ -579,23 +579,21 @@ pub mod option_contract_info {
     use alloy_primitives::Address;
     use serde::de::{Deserialize, Deserializer};
 
-    use crate::{db::address_metadata::ContractInfo, Protocol};
+    use crate::db::address_metadata::ContractInfo;
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let (verified_contract, contract_creator_opt, protocol, reputation): (
+        let (verified_contract, contract_creator_opt, reputation): (
             Option<bool>,
-            Option<String>,
             Option<String>,
             Option<u8>,
         ) = Deserialize::deserialize(deserializer)?;
 
         Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
             verified_contract,
-            contract_creator: Address::from_str(&contract_creator).unwrap(),
-            protocol: protocol.and_then(|p| Protocol::from_str(&p).ok()),
+            contract_creator: Address::from_str(&contract_creator).ok(),
             reputation,
         }))
     }

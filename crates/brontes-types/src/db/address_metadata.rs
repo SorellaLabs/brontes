@@ -7,8 +7,7 @@ use serde::{self, Deserialize, Serialize};
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
-    serde_utils::{addresss, option_contract_info, socials},
-    Protocol,
+    serde_utils::{option_contract_info, socials},
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
@@ -41,10 +40,7 @@ implement_table_value_codecs_with_zc!(AddressMetadataRedefined);
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ContractInfo {
     pub verified_contract: Option<bool>,
-    #[serde(with = "addresss")]
-    pub contract_creator: Address,
-    #[redefined(same_fields)]
-    pub protocol: Option<Protocol>,
+    pub contract_creator: Option<Address>,
     pub reputation: Option<u8>,
 }
 
