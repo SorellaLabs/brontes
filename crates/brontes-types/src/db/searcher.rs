@@ -1,4 +1,4 @@
-use clickhouse::Row;
+use clickhouse::{self, Row};
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};

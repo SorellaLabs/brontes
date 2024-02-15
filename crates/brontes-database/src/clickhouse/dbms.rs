@@ -100,9 +100,3 @@ remote_clickhouse_table!(
     JitLiquidity,
     NO_FILE
 );
-
-#[test]
-fn t() {
-    let k = BrontesClickhouseTables::ClickhouseTxTraces;
-    println!("{}", k.full_name());
-}
