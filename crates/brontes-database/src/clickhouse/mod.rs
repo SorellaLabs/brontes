@@ -51,8 +51,8 @@ impl Clickhouse {
     }
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
-        let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
+        let _times_flow = self.get_times_flow_info(block_num).await;
+        let _cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
 
         // eth price is in cex_prices
         let _eth_prices = cex_prices
@@ -98,9 +98,10 @@ impl Clickhouse {
     }
 
     // inserts
+    #[allow(unused)]
     async fn write_searcher_info(
         &self,
-        searcher_eoa: Address,
+        _searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         self.client
@@ -136,6 +137,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn write_token_info(
         &self,
         address: Address,
@@ -152,6 +154,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn insert_pool(
         &self,
         block: u64,
