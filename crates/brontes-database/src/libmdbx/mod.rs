@@ -10,7 +10,7 @@ mod libmdbx_read_write;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
-pub use libmdbx_read_write::{LibmdbxInit, LibmdbxReadWriter};
+pub use libmdbx_read_write::{determine_eth_prices, LibmdbxInit, LibmdbxReadWriter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reth_db::{
     is_database_empty,

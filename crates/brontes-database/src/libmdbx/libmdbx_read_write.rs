@@ -686,7 +686,7 @@ impl LibmdbxReadWriter {
     }
 }
 
-fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
+pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
     if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
         eth_usdt
     } else {

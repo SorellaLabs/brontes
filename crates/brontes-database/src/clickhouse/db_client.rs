@@ -1,9 +1,13 @@
-use std::fmt::Debug;
+use std::{cmp::max, fmt::Debug};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
-    db::{dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo},
+    db::{
+        dex::DexQuotes,
+        metadata::{BlockMetadata, Metadata},
+        searcher::SearcherInfo,
+    },
     mev::{Bundle, MevBlock},
     structured_trace::TxTrace,
     Protocol,
@@ -21,7 +25,15 @@ use super::{
     },
     ClickhouseHandle,
 };
-use crate::{libmdbx::types::LibmdbxData, CompressedTable};
+use crate::{
+    clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
+    libmdbx::{
+        determine_eth_prices,
+        tables::{BlockInfoData, CexPriceData},
+        types::LibmdbxData,
+    },
+    CompressedTable,
+};
 
 #[derive(Default)]
 pub struct Clickhouse {
@@ -113,8 +125,32 @@ impl Clickhouse {
 }
 
 impl ClickhouseHandle for Clickhouse {
-    async fn get_metadata(&self, _block_num: u64) -> eyre::Result<Metadata> {
-        todo!()
+    async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        let block_meta = self
+            .client
+            .query_one::<BlockInfoData>(BLOCK_INFO, &(block_num))
+            .await?
+            .value;
+        let cex_quotes = self
+            .client
+            .query_one::<CexPriceData>(CEX_PRICE, &(block_num))
+            .await?
+            .value;
+
+        let eth_prices = determine_eth_prices(&cex_quotes);
+
+        Ok(BlockMetadata::new(
+            block_num,
+            block_meta.block_hash,
+            block_meta.block_timestamp,
+            block_meta.relay_timestamp,
+            block_meta.p2p_timestamp,
+            block_meta.proposer_fee_recipient,
+            block_meta.proposer_mev_reward,
+            max(eth_prices.price.0, eth_prices.price.1),
+            block_meta.private_flow.into_iter().collect(),
+        )
+        .into_metadata(cex_quotes, None, None))
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
