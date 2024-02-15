@@ -5,27 +5,19 @@ use std::{
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{CexPriceMap, CexQuote},
-        dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
-        initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
-        metadata::{BlockMetadata, BlockMetadataInner, Metadata},
-        mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses,
+        dex::DexQuotes,
+        metadata::Metadata,
         searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress},
-        traces::TxTracesInner,
+        token_info::TokenInfoWithAddress,
         traits::{DBWriter, LibmdbxReader},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
-    traits::TracingProvider,
-    SubGraphsEntry,
 };
 use eyre::eyre;
 use futures::{Future, FutureExt, StreamExt};
