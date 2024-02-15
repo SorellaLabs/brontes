@@ -15,8 +15,8 @@ pub use http_client::*;
 mod middleware;
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use brontes_types::db::metadata::Metadata;
-use clickhouse::DbRow;
 #[cfg(feature = "local-clickhouse")]
 pub use const_sql::*;
 #[cfg(feature = "local-clickhouse")]

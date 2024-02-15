@@ -17,7 +17,9 @@ resolver = "2"
 
 [workspace.dependencies]
 # Database
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs.git" }
+clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs", branch = "master", features = [
+  "tls",
+] }
 
 # Poirot
 brontes-core = { path = "./crates/brontes-core" }

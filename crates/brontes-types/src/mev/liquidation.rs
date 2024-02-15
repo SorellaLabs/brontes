@@ -1,15 +1,15 @@
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+#[allow(unused)]
+use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-
-#[allow(unused)]
-use clickhouse::{fixed_string::FixedString, row::*};
 use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::*,

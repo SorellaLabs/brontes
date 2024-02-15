@@ -10,9 +10,10 @@ pub mod swaps;
 pub mod transfer;
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
-use clickhouse::{DbRow, InsertRow};
+use clickhouse::InsertRow;
 pub use eth_transfer::*;
 pub use flashloan::*;
 pub use lending::*;

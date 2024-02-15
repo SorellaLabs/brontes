@@ -3,8 +3,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use ::clickhouse::DbRow;
 use brontes_types::{traits::TracingProvider, unordered_buffer_map::BrontesStreamExt};
-use clickhouse::DbRow;
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
 use serde::Deserialize;

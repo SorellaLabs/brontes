@@ -3,7 +3,6 @@ use brontes_types::{
     mev::*,
     structured_trace::TxTraces,
 };
-use clickhouse::row::Primitive;
 use sorella_db_databases::{
     clickhouse::{
         dbms::ClickhouseDBMS,

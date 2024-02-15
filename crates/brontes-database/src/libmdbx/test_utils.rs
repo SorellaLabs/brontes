@@ -2,7 +2,7 @@
 use std::env;
 use std::fmt::Debug;
 
-use clickhouse::DbRow;
+use ::clickhouse::DbRow;
 use serde::Deserialize;
 
 #[cfg(feature = "local-clickhouse")]

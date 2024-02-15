@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
@@ -16,12 +17,9 @@ use brontes_types::{
     structured_trace::{TxTrace, TxTraces},
     Protocol,
 };
-use clickhouse::DbRow;
 use serde::Deserialize;
 use sorella_db_databases::{
-    clickhouse::{
-        config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array,
-    },
+    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array},
     tables::{DatabaseTables, DexTokens},
     Database,
 };

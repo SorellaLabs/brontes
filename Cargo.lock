@@ -1524,7 +1524,7 @@ dependencies = [
  "brontes-pricing",
  "brontes-types",
  "bytes",
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
+ "clickhouse",
  "codecs-derive",
  "criterion",
  "derive_more",
@@ -1596,7 +1596,7 @@ dependencies = [
  "brontes-macros",
  "brontes-pricing",
  "brontes-types",
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
+ "clickhouse",
  "convert_case 0.6.0",
  "criterion",
  "dotenv",
@@ -1744,7 +1744,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "bytes",
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
+ "clickhouse",
  "colored",
  "derive_more",
  "dotenv",
@@ -2090,34 +2090,11 @@ checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 [[package]]
 name = "clickhouse"
 version = "0.11.5"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#c350f06e0e0722799d75254f1d4bb0d5f93f008b"
 dependencies = [
  "bstr",
  "bytes",
- "clickhouse-derive 0.1.1 (git+https://github.com/SorellaLabs/clickhouse.rs?branch=master)",
- "clickhouse-rs-cityhash-sys",
- "futures",
- "hyper",
- "hyper-tls",
- "lz4",
- "sealed",
- "serde",
- "serde_json",
- "serde_with",
- "static_assertions",
- "thiserror",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "clickhouse"
-version = "0.11.5"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
-dependencies = [
- "bstr",
- "bytes",
- "clickhouse-derive 0.1.1 (git+https://github.com/SorellaLabs/clickhouse.rs.git)",
+ "clickhouse-derive",
  "clickhouse-rs-cityhash-sys",
  "futures",
  "hyper",
@@ -2136,18 +2113,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.1.1"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
-dependencies = [
- "proc-macro2",
- "quote",
- "serde_derive_internals",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "clickhouse-derive"
-version = "0.1.1"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#c350f06e0e0722799d75254f1d4bb0d5f93f008b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8324,12 +8290,12 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b7f8721641951798fecbfa4b9bb6acf2a69bc361"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
 dependencies = [
  "async-recursion",
  "async-trait",
  "chrono",
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs?branch=master)",
+ "clickhouse",
  "dotenv",
  "dyn-clone",
  "erased-serde",
@@ -8356,7 +8322,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b7f8721641951798fecbfa4b9bb6acf2a69bc361"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8368,7 +8334,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b7f8721641951798fecbfa4b9bb6acf2a69bc361"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
 dependencies = [
  "eyre",
  "futures",
@@ -8385,7 +8351,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b7f8721641951798fecbfa4b9bb6acf2a69bc361"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8397,7 +8363,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b7f8721641951798fecbfa4b9bb6acf2a69bc361"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
 dependencies = [
  "serde",
  "serde_json",
@@ -8411,14 +8377,14 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#b7f8721641951798fecbfa4b9bb6acf2a69bc361"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
  "async-trait",
  "binance",
  "chrono",
- "clickhouse 0.11.5 (git+https://github.com/SorellaLabs/clickhouse.rs?branch=master)",
+ "clickhouse",
  "ethers",
  "futures",
  "jsonrpsee-types",

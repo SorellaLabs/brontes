@@ -3,7 +3,8 @@ pub mod header;
 
 use std::fmt::{self, Debug};
 
-use clickhouse::{InsertRow, Row};
+use ::clickhouse::DbRow;
+use clickhouse::Row;
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
@@ -98,9 +99,7 @@ impl MevType {
     }
 }
 
-pub trait Mev:
-    InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
-{
+pub trait Mev: erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone {
     fn mev_type(&self) -> MevType;
 
     /// The total amount of gas paid by the bundle in wei

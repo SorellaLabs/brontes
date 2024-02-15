@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use brontes_types::db::metadata::Metadata;
-use clickhouse::DbRow;
 use serde::Deserialize;
 
 use crate::{clickhouse::ClickhouseHandle, libmdbx::types::LibmdbxData, CompressedTable};
