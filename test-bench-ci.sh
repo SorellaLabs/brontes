@@ -5,7 +5,7 @@ run_tests() {
     git checkout $1
     git pull
     rustup default nightly
-    if cargo +nightly test; then : ; else exit; fi
+    if cargo +nightly test --features sorella-server; then : ; else exit; fi
     git checkout main
 }
 
@@ -15,7 +15,7 @@ run_benchmarks() {
     git checkout $1
     git pull
     rustup default nightly
-    if cargo +nightly bench; then : ; else exit; fi
+    if cargo +nightly bench --features sorella-server; then : ; else exit; fi
     git checkout main
 }
 
