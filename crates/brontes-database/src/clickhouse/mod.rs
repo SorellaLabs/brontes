@@ -7,14 +7,9 @@ use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{
-        cex::CexPriceMap,
-        clickhouse::*,
-        dex::{DexQuote, DexQuotes},
-        metadata::Metadata,
-        searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress},
+        cex::CexPriceMap, clickhouse::*, dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo,
     },
-    mev::{Bundle, BundleData, Mev, MevBlock},
+    mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::{TxTrace, TxTraces},
     Protocol,
