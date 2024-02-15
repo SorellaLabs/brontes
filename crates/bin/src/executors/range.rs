@@ -36,7 +36,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     pub fn new(
         start_block: u64,
         end_block: u64,
-        state_collector: StateCollector<T, DB,CH>,
+        state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     ) -> Self {
@@ -77,7 +77,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future for RangeExecutorWithPricing<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Future
+    for RangeExecutorWithPricing<T, DB, CH>
+{
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

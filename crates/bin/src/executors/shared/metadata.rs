@@ -1,7 +1,7 @@
 use core::panic;
 use std::{collections::VecDeque, pin::Pin, task::Poll};
 
-use brontes_database::clickhouse::{Clickhouse, ClickhouseHandle};
+use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     db::{
@@ -37,7 +37,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
-    MetadataFetcher<T, DB,CH>
+    MetadataFetcher<T, DB, CH>
 {
     pub fn new(
         clickhouse: Option<&'static CH>,
@@ -93,7 +93,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
-                let mut meta = clickhouse.get_metadata(block).await;
+                let mut meta = clickhouse
+                    .get_metadata(block)
+                    .await
+                    .expect("missing metadata for clickhouse.get_metadat request");
                 meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
                 (block, tree, meta)
             });
@@ -114,7 +117,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
-    for MetadataFetcher<T, DB,CH>
+    for MetadataFetcher<T, DB, CH>
 {
     type Item = (BlockTree<Actions>, Metadata);
 

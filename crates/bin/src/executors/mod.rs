@@ -13,10 +13,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{LibmdbxInit, LibmdbxReadWriter, LibmdbxReader},
-};
+use brontes_database::libmdbx::{LibmdbxInit, LibmdbxReadWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use brontes_types::mev::Bundle;
@@ -49,7 +46,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub libmdbx: &'static DB,
 }
 
-impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig<T, CH> {
+impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig<T, DB, CH> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
@@ -85,7 +82,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
         executor: TaskExecutor,
         end_block: u64,
         tip: bool,
-    ) -> Vec<RangeExecutorWithPricing<T, DB>> {
+    ) -> Vec<RangeExecutorWithPricing<T, DB, CH>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block;
@@ -139,7 +136,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
         &self,
         executor: TaskExecutor,
         start_block: u64,
-    ) -> TipInspector<T, DB> {
+    ) -> TipInspector<T, DB, CH> {
         let state_collector = self
             .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
@@ -153,7 +150,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
         )
     }
 
-    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB> {
+    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB, CH> {
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
 
@@ -173,7 +170,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
         start_block: u64,
         end_block: u64,
         tip: bool,
-    ) -> StateCollector<T, DB> {
+    ) -> StateCollector<T, DB, CH> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));

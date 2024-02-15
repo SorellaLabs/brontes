@@ -1,7 +1,7 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::{clickhouse::Clickhouse, libmdbx::LibmdbxReadWriter};
+use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::unordered_buffer_map::BrontesStreamExt;
 use clap::Parser;

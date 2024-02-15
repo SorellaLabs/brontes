@@ -45,6 +45,4 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static;
-
-
 }
