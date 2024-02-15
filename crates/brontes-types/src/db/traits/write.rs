@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[auto_impl::auto_impl(&)]
-pub trait DBWriter: Send + Unpin + 'static {
+pub trait DBWriter: Send + Sync + Unpin + 'static {
     /// allows for writing results to multiple databases
     type Inner: DBWriter;
 
