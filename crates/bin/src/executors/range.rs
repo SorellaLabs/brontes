@@ -17,7 +17,6 @@ use super::shared::{inserts::process_results, state_collector::StateCollector};
 pub struct RangeExecutorWithPricing<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     collector: StateCollector<T, DB>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-    // clickhouse db (feature)
     current_block: u64,
     end_block: u64,
     libmdbx: &'static DB,

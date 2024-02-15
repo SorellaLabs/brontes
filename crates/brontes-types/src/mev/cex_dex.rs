@@ -1,17 +1,13 @@
 use std::{fmt, fmt::Debug};
 
 use ::serde::ser::{SerializeStruct, Serializer};
+use clickhouse::{fixed_string::FixedString, DbRow};
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse::{fixed_string::FixedString, DbRow},
-    database_table,
-    tables::DatabaseTable,
-};
 
 use super::{Mev, MevType};
 use crate::{

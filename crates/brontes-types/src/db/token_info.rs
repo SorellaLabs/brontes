@@ -8,7 +8,6 @@ use clickhouse::Row;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{database_table, tables::DatabaseTable};
 
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},

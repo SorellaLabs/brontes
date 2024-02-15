@@ -9,10 +9,7 @@ use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, InsertRow, Row},
-};
+use clickhouse::{fixed_string::FixedString, Row, InsertRow};
 use strum::{Display, EnumIter};
 
 #[allow(unused_imports)]

@@ -20,7 +20,6 @@ pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     current_block: u64,
     parser: &'static Parser<'static, T, DB>,
     state_collector: StateCollector<T, DB>,
-    // clickhouse db (feature)
     database: &'static DB,
     inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
@@ -64,7 +63,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> TipInspector<T, DB> {
         drop(graceful_guard);
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
             return false;
@@ -86,7 +85,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> TipInspector<T, DB> {
         }
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
             return false;

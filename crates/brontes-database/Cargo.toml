@@ -46,8 +46,8 @@ zstd = "0.13"
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
-sorella-db-databases.workspace = true
-sorella-db-types.workspace = true
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main", optional = true }
+sorella-db-types = { git = "https://github.com/SorellaLabs/Database", branch = "main", optional = true }
 clickhouse.workspace = true
 
 # serde
@@ -89,6 +89,7 @@ rayon.workspace = true
 strum = "0.25"
 strum_macros = "0.25"
 async-trait = "0.1.73"
+reqwest.workspace = true
 
 
 # benches
@@ -119,5 +120,9 @@ alloy-primitives.workspace = true
 
 [features]
 tests = ["reth-tasks"]
-local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
-clickhouse-inserts = ["brontes-database/clickhouse-inserts"]
+local-reth = [
+  "brontes-core/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-types/local-reth",
+]
+local-clickhouse = ["sorella-db-databases", "sorella-db-types"]

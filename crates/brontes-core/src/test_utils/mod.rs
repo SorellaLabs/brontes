@@ -9,15 +9,15 @@ use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
 use futures::future::join_all;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_tasks::TaskManager;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_tracing_ext::init_db;
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
 use tokio::{
@@ -28,7 +28,7 @@ use tracing::Level;
 use tracing_subscriber::filter::Directive;
 
 use crate::decoding::parser::TraceParser;
-#[cfg(feature = "local")]
+#[cfg(not(feature = "local-reth"))]
 use crate::local_provider::LocalProvider;
 
 /// Functionality to load all state needed for any testing requirements
@@ -364,7 +364,7 @@ pub struct BlockTracesWithHeaderAnd<T> {
 
 // done because we can only have 1 instance of libmdbx or we error
 static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
 pub fn get_db_handle() -> &'static LibmdbxReadWriter {
@@ -378,7 +378,7 @@ pub fn get_db_handle() -> &'static LibmdbxReadWriter {
     })
 }
 
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
     RETH_DB_HANDLE
         .get_or_init(|| {
@@ -401,7 +401,7 @@ pub fn init_tracing() {
     brontes_tracing::init(layers);
 }
 
-#[cfg(not(feature = "local"))]
+#[cfg(feature = "local-reth")]
 pub fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
@@ -421,7 +421,7 @@ pub fn init_trace_parser(
     ))
 }
 
-#[cfg(feature = "local")]
+#[cfg(not(feature = "local-reth"))]
 pub fn init_trace_parser(
     _handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,

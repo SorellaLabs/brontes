@@ -23,7 +23,7 @@ futures.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
-alloy-rpc-types.workspace = true 
+alloy-rpc-types.workspace = true
 alloy-rlp.workspace = true
 
 # reth
@@ -65,7 +65,11 @@ criterion = { version = "0.5", features = [
 [features]
 tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
 default = []
-local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
+local-reth = [
+  "brontes-core/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-types/local-reth",
+]
 
 [dev-dependencies]
 strum = { workspace = true, features = ["derive"] }

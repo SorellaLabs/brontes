@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug};
 
 use alloy_primitives::Address;
+use clickhouse::{fixed_string::FixedString, Row};
 use colored::Colorize;
 use indoc::indoc;
 use redefined::{self_convert_redefined, Redefined};
@@ -8,12 +9,6 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeser, Serialize as rSer};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, Row},
-    database_table,
-    tables::DatabaseTable,
-};
 
 use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};
 #[allow(unused_imports)]

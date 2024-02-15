@@ -10,7 +10,6 @@ use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{database_table, tables::DatabaseTable};
 use tracing::error;
 
 use crate::{

@@ -1,6 +1,6 @@
 mod range;
 mod shared;
-use brontes_database::Tables;
+use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
 use std::{
@@ -35,7 +35,7 @@ use crate::cli::static_object;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit> {
+pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> {
     pub start_block: u64,
     pub end_block: Option<u64>,
     pub max_tasks: u64,
@@ -44,12 +44,12 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit> {
     pub with_dex_pricing: bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
-    pub clickhouse: &'static Clickhouse,
+    pub clickhouse: &'static CH,
     pub parser: &'static Parser<'static, T, DB>,
     pub libmdbx: &'static DB,
 }
 
-impl<T: TracingProvider, DB: LibmdbxInit> BrontesRunConfig<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig<T, CH> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
@@ -60,7 +60,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesRunConfig<T, DB> {
         with_dex_pricing: bool,
 
         inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
-        clickhouse: &'static Clickhouse,
+        clickhouse: &'static CH,
 
         parser: &'static Parser<'static, T, DB>,
         libmdbx: &'static DB,
@@ -265,9 +265,9 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesRunConfig<T, DB> {
         if let Some(end_block) = self.end_block {
             (true, end_block)
         } else {
-            #[cfg(not(feature = "local"))]
+            #[cfg(feature = "local-reth")]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
-            #[cfg(feature = "local")]
+            #[cfg(not(feature = "local-reth"))]
             let chain_tip = self.parser.get_latest_block_number().await.unwrap();
             (false, chain_tip)
         }

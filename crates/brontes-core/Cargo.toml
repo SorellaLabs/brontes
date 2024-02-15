@@ -85,8 +85,8 @@ criterion = { version = "0.5", features = ["async", "async_tokio"] }
 default = []
 dyn-decode = []
 tests = []
-local = [
-  "brontes-types/local",
-  "reth-tracing-ext/local",
-  "brontes-database/local",
+local-reth = [
+  "brontes-types/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-database/local-reth",
 ]

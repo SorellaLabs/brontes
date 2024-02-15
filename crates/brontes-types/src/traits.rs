@@ -19,10 +19,10 @@ pub trait TracingProvider: Send + Sync + 'static {
 
     async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>>;
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     fn best_block_number(&self) -> eyre::Result<u64>;
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     async fn best_block_number(&self) -> eyre::Result<u64>;
 
     async fn replay_block_transactions(

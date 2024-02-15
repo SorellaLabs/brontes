@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
@@ -14,6 +16,8 @@ use brontes_types::{
     structured_trace::{TxTrace, TxTraces},
     Protocol,
 };
+use clickhouse::DbRow;
+use serde::Deserialize;
 use sorella_db_databases::{
     clickhouse::{
         config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
@@ -28,7 +32,9 @@ use super::{
         BrontesClickhouseTables, ClickhouseDexQuotes, ClickhouseMevBlocks, ClickhouseSearcherInfo,
         ClickhouseTxTraces,
     },
+    ClickhouseHandle,
 };
+use crate::{libmdbx::types::LibmdbxData, CompressedTable};
 
 #[derive(Default)]
 pub struct Clickhouse {
@@ -43,53 +49,6 @@ impl Clickhouse {
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
         &self.client
-    }
-
-    pub async fn get_metadata(&self, block_num: u64) -> Metadata {
-        let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
-
-        // eth price is in cex_prices
-        let _eth_prices = cex_prices
-            .get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
-            .unwrap()
-            .clone();
-
-        /*
-        let metadata = MetadataNoDex::new(
-            block_num,
-            times_flow.block_hash.into(),
-            times_flow.relay_time,
-            times_flow.p2p_time,
-            times_flow.proposer_addr,
-            times_flow.proposer_reward,
-            cex_prices,
-            eth_prices.avg(),
-            times_flow.private_flow,
-        );
-
-        metadata
-         */
-
-        Default::default()
-    }
-
-    async fn get_times_flow_info(&self, block_num: u64) -> ClickhouseTimesFlow {
-        self.client
-            .query_one::<ClickhouseTimesFlow>(TIMES_FLOW, &(block_num))
-            .await
-            .unwrap()
-    }
-
-    async fn get_cex_token_prices(&self, _p2p_time: u64) -> CexPriceMap {
-        CexPriceMap::default()
-
-        /*self.client
-        .query_many::<ClickhouseTokenPrices>(PRICES, &(p2p_time))
-        .await
-        .unwrap()
-        .into()
-        */
     }
 
     // inserts
@@ -163,5 +122,29 @@ impl Clickhouse {
             .await?;
 
         Ok(())
+    }
+}
+
+impl ClickhouseHandle for Clickhouse {
+    async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        todo!()
+    }
+
+    async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        todo!()
+    }
+
+    async fn query_many<T, D>(&self) -> eyre::Result<Vec<D>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        todo!()
     }
 }

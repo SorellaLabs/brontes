@@ -45,7 +45,7 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
         Self { executor, parser }
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     pub async fn get_latest_block_number(&self) -> eyre::Result<u64> {
         self.parser.tracer.best_block_number().await
     }
@@ -54,7 +54,7 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
         self.parser.get_tracer()
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     pub fn get_latest_block_number(&self) -> eyre::Result<u64> {
         self.parser.tracer.best_block_number()
     }

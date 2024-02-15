@@ -38,7 +38,6 @@ serde_with.workspace = true
 serde_repr.workspace = true
 
 # database
-sorella-db-databases.workspace = true
 clickhouse.workspace = true
 
 # misc
@@ -82,4 +81,4 @@ reth-tracing-ext.workspace = true
 [features]
 default = ["tests"]
 tests = []
-local = ["brontes-core/local", "reth-tracing-ext/local"]
+local-reth = ["brontes-core/local-reth", "reth-tracing-ext/local-reth"]

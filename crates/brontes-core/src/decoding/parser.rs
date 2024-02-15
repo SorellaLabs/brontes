@@ -114,7 +114,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
             return Some(res);
         }
-        #[cfg(feature = "local")]
+        #[cfg(not(feature = "local-reth"))]
         {
             tracing::error!("no block found in db");
             return None;

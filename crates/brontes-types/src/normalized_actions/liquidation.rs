@@ -1,16 +1,13 @@
 use std::fmt::{self, Debug};
 
 use alloy_primitives::U256;
+use clickhouse::{fixed_string::FixedString, Row};
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, Row},
-};
 
 pub use super::{Actions, NormalizedSwap};
 use crate::{

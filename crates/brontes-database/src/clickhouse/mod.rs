@@ -1,19 +1,25 @@
 mod const_sql;
+#[cfg(feature = "local-clickhouse")]
 pub mod db_client;
+#[cfg(feature = "local-clickhouse")]
 pub mod dbms;
 pub mod errors;
+#[cfg(feature = "local-clickhouse")]
 pub use db_client::*;
 pub mod http_client;
 pub use http_client::*;
 
-#[cfg(feature = "clickhouse-inserts")]
+#[cfg(feature = "local-clickhouse")]
 mod middleware;
-
 use std::fmt::Debug;
 
 use brontes_types::db::metadata::Metadata;
 use clickhouse::DbRow;
+#[cfg(feature = "local-clickhouse")]
+pub use const_sql::*;
 use futures::Future;
+#[cfg(feature = "local-clickhouse")]
+pub use middleware::*;
 use serde::Deserialize;
 
 use crate::{libmdbx::types::LibmdbxData, CompressedTable};
