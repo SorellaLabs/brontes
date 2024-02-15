@@ -48,7 +48,7 @@ use crate::{
     AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
-pub trait LibmdbxInit: LibmdbxReader + DBWriter {
+pub trait LibmdbxInit: LibmdbxReader + DBWriter + Sync + Send {
     /// initializes all the tables with data via the CLI
     fn initialize_tables<T: TracingProvider>(
         &'static self,
@@ -57,14 +57,14 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-    ) -> impl Future<Output = eyre::Result<()>> + Send;
+    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync;
 
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
     fn init_full_range_tables(
         &self,
         clickhouse: &'static Clickhouse,
-    ) -> impl Future<Output = bool> + Send;
+    ) -> impl Future<Output = bool> + Send + Sync;
 
     fn state_to_initialize(
         &self,
