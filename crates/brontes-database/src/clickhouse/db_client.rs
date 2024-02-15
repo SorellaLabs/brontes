@@ -48,7 +48,7 @@ impl Clickhouse {
     // inserts
     pub async fn write_searcher_info(
         &self,
-        searcher_eoa: Address,
+        _searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         self.client
@@ -60,9 +60,9 @@ impl Clickhouse {
 
     pub async fn save_mev_blocks(
         &self,
-        block_number: u64,
+        _block_number: u64,
         block: MevBlock,
-        mev: Vec<Bundle>,
+        _mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
         self.client
             .insert_one::<ClickhouseMevBlocks>(&block)
@@ -72,7 +72,7 @@ impl Clickhouse {
 
     pub async fn write_dex_quotes(
         &self,
-        block_num: u64,
+        _block_num: u64,
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
@@ -86,9 +86,9 @@ impl Clickhouse {
 
     pub async fn write_token_info(
         &self,
-        address: Address,
-        decimals: u8,
-        symbol: String,
+        _address: Address,
+        _decimals: u8,
+        _symbol: String,
     ) -> eyre::Result<()> {
         // self.client
         //     .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
@@ -102,15 +102,15 @@ impl Clickhouse {
 
     pub async fn insert_pool(
         &self,
-        block: u64,
-        address: Address,
-        tokens: [Address; 2],
-        classifier_name: Protocol,
+        _block: u64,
+        _address: Address,
+        _tokens: [Address; 2],
+        _classifier_name: Protocol,
     ) -> eyre::Result<()> {
         Ok(())
     }
 
-    pub async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+    pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         self.client
             .insert_one::<ClickhouseTxTraces>(&(traces.into()))
             .await?;
@@ -120,11 +120,11 @@ impl Clickhouse {
 }
 
 impl ClickhouseHandle for Clickhouse {
-    async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+    async fn get_metadata(&self, _block_num: u64) -> eyre::Result<Metadata> {
         todo!()
     }
 
-    async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
+    async fn query_many_range<T, D>(&self, _start_block: u64, _end_block: u64) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
