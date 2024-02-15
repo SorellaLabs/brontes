@@ -209,6 +209,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), false)?;
+        println!("{:#?}", addr_usd_deltas);
         Some(
             addr_usd_deltas
                 .values()
