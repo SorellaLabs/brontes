@@ -62,13 +62,13 @@ impl InitializedStateMeta {
         self.0 |= this
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     #[inline(always)]
     pub fn is_init(&self) -> bool {
         (self.0 << 6) >> 6 == 0b11 || self.should_ignore()
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     #[inline(always)]
     pub fn is_init(&self) -> bool {
         (self.0 << 5) >> 5 == 0b111 || self.should_ignore()

@@ -99,9 +99,8 @@ use std::sync::Arc;
 
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
-use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::Metadata},
+    db::{cex::CexExchange, metadata::Metadata, traits::LibmdbxReader},
     mev::{Bundle, BundleData},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -138,10 +137,10 @@ pub enum Inspectors {
 type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
 
 impl Inspectors {
-    pub fn init_mev_inspector(
+    pub fn init_mev_inspector<DB: LibmdbxReader>(
         &self,
         quote_token: Address,
-        db: &'static LibmdbxReadWriter,
+        db: &'static DB,
         cex_exchanges: &[CexExchange],
     ) -> DynMevInspector {
         match &self {

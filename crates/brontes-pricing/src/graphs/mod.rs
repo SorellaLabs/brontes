@@ -9,7 +9,7 @@ mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{
-    db::traits::{LibmdbxReader, LibmdbxWriter},
+    db::traits::{DBWriter, LibmdbxReader},
     pair::Pair,
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };
@@ -50,7 +50,7 @@ use crate::{types::PoolState, Protocol};
 ///   integrity of associated subgraphs.
 /// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
 ///   state for the generated subgraphs.
-pub struct GraphManager<DB: LibmdbxReader + LibmdbxWriter> {
+pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
     all_pair_graph: AllPairGraph,
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
@@ -62,7 +62,7 @@ pub struct GraphManager<DB: LibmdbxReader + LibmdbxWriter> {
     db: &'static DB,
 }
 
-impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
+impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: HashMap<(Address, Protocol), Pair>,
         sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,

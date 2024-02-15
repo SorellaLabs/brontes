@@ -113,11 +113,11 @@ pub(crate) mod vec_vec_fixed_string {
     use std::str::FromStr;
 
     use alloy_primitives::Address;
+    use clickhouse::fixed_string::FixedString;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &[Vec<Address>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
@@ -156,11 +156,11 @@ pub(crate) mod vec_vec_b256 {
     use std::str::FromStr;
 
     use alloy_primitives::B256;
+    use clickhouse::fixed_string::FixedString;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &[Vec<B256>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()

@@ -104,7 +104,7 @@ impl ActionMacro {
 
             impl crate::IntoAction for #exchange_name_w_call {
                 fn decode_trace_data<DB: ::brontes_database::libmdbx::LibmdbxReader
-                    + ::brontes_database::libmdbx::LibmdbxWriter>(
+                    + ::brontes_database::libmdbx::DBWriter>(
                     &self,
                     call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
                     block: u64,

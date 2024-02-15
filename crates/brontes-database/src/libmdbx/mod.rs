@@ -3,14 +3,14 @@
 
 use std::path::Path;
 
-pub use brontes_types::db::traits::{LibmdbxReader, LibmdbxWriter};
+pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
 pub mod initialize;
 mod libmdbx_read_write;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
-pub use libmdbx_read_write::LibmdbxReadWriter;
+pub use libmdbx_read_write::{determine_eth_prices, LibmdbxInit, LibmdbxReadWriter};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reth_db::{
     is_database_empty,

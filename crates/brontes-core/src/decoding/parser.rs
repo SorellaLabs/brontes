@@ -5,7 +5,7 @@ use std::{path, sync::Arc};
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -32,14 +32,14 @@ const CONFIG_FILE_NAME: &str = "classifier_config.toml";
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 //#[derive(Clone)]
-pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx: &'db DB,
     pub tracer: Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db, T, DB> {
-    pub fn new(
+impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, DB> {
+    pub async fn new(
         libmdbx: &'db DB,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
@@ -49,14 +49,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
             tracer,
             metrics_tx,
         };
-        this.store_config_data();
+        this.store_config_data().await;
 
         this
     }
 
     /// loads up the `classifier_config.toml` and ensures the values are in the
     /// database
-    fn store_config_data(&self) {
+    async fn store_config_data(&self) {
         let mut workspace_dir = workspace_dir();
         workspace_dir.push(CONFIG_FILE_NAME);
 
@@ -79,6 +79,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
                 for t_info in &table {
                     self.libmdbx
                         .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
+                        .await
                         .unwrap();
                 }
 
@@ -90,6 +91,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
 
                 self.libmdbx
                     .insert_pool(init_block, token_addr, token_addrs, protocol)
+                    .await
                     .unwrap();
             }
         }
@@ -112,7 +114,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
             return Some(res);
         }
-        #[cfg(feature = "local")]
+        #[cfg(not(feature = "local-reth"))]
         {
             tracing::error!("no block found in db");
             return None;
@@ -153,6 +155,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
         if self
             .libmdbx
             .save_traces(block_num, traces.0.clone())
+            .await
             .is_err()
         {
             error!(%block_num, "failed to store traces for block");

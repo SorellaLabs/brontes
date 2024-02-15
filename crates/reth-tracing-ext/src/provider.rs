@@ -37,7 +37,7 @@ impl TracingProvider for TracingClient {
             .map_err(Into::into)
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     fn best_block_number(&self) -> eyre::Result<u64> {
         self.trace
             .provider()
@@ -45,7 +45,7 @@ impl TracingProvider for TracingClient {
             .map_err(Into::into)
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     async fn best_block_number(&self) -> eyre::Result<u64> {
         self.trace
             .provider()
