@@ -355,6 +355,7 @@ impl ClassifierTestUtils {
             while let Some((p_block, quotes)) = pricer.next().await {
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(quotes.clone()))
+                    .await
                     .unwrap();
 
                 prices.push(quotes);
