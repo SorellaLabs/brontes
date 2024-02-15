@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use ::clickhouse::{self, DbRow};
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
-use clickhouse::Primitive;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};

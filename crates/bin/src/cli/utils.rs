@@ -5,11 +5,16 @@ use alloy_primitives::Address;
 use brontes_core::local_provider::LocalProvider;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
+#[cfg(not(feature = "local-clickhouse"))]
+use brontes_database::clickhouse::ClickhouseHttpClient;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::ClickhouseMiddleware;
-use brontes_database::{clickhouse::ClickhouseHttpClient, libmdbx::LibmdbxReadWriter};
+use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
-use brontes_types::{db::cex::CexExchange, mev::Bundle};
+use brontes_types::{
+    db::{cex::CexExchange, traits::LibmdbxReader},
+    mev::Bundle,
+};
 use itertools::Itertools;
 use reth_tasks::TaskExecutor;
 #[cfg(feature = "local-reth")]
@@ -30,7 +35,7 @@ pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<L
 }
 
 #[cfg(feature = "local-clickhouse")]
-pub fn load_clickhouse() -> Clickhosue {
+pub fn load_clickhouse() -> Clickhouse {
     Clickhouse::default()
 }
 
@@ -55,9 +60,9 @@ pub fn static_object<T>(obj: T) -> &'static T {
     &*Box::leak(Box::new(obj))
 }
 
-pub fn init_inspectors(
+pub fn init_inspectors<DB: LibmdbxReader>(
     quote_token: Address,
-    db: &'static LibmdbxReadWriter,
+    db: &'static DB,
     inspectors: Option<Vec<Inspectors>>,
     cex_exchanges: Option<Vec<String>>,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {

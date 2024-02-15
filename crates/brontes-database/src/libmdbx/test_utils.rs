@@ -16,7 +16,7 @@ use crate::{
     CompressedTable,
 };
 #[cfg(feature = "local-clickhouse")]
-pub fn load_clickhouse() -> Clickhosue {
+pub fn load_clickhouse() -> Clickhouse {
     Clickhouse::default()
 }
 

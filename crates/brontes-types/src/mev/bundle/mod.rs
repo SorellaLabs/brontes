@@ -3,7 +3,6 @@ pub mod header;
 
 use std::fmt::{self, Debug};
 
-use ::clickhouse::DbRow;
 use clickhouse::Row;
 pub use data::*;
 use dyn_clone::DynClone;

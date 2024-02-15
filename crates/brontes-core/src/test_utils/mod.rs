@@ -4,6 +4,10 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
+#[cfg(feature = "local-clickhouse")]
+use brontes_database::clickhouse::Clickhouse;
+#[cfg(not(feature = "local-clickhouse"))]
+use brontes_database::clickhouse::ClickhouseHttpClient;
 pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
@@ -441,13 +445,13 @@ pub fn init_trace_parser(
 }
 
 #[cfg(feature = "local-clickhouse")]
-pub fn load_clickhouse() -> Clickhosue {
+pub fn load_clickhouse() -> Clickhouse {
     Clickhouse::default()
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
+pub fn load_clickhouse() -> ClickhouseHttpClient {
     let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
-    brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
+    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
 }

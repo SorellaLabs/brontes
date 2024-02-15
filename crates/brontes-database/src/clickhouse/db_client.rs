@@ -3,23 +3,19 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
-    constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{
-        cex::CexPriceMap,
-        clickhouse::*,
-        dex::{DexQuote, DexQuotes},
+        dex::DexQuotes,
         metadata::Metadata,
         searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
-    mev::{Bundle, BundleData, Mev, MevBlock},
-    pair::Pair,
-    structured_trace::{TxTrace, TxTraces},
+    mev::{Bundle, MevBlock},
+    structured_trace::TxTrace,
     Protocol,
 };
 use serde::Deserialize;
 use sorella_db_databases::{
-    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array},
+    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient},
     tables::{DatabaseTables, DexTokens},
     Database,
 };

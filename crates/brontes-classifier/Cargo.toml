@@ -62,15 +62,6 @@ criterion = { version = "0.5", features = [
   "async_tokio",
 ], optional = true }
 
-[features]
-tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
-default = []
-local-reth = [
-  "brontes-core/local-reth",
-  "reth-tracing-ext/local-reth",
-  "brontes-types/local-reth",
-]
-
 [dev-dependencies]
 strum = { workspace = true, features = ["derive"] }
 dotenv.workspace = true
@@ -100,3 +91,12 @@ futures.workspace = true
 itertools.workspace = true
 dotenv.workspace = true
 reth-tracing-ext.workspace = true
+
+[features]
+tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
+default = []
+local-reth = [
+  "brontes-core/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-types/local-reth",
+]
