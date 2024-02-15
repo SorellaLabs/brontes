@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use alloy_primitives::Address;
 use clickhouse::Row;
-use itertools::Itertools;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
