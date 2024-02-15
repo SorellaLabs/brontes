@@ -11,16 +11,13 @@ use brontes_types::{
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
-    structured_trace::{TxTrace, TxTraces},
+    structured_trace::TxTrace,
     Protocol,
 };
 #[cfg(feature = "clickhouse-inserts")]
 pub use middleware::*;
 use sorella_db_databases::{
-    clickhouse::{
-        config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
-    },
-    tables::{DatabaseTables, DexTokens},
+    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient},
     Database,
 };
 
