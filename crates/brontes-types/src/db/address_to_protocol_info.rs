@@ -69,7 +69,7 @@ impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
         let protocol = Protocol::parse_string(value.2);
         let curve_lp_token = value.3.map(|s| Address::from_str(&s).unwrap());
         let value = value.0;
-        let mut iter = value.into_iter().sorted_by(|a,b| a.cmp(b));
+        let mut iter = value.into_iter();
         ProtocolInfo {
             protocol,
             token0: Address::from_str(&iter.next().unwrap()).unwrap(),
