@@ -585,9 +585,8 @@ pub mod option_contract_info {
     where
         D: Deserializer<'de>,
     {
-        let (verified_contract, contract_creator_opt, protocol, reputation): (
+        let (verified_contract, contract_creator_opt, reputation): (
             Option<bool>,
-            Option<String>,
             Option<String>,
             Option<u8>,
         ) = Deserialize::deserialize(deserializer)?;
@@ -595,7 +594,6 @@ pub mod option_contract_info {
         Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
             verified_contract,
             contract_creator: Address::from_str(&contract_creator).unwrap(),
-            protocol: protocol.and_then(|p| Protocol::from_str(&p).ok()),
             reputation,
         }))
     }

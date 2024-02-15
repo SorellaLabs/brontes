@@ -17,11 +17,12 @@ SELECT
         WHEN a.arkham_type IS NOT NULL AND a.etherscan_type IS NULL THEN a.arkham_type
         ELSE NULL
     END AS type,
-    (a.verified_contract, a.contract_creation_addr, a.protocol_subtype, a.reputation) AS contract_info,
+    (a.verified_contract, a.creator_addr, a.reputation) AS contract_info,
     a.ens,
     (a.twitter, a.twitter_followers, a.website_url, a.crunchbase, a.linkedin) AS socials
-FROM ethereum.address_meta AS a
+FROM ethereum.addresses AS a
 INNER JOIN most_recent AS mr ON a.address = mr.address
+LEFT JOIN ethereum.contracts AS c ON a.address = c.address
 WHERE 
     a.entity_name IS NOT NULL OR
     a.nametag IS NOT NULL

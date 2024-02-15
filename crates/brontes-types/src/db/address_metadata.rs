@@ -43,8 +43,6 @@ pub struct ContractInfo {
     pub verified_contract: Option<bool>,
     #[serde(with = "addresss")]
     pub contract_creator: Address,
-    #[redefined(same_fields)]
-    pub protocol: Option<Protocol>,
     pub reputation: Option<u8>,
 }
 
