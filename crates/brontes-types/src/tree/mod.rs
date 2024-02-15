@@ -45,7 +45,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
-    pub fn get_tx_info<DB: LibmdbxReader>(&self, tx_hash: B256, database: &DB) -> Option<TxInfo> {
+    pub fn get_tx_info<DB: LibmdbxReader + Sync>(
+        &self,
+        tx_hash: B256,
+        database: &DB,
+    ) -> Option<TxInfo> {
         self.tp.install(|| {
             self.tx_roots
                 .par_iter()
