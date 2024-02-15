@@ -52,10 +52,10 @@ impl Clickhouse {
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
         let _times_flow = self.get_times_flow_info(block_num).await;
-        let _cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
+        let _cex_prices = self.get_cex_token_prices(_times_flow.p2p_time).await;
 
         // eth price is in cex_prices
-        let _eth_prices = cex_prices
+        let _eth_prices = _cex_prices
             .get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
