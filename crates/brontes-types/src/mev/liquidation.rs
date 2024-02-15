@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
-use clickhouse::{fixed_string::FixedString, DbRow};
+use clickhouse::{self, fixed_string::FixedString, DbRow, Row};
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
