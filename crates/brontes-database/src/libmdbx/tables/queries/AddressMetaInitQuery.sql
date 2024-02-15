@@ -17,7 +17,7 @@ SELECT
         WHEN a.arkham_type IS NOT NULL AND a.etherscan_type IS NULL THEN a.arkham_type
         ELSE NULL
     END AS type,
-    (a.verified_contract, a.creator_addr, a.reputation) AS contract_info,
+    (a.verified_contract, CAST(c.creator_addr, 'Nullable(String)'), a.reputation) AS contract_info,
     a.ens,
     (a.twitter, a.twitter_followers, a.website_url, a.crunchbase, a.linkedin) AS socials
 FROM ethereum.addresses AS a
