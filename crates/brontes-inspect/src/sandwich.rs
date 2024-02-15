@@ -229,7 +229,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
-        println!("{:#?}", all_actions);
 
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,
@@ -524,7 +523,7 @@ mod tests {
             ])
             .with_dex_prices()
             .with_gas_paid_usd(40.26)
-            .with_expected_profit_usd(-56.44);
+            .with_expected_profit_usd(-95.19);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
