@@ -593,7 +593,7 @@ pub mod option_contract_info {
 
         Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
             verified_contract,
-            contract_creator: Address::from_str(&contract_creator).unwrap(),
+            contract_creator: Address::from_str(&contract_creator).ok(),
             reputation,
         }))
     }

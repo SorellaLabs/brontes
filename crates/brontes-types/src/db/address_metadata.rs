@@ -40,8 +40,7 @@ implement_table_value_codecs_with_zc!(AddressMetadataRedefined);
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ContractInfo {
     pub verified_contract: Option<bool>,
-    #[serde(with = "addresss")]
-    pub contract_creator: Address,
+    pub contract_creator: Option<Address>,
     pub reputation: Option<u8>,
 }
 
