@@ -164,11 +164,13 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 #[cfg(test)]
 mod tests {
     use brontes_core::test_utils::{get_db_handle, init_trace_parser, init_tracing};
+    #[cfg(feature = "local-clickhouse")]
+    use brontes_database::clickhouse::Clickhouse;
     use brontes_database::libmdbx::{initialize::LibmdbxInitializer, tables::*};
     use tokio::sync::mpsc::unbounded_channel;
 
     #[cfg(feature = "local-clickhouse")]
-    pub fn load_clickhouse() -> Clickhosue {
+    pub fn load_clickhouse() -> Clickhouse {
         Clickhouse::default()
     }
 

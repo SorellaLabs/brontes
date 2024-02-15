@@ -3,11 +3,7 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
-    db::{
-        dex::DexQuotes,
-        metadata::Metadata,
-        searcher::SearcherInfo,
-    },
+    db::{dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo},
     mev::{Bundle, MevBlock},
     structured_trace::TxTrace,
     Protocol,
