@@ -423,7 +423,7 @@ pub fn init_trace_parser(
 
 #[cfg(feature = "local")]
 pub fn init_trace_parser(
-    _handle: Handle,
+    handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
     _max_tasks: u32,
@@ -433,5 +433,9 @@ pub fn init_trace_parser(
     let url = format!("{db_endpoint}:{db_port}");
     let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
 
-    TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
+    handle.block_on(TraceParser::new(
+        libmdbx,
+        Arc::new(tracer),
+        Arc::new(metrics_tx),
+    ))
 }
