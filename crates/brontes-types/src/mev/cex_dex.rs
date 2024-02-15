@@ -1,7 +1,8 @@
 use std::{fmt, fmt::Debug};
 
 use ::serde::ser::{SerializeStruct, Serializer};
-use clickhouse::{fixed_string::FixedString, DbRow};
+#[allow(unused)]
+use clickhouse::{fixed_string::FixedString, row::*};
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;

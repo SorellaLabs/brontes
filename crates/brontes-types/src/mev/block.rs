@@ -1,7 +1,8 @@
 use std::fmt::{self, Debug};
 
 use alloy_primitives::Address;
-use clickhouse::{fixed_string::FixedString, Row};
+#[allow(unused)]
+use clickhouse::{fixed_string::FixedString, row::*, Row};
 use colored::Colorize;
 use indoc::indoc;
 use redefined::{self_convert_redefined, Redefined};

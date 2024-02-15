@@ -20,7 +20,7 @@ use clickhouse::DbRow;
 use serde::Deserialize;
 use sorella_db_databases::{
     clickhouse::{
-        config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
+        config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array,
     },
     tables::{DatabaseTables, DexTokens},
     Database,

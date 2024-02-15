@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
-use clickhouse::{fixed_string::FixedString, DbRow};
+#[allow(unused)]
+use clickhouse::{fixed_string::FixedString, row::*};
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};

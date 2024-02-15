@@ -1,11 +1,11 @@
 use brontes_types::{
     db::{dex::DexQuotes, searcher::SearcherInfo},
-    mev::{BundleHeader, JitLiquidity, JitLiquiditySandwich, Liquidation, MevBlock},
+    mev::*,
     structured_trace::TxTraces,
 };
+use clickhouse::row::Primitive;
 use sorella_db_databases::{
     clickhouse::{
-        db::ClickhouseClient,
         dbms::ClickhouseDBMS,
         errors::ClickhouseError,
         tables::{ClickhouseTable, ClickhouseTableType},
@@ -13,6 +13,8 @@ use sorella_db_databases::{
     clickhouse_dbms, database_table, remote_clickhouse_table, DatabaseTable,
 };
 use strum_macros::EnumIter;
+
+use crate::clickhouse::ClickhouseClient;
 
 clickhouse_dbms!(
     BrontesClickhouseTables,
