@@ -56,9 +56,9 @@ impl Clickhouse {
         _searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
-            .await?;
+        // self.client
+        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
+        //     .await?;
 
         Ok(())
     }
@@ -69,9 +69,9 @@ impl Clickhouse {
         block: MevBlock,
         _mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseMevBlocks>(&block)
-            .await?;
+        // self.client
+        //     .insert_one::<ClickhouseMevBlocks>(&block)
+        //     .await?;
         Ok(())
     }
 
@@ -80,11 +80,11 @@ impl Clickhouse {
         _block_num: u64,
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        if let Some(quotes) = quotes {
-            self.client
-                .insert_one::<ClickhouseDexQuotes>(&quotes)
-                .await?;
-        }
+        // if let Some(quotes) = quotes {
+        //     self.client
+        //         .insert_one::<ClickhouseDexQuotes>(&quotes)
+        //         .await?;
+        // }
 
         Ok(())
     }
@@ -116,9 +116,9 @@ impl Clickhouse {
     }
 
     pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseTxTraces>(&(traces.into()))
-            .await?;
+        // self.client
+        //     .insert_one::<ClickhouseTxTraces>(&(traces.into()))
+        //     .await?;
 
         Ok(())
     }
