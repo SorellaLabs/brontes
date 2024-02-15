@@ -64,7 +64,6 @@ impl IntoIterator for ProtocolInfo {
 
 impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
     fn from(value: (Vec<String>, u64, String, Option<String>)) -> Self {
-        tracing::info!(?value);
         let init_block = value.1;
         let protocol = Protocol::parse_string(value.2);
         let curve_lp_token = value.3.map(|s| Address::from_str(&s).unwrap());
