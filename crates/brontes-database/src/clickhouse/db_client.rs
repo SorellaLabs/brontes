@@ -7,7 +7,6 @@ use brontes_types::{
         dex::DexQuotes,
         metadata::Metadata,
         searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, MevBlock},
     structured_trace::TxTrace,
@@ -16,12 +15,10 @@ use brontes_types::{
 use serde::Deserialize;
 use sorella_db_databases::{
     clickhouse::{config::ClickhouseConfig, db::ClickhouseClient},
-    tables::{DatabaseTables, DexTokens},
     Database,
 };
 
 use super::{
-    const_sql::*,
     dbms::{
         BrontesClickhouseTables, ClickhouseDexQuotes, ClickhouseMevBlocks, ClickhouseSearcherInfo,
         ClickhouseTxTraces,

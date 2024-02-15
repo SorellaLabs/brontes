@@ -7314,7 +7314,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "5.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
+source = "git+https://github.com/bluealloy/revm?branch=main#94894a5c6b009829761573d706cb6b1479165d1a"
 dependencies = [
  "auto_impl",
  "cfg-if",
@@ -7354,7 +7354,7 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "2.1.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
+source = "git+https://github.com/bluealloy/revm?branch=main#94894a5c6b009829761573d706cb6b1479165d1a"
 dependencies = [
  "revm-primitives 2.0.0 (git+https://github.com/bluealloy/revm?branch=main)",
  "serde",
@@ -7381,7 +7381,7 @@ dependencies = [
 [[package]]
 name = "revm-precompile"
 version = "4.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
+source = "git+https://github.com/bluealloy/revm?branch=main#94894a5c6b009829761573d706cb6b1479165d1a"
 dependencies = [
  "aurora-engine-modexp",
  "c-kzg",
@@ -7418,7 +7418,7 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "2.0.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#d6bd0109e5b5c37505fe25017b8ca5c2ea5ae6ca"
+source = "git+https://github.com/bluealloy/revm?branch=main#94894a5c6b009829761573d706cb6b1479165d1a"
 dependencies = [
  "alloy-primitives",
  "auto_impl",
@@ -8290,7 +8290,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f415a2a8cde42c4bede628844e1067e6aee1fa1e"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -8322,7 +8322,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f415a2a8cde42c4bede628844e1067e6aee1fa1e"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8334,7 +8334,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f415a2a8cde42c4bede628844e1067e6aee1fa1e"
 dependencies = [
  "eyre",
  "futures",
@@ -8351,7 +8351,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f415a2a8cde42c4bede628844e1067e6aee1fa1e"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8363,7 +8363,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f415a2a8cde42c4bede628844e1067e6aee1fa1e"
 dependencies = [
  "serde",
  "serde_json",
@@ -8377,7 +8377,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#227c7c04a64292aba7e17bfa5b72abe8ca9d965e"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#f415a2a8cde42c4bede628844e1067e6aee1fa1e"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
