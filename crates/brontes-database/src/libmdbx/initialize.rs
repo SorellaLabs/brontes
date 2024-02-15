@@ -191,7 +191,7 @@ mod tests {
         let libmdbx = get_db_handle();
         let (tx, _rx) = unbounded_channel();
         let tracing_client =
-            init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4);
+            init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
