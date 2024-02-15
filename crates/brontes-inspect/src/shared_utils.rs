@@ -101,6 +101,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .map(|price| price.get_price(at))?
                         .clone()
                 };
+                println!("token: {token_addr:?}\namount: {amount:?}\nprice: {price:?}");
 
                 let usd_amount = amount.clone() * price.clone();
 
@@ -209,7 +210,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), false)?;
-        println!("{:#?}", addr_usd_deltas);
         Some(
             addr_usd_deltas
                 .values()
