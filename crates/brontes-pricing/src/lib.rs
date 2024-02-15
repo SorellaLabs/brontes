@@ -507,35 +507,86 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
     fn rundown(&mut self, pair: Pair, block: u64) {
-        let Some(mut ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
+        let Some(ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
             return;
         };
 
-        loop {
-            let popped = ignores.pop();
-            let (pair, block, edges) = par_state_query(
-                &self.graph_manager,
-                vec![(pair, block, ignores.iter().copied().collect(), vec![])],
-            )
-            .remove(0);
-            let edges = edges.into_iter().flatten().unique().collect_vec();
+        if ignores.is_empty() {
+            tracing::error!(
+                ?pair,
+                ?block,
+                "rundown for subgraph has no edges we are supposed to ignore"
+            );
+        }
 
-            if edges.is_empty() {
-                if popped.is_none() {
-                    break;
-                }
-                continue;
-            } else {
-                let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
-                    return;
-                };
+        // take all combinations of our ignore nodes
+        let queries = if ignores.len() > 1 {
+            ignores
+                .iter()
+                .copied()
+                .combinations(ignores.len() - 1)
+                .map(|ignores| {
+                    (
+                        pair,
+                        block,
+                        ignores.into_iter().collect::<HashSet<_>>(),
+                        vec![],
+                    )
+                })
+                .collect_vec()
+        } else {
+            ignores
+                .iter()
+                .copied()
+                .map(|_| (pair, block, HashSet::new(), vec![]))
+                .collect_vec()
+        };
 
-                if !need_state {
-                    self.try_verify_subgraph(vec![(block, id, pair)]);
-                }
-                break;
+        tracing::debug!(
+            ?pair,
+            ?block,
+            subgraph_variations = queries.len(),
+            "starting rundown"
+        );
+
+        let edges = par_state_query(&self.graph_manager, queries)
+            .into_iter()
+            .flat_map(|e| e.2)
+            .flatten()
+            .unique()
+            .collect_vec();
+
+        // if we done have any edges, lets run with no ignores.
+        let edges = if edges.is_empty() {
+            let query = ignores
+                .iter()
+                .copied()
+                .map(|_| (pair, block, HashSet::new(), vec![]))
+                .collect_vec();
+
+            par_state_query(&self.graph_manager, query)
+                .into_iter()
+                .flat_map(|e| e.2)
+                .flatten()
+                .unique()
+                .collect_vec()
+        } else {
+            edges
+        };
+
+        if edges.is_empty() {
+            tracing::error!(?pair, ?block, "failed to find connection for graph");
+            return;
+        } else {
+            let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
+                return;
+            };
+
+            if !need_state {
+                self.try_verify_subgraph(vec![(block, id, pair)]);
             }
         }
+        tracing::debug!(?pair, ?block, "finished rundown");
     }
 
     /// Adds a subgraph for verification based on the given pair, block, and
