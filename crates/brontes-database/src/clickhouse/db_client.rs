@@ -124,7 +124,11 @@ impl ClickhouseHandle for Clickhouse {
         todo!()
     }
 
-    async fn query_many_range<T, D>(&self, _start_block: u64, _end_block: u64) -> eyre::Result<Vec<D>>
+    async fn query_many_range<T, D>(
+        &self,
+        _start_block: u64,
+        _end_block: u64,
+    ) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,

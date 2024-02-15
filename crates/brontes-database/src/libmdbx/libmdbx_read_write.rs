@@ -37,8 +37,6 @@ use sorella_db_databases::Database;
 use tracing::info;
 
 #[cfg(feature = "local-clickhouse")]
-use crate::clickhouse::Clickhouse;
-#[cfg(feature = "local-clickhouse")]
 use crate::clickhouse::{
     MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS, MIN_MAX_TOKEN_DECIMALS,
 };
