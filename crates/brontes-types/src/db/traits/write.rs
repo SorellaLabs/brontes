@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[auto_impl::auto_impl(&)]
-pub trait DBWriter: Send + Sync + Unpin + 'static {
+pub trait DBWriter: Send + Unpin + 'static {
     /// allows for writing results to multiple databases
     type Inner: DBWriter;
 
@@ -20,7 +20,7 @@ pub trait DBWriter: Send + Sync + Unpin + 'static {
         &self,
         block_number: u64,
         quotes: Option<DexQuotes>,
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync {
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().write_dex_quotes(block_number, quotes)
     }
 
@@ -29,7 +29,7 @@ pub trait DBWriter: Send + Sync + Unpin + 'static {
         address: Address,
         decimals: u8,
         symbol: String,
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync {
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().write_token_info(address, decimals, symbol)
     }
 
@@ -42,7 +42,7 @@ pub trait DBWriter: Send + Sync + Unpin + 'static {
         block_number: u64,
         block: MevBlock,
         mev: Vec<Bundle>,
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync {
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().save_mev_blocks(block_number, block, mev)
     }
 
@@ -50,7 +50,7 @@ pub trait DBWriter: Send + Sync + Unpin + 'static {
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync {
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
             .write_searcher_info(searcher_eoa, searcher_info)
     }
@@ -61,7 +61,7 @@ pub trait DBWriter: Send + Sync + Unpin + 'static {
         address: Address,
         tokens: [Address; 2],
         classifier_name: Protocol,
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync {
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
             .insert_pool(block, address, tokens, classifier_name)
     }
@@ -70,7 +70,7 @@ pub trait DBWriter: Send + Sync + Unpin + 'static {
         &self,
         block: u64,
         traces: Vec<TxTrace>,
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync {
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().save_traces(block, traces)
     }
 }

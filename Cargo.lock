@@ -2090,7 +2090,7 @@ checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 [[package]]
 name = "clickhouse"
 version = "0.11.5"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
 dependencies = [
  "bstr",
  "bytes",
@@ -2113,7 +2113,7 @@ dependencies = [
 [[package]]
 name = "clickhouse"
 version = "0.11.5"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
 dependencies = [
  "bstr",
  "bytes",
@@ -2136,7 +2136,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.1.1"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2147,7 +2147,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.1.1"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#04cd8275c366a1cc0a47fb5a4d3f0625a6280a85"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs.git#ef09647ce71e300912bb7c4ec7a41e7c925e6b64"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8324,7 +8324,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#458b124f727d253a32e8780b07acb50ce6d77377"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -8356,7 +8356,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#458b124f727d253a32e8780b07acb50ce6d77377"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8368,7 +8368,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#458b124f727d253a32e8780b07acb50ce6d77377"
 dependencies = [
  "eyre",
  "futures",
@@ -8385,7 +8385,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#458b124f727d253a32e8780b07acb50ce6d77377"
 dependencies = [
  "once_cell",
  "proc-macro2",
@@ -8397,7 +8397,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#458b124f727d253a32e8780b07acb50ce6d77377"
 dependencies = [
  "serde",
  "serde_json",
@@ -8411,7 +8411,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?branch=main#0e50786f7e3efb9da7281304ee98906c6e910128"
+source = "git+https://github.com/SorellaLabs/Database?branch=main#458b124f727d253a32e8780b07acb50ce6d77377"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",

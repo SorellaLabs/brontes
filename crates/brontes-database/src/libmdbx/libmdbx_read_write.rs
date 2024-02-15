@@ -1,8 +1,6 @@
 #[cfg(feature = "local-clickhouse")]
 use std::str::FromStr;
-use std::{
-    cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc,
-};
+use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -35,13 +33,15 @@ use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 #[cfg(feature = "local-clickhouse")]
-use sorella_db_databases::clickhouse::{
-    Clickhouse, MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS, MIN_MAX_TOKEN_DECIMALS,
-};
-#[cfg(feature = "local-clickhouse")]
 use sorella_db_databases::Database;
 use tracing::info;
 
+#[cfg(feature = "local-clickhouse")]
+use crate::clickhouse::Clickhouse;
+#[cfg(feature = "local-clickhouse")]
+use crate::clickhouse::{
+    MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS, MIN_MAX_TOKEN_DECIMALS,
+};
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::CompressedTable;
 use crate::{
@@ -70,7 +70,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     fn init_full_range_tables<CH: ClickhouseHandle>(
         &self,
         clickhouse: &'static CH,
-    ) -> impl Future<Output = bool> + Send + Sync;
+    ) -> impl Future<Output = bool> + Send;
 
     fn state_to_initialize(
         &self,
@@ -155,18 +155,18 @@ impl LibmdbxInit for LibmdbxReadWriter {
         .map(|table| async move {
             match table {
                 Tables::AddressToProtocolInfo => self
-                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
+                    .has_clickhouse_min_max::<AddressToProtocolInfo, CH>(
                         MIN_MAX_ADDRESS_TO_PROTOCOL,
                         clickhouse,
                     )
                     .await
                     .unwrap_or_default(),
                 Tables::TokenDecimals => self
-                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
+                    .has_clickhouse_min_max::<TokenDecimals, CH>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
                     .await
                     .unwrap_or_default(),
                 Tables::PoolCreationBlocks => self
-                    .has_clickhouse_min_max::<PoolCreationBlocks>(
+                    .has_clickhouse_min_max::<PoolCreationBlocks, CH>(
                         MIN_MAX_POOL_CREATION_BLOCKS,
                         clickhouse,
                     )
@@ -180,7 +180,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
     }
 
     #[cfg(not(feature = "local-clickhouse"))]
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
+    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, _clickhouse: &'static CH) -> bool {
         true
     }
 

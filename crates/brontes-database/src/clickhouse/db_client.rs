@@ -52,7 +52,7 @@ impl Clickhouse {
     }
 
     // inserts
-    async fn write_searcher_info(
+    pub async fn write_searcher_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
@@ -64,7 +64,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    async fn save_mev_blocks(
+    pub async fn save_mev_blocks(
         &self,
         block_number: u64,
         block: MevBlock,
@@ -76,7 +76,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    async fn write_dex_quotes(
+    pub async fn write_dex_quotes(
         &self,
         block_num: u64,
         quotes: Option<DexQuotes>,
@@ -90,7 +90,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    async fn write_token_info(
+    pub async fn write_token_info(
         &self,
         address: Address,
         decimals: u8,
@@ -106,7 +106,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    async fn insert_pool(
+    pub async fn insert_pool(
         &self,
         block: u64,
         address: Address,
@@ -116,7 +116,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+    pub async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         self.client
             .insert_one::<ClickhouseTxTraces>(&(traces.into()))
             .await?;
@@ -134,7 +134,7 @@ impl ClickhouseHandle for Clickhouse {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         todo!()
     }
@@ -143,8 +143,12 @@ impl ClickhouseHandle for Clickhouse {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         todo!()
+    }
+
+    fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
+        &self.client
     }
 }

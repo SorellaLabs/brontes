@@ -1,13 +1,25 @@
+use std::collections::HashMap;
+
 use alloy_primitives::Address;
 use brontes_types::{
-    db::{dex::DexQuotes, searcher::SearcherInfo, traits::DBWriter},
+    db::{
+        address_metadata::AddressMetadata,
+        address_to_protocol_info::ProtocolInfo,
+        builder::BuilderInfo,
+        dex::DexQuotes,
+        metadata::Metadata,
+        searcher::SearcherInfo,
+        token_info::TokenInfoWithAddress,
+        traits::{DBWriter, LibmdbxReader, ProtocolCreatedRange},
+    },
     mev::{Bundle, MevBlock},
+    pair::Pair,
     structured_trace::TxTrace,
-    Protocol,
+    Protocol, SubGraphEdge,
 };
 
 use super::Clickhouse;
-use crate::libmdbx::LibmdbxInit;
+use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
     client: Clickhouse,
@@ -20,7 +32,7 @@ impl<I: DBWriter> ClickhouseMiddleware<I> {
     }
 }
 
-impl<I: DBWriter> DBWriter for ClickhouseMiddleware<I> {
+impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
     type Inner = I;
 
     fn inner(&self) -> &Self::Inner {
@@ -105,9 +117,9 @@ impl<I: DBWriter> DBWriter for ClickhouseMiddleware<I> {
 }
 
 impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
-    async fn initialize_tables<T: brontes_types::traits::TracingProvider>(
+    async fn initialize_tables<T: brontes_types::traits::TracingProvider, CH: ClickhouseHandle>(
         &'static self,
-        clickhouse: &'static Clickhouse,
+        clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
         tables: &[crate::Tables],
         clear_tables: bool,
@@ -118,7 +130,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
             .await
     }
 
-    async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
+    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
         self.inner.init_full_range_tables(clickhouse).await
     }
 
@@ -130,5 +142,65 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
     ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
         self.inner
             .state_to_initialize(start_block, end_block, needs_dex_price)
+    }
+}
+impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
+    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
+        self.inner.get_metadata_no_dex_price(block_num)
+    }
+
+    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
+        self.inner.try_fetch_searcher_info(searcher_eoa)
+    }
+
+    fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
+        self.inner.try_fetch_builder_info(builder_coinbase_addr)
+    }
+
+    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        self.inner.get_metadata(block_num)
+    }
+
+    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<AddressMetadata> {
+        self.inner.try_fetch_address_metadata(address)
+    }
+
+    fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
+        self.inner.get_dex_quotes(block)
+    }
+
+    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
+        self.inner.try_fetch_token_info(address)
+    }
+
+    fn protocols_created_before(
+        &self,
+        start_block: u64,
+    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
+        self.inner.protocols_created_before(start_block)
+    }
+
+    fn protocols_created_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<ProtocolCreatedRange> {
+        self.inner.protocols_created_range(start_block, end_block)
+    }
+
+    fn try_load_pair_before(
+        &self,
+        block: u64,
+        pair: Pair,
+    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
+        self.inner.try_load_pair_before(block, pair)
+    }
+
+    fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
+        self.inner.get_protocol_details(address)
+    }
+
+    fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>> {
+        self.inner.load_trace(block_num)
     }
 }
