@@ -93,8 +93,8 @@ dotenv.workspace = true
 reth-tracing-ext.workspace = true
 
 [features]
-tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
 default = []
+tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
 local-reth = [
   "brontes-core/local-reth",
   "reth-tracing-ext/local-reth",

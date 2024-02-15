@@ -99,6 +99,7 @@ alloy-primitives.workspace = true
 
 
 [features]
+default = []
 tests = [
   "brontes-classifier/tests",
   "brontes-core/tests",
