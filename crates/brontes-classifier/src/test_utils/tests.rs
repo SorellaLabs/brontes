@@ -435,8 +435,23 @@ impl ClassifierTestUtils {
         tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
+        assert!(
+            !tree.tx_roots.is_empty(),
+            "empty tree. most likely a invalid hash"
+        );
+
         let root = tree.tx_roots.remove(0);
         let mut actions = root.collect(&tree_collect_fn);
+        assert!(
+            !actions.is_empty(),
+            "no actions collected. protocol is either missing
+                from db or not added to dispatch"
+        );
+        assert!(
+            actions.len() > action_number_in_tx,
+            "incorrect action index"
+        );
+
         let action = actions.remove(action_number_in_tx);
 
         assert_eq!(
@@ -564,7 +579,8 @@ impl ClassifierTestUtils {
         token4: Option<Address>,
         curve_lp_token: Option<Address>,
     ) {
-        if let Err(e) = self.libmdbx
+        if let Err(e) = self
+            .libmdbx
             .0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData {
