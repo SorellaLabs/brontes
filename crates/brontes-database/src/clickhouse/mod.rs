@@ -7,25 +7,17 @@ use alloy_primitives::Address;
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
     db::{
-        cex::CexPriceMap,
-        clickhouse::*,
-        dex::{DexQuote, DexQuotes},
-        metadata::Metadata,
-        searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress},
+        cex::CexPriceMap, clickhouse::*, dex::DexQuotes, metadata::Metadata, searcher::SearcherInfo,
     },
-    mev::{Bundle, BundleData, Mev, MevBlock},
+    mev::{Bundle, MevBlock},
     pair::Pair,
-    structured_trace::{TxTrace, TxTraces},
+    structured_trace::TxTrace,
     Protocol,
 };
 #[cfg(feature = "clickhouse-inserts")]
 pub use middleware::*;
 use sorella_db_databases::{
-    clickhouse::{
-        config::ClickhouseConfig, db::ClickhouseClient, utils::format_query_array, Credentials,
-    },
-    tables::{DatabaseTables, DexTokens},
+    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient},
     Database,
 };
 
@@ -51,11 +43,11 @@ impl Clickhouse {
     }
 
     pub async fn get_metadata(&self, block_num: u64) -> Metadata {
-        let times_flow = self.get_times_flow_info(block_num).await;
-        let cex_prices = self.get_cex_token_prices(times_flow.p2p_time).await;
+        let _times_flow = self.get_times_flow_info(block_num).await;
+        let _cex_prices = self.get_cex_token_prices(_times_flow.p2p_time).await;
 
         // eth price is in cex_prices
-        let _eth_prices = cex_prices
+        let _eth_prices = _cex_prices
             .get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS))
             .unwrap()
             .clone();
@@ -98,9 +90,10 @@ impl Clickhouse {
     }
 
     // inserts
+    #[allow(unused)]
     async fn write_searcher_info(
         &self,
-        searcher_eoa: Address,
+        _searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         self.client
@@ -110,6 +103,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn save_mev_blocks(
         &self,
         block_number: u64,
@@ -122,6 +116,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn write_dex_quotes(
         &self,
         block_num: u64,
@@ -136,6 +131,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn write_token_info(
         &self,
         address: Address,
@@ -152,6 +148,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn insert_pool(
         &self,
         block: u64,
@@ -162,6 +159,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         self.client
             .insert_one::<ClickhouseTxTraces>(&(traces.into()))

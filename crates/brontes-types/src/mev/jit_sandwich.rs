@@ -6,11 +6,7 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse::{fixed_string::FixedString, DbRow},
-    database_table,
-    tables::DatabaseTable,
-};
+use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Bundle, BundleData, BundleHeader, JitLiquidity, Mev, MevType, Sandwich};
 use crate::{

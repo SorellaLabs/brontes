@@ -9,11 +9,7 @@ use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse::{self, DbRow, Row},
-    database_table,
-    tables::DatabaseTable,
-};
+use sorella_db_databases::clickhouse::{self, Row};
 use tracing::error;
 
 use crate::{
