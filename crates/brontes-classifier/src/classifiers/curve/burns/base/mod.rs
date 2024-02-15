@@ -177,7 +177,6 @@ mod tests {
             .unwrap();
     }
 
-    // failing
     #[brontes_macros::test]
     async fn test_curve_base_remove_liquidity_one() {
         let classifier_utils = ClassifierTestUtils::new().await;
