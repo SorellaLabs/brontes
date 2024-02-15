@@ -256,6 +256,7 @@ impl ClassifierTestUtils {
             if let Some((p_block, pricing)) = pricer.next().await {
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(pricing.clone()))
+                    .await
                     .unwrap();
                 Some(pricing)
             } else {
@@ -412,6 +413,7 @@ impl ClassifierTestUtils {
                 // because we have pricing for full block. we store it
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(pricing.clone()))
+                    .await
                     .unwrap();
                 Some(pricing)
             } else {
