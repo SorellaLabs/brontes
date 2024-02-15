@@ -1,5 +1,4 @@
 SELECT
-    toString(address) AS address,
     CAST(Null, 'Nullable(String)') AS name,
     CAST([], 'Array(String)') AS pub_keys,
     CAST([], 'Array(String)') AS searchers,
