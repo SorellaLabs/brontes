@@ -18,8 +18,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # Database
-sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs", branch = "master"}
 
 # Brontes
 brontes-core = { path = "./crates/brontes-core" }
@@ -67,8 +66,13 @@ codecs-derive = { git = "https://github.com/paradigmxyz/reth", package = "codecs
 ruint = "1.9.0"
 
 # revm
-revm = { version = "5.0", features = ["std", "secp256k1"], default-features = false }
-revm-primitives = { version = "2.0", features = ["std"], default-features = false }
+revm = { version = "5.0", features = [
+  "std",
+  "secp256k1",
+], default-features = false }
+revm-primitives = { version = "2.0", features = [
+  "std",
+], default-features = false }
 revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "5622ad5" }
 
 
@@ -160,13 +164,13 @@ redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 
 [profile.dev]
-opt-level = 0         
-debug = true           
-rpath = false          
-lto = false             
-debug-assertions = true 
-codegen-units = 16      
-incremental = true      
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 16
+incremental = true
 
 
 [profile.maxperf]

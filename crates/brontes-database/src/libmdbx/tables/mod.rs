@@ -26,9 +26,11 @@ use brontes_types::{
 };
 use reth_db::table::Table;
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
-use crate::libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData, LibmdbxReadWriter};
+use crate::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData, LibmdbxReadWriter},
+};
 mod const_sql;
 use alloy_primitives::Address;
 use const_sql::*;
@@ -112,9 +114,9 @@ macro_rules! tables {
 }
 
 impl Tables {
-    pub(crate) async fn initialize_table<T: TracingProvider>(
+    pub(crate) async fn initialize_table<T: TracingProvider, CH: ClickhouseHandle>(
         &self,
-        initializer: &LibmdbxInitializer<T>,
+        initializer: &LibmdbxInitializer<T, CH>,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
     ) -> eyre::Result<()> {
@@ -233,14 +235,14 @@ macro_rules! compressed_table {
         #[cfg(feature = "tests")]
         #[allow(unused)]
         impl $table_name {
-            pub async fn test_initialized_data(
-                clickhouse: &crate::clickhouse::Clickhouse,
+            pub async fn test_initialized_data<CH: ClickhouseHandle>(
+                clickhouse: &CH,
                 libmdbx: &crate::libmdbx::LibmdbxReadWriter,
                 block_range: Option<(u64, u64)>
             ) -> eyre::Result<()> {
                 paste::paste!{
                     crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
-                        ::<$table_name,[<$table_name Data>]>(clickhouse, libmdbx, block_range).await
+                        ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
                 }
             }
         }
@@ -275,7 +277,7 @@ macro_rules! compressed_table {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $val, $key {
         $($acc)*
         paste!(
-        #[derive(Debug, Clone, Row, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, clickhouse::Row, serde::Serialize, serde::Deserialize)]
         $(#[$dattrs])*
         pub struct [<$table_name Data>] {
             $(#[$kattrs])*
@@ -325,7 +327,9 @@ macro_rules! compressed_table {
 
     };
     ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
-     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Clickhouse },
+     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Clickhouse,
+                              http_endpoint: $http_endpoint:expr },
+
      $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
             $($acc)*
@@ -333,6 +337,7 @@ macro_rules! compressed_table {
             type DecompressedValue = $decompressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = Some(paste! {[<$table_name InitQuery>]});
+            const HTTP_ENDPOINT: Option<&'static str> = Some($http_endpoint);
         }
         } $($tail)*);
     };
@@ -345,6 +350,7 @@ macro_rules! compressed_table {
             type DecompressedValue = $decompressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = None;
+            const HTTP_ENDPOINT: Option<&'static str> = None;
         }
         } $($tail)*);
     };
@@ -396,7 +402,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
@@ -416,7 +423,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
@@ -433,7 +441,8 @@ compressed_table!(
         },
         Init {
             init_size: Some(10_000),
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
@@ -452,7 +461,8 @@ compressed_table!(
         },
         Init {
             init_size: Some(50_000),
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
@@ -488,7 +498,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
@@ -559,7 +570,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
@@ -577,7 +589,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
@@ -595,7 +608,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False

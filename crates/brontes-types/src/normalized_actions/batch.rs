@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use alloy_primitives::{Address, U256};
+use clickhouse::Row;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 use tracing::error;
 
 pub use super::{Actions, NormalizedSwap};

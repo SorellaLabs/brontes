@@ -1,12 +1,16 @@
 use std::fmt::Debug;
 
-use ::serde::ser::{SerializeStruct, Serializer};
+use ::clickhouse::{self, DbRow};
+#[allow(unused)]
+use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::{
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Serialize,
+};
 use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
 use crate::{
@@ -18,6 +22,7 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     tree::GasDetails,
 };
+
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]

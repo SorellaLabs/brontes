@@ -1,4 +1,5 @@
 use alloy_primitives::Address;
+use futures::Future;
 
 use crate::{
     db::{builder::BuilderInfo, dex::DexQuotes, searcher::SearcherInfo},
@@ -9,22 +10,50 @@ use crate::{
 };
 
 #[auto_impl::auto_impl(&)]
-pub trait LibmdbxWriter: Send + Sync + Unpin + 'static {
-    fn write_dex_quotes(&self, block_number: u64, quotes: Option<DexQuotes>) -> eyre::Result<()>;
-    fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()>;
-    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()>;
+pub trait DBWriter: Send + Unpin + 'static {
+    /// allows for writing results to multiple databases
+    type Inner: DBWriter;
+
+    fn inner(&self) -> &Self::Inner;
+
+    fn write_dex_quotes(
+        &self,
+        block_number: u64,
+        quotes: Option<DexQuotes>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().write_dex_quotes(block_number, quotes)
+    }
+
+    fn write_token_info(
+        &self,
+        address: Address,
+        decimals: u8,
+        symbol: String,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().write_token_info(address, decimals, symbol)
+    }
+
+    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
+        self.inner().save_pair_at(block, pair, edges)
+    }
+
     fn save_mev_blocks(
         &self,
         block_number: u64,
         block: MevBlock,
         mev: Vec<Bundle>,
-    ) -> eyre::Result<()>;
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().save_mev_blocks(block_number, block, mev)
+    }
 
     fn write_searcher_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
-    ) -> eyre::Result<()>;
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .write_searcher_info(searcher_eoa, searcher_info)
+    }
 
     fn write_builder_info(
         &self,
@@ -38,7 +67,16 @@ pub trait LibmdbxWriter: Send + Sync + Unpin + 'static {
         address: Address,
         tokens: [Address; 2],
         classifier_name: Protocol,
-    ) -> eyre::Result<()>;
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .insert_pool(block, address, tokens, classifier_name)
+    }
 
-    fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()>;
+    fn save_traces(
+        &self,
+        block: u64,
+        traces: Vec<TxTrace>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().save_traces(block, traces)
+    }
 }

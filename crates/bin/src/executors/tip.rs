@@ -5,7 +5,10 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{DBWriter, LibmdbxReader},
+};
 use brontes_inspect::Inspector;
 use brontes_types::{
     db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
@@ -16,21 +19,22 @@ use tracing::{debug, info};
 
 use super::shared::{inserts::process_results, state_collector::StateCollector};
 
-pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     current_block: u64,
     parser: &'static Parser<'static, T, DB>,
-    state_collector: StateCollector<T, DB>,
-    // clickhouse db (feature)
+    state_collector: StateCollector<T, DB, CH>,
     database: &'static DB,
     inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
+    TipInspector<T, DB, CH>
+{
     pub fn new(
         current_block: u64,
         _quote_asset: Address,
-        state_collector: StateCollector<T, DB>,
+        state_collector: StateCollector<T, DB, CH>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
@@ -64,7 +68,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         drop(graceful_guard);
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
             return false;
@@ -86,7 +90,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         }
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
             return false;
@@ -124,7 +128,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Future
+    for TipInspector<T, DB, CH>
+{
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

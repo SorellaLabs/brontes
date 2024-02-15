@@ -12,6 +12,8 @@ use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     GasDetails, ToFloatNearest, TreeSearchArgs, TxInfo,
 };
+#[allow(unused)]
+use clickhouse::{fixed_string::FixedString, row::*};
 use itertools::Itertools;
 use malachite::Rational;
 

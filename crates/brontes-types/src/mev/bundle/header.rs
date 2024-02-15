@@ -4,16 +4,13 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use clickhouse::{fixed_string::FixedString, Row};
 use colored::Colorize;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, Row},
-};
 
 use super::MevType;
 use crate::db::{
