@@ -19,6 +19,9 @@ pub use aave::*;
 pub mod pancakeswap;
 pub use pancakeswap::*;
 
+pub mod compound;
+pub use compound::*;
+
 pub mod maker;
 pub use maker::*;
 
@@ -43,7 +46,7 @@ discovery_dispatch!(
     CurvecrvUSDMetaDiscovery1,
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
-    CompoundV2Discovery,
+    CompoundV2Discovery
 );
 
 action_dispatch!(
@@ -130,5 +133,5 @@ action_dispatch!(
     AaveV3flashLoanSimpleCall,
     BalancerV1swapExactAmountInCall,
     BalancerV1swapExactAmountOutCall,
-    CompoundV2CTokenliquidateBorrowCall,
+    CompoundV2liquidateBorrowCall
 );

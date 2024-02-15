@@ -84,7 +84,10 @@ sol!(
     PancakeSwapV3PoolDeployer,
     "./classifier-abis/PancakeSwapV3PoolDeployer.json"
 );
-sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
+sol!(
+    CompoundV2Comptroller,
+    "./classifier-abis/CompoundV2Comptroller.json"
+);
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);
