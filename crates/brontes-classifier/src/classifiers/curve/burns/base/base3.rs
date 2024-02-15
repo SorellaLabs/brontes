@@ -82,9 +82,9 @@ action_impl!(
 
 action_impl!(
     Protocol::CurveBasePool3,
-    crate::CurveBase2::remove_liquidity_one_coinCall,
+    crate::CurveBase3::remove_liquidity_one_coinCall,
     Burn,
-    [..RemoveLiquidityOne],
+    [RemoveLiquidityOne],
     logs: true,
     call_data: true,
     |
