@@ -28,9 +28,9 @@ use brontes_types::{
     SubGraphsEntry,
 };
 use eyre::eyre;
-#[cfg(feature = "local-clickhouse")]
-use future::FutureExt;
 use futures::Future;
+#[cfg(feature = "local-clickhouse")]
+use futures::FutureExt;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
