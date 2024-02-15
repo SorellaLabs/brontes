@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use alloy_primitives::Address;
+#[allow(unused)]
 use brontes_types::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
@@ -20,7 +23,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    Protocol, SubGraphsEntry,
+    Protocol, SubGraphEdge, SubGraphsEntry,
 };
 
 use super::Clickhouse;
