@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
 use alloy_primitives::{Address, TxHash, U256};
+use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{

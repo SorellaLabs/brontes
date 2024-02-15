@@ -46,7 +46,7 @@ impl ActionDispatch {
 
                     impl crate::ActionCollection for #struct_name {
                         fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader
-        + ::brontes_database::libmdbx::LibmdbxWriter
+        + ::brontes_database::libmdbx::DBWriter
                             > (
                             &self,
                             call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,

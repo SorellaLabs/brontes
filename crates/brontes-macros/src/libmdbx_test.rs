@@ -24,7 +24,7 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
             std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
-                .worker_threads(2)
+                .worker_threads(4)
                 .build()
                 .unwrap()
                 .block_on(async move #block)
