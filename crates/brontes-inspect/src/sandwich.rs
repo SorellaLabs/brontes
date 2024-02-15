@@ -229,6 +229,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
+        println!("{:#?}", all_actions);
 
         let rev_usd = self.inner.get_dex_revenue_usd(
             backrun_info.tx_index,

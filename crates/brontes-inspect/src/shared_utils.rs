@@ -101,7 +101,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .map(|price| price.get_price(at))?
                         .clone()
                 };
-                println!("token: {token_addr:?}\namount: {amount:?}\nprice: {price:?}");
+                println!("\ntoken: {token_addr:?}\namount: {amount:?}\nprice: {price:?}");
 
                 let usd_amount = amount.clone() * price.clone();
 
