@@ -16,7 +16,7 @@ use crate::{
 pub type ProtocolCreatedRange = HashMap<u64, Vec<(Address, Protocol, Pair)>>;
 
 #[auto_impl::auto_impl(&)]
-pub trait LibmdbxReader: Send + Unpin + 'static {
+pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata>;
 
     fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo>;
