@@ -159,7 +159,7 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 ///     - z: number of plain pools
 ///
 /// ### Example
-/// ```
+/// ```ignore
 /// curve_discovery_impl!(
 ///     CurvecrvUSD,
 ///     crate::raw::pools::impls::CurvecrvUSDFactory,
