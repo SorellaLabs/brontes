@@ -598,7 +598,7 @@ impl ClassifierTestUtils {
                 },
             ])
         {
-            tracing::error!(%protocol, ?address, "failed to ensure protocol is in db");
+            tracing::error!(error=%e, %protocol, ?address, "failed to ensure protocol is in db");
         }
     }
 
@@ -614,7 +614,7 @@ impl ClassifierTestUtils {
                 },
             }])
         {
-            tracing::error!(?token, "failed to ensure token is in db");
+            tracing::error!(error=%e, ?token, "failed to ensure token is in db");
         }
     }
 }
