@@ -1,7 +1,7 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::libmdbx::LibmdbxReadWriter;
+
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::constants::USDT_ADDRESS_STRING;

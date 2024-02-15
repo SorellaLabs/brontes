@@ -1,7 +1,7 @@
 #[cfg(feature = "local-clickhouse")]
 use std::str::FromStr;
 use std::{
-    cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, str::FromStr, sync::Arc,
+    cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc,
 };
 
 use alloy_primitives::Address;

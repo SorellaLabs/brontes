@@ -13,7 +13,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::libmdbx::{LibmdbxInit, LibmdbxReadWriter, LibmdbxReader};
+use brontes_database::libmdbx::{LibmdbxInit, LibmdbxReader};
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use brontes_types::mev::Bundle;
