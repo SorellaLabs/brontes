@@ -564,7 +564,7 @@ impl ClassifierTestUtils {
         token4: Option<Address>,
         curve_lp_token: Option<Address>,
     ) {
-        self.libmdbx
+        if let Err(e) = self.libmdbx
             .0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData {
@@ -581,11 +581,14 @@ impl ClassifierTestUtils {
                     },
                 },
             ])
-            .unwrap();
+        {
+            tracing::error!(%protocol, ?address, "failed to ensure protocol is in db");
+        }
     }
 
     pub fn ensure_token(&self, token: TokenInfoWithAddress) {
-        self.libmdbx
+        if let Err(e) = self
+            .libmdbx
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
                 key: token.address,
@@ -594,7 +597,9 @@ impl ClassifierTestUtils {
                     symbol: token.symbol.clone(),
                 },
             }])
-            .unwrap();
+        {
+            tracing::error!(?token, "failed to ensure token is in db");
+        }
     }
 }
 
