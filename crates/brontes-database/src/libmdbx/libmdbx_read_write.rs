@@ -28,7 +28,7 @@ use brontes_types::{
     SubGraphsEntry,
 };
 use eyre::eyre;
-use futures::Future;
+use futures::{Future, FutureExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
