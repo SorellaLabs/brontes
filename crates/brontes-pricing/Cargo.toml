@@ -89,6 +89,7 @@ rand = "0.8.5"
 eyre.workspace = true
 
 [features]
+default = []
 testing = []
 uni-v3-ticks = []
 benchmarking = []
