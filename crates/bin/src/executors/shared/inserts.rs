@@ -79,12 +79,9 @@ fn output_mev_and_update_searcher_info<DB: LibmdbxWriter + LibmdbxReader>(
         };
 
         // Update the searcher info with the current MEV details
-        searcher_info.pnl += mev.header.profit_usd;
-        searcher_info.total_bribed += mev.header.bribe_usd;
         if !searcher_info.mev.contains(&mev.header.mev_type) {
             searcher_info.mev.push(mev.header.mev_type);
         }
-        searcher_info.last_active = block_number;
 
         if let Err(e) = database.write_searcher_info(mev.header.eoa, searcher_info) {
             error!("Failed to update searcher info in the database: {:?}", e);

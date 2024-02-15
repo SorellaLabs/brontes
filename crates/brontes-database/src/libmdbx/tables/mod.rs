@@ -604,6 +604,24 @@ compressed_table!(
 );
 
 compressed_table!(
+    Table SearcherStatistics {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: SearcherStats,
+            compressed_value: SearcherStatsRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
     Table InitializedState {
         Data {
             key: u64,

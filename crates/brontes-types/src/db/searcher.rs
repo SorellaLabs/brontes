@@ -13,12 +13,10 @@ use crate::{
 pub struct SearcherInfo {
     #[redefined(same_fields)]
     pub fund: Option<Fund>,
-    pub pnl: f64,
-    pub total_bribed: f64,
     #[redefined(same_fields)]
     pub mev: Vec<MevType>,
+    /// If the searcher is vertically integrated, this will contain the corresponding builder's information.
     pub builder: Option<BuilderInfo>,
-    pub last_active: u64,
 }
 
 impl SearcherInfo {
@@ -28,6 +26,19 @@ impl SearcherInfo {
 }
 
 implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
+
+/// Aggregated searcher statistics, updated once the brontes analytics are run.
+#[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct SearcherStats {
+    pub pnl: f64,
+    pub total_bribed: f64,
+    pub bundle_count: u64,
+    /// The block number of the most recent bundle involving this searcher.
+    pub last_active: u64,
+}
+
+implement_table_value_codecs_with_zc!(SearcherStatsRedefined);
 
 #[derive(
     Debug,
@@ -44,6 +55,9 @@ implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
 pub enum Fund {
     #[default]
     None,
+    SymbolicCapitalPartners,
+    Wintermute,
+    JaneStreet,
 }
 
 self_convert_redefined!(Fund);

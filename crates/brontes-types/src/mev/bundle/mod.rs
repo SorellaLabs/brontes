@@ -41,6 +41,10 @@ impl Bundle {
     pub fn get_searcher_address(&self) -> Address {
         self.header.eoa
     }
+
+    pub fn mev_type(&self) -> MevType {
+        self.header.mev_type
+    }
 }
 
 impl fmt::Display for Bundle {

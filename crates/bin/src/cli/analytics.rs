@@ -1,5 +1,5 @@
 use std::{env, path::Path};
-
+use brontes_types::db::mev_block::MevType;
 use brontes_analytics::BrontesAnalytics;
 use brontes_database::{
     libmdbx::{cursor::CompressedCursor, Libmdbx, LibmdbxReadWriter},
@@ -15,6 +15,19 @@ use crate::runner::CliContext;
 
 #[derive(Debug, Parser)]
 pub struct Analytics {
+    #[clap(subcommand)]
+    pub command: AnalyticsCommands,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum AnalyticsCommands {
+    /// Identifies vertically integrated searchers & maps them to their builders in the database
+    #[command(name = "vertically-integrated-builders", alias = "vi-builders")]
+    ViBuilders(SearcherBuilder),
+}
+
+#[derive(Debug, Parser)]
+pub struct SearcherBuilder {
     /// Start Block
     #[arg(long, short)]
     pub start_block: u64,
@@ -25,9 +38,20 @@ pub struct Analytics {
     /// physical cores on your machine
     #[arg(long, short)]
     pub max_tasks: Option<u64>,
+    /// Optional MevType to filter by (e.g. only CexDex bundles will be considered when identifying searcher to builder relationships)
+    #[arg(long, short, value_delimiter = ',')]
+    pub mev_type: Option<Vec<<MevType>>,
 }
 
 impl Analytics {
+    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+        match self.command {
+            AnalyticsCommands::ViBuilders(cmd) => cmd.execute(ctx).await,
+        }
+    }
+}
+
+impl SearcherBuilder {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
@@ -41,13 +65,15 @@ impl Analytics {
             max_tasks,
             task_executor.clone(),
         ));
+        let parser = DParser::new(metrics_tx, libmdbx, tracer.clone());
 
-        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer);
+        let brontes_analytics = BrontesAnalytics::new(libmdbx, parser);
 
         brontes_analytics
             .get_vertically_integrated_searchers(
                 self.start_block,
                 self.end_block.unwrap_or(u64::MAX),
+                self.mev_type,  
             )
             .await?;
 
