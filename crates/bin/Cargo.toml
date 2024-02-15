@@ -82,7 +82,15 @@ itertools.workspace = true
 
 
 [features]
+default = [
+  "brontes-core/default",
+  "brontes-database/default",
+  "brontes-classifier/default",
+  "brontes-inspect/default",
+]
+
 sorella-server = ["local-reth", "local-clickhouse"]
+
 tests = [
   "brontes-core/tests",
   "brontes-database/tests",
