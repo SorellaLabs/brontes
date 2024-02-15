@@ -37,7 +37,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
-    MetadataFetcher<T, DB>
+    MetadataFetcher<T, DB,CH>
 {
     pub fn new(
         clickhouse: Option<&'static CH>,
@@ -114,7 +114,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
-    for MetadataFetcher<T, DB>
+    for MetadataFetcher<T, DB,CH>
 {
     type Item = (BlockTree<Actions>, Metadata);
 

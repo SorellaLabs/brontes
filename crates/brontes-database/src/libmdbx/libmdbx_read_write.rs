@@ -63,7 +63,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-    ) -> impl Future<Output = eyre::Result<()>> + Send + Sync;
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
