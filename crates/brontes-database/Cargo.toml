@@ -119,6 +119,8 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
+default = []
+
 tests = ["reth-tasks"]
 local-reth = [
   "brontes-core/local-reth",
