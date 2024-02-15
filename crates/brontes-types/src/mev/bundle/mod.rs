@@ -2,6 +2,8 @@ pub mod data;
 pub mod header;
 use std::fmt::{self, Debug};
 
+use alloy_primitives::Address;
+use clap::ValueEnum;
 use clickhouse::Row;
 pub use data::*;
 use dyn_clone::DynClone;
@@ -74,6 +76,7 @@ impl fmt::Display for Bundle {
     Copy,
     Default,
     Display,
+    ValueEnum,
 )]
 #[repr(u8)]
 #[allow(non_camel_case_types)]

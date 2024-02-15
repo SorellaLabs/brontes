@@ -59,7 +59,7 @@ pub trait DBWriter: Send + Unpin + 'static {
         &self,
         builder_address: Address,
         builder_info: BuilderInfo,
-    ) -> eyre::Result<()>;
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     fn insert_pool(
         &self,

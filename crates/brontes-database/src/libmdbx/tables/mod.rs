@@ -15,7 +15,7 @@ use brontes_types::{
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
-        searcher::{SearcherInfo, SearcherInfoRedefined},
+        searcher::{SearcherInfo, SearcherInfoRedefined, SearcherStats, SearcherStatsRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
     },
@@ -627,7 +627,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Clickhouse
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False

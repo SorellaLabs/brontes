@@ -619,7 +619,7 @@ impl DBWriter for LibmdbxReadWriter {
         self.init_state_updating(block, TRACE_FLAG)
     }
 
-    fn write_builder_info(
+    async fn write_builder_info(
         &self,
         builder_address: Address,
         builder_info: BuilderInfo,

@@ -8,6 +8,7 @@ use brontes_types::{
         builder::BuilderInfo,
         dex::DexQuotes,
         metadata::Metadata,
+        mev_block::MevBlockWithClassified,
         searcher::SearcherInfo,
         token_info::TokenInfoWithAddress,
         traits::{DBWriter, LibmdbxReader, ProtocolCreatedRange},
@@ -92,6 +93,14 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
             .write_searcher_info(searcher_eoa, searcher_info)
             .await
     }
+    //TODO: JOE
+    async fn write_builder_info(
+        &self,
+        _builder_coinbase_addr: Address,
+        _builder_info: BuilderInfo,
+    ) -> eyre::Result<()> {
+        Ok(())
+    }
 
     async fn insert_pool(
         &self,
@@ -155,6 +164,14 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
 
     fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
         self.inner.try_fetch_builder_info(builder_coinbase_addr)
+    }
+    //TODO: JOE
+    fn try_fetch_mev_blocks(
+        &self,
+        _start_block: u64,
+        _end_block: u64,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        Ok(vec![])
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {

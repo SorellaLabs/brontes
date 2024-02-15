@@ -25,7 +25,7 @@ pub struct BuilderInfo {
 
 implement_table_value_codecs_with_zc!(BuilderInfoRedefined);
 
-#[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
+#[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BuilderStats {
     pub pnl: f64,

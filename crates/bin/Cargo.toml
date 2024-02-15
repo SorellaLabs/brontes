@@ -70,8 +70,7 @@ thiserror.workspace = true
 hyper.workspace = true
 
 # cli
-clap = { version = "4.4.6", features = ["derive"] }
-
+clap.workspace = true
 # logging
 indoc = "2"
 rayon.workspace = true
@@ -84,6 +83,7 @@ itertools.workspace = true
 
 [features]
 sorella-server = ["local-reth", "local-clickhouse"]
+default = []
 tests = [
   "brontes-core/tests",
   "brontes-database/tests",

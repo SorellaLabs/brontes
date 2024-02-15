@@ -1,14 +1,11 @@
 use std::{env, path::Path};
-use brontes_types::db::mev_block::MevType;
+
 use brontes_analytics::BrontesAnalytics;
-use brontes_database::{
-    libmdbx::{cursor::CompressedCursor, Libmdbx, LibmdbxReadWriter},
-    CompressedTable, IntoTableKey, Tables,
-};
-use clap::Parser;
-use itertools::Itertools;
-use reth_db::mdbx::RO;
-use reth_interfaces::db::DatabaseErrorInfo;
+use brontes_database::libmdbx::LibmdbxReadWriter;
+use brontes_metrics::PoirotMetricsListener;
+use brontes_types::mev::bundle::MevType;
+use clap::{Parser, Subcommand};
+use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, get_tracing_provider, static_object};
 use crate::runner::CliContext;
@@ -40,7 +37,7 @@ pub struct SearcherBuilder {
     pub max_tasks: Option<u64>,
     /// Optional MevType to filter by (e.g. only CexDex bundles will be considered when identifying searcher to builder relationships)
     #[arg(long, short, value_delimiter = ',')]
-    pub mev_type: Option<Vec<<MevType>>,
+    pub mev_type: Option<Vec<MevType>>,
 }
 
 impl Analytics {
@@ -59,23 +56,24 @@ impl SearcherBuilder {
         let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
         let task_executor = ctx.task_executor;
 
+        let (_metrics_tx, metrics_rx) = unbounded_channel();
+        let metrics_listener = PoirotMetricsListener::new(metrics_rx);
+        task_executor.spawn_critical("metrics", metrics_listener);
+
         let max_tasks = determine_max_tasks(self.max_tasks);
         let tracer = static_object(get_tracing_provider(
             Path::new(&db_path),
             max_tasks,
             task_executor.clone(),
         ));
-        let parser = DParser::new(metrics_tx, libmdbx, tracer.clone());
 
-        let brontes_analytics = BrontesAnalytics::new(libmdbx, parser);
+        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone());
 
-        brontes_analytics
-            .get_vertically_integrated_searchers(
-                self.start_block,
-                self.end_block.unwrap_or(u64::MAX),
-                self.mev_type,  
-            )
-            .await?;
+        brontes_analytics.get_vertically_integrated_searchers(
+            self.start_block,
+            self.end_block.unwrap_or(u64::MAX),
+            self.mev_type,
+        )?;
 
         Ok(())
     }

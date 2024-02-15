@@ -65,7 +65,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
 
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
-    block_number: u64,
+    _block_number: u64,
     mev_details: &Vec<Bundle>,
 ) {
     for mev in mev_details {
