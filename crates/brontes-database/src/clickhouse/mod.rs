@@ -103,6 +103,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn save_mev_blocks(
         &self,
         block_number: u64,
@@ -115,6 +116,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn write_dex_quotes(
         &self,
         block_num: u64,
@@ -157,6 +159,7 @@ impl Clickhouse {
         Ok(())
     }
 
+    #[allow(unused)]
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         self.client
             .insert_one::<ClickhouseTxTraces>(&(traces.into()))
