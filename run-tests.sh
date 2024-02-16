@@ -22,7 +22,12 @@ teardown() {
   rm -rf "/home/brontes-ci/$1"
 }
 
-if setup $1 $2; then :;else teardown $2 ; exit; fi
+if setup $1 $2; then 
+  :
+else 
+  teardown $2 
+  exit
+fi
 
 IT="it";
 TEST="test";
