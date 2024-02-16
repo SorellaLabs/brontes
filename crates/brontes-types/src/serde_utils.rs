@@ -276,19 +276,12 @@ pub mod vec_bls_pub_key {
     where
         D: Deserializer<'de>,
     {
-        let data: Vec<String> = Deserialize::deserialize(deserializer).unwrap();
+        let data: Vec<String> = Deserialize::deserialize(deserializer)?;
 
-        for d in &data {
-            println!("DATA: {d}");
-            println!("Into: {:?}", BlsPublicKey::from_str(&d));
-        }
-
-        Ok(data
-            .into_iter()
+        data.into_iter()
             .map(|d| BlsPublicKey::from_str(&d).map(Into::into))
             .collect::<Result<Vec<_>, _>>()
-            //.map_err(serde::de::Error::custom)
-            .unwrap())
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -586,14 +579,15 @@ pub mod option_contract_info {
     use alloy_primitives::Address;
     use serde::de::{Deserialize, Deserializer};
 
-    use crate::db::address_metadata::ContractInfo;
+    use crate::{db::address_metadata::ContractInfo, Protocol};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let (verified_contract, contract_creator_opt, reputation): (
+        let (verified_contract, contract_creator_opt, protocol, reputation): (
             Option<bool>,
+            Option<String>,
             Option<String>,
             Option<u8>,
         ) = Deserialize::deserialize(deserializer)?;
