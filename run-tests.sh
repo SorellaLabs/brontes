@@ -14,6 +14,11 @@ setup() {
 
 # deletes repo and test db
 teardown() {
+  if [ ${#1} == 0 ]; then 
+    echo "Invalid teardown, will delete config"
+    exit 1;
+  fi 
+
   echo "deleting db /home/data/brontes-ci/$1"
   # delete db
   rm -rf "/home/data/brontes-ci/$1"
