@@ -67,6 +67,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         }
 
         let data = self.clickhouse.query_many::<T, D>().await;
+        println!("{} DATA IS OK: {}", T::NAME, data.is_ok());
 
         match data {
             Ok(d) => self.libmdbx.0.write_table(&d)?,
