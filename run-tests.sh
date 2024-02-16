@@ -1,15 +1,19 @@
 #!/bin/sh
 
 setup() {
-  mkdir /home/data/brontes-ci/$2
-  cp ../.env .env
+  mkdir -p /home/data/brontes-ci/$2
+  cp /home/brontes-ci/.env .
+  echo "BRONTES_DB_PATH=/home/data/brontes-ci/$2" >> .env 
+  echo "BRONTES_TST_DB_PATH=/home/data/brontes-ci/$2" >> .env 
+  
 }
 
 # deletes repo and test db
 teardown() {
+  # delete db
   rm -rf /home/data/brontes-ci/$2
-  cd ..
-  rm -rf $2
+  # delete folder
+  rm -rf /home/brontes-ci/$2
 }
 
 setup()
