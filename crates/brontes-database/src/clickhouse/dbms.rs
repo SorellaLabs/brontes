@@ -33,7 +33,7 @@ clickhouse_dbms!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "ethereum",
-    ClickhouseTxTraces,
+    ClickhouseTxTrace,
     TxTrace,
     NO_FILE
 );
