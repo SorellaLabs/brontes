@@ -1,6 +1,7 @@
 #!/bin/sh
 
 setup() {
+  rustup default nightly
   echo "setting up db at /home/data/brontes-ci/$1"
   mkdir -p "/home/data/brontes-ci/$1"
 
@@ -22,17 +23,20 @@ teardown() {
 
 setup $1
 
-rustup default nightly
+IT="it";
+TEST="test";
+BENCH="bench";
+
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
-if [ "$2" == "it" ]; then 
+if [ "$2" == "$IT" ]; then 
   out=./it.sh
 fi 
 
-if [ "$2" == "test" ]; then 
+if [ "$2" == "$TEST" ]; then 
   out=./test.sh
 fi
 
-if [ "$2" == "bench" ]; then 
+if [ "$2" == "$BENCH" ]; then 
   out=./bench.sh
 fi 
 
