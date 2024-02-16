@@ -26,7 +26,7 @@ if setup $1 $2; then
   :
 else 
   teardown $2 
-  exit
+  exit 1
 fi
 
 IT="it";
