@@ -9,7 +9,7 @@ use colored::Colorize;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::MevType;
@@ -38,6 +38,7 @@ pub struct BundleHeader {
     #[serde_as(as = "FixedString")]
     pub mev_contract: Address,
     pub profit_usd: f64,
+    #[serde(flatten)]
     pub token_profits: TokenProfits,
     pub bribe_usd: f64,
     #[redefined(same_fields)]
@@ -45,10 +46,36 @@ pub struct BundleHeader {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Serialize, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenProfits {
     pub profits: Vec<TokenProfit>,
+}
+
+impl Serialize for TokenProfits {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser_struct = serializer.serialize_struct("TokenProfits", 1)?;
+        let profits = self
+            .profits
+            .iter()
+            .map(|token| {
+                (
+                    FixedString::from(format!("{:?}", token.profit_collector)),
+                    FixedString::from(format!("{:?}", token.token.address)),
+                    token.token.symbol.clone(),
+                    token.token.decimals.clone(),
+                    token.amount,
+                    token.usd_value,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        ser_struct.serialize_field("token_profits", &profits)?;
+        ser_struct.end()
+    }
 }
 
 #[serde_as]

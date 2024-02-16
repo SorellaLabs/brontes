@@ -43,7 +43,6 @@ pub struct MevBlock {
     pub cumulative_mev_profit_usd: f64,
     pub possible_mev: PossibleMevCollection,
 }
-
 impl fmt::Display for MevBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let ascii_header = indoc! {r#"
@@ -332,8 +331,20 @@ impl Serialize for MevBlock {
             .possible_mev
             .0
             .iter()
-            .map(|tx| format!("{:?}", tx).into())
-            .collect::<Vec<FixedString>>();
+            .map(|tx| {
+                (
+                    FixedString::from(format!("{:?}", tx.tx_hash)),
+                    tx.tx_idx,
+                    tx.gas_details.coinbase_transfer,
+                    tx.gas_details.priority_fee,
+                    tx.gas_details.gas_used,
+                    tx.gas_details.effective_gas_price,
+                    tx.triggers.is_private,
+                    tx.triggers.coinbase_transfer,
+                    tx.triggers.high_priority_fee,
+                )
+            })
+            .collect::<Vec<_>>();
         ser_struct.serialize_field("possible_mev", &possible_mev)?;
 
         ser_struct.end()

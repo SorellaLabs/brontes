@@ -19,6 +19,7 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenInfoWithAddress {
     #[redefined(same_fields)]
+    #[serde(flatten)]
     pub inner: TokenInfo,
     pub address: Address,
 }

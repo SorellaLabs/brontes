@@ -42,7 +42,7 @@ remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
     ClickhouseDexQuotes,
-    DexQuotes,
+    DexPriceClickhouseDB,
     NO_FILE
 );
 
@@ -74,7 +74,7 @@ remote_clickhouse_table!(
     BrontesClickhouseTables,
     "mev",
     ClickhouseCexDex,
-    SearcherInfo,
+    CexDex,
     NO_FILE
 );
 

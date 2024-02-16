@@ -3,19 +3,21 @@ use std::{
     collections::HashMap,
 };
 
+use ::serde::ser::{SerializeStruct, Serializer};
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
-use clickhouse::Row;
+use clickhouse::{DbRow, Row};
 use malachite::{num::basic::traits::One, Rational};
 use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    ToFloatNearest,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize, Redefined)]
@@ -168,4 +170,52 @@ pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
     let end_key = base.concat_const([u8::MAX; 2].into());
 
     (start_key.into(), end_key.into())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DexPriceClickhouseDB {
+    block: u64,
+    quote: DexQuoteWithIndex,
+}
+
+impl From<(u64, DexQuoteWithIndex)> for DexPriceClickhouseDB {
+    fn from(value: (u64, DexQuoteWithIndex)) -> Self {
+        Self {
+            block: value.0,
+            quote: value.1,
+        }
+    }
+}
+
+impl Serialize for DexPriceClickhouseDB {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let quote = self
+            .quote
+            .quote
+            .iter()
+            .map(|(pair, prices)| {
+                (
+                    (format!("{:?}", pair.0), format!("{:?}", pair.1)),
+                    (
+                        prices.pre_state.clone().to_float(),
+                        prices.post_state.clone().to_float(),
+                    ),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let mut ser_struct = serializer.serialize_struct("DexPriceClickhouseDB", 3)?;
+        ser_struct.serialize_field("block_number", &self.block)?;
+        ser_struct.serialize_field("tx_idx", &self.quote.tx_idx)?;
+        ser_struct.serialize_field("quote", &quote)?;
+
+        ser_struct.end()
+    }
+}
+
+impl DbRow for DexPriceClickhouseDB {
+    const COLUMN_NAMES: &'static [&'static str] = &["block_number", "tx_idx", "quote"];
 }

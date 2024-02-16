@@ -48,11 +48,11 @@ impl Clickhouse {
     pub async fn write_searcher_info(
         &self,
         _searcher_eoa: Address,
-        _searcher_info: SearcherInfo,
+        searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
-        //     .await?;
+        self.client
+            .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
+            .await?;
 
         Ok(())
     }
@@ -60,41 +60,41 @@ impl Clickhouse {
     pub async fn save_mev_blocks(
         &self,
         _block_number: u64,
-        _block: MevBlock,
+        block: MevBlock,
         _mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseMevBlocks>(&block)
-        //     .await?;
+        self.client
+            .insert_one::<ClickhouseMevBlocks>(&block)
+            .await?;
         Ok(())
     }
 
     pub async fn write_dex_quotes(
         &self,
-        _block_num: u64,
-        _quotes: Option<DexQuotes>,
+        block_num: u64,
+        quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        // if let Some(quotes) = quotes {
-        //     self.client
-        //         .insert_one::<ClickhouseDexQuotes>(&quotes)
-        //         .await?;
-        // }
+        if let Some(quotes) = quotes {
+            self.client
+                .insert_one::<ClickhouseDexQuotes>(&(block_num, quotes).into())
+                .await?;
+        }
 
         Ok(())
     }
 
     pub async fn write_token_info(
         &self,
-        _address: Address,
-        _decimals: u8,
-        _symbol: String,
+        address: Address,
+        decimals: u8,
+        symbol: String,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
-        //         address,
-        //         inner: TokenInfo { symbol, decimals },
-        //     })
-        //     .await?;
+        self.client
+            .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
+                address,
+                inner: TokenInfo { symbol, decimals },
+            })
+            .await?;
 
         Ok(())
     }
@@ -109,10 +109,10 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseTxTrace>(&(traces.into()))
-        //     .await?;
+    pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+        self.client
+            .insert_one::<ClickhouseTxTrace>(&(traces.into()))
+            .await?;
 
         Ok(())
     }
