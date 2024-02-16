@@ -2,12 +2,13 @@
 
 setup() {
   rustup default nightly
-  echo "setting up db at /home/data/brontes-ci/$1"
-  mkdir -p "/home/data/brontes-ci/$1"
+  git checkout $1
+  echo "setting up db at /home/data/brontes-ci/$2"
+  mkdir -p "/home/data/brontes-ci/$2"
 
   cp /home/brontes-ci/.env .
-  echo "BRONTES_DB_PATH=/home/data/brontes-ci/$1" >> .env 
-  echo "BRONTES_TST_DB_PATH=/home/data/brontes-ci/$1" >> .env 
+  echo "BRONTES_DB_PATH=/home/data/brontes-ci/$2" >> .env 
+  echo "BRONTES_TST_DB_PATH=/home/data/brontes-ci/$2" >> .env 
   
 }
 
@@ -21,26 +22,26 @@ teardown() {
   rm -rf "/home/brontes-ci/$1"
 }
 
-setup $1
+setup $1 $2
 
 IT="it";
 TEST="test";
 BENCH="bench";
 
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
-if [ "$2" = "$IT" ]; then 
+if [ "$3" = "$IT" ]; then 
   out= ./it.sh
 fi 
 
-if [ "$2" = "$TEST" ]; then 
+if [ "$3" = "$TEST" ]; then 
   out= ./test.sh
 fi
 
-if [ "$2" = "$BENCH" ]; then 
+if [ "$3" = "$BENCH" ]; then 
   out= ./bench.sh
 fi 
 
-teardown $1
+teardown $2
 
 if $out; then : ;else exit; fi
 
