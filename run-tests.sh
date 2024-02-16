@@ -21,15 +21,18 @@ setup
 rustup default nightly
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
 if [ "$2" -eq "it" ]; then 
-  if ./it.sh; then : ; else exit; fi
+  out=./it.sh
 fi 
 
 if [ "$2" -eq "test" ]; then 
-  if ./test.sh; then : ; else exit; fi
+  out=./test.sh
 fi
 
 if [ "$2" -eq "bench" ]; then 
-  if ./bench.sh; then : ; else exit; fi
+  out=./bench.sh
 fi 
 
 teardown
+
+if $out; then : ;else exit; fi
+
