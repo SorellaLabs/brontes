@@ -332,7 +332,7 @@ pub mod static_bindings {
         D: Deserializer<'de>,
     {
         let address: Option<String> = Deserialize::deserialize(deserializer).unwrap();
-        // yeye
+
         Ok(Protocol::from_str(&address.unwrap()).unwrap())
     }
 }
@@ -359,7 +359,6 @@ pub mod addresss {
     where
         D: Deserializer<'de>,
     {
-        // yeye
         let data: String = Deserialize::deserialize(deserializer).unwrap();
 
         Address::from_str(&data)
@@ -392,12 +391,13 @@ pub mod option_addresss {
     {
         let data_option: Option<String> = Deserialize::deserialize(deserializer).unwrap();
 
-        Ok(data_option.map(|data| {
-            Address::from_str(&data).unwrap().into()
-            //.map_err(serde::de::Error::custom)
-            // .map(Into::into)
-        }))
-        //.transpose()
+        data_option
+            .map(|data| {
+                Address::from_str(&data)
+                    .map_err(serde::de::Error::custom)
+                    .map(Into::into)
+            })
+            .transpose()
     }
 }
 
@@ -632,18 +632,9 @@ pub mod socials {
 
 pub mod tx_trace_decoded_data {
 
-    use std::str::FromStr;
+    use serde::de::{Deserialize, Deserializer};
 
-    use alloy_primitives::Address;
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
-
-    use crate::{
-        db::pool_creation_block::PoolsToAddresses,
-        structured_trace::{DecodedCallData, DecodedParams},
-    };
+    use crate::structured_trace::{DecodedCallData, DecodedParams};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DecodedCallData>, D::Error>
     where
