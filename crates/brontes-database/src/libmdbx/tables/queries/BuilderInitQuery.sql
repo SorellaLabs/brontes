@@ -1,9 +1,8 @@
 SELECT
     toString(address) AS address,
-    CAST(Null, 'Nullable(String)') AS name,
-    CAST([], 'Array(String)') AS pub_keys,
+    CAST(groupArray(pub_key), 'Array(String)') AS pub_keys,
+    CAST(name, 'Nullable(String)') AS name,
     CAST([], 'Array(String)') AS searchers,
     CAST(Null, 'Nullable(String)') AS ultrasound_relay_collateral_address
-FROM ethereum.builders
-WHERE pub_key != '' AND pub_key IS NOT NULL AND valid = 1
+FROM eth_analytics.builder_meta
 GROUP BY address, name
