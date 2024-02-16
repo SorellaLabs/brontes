@@ -15,7 +15,7 @@ teardown() {
   echo "deleting db"
   # delete db
   rm -rf "/home/data/brontes-ci/$1"
-  echo "deleting folder
+  echo "deleting folder"
   # delete folder
   rm -rf "/home/brontes-ci/$1"
 }
