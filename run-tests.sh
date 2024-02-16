@@ -9,7 +9,7 @@ setup() {
   if cp /home/brontes-ci/.env .env; then :;else return 1;fi
 
   echo "BRONTES_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
-  echo "BRONTES_TST_DB_PATH'=/home/data/brontes-ci/$2'" >> .env 
+  echo "BRONTES_TEST_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
   echo "updated .env"
   
 }
