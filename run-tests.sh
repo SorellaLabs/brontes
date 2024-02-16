@@ -42,18 +42,16 @@ BENCH="bench";
 
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
 if [ "$3" = "$IT" ]; then 
-  out=`./it.sh`
+  if cargo run --release --features sorella-server -- run --start-block 18300000 --end-block 18300002 --run-dex-pricing; then : ; else teardown $2; exit 1; fi
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  out=`./test.sh`
+  if cargo +nightly test --features sorella-server; then : ;else  teardown $2; exit 1; fi
 fi
 
 if [ "$3" = "$BENCH" ]; then 
-  out=`./bench.sh`
+  if cargo +nightly bench --features sorella-server; then : ; else teardown $2; exit 1; fi
 fi 
 
 teardown $2
-
-if $out; then : ;else exit 1; fi
 
