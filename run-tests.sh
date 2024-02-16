@@ -24,15 +24,15 @@ setup $1
 
 rustup default nightly
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
-if [ "$2" -eq "it" ]; then 
+if [[ "$2" -eq "it" ]]; then 
   out=./it.sh
 fi 
 
-if [ "$2" -eq "test" ]; then 
+if [[ "$2" -eq "test" ]]; then 
   out=./test.sh
 fi
 
-if [ "$2" -eq "bench" ]; then 
+if [[ "$2" -eq "bench" ]]; then 
   out=./bench.sh
 fi 
 
