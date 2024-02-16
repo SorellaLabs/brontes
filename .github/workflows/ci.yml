@@ -119,9 +119,6 @@ jobs:
           chmod 600 ~/.ssh/brontes_server
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config 
 
-      - name: test  
-        run: 
-          ssh brontes_server -tt "ls -a"
       - name: cargo bench
         run: 
           ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-bench && cd ${{ steps.branch-names.outputs.current_branch }}-bench && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh  ${{ steps.branch-names.outputs.current_branch }}-bench \"bench\"'" 
