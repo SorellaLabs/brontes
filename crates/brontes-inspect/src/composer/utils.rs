@@ -254,15 +254,15 @@ pub fn calculate_builder_profit(
     };
     // Calculate the builder's mev profit from it's associated vertically integrated searchers
     let mev_searching_profit: f64 =
-        if builder_info.searchers_eoa.is_empty() && builder_info.searchers_contract.is_empty() {
+        if builder_info.searchers_eoas.is_empty() && builder_info.searchers_contracts.is_empty() {
             0.0
         } else {
             bundles
                 .iter()
                 .filter(|bundle| {
-                    builder_info.searchers_eoa.contains(&bundle.header.eoa)
+                    builder_info.searchers_eoas.contains(&bundle.header.eoa)
                         || builder_info
-                            .searchers_contract
+                            .searchers_contracts
                             .contains(&bundle.header.mev_contract)
                 })
                 .map(|bundle| bundle.header.profit_usd)

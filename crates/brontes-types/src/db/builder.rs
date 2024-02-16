@@ -6,7 +6,10 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
 
 use crate::{
-    db::redefined_types::primitives::{AddressRedefined, BlsPublicKeyRedefined},
+    db::{
+        redefined_types::primitives::{AddressRedefined, BlsPublicKeyRedefined},
+        searcher::Fund,
+    },
     implement_table_value_codecs_with_zc,
     mev::MevBlock,
     serde_utils::{option_addresss, vec_address, vec_bls_pub_key},
@@ -16,12 +19,14 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BuilderInfo {
     pub name: Option<String>,
+    #[redefined(same_fields)]
+    pub fund: Option<Fund>,
     #[serde(with = "vec_bls_pub_key")]
     pub pub_keys: Vec<BlsPublicKey>,
     #[serde(with = "vec_address")]
-    pub searchers_eoa: Vec<Address>,
+    pub searchers_eoas: Vec<Address>,
     #[serde(with = "vec_address")]
-    pub searchers_contract: Vec<Address>,
+    pub searchers_contracts: Vec<Address>,
     #[serde(with = "option_addresss")]
     pub ultrasound_relay_collateral_address: Option<Address>,
 }

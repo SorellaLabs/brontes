@@ -57,6 +57,7 @@ implement_table_value_codecs_with_zc!(SearcherStatsRedefined);
     Debug,
     Default,
     PartialEq,
+    Eq,
     Clone,
     Serialize,
     Deserialize,

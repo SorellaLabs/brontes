@@ -73,8 +73,8 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         for (searcher, builder) in single_builder_searchers {
             info!("Identified vertically integrated searcher-builder pair: Searcher {:?}, Builder {:?}", searcher, builder);
             let mut builder_info = self.db.try_fetch_builder_info(builder)?;
-            if !builder_info.searchers_eoa.contains(&searcher) {
-                builder_info.searchers_contract.push(searcher);
+            if !builder_info.searchers_eoas.contains(&searcher) {
+                builder_info.searchers_contracts.push(searcher);
                 let _ = self.db.write_builder_info(builder, builder_info).await;
             }
         }
