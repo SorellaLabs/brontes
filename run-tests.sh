@@ -29,11 +29,11 @@ BENCH="bench";
 
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
 if [ "$2" = "$IT" ]; then 
-  out= source /it.sh
+  out= ./it.sh
 fi 
 
 if [ "$2" = "$TEST" ]; then 
-  out=./test.sh
+  out= ./test.sh
 fi
 
 if [ "$2" = "$BENCH" ]; then 
