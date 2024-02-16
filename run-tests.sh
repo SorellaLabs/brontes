@@ -1,12 +1,12 @@
 #!/bin/sh
 
 setup() {
-  if rustup default nightly; then : ; return $?; fi
+  if rustup default nightly; then : ; return false; fi
   git checkout $1
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"
 
-  if cp /home/brontes-ci/.env .; then :;return $? ;fi
+  if cp /home/brontes-ci/.env .; then :;return false ;fi
   echo "BRONTES_DB_PATH=/home/data/brontes-ci/$2" >> .env 
   echo "BRONTES_TST_DB_PATH=/home/data/brontes-ci/$2" >> .env 
   
