@@ -9,14 +9,14 @@ use brontes_types::{
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo,
+        builder::{BuilderInfo, BuilderStats},
         cex::{CexPriceMap, CexQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
-        searcher::SearcherInfo,
+        searcher::{SearcherInfo, SearcherStats},
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
         traits::{DBWriter, LibmdbxReader},
@@ -28,7 +28,9 @@ use brontes_types::{
     SubGraphsEntry,
 };
 use eyre::eyre;
-use futures::{Future, FutureExt, StreamExt};
+use futures::Future;
+#[cfg(feature = "local-clickhouse")]
+use futures::{FutureExt, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
@@ -481,6 +483,17 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    async fn write_searcher_stats(
+        &self,
+        searcher_eoa: Address,
+        searcher_stats: SearcherStats,
+    ) -> eyre::Result<()> {
+        let data = SearcherStatisticsData::new(searcher_eoa, searcher_stats);
+        self.0
+            .write_table::<SearcherStatistics, SearcherStatisticsData>(&vec![data])?;
+        Ok(())
+    }
+
     async fn save_mev_blocks(
         &self,
         block_number: u64,
@@ -626,6 +639,17 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = BuilderData::new(builder_address, builder_info);
         self.0.write_table::<Builder, BuilderData>(&vec![data])?;
+        Ok(())
+    }
+
+    async fn write_builder_stats(
+        &self,
+        builder_address: Address,
+        builder_stats: BuilderStats,
+    ) -> eyre::Result<()> {
+        let data = BuilderStatisticsData::new(builder_address, builder_stats);
+        self.0
+            .write_table::<BuilderStatistics, BuilderStatisticsData>(&vec![data])?;
         Ok(())
     }
 }

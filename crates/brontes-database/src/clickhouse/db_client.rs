@@ -63,6 +63,30 @@ impl Clickhouse {
         Ok(())
     }
 
+    pub async fn write_searcher_stats(
+        &self,
+        _searcher_eoa: Address,
+        _searcher_stats: SearcherInfo,
+    ) -> eyre::Result<()> {
+        Ok(())
+    }
+
+    pub async fn write_builder_info(
+        &self,
+        _builder_eoa: Address,
+        _builder_info: BuilderInfo,
+    ) -> eyre::Result<()> {
+        Ok(())
+    }
+
+    pub async fn write_builder_stats(
+        &self,
+        _builder_eoa: Address,
+        _builder_stats: BuilderStats,
+    ) -> eyre::Result<()> {
+        Ok(())
+    }
+
     pub async fn save_mev_blocks(
         &self,
         _block_number: u64,

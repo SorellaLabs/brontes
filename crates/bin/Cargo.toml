@@ -82,8 +82,14 @@ itertools.workspace = true
 
 
 [features]
+default = [
+  "brontes-core/default",
+  "brontes-database/default",
+  "brontes-classifier/default",
+  "brontes-inspect/default",
+]
+
 sorella-server = ["local-reth", "local-clickhouse"]
-default = []
 tests = [
   "brontes-core/tests",
   "brontes-database/tests",
@@ -105,6 +111,7 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
   "brontes-inspect/local-clickhouse",
   "brontes-classifier/local-clickhouse",
+  "brontes-analytics/local-clickhouse",
 ]
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]

@@ -1415,6 +1415,7 @@ dependencies = [
  "brontes-types",
  "eyre",
  "reth-tracing-ext",
+ "tracing",
 ]
 
 [[package]]

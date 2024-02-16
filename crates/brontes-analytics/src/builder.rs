@@ -1,23 +1,28 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_types::{db::searcher::SearcherStats, mev::bundle::MevType, traits::TracingProvider};
+use brontes_database::libmdbx::LibmdbxInit;
+use brontes_types::{
+    db::{builder::BuilderStats, searcher::SearcherStats},
+    mev::bundle::MevType,
+    traits::TracingProvider,
+};
 use eyre::Result;
+use tracing::info;
 
 use crate::BrontesAnalytics;
 
-impl<'a, T: TracingProvider> BrontesAnalytics<'_, T> {
-    pub fn get_vertically_integrated_searchers(
+impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
+    pub async fn get_vertically_integrated_searchers(
         &self,
         start_block: u64,
         end_block: u64,
         mev_type: Option<Vec<MevType>>,
-    ) -> Result<()> {
-        let mut searcher_to_builder_map: HashMap<Address, (SearcherStats, Vec<Address>)> =
+    ) -> Result<(), eyre::Error> {
+        let mut searcher_to_builder_map: HashMap<Address, (SearcherStats, HashSet<Address>)> =
             HashMap::new();
-
-        let mev_blocks = self.libmdbx.try_fetch_mev_blocks(start_block, end_block)?;
+        let mut builder_map: HashMap<Address, BuilderStats> = HashMap::new();
+        let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
 
         for mev_block in mev_blocks {
             for bundle in mev_block.mev {
@@ -26,19 +31,39 @@ impl<'a, T: TracingProvider> BrontesAnalytics<'_, T> {
                         continue;
                     }
                 }
-                searcher_to_builder_map
-                    .entry(bundle.get_searcher_address())
-                    .or_default()
-                    .1
-                    .push(mev_block.block.builder_address);
+
+                let (stats, builders) = searcher_to_builder_map
+                    .entry(bundle.get_searcher())
+                    .or_insert_with(|| (SearcherStats::default(), HashSet::new()));
+
+                stats.update_with_bundle(&bundle.header);
+
+                builders.insert(mev_block.block.builder_address);
             }
+            let builder_stats = builder_map
+                .entry(mev_block.block.builder_address)
+                .or_default();
+
+            builder_stats.update_with_block(&mev_block.block);
+        }
+
+        for (searcher_address, (searcher_stats, _)) in &searcher_to_builder_map {
+            self.db
+                .write_searcher_stats(*searcher_address, searcher_stats.clone())
+                .await?;
+        }
+
+        for (builder_address, builder_stats) in &builder_map {
+            self.db
+                .write_builder_stats(*builder_address, builder_stats.clone())
+                .await?;
         }
 
         let single_builder_searchers: HashMap<Address, Address> = searcher_to_builder_map
             .into_iter()
-            .filter_map(|(searcher, builders)| {
-                if builders.1.len() == 1 {
-                    Some((searcher, builders.1[0]))
+            .filter_map(|(searcher, (searcher_stats, builders))| {
+                if searcher_stats.bundle_count > 10 && builders.len() == 1 {
+                    builders.iter().next().map(|builder| (searcher, *builder))
                 } else {
                     None
                 }
@@ -46,17 +71,11 @@ impl<'a, T: TracingProvider> BrontesAnalytics<'_, T> {
             .collect();
 
         for (searcher, builder) in single_builder_searchers {
-            let mut builder_info = self
-                .libmdbx
-                .try_fetch_builder_info(builder)
-                .unwrap_or_default();
-
-            if builder_info.searchers.contains(&searcher) {
-                continue;
-            } else {
+            info!("Identified vertically integrated searcher-builder pair: Searcher {:?}, Builder {:?}", searcher, builder);
+            let mut builder_info = self.db.try_fetch_builder_info(builder)?;
+            if !builder_info.searchers.contains(&searcher) {
                 builder_info.searchers.push(searcher);
-
-                let _ = self.libmdbx.write_builder_info(builder, builder_info);
+                let _ = self.db.write_builder_info(builder, builder_info).await;
             }
         }
 

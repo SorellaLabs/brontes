@@ -8,6 +8,7 @@ use serde::{self, Deserialize, Serialize};
 use crate::{
     db::redefined_types::primitives::{AddressRedefined, BlsPublicKeyRedefined},
     implement_table_value_codecs_with_zc,
+    mev::MevBlock,
     serde_utils::{option_addresss, vec_address, vec_bls_pub_key},
 };
 
@@ -31,4 +32,14 @@ pub struct BuilderStats {
     pub pnl: f64,
     pub blocks_built: u64,
     pub last_active: u64,
+}
+
+implement_table_value_codecs_with_zc!(BuilderStatsRedefined);
+
+impl BuilderStats {
+    pub fn update_with_block(&mut self, block: &MevBlock) {
+        self.pnl += block.builder_profit_usd + block.builder_mev_profit_usd;
+        self.blocks_built += 1;
+        self.last_active = block.block_number;
+    }
 }

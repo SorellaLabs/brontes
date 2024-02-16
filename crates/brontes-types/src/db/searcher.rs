@@ -5,7 +5,9 @@ use serde::{self, Deserialize, Serialize};
 
 use super::builder::BuilderInfo;
 use crate::{
-    db::builder::BuilderInfoRedefined, implement_table_value_codecs_with_zc, mev::MevType,
+    db::builder::BuilderInfoRedefined,
+    implement_table_value_codecs_with_zc,
+    mev::{BundleHeader, MevType},
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
@@ -36,6 +38,15 @@ pub struct SearcherStats {
     pub bundle_count: u64,
     /// The block number of the most recent bundle involving this searcher.
     pub last_active: u64,
+}
+
+impl SearcherStats {
+    pub fn update_with_bundle(&mut self, header: &BundleHeader) {
+        self.pnl += header.profit_usd;
+        self.total_bribed += header.bribe_usd;
+        self.bundle_count += 1;
+        self.last_active = header.block_number;
+    }
 }
 
 implement_table_value_codecs_with_zc!(SearcherStatsRedefined);

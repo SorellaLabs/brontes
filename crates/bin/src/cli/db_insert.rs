@@ -53,6 +53,8 @@ impl AddToDb {
             AddressMeta,
             Searcher,
             InitializedState,
+            BuilderStatistics,
+            SearcherStatistics,
             PoolCreationBlocks = &self.key,
             &self.value
         );

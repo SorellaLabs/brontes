@@ -36,7 +36,7 @@ pub struct Bundle {
 }
 
 impl Bundle {
-    pub fn get_searcher_address(&self) -> Address {
+    pub fn get_searcher(&self) -> Address {
         self.header.eoa
     }
 

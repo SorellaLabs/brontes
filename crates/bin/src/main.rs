@@ -1,7 +1,6 @@
 use std::error::Error;
 
 use brontes::{
-    banner,
     cli::{Args, Commands},
     runner,
 };
@@ -10,7 +9,6 @@ use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
 fn main() {
-    banner::print_banner();
     dotenv::dotenv().ok();
     init_tracing();
 

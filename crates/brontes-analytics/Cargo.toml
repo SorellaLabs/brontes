@@ -16,3 +16,9 @@ alloy-primitives.workspace = true
 
 # eyre
 eyre.workspace = true
+
+# tracing
+tracing.workspace = true
+
+[features]
+local-clickhouse = ["brontes-database/local-clickhouse"]

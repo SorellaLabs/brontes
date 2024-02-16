@@ -8,7 +8,7 @@ use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
-        builder::{BuilderInfo, BuilderInfoRedefined},
+        builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
@@ -39,7 +39,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 13;
+pub const NUM_TABLES: usize = 15;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -173,6 +173,8 @@ impl Tables {
                     .await
             }
             Tables::Searcher => Ok(()),
+            Tables::SearcherStatistics => Ok(()),
+            Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
         }
     }
@@ -191,7 +193,9 @@ tables!(
     Builder,
     AddressMeta,
     Searcher,
-    InitializedState
+    InitializedState,
+    SearcherStatistics,
+    BuilderStatistics
 );
 
 /// Must be in this order when defining
@@ -572,6 +576,24 @@ compressed_table!(
             init_size: None,
             init_method: Clickhouse,
             http_endpoint: ""
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table BuilderStatistics {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: BuilderStats,
+            compressed_value: BuilderStatsRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Other
         },
         CLI {
             can_insert: False

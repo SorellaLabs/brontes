@@ -1,14 +1,13 @@
 use std::{env, path::Path};
 
 use brontes_analytics::BrontesAnalytics;
-use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::mev::bundle::MevType;
 use clap::{Parser, Subcommand};
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, get_tracing_provider, static_object};
-use crate::runner::CliContext;
+use crate::{cli::load_database, runner::CliContext};
 
 #[derive(Debug, Parser)]
 pub struct Analytics {
@@ -53,7 +52,9 @@ impl SearcherBuilder {
         let db_path = get_env_vars()?;
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
+
+        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+
         let task_executor = ctx.task_executor;
 
         let (_metrics_tx, metrics_rx) = unbounded_channel();
@@ -69,11 +70,13 @@ impl SearcherBuilder {
 
         let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone());
 
-        brontes_analytics.get_vertically_integrated_searchers(
-            self.start_block,
-            self.end_block.unwrap_or(u64::MAX),
-            self.mev_type,
-        )?;
+        brontes_analytics
+            .get_vertically_integrated_searchers(
+                self.start_block,
+                self.end_block.unwrap_or(u64::MAX),
+                self.mev_type,
+            )
+            .await?;
 
         Ok(())
     }

@@ -9,6 +9,7 @@ use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
+    banner,
     cli::{get_tracing_provider, init_inspectors},
     runner::CliContext,
     BrontesRunConfig,
@@ -46,6 +47,7 @@ pub struct RunArgs {
 
 impl RunArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+        banner::print_banner();
         // Fetch required environment variables.
         let db_path = get_env_vars()?;
         let quote_asset = self.quote_asset.parse()?;

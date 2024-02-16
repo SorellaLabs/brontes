@@ -80,6 +80,6 @@ reth-tracing-ext.workspace = true
 
 
 [features]
-default = ["tests"]
+default = []
 tests = []
 local-reth = ["brontes-core/local-reth", "reth-tracing-ext/local-reth"]
