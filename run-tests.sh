@@ -1,12 +1,12 @@
 #!/bin/sh
 
 setup() {
-  rustup default nightly
+  if rustup default nightly; then :;else exit; fi
   git checkout $1
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"
 
-  cp /home/brontes-ci/.env .
+  if cp /home/brontes-ci/.env .; then :;else exit;fi
   echo "BRONTES_DB_PATH=/home/data/brontes-ci/$2" >> .env 
   echo "BRONTES_TST_DB_PATH=/home/data/brontes-ci/$2" >> .env 
   
@@ -30,15 +30,15 @@ BENCH="bench";
 
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
 if [ "$3" = "$IT" ]; then 
-  out= ./it.sh
+  out=`./it.sh`
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  out= ./test.sh
+  out=`./test.sh`
 fi
 
 if [ "$3" = "$BENCH" ]; then 
-  out= ./bench.sh
+  out=`./bench.sh`
 fi 
 
 teardown $2
