@@ -174,13 +174,13 @@ mod tests {
         Clickhouse::default()
     }
 
-    #[cfg(not(feature = "local-clickhouse"))]
-    pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
-        let clickhouse_api = std::env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
-        let clickhouse_api_key =
-            std::env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
-        brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
-    }
+    // #[cfg(not(feature = "local-clickhouse"))]
+    // pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
+    //     let clickhouse_api = std::env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
+    //     let clickhouse_api_key =
+    //         std::env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
+    //     brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
+    // }
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_no_args_tables() {
