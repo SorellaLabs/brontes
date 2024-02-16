@@ -48,5 +48,5 @@ fi
 
 teardown $2
 
-if $out; then : ;else exit; fi
+if $out; then : ;else exit 1; fi
 
