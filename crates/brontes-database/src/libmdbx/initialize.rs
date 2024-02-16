@@ -182,6 +182,7 @@ mod tests {
     //     brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
     // }
 
+    #[cfg(feature = "local-clickhouse")]
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_no_args_tables() {
         init_tracing();
