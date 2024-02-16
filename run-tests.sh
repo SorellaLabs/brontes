@@ -12,12 +12,12 @@ setup() {
 
 # deletes repo and test db
 teardown() {
-  echo "deleting db"
+  echo "deleting db /home/data/brontes-ci/$1"
   # delete db
-  rm -rf "/home/data/brontes-ci/$1"
-  echo "deleting folder"
+  # rm -rf "/home/data/brontes-ci/$1"
+  echo "deleting folder /home/brontes-ci/$1"
   # delete folder
-  rm -rf "/home/brontes-ci/$1"
+  # rm -rf "/home/brontes-ci/$1"
 }
 
 setup
