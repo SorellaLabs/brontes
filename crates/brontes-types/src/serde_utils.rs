@@ -278,6 +278,11 @@ pub mod vec_bls_pub_key {
     {
         let data: Vec<String> = Deserialize::deserialize(deserializer).unwrap();
 
+        for d in &data {
+            println!("DATA: {d}");
+            println!("Into: {:?}", BlsPublicKey::from_str(&d));
+        }
+
         Ok(data
             .into_iter()
             .map(|d| BlsPublicKey::from_str(&d).map(Into::into))
