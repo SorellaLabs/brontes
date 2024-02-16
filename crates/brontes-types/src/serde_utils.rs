@@ -394,12 +394,11 @@ pub mod option_addresss {
 
         Ok(data_option
             .map(|data| {
-                Address::from_str(&data)
-                    .map_err(serde::de::Error::custom)
-                    .map(Into::into)
+                Address::from_str(&data).unwrap().into()
+                //.map_err(serde::de::Error::custom)
+                // .map(Into::into)
             })
-            .transpose()
-            .unwrap())
+            .transpose())
     }
 }
 
