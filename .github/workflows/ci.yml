@@ -80,7 +80,7 @@ jobs:
 
       - name: cargo test 
         run: 
-          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test && cd ${{ steps.branch-names.outputs.current_branch }}-test && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test \"test\"'" 
+          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test && cd ${{ steps.branch-names.outputs.current_branch }}-test && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test test'" 
 
   it-test: 
     runs-on: ubuntu-latest
@@ -101,7 +101,7 @@ jobs:
 
       - name: cargo it test
         run: 
-          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it && cd ${{ steps.branch-names.outputs.current_branch }}-it  && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it \"it\"'" 
+          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it && cd ${{ steps.branch-names.outputs.current_branch }}-it  && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it it'" 
   bench: 
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
@@ -121,5 +121,5 @@ jobs:
 
       - name: cargo bench
         run: 
-          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-bench && cd ${{ steps.branch-names.outputs.current_branch }}-bench && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-bench \"bench\"'" 
+          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-bench && cd ${{ steps.branch-names.outputs.current_branch }}-bench && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-bench bench'" 
 

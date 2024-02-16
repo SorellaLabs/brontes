@@ -16,7 +16,7 @@ setup() {
 
 # deletes repo and test db
 teardown() {
-  if [ ${#1} == 0 ]; then 
+  if [ ${#1} -eq 0 ]; then 
     echo "Invalid teardown, will delete config"
     exit 1;
   fi 
