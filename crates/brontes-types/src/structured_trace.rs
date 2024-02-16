@@ -7,7 +7,6 @@ use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 use crate::{
     constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
