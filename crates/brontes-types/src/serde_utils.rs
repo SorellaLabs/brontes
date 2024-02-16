@@ -331,8 +331,8 @@ pub mod static_bindings {
     where
         D: Deserializer<'de>,
     {
-        let address: Option<String> = Deserialize::deserialize(deserializer)?;
-
+        let address: Option<String> = Deserialize::deserialize(deserializer).unwrap();
+        // yeye
         Ok(Protocol::from_str(&address.unwrap()).unwrap())
     }
 }
@@ -359,7 +359,8 @@ pub mod addresss {
     where
         D: Deserializer<'de>,
     {
-        let data: String = Deserialize::deserialize(deserializer)?;
+        // yeye
+        let data: String = Deserialize::deserialize(deserializer).unwrap();
 
         Address::from_str(&data)
             .map_err(serde::de::Error::custom)
@@ -389,15 +390,16 @@ pub mod option_addresss {
     where
         D: Deserializer<'de>,
     {
-        let data_option: Option<String> = Deserialize::deserialize(deserializer)?;
+        let data_option: Option<String> = Deserialize::deserialize(deserializer).unwrap();
 
-        data_option
+        Ok(data_option
             .map(|data| {
                 Address::from_str(&data)
                     .map_err(serde::de::Error::custom)
                     .map(Into::into)
             })
             .transpose()
+            .unwrap())
     }
 }
 
