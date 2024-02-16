@@ -37,7 +37,7 @@ if [ "$2" = "$TEST" ]; then
 fi
 
 if [ "$2" = "$BENCH" ]; then 
-  out= source /bench.sh
+  out= ./bench.sh
 fi 
 
 teardown $1
