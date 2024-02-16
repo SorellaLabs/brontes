@@ -630,21 +630,24 @@ pub mod socials {
     }
 }
 
+/* */
 pub mod tx_trace_decoded_data {
 
     use serde::de::{Deserialize, Deserializer};
 
     use crate::structured_trace::{DecodedCallData, DecodedParams};
 
+    type TraceDecodedData = Vec<(
+        String,
+        Vec<(String, String, String)>,
+        Vec<(String, String, String)>,
+    )>;
+
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DecodedCallData>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let des_nested: Vec<(
-            String,
-            Vec<(String, String, String)>,
-            Vec<(String, String, String)>,
-        )> = Deserialize::deserialize(deserializer)?;
+        let des_nested: TraceDecodedData = Deserialize::deserialize(deserializer)?;
 
         let des = des_nested.first().cloned();
 
