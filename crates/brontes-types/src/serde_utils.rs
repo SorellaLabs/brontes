@@ -276,12 +276,14 @@ pub mod vec_bls_pub_key {
     where
         D: Deserializer<'de>,
     {
-        let data: Vec<String> = Deserialize::deserialize(deserializer)?;
+        let data: Vec<String> = Deserialize::deserialize(deserializer).unwrap();
 
-        data.into_iter()
+        Ok(data
+            .into_iter()
             .map(|d| BlsPublicKey::from_str(&d).map(Into::into))
             .collect::<Result<Vec<_>, _>>()
             .map_err(serde::de::Error::custom)
+            .unwrap())
     }
 }
 
