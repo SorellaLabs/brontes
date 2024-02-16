@@ -14,25 +14,25 @@ setup() {
 teardown() {
   echo "deleting db /home/data/brontes-ci/$1"
   # delete db
-  # rm -rf "/home/data/brontes-ci/$1"
+  rm -rf "/home/data/brontes-ci/$1"
   echo "deleting folder /home/brontes-ci/$1"
   # delete folder
-  # rm -rf "/home/brontes-ci/$1"
+  rm -rf "/home/brontes-ci/$1"
 }
 
 setup $1
 
 rustup default nightly
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
-if [[ "$2" -eq "it" ]]; then 
+if [ "$2" == "it" ]; then 
   out=./it.sh
 fi 
 
-if [[ "$2" -eq "test" ]]; then 
+if [ "$2" == "test" ]; then 
   out=./test.sh
 fi
 
-if [[ "$2" -eq "bench" ]]; then 
+if [ "$2" == "bench" ]; then 
   out=./bench.sh
 fi 
 
