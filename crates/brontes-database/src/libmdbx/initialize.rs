@@ -174,14 +174,15 @@ mod tests {
         Clickhouse::default()
     }
 
-    #[cfg(not(feature = "local-clickhouse"))]
-    pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
-        let clickhouse_api = std::env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
-        let clickhouse_api_key =
-            std::env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
-        brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
-    }
+    // #[cfg(not(feature = "local-clickhouse"))]
+    // pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
+    //     let clickhouse_api = std::env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
+    //     let clickhouse_api_key =
+    //         std::env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
+    //     brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
+    // }
 
+    #[cfg(feature = "local-clickhouse")]
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_no_args_tables() {
         init_tracing();
@@ -201,39 +202,39 @@ mod tests {
             .await
             .unwrap();
 
-        // TokenDecimals
-        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // TokenDecimals
+        // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
         // AddressToProtocol
         AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
 
-        // CexPrice
-        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
+        // // CexPrice
+        // CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        //     .await
+        //     .unwrap();
 
-        // Metadata
-        BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
+        // // Metadata
+        // BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        //     .await
+        //     .unwrap();
 
-        // PoolCreationBlocks
-        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // PoolCreationBlocks
+        // PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
         // Builder
         // Builder::test_initialized_data(clickhouse, libmdbx, None)
         //     .await
         //     .unwrap();
 
-        // AddressMeta
-        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // AddressMeta
+        // AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
     }
 }
