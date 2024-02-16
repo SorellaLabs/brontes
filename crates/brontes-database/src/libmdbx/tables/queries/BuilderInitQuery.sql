@@ -5,4 +5,5 @@ SELECT
     CAST([], 'Array(String)') AS searchers,
     CAST(Null, 'Nullable(String)') AS ultrasound_relay_collateral_address
 FROM eth_analytics.builder_meta
+WHERE pub_key != ''
 GROUP BY address, name
