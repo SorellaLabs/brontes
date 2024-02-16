@@ -392,13 +392,12 @@ pub mod option_addresss {
     {
         let data_option: Option<String> = Deserialize::deserialize(deserializer).unwrap();
 
-        Ok(data_option
-            .map(|data| {
-                Address::from_str(&data).unwrap().into()
-                //.map_err(serde::de::Error::custom)
-                // .map(Into::into)
-            })
-            .transpose())
+        Ok(data_option.map(|data| {
+            Address::from_str(&data).unwrap().into()
+            //.map_err(serde::de::Error::custom)
+            // .map(Into::into)
+        }))
+        //.transpose()
     }
 }
 
