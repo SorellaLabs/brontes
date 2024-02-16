@@ -19,7 +19,9 @@ pub struct BuilderInfo {
     #[serde(with = "vec_bls_pub_key")]
     pub pub_keys: Vec<BlsPublicKey>,
     #[serde(with = "vec_address")]
-    pub searchers: Vec<Address>,
+    pub searchers_eoa: Vec<Address>,
+    #[serde(with = "vec_address")]
+    pub searchers_contract: Vec<Address>,
     #[serde(with = "option_addresss")]
     pub ultrasound_relay_collateral_address: Option<Address>,
 }

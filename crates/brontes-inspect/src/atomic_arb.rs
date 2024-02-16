@@ -247,7 +247,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let is_profitable = profit > Rational::ZERO;
 
         if is_profitable {
-            match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
+            match self.inner.db.try_fetch_searcher_eoa_info(tx_info.eoa) {
                 Ok(info) => {
                     if info.mev.contains(&MevType::AtomicArb) {
                         Some(profit)

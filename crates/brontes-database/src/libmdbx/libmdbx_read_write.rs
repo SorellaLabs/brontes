@@ -335,10 +335,19 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
     }
 
-    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
+    fn try_fetch_searcher_eoa_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
         let tx = self.0.ro_tx()?;
-        tx.get::<Searcher>(searcher_eoa)?
+        tx.get::<SearcherEOAs>(searcher_eoa)?
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", searcher_eoa))
+    }
+
+    fn try_fetch_searcher_contract_info(
+        &self,
+        searcher_contract: Address,
+    ) -> eyre::Result<SearcherInfo> {
+        let tx = self.0.ro_tx()?;
+        tx.get::<SearcherContracts>(searcher_contract)?
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", searcher_contract))
     }
 
     fn protocols_created_before(
@@ -473,13 +482,25 @@ impl DBWriter for LibmdbxReadWriter {
         unreachable!()
     }
 
-    async fn write_searcher_info(
+    async fn write_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let data = SearcherData::new(searcher_eoa, searcher_info);
-        self.0.write_table::<Searcher, SearcherData>(&vec![data])?;
+        let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
+        self.0
+            .write_table::<SearcherEOAs, SearcherEOAsData>(&vec![data])?;
+        Ok(())
+    }
+
+    async fn write_searcher_contract_info(
+        &self,
+        searcher_contract: Address,
+        searcher_info: SearcherInfo,
+    ) -> eyre::Result<()> {
+        let data = SearcherContractsData::new(searcher_contract, searcher_info);
+        self.0
+            .write_table::<SearcherContracts, SearcherContractsData>(&vec![data])?;
         Ok(())
     }
 

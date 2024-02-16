@@ -27,7 +27,8 @@ use super::*;
 use crate::decoding::dyn_decode::decode_input_with_abi;
 use crate::errors::TraceParseError;
 
-const CONFIG_FILE_NAME: &str = "classifier_config.toml";
+const CLASSIFIER_CONFIG_FILE_NAME: &str = "config/classifier_config.toml";
+const SEARCHER_BUILDER_CONFIG_FILE_NAME: &str = "config/searcher_builder_config.toml";
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
@@ -49,16 +50,57 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             tracer,
             metrics_tx,
         };
-        this.store_config_data().await;
+        this.load_classifier_config_data().await;
 
         this
     }
 
     /// loads up the `classifier_config.toml` and ensures the values are in the
     /// database
-    async fn store_config_data(&self) {
+    async fn load_classifier_config_data(&self) {
         let mut workspace_dir = workspace_dir();
-        workspace_dir.push(CONFIG_FILE_NAME);
+        workspace_dir.push(CLASSIFIER_CONFIG_FILE_NAME);
+
+        let config: Table =
+            toml::from_str(&std::fs::read_to_string(workspace_dir).expect("no config file"))
+                .expect("failed to parse toml");
+
+        for (protocol, inner) in config {
+            let protocol: Protocol = protocol.parse().unwrap();
+            for (address, table) in inner.as_table().unwrap() {
+                let token_addr: Address = address.parse().unwrap();
+                let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
+
+                let table: Vec<TokenInfoWithAddressToml> = table
+                    .get("token_info")
+                    .map(|i| i.clone().try_into())
+                    .unwrap_or(Ok(vec![]))
+                    .unwrap_or(vec![]);
+
+                for t_info in &table {
+                    self.libmdbx
+                        .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
+                        .await
+                        .unwrap();
+                }
+
+                let token_addrs = if table.len() < 2 {
+                    [Address::default(), Address::default()]
+                } else {
+                    [table[0].address, table[1].address]
+                };
+
+                self.libmdbx
+                    .insert_pool(init_block, token_addr, token_addrs, protocol)
+                    .await
+                    .unwrap();
+            }
+        }
+    }
+
+    async fn load_searcher_builder_config_data(&self) {
+        let mut workspace_dir = workspace_dir();
+        workspace_dir.push(SEARCHER_BUILDER_CONFIG_FILE_NAME);
 
         let config: Table =
             toml::from_str(&std::fs::read_to_string(workspace_dir).expect("no config file"))

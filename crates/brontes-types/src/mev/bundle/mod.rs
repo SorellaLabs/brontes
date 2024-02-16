@@ -36,8 +36,8 @@ pub struct Bundle {
 }
 
 impl Bundle {
-    pub fn get_searcher(&self) -> Address {
-        self.header.eoa
+    pub fn get_searcher_contract(&self) -> Address {
+        self.header.mev_contract
     }
 
     pub fn mev_type(&self) -> MevType {

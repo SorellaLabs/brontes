@@ -76,7 +76,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
         );
 
         // Attempt to fetch existing searcher info
-        let result = database.try_fetch_searcher_info(mev.header.eoa);
+        let result = database.try_fetch_searcher_eoa_info(mev.header.eoa);
 
         let mut searcher_info = match result {
             Ok(info) => info,
@@ -89,7 +89,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
         }
 
         if let Err(e) = database
-            .write_searcher_info(mev.header.eoa, searcher_info)
+            .write_searcher_eoa_info(mev.header.eoa, searcher_info)
             .await
         {
             error!("Failed to update searcher info in the database: {:?}", e);

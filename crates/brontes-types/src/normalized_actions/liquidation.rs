@@ -63,7 +63,7 @@ impl fmt::Display for NormalizedLiquidation {
 
 impl NormalizedLiquidation {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
-        if self.protocol == Protocol::Aave {
+        if self.protocol == Protocol::AaveV3 {
             actions
                 .into_iter()
                 .find_map(|(index, action)| {

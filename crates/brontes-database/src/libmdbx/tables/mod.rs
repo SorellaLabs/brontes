@@ -39,7 +39,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 15;
+pub const NUM_TABLES: usize = 16;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -172,7 +172,8 @@ impl Tables {
                     .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(clear_table)
                     .await
             }
-            Tables::Searcher => Ok(()),
+            Tables::SearcherEOAs => Ok(()),
+            Tables::SearcherContracts => Ok(()),
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
@@ -192,7 +193,8 @@ tables!(
     TxTraces,
     Builder,
     AddressMeta,
-    Searcher,
+    SearcherEOAs,
+    SearcherContracts,
     InitializedState,
     SearcherStatistics,
     BuilderStatistics
@@ -621,7 +623,26 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table Searcher {
+    Table SearcherEOAs {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: SearcherInfo,
+            compressed_value: SearcherInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse,
+            http_endpoint: ""
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table SearcherContracts {
         Data {
             #[serde(with = "address_string")]
             key: Address,

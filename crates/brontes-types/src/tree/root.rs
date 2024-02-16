@@ -68,7 +68,8 @@ impl<V: NormalizedAction> Root<V> {
             Ok(metadata) => metadata.is_verified(),
             Err(_) => false,
         };
-        let searcher_info = database.try_fetch_searcher_info(self.head.address).ok();
+        let searcher_info = database.try_fetch_searcher_eoa_info(self.head.address).ok();
+        //TODO: Also fetch searcher contract info
 
         TxInfo::new(
             block_number,

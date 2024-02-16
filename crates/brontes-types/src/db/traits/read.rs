@@ -20,7 +20,12 @@ pub type ProtocolCreatedRange = HashMap<u64, Vec<(Address, Protocol, Pair)>>;
 pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata>;
 
-    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo>;
+    fn try_fetch_searcher_eoa_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo>;
+
+    fn try_fetch_searcher_contract_info(
+        &self,
+        searcher_contract: Address,
+    ) -> eyre::Result<SearcherInfo>;
 
     fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo>;
 

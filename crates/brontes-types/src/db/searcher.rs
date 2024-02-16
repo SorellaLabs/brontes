@@ -1,13 +1,14 @@
+use alloy_primitives::Address;
 use clickhouse::{self, Row};
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
 
-use super::builder::BuilderInfo;
 use crate::{
-    db::builder::BuilderInfoRedefined,
+    db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
     mev::{BundleHeader, MevType},
+    serde_utils::option_addresss,
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
@@ -18,7 +19,8 @@ pub struct SearcherInfo {
     #[redefined(same_fields)]
     pub mev: Vec<MevType>,
     /// If the searcher is vertically integrated, this will contain the corresponding builder's information.
-    pub builder: Option<BuilderInfo>,
+    #[serde(with = "option_addresss")]
+    pub builder: Option<Address>,
 }
 
 impl SearcherInfo {
@@ -29,7 +31,7 @@ impl SearcherInfo {
 
 implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
 
-/// Aggregated searcher statistics, updated once the brontes analytics are run.
+/// Aggregated searcher statistics, updated once the brontes analytics are run. The key is the mev contract address.
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherStats {
@@ -69,6 +71,7 @@ pub enum Fund {
     SymbolicCapitalPartners,
     Wintermute,
     JaneStreet,
+    FlowTraders,
 }
 
 self_convert_redefined!(Fund);
