@@ -18,13 +18,7 @@ use sorella_db_databases::{
     Database,
 };
 
-use super::{
-    dbms::{
-        BrontesClickhouseTables, ClickhouseDexQuotes, ClickhouseMevBlocks, ClickhouseSearcherInfo,
-        ClickhouseTxTraces,
-    },
-    ClickhouseHandle,
-};
+use super::{dbms::BrontesClickhouseTables, ClickhouseHandle};
 use crate::{
     clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
     libmdbx::{
@@ -54,11 +48,11 @@ impl Clickhouse {
     pub async fn write_searcher_info(
         &self,
         _searcher_eoa: Address,
-        searcher_info: SearcherInfo,
+        _searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
-            .await?;
+        // self.client
+        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
+        //     .await?;
 
         Ok(())
     }
@@ -90,25 +84,25 @@ impl Clickhouse {
     pub async fn save_mev_blocks(
         &self,
         _block_number: u64,
-        block: MevBlock,
+        _block: MevBlock,
         _mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseMevBlocks>(&block)
-            .await?;
+        // self.client
+        //     .insert_one::<ClickhouseMevBlocks>(&block)
+        //     .await?;
         Ok(())
     }
 
     pub async fn write_dex_quotes(
         &self,
         _block_num: u64,
-        quotes: Option<DexQuotes>,
+        _quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        if let Some(quotes) = quotes {
-            self.client
-                .insert_one::<ClickhouseDexQuotes>(&quotes)
-                .await?;
-        }
+        // if let Some(quotes) = quotes {
+        //     self.client
+        //         .insert_one::<ClickhouseDexQuotes>(&quotes)
+        //         .await?;
+        // }
 
         Ok(())
     }
@@ -139,10 +133,10 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseTxTraces>(&(traces.into()))
-            .await?;
+    pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
+        // self.client
+        //     .insert_one::<ClickhouseTxTraces>(&(traces.into()))
+        //     .await?;
 
         Ok(())
     }
