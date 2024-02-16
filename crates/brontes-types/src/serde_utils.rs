@@ -282,7 +282,7 @@ pub mod vec_bls_pub_key {
             .into_iter()
             .map(|d| BlsPublicKey::from_str(&d).map(Into::into))
             .collect::<Result<Vec<_>, _>>()
-            .map_err(serde::de::Error::custom)
+            //.map_err(serde::de::Error::custom)
             .unwrap())
     }
 }
