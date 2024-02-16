@@ -196,6 +196,7 @@ mod tests {
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         let tables = Tables::ALL;
+        println!("TABLES: {:?}", tables);
         intializer
             .initialize(&tables, false, Some(block_range))
             .await
