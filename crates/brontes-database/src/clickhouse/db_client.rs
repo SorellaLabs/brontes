@@ -111,7 +111,7 @@ impl Clickhouse {
 
     pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
         // self.client
-        //     .insert_one::<ClickhouseTxTraces>(&(traces.into()))
+        //     .insert_one::<ClickhouseTxTrace>(&(traces.into()))
         //     .await?;
 
         Ok(())

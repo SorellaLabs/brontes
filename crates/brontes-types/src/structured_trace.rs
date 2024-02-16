@@ -7,8 +7,12 @@ use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
-use crate::constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT};
+use crate::{
+    constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
+    serde_utils::tx_trace_decoded_data,
+};
 pub trait TraceActions {
     fn get_callframe_info(&self) -> CallFrameInfo<'_>;
     fn get_from_addr(&self) -> Address;
@@ -108,7 +112,7 @@ impl TraceActions for TransactionTraceWithLogs {
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
+    Debug, Clone, Deserialize, Serialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
 )]
 
 pub struct DecodedCallData {
@@ -120,7 +124,7 @@ pub struct DecodedCallData {
 self_convert_redefined!(DecodedCallData);
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
+    Debug, Clone, Deserialize, Serialize, PartialEq, Eq, rSerialize, rDeserialize, Archive,
 )]
 pub struct DecodedParams {
     pub field_name: String,
@@ -171,6 +175,7 @@ pub struct TransactionTraceWithLogs {
     /// delegate calls and the headache they cause when it comes to proxies
     pub msg_sender: Address,
     pub trace_idx: u64,
+    #[serde(deserialize_with = "tx_trace_decoded_data::deserialize")]
     pub decoded_data: Option<DecodedCallData>,
 }
 
@@ -206,18 +211,7 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Row, Serialize, Deserialize)]
-pub struct TxTraces {
-    pub traces: Vec<TxTrace>,
-}
-
-impl From<Vec<TxTrace>> for TxTraces {
-    fn from(value: Vec<TxTrace>) -> Self {
-        Self { traces: value }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Row, PartialEq, Serialize, Deserialize)]
 pub struct TxTrace {
     pub trace: Vec<TransactionTraceWithLogs>,
     pub tx_hash: B256,

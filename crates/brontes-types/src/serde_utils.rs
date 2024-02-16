@@ -629,3 +629,58 @@ pub mod socials {
         .into())
     }
 }
+
+pub mod tx_trace_decoded_data {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::{
+        db::pool_creation_block::PoolsToAddresses,
+        structured_trace::{DecodedCallData, DecodedParams},
+    };
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DecodedCallData>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let des_nested: Vec<(
+            String,
+            Vec<(String, String, String)>,
+            Vec<(String, String, String)>,
+        )> = Deserialize::deserialize(deserializer)?;
+
+        let des = des_nested.first().cloned();
+
+        let Some((function_name, call_data_tuple, return_data_tuple)) = des else {
+            return Ok(None);
+        };
+
+        let this = DecodedCallData {
+            function_name,
+            call_data: call_data_tuple
+                .into_iter()
+                .map(|(field_name, field_type, value)| DecodedParams {
+                    field_name,
+                    field_type,
+                    value,
+                })
+                .collect(),
+            return_data: return_data_tuple
+                .into_iter()
+                .map(|(field_name, field_type, value)| DecodedParams {
+                    field_name,
+                    field_type,
+                    value,
+                })
+                .collect(),
+        };
+
+        Ok(Some(this))
+    }
+}

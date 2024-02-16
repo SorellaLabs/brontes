@@ -1,7 +1,7 @@
 use brontes_types::{
     db::{dex::DexQuotes, searcher::SearcherInfo},
     mev::*,
-    structured_trace::TxTraces,
+    structured_trace::TxTrace,
 };
 use sorella_db_databases::{
     clickhouse::{
@@ -26,7 +26,7 @@ clickhouse_dbms!(
         ClickhouseLiquidations,
         ClickhouseSearcherInfo,
         ClickhouseDexQuotes,
-        ClickhouseTxTraces
+        ClickhouseTxTrace
     ]
 );
 
@@ -34,7 +34,7 @@ remote_clickhouse_table!(
     BrontesClickhouseTables,
     "ethereum",
     ClickhouseTxTraces,
-    TxTraces,
+    TxTrace,
     NO_FILE
 );
 
