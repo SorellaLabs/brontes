@@ -227,7 +227,7 @@ mod tests {
         //     .await
         //     .unwrap();
 
-        Builder
+        //Builder
         Builder::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
