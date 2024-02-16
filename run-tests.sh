@@ -20,7 +20,7 @@ teardown() {
   # rm -rf "/home/brontes-ci/$1"
 }
 
-setup
+setup $1
 
 rustup default nightly
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
@@ -36,7 +36,7 @@ if [ "$2" -eq "bench" ]; then
   out=./bench.sh
 fi 
 
-teardown
+teardown $1
 
 if $out; then : ;else exit; fi
 
