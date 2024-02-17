@@ -60,7 +60,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         let mut workspace_dir = workspace_dir();
         workspace_dir.push(CONFIG_FILE_NAME);
 
-        let Ok(config) = toml::from_str::<Config>(
+        let Ok(config) = toml::from_str::<Table>(
             &std::fs::read_to_string(workspace_dir).expect("no config file"),
         ) else {
             return;
