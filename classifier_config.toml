@@ -149,3 +149,55 @@ init_block = 18163376
 
 [CurvecrvUSDPlainPoolImpl."0x7ca46a636b02d4abc66883d7ff164bde506dc66a"]
 init_block = 18163373
+
+#
+#
+#
+# Compound V2 comptroller and token contracts
+#
+#
+
+[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888"]
+init_block = 16870680
+[CompoundV2Comptroller."0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B"]
+init_block = 10742017
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0xc00e94Cb662C3520282E6f5717214004A7f26888"
+decimals = 8
+symbol = "cUSDC"
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5"
+decimals = 8
+symbol = "cETH"
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643"
+decimals = 8
+symbol = "cDAI"
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9"
+decimals = 8
+symbol = "cUSDT"
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0x95b4eF2869eBD94BEb4eEE400a99824BF5DC325b"
+decimals = 8
+symbol = "cMKR"
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0xe65cdB6479BaC1e22340E4E755fAE7E509EcD06c"
+decimals = 8
+symbol = "cAAVE"
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0xC11b1268C1A384e55C48c2391d8d480264A3A7F4"
+decimals = 8
+symbol = "cWBTC"
+
+[[CompoundV2CToken."0xc00e94Cb662C3520282E6f5717214004A7f26888".token_info]]
+address = "0x35A18000230DA775CAc24873d00Ff85BccdeD550"
+decimals = 8
+symbol = "cUNI"
