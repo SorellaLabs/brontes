@@ -43,13 +43,23 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         let interesting_state = tree.collect_all(|node, info| TreeSearchArgs {
             collect_current_node: info
                 .get_ref(node.data)
-                .map(|action| action.is_transfer() || action.is_flash_loan() || action.is_swap())
+                .map(|action| {
+                    action.is_transfer()
+                        || action.is_flash_loan()
+                        || action.is_swap()
+                        || action.is_collect()
+                })
                 .unwrap_or_default(),
             child_node_to_collect: node
                 .subactions
                 .iter()
                 .filter_map(|node| info.get_ref(*node))
-                .any(|action| action.is_transfer() || action.is_flash_loan() || action.is_swap()),
+                .any(|action| {
+                    action.is_transfer()
+                        || action.is_flash_loan()
+                        || action.is_swap()
+                        || action.is_collect()
+                }),
         });
 
         interesting_state
@@ -131,7 +141,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<AtomicArbType> {
         match swaps.len() {
             0 | 1 => {
-                if transfers.len() >= 2 {
+                if transfers.len() > 2 {
                     Some(AtomicArbType::LongTail)
                 } else {
                     None
@@ -226,6 +236,31 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         searcher_actions: &[Vec<Actions>],
     ) -> Option<Rational> {
+        // check the following:
+        // no liquidity collects,
+        // more than 2 transfers or more than 1 swap
+
+        let collect = searcher_actions.iter().flatten().any(|a| a.is_collect());
+        if collect {
+            return None;
+        }
+
+        let swaps = searcher_actions
+            .iter()
+            .flatten()
+            .map(|a| if a.is_swap() { 1 } else { 0 })
+            .sum::<u64>();
+        let transfers = searcher_actions
+            .iter()
+            .flatten()
+            .map(|a| if a.is_transfer() { 1 } else { 0 })
+            .sum::<u64>();
+
+        // if we have a collect and no swaps then return
+        if swaps == 0 || transfers < 3 {
+            return None;
+        }
+
         let gas_used = tx_info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
