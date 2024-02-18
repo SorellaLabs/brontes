@@ -39,7 +39,7 @@ type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
-    pub(crate) fn calculate_token_deltas(&self, actions: &[Vec<Actions>]) -> SwapTokenDeltas {
+    pub(crate) fn calculate_swap_deltas(&self, actions: &[Vec<Actions>]) -> SwapTokenDeltas {
         // Address and there token delta's
         let mut deltas = HashMap::new();
 
@@ -205,7 +205,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_actions: &[Vec<Actions>],
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
-        let deltas = self.calculate_token_deltas(bundle_actions);
+        let deltas = self.calculate_swap_deltas(bundle_actions);
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), false)?;
@@ -224,7 +224,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         pricing: bool,
     ) -> Option<TokenProfits> {
-        let deltas = self.calculate_token_deltas(bundle_actions);
+        let deltas = self.calculate_swap_deltas(bundle_actions);
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), pricing)?;
