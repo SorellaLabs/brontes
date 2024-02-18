@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
-    normalized_actions::Actions,
+    normalized_actions::{transfer, Actions, NormalizedSwap, NormalizedTransfer},
     pair::Pair,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
@@ -56,27 +56,13 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let mut deltas = HashMap::new();
         // removes all transfers that we have other actions for
         // remove_uneeded_transfers(actions)
-        actions.into_iter().flatten().for_each(|action| {
+        actions.iter().flatten().for_each(|action| {
             if action_set.contains(&action.as_action_rev()) {
                 action.apply_token_deltas(&mut deltas)
             }
         });
         tracing::info!("deltas\n{:#?}", deltas);
-
-        let deltas = deltas
-            .into_iter()
-            .map(|(k, v)| {
-                (
-                    k,
-                    v.into_iter()
-                        .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
-                        .filter(|(_, v)| v.ne(&Rational::ZERO))
-                        .into_grouping_map()
-                        .sum(),
-                )
-            })
-            .filter(|(_, v)| !v.is_empty())
-            .collect::<HashMap<_, HashMap<_, _>>>();
+        let deltas = flatten_token_deltas(deltas, actions);
 
         tracing::info!("deltas\n{:#?}", deltas);
 
@@ -454,8 +440,62 @@ impl<const N: usize> IntoSet for [ActionRevenue; N] {
     }
 }
 
-/// we flatten the token deltas by finding all the
-// fn flatten_token_deltas(deltas: TokenDeltasCalc) -> TokenDeltas {}
+// if theres any address with a single non-zero token delta. Then
+// that is the person with the result delta and we just use that.
+// otherwise, if 2 transfers, last transfer to, else same first last
+// this also assumes that a arber doesn't dust any contracts
+fn flatten_token_deltas(deltas: TokenDeltasCalc, actions: &[Vec<Actions>]) -> TokenDeltas {
+    let mut deltas = deltas
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k,
+                v.into_iter()
+                    .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
+                    .filter(|(_, v)| v.ne(&Rational::ZERO))
+                    .into_grouping_map()
+                    .sum(),
+            )
+        })
+        .filter(|(_, v)| !v.is_empty())
+        .collect::<HashMap<_, HashMap<_, _>>>();
+
+    // if there is a address with a single token delta, then it
+    // is the proper pool.
+    if deltas.iter().any(|(_, v)| v.len() == 1) {
+        deltas.retain(|_, v| v.len() == 1);
+        return deltas;
+    }
+
+    let transfers = actions
+        .iter()
+        .flatten()
+        .filter(|t| t.is_transfer())
+        .map(|t| t.clone().force_transfer())
+        .sorted_by(|a, b| a.trace_index.cmp(&b.trace_index))
+        .collect_vec();
+
+    // if just two transfers, result person will always be last,
+    if transfers.len() == 2 {
+        let final_address = transfers.last().unwrap().to;
+        deltas.retain(|k, _| *k == final_address);
+        return deltas;
+    } else if transfers.len() > 2 {
+        // grab first and last transfers
+        let first = transfers.first().unwrap();
+        let last = transfers.last().unwrap();
+        if first.to == last.from {
+            deltas.retain(|k, _| *k == first.to);
+            return deltas;
+        } else if first.from == last.to {
+            deltas.retain(|k, _| *k == first.from);
+            return deltas;
+        } else {
+            tracing::error!("shouldn't be hit");
+        }
+    }
+    return deltas;
+}
 
 fn apply_entry<K: PartialEq + Hash + Eq>(
     token: K,
