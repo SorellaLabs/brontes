@@ -454,6 +454,7 @@ impl<const N: usize> IntoSet for [ActionRevenue; N] {
     }
 }
 
+/// we flatten the token deltas by finding all the
 // fn flatten_token_deltas(deltas: TokenDeltasCalc) -> TokenDeltas {}
 
 fn apply_entry<K: PartialEq + Hash + Eq>(
