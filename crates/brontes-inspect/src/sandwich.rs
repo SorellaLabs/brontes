@@ -473,6 +473,7 @@ fn get_possible_sandwich_duplicate_contracts(
 mod tests {
 
     use alloy_primitives::hex;
+    use brontes_types::constants::WETH_ADDRESS;
 
     use super::*;
     use crate::{
@@ -581,7 +582,7 @@ mod tests {
                 hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
             ])
             .needs_tokens(vec![
-                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                WETH_ADDRESS,
                 hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
             ])
             .with_gas_paid_usd(21.9)
@@ -616,7 +617,7 @@ mod tests {
                 hex!("3b0a069a010d5ebb00be9d4cc86d4dce90687d41eacfd05f1916d12b061e24f2").into(),
             ])
             .needs_tokens(vec![
-                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                WETH_ADDRESS,
                 hex!("628a3b2e302c7e896acc432d2d0dd22b6cb9bc88").into(),
                 hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into(),
                 hex!("8390a1da07e376ef7add4be859ba74fb83aa02d5").into(),
@@ -653,7 +654,7 @@ mod tests {
                 hex!("a46bfbd85fbcaf8450879d73f27436bf942078e5762af68bc10757745b5e1c9a").into(),
             ])
             .needs_tokens(vec![
-                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                WETH_ADDRESS,
                 hex!("8390a1da07e376ef7add4be859ba74fb83aa02d5").into(),
             ])
             .with_gas_paid_usd(16.57)
@@ -675,7 +676,7 @@ mod tests {
                 hex!("287d48d4841cb8cc34771d2df2f00e42ee31711910358d372b4b546cad44679c").into(),
             ])
             .needs_tokens(vec![
-                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                WETH_ADDRESS,
                 hex!("4309e88d1d511f3764ee0f154cee98d783b61f09").into(),
                 hex!("6bc40d4099f9057b23af309c08d935b890d7adc0").into(),
             ])
