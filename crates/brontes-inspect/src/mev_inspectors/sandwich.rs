@@ -96,6 +96,18 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         })
                         .collect::<Vec<_>>();
 
+                    // if there are no victims in any part of sandwich, return
+                    if victim_actions
+                        .iter()
+                        .flatten()
+                        .flatten()
+                        .filter(|f| f.is_swap())
+                        .count()
+                        == 0
+                    {
+                        return None;
+                    }
+
                     if victims
                         .iter()
                         .flatten()
@@ -178,6 +190,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_info.pop()?;
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
+
+                if victim_actions
+                    .iter()
+                    .flatten()
+                    .flatten()
+                    .filter(|f| f.is_swap())
+                    .count()
+                    == 0
+                {
+                    return None;
+                }
 
                 return self.calculate_sandwich(
                     metadata.clone(),
@@ -298,16 +321,21 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|(info, actions)| (info.eoa, actions))
             .into_group_map();
 
-        // for each victim eoa, ensure that they have a sandwich swap action occur
-        // over them
+        // for each victim eoa, ensure they are a victim of a frontrun and a backrun
         grouped_victims
             .into_values()
             .map(|v| {
-                v.into_iter()
+                v.iter()
+                    .cloned()
                     .flatten()
                     .filter(|action| action.is_swap())
                     .map(|f| f.force_swap_ref().pool)
-                    .any(|pool| front_run_pools.contains(&pool) || back_run_pools.contains(&pool))
+                    .any(|pool| front_run_pools.contains(&pool))
+                    && v.into_iter()
+                        .flatten()
+                        .filter(|action| action.is_swap())
+                        .map(|f| f.force_swap_ref().pool)
+                        .any(|pool| back_run_pools.contains(&pool))
             })
             .all(|was_victim| was_victim)
     }
