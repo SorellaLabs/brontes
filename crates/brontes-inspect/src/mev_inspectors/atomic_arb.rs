@@ -354,25 +354,29 @@ fn flatten_token_deltas(deltas: TokenDeltasCalc, actions: &[Vec<Actions>]) -> Op
         .collect_vec();
 
     // if just two transfers, result person will always be last,
-    if transfers.len() == 2 {
-        let final_address = transfers.last().unwrap().to;
-        deltas.retain(|k, _| *k == final_address);
-        return Some(deltas);
-    } else if transfers.len() > 2 {
-        // grab first and last transfers
-        let first = transfers.first().unwrap();
-        let last = transfers.last().unwrap();
-        if first.to == last.from {
-            deltas.retain(|k, _| *k == first.to);
-            return Some(deltas);
-        } else if first.from == last.to {
-            deltas.retain(|k, _| *k == first.from);
-            return Some(deltas);
-        } else {
-            tracing::error!("shouldn't be hit");
+    match transfers.len() {
+        0 | 1 => None,
+        2 => {
+            let final_address = transfers.last().unwrap().to;
+            deltas.retain(|k, _| *k == final_address);
+            Some(deltas)
+        }
+        _ => {
+            // grab first and last transfers
+            let first = transfers.first().unwrap();
+            let last = transfers.last().unwrap();
+            if first.to == last.from {
+                deltas.retain(|k, _| *k == first.to);
+                Some(deltas)
+            } else if first.from == last.to {
+                deltas.retain(|k, _| *k == first.from);
+                Some(deltas)
+            } else {
+                tracing::error!("shouldn't be hit");
+                None
+            }
         }
     }
-    None
 }
 
 /// Represents the different types of atomic arb
@@ -426,6 +430,7 @@ mod tests {
         let tx = hex!("e4b8b358118daa26809a1ff77323d825664202c4f31a2afe923f3fe83d7eccc4").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("2b591e99afE9f32eAA6214f7B7629768c40Eeb39").into())
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
