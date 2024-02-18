@@ -135,7 +135,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 if transfers.len() >= 2 {
                     Some(AtomicArbType::LongTail)
                 } else {
-                    tracing::info!("not enough transfers");
                     None
                 }
             }
@@ -308,6 +307,7 @@ enum AtomicArbType {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
+    use brontes_types::constants::WETH_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
@@ -358,6 +358,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(WETH_ADDRESS)
             .with_dex_prices()
             .with_expected_profit_usd(2.62)
             .with_gas_paid_usd(10.92);

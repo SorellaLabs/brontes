@@ -52,6 +52,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         remove_uneeded_transfers(actions)
             .into_iter()
             .for_each(|action| {
+                tracing::info!(?action);
                 if action_set.contains(&action.as_action_rev()) {
                     action.apply_token_deltas(&mut deltas)
                 }
