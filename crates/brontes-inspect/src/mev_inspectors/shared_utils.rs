@@ -37,7 +37,7 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
     }
 }
 
-/// user => token => from_address => amount
+/// user => token => otherside => amount
 /// otherside is the person who is on the otherside of the token transfer
 /// eg if it was a transfer and the amount is negative, it would be the to address of the transfer
 /// and visa versa
@@ -359,11 +359,11 @@ impl ActionRevenueCalculation for Actions {
                     // apply delta to person
                     let entry = delta_map.entry(swap.from).or_insert_with(HashMap::default);
                     apply_entry(swap.token_out.address, swap.pool, amount_out, entry);
-                    apply_entry(swap.token_in.address, swap.from, amount_in, entry);
+                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry);
                 } else {
                     let entry_recipient =
                         delta_map.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_in.address, swap.from, amount_in, entry_recipient);
+                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry_recipient);
 
                     let entry_from = delta_map
                         .entry(swap.recipient)
@@ -378,12 +378,7 @@ impl ActionRevenueCalculation for Actions {
                 // subtract token from sender
                 let from_amount_in = &transfer.amount + &transfer.fee;
                 let entry = delta_map.entry(transfer.from).or_default();
-                apply_entry(
-                    transfer.token.address,
-                    transfer.from,
-                    -from_amount_in,
-                    entry,
-                );
+                apply_entry(transfer.token.address, transfer.to, -from_amount_in, entry);
                 // add to recipient
                 let entry = delta_map.entry(transfer.to).or_default();
                 apply_entry(
@@ -407,7 +402,7 @@ impl ActionRevenueCalculation for Actions {
                     .iter()
                     .zip(mint.amount.iter())
                     .for_each(|(token, amount)| {
-                        apply_entry(token.address, mint.pool, amount.clone(), entry);
+                        apply_entry(token.address, mint.from, amount.clone(), entry);
                     });
             }
             Actions::Collect(collect) => {
@@ -425,7 +420,7 @@ impl ActionRevenueCalculation for Actions {
                     .iter()
                     .zip(collect.amount.iter())
                     .for_each(|(token, amount)| {
-                        apply_entry(token.address, collect.pool, -amount.clone(), entry);
+                        apply_entry(token.address, collect.recipient, -amount.clone(), entry);
                     });
             }
             action => {
