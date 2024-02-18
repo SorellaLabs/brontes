@@ -347,25 +347,6 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
-    // TODO(ludwig): you're changes break tests
-    // #[brontes_macros::test]
-    // async fn test_triangular_old_middle_token() {
-    //     let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-    //     let tx =
-    // hex!("67d9884157d495df4eaf24b0d65aeca38e1b5aeb79200d030e3bb4bd2cbdcf88").
-    // into();     let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-    //         .with_mev_tx_hashes(vec![tx])
-    //         .needs_tokens(vec![
-    //             hex!("c98835e792553e505ae46e73a6fd27a23985acca").into(),
-    //             hex!("F1182229B71E79E504b1d2bF076C15a277311e05").into(),
-    //         ])
-    //         .with_dex_prices()
-    //         .with_expected_profit_usd(311.18)
-    //         .with_gas_paid_usd(91.51);
-    //
-    //     inspector_util.run_inspector(config, None).await.unwrap();
-    // }
-
     #[brontes_macros::test]
     async fn test_not_false_positive_uni_router() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
@@ -386,5 +367,19 @@ mod tests {
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_triangle_unclassified_pool() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let tx = hex!("707624db0b01bab966c82058d71190031c2bd69098d8efd9c668a89e5acc49ca").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(0.188588)
+            .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
