@@ -352,20 +352,20 @@ impl ActionRevenueCalculation for Actions {
                 let amount_in = -swap.amount_in.clone();
                 let amount_out = swap.amount_out.clone();
                 // we track the address deltas so we can apply transfers later on the profit
-                if swap.from == swap.recipient {
-                    let entry = delta_map.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, swap.pool, amount_out, entry);
-                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry);
-                } else {
-                    let entry_recipient =
-                        delta_map.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry_recipient);
-
-                    let entry_from = delta_map
-                        .entry(swap.recipient)
-                        .or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, swap.pool, amount_out, entry_from);
-                }
+                // if swap.from == swap.recipient {
+                let entry = delta_map.entry(swap.from).or_insert_with(HashMap::default);
+                apply_entry(swap.token_out.address, swap.pool, amount_out, entry);
+                apply_entry(swap.token_in.address, swap.pool, amount_in, entry);
+                // } else {
+                //     let entry_recipient =
+                //         delta_map.entry(swap.from).or_insert_with(HashMap::default);
+                //     apply_entry(swap.token_in.address, swap.pool, amount_in, entry_recipient);
+                //
+                //     let entry_from = delta_map
+                //         .entry(swap.recipient)
+                //         .or_insert_with(HashMap::default);
+                //     apply_entry(swap.token_out.address, swap.pool, amount_out, entry_from);
+                // }
             }
             Actions::SwapWithFee(swap) => {
                 Actions::Swap(swap.swap.clone()).apply_token_deltas(delta_map)
