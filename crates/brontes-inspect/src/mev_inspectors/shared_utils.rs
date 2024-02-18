@@ -46,6 +46,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         actions: &[Vec<Actions>],
         action_set: HashSet<ActionRevenue>,
     ) -> TokenDeltas {
+        tracing::info!("n{:#?}", actions);
         // Address and there token delta's
         let mut deltas = HashMap::new();
         // removes all transfers that we have other actions for
