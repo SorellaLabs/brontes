@@ -135,6 +135,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 if transfers.len() >= 2 {
                     Some(AtomicArbType::LongTail)
                 } else {
+                    tracing::info!("not enough transfers");
                     None
                 }
             }
