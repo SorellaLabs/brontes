@@ -14,6 +14,7 @@ use brontes_types::{
     utils::ToFloatNearest,
     GasDetails, TxInfo,
 };
+use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Two, Zero},
     Rational,
@@ -70,11 +71,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     v.into_iter()
                         .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
                         .filter(|(_, v)| v.ne(&Rational::ZERO))
-                        .collect::<HashMap<_, _>>(),
+                        .into_grouping_map()
+                        .sum(),
                 )
             })
             .filter(|(_, v)| !v.is_empty())
             .collect::<HashMap<_, HashMap<_, _>>>();
+
+        tracing::info!("deltas\n{:#?}", deltas);
 
         deltas
     }
@@ -354,8 +358,8 @@ impl ActionRevenueCalculation for Actions {
                 if swap.from == swap.recipient {
                     // apply delta to person
                     let entry = delta_map.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_out.address, swap.pool, amount_out.clone(), entry);
-                    apply_entry(swap.token_in.address, swap.pool, amount_in.clone(), entry);
+                    apply_entry(swap.token_out.address, swap.pool, amount_out, entry);
+                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry);
                 } else {
                     let entry_recipient =
                         delta_map.entry(swap.from).or_insert_with(HashMap::default);
