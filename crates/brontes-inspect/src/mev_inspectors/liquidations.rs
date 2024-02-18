@@ -158,7 +158,6 @@ mod tests {
 
     use alloy_primitives::{hex, U256};
     use brontes_classifier::Classifier;
-    use serial_test::serial;
 
     use super::*;
     use crate::{

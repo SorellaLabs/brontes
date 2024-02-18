@@ -6,149 +6,149 @@ use brontes_types::{
 };
 use malachite::{num::basic::traits::Zero, Rational};
 
-pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
-    tree.remove_duplicate_data(
-        |node, data| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|data| data.is_swap())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .into_iter()
-                .filter_map(|a| data.get_ref(a))
-                .any(|data| data.is_swap()),
-        },
-        |node, data| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|data| data.is_transfer())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .into_iter()
-                .filter_map(|a| data.get_ref(a))
-                .any(|data| data.is_transfer()),
-        },
-        |node, data| (node.index, data.get_ref(node.data).cloned()),
-        |other_nodes, node, data| {
-            // calcuate the
-            let Some(swap_data) = data.get_ref(node.data) else {
-                return vec![];
-            };
-            let swap_data = swap_data.force_swap_ref();
-
-            other_nodes
-                .iter()
-                .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data.as_ref()? else {
-                        return None;
-                    };
-                    if (transfer.amount == swap_data.amount_in
-                        || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
-                        && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
-                    {
-                        return Some(*index);
-                    }
-                    None
-                })
-                .collect::<Vec<_>>()
-        },
-    );
-}
-pub(crate) fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
-    tree.remove_duplicate_data(
-        |node, data| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|data| data.is_mint())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .into_iter()
-                .filter_map(|a| data.get_ref(a))
-                .any(|data| data.is_mint()),
-        },
-        |node, data| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|data| data.is_transfer())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .into_iter()
-                .filter_map(|a| data.get_ref(a))
-                .any(|data| data.is_transfer()),
-        },
-        |node, data| (node.index, data.get_ref(node.data).cloned()),
-        |other_nodes, node, node_data| {
-            let Some(Actions::Mint(mint_data)) = node_data.get_ref(node.data) else {
-                unreachable!("value not mint")
-            };
-            other_nodes
-                .iter()
-                .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data.as_ref()? else {
-                        return None;
-                    };
-                    for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
-                        if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                            return Some(*index);
-                        }
-                    }
-                    None
-                })
-                .collect::<Vec<_>>()
-        },
-    );
-}
-
-pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
-    tree.remove_duplicate_data(
-        |node, data| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|data| data.is_collect())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .into_iter()
-                .filter_map(|a| data.get_ref(a))
-                .any(|data| data.is_collect()),
-        },
-        |node, data| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|data| data.is_transfer())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .into_iter()
-                .filter_map(|a| data.get_ref(a))
-                .any(|data| data.is_transfer()),
-        },
-        |node, data| (node.index, data.get_ref(node.data).cloned()),
-        |other_nodes, node, node_info| {
-            let Some(Actions::Collect(collect_data)) = node_info.get_ref(node.data) else {
-                unreachable!("value not collect")
-            };
-            other_nodes
-                .iter()
-                .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data.as_ref()? else {
-                        return None;
-                    };
-                    for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
-                        if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                            return Some(*index);
-                        }
-                    }
-                    None
-                })
-                .collect::<Vec<_>>()
-        },
-    );
-}
+// pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
+//     tree.remove_duplicate_data(
+//         |node, data| TreeSearchArgs {
+//             collect_current_node: data
+//                 .get_ref(node.data)
+//                 .map(|data| data.is_swap())
+//                 .unwrap_or_default(),
+//             child_node_to_collect: node
+//                 .get_all_sub_actions()
+//                 .into_iter()
+//                 .filter_map(|a| data.get_ref(a))
+//                 .any(|data| data.is_swap()),
+//         },
+//         |node, data| TreeSearchArgs {
+//             collect_current_node: data
+//                 .get_ref(node.data)
+//                 .map(|data| data.is_transfer())
+//                 .unwrap_or_default(),
+//             child_node_to_collect: node
+//                 .get_all_sub_actions()
+//                 .into_iter()
+//                 .filter_map(|a| data.get_ref(a))
+//                 .any(|data| data.is_transfer()),
+//         },
+//         |node, data| (node.index, data.get_ref(node.data).cloned()),
+//         |other_nodes, node, data| {
+//             // calcuate the
+//             let Some(swap_data) = data.get_ref(node.data) else {
+//                 return vec![];
+//             };
+//             let swap_data = swap_data.force_swap_ref();
+//
+//             other_nodes
+//                 .iter()
+//                 .filter_map(|(index, data)| {
+//                     let Actions::Transfer(transfer) = data.as_ref()? else {
+//                         return None;
+//                     };
+//                     if (transfer.amount == swap_data.amount_in
+//                         || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
+//                         && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
+//                     {
+//                         return Some(*index);
+//                     }
+//                     None
+//                 })
+//                 .collect::<Vec<_>>()
+//         },
+//     );
+// }
+// pub(crate) fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
+//     tree.remove_duplicate_data(
+//         |node, data| TreeSearchArgs {
+//             collect_current_node: data
+//                 .get_ref(node.data)
+//                 .map(|data| data.is_mint())
+//                 .unwrap_or_default(),
+//             child_node_to_collect: node
+//                 .get_all_sub_actions()
+//                 .into_iter()
+//                 .filter_map(|a| data.get_ref(a))
+//                 .any(|data| data.is_mint()),
+//         },
+//         |node, data| TreeSearchArgs {
+//             collect_current_node: data
+//                 .get_ref(node.data)
+//                 .map(|data| data.is_transfer())
+//                 .unwrap_or_default(),
+//             child_node_to_collect: node
+//                 .get_all_sub_actions()
+//                 .into_iter()
+//                 .filter_map(|a| data.get_ref(a))
+//                 .any(|data| data.is_transfer()),
+//         },
+//         |node, data| (node.index, data.get_ref(node.data).cloned()),
+//         |other_nodes, node, node_data| {
+//             let Some(Actions::Mint(mint_data)) = node_data.get_ref(node.data) else {
+//                 unreachable!("value not mint")
+//             };
+//             other_nodes
+//                 .iter()
+//                 .filter_map(|(index, data)| {
+//                     let Actions::Transfer(transfer) = data.as_ref()? else {
+//                         return None;
+//                     };
+//                     for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
+//                         if transfer.amount.eq(amount) && transfer.token.eq(token) {
+//                             return Some(*index);
+//                         }
+//                     }
+//                     None
+//                 })
+//                 .collect::<Vec<_>>()
+//         },
+//     );
+// }
+//
+// pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
+//     tree.remove_duplicate_data(
+//         |node, data| TreeSearchArgs {
+//             collect_current_node: data
+//                 .get_ref(node.data)
+//                 .map(|data| data.is_collect())
+//                 .unwrap_or_default(),
+//             child_node_to_collect: node
+//                 .get_all_sub_actions()
+//                 .into_iter()
+//                 .filter_map(|a| data.get_ref(a))
+//                 .any(|data| data.is_collect()),
+//         },
+//         |node, data| TreeSearchArgs {
+//             collect_current_node: data
+//                 .get_ref(node.data)
+//                 .map(|data| data.is_transfer())
+//                 .unwrap_or_default(),
+//             child_node_to_collect: node
+//                 .get_all_sub_actions()
+//                 .into_iter()
+//                 .filter_map(|a| data.get_ref(a))
+//                 .any(|data| data.is_transfer()),
+//         },
+//         |node, data| (node.index, data.get_ref(node.data).cloned()),
+//         |other_nodes, node, node_info| {
+//             let Some(Actions::Collect(collect_data)) = node_info.get_ref(node.data) else {
+//                 unreachable!("value not collect")
+//             };
+//             other_nodes
+//                 .iter()
+//                 .filter_map(|(index, data)| {
+//                     let Actions::Transfer(transfer) = data.as_ref()? else {
+//                         return None;
+//                     };
+//                     for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
+//                         if transfer.amount.eq(amount) && transfer.token.eq(token) {
+//                             return Some(*index);
+//                         }
+//                     }
+//                     None
+//                 })
+//                 .collect::<Vec<_>>()
+//         },
+//     );
+// }
 
 /// When a tax token takes a fee, They will swap from there token to a more
 /// stable token like eth before taking the fee. However this creates an

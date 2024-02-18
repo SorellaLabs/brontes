@@ -80,17 +80,10 @@
 //! results to identify more complex strategies.
 //TODO: Update composer section once finished
 
-pub mod atomic_arb;
-pub mod cex_dex;
 pub mod composer;
 pub mod discovery;
-pub mod jit;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod liquidations;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod long_tail;
-pub mod sandwich;
-pub mod shared_utils;
+pub mod mev_inspectors;
+pub use mev_inspectors::*;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
