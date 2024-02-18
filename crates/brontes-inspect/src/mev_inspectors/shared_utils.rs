@@ -341,6 +341,7 @@ impl ActionRevenueCalculation for Actions {
             Actions::Swap(swap) => {
                 let amount_in = -swap.amount_in.clone();
                 let amount_out = swap.amount_out.clone();
+
                 // we track the address deltas so we can apply transfers later on the profit
                 if swap.from == swap.recipient {
                     let entry = delta_map.entry(swap.from).or_insert_with(HashMap::default);
@@ -449,18 +450,14 @@ fn remove_uneeded_transfers(actions: &[Vec<Actions>]) -> Vec<Actions> {
         match action.clone() {
             Actions::Swap(s) => {
                 let in_key = s.token_in.address.concat_const(s.from.concat_const::<20, 40>(*s.pool));
-                let out_key = s.token_out.address.concat_const(s.pool.concat_const::<20,40>(*s.recipient));
 
                 transfers.remove(&in_key);
-                transfers.remove(&out_key);
                 Some(Actions::Swap(s.clone()))
             },
             Actions::SwapWithFee(s) => {
                 let in_key = s.token_in.address.concat_const(s.from.concat_const::<20, 40>(*s.pool));
-                let out_key = s.token_out.address.concat_const(s.pool.concat_const::<20,40>(*s.recipient));
 
                 transfers.remove(&in_key);
-                transfers.remove(&out_key);
                 Some(Actions::SwapWithFee(s.clone()))
             },
             Actions::Mint(m) => {
