@@ -96,13 +96,6 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         })
                         .collect::<Vec<_>>();
 
-                    if victim_actions
-                        .iter()
-                        .any(|inner| inner.iter().any(|s| s.is_empty()))
-                    {
-                        return None;
-                    }
-
                     if victims
                         .iter()
                         .flatten()
@@ -171,8 +164,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .collect_vec();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
-        // frontrun that is unrelated
-        if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions) {
+        // front run that is unrelated
+        if !Self::has_pool_overlap(
+            &front_run_swaps,
+            &back_run_swaps,
+            &victim_actions,
+            &victim_info,
+        ) {
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
             if possible_front_runs_info.len() > 1 {
@@ -277,25 +275,41 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         front_run_swaps: &[Vec<NormalizedSwap>],
         back_run_swaps: &[NormalizedSwap],
         victim_actions: &[Vec<Vec<Actions>>],
+        victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        //  check for pool overlap
-        let mut pools = HashSet::new();
-        for swap in front_run_swaps.iter().flatten() {
-            pools.insert(swap.pool);
-        }
-
-        let has_victim = victim_actions
+        let front_run_pools = front_run_swaps
             .iter()
             .flatten()
-            .flatten()
-            .filter(|action| action.is_swap())
-            .map(|f| f.force_swap_ref().pool)
-            .filter(|f| pools.contains(f))
+            .map(|s| s.pool)
             .collect::<HashSet<_>>();
 
-        back_run_swaps
+        let back_run_pools = back_run_swaps
             .iter()
-            .any(|inner| pools.contains(&inner.pool) && has_victim.contains(&inner.pool))
+            .map(|swap| swap.pool)
+            .collect::<HashSet<_>>();
+
+        // we group all victims by eoa, such that instead of a tx needing to be a victim,
+        // a eoa needs to be a victim. this allows for more complex detection such as
+        // having a approve and then a swap in different transactions.
+        let grouped_victims = victim_info
+            .iter()
+            .zip(victim_actions)
+            .flat_map(|(info, actions)| info.iter().zip(actions))
+            .map(|(info, actions)| (info.eoa, actions))
+            .into_group_map();
+
+        // for each victim eoa, ensure that they have a sandwich swap action occur
+        // over them
+        grouped_victims
+            .into_values()
+            .map(|v| {
+                v.into_iter()
+                    .flatten()
+                    .filter(|action| action.is_swap())
+                    .map(|f| f.force_swap_ref().pool)
+                    .any(|pool| front_run_pools.contains(&pool) || back_run_pools.contains(&pool))
+            })
+            .all(|was_victim| was_victim)
     }
 
     /// Aggregates potential sandwich attacks from both duplicate senders and
@@ -459,6 +473,7 @@ fn get_possible_sandwich_duplicate_contracts(
 mod tests {
 
     use alloy_primitives::hex;
+    use brontes_types::constants::WETH_ADDRESS;
 
     use super::*;
     use crate::{
@@ -567,7 +582,7 @@ mod tests {
                 hex!("fb2ef488bf7b6ad09accb126330837198b0857d2ea0052795af520d470eb5e1d").into(),
             ])
             .needs_tokens(vec![
-                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                WETH_ADDRESS,
                 hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
             ])
             .with_gas_paid_usd(21.9)
@@ -585,5 +600,89 @@ mod tests {
             )
             .await
             .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_related_victim_tx_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("561dc89f55be726eb4a6e42b811b514391d6f5619ac54a2b3546f4a3ce747e98").into(),
+                hex!("efc9bcea246c70f4e915cb26a62019325d73871dbb31849cbf7541a5bc069f1c").into(),
+                hex!("17a8ebe7b7d153d123b27714570bc5a7d1ead669cd90f9e13654a46542ed4367").into(),
+                hex!("bf18530786a7ddf9da5316e57f0f041de09e149a42a121edd532f5ce3bb1cc4b").into(),
+                hex!("a51d90663cbf127440972163d3943d18e3a79dae9a77e065b0980f8d192b65e7").into(),
+                hex!("3b0a069a010d5ebb00be9d4cc86d4dce90687d41eacfd05f1916d12b061e24f2").into(),
+            ])
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("628a3b2e302c7e896acc432d2d0dd22b6cb9bc88").into(),
+                hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into(),
+                hex!("8390a1da07e376ef7add4be859ba74fb83aa02d5").into(),
+                hex!("51cb253744189f11241becb29bedd3f1b5384fdb").into(),
+                USDC_ADDRESS,
+            ])
+            .with_gas_paid_usd(61.0)
+            .with_expected_profit_usd(1.18);
+
+        inspector_util
+            .run_inspector(
+                config,
+                Some(Box::new(|bundle: &Bundle| {
+                    let BundleData::Sandwich(ref sando) = bundle.data else {
+                        panic!("expected a sandwich");
+                    };
+                    // assert that we didn't drop the non related sando
+                    assert_eq!(sando.victim_swaps_tx_hashes.iter().flatten().count(), 4);
+                })),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_low_profit_sandwich1() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("73003ef0efa2d7fea8b54418d58c529fe02dfa7f074c792f608c52028671c0ee").into(),
+                hex!("9a52628d5f1b4129ee85768cf96477824c158ebce48b4331ab4f89de28a39ef1").into(),
+                hex!("a46bfbd85fbcaf8450879d73f27436bf942078e5762af68bc10757745b5e1c9a").into(),
+            ])
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("8390a1da07e376ef7add4be859ba74fb83aa02d5").into(),
+            ])
+            .with_gas_paid_usd(16.57)
+            .with_expected_profit_usd(0.001);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_low_profit_sandwich2() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("3c1592d19a18c7237d6e42ca1541bc82bce4789600f288d933c7476cdd20f375").into(),
+                hex!("b53dfdce0e49609f58df3a229bd431ba8f9d2d201ba4a0ccd40ae11024b8c333").into(),
+                hex!("9955b95cc97a07fab9b42fdb675560256a35feaa8ce98292b594c88d218ebb9d").into(),
+                hex!("287d48d4841cb8cc34771d2df2f00e42ee31711910358d372b4b546cad44679c").into(),
+            ])
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("4309e88d1d511f3764ee0f154cee98d783b61f09").into(),
+                hex!("6bc40d4099f9057b23af309c08d935b890d7adc0").into(),
+            ])
+            .with_gas_paid_usd(30.0)
+            .with_expected_profit_usd(0.03);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }

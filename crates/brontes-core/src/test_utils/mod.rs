@@ -423,7 +423,7 @@ pub async fn init_trace_parser(
 
 #[cfg(not(feature = "local-reth"))]
 pub async fn init_trace_parser(
-    handle: Handle,
+    _handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &LibmdbxReadWriter,
     _max_tasks: u32,
