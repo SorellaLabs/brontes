@@ -37,7 +37,7 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
     }
 }
 
-/// user => token => otherside => amount
+/// user => token => from_address => amount
 /// otherside is the person who is on the otherside of the token transfer
 /// eg if it was a transfer and the amount is negative, it would be the to address of the transfer
 /// and visa versa
@@ -359,11 +359,11 @@ impl ActionRevenueCalculation for Actions {
                     // apply delta to person
                     let entry = delta_map.entry(swap.from).or_insert_with(HashMap::default);
                     apply_entry(swap.token_out.address, swap.pool, amount_out, entry);
-                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry);
+                    apply_entry(swap.token_in.address, swap.from, amount_in, entry);
                 } else {
                     let entry_recipient =
                         delta_map.entry(swap.from).or_insert_with(HashMap::default);
-                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry_recipient);
+                    apply_entry(swap.token_in.address, swap.from, amount_in, entry_recipient);
 
                     let entry_from = delta_map
                         .entry(swap.recipient)
@@ -378,7 +378,12 @@ impl ActionRevenueCalculation for Actions {
                 // subtract token from sender
                 let from_amount_in = &transfer.amount + &transfer.fee;
                 let entry = delta_map.entry(transfer.from).or_default();
-                apply_entry(transfer.token.address, transfer.to, -from_amount_in, entry);
+                apply_entry(
+                    transfer.token.address,
+                    transfer.from,
+                    -from_amount_in,
+                    entry,
+                );
                 // add to recipient
                 let entry = delta_map.entry(transfer.to).or_default();
                 apply_entry(
@@ -402,7 +407,7 @@ impl ActionRevenueCalculation for Actions {
                     .iter()
                     .zip(mint.amount.iter())
                     .for_each(|(token, amount)| {
-                        apply_entry(token.address, mint.from, amount.clone(), entry);
+                        apply_entry(token.address, mint.pool, amount.clone(), entry);
                     });
             }
             Actions::Collect(collect) => {
@@ -420,7 +425,7 @@ impl ActionRevenueCalculation for Actions {
                     .iter()
                     .zip(collect.amount.iter())
                     .for_each(|(token, amount)| {
-                        apply_entry(token.address, collect.recipient, -amount.clone(), entry);
+                        apply_entry(token.address, collect.pool, -amount.clone(), entry);
                     });
             }
             action => {
@@ -454,78 +459,8 @@ impl<const N: usize> IntoSet for [ActionRevenue; N] {
     }
 }
 
-/// removes all of the transfers that we have a classified action for.
-/// this is done by looking at the transfer recipient and token.
-/// NOTE: the actions will not be in order. if this is a problem for you're
-/// use-case, please don't use this function.
-// fn remove_uneeded_transfers(actions: &[Vec<Actions>]) -> Vec<Actions> {
-//     // concat(token_address, from_addr, to_address) => transfers
-//     let mut transfers: HashMap<FixedBytes<60>, Vec<NormalizedTransfer>> = actions
-//         .iter()
-//         .flatten()
-//         .filter(|t| t.is_transfer())
-//         .map(|t| t.clone().force_transfer())
-//         .map(|transfer| {
-//             (
-//                 transfer
-//                     .token
-//                     .address
-//                     .concat_const(transfer.from.concat_const::<20, 40>(*transfer.to)),
-//                 transfer,
-//             )
-//         })
-//         .into_group_map();
-//
-//     if transfers.is_empty() {
-//         return actions.into_iter().flatten().cloned().collect_vec();
-//     }
-//
-//     let mut actions = actions.into_iter().flatten().filter(|t| !t.is_transfer()).filter_map(|action| {
-//         match action.clone() {
-//             Actions::Swap(s) => {
-//                 let in_key = s.token_in.address.concat_const(s.from.concat_const::<20, 40>(*s.pool));
-//                 let out_key = s.token_out.address.concat_const(s.pool.concat_const::<20,40>(*s.recipient));
-//
-//                 transfers.remove(&in_key);
-//                 transfers.remove(&out_key);
-//                 Some(Actions::Swap(s.clone()))
-//             },
-//             Actions::SwapWithFee(s) => {
-//                 let in_key = s.token_in.address.concat_const(s.from.concat_const::<20, 40>(*s.pool));
-//                 let out_key = s.token_out.address.concat_const(s.pool.concat_const::<20,40>(*s.recipient));
-//
-//                 transfers.remove(&in_key);
-//                 transfers.remove(&out_key);
-//                 Some(Actions::SwapWithFee(s.clone()))
-//             },
-//             Actions::Mint(m) => {
-//                 m.token.iter().for_each(|token| {
-//                     let key = token.address.concat_const(m.from.concat_const::<20,40>(*m.pool));
-//                     transfers.remove(&key);
-//                 });
-//                 Some(Actions::Mint(m))
-//             },
-//             Actions::Collect(c) => {
-//                 c.token.iter().for_each(|token| {
-//                     let key = token.address.concat_const(c.pool.concat_const::<20,40>(*c.recipient));
-//                     transfers.remove(&key);
-//                 });
-//                 Some(Actions::Collect(c))
-//             },
-//             action => {warn!(?action, "unsupported action for token transfers, please add functionality or create issue"); None},
-//         }
-//     }).collect_vec();
-//
-//     actions.extend(
-//         transfers
-//             .into_values()
-//             .flatten()
-//             .map(|t| Actions::Transfer(t)),
-//     );
-//
-//     actions
-// }
-//
+// fn flatten_token_deltas(deltas: TokenDeltasCalc) -> TokenDeltas {}
+
 fn apply_entry<K: PartialEq + Hash + Eq>(
     token: K,
     otherside: K,
