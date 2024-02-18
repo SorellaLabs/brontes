@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
-    normalized_actions::{transfer, Actions, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::Actions,
     pair::Pair,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
@@ -51,7 +51,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         actions: &[Vec<Actions>],
         action_set: HashSet<ActionRevenue>,
     ) -> TokenDeltas {
-        tracing::info!("{:#?}", actions);
         // Address and there token delta's
         let mut deltas = HashMap::new();
         // removes all transfers that we have other actions for
@@ -61,10 +60,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 action.apply_token_deltas(&mut deltas)
             }
         });
-        tracing::info!("deltas\n{:#?}", deltas);
         let deltas = flatten_token_deltas(deltas, actions);
-
-        tracing::info!("deltas\n{:#?}", deltas);
 
         deltas
     }
