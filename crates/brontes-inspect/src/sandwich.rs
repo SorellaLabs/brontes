@@ -300,7 +300,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         // for each victim eoa, ensure that they have a sandwich swap action occur
         // over them
-        grouped_victims.into_values().map(|v| {
+        grouped_victims
+            .into_values()
+            .map(|v| {
                 v.into_iter()
                     .flatten()
                     .filter(|action| action.is_swap())
@@ -637,5 +639,49 @@ mod tests {
             )
             .await
             .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_low_profit_sandiwch1() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("73003ef0efa2d7fea8b54418d58c529fe02dfa7f074c792f608c52028671c0ee").into(),
+                hex!("9a52628d5f1b4129ee85768cf96477824c158ebce48b4331ab4f89de28a39ef1").into(),
+                hex!("a46bfbd85fbcaf8450879d73f27436bf942078e5762af68bc10757745b5e1c9a").into(),
+            ])
+            .needs_tokens(vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("8390a1da07e376ef7add4be859ba74fb83aa02d5").into(),
+            ])
+            .with_gas_paid_usd(16.57)
+            .with_expected_profit_usd(0.001);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_low_profit_sandiwch2() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("3c1592d19a18c7237d6e42ca1541bc82bce4789600f288d933c7476cdd20f375").into(),
+                hex!("b53dfdce0e49609f58df3a229bd431ba8f9d2d201ba4a0ccd40ae11024b8c333").into(),
+                hex!("9955b95cc97a07fab9b42fdb675560256a35feaa8ce98292b594c88d218ebb9d").into(),
+                hex!("287d48d4841cb8cc34771d2df2f00e42ee31711910358d372b4b546cad44679c").into(),
+            ])
+            .needs_tokens(vec![
+                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                hex!("4309e88d1d511f3764ee0f154cee98d783b61f09").into(),
+                hex!("6bc40d4099f9057b23af309c08d935b890d7adc0").into(),
+            ])
+            .with_gas_paid_usd(30.0)
+            .with_expected_profit_usd(0.03);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
