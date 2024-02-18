@@ -423,13 +423,21 @@ impl<const N: usize> IntoSet for [ActionRevenue; N] {
 /// NOTE: the actions will not be in order. if this is a problem for you're
 /// use-case, please don't use this function.
 fn remove_uneeded_transfers(actions: &[Vec<Actions>]) -> Vec<Actions> {
-    // concat(token_address, to_address) => transfers
-    let mut transfers: HashMap<FixedBytes<40>, Vec<NormalizedTransfer>> = actions
+    // concat(token_address, from_addr, to_address) => transfers
+    let mut transfers: HashMap<FixedBytes<60>, Vec<NormalizedTransfer>> = actions
         .iter()
         .flatten()
         .filter(|t| t.is_transfer())
         .map(|t| t.clone().force_transfer())
-        .map(|transfer| (transfer.token.address.concat_const(*transfer.to), transfer))
+        .map(|transfer| {
+            (
+                transfer
+                    .token
+                    .address
+                    .concat_const(transfer.from.concat_const::<20, 40>(*transfer.to)),
+                transfer,
+            )
+        })
         .into_group_map();
 
     if transfers.is_empty() {
@@ -439,16 +447,16 @@ fn remove_uneeded_transfers(actions: &[Vec<Actions>]) -> Vec<Actions> {
     let mut actions = actions.into_iter().flatten().filter(|t| !t.is_transfer()).filter_map(|action| {
         match action.clone() {
             Actions::Swap(s) => {
-                let in_key = s.token_in.address.concat_const(*s.pool);
-                let out_key = s.token_out.address.concat_const(*s.recipient);
+                let in_key = s.token_in.address.concat_const(s.from.concat_const::<20, 40>(*s.pool));
+                let out_key = s.token_out.address.concat_const(s.pool.concat_const::<20,40>(*s.recipient));
 
                 transfers.remove(&in_key);
                 transfers.remove(&out_key);
                 Some(Actions::Swap(s.clone()))
             },
             Actions::SwapWithFee(s) => {
-                let in_key = s.token_in.address.concat_const(*s.pool);
-                let out_key = s.token_out.address.concat_const(*s.recipient);
+                let in_key = s.token_in.address.concat_const(s.from.concat_const::<20, 40>(*s.pool));
+                let out_key = s.token_out.address.concat_const(s.pool.concat_const::<20,40>(*s.recipient));
 
                 transfers.remove(&in_key);
                 transfers.remove(&out_key);
@@ -456,14 +464,14 @@ fn remove_uneeded_transfers(actions: &[Vec<Actions>]) -> Vec<Actions> {
             },
             Actions::Mint(m) => {
                 m.token.iter().for_each(|token| {
-                    let key = token.address.concat_const(*m.pool);
+                    let key = token.address.concat_const(m.from.concat_const::<20,40>(*m.pool));
                     transfers.remove(&key);
                 });
                 Some(Actions::Mint(m))
             },
             Actions::Collect(c) => {
                 c.token.iter().for_each(|token| {
-                    let key = token.address.concat_const(*c.recipient);
+                    let key = token.address.concat_const(c.pool.concat_const::<20,40>(*c.recipient));
                     transfers.remove(&key);
                 });
                 Some(Actions::Collect(c))
