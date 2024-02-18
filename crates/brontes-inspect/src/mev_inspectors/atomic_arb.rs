@@ -241,6 +241,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         // more than 2 transfers or more than 1 swap
 
         let collect = searcher_actions.iter().flatten().any(|a| a.is_collect());
+        if collect {
+            return None;
+        }
+
         let swaps = searcher_actions
             .iter()
             .flatten()
@@ -253,11 +257,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .count();
 
         // if we have a collect and no swaps then return
-        if collect && swaps == 0 {
-            return None;
-        }
-
-        if transfers < 3 {
+        if swaps == 0 || transfers < 3 {
             return None;
         }
 
