@@ -23,9 +23,7 @@ use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, error, info};
-use tree_pruning::{
-    account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
-};
+use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
 use self::transfer::try_decode_transfer;
@@ -95,9 +93,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
         // tax token accounting should always be first.
         account_for_tax_tokens(tree);
-        remove_swap_transfers(tree);
-        remove_mint_transfers(tree);
-        remove_collect_transfers(tree);
+        // remove_swap_transfers(tree);
+        // remove_mint_transfers(tree);
+        // remove_collect_transfers(tree);
     }
 
     pub(crate) async fn build_all_tx_trees(
