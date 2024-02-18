@@ -23,9 +23,7 @@ use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, error, info};
-use tree_pruning::{
-    account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
-};
+use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
 use self::transfer::try_decode_transfer;
@@ -95,9 +93,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
         // tax token accounting should always be first.
         account_for_tax_tokens(tree);
-        remove_swap_transfers(tree);
-        remove_mint_transfers(tree);
-        remove_collect_transfers(tree);
+        // remove_swap_transfers(tree);
+        // remove_mint_transfers(tree);
+        // remove_collect_transfers(tree);
     }
 
     pub(crate) async fn build_all_tx_trees(
@@ -290,7 +288,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        _trace_index: u64,
+        trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
             return (vec![], Actions::Unclassified(trace));
@@ -301,16 +299,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
             (vec![results.0], results.1)
-        } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
+        } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
             return transfer;
         } else {
-            return (vec![], self.classify_eth_transfer(trace, tx_idx));
+            return (vec![], self.classify_eth_transfer(trace, trace_index));
         }
     }
 
     async fn classify_transfer(
         &self,
-        tx_idx: u64,
+        trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
     ) -> Option<(Vec<DexPriceMsg>, Actions)> {
@@ -323,7 +321,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         // Attempt to decode the transfer
         match try_decode_transfer(
-            tx_idx,
+            trace_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
             token_address,
