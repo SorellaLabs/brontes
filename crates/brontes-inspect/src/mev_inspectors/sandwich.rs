@@ -310,16 +310,21 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|(info, actions)| (info.eoa, actions))
             .into_group_map();
 
-        // for each victim eoa, ensure that they have a sandwich swap action occur
-        // over them
+        // for each victim eoa, ensure they are a victim of a frontrun and a backrun
         grouped_victims
             .into_values()
             .map(|v| {
-                v.into_iter()
+                v.iter()
+                    .cloned()
                     .flatten()
                     .filter(|action| action.is_swap())
                     .map(|f| f.force_swap_ref().pool)
-                    .any(|pool| front_run_pools.contains(&pool) || back_run_pools.contains(&pool))
+                    .any(|pool| front_run_pools.contains(&pool))
+                    && v.into_iter()
+                        .flatten()
+                        .filter(|action| action.is_swap())
+                        .map(|f| f.force_swap_ref().pool)
+                        .any(|pool| back_run_pools.contains(&pool))
             })
             .all(|was_victim| was_victim)
     }
