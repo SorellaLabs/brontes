@@ -64,10 +64,11 @@ impl<V: NormalizedAction> Root<V> {
             .get_action()
             .get_to_address();
 
-        let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
-            Ok(metadata) => metadata.is_verified(),
-            Err(_) => false,
-        };
+        let is_verified_contract = database
+            .try_fetch_address_metadata(to_address)
+            .map(|meta| meta.is_verified())
+            .unwrap_or_default();
+
         let searcher_info = database.try_fetch_searcher_info(self.head.address).ok();
 
         TxInfo::new(
