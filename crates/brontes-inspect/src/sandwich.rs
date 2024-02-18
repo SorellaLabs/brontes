@@ -642,7 +642,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_low_profit_sandiwch1() {
+    async fn test_low_profit_sandwich1() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
@@ -663,7 +663,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_low_profit_sandiwch2() {
+    async fn test_low_profit_sandwich2() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
