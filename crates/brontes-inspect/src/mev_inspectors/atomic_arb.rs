@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -15,7 +15,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
 use crate::{
-    shared_utils::{ActionRevenue, SharedInspectorUtils},
+    mev_inspectors::shared_utils::ActionRevenueCalculation, shared_utils::SharedInspectorUtils,
     BundleData, Inspector, Metadata,
 };
 
@@ -110,7 +110,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             &[info.gas_details],
             metadata,
             MevType::AtomicArb,
-            [ActionRevenue::Swaps, ActionRevenue::Transfers],
         );
 
         let backrun = AtomicArb {
@@ -168,7 +167,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             PriceAt::Average,
             searcher_actions,
             metadata.clone(),
-            ActionRevenue::Swaps,
         )?;
 
         let gas_used = tx_info.gas_details.gas_paid();
@@ -196,12 +194,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Rational> {
         let is_stable_arb = is_stable_arb(swaps, jump_index);
 
-        let rev_usd = self.inner.get_dex_revenue_usd(
+        let rev_usd = self.get_dex_revenue_usd_with_transfers(
             tx_info.tx_index,
             PriceAt::After,
             searcher_actions,
             metadata.clone(),
-            [ActionRevenue::Swaps, ActionRevenue::Transfers],
         )?;
 
         let gas_used = tx_info.gas_details.gas_paid();
@@ -232,12 +229,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let gas_used = tx_info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
-        let rev_usd = self.inner.get_dex_revenue_usd(
+        let rev_usd = self.get_dex_revenue_usd_with_transfers(
             tx_info.tx_index,
             PriceAt::Lowest,
             searcher_actions,
             metadata.clone(),
-            [ActionRevenue::Swaps, ActionRevenue::Transfers],
         )?;
 
         let profit = &rev_usd - &gas_used_usd;
@@ -256,6 +252,31 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         //         },
         //     )
         //     .flatten()
+    }
+
+    fn get_dex_revenue_usd_with_transfers(
+        &self,
+        idx: u64,
+        at: PriceAt,
+        actions: &[Vec<Actions>],
+        metadata: Arc<Metadata>,
+    ) -> Option<Rational> {
+        let mut deltas = HashMap::new();
+        actions
+            .iter()
+            .flatten()
+            .for_each(|action| action.apply_token_deltas(&mut deltas));
+
+        let deltas = flatten_token_deltas(deltas, actions)?;
+        let addr_usd_deltas =
+            self.inner
+                .usd_delta_by_address(idx as usize, at, &deltas, metadata.clone(), false)?;
+
+        Some(
+            addr_usd_deltas
+                .values()
+                .fold(Rational::ZERO, |acc, delta| acc + delta),
+        )
     }
 }
 
@@ -293,6 +314,65 @@ fn is_stable_arb(swaps: &[NormalizedSwap], jump_index: usize) -> bool {
     } else {
         false
     }
+}
+type TokenDeltasCalc = HashMap<Address, HashMap<Address, HashMap<Address, Rational>>>;
+type TokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
+
+// if theres any address with a single non-zero token delta. Then
+// that is the person with the result delta and we just use that.
+// otherwise, if 2 transfers, last transfer to, else same first last
+// this also assumes that a arber doesn't dust any contracts
+fn flatten_token_deltas(deltas: TokenDeltasCalc, actions: &[Vec<Actions>]) -> Option<TokenDeltas> {
+    let mut deltas = deltas
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k,
+                v.into_iter()
+                    .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
+                    .filter(|(_, v)| v.ne(&Rational::ZERO))
+                    .into_grouping_map()
+                    .sum(),
+            )
+        })
+        .filter(|(_, v)| !v.is_empty())
+        .collect::<HashMap<_, HashMap<_, _>>>();
+
+    // if there is a address with a single token delta, then it
+    // is the proper pool.
+    if deltas.iter().any(|(_, v)| v.len() == 1) {
+        deltas.retain(|_, v| v.len() == 1);
+        return Some(deltas);
+    }
+
+    let transfers = actions
+        .iter()
+        .flatten()
+        .filter(|t| t.is_transfer())
+        .map(|t| t.clone().force_transfer())
+        .sorted_by(|a, b| a.trace_index.cmp(&b.trace_index))
+        .collect_vec();
+
+    // if just two transfers, result person will always be last,
+    if transfers.len() == 2 {
+        let final_address = transfers.last().unwrap().to;
+        deltas.retain(|k, _| *k == final_address);
+        return Some(deltas);
+    } else if transfers.len() > 2 {
+        // grab first and last transfers
+        let first = transfers.first().unwrap();
+        let last = transfers.last().unwrap();
+        if first.to == last.from {
+            deltas.retain(|k, _| *k == first.to);
+            return Some(deltas);
+        } else if first.from == last.to {
+            deltas.retain(|k, _| *k == first.from);
+            return Some(deltas);
+        } else {
+            tracing::error!("shouldn't be hit");
+        }
+    }
+    None
 }
 
 /// Represents the different types of atomic arb

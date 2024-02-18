@@ -18,8 +18,7 @@ use itertools::Itertools;
 use malachite::Rational;
 
 use crate::{
-    shared_utils::{ActionRevenue, SharedInspectorUtils},
-    Actions, BlockTree, BundleData, Inspector, Metadata,
+    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, Metadata,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -214,7 +213,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             &gas_details,
             metadata,
             MevType::Jit,
-            [ActionRevenue::Mints, ActionRevenue::Collect],
         );
 
         let victim_swaps = victim_actions

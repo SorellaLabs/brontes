@@ -1,6 +1,6 @@
 use core::hash::Hash;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
 
@@ -46,23 +46,29 @@ type TokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
-    pub(crate) fn calculate_swap_deltas(
-        &self,
-        actions: &[Vec<Actions>],
-        action_set: HashSet<ActionRevenue>,
-    ) -> TokenDeltas {
+    pub(crate) fn calculate_swap_deltas(&self, actions: &[Vec<Actions>]) -> TokenDeltas {
         // Address and there token delta's
         let mut deltas = HashMap::new();
-        // removes all transfers that we have other actions for
-        // remove_uneeded_transfers(actions)
-        actions.iter().flatten().for_each(|action| {
-            if action_set.contains(&action.as_action_rev()) {
-                action.apply_token_deltas(&mut deltas)
-            }
-        });
-        let deltas = flatten_token_deltas(deltas, actions);
+        actions
+            .iter()
+            .flatten()
+            .filter(|f| f.is_swap())
+            .for_each(|action| action.apply_token_deltas(&mut deltas));
 
         deltas
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k,
+                    v.into_iter()
+                        .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
+                        .filter(|(_, v)| v.ne(&Rational::ZERO))
+                        .into_grouping_map()
+                        .sum(),
+                )
+            })
+            .filter(|(_, v)| !v.is_empty())
+            .collect::<HashMap<_, HashMap<_, _>>>()
     }
 
     /// Calculates the usd delta by address
@@ -159,7 +165,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
-        action_set: impl IntoSet,
     ) -> BundleHeader {
         let token_profits = self
             .get_profit_collectors(
@@ -168,7 +173,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 actions,
                 metadata.clone(),
                 mev_type.use_cex_pricing_for_deltas(),
-                action_set,
             )
             .unwrap_or_default();
 
@@ -196,9 +200,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         at: PriceAt,
         bundle_actions: &[Vec<Actions>],
         metadata: Arc<Metadata>,
-        action_set: impl IntoSet,
     ) -> Option<Rational> {
-        let deltas = self.calculate_swap_deltas(bundle_actions, action_set.into_set());
+        let deltas = self.calculate_swap_deltas(bundle_actions);
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), false)?;
@@ -216,9 +219,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_actions: &[Vec<Actions>],
         metadata: Arc<Metadata>,
         pricing: bool,
-        action_set: impl IntoSet,
     ) -> Option<TokenProfits> {
-        let deltas = self.calculate_swap_deltas(bundle_actions, action_set.into_set());
+        let deltas = self.calculate_swap_deltas(bundle_actions);
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), pricing)?;
@@ -299,38 +301,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
-pub enum ActionRevenue {
-    Swaps,
-    Transfers,
-    Mints,
-    Collect,
-    None,
-}
-
 pub trait ActionRevenueCalculation {
-    fn as_action_rev(&self) -> ActionRevenue;
     fn apply_token_deltas(&self, delta_map: &mut TokenDeltasCalc);
 }
 
 impl ActionRevenueCalculation for Actions {
-    fn as_action_rev(&self) -> ActionRevenue {
-        match self {
-            Actions::Swap(_) => ActionRevenue::Swaps,
-            Actions::Transfer(_) => ActionRevenue::Transfers,
-            Actions::Mint(_) => ActionRevenue::Mints,
-            Actions::Collect(_) => ActionRevenue::Collect,
-            Actions::SwapWithFee(_) => ActionRevenue::Swaps,
-            action => {
-                warn!(
-                    ?action,
-                    "revenue calculation is not supported for action variant"
-                );
-                ActionRevenue::None
-            }
-        }
-    }
-
     fn apply_token_deltas(&self, delta_map: &mut TokenDeltasCalc) {
         match self {
             Actions::Swap(swap) => {
@@ -413,84 +388,6 @@ impl ActionRevenueCalculation for Actions {
             }
         }
     }
-}
-
-/// so we can pass either a list fo actions or just a singular action
-pub trait IntoSet {
-    fn into_set(self) -> HashSet<ActionRevenue>
-    where
-        Self: Sized;
-}
-
-impl IntoSet for ActionRevenue {
-    #[inline(always)]
-    fn into_set(self) -> HashSet<ActionRevenue> {
-        HashSet::from_iter(vec![self])
-    }
-}
-
-impl<const N: usize> IntoSet for [ActionRevenue; N] {
-    #[inline(always)]
-    fn into_set(self) -> HashSet<ActionRevenue> {
-        HashSet::from_iter(self)
-    }
-}
-
-// if theres any address with a single non-zero token delta. Then
-// that is the person with the result delta and we just use that.
-// otherwise, if 2 transfers, last transfer to, else same first last
-// this also assumes that a arber doesn't dust any contracts
-fn flatten_token_deltas(deltas: TokenDeltasCalc, actions: &[Vec<Actions>]) -> TokenDeltas {
-    let mut deltas = deltas
-        .into_iter()
-        .map(|(k, v)| {
-            (
-                k,
-                v.into_iter()
-                    .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
-                    .filter(|(_, v)| v.ne(&Rational::ZERO))
-                    .into_grouping_map()
-                    .sum(),
-            )
-        })
-        .filter(|(_, v)| !v.is_empty())
-        .collect::<HashMap<_, HashMap<_, _>>>();
-
-    // if there is a address with a single token delta, then it
-    // is the proper pool.
-    if deltas.iter().any(|(_, v)| v.len() == 1) {
-        deltas.retain(|_, v| v.len() == 1);
-        return deltas;
-    }
-
-    let transfers = actions
-        .iter()
-        .flatten()
-        .filter(|t| t.is_transfer())
-        .map(|t| t.clone().force_transfer())
-        .sorted_by(|a, b| a.trace_index.cmp(&b.trace_index))
-        .collect_vec();
-
-    // if just two transfers, result person will always be last,
-    if transfers.len() == 2 {
-        let final_address = transfers.last().unwrap().to;
-        deltas.retain(|k, _| *k == final_address);
-        return deltas;
-    } else if transfers.len() > 2 {
-        // grab first and last transfers
-        let first = transfers.first().unwrap();
-        let last = transfers.last().unwrap();
-        if first.to == last.from {
-            deltas.retain(|k, _| *k == first.to);
-            return deltas;
-        } else if first.from == last.to {
-            deltas.retain(|k, _| *k == first.from);
-            return deltas;
-        } else {
-            tracing::error!("shouldn't be hit");
-        }
-    }
-    return deltas;
 }
 
 fn apply_entry<K: PartialEq + Hash + Eq>(
