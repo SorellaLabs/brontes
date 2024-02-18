@@ -240,18 +240,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let is_profitable = profit > Rational::ZERO;
         is_profitable.then_some(profit)
-
-        // is_profitable
-        //     .then(
-        //         || match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-        //             Ok(info) => info.mev.contains(&MevType::AtomicArb).then_some(profit),
-        //             Err(_) => (tx_info.is_private
-        //                 && tx_info.gas_details.coinbase_transfer.is_some()
-        //                 && !tx_info.is_verified_contract)
-        //                 .then_some(profit),
-        //         },
-        //     )
-        //     .flatten()
     }
 
     fn get_dex_revenue_usd_with_transfers(
