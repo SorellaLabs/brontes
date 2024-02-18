@@ -191,6 +191,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
 
+                if victim_actions
+                    .iter()
+                    .flatten()
+                    .flatten()
+                    .filter(|f| f.is_swap())
+                    .count()
+                    == 0
+                {
+                    return None;
+                }
+
                 return self.calculate_sandwich(
                     metadata.clone(),
                     possible_front_runs_info,
