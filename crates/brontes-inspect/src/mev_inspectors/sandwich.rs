@@ -96,6 +96,18 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         })
                         .collect::<Vec<_>>();
 
+                    // if there are no victims in any part of sandwich, return
+                    if victim_actions
+                        .iter()
+                        .flatten()
+                        .flatten()
+                        .filter(|f| f.is_swap())
+                        .count()
+                        == 0
+                    {
+                        return None;
+                    }
+
                     if victims
                         .iter()
                         .flatten()
