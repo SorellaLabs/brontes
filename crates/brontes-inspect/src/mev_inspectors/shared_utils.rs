@@ -63,6 +63,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             v.retain(|_, rational| (*rational).ne(&Rational::ZERO));
         });
 
+        tracing::info!("{:#?}", deltas);
+
         deltas
     }
 
