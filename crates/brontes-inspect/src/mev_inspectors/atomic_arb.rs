@@ -178,16 +178,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let is_profitable = profit > Rational::ZERO;
 
-        if is_profitable
+        // If the arb is not profitable, check if this is a know searcher or if the tx
+        // is private or coinbase.transfers to the builder
+        (is_profitable
             || tx_info.is_searcher_of_type(MevType::AtomicArb)
-            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
-        {
-            // If the arb is not profitable, check if this is a know searcher or if the tx
-            // is private or coinbase.transfers to the builder
-            Some(profit)
-        } else {
-            None
-        }
+            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private)
+            .then_some(profit)
     }
 
     fn process_cross_pair_arb(
@@ -220,14 +216,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         } else {
             // If the arb is not profitable, check if this is a know searcher or if the tx
             // is private or coinbase.transfers to the builder
-            if tx_info.is_searcher_of_type(MevType::AtomicArb)
+            (tx_info.is_searcher_of_type(MevType::AtomicArb)
                 || tx_info.is_private
-                || tx_info.gas_details.coinbase_transfer.is_some()
-            {
-                Some(profit)
-            } else {
-                None
-            }
+                || tx_info.gas_details.coinbase_transfer.is_some())
+            .then_some(profit)
         }
     }
 
@@ -242,7 +234,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let rev_usd = self.inner.get_dex_revenue_usd(
             tx_info.tx_index,
-            PriceAt::Average,
+            PriceAt::Lowest,
             searcher_actions,
             metadata.clone(),
             [ActionRevenue::Swaps, ActionRevenue::Transfers],
@@ -251,30 +243,19 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let profit = &rev_usd - &gas_used_usd;
 
         let is_profitable = profit > Rational::ZERO;
+        is_profitable.then_some(profit)
 
-        if is_profitable {
-            match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
-                Ok(info) => {
-                    if info.mev.contains(&MevType::AtomicArb) {
-                        Some(profit)
-                    } else {
-                        None
-                    }
-                }
-                Err(_) => {
-                    if tx_info.is_private
-                        && tx_info.gas_details.coinbase_transfer.is_some()
-                        && !tx_info.is_verified_contract
-                    {
-                        Some(profit)
-                    } else {
-                        None
-                    }
-                }
-            }
-        } else {
-            None
-        }
+        // is_profitable
+        //     .then(
+        //         || match self.inner.db.try_fetch_searcher_info(tx_info.eoa) {
+        //             Ok(info) => info.mev.contains(&MevType::AtomicArb).then_some(profit),
+        //             Err(_) => (tx_info.is_private
+        //                 && tx_info.gas_details.coinbase_transfer.is_some()
+        //                 && !tx_info.is_verified_contract)
+        //                 .then_some(profit),
+        //         },
+        //     )
+        //     .flatten()
     }
 }
 
@@ -377,8 +358,8 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
-            .with_expected_profit_usd(0.188588)
-            .with_gas_paid_usd(71.632668);
+            .with_expected_profit_usd(2.62)
+            .with_gas_paid_usd(10.92);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
