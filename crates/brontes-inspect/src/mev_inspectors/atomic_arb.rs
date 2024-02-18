@@ -249,12 +249,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .iter()
             .flatten()
             .map(|a| if a.is_swap() { 1 } else { 0 })
-            .count();
+            .sum::<u64>();
         let transfers = searcher_actions
             .iter()
             .flatten()
             .map(|a| if a.is_transfer() { 1 } else { 0 })
-            .count();
+            .sum::<u64>();
 
         // if we have a collect and no swaps then return
         if swaps == 0 || transfers < 3 {
