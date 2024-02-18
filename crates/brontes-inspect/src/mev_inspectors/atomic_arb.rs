@@ -110,6 +110,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             &[info.gas_details],
             metadata,
             MevType::AtomicArb,
+            [ActionRevenue::Swaps, ActionRevenue::Transfers],
         );
 
         let backrun = AtomicArb {
@@ -192,7 +193,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     fn process_cross_pair_arb(
         &self,
         tx_info: &TxInfo,
-
         metadata: Arc<Metadata>,
         swaps: &[NormalizedSwap],
         searcher_actions: &[Vec<Actions>],
@@ -205,7 +205,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             PriceAt::After,
             searcher_actions,
             metadata.clone(),
-            ActionRevenue::Swaps,
+            [ActionRevenue::Swaps, ActionRevenue::Transfers],
         )?;
 
         let gas_used = tx_info.gas_details.gas_paid();
@@ -388,18 +388,3 @@ mod tests {
         inspector_util.assert_no_mev(config).await.unwrap();
     }
 }
-/*
-    //TODO:
-    #[tokio::test]
-    #[serial]
-    async fn test_cross_stable_arb() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5);
-        let tx = hex!("397c98efa1991e0384db16c56bd1693fb82addc7d932328941912afa8176cdb1").into();
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices();
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-}
-*/
