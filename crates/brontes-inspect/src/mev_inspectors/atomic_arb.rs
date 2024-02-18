@@ -14,7 +14,10 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
-use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, Metadata};
+use crate::{
+    shared_utils::{ActionRevenue, SharedInspectorUtils},
+    BundleData, Inspector, Metadata,
+};
 
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -164,6 +167,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             PriceAt::Average,
             searcher_actions,
             metadata.clone(),
+            ActionRevenue::Swaps,
         )?;
 
         let gas_used = tx_info.gas_details.gas_paid();
@@ -201,6 +205,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             PriceAt::After,
             searcher_actions,
             metadata.clone(),
+            ActionRevenue::Swaps,
         )?;
 
         let gas_used = tx_info.gas_details.gas_paid();
@@ -240,6 +245,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             PriceAt::Average,
             searcher_actions,
             metadata.clone(),
+            [ActionRevenue::Swaps, ActionRevenue::Transfers],
         )?;
 
         let profit = &rev_usd - &gas_used_usd;

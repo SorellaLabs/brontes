@@ -16,7 +16,10 @@ use brontes_types::{
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+use crate::{
+    shared_utils::{ActionRevenue, SharedInspectorUtils},
+    Inspector, Metadata,
+};
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -235,6 +238,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             PriceAt::After,
             &all_actions,
             metadata.clone(),
+            ActionRevenue::Swaps,
         )?;
 
         let profit_usd = (rev_usd - &gas_used).to_float();
@@ -253,6 +257,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &gas_details,
             metadata,
             MevType::Sandwich,
+            ActionRevenue::Swaps,
         );
 
         let sandwich = Sandwich {

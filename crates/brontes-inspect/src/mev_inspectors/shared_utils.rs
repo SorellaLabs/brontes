@@ -1,23 +1,25 @@
 use core::hash::Hash;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
-    normalized_actions::Actions,
+    normalized_actions::{Actions, NormalizedTransfer},
     pair::Pair,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
 };
+use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
+use tracing::warn;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
@@ -35,37 +37,25 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
     }
 }
 
-type SwapTokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
+type TokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the swap deltas.
-    pub(crate) fn calculate_swap_deltas(&self, actions: &[Vec<Actions>]) -> SwapTokenDeltas {
+    pub(crate) fn calculate_swap_deltas(
+        &self,
+        actions: &[Vec<Actions>],
+        action_set: HashSet<ActionRevenue>,
+    ) -> TokenDeltas {
         // Address and there token delta's
         let mut deltas = HashMap::new();
-
-        for action in actions.iter().flatten() {
-            if !action.is_swap() {
-                continue;
-            }
-
-            let swap = action.force_swap_ref();
-            let amount_in = -swap.amount_in.clone();
-            let amount_out = swap.amount_out.clone();
-            // we track the address deltas so we can apply transfers later on the profit
-            if swap.from == swap.recipient {
-                let entry = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                apply_entry(swap.token_out.address, amount_out, entry);
-                apply_entry(swap.token_in.address, amount_in, entry);
-            } else {
-                let entry_recipient = deltas.entry(swap.from).or_insert_with(HashMap::default);
-                apply_entry(swap.token_in.address, amount_in, entry_recipient);
-
-                let entry_from = deltas
-                    .entry(swap.recipient)
-                    .or_insert_with(HashMap::default);
-                apply_entry(swap.token_out.address, amount_out, entry_from);
-            }
-        }
+        // removes all transfers that we have other actions for
+        remove_uneeded_transfers(actions)
+            .into_iter()
+            .for_each(|action| {
+                if action_set.contains(&action.as_action_rev()) {
+                    action.apply_token_deltas(&mut deltas)
+                }
+            });
 
         // Prunes proxy contracts that receive and immediately send, like router
         // contracts
@@ -81,7 +71,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         tx_position: usize,
         at: PriceAt,
-        deltas: &SwapTokenDeltas,
+        deltas: &TokenDeltas,
         metadata: Arc<Metadata>,
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
@@ -170,6 +160,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
+        action_set: impl IntoSet,
     ) -> BundleHeader {
         let token_profits = self
             .get_profit_collectors(
@@ -178,8 +169,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 actions,
                 metadata.clone(),
                 mev_type.use_cex_pricing_for_deltas(),
+                action_set,
             )
             .unwrap_or_default();
+
         let bribe_usd = gas_details
             .iter()
             .map(|details| metadata.get_gas_price_usd(details.gas_paid()).to_float())
@@ -204,8 +197,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         at: PriceAt,
         bundle_actions: &[Vec<Actions>],
         metadata: Arc<Metadata>,
+        action_set: impl IntoSet,
     ) -> Option<Rational> {
-        let deltas = self.calculate_swap_deltas(bundle_actions);
+        let deltas = self.calculate_swap_deltas(bundle_actions, action_set.into_set());
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), false)?;
@@ -223,8 +217,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_actions: &[Vec<Actions>],
         metadata: Arc<Metadata>,
         pricing: bool,
+        action_set: impl IntoSet,
     ) -> Option<TokenProfits> {
-        let deltas = self.calculate_swap_deltas(bundle_actions);
+        let deltas = self.calculate_swap_deltas(bundle_actions, action_set.into_set());
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), pricing)?;
@@ -240,7 +235,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         at: PriceAt,
         metadata: Arc<Metadata>,
         profit_collectors: Vec<Address>,
-        deltas: SwapTokenDeltas,
+        deltas: TokenDeltas,
         use_cex_pricing: bool,
     ) -> Option<TokenProfits> {
         let token_profits = profit_collectors
@@ -303,6 +298,185 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 * amount,
         )
     }
+}
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub enum ActionRevenue {
+    Swaps,
+    Transfers,
+    Mints,
+    Collect,
+    None,
+}
+
+pub trait ActionRevenueCalculation {
+    fn as_action_rev(&self) -> ActionRevenue;
+    fn apply_token_deltas(&self, delta_map: &mut TokenDeltas);
+}
+
+impl ActionRevenueCalculation for Actions {
+    fn as_action_rev(&self) -> ActionRevenue {
+        match self {
+            Actions::Swap(_) => ActionRevenue::Swaps,
+            Actions::Transfer(_) => ActionRevenue::Transfers,
+            Actions::Mint(_) => ActionRevenue::Mints,
+            Actions::Collect(_) => ActionRevenue::Collect,
+            Actions::SwapWithFee(_) => ActionRevenue::Swaps,
+            action => {
+                warn!(
+                    ?action,
+                    "revenue calculation is not supported for action variant"
+                );
+                ActionRevenue::None
+            }
+        }
+    }
+
+    fn apply_token_deltas(&self, delta_map: &mut TokenDeltas) {
+        match self {
+            Actions::Swap(swap) => {
+                let amount_in = -swap.amount_in.clone();
+                let amount_out = swap.amount_out.clone();
+                // we track the address deltas so we can apply transfers later on the profit
+                if swap.from == swap.recipient {
+                    let entry = delta_map.entry(swap.from).or_insert_with(HashMap::default);
+                    apply_entry(swap.token_out.address, amount_out, entry);
+                    apply_entry(swap.token_in.address, amount_in, entry);
+                } else {
+                    let entry_recipient =
+                        delta_map.entry(swap.from).or_insert_with(HashMap::default);
+                    apply_entry(swap.token_in.address, amount_in, entry_recipient);
+
+                    let entry_from = delta_map
+                        .entry(swap.recipient)
+                        .or_insert_with(HashMap::default);
+                    apply_entry(swap.token_out.address, amount_out, entry_from);
+                }
+            }
+            Actions::SwapWithFee(swap) => {
+                Actions::Swap(swap.swap.clone()).apply_token_deltas(delta_map)
+            }
+            Actions::Transfer(transfer) => {
+                // subtract token from sender
+                let from_amount_in = &transfer.amount + &transfer.fee;
+                let entry = delta_map.entry(transfer.from).or_default();
+                apply_entry(transfer.token.address, -from_amount_in, entry);
+                // add to recipient
+                let entry = delta_map.entry(transfer.to).or_default();
+                apply_entry(transfer.token.address, transfer.amount.clone(), entry);
+            }
+            Actions::Mint(mint) => {
+                let entry = delta_map.entry(mint.from).or_default();
+                mint.token
+                    .iter()
+                    .zip(mint.amount.iter())
+                    .for_each(|(token, amount)| {
+                        apply_entry(token.address, amount.clone(), entry);
+                    });
+            }
+            Actions::Collect(collect) => {
+                let entry = delta_map.entry(collect.recipient).or_default();
+                collect
+                    .token
+                    .iter()
+                    .zip(collect.amount.iter())
+                    .for_each(|(token, amount)| {
+                        apply_entry(token.address, amount.clone(), entry);
+                    });
+            }
+            action => {
+                warn!(
+                    ?action,
+                    "revenue calculation is not supported for action variant"
+                );
+            }
+        }
+    }
+}
+
+/// so we can pass either a list fo actions or just a singular action
+pub trait IntoSet {
+    fn into_set(self) -> HashSet<ActionRevenue>
+    where
+        Self: Sized;
+}
+
+impl IntoSet for ActionRevenue {
+    #[inline(always)]
+    fn into_set(self) -> HashSet<ActionRevenue> {
+        HashSet::from_iter(vec![self])
+    }
+}
+
+impl<const N: usize> IntoSet for [ActionRevenue; N] {
+    #[inline(always)]
+    fn into_set(self) -> HashSet<ActionRevenue> {
+        HashSet::from_iter(self)
+    }
+}
+
+/// removes all of the transfers that we have a classified action for.
+/// this is done by looking at the transfer recipient and token.
+/// NOTE: the actions will not be in order. if this is a problem for you're
+/// use-case, please don't use this function.
+fn remove_uneeded_transfers(actions: &[Vec<Actions>]) -> Vec<Actions> {
+    // concat(token_address, to_address) => transfers
+    let mut transfers: HashMap<FixedBytes<40>, Vec<NormalizedTransfer>> = actions
+        .iter()
+        .flatten()
+        .filter(|t| t.is_transfer())
+        .map(|t| t.clone().force_transfer())
+        .map(|transfer| (transfer.token.address.concat_const(*transfer.to), transfer))
+        .into_group_map();
+
+    if transfers.is_empty() {
+        return actions.into_iter().flatten().cloned().collect_vec();
+    }
+
+    let mut actions = actions.into_iter().flatten().filter(|t| !t.is_transfer()).filter_map(|action| {
+        match action.clone() {
+            Actions::Swap(s) => {
+                let in_key = s.token_in.address.concat_const(*s.pool);
+                let out_key = s.token_out.address.concat_const(*s.recipient);
+
+                transfers.remove(&in_key);
+                transfers.remove(&out_key);
+                Some(Actions::Swap(s.clone()))
+            },
+            Actions::SwapWithFee(s) => {
+                let in_key = s.token_in.address.concat_const(*s.pool);
+                let out_key = s.token_out.address.concat_const(*s.recipient);
+
+                transfers.remove(&in_key);
+                transfers.remove(&out_key);
+                Some(Actions::SwapWithFee(s.clone()))
+            },
+            Actions::Mint(m) => {
+                m.token.iter().for_each(|token| {
+                    let key = token.address.concat_const(*m.pool);
+                    transfers.remove(&key);
+                });
+                Some(Actions::Mint(m))
+            },
+            Actions::Collect(c) => {
+                c.token.iter().for_each(|token| {
+                    let key = token.address.concat_const(*c.recipient);
+                    transfers.remove(&key);
+                });
+                Some(Actions::Collect(c))
+            },
+            action => {warn!(?action, "unsupported action for token transfers, please add functionality or create issue"); None},
+        }
+    }).collect_vec();
+
+    actions.extend(
+        transfers
+            .into_values()
+            .flatten()
+            .map(|t| Actions::Transfer(t)),
+    );
+
+    actions
 }
 
 fn apply_entry<K: PartialEq + Hash + Eq>(

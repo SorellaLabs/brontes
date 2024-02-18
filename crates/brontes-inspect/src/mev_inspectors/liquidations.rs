@@ -14,7 +14,10 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{b256, Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+use crate::{
+    shared_utils::{ActionRevenue, SharedInspectorUtils},
+    Inspector, Metadata,
+};
 
 pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -121,6 +124,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             PriceAt::After,
             &[actions.clone()],
             metadata.clone(),
+            ActionRevenue::Swaps,
         )? + liq_profit;
 
         let gas_finalized = metadata.get_gas_price_usd(info.gas_details.gas_paid());
@@ -135,6 +139,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             &[info.gas_details],
             metadata,
             MevType::Liquidation,
+            ActionRevenue::Swaps,
         );
 
         let new_liquidation = Liquidation {

@@ -60,7 +60,10 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 use tracing::debug;
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+use crate::{
+    shared_utils::{ActionRevenue, SharedInspectorUtils},
+    Inspector, Metadata,
+};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
     inner: SharedInspectorUtils<'db, DB>,
@@ -158,6 +161,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,
+                    ActionRevenue::Swaps,
                 );
 
                 Some(Bundle {
@@ -431,6 +435,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     .map(|s| s.to_action())
                     .collect()],
                 metadata.clone(),
+                ActionRevenue::Swaps,
             )
             .unwrap_or_default();
 
