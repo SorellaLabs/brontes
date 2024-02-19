@@ -55,7 +55,11 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
-    pub fn get_tx_info<DB: LibmdbxReader>(&self, block_number: u64, database: &DB) -> TxInfo {
+    pub fn get_tx_info<DB: LibmdbxReader>(
+        &self,
+        block_number: u64,
+        database: &DB,
+    ) -> eyre::Result<TxInfo> {
         let to_address = self
             .data_store
             .get_ref(self.head.data)
@@ -64,14 +68,15 @@ impl<V: NormalizedAction> Root<V> {
             .get_action()
             .get_to_address();
 
-        let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
-            Ok(metadata) => metadata.is_verified(),
-            Err(_) => false,
-        };
-        let searcher_info = database.try_fetch_searcher_eoa_info(self.head.address).ok();
-        //TODO: Also fetch searcher contract info
+        let is_verified_contract = database
+            .try_fetch_address_metadata(to_address)
+            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
+            .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
 
-        TxInfo::new(
+        let searcher_eoa_info = database.try_fetch_searcher_contract_info(self.head.address)?;
+        let searcher_contract_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
+
+        Ok(TxInfo::new(
             block_number,
             self.position as u64,
             self.head.address,
@@ -88,8 +93,9 @@ impl<V: NormalizedAction> Root<V> {
             ),
             self.private,
             is_verified_contract,
-            searcher_info,
-        )
+            searcher_eoa_info,
+            searcher_contract_info,
+        ))
     }
     pub fn get_from_address(&self) -> Address {
         self.head.address

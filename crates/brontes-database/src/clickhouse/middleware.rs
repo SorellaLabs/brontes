@@ -80,19 +80,34 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         self.inner().save_mev_blocks(block_number, block, mev).await
     }
 
-    async fn write_searcher_info(
+    async fn write_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         self.client
-            .write_searcher_info(searcher_eoa, searcher_info.clone())
+            .write_searcher_eoa_info(searcher_eoa, searcher_info.clone())
             .await?;
 
         self.inner()
-            .write_searcher_info(searcher_eoa, searcher_info)
+            .write_searcher_eoa_info(searcher_eoa, searcher_info)
             .await
     }
+
+    async fn write_searcher_contract_info(
+        &self,
+        searcher_contract: Address,
+        searcher_info: SearcherInfo,
+    ) -> eyre::Result<()> {
+        self.client
+            .write_searcher_contract_info(searcher_contract, searcher_info.clone())
+            .await?;
+
+        self.inner()
+            .write_searcher_contract_info(searcher_contract, searcher_info)
+            .await
+    }
+
     //TODO: JOE
     async fn write_builder_info(
         &self,
@@ -158,11 +173,24 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.get_metadata_no_dex_price(block_num)
     }
 
-    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
-        self.inner.try_fetch_searcher_info(searcher_eoa)
+    fn try_fetch_searcher_eoa_info(
+        &self,
+        searcher_eoa: Address,
+    ) -> eyre::Result<Option<SearcherInfo>> {
+        self.inner.try_fetch_searcher_eoa_info(searcher_eoa)
     }
 
-    fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
+    fn try_fetch_searcher_contract_info(
+        &self,
+        searcher_eoa: Address,
+    ) -> eyre::Result<Option<SearcherInfo>> {
+        self.inner.try_fetch_searcher_contract_info(searcher_eoa)
+    }
+
+    fn try_fetch_builder_info(
+        &self,
+        builder_coinbase_addr: Address,
+    ) -> eyre::Result<Option<BuilderInfo>> {
         self.inner.try_fetch_builder_info(builder_coinbase_addr)
     }
     //TODO: JOE
@@ -178,7 +206,10 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.get_metadata(block_num)
     }
 
-    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<AddressMetadata> {
+    fn try_fetch_address_metadata(
+        &self,
+        address: Address,
+    ) -> eyre::Result<Option<AddressMetadata>> {
         self.inner.try_fetch_address_metadata(address)
     }
 

@@ -22,13 +22,29 @@ pub struct BuilderInfo {
     #[redefined(same_fields)]
     pub fund: Option<Fund>,
     #[serde(with = "vec_bls_pub_key")]
+    #[serde(default)]
     pub pub_keys: Vec<BlsPublicKey>,
     #[serde(with = "vec_address")]
+    #[serde(default)]
     pub searchers_eoas: Vec<Address>,
     #[serde(with = "vec_address")]
+    #[serde(default)]
     pub searchers_contracts: Vec<Address>,
     #[serde(with = "option_addresss")]
     pub ultrasound_relay_collateral_address: Option<Address>,
+}
+
+impl BuilderInfo {
+    pub fn merge(&mut self, other: BuilderInfo) {
+        self.name = other.name.or(self.name.take());
+        self.fund = other.fund.or(self.fund.take());
+        self.pub_keys.extend(other.pub_keys);
+        self.searchers_eoas.extend(other.searchers_eoas);
+        self.searchers_contracts.extend(other.searchers_contracts);
+        self.ultrasound_relay_collateral_address = other
+            .ultrasound_relay_collateral_address
+            .or(self.ultrasound_relay_collateral_address.take());
+    }
 }
 
 implement_table_value_codecs_with_zc!(BuilderInfoRedefined);

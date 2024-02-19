@@ -17,6 +17,7 @@ pub struct SearcherInfo {
     #[redefined(same_fields)]
     pub fund: Option<Fund>,
     #[redefined(same_fields)]
+    #[serde(default)]
     pub mev: Vec<MevType>,
     /// If the searcher is vertically integrated, this will contain the corresponding builder's information.
     #[serde(with = "option_addresss")]
@@ -26,6 +27,12 @@ pub struct SearcherInfo {
 impl SearcherInfo {
     pub fn contains_searcher_type(&self, mev_type: MevType) -> bool {
         self.mev.contains(&mev_type)
+    }
+
+    pub fn merge(&mut self, other: SearcherInfo) {
+        self.fund = other.fund.or(self.fund.take());
+        self.mev.extend(other.mev);
+        self.builder = other.builder.or(self.builder.take());
     }
 }
 

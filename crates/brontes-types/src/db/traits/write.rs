@@ -50,6 +50,17 @@ pub trait DBWriter: Send + Unpin + 'static {
         self.inner().save_mev_blocks(block_number, block, mev)
     }
 
+    fn write_searcher_info(
+        &self,
+        eoa_address: Address,
+        contract_address: Address,
+        eoa_info: SearcherInfo,
+        contract_info: SearcherInfo,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .write_searcher_info(eoa_address, contract_address, eoa_info, contract_info)
+    }
+
     fn write_searcher_eoa_info(
         &self,
         searcher_eoa: Address,

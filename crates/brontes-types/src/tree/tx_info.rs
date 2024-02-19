@@ -14,7 +14,8 @@ pub struct TxInfo {
     pub is_cex_dex_call: bool,
     pub is_private: bool,
     pub is_verified_contract: bool,
-    pub searcher_info: Option<SearcherInfo>,
+    pub searcher_eoa_info: Option<SearcherInfo>,
+    pub searcher_contract_info: Option<SearcherInfo>,
 }
 
 impl TxInfo {
@@ -29,7 +30,8 @@ impl TxInfo {
         is_cex_dex_call: bool,
         is_private: bool,
         is_verified_contract: bool,
-        searcher_info: Option<SearcherInfo>,
+        searcher_eoa_info: Option<SearcherInfo>,
+        searcher_contract_info: Option<SearcherInfo>,
     ) -> Self {
         Self {
             tx_index,
@@ -42,7 +44,8 @@ impl TxInfo {
             is_cex_dex_call,
             is_private,
             is_verified_contract,
-            searcher_info,
+            searcher_eoa_info,
+            searcher_contract_info,
         }
     }
 
@@ -50,16 +53,24 @@ impl TxInfo {
         (self.tx_hash, self.gas_details)
     }
 
-    pub fn get_searcher_info(&self) -> Option<&SearcherInfo> {
-        self.searcher_info.as_ref()
+    pub fn get_searcher_eao_info(&self) -> Option<&SearcherInfo> {
+        self.searcher_eoa_info.as_ref()
+    }
+
+    pub fn get_searcher_contract_info(&self) -> Option<&SearcherInfo> {
+        self.searcher_contract_info.as_ref()
     }
 
     pub fn is_searcher_of_type(&self, mev_type: MevType) -> bool {
-        if let Some(searcher_info) = self.searcher_info.as_ref() {
-            searcher_info.contains_searcher_type(mev_type)
-        } else {
-            false
-        }
+        let eoa_contains_type = self
+            .searcher_eoa_info
+            .as_ref()
+            .map_or(false, |info| info.contains_searcher_type(mev_type));
+        let contract_contains_type = self
+            .searcher_contract_info
+            .as_ref()
+            .map_or(false, |info| info.contains_searcher_type(mev_type));
+        eoa_contains_type || contract_contains_type
     }
 
     pub fn is_private(&self) -> bool {

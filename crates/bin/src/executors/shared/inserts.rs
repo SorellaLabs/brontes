@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::pattern::Searcher, sync::Arc};
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::{
@@ -52,7 +52,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         block_details.to_string()
     );
 
-    output_mev_and_update_searcher_info(database, block_details.block_number, &mev_details).await;
+    output_mev_and_update_searcher_info(database, &mev_details).await;
 
     // Attempt to save the MEV block details
     if let Err(e) = database
@@ -65,7 +65,6 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
 
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
-    _block_number: u64,
     mev_details: &Vec<Bundle>,
 ) {
     for mev in mev_details {
@@ -75,21 +74,25 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             mev.to_string()
         );
 
-        // Attempt to fetch existing searcher info
-        let result = database.try_fetch_searcher_eoa_info(mev.header.eoa);
+        let (eoa_info, contract_info) = database
+            .try_fetch_searcher_info(mev.header.eoa, mev.header.contract)
+            .await?;
 
-        let mut searcher_info = match result {
-            Ok(info) => info,
-            Err(_) => SearcherInfo::default(),
-        };
+        if !eoa_info.mev.contains(&mev.header.mev_type) {
+            eoa_info.mev.push(mev.header.mev_type);
+        }
 
-        // Update the searcher info with the current MEV details
-        if !searcher_info.mev.contains(&mev.header.mev_type) {
-            searcher_info.mev.push(mev.header.mev_type);
+        if !contract_info.mev.contains(&mev.header.mev_type) {
+            contract_info.mev.push(mev.header.mev_type);
         }
 
         if let Err(e) = database
-            .write_searcher_eoa_info(mev.header.eoa, searcher_info)
+            .write_searcher_info(
+                mev.header.eoa,
+                mev.header.mev_contract,
+                eoa_info,
+                contract_info,
+            )
             .await
         {
             error!("Failed to update searcher info in the database: {:?}", e);

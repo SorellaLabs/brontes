@@ -3,7 +3,6 @@
 [builders."0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"]
 name = "beaverbuild"
 fund = "SymbolicCapitalPartners"
-pub_keys = []
 searchers_eoas = [
     "0x0cac3d1a887206e0f6169222C4504301A8b4b993",
     "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9",
@@ -48,24 +47,20 @@ ultrasound_relay_collateral_address = "0x0affb0a96fbefaa97dce488dfd97512346cf3ab
 [builders."0xb4e29628cacea3567cf00ca0721234bd37fa0c10"]
 name = "rsync-dev"
 fund = "Wintermute"
-pub_keys = []
 ultrasound_relay_collateral_address = "0xb4e29628cacea3567cf00ca0721234bd37fa0c10"
 
 [builders."0x5F927395213ee6b95dE97bDdCb1b2B1C0F16844F"]
 name = "manta builder"
 fund = "JaneStreet"
-pub_keys = []
 searchers_contracts = ["0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
 ultrasound_relay_collateral_address = ""
 
 [builders."0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97"]
 name = "titan"
-pub_keys = []
 ultrasound_relay_collateral_address = "0x9fc3da866e7df3a1c57ade1a97c9f00a70f010c8"
 
 [builders."0x88c6C46EBf353A52Bdbab708c23D0c81dAA8134A"]
 name = "jet builder"
-pub_keys = []
 ultrasound_relay_collateral_address = "0xd551a2fad3998079017652435b5fb109b3c4437e"
 
 [builders."0xf15689636571dba322b48E9EC9bA6cFB3DF818e1"]
@@ -103,17 +98,14 @@ name = "faith-builder"
 
 [builders."0xbd3Afb0bB76683eCb4225F9DBc91f998713C3b01"]
 name = "BuildAI"
-pub_keys = [""]
 searchers_contracts = ["0xE8c060F8052E07423f71D445277c61AC5138A2e5"]
 
 [builders."0x1Af7Cad7f2B93Dbe800aa0E48095435B471A09c9"]
 name = "Bob The Builder"
-pub_keys = [""]
 searchers_contracts = ["0x000000000035B5e5ad9019092C665357240f594e"]
 
 [builders."0x3b64216AD1a58f61538b4fA1B27327675Ab7ED67"]
 name = "Boba Builder"
-pub_keys = [""]
 searchers_contracts = ["0xb0baBabE78a9be0810fAdf99Dd2eD31ed12568bE", "0x000000e1fddf4fe15db5f23ae3ee83c6a11e8dd1"]
 
 
@@ -124,17 +116,14 @@ searchers_contracts = ["0xb0baBabE78a9be0810fAdf99Dd2eD31ed12568bE", "0x000000e1
 # SCP EOAs - Beaver Builder
 [SearcherEOAs."0x0cac3d1a887206e0f6169222C4504301A8b4b993"]
 fund = "SymbolicCapitalPartners"
-mev = []
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 [SearcherEOAs."0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9"]
 fund = "SymbolicCapitalPartners"
-mev = []
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 [SearcherEOAs."0x0D78FCF0a3E51124b2531A80950023f5Ba2E8FAc"]
 fund = "SymbolicCapitalPartners"
-mev = []
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 # Wintermute EOAs - associated with Rsync
@@ -209,34 +198,33 @@ builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [SearcherContracts."0x280027dd00ee0050d3f9d168efd6b40090009246"]
 fund = "Wintermute"
-mev = []
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 # JaneStreet searcher associated with Manta Builder
 [SearcherContractsContracts."0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
 fund = "JaneStreet"
-mev = ["CexDex"] # Specify MEV types if known
+mev = ["CexDex"] 
 builder = "0x5F927395213ee6b95dE97bDdCb1b2B1C0F16844F"
 
 # Anta Builder SearcherContracts - associated with Ant Builder and FlowTraders fund
 [SearcherContracts."0x32801ab1957aaad1c65289b51603373802b4e8bb"]
 fund = "FlowTraders"
-mev = ["CexDex"] # Specify MEV types if known
+mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [SearcherContracts."0xD198fBE60C49D4789525fC54567447518C7D2a11"]
 fund = "FlowTraders"
-mev = ["CexDex"] # Specify MEV types if known
+mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [SearcherContracts."0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
 fund = "Tokka Labs"
-mev = ["CexDex"] # Specify MEV types if known
+mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [SearcherContracts."0xeeaa83b2d581a3a790774d4dae7bf354fffe3376"]
 fund = "Eth-builder"
-mev = ["CexDex"] # Specify MEV types if known
+mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [SearcherContracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]

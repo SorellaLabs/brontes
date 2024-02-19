@@ -27,7 +27,7 @@ use brontes_types::{
     traits::TracingProvider,
     SubGraphsEntry,
 };
-use eyre::eyre;
+use eyre::{eyre, ErrReport};
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
 use futures::{FutureExt, StreamExt};
@@ -335,19 +335,23 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
     }
 
-    fn try_fetch_searcher_eoa_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
-        let tx = self.0.ro_tx()?;
-        tx.get::<SearcherEOAs>(searcher_eoa)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", searcher_eoa))
+    fn try_fetch_searcher_eoa_info(
+        &self,
+        searcher_eoa: Address,
+    ) -> eyre::Result<Option<SearcherInfo>> {
+        self.0
+            .ro_tx()?
+            .get::<SearcherEOAs>(searcher_eoa)
+            .map_err(ErrReport::from)
     }
 
     fn try_fetch_searcher_contract_info(
         &self,
         searcher_contract: Address,
-    ) -> eyre::Result<SearcherInfo> {
+    ) -> eyre::Result<Option<SearcherInfo>> {
         let tx = self.0.ro_tx()?;
-        tx.get::<SearcherContracts>(searcher_contract)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", searcher_contract))
+        tx.get::<SearcherContracts>(searcher_contract)
+            .map_err(ErrReport::from)
     }
 
     fn protocols_created_before(
@@ -445,18 +449,24 @@ impl LibmdbxReader for LibmdbxReadWriter {
         last.ok_or_else(|| eyre::eyre!("no pair found"))
     }
 
-    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<AddressMetadata> {
+    fn try_fetch_address_metadata(
+        &self,
+        address: Address,
+    ) -> eyre::Result<Option<AddressMetadata>> {
         self.0
             .ro_tx()?
-            .get::<AddressMeta>(address)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in address metadata", address))
+            .get::<AddressMeta>(address)
+            .map_err(ErrReport::from)
     }
 
-    fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
+    fn try_fetch_builder_info(
+        &self,
+        builder_coinbase_addr: Address,
+    ) -> eyre::Result<Option<BuilderInfo>> {
         self.0
             .ro_tx()?
-            .get::<Builder>(builder_coinbase_addr)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in builder info", builder_coinbase_addr))
+            .get::<Builder>(builder_coinbase_addr)
+            .map_err(ErrReport::from)
     }
 
     fn try_fetch_mev_blocks(
@@ -480,6 +490,18 @@ impl DBWriter for LibmdbxReadWriter {
     type Inner = Self;
     fn inner(&self) -> &Self::Inner {
         unreachable!()
+    }
+
+    async fn write_searcher_info(
+        &self,
+        eoa_address: Address,
+        contract_address: Address,
+        eoa_info: SearcherInfo,
+        contract_info: SearcherInfo,
+    ) -> eyre::Result<()> {
+        self.write_searcher_eoa_info(eoa_address, eoa_info).await?;
+        self.write_searcher_contract_info(contract_address, contract_info)
+            .await?;
     }
 
     async fn write_searcher_eoa_info(

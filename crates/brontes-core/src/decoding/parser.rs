@@ -1,6 +1,4 @@
-#[cfg(feature = "dyn-decode")]
-use std::collections::HashMap;
-use std::{path, sync::Arc};
+use std::{collections::HashMap, path, sync::Arc};
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
@@ -10,13 +8,16 @@ use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
 };
-use brontes_types::Protocol;
+use brontes_types::{
+    db::{builder::BuilderInfo, searcher::SearcherInfo},
+    Protocol,
+};
 use futures::future::join_all;
 use reth_primitives::{Header, B256};
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use toml::Table;
 use tracing::error;
 #[cfg(feature = "dyn-decode")]
@@ -51,6 +52,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             metrics_tx,
         };
         this.load_classifier_config_data().await;
+        this.load_searcher_builder_config_data().await;
 
         this
     }
@@ -102,39 +104,74 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         let mut workspace_dir = workspace_dir();
         workspace_dir.push(SEARCHER_BUILDER_CONFIG_FILE_NAME);
 
-        let config: Table =
-            toml::from_str(&std::fs::read_to_string(workspace_dir).expect("no config file"))
-                .expect("failed to parse toml");
+        let config_str =
+            std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
 
-        for (protocol, inner) in config {
-            let protocol: Protocol = protocol.parse().unwrap();
-            for (address, table) in inner.as_table().unwrap() {
-                let token_addr: Address = address.parse().unwrap();
-                let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
+        let config: BSConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
 
-                let table: Vec<TokenInfoWithAddressToml> = table
-                    .get("token_info")
-                    .map(|i| i.clone().try_into())
-                    .unwrap_or(Ok(vec![]))
-                    .unwrap_or(vec![]);
+        // Process builders
+        for (address_str, builder_info) in config.builders {
+            let address = address_str.parse().unwrap();
 
-                for t_info in &table {
+            let existing_info = self.libmdbx.try_fetch_builder_info(address);
+
+            match existing_info.expect("Failed to query builder table") {
+                Some(mut existing) => {
+                    existing.merge(builder_info);
                     self.libmdbx
-                        .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
+                        .write_builder_info(address, existing) // Assuming this method exists
                         .await
-                        .unwrap();
+                        .expect("Failed to update builder info");
                 }
+                None => {
+                    self.libmdbx
+                        .write_builder_info(address, builder_info)
+                        .await
+                        .expect("Failed to write new builder info");
+                }
+            }
+        }
 
-                let token_addrs = if table.len() < 2 {
-                    [Address::default(), Address::default()]
-                } else {
-                    [table[0].address, table[1].address]
-                };
+        // Process SearcherEOAs
+        for (address_str, searcher_info) in config.searcher_eoas {
+            let address = address_str.parse().unwrap();
+            let existing_info = self.libmdbx.try_fetch_searcher_eoa_info(address);
 
-                self.libmdbx
-                    .insert_pool(init_block, token_addr, token_addrs, protocol)
-                    .await
-                    .unwrap();
+            match existing_info.expect("Failed to query builder table") {
+                Some(mut existing) => {
+                    existing.merge(searcher_info);
+                    self.libmdbx
+                        .write_searcher_eoa_info(address, existing) // Assuming this method exists
+                        .await
+                        .expect("Failed to update searcher info");
+                }
+                None => {
+                    self.libmdbx
+                        .write_searcher_eoa_info(address, searcher_info)
+                        .await
+                        .expect("Failed to write new builder info");
+                }
+            }
+        }
+        // Process SearcherContracts
+        for (address_str, searcher_info) in config.searcher_contracts {
+            let address = address_str.parse().unwrap();
+            let existing_info = self.libmdbx.try_fetch_searcher_contract_info(address);
+
+            match existing_info.expect("Failed to query builder table") {
+                Some(mut existing) => {
+                    existing.merge(searcher_info);
+                    self.libmdbx
+                        .write_searcher_contract_info(address, existing) // Assuming this method exists
+                        .await
+                        .expect("Failed to update searcher info");
+                }
+                None => {
+                    self.libmdbx
+                        .write_searcher_contract_info(address, searcher_info)
+                        .await
+                        .expect("Failed to write new builder info");
+                }
             }
         }
     }
@@ -401,4 +438,11 @@ pub struct TokenInfoWithAddressToml {
     pub symbol: String,
     pub decimals: u8,
     pub address: Address,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct BSConfig {
+    builders: HashMap<String, BuilderInfo>,
+    searcher_eoas: HashMap<String, SearcherInfo>,
+    searcher_contracts: HashMap<String, SearcherInfo>,
 }

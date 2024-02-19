@@ -248,14 +248,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         if is_profitable {
             match self.inner.db.try_fetch_searcher_eoa_info(tx_info.eoa) {
-                Ok(info) => {
+                Ok(Some(info)) => {
                     if info.mev.contains(&MevType::AtomicArb) {
                         Some(profit)
                     } else {
                         None
                     }
                 }
-                Err(_) => {
+                Ok(None) => {
                     if tx_info.is_private
                         && tx_info.gas_details.coinbase_transfer.is_some()
                         && !tx_info.is_verified_contract
@@ -265,6 +265,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         None
                     }
                 }
+                Err(e) => panic!("Failed to fetch searcher EOA info: {}", e), // This line changed to panic
             }
         } else {
             None
