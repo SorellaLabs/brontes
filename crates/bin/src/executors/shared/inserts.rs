@@ -6,7 +6,7 @@ use brontes_inspect::{
     Inspector,
 };
 use brontes_types::{
-    db::{metadata::Metadata, searcher::SearcherInfo},
+    db::metadata::Metadata,
     mev::{Bundle, MevBlock},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -52,7 +52,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         block_details.to_string()
     );
 
-    output_mev_and_update_searcher_info(database, block_details.block_number, &mev_details).await;
+    output_mev_and_update_searcher_info(database, &mev_details).await;
 
     // Attempt to save the MEV block details
     if let Err(e) = database
@@ -65,7 +65,6 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
 
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
-    block_number: u64,
     mev_details: &Vec<Bundle>,
 ) {
     for mev in mev_details {
@@ -75,24 +74,28 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             mev.to_string()
         );
 
-        // Attempt to fetch existing searcher info
-        let result = database.try_fetch_searcher_info(mev.header.eoa);
+        let (eoa_info, contract_info) = database
+            .try_fetch_searcher_info(mev.header.eoa, mev.header.mev_contract)
+            .expect("Failed to fetch searcher info from the database");
 
-        let mut searcher_info = match result {
-            Ok(info) => info,
-            Err(_) => SearcherInfo::default(),
-        };
+        let mut eoa_info = eoa_info.unwrap_or_default();
+        let mut contract_info = contract_info.unwrap_or_default();
 
-        // Update the searcher info with the current MEV details
-        searcher_info.pnl += mev.header.profit_usd;
-        searcher_info.total_bribed += mev.header.bribe_usd;
-        if !searcher_info.mev.contains(&mev.header.mev_type) {
-            searcher_info.mev.push(mev.header.mev_type);
+        if !eoa_info.mev.contains(&mev.header.mev_type) {
+            eoa_info.mev.push(mev.header.mev_type);
         }
-        searcher_info.last_active = block_number;
+
+        if !contract_info.mev.contains(&mev.header.mev_type) {
+            contract_info.mev.push(mev.header.mev_type);
+        }
 
         if let Err(e) = database
-            .write_searcher_info(mev.header.eoa, searcher_info)
+            .write_searcher_info(
+                mev.header.eoa,
+                mev.header.mev_contract,
+                eoa_info,
+                contract_info,
+            )
             .await
         {
             error!("Failed to update searcher info in the database: {:?}", e);

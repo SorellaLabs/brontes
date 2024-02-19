@@ -86,7 +86,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return;
             };
-            meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
+            meta.builder_info = libmdbx
+                .try_fetch_builder_info(tree.header.beneficiary)
+                .expect("failed to fetch builder info table in libmdbx");
             tracing::debug!(?block, "caching result buf");
             self.result_buf.push_back((tree, meta));
         // need to pull the metadata from clickhouse
@@ -97,7 +99,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                     .get_metadata(block)
                     .await
                     .expect("missing metadata for clickhouse.get_metadat request");
-                meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
+                meta.builder_info = libmdbx
+                    .try_fetch_builder_info(tree.header.beneficiary)
+                    .expect("failed to fetch builder info table in libmdbx");
                 (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
@@ -107,7 +111,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 tracing::error!(?block, "failed to load metadata from libmdbx");
                 return;
             };
-            meta.builder_info = libmdbx.try_fetch_builder_info(tree.header.beneficiary).ok();
+            meta.builder_info = libmdbx
+                .try_fetch_builder_info(tree.header.beneficiary)
+                .expect("failed to fetch builder info table in libmdbx");
             tracing::debug!(?block, "waiting for dex price");
             pricer.add_pending_inspection(block, tree, meta);
         } else {

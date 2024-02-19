@@ -1,8 +1,9 @@
 pub mod data;
 pub mod header;
-
 use std::fmt::{self, Debug};
 
+use alloy_primitives::Address;
+use clap::ValueEnum;
 use clickhouse::Row;
 pub use data::*;
 use dyn_clone::DynClone;
@@ -11,7 +12,6 @@ use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use strum::{Display, EnumIter};
 
@@ -34,6 +34,16 @@ pub struct Bundle {
     pub data: BundleData,
 }
 
+impl Bundle {
+    pub fn get_searcher_contract(&self) -> Address {
+        self.header.mev_contract
+    }
+
+    pub fn mev_type(&self) -> MevType {
+        self.header.mev_type
+    }
+}
+
 impl fmt::Display for Bundle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.header.mev_type {
@@ -52,8 +62,8 @@ impl fmt::Display for Bundle {
 
 #[derive(
     Debug,
-    Serialize_repr,
-    Deserialize_repr,
+    Serialize,
+    Deserialize,
     PartialEq,
     Eq,
     Hash,
@@ -65,21 +75,17 @@ impl fmt::Display for Bundle {
     Copy,
     Default,
     Display,
+    ValueEnum,
 )]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-#[serde(rename_all = "lowercase")]
 pub enum MevType {
-    Sandwich = 1,
-    AtomicArb = 5,
-    #[serde(rename = "jit_sandwich")]
-    JitSandwich = 3,
-    Jit = 2,
-    #[serde(rename = "cex_dex")]
-    CexDex = 0,
-    Liquidation = 4,
+    CexDex,
+    Sandwich,
+    Jit,
+    JitSandwich,
+    Liquidation,
+    AtomicArb,
     #[default]
-    Unknown = 6,
+    Unknown,
 }
 
 self_convert_redefined!(MevType);
