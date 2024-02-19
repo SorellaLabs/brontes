@@ -6,7 +6,7 @@ fund = "SymbolicCapitalPartners"
 searchers_eoas = [
     "0x0cac3d1a887206e0f6169222C4504301A8b4b993",
     "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9",
-    "0x0D78FCF0a3E51124b2531A80950023f5Ba2E8FAc",
+    "0x0D78FCF0a3E51124b2531A80950023f5Ba2E8FAc"
 ]
 searchers_contracts = [
     "0xFA103c21ea2DF71DFb92B0652F8B1D795e51cdEf",
@@ -31,7 +31,7 @@ searchers_eoas = [
     "0xDBF5E9c5206d0dB70a90108bf936DA60221dC080",
     "0x0000f079e68BbCC79AB9600ace786B0a4dB1c83c",
     "0xB3f923eaBAF178fC1BD8E13902FC5C61D3DdEF5B",
-    "0xAaD5Ae975e15fde11cb508866d836D3A278D34d3",
+    "0xAaD5Ae975e15fde11cb508866d836D3A278D34d3"
 ]
 searchers_contracts = [
     "0x0087BB802D9C0e343F00510000729031ce00bf27",
@@ -230,4 +230,3 @@ builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 [SearcherContracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]
 fund = "icanhazblock"
 mev = ["Sandwich"]
-builder = ""
