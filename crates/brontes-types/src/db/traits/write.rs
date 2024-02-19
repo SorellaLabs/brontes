@@ -2,7 +2,11 @@ use alloy_primitives::Address;
 use futures::Future;
 
 use crate::{
-    db::{dex::DexQuotes, searcher::SearcherInfo},
+    db::{
+        builder::{BuilderInfo, BuilderStats},
+        dex::DexQuotes,
+        searcher::{SearcherInfo, SearcherStats},
+    },
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
@@ -48,11 +52,58 @@ pub trait DBWriter: Send + Unpin + 'static {
 
     fn write_searcher_info(
         &self,
+        eoa_address: Address,
+        contract_address: Address,
+        eoa_info: SearcherInfo,
+        contract_info: SearcherInfo,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .write_searcher_info(eoa_address, contract_address, eoa_info, contract_info)
+    }
+
+    fn write_searcher_eoa_info(
+        &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
-            .write_searcher_info(searcher_eoa, searcher_info)
+            .write_searcher_eoa_info(searcher_eoa, searcher_info)
+    }
+
+    fn write_searcher_contract_info(
+        &self,
+        searcher_contract: Address,
+        searcher_info: SearcherInfo,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .write_searcher_contract_info(searcher_contract, searcher_info)
+    }
+
+    fn write_builder_info(
+        &self,
+        builder_address: Address,
+        builder_info: BuilderInfo,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .write_builder_info(builder_address, builder_info)
+    }
+
+    fn write_searcher_stats(
+        &self,
+        searcher_eoa: Address,
+        searcher_stats: SearcherStats,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .write_searcher_stats(searcher_eoa, searcher_stats)
+    }
+
+    fn write_builder_stats(
+        &self,
+        builder_address: Address,
+        builder_stats: BuilderStats,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner()
+            .write_builder_stats(builder_address, builder_stats)
     }
 
     fn insert_pool(

@@ -15,6 +15,7 @@ brontes-database.workspace = true
 brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
+brontes-analytics.workspace = true
 malachite.workspace = true
 toml = "0.8.2"
 
@@ -69,8 +70,7 @@ thiserror.workspace = true
 hyper.workspace = true
 
 # cli
-clap = { version = "4.4.6", features = ["derive"] }
-
+clap.workspace = true
 # logging
 indoc = "2"
 rayon.workspace = true
@@ -112,6 +112,7 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
   "brontes-inspect/local-clickhouse",
   "brontes-classifier/local-clickhouse",
+  "brontes-analytics/local-clickhouse",
 ]
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]

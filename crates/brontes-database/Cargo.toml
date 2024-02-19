@@ -90,7 +90,7 @@ strum = "0.25"
 strum_macros = "0.25"
 async-trait = "0.1.73"
 reqwest.workspace = true
-
+toml = "0.8.9"
 
 # benches
 criterion = "0.5"
