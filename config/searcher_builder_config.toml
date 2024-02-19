@@ -78,7 +78,7 @@ searchers_contracts = ["0xe8cFAd4C75a5e1CaF939Fd80AfCf837DdE340a69"]
 [builders."0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"]
 name = "antbuilder"
 fund = "FlowTraders"
-searchers_contracts = ["0x32801ab1957aaad1c65289b51603373802b4e8bb, 0xD198fBE60C49D4789525fC54567447518C7D2a11"]
+searchers_contracts = ["0x32801ab1957aaad1c65289b51603373802b4e8bb", "0xD198fBE60C49D4789525fC54567447518C7D2a11"]
 
 [builders."0x8186b214A917fb4922Eb984fb80CFAfA30EE8810"]
 name = "loki builder"
