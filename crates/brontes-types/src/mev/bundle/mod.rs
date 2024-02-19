@@ -78,20 +78,16 @@ impl fmt::Display for Bundle {
     Display,
     ValueEnum,
 )]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-#[serde(rename_all = "lowercase")]
+
 pub enum MevType {
-    #[serde(rename = "cex_dex")]
-    CexDex = 0,
-    Sandwich = 1,
-    Jit = 2,
-    JitSandwich = 3,
-    Liquidation = 4,
-    AtomicArb = 5,
-    #[serde(rename = "jit_sandwich")]
+    CexDex,
+    Sandwich,
+    Jit,
+    JitSandwich,
+    Liquidation,
+    AtomicArb,
     #[default]
-    Unknown = 6,
+    Unknown,
 }
 
 self_convert_redefined!(MevType);
