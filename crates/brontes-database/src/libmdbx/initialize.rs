@@ -1,24 +1,28 @@
 use std::{
+    collections::HashMap,
     fmt::Debug,
+    path,
     sync::{Arc, Mutex},
 };
-use brontes_types::db::traits::LibmdbxReader;
-use std::collections::HashMap;
-use std::path;
-use serde::Serialize;
-use brontes_types::Protocol;
-use alloy_primitives::Address;
-use brontes_types::db::traits::DBWriter;
+
 use ::clickhouse::DbRow;
-use brontes_types::{traits::TracingProvider, unordered_buffer_map::BrontesStreamExt};
+use alloy_primitives::Address;
+use brontes_types::{
+    db::{
+        builder::BuilderInfo,
+        searcher::SearcherInfo,
+        traits::{DBWriter, LibmdbxReader},
+    },
+    traits::TracingProvider,
+    unordered_buffer_map::BrontesStreamExt,
+    Protocol,
+};
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use toml::Table;
 use tracing::{error, info};
-use brontes_types::{
-    db::{builder::BuilderInfo, searcher::SearcherInfo}
-};
+
 use super::tables::Tables;
 use crate::{
     clickhouse::ClickhouseHandle,
@@ -61,7 +65,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
-    
+
         self.load_classifier_config_data().await;
         self.load_searcher_builder_config_data().await;
         Ok(())
@@ -324,7 +328,6 @@ struct BSConfig {
     searcher_eoas: HashMap<String, SearcherInfo>,
     searcher_contracts: HashMap<String, SearcherInfo>,
 }
-
 
 #[cfg(test)]
 mod tests {
