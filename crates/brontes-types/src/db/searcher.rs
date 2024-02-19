@@ -91,4 +91,19 @@ pub enum Fund {
     ICANHAZBLOCK,
 }
 
+impl From<String> for Fund {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "SymbolicCapitalPartners" => Self::SymbolicCapitalPartners,
+            "Wintermute" => Self::Wintermute,
+            "JaneStreet" => Self::JaneStreet,
+            "FlowTraders" => Self::FlowTraders,
+            "TokkaLabs" => Self::TokkaLabs,
+            "EthBuilder" => Self::EthBuilder,
+            "ICANHAZBLOCK" => Self::ICANHAZBLOCK,
+            _ => Self::None,
+        }
+    }
+}
+
 self_convert_redefined!(Fund);
