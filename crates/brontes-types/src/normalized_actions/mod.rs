@@ -324,6 +324,10 @@ impl Actions {
         matches!(self, Actions::SelfDestruct(_))
     }
 
+    pub fn is_new_pool(&self) -> bool {
+        matches!(self, Actions::NewPool(_))
+    }
+
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
             return u.is_static_call();
