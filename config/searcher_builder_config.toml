@@ -216,7 +216,7 @@ mev = ["CexDex"]
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [searcher_contracts."0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
-fund = "Tokka Labs"
+fund = "TokkaLabs"
 mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 

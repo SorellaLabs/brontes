@@ -82,6 +82,7 @@ pub enum Fund {
     Wintermute,
     JaneStreet,
     FlowTraders,
+    TokkaLabs,
 }
 
 self_convert_redefined!(Fund);
