@@ -53,7 +53,7 @@ ultrasound_relay_collateral_address = "0xb4e29628cacea3567cf00ca0721234bd37fa0c1
 name = "manta builder"
 fund = "JaneStreet"
 searchers_contracts = ["0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
-ultrasound_relay_collateral_address = ""
+
 
 [builders."0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97"]
 name = "titan"
@@ -183,7 +183,6 @@ builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [SearcherContracts."0x00000000AE347930bD1E7B0F35588b92280f9e75"]
 fund = "Wintermute"
-mev = []
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [SearcherContracts."0xaf0b0000f0210d0f421f0009c72406703b50506b"]
@@ -228,5 +227,6 @@ mev = ["CexDex"]
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [SearcherContracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]
-fund = "icanhazblock"
 mev = ["Sandwich"]
+fund = "icanhazblock"
+
