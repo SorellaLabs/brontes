@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use alloy_primitives::Address;
 use clickhouse::Row;
 use redefined::Redefined;
@@ -41,9 +43,34 @@ impl BuilderInfo {
     pub fn merge(&mut self, other: BuilderInfo) {
         self.name = other.name.or(self.name.take());
         self.fund = other.fund.or(self.fund.take());
-        self.pub_keys.extend(other.pub_keys);
-        self.searchers_eoas.extend(other.searchers_eoas);
-        self.searchers_contracts.extend(other.searchers_contracts);
+
+        self.pub_keys = self
+            .pub_keys
+            .iter()
+            .chain(other.pub_keys.iter())
+            .cloned()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        self.searchers_eoas = self
+            .searchers_eoas
+            .iter()
+            .chain(other.searchers_eoas.iter())
+            .cloned()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        self.searchers_contracts = self
+            .searchers_contracts
+            .iter()
+            .chain(other.searchers_contracts.iter())
+            .cloned()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
         self.ultrasound_relay_collateral_address = other
             .ultrasound_relay_collateral_address
             .or(self.ultrasound_relay_collateral_address.take());

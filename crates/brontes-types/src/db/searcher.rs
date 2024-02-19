@@ -33,7 +33,11 @@ impl SearcherInfo {
 
     pub fn merge(&mut self, other: SearcherInfo) {
         self.fund = other.fund.or(self.fund.take());
-        self.mev.extend(other.mev);
+        for mev_type in other.mev.into_iter() {
+            if !self.contains_searcher_type(mev_type) {
+                self.mev.push(mev_type);
+            }
+        }
         self.builder = other.builder.or(self.builder.take());
     }
 }
