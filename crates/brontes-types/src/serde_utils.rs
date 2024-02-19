@@ -629,3 +629,18 @@ pub mod socials {
         .into())
     }
 }
+
+pub mod option_fund {
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::db::searcher::Fund;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Fund>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let fund: Option<String> = Deserialize::deserialize(deserializer)?;
+
+        Ok(fund.map(Into::into))
+    }
+}

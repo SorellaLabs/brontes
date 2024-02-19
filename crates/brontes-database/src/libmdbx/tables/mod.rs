@@ -8,14 +8,14 @@ use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
-        builder::{BuilderInfo, BuilderInfoRedefined},
+        builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
-        searcher::{SearcherInfo, SearcherInfoRedefined},
+        searcher::{SearcherInfo, SearcherInfoRedefined, SearcherStats, SearcherStatsRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
     },
@@ -39,7 +39,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 13;
+pub const NUM_TABLES: usize = 16;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -172,7 +172,10 @@ impl Tables {
                     .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(clear_table)
                     .await
             }
-            Tables::Searcher => Ok(()),
+            Tables::SearcherEOAs => Ok(()),
+            Tables::SearcherContracts => Ok(()),
+            Tables::SearcherStatistics => Ok(()),
+            Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
         }
     }
@@ -190,8 +193,11 @@ tables!(
     TxTraces,
     Builder,
     AddressMeta,
-    Searcher,
-    InitializedState
+    SearcherEOAs,
+    SearcherContracts,
+    InitializedState,
+    SearcherStatistics,
+    BuilderStatistics
 );
 
 /// Must be in this order when defining
@@ -580,6 +586,24 @@ compressed_table!(
 );
 
 compressed_table!(
+    Table BuilderStatistics {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: BuilderStats,
+            compressed_value: BuilderStatsRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Other
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
     Table AddressMeta {
         Data {
             #[serde(with = "address_string")]
@@ -599,12 +623,50 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table Searcher {
+    Table SearcherEOAs {
         Data {
             #[serde(with = "address_string")]
             key: Address,
             value: SearcherInfo,
             compressed_value: SearcherInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse,
+            http_endpoint: ""
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table SearcherContracts {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: SearcherInfo,
+            compressed_value: SearcherInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse,
+            http_endpoint: ""
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table SearcherStatistics {
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: SearcherStats,
+            compressed_value: SearcherStatsRedefined
         },
         Init {
             init_size: None,

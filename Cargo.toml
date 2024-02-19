@@ -11,6 +11,7 @@ members = [
   "crates/brontes-database",
   "crates/brontes-macros",
   "crates/brontes-pricing",
+  "crates/brontes-analytics"
 ]
 
 resolver = "2"
@@ -19,7 +20,7 @@ resolver = "2"
 # Database
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs", branch = "master" }
 
-# Poirot
+# Brontes
 brontes-core = { path = "./crates/brontes-core" }
 brontes-inspect = { path = "./crates/brontes-inspect" }
 brontes-types = { path = "./crates/brontes-types/" }
@@ -30,6 +31,7 @@ brontes-macros = { path = "./crates/brontes-macros/" }
 brontes-pricing = { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/brontes-tracing" }
+brontes-analytics = { path = "./crates/brontes-analytics" }
 
 # Reth
 reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "bcc95b1" }
@@ -127,6 +129,9 @@ serde = "1.0.171"
 serde_json = "1.0.1"
 serde_with = "3.4.0"
 serde_repr = "0.1.16"
+
+# cli
+clap = { version = "4.4.6", features = ["derive"] }
 
 
 # Numbers
