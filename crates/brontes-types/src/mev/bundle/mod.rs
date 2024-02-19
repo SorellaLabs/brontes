@@ -12,7 +12,6 @@ use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use strum::{Display, EnumIter};
 
@@ -63,8 +62,8 @@ impl fmt::Display for Bundle {
 
 #[derive(
     Debug,
-    Serialize_repr,
-    Deserialize_repr,
+    Serialize,
+    Deserialize,
     PartialEq,
     Eq,
     Hash,
@@ -78,7 +77,6 @@ impl fmt::Display for Bundle {
     Display,
     ValueEnum,
 )]
-
 pub enum MevType {
     CexDex,
     Sandwich,
