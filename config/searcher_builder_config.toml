@@ -221,11 +221,11 @@ mev = ["CexDex"]
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [searcher_contracts."0xeeaa83b2d581a3a790774d4dae7bf354fffe3376"]
-fund = "Eth-builder"
+fund = "EthBuilder"
 mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [searcher_contracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]
+fund = "ICANHAZBLOCK"
 mev = ["Sandwich"]
-fund = "icanhazblock"
 

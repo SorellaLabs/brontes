@@ -83,6 +83,8 @@ pub enum Fund {
     JaneStreet,
     FlowTraders,
     TokkaLabs,
+    EthBuilder,
+    ICANHAZBLOCK,
 }
 
 self_convert_redefined!(Fund);
