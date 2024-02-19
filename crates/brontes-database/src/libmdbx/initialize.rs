@@ -2,20 +2,30 @@ use std::{
     fmt::Debug,
     sync::{Arc, Mutex},
 };
-
+use brontes_types::db::traits::LibmdbxReader;
+use std::collections::HashMap;
+use std::path;
+use serde::Serialize;
+use brontes_types::Protocol;
+use alloy_primitives::Address;
+use brontes_types::db::traits::DBWriter;
 use ::clickhouse::DbRow;
 use brontes_types::{traits::TracingProvider, unordered_buffer_map::BrontesStreamExt};
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
 use serde::Deserialize;
+use toml::Table;
 use tracing::{error, info};
-
+use brontes_types::{
+    db::{builder::BuilderInfo, searcher::SearcherInfo}
+};
 use super::tables::Tables;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
 };
-
+const CLASSIFIER_CONFIG_FILE_NAME: &str = "config/classifier_config.toml";
+const SEARCHER_BUILDER_CONFIG_FILE_NAME: &str = "config/searcher_builder_config.toml";
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
@@ -50,7 +60,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         )
         .await
         .into_iter()
-        .collect::<eyre::Result<_>>()
+        .collect::<eyre::Result<_>>()?;
+    
+        self.load_classifier_config_data().await;
+        self.load_searcher_builder_config_data().await;
+        Ok(())
     }
 
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
@@ -159,7 +173,158 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         Ok(())
     }
+
+    /// loads up the `classifier_config.toml` and ensures the values are in the
+    /// database
+    async fn load_classifier_config_data(&self) {
+        let mut workspace_dir = workspace_dir();
+        workspace_dir.push(CLASSIFIER_CONFIG_FILE_NAME);
+
+        let Ok(config) = toml::from_str::<Table>(&{
+            let Ok(path) = std::fs::read_to_string(workspace_dir) else {
+                return;
+            };
+            path
+        }) else {
+            return;
+        };
+
+        for (protocol, inner) in config {
+            let protocol: Protocol = protocol.parse().unwrap();
+            for (address, table) in inner.as_table().unwrap() {
+                let token_addr: Address = address.parse().unwrap();
+                let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
+
+                let table: Vec<TokenInfoWithAddressToml> = table
+                    .get("token_info")
+                    .map(|i| i.clone().try_into())
+                    .unwrap_or(Ok(vec![]))
+                    .unwrap_or(vec![]);
+
+                for t_info in &table {
+                    self.libmdbx
+                        .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
+                        .await
+                        .unwrap();
+                }
+
+                let token_addrs = if table.len() < 2 {
+                    [Address::default(), Address::default()]
+                } else {
+                    [table[0].address, table[1].address]
+                };
+
+                self.libmdbx
+                    .insert_pool(init_block, token_addr, token_addrs, protocol)
+                    .await
+                    .unwrap();
+            }
+        }
+    }
+
+    async fn load_searcher_builder_config_data(&self) {
+        let mut workspace_dir = workspace_dir();
+        workspace_dir.push(SEARCHER_BUILDER_CONFIG_FILE_NAME);
+
+        let config_str =
+            std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
+
+        let config: BSConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
+
+        // Process builders
+        for (address_str, builder_info) in config.builders {
+            let address = address_str.parse().unwrap();
+
+            let existing_info = self.libmdbx.try_fetch_builder_info(address);
+
+            match existing_info.expect("Failed to query builder table") {
+                Some(mut existing) => {
+                    existing.merge(builder_info);
+                    self.libmdbx
+                        .write_builder_info(address, existing) // Assuming this method exists
+                        .await
+                        .expect("Failed to update builder info");
+                }
+                None => {
+                    self.libmdbx
+                        .write_builder_info(address, builder_info)
+                        .await
+                        .expect("Failed to write new builder info");
+                }
+            }
+        }
+
+        // Process SearcherEOAs
+        for (address_str, searcher_info) in config.searcher_eoas {
+            let address = address_str.parse().unwrap();
+            let existing_info = self.libmdbx.try_fetch_searcher_eoa_info(address);
+
+            match existing_info.expect("Failed to query builder table") {
+                Some(mut existing) => {
+                    existing.merge(searcher_info);
+                    self.libmdbx
+                        .write_searcher_eoa_info(address, existing) // Assuming this method exists
+                        .await
+                        .expect("Failed to update searcher info");
+                }
+                None => {
+                    self.libmdbx
+                        .write_searcher_eoa_info(address, searcher_info)
+                        .await
+                        .expect("Failed to write new builder info");
+                }
+            }
+        }
+        // Process SearcherContracts
+        for (address_str, searcher_info) in config.searcher_contracts {
+            let address = address_str.parse().unwrap();
+            let existing_info = self.libmdbx.try_fetch_searcher_contract_info(address);
+
+            match existing_info.expect("Failed to query builder table") {
+                Some(mut existing) => {
+                    existing.merge(searcher_info);
+                    self.libmdbx
+                        .write_searcher_contract_info(address, existing) // Assuming this method exists
+                        .await
+                        .expect("Failed to update searcher info");
+                }
+                None => {
+                    self.libmdbx
+                        .write_searcher_contract_info(address, searcher_info)
+                        .await
+                        .expect("Failed to write new builder info");
+                }
+            }
+        }
+    }
 }
+
+fn workspace_dir() -> path::PathBuf {
+    let output = std::process::Command::new(env!("CARGO"))
+        .arg("locate-project")
+        .arg("--workspace")
+        .arg("--message-format=plain")
+        .output()
+        .unwrap()
+        .stdout;
+    let cargo_path = path::Path::new(std::str::from_utf8(&output).unwrap().trim());
+    cargo_path.parent().unwrap().to_path_buf()
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct TokenInfoWithAddressToml {
+    pub symbol: String,
+    pub decimals: u8,
+    pub address: Address,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct BSConfig {
+    builders: HashMap<String, BuilderInfo>,
+    searcher_eoas: HashMap<String, SearcherInfo>,
+    searcher_contracts: HashMap<String, SearcherInfo>,
+}
+
 
 #[cfg(test)]
 mod tests {

@@ -1540,7 +1540,6 @@ dependencies = [
  "serial_test",
  "thiserror",
  "tokio",
- "toml",
  "tracing",
  "tracing-subscriber",
 ]
