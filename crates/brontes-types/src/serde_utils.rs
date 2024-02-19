@@ -634,19 +634,12 @@ pub mod option_fund {
     use serde::de::{Deserialize, Deserializer};
 
     use crate::db::searcher::Fund;
-    type SocalDecode = (
-        Option<String>,
-        Option<u64>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-    );
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Fund>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let fund: Option<String> = Deserialize::deserialize(deserializer)?;
+        let _fund: Option<String> = Deserialize::deserialize(deserializer)?;
 
         Ok(None)
     }
