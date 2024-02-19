@@ -12,7 +12,7 @@ use crate::{
     },
     implement_table_value_codecs_with_zc,
     mev::MevBlock,
-    serde_utils::{option_addresss, vec_address, vec_bls_pub_key},
+    serde_utils::{option_addresss, option_fund, vec_address, vec_bls_pub_key},
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
@@ -20,6 +20,7 @@ use crate::{
 pub struct BuilderInfo {
     pub name: Option<String>,
     #[redefined(same_fields)]
+    #[serde(deserialize_with = "option_fund::deserialize")]
     pub fund: Option<Fund>,
     #[serde(with = "vec_bls_pub_key")]
     #[serde(default)]
