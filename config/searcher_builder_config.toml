@@ -199,7 +199,7 @@ fund = "Wintermute"
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 # JaneStreet searcher associated with Manta Builder
-[searcher_contractsContracts."0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
+[searcher_contracts."0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
 fund = "JaneStreet"
 mev = ["CexDex"] 
 builder = "0x5F927395213ee6b95dE97bDdCb1b2B1C0F16844F"
