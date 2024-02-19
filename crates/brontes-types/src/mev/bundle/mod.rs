@@ -82,14 +82,14 @@ impl fmt::Display for Bundle {
 #[allow(non_camel_case_types)]
 #[serde(rename_all = "lowercase")]
 pub enum MevType {
-    Sandwich = 1,
-    AtomicArb = 5,
-    #[serde(rename = "jit_sandwich")]
-    JitSandwich = 3,
-    Jit = 2,
     #[serde(rename = "cex_dex")]
     CexDex = 0,
+    Sandwich = 1,
+    Jit = 2,
+    JitSandwich = 3,
     Liquidation = 4,
+    AtomicArb = 5,
+    #[serde(rename = "jit_sandwich")]
     #[default]
     Unknown = 6,
 }
