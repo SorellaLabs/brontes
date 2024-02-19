@@ -639,8 +639,8 @@ pub mod option_fund {
     where
         D: Deserializer<'de>,
     {
-        let _fund: Option<String> = Deserialize::deserialize(deserializer)?;
+        let fund: Option<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(None)
+        Ok(fund.map(Into::into))
     }
 }
