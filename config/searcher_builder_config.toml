@@ -109,124 +109,123 @@ name = "Boba Builder"
 searchers_contracts = ["0xb0baBabE78a9be0810fAdf99Dd2eD31ed12568bE", "0x000000e1fddf4fe15db5f23ae3ee83c6a11e8dd1"]
 
 
-# Searcher Config
-[searcher]
 
-# SearcherEOAs Config
+[searcher_eoas]
+
+# searcher_eoas Config
 # SCP EOAs - Beaver Builder
-[SearcherEOAs."0x0cac3d1a887206e0f6169222C4504301A8b4b993"]
+[searcher_eoas."0x0cac3d1a887206e0f6169222C4504301A8b4b993"]
 fund = "SymbolicCapitalPartners"
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
-[SearcherEOAs."0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9"]
+[searcher_eoas."0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9"]
 fund = "SymbolicCapitalPartners"
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
-[SearcherEOAs."0x0D78FCF0a3E51124b2531A80950023f5Ba2E8FAc"]
+[searcher_eoas."0x0D78FCF0a3E51124b2531A80950023f5Ba2E8FAc"]
 fund = "SymbolicCapitalPartners"
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 # Wintermute EOAs - associated with Rsync
-[SearcherEOAs."0xDBF5E9c5206d0dB70a90108bf936DA60221dC080"]
+[searcher_eoas."0xDBF5E9c5206d0dB70a90108bf936DA60221dC080"]
 fund = "Wintermute"
 mev = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-[SearcherEOAs."0x0000f079e68BbCC79AB9600ace786B0a4dB1c83c"]
+[searcher_eoas."0x0000f079e68BbCC79AB9600ace786B0a4dB1c83c"]
 fund = "Wintermute"
 mev = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-[SearcherEOAs."0xB3f923eaBAF178fC1BD8E13902FC5C61D3DdEF5B"]
+[searcher_eoas."0xB3f923eaBAF178fC1BD8E13902FC5C61D3DdEF5B"]
 fund = "Wintermute"
 mev = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-[SearcherEOAs."0xAaD5Ae975e15fde11cb508866d836D3A278D34d3"]
+[searcher_eoas."0xAaD5Ae975e15fde11cb508866d836D3A278D34d3"]
 fund = "Wintermute"
 mev = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-
-# SearcherContracts Config
+[searchers_contracts]
 # Beaver Builder contracts
-[SearcherContracts."0xFA103c21ea2DF71DFb92B0652F8B1D795e51cdEf"]
+[searcher_contracts."0xFA103c21ea2DF71DFb92B0652F8B1D795e51cdEf"]
 fund = "SymbolicCapitalPartners"
 mev = ["CexDex"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
-[SearcherContracts."0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C"]
+[searcher_contracts."0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C"]
 fund = "SymbolicCapitalPartners"
 mev = ["CexDex"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
-[SearcherContracts."0x5050e08626c499411B5D0E0b5AF0E83d3fD82EDF"]
+[searcher_contracts."0x5050e08626c499411B5D0E0b5AF0E83d3fD82EDF"]
 fund = "SymbolicCapitalPartners"
 mev = ["CexDex"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
-[SearcherContracts."0x7d32C90762E22379235FC311fDB16fAB399Ed40A"]
+[searcher_contracts."0x7d32C90762E22379235FC311fDB16fAB399Ed40A"]
 fund = "SymbolicCapitalPartners"
 mev = ["Liquidation", "AtomicArbitrage"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 # Rsync contracts
-[SearcherContracts."0x0087BB802D9C0e343F00510000729031ce00bf27"]
+[searcher_contracts."0x0087BB802D9C0e343F00510000729031ce00bf27"]
 fund = "Wintermute"
 mev = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-[SearcherContracts."0x51c72848c68a965f66fa7a88855f9f7784502a7f"]
+[searcher_contracts."0x51c72848c68a965f66fa7a88855f9f7784502a7f"]
 fund = "Wintermute"
 mev = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-[SearcherContracts."0x00000000AE347930bD1E7B0F35588b92280f9e75"]
+[searcher_contracts."0x00000000AE347930bD1E7B0F35588b92280f9e75"]
 fund = "Wintermute"
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-[SearcherContracts."0xaf0b0000f0210d0f421f0009c72406703b50506b"]
-fund = "Wintermute"
-mev = ["CexDex"]
-builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
-
-[SearcherContracts."0x0000006daea1723962647b7e189d311d757fb793"]
+[searcher_contracts."0xaf0b0000f0210d0f421f0009c72406703b50506b"]
 fund = "Wintermute"
 mev = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-[SearcherContracts."0x280027dd00ee0050d3f9d168efd6b40090009246"]
+[searcher_contracts."0x0000006daea1723962647b7e189d311d757fb793"]
+fund = "Wintermute"
+mev = ["CexDex"]
+builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
+
+[searcher_contracts."0x280027dd00ee0050d3f9d168efd6b40090009246"]
 fund = "Wintermute"
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 # JaneStreet searcher associated with Manta Builder
-[SearcherContractsContracts."0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
+[searcher_contractsContracts."0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
 fund = "JaneStreet"
 mev = ["CexDex"] 
 builder = "0x5F927395213ee6b95dE97bDdCb1b2B1C0F16844F"
 
-# Anta Builder SearcherContracts - associated with Ant Builder and FlowTraders fund
-[SearcherContracts."0x32801ab1957aaad1c65289b51603373802b4e8bb"]
+# Anta Builder searcher_contracts - associated with Ant Builder and FlowTraders fund
+[searcher_contracts."0x32801ab1957aaad1c65289b51603373802b4e8bb"]
 fund = "FlowTraders"
 mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
-[SearcherContracts."0xD198fBE60C49D4789525fC54567447518C7D2a11"]
+[searcher_contracts."0xD198fBE60C49D4789525fC54567447518C7D2a11"]
 fund = "FlowTraders"
 mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
-[SearcherContracts."0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
+[searcher_contracts."0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
 fund = "Tokka Labs"
 mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
-[SearcherContracts."0xeeaa83b2d581a3a790774d4dae7bf354fffe3376"]
+[searcher_contracts."0xeeaa83b2d581a3a790774d4dae7bf354fffe3376"]
 fund = "Eth-builder"
 mev = ["CexDex"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
-[SearcherContracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]
+[searcher_contracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]
 mev = ["Sandwich"]
 fund = "icanhazblock"
 
