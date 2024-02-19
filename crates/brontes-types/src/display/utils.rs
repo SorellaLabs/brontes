@@ -9,16 +9,6 @@ use crate::{
     ToFloatNearest,
 };
 
-macro_rules! make_hash_map {
-    ($( $key:expr => $value:expr ),* $(,)?) => {{
-        let mut map = std::collections::HashMap::new();
-        $(
-            map.insert($key.into(), $value.into());
-        )*
-        map
-    }};
-}
-
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
@@ -47,7 +37,15 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
         "Transaction Details".bold().underline().bright_yellow()
     )?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", contract)?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
 
     writeln!(f, "\n{}:", "Attacks".bright_yellow().underline())?;
     for (i, ((tx_hash, swaps), gas_details)) in sandwich_data
@@ -162,10 +160,8 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
 
     bundle.header.token_profits.print_with_labels(
         f,
-        Some(&make_hash_map! {
-            bundle.header.mev_contract => "MEV Contract",
-            bundle.header.eoa => "EOA"
-        }),
+        bundle.header.mev_contract,
+        bundle.header.eoa,
     )?;
 
     Ok(())
@@ -198,7 +194,15 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
         "Transaction Details".bold().underline().bright_yellow()
     )?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", contract)?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
 
     // Frontrun Section
     writeln!(f, "\n{}:", "Attacks".bright_yellow().underline())?;
@@ -333,10 +337,8 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
 
     bundle.header.token_profits.print_with_labels(
         f,
-        Some(&make_hash_map! {
-            bundle.header.mev_contract => "MEV Contract",
-            bundle.header.eoa => "EOA"
-        }),
+        bundle.header.mev_contract,
+        bundle.header.eoa,
     )?;
 
     Ok(())
@@ -374,7 +376,15 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
         bundle.header.tx_index.to_string().bold()
     )?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", contract)?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
 
     let tx_url = format!("https://etherscan.io/tx/{:?}", bundle.header.tx_hash).underline();
     writeln!(f, "   - Etherscan: {}", tx_url)?;
@@ -412,10 +422,8 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
 
     bundle.header.token_profits.print_with_labels(
         f,
-        Some(&make_hash_map! {
-            bundle.header.mev_contract => "MEV Contract",
-            bundle.header.eoa => "EOA"
-        }),
+        bundle.header.mev_contract,
+        bundle.header.eoa,
     )?;
 
     Ok(())
@@ -451,7 +459,15 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
         "Transaction Details".bold().underline().bright_yellow()
     )?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", contract)?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
 
     // Liquidation Transaction Section
     writeln!(f, "{}\n", "Liquidation".bright_yellow().underline())?;
@@ -508,10 +524,8 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
 
     bundle.header.token_profits.print_with_labels(
         f,
-        Some(&make_hash_map! {
-            bundle.header.mev_contract => "MEV Contract",
-            bundle.header.eoa => "EOA"
-        }),
+        bundle.header.mev_contract,
+        bundle.header.eoa,
     )?;
 
     Ok(())
@@ -547,7 +561,15 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
         "Transaction Details".bold().underline().bright_yellow()
     )?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", contract)?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
 
     // Frontrun Section
     writeln!(f, "\n{}\n", "Frontrun Mints".bright_yellow().underline())?;
@@ -631,10 +653,8 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
 
     bundle.header.token_profits.print_with_labels(
         f,
-        Some(&make_hash_map! {
-            bundle.header.mev_contract => "MEV Contract",
-            bundle.header.eoa => "EOA"
-        }),
+        bundle.header.mev_contract,
+        bundle.header.eoa,
     )?;
 
     Ok(())
@@ -669,8 +689,15 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
         "Transaction Details".bold().underline().bright_yellow()
     )?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
 
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", contract)?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
     // Tx details
     writeln!(
         f,
@@ -683,7 +710,16 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
         bundle.header.tx_index.to_string().bold()
     )?;
     writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-    writeln!(f, "   - Mev Contract: {}", bundle.header.mev_contract)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", contract)?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
+
     writeln!(
         f,
         "   - Etherscan: {}",
@@ -748,10 +784,8 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     bundle.header.token_profits.print_with_labels(
         f,
-        Some(&make_hash_map! {
-            bundle.header.mev_contract => "MEV Contract",
-            bundle.header.eoa => "EOA"
-        }),
+        bundle.header.mev_contract,
+        bundle.header.eoa,
     )?;
 
     Ok(())

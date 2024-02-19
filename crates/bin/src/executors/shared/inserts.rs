@@ -89,34 +89,16 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             contract_info.mev.push(mev.header.mev_type);
         }
 
-        // If the contract is verified or is a know protocol, we only update the EOA info
-        if database
-            .try_fetch_address_metadata(mev.header.mev_contract)
-            .expect("Failed to fetch address metadata from the database")
-            .unwrap_or_default()
-            .is_verified()
-            || database
-                .get_protocol_details(mev.header.mev_contract)
-                .is_ok()
+        if let Err(e) = database
+            .write_searcher_info(
+                mev.header.eoa,
+                mev.header.mev_contract,
+                eoa_info,
+                Some(contract_info),
+            )
+            .await
         {
-            if let Err(e) = database
-                .write_searcher_eoa_info(mev.header.eoa, eoa_info)
-                .await
-            {
-                error!("Failed to update searcher info in the database: {:?}", e);
-            }
-        } else {
-            if let Err(e) = database
-                .write_searcher_info(
-                    mev.header.eoa,
-                    mev.header.mev_contract,
-                    eoa_info,
-                    contract_info,
-                )
-                .await
-            {
-                error!("Failed to update searcher info in the database: {:?}", e);
-            }
+            error!("Failed to update searcher info in the database: {:?}", e);
         }
     }
 }
