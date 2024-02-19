@@ -166,7 +166,7 @@ builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 [searcher_contracts."0x7d32C90762E22379235FC311fDB16fAB399Ed40A"]
 fund = "SymbolicCapitalPartners"
-mev = ["Liquidation", "AtomicArbitrage"]
+mev = ["Liquidation", "AtomicArb"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 # Rsync contracts
