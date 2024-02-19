@@ -70,7 +70,7 @@ lazy_static.workspace = true
 auto_impl.workspace = true
 dotenv.workspace = true
 itertools.workspace = true
-toml = "0.8.9"
+
 
 [dev-dependencies]
 serial_test.workspace = true

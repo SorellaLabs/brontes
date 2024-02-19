@@ -4,6 +4,7 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
+        builder::{BuilderInfo, BuilderStats},
         dex::DexQuotes,
         metadata::{BlockMetadata, Metadata},
         searcher::SearcherInfo,
@@ -45,7 +46,7 @@ impl Clickhouse {
     }
 
     // inserts
-    pub async fn write_searcher_info(
+    pub async fn write_searcher_eoa_info(
         &self,
         _searcher_eoa: Address,
         _searcher_info: SearcherInfo,
@@ -54,6 +55,42 @@ impl Clickhouse {
         //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
         //     .await?;
 
+        Ok(())
+    }
+
+    pub async fn write_searcher_contract_info(
+        &self,
+        _searcher_eoa: Address,
+        _searcher_info: SearcherInfo,
+    ) -> eyre::Result<()> {
+        // self.client
+        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
+        //     .await?;
+
+        Ok(())
+    }
+
+    pub async fn write_searcher_stats(
+        &self,
+        _searcher_eoa: Address,
+        _searcher_stats: SearcherInfo,
+    ) -> eyre::Result<()> {
+        Ok(())
+    }
+
+    pub async fn write_builder_info(
+        &self,
+        _builder_eoa: Address,
+        _builder_info: BuilderInfo,
+    ) -> eyre::Result<()> {
+        Ok(())
+    }
+
+    pub async fn write_builder_stats(
+        &self,
+        _builder_eoa: Address,
+        _builder_stats: BuilderStats,
+    ) -> eyre::Result<()> {
         Ok(())
     }
 
