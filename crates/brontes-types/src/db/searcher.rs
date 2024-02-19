@@ -15,12 +15,14 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherInfo {
     #[redefined(same_fields)]
+    #[serde(default)]
     pub fund: Option<Fund>,
     #[redefined(same_fields)]
     #[serde(default)]
     pub mev: Vec<MevType>,
     /// If the searcher is vertically integrated, this will contain the corresponding builder's information.
     #[serde(with = "option_addresss")]
+    #[serde(default)]
     pub builder: Option<Address>,
 }
 

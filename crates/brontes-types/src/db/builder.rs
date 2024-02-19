@@ -31,6 +31,7 @@ pub struct BuilderInfo {
     #[serde(default)]
     pub searchers_contracts: Vec<Address>,
     #[serde(with = "option_addresss")]
+    #[serde(default)]
     pub ultrasound_relay_collateral_address: Option<Address>,
 }
 
