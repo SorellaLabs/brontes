@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::pattern::Searcher};
+use std::collections::HashMap;
 
 use alloy_primitives::Address;
 

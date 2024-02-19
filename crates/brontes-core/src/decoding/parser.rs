@@ -63,9 +63,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         let mut workspace_dir = workspace_dir();
         workspace_dir.push(CLASSIFIER_CONFIG_FILE_NAME);
 
-        let config: Table =
-            toml::from_str(&std::fs::read_to_string(workspace_dir).expect("no config file"))
-                .expect("failed to parse toml");
+        let Ok(config) = toml::from_str::<Table>(&{
+            let Ok(path) = std::fs::read_to_string(workspace_dir) else {
+                return;
+            };
+            path
+        }) else {
+            return;
+        };
 
         for (protocol, inner) in config {
             let protocol: Protocol = protocol.parse().unwrap();

@@ -73,8 +73,9 @@ impl<V: NormalizedAction> Root<V> {
             .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
             .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
 
-        let searcher_eoa_info = database.try_fetch_searcher_contract_info(self.head.address)?;
-        let searcher_contract_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
+        let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
+        let searcher_contract_info =
+            database.try_fetch_searcher_contract_info(self.get_to_address())?;
 
         Ok(TxInfo::new(
             block_number,

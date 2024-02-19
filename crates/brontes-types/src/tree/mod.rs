@@ -20,7 +20,7 @@ pub use search_args::*;
 
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
-const MAX_SEARCH_THREADS: usize = 3;
+const MAX_SEARCH_THREADS: usize = 4;
 
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {

@@ -1,4 +1,4 @@
-use std::{str::pattern::Searcher, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::{
@@ -6,7 +6,7 @@ use brontes_inspect::{
     Inspector,
 };
 use brontes_types::{
-    db::{metadata::Metadata, searcher::SearcherInfo},
+    db::metadata::Metadata,
     mev::{Bundle, MevBlock},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -75,8 +75,11 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
         );
 
         let (eoa_info, contract_info) = database
-            .try_fetch_searcher_info(mev.header.eoa, mev.header.contract)
-            .await?;
+            .try_fetch_searcher_info(mev.header.eoa, mev.header.mev_contract)
+            .expect("Failed to fetch searcher info from the database");
+
+        let mut eoa_info = eoa_info.unwrap_or_default();
+        let mut contract_info = contract_info.unwrap_or_default();
 
         if !eoa_info.mev.contains(&mev.header.mev_type) {
             eoa_info.mev.push(mev.header.mev_type);

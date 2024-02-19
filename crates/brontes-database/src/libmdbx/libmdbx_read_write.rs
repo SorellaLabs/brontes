@@ -502,6 +502,7 @@ impl DBWriter for LibmdbxReadWriter {
         self.write_searcher_eoa_info(eoa_address, eoa_info).await?;
         self.write_searcher_contract_info(contract_address, contract_info)
             .await?;
+        Ok(())
     }
 
     async fn write_searcher_eoa_info(
