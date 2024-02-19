@@ -21,6 +21,7 @@ pub struct BuilderInfo {
     pub name: Option<String>,
     #[redefined(same_fields)]
     #[serde(deserialize_with = "option_fund::deserialize")]
+    #[serde(default)]
     pub fund: Option<Fund>,
     #[serde(with = "vec_bls_pub_key")]
     #[serde(default)]
