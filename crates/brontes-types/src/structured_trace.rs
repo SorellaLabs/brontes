@@ -256,7 +256,7 @@ impl Serialize for TxTrace {
     {
         let mut ser_struct = serializer.serialize_struct("TxTrace", 30)?;
 
-        ser_struct.serialize_field("block_number", &format!("{:?}", self.block_number))?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("gas_used", &self.gas_used)?;
         ser_struct.serialize_field("effective_price", &self.effective_price)?;
