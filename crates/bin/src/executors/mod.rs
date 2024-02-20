@@ -79,7 +79,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             inspectors,
             quote_asset,
             end_block,
-            _p: PhantomData::default(),
+            _p: PhantomData,
         }
     }
 

@@ -50,7 +50,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             parser,
             processing_futures: FuturesUnordered::new(),
             database,
-            _p: PhantomData::default(),
+            _p: PhantomData,
         }
     }
 

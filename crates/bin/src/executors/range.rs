@@ -49,7 +49,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             end_block,
             libmdbx,
             inspectors,
-            _p: PhantomData::default(),
+            _p: PhantomData,
         }
     }
 
