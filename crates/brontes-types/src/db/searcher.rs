@@ -68,6 +68,28 @@ impl SearcherStats {
 
 implement_table_value_codecs_with_zc!(SearcherStatsRedefined);
 
+#[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize)]
+pub struct SearcherStatsWithAddress {
+    #[serde(with = "addresss")]
+    pub address: Address,
+    pub pnl: f64,
+    pub total_bribed: f64,
+    pub bundle_count: u64,
+    pub last_active: u64,
+}
+
+impl SearcherStatsWithAddress {
+    pub fn new_with_address(address: Address, stats: SearcherStats) -> Self {
+        Self {
+            address,
+            pnl: stats.pnl,
+            total_bribed: stats.total_bribed,
+            bundle_count: stats.bundle_count,
+            last_active: stats.last_active,
+        }
+    }
+}
+
 #[derive(
     Debug, Default, Display, PartialEq, Eq, Clone, rSerialize, rDeserialize, Archive, Copy,
 )]

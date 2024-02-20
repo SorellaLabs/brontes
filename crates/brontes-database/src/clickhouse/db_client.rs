@@ -7,7 +7,7 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderStats},
         dex::DexQuotes,
         metadata::{BlockMetadata, Metadata},
-        searcher::{JoinedSearcherInfo, SearcherInfo},
+        searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, MevBlock},
@@ -22,7 +22,8 @@ use sorella_db_databases::{
 
 use super::{
     dbms::{
-        BrontesClickhouseTables, ClickhouseSearcherInfo, ClickhouseTokenInfo, ClickhouseTxTraces,
+        BrontesClickhouseTables, ClickhouseSearcherInfo, ClickhouseSearcherStats,
+        ClickhouseTokenInfo, ClickhouseTxTraces,
     },
     ClickhouseHandle,
 };
@@ -82,9 +83,15 @@ impl Clickhouse {
 
     pub async fn write_searcher_stats(
         &self,
-        _searcher_eoa: Address,
-        _searcher_stats: SearcherInfo,
+        searcher_eoa: Address,
+        searcher_stats: SearcherStats,
     ) -> eyre::Result<()> {
+        let stats = SearcherStatsWithAddress::new_with_address(searcher_eoa, searcher_stats);
+
+        self.client
+            .insert_one::<ClickhouseSearcherStats>(&stats)
+            .await?;
+
         Ok(())
     }
 
@@ -232,10 +239,14 @@ impl ClickhouseHandle for Clickhouse {
 #[cfg(test)]
 mod tests {
     use brontes_core::{get_db_handle, init_trace_parser};
-    use brontes_types::{db::searcher::SearcherEoaContract, mev::MevType};
+    use brontes_types::{
+        db::searcher::{SearcherEoaContract, SearcherStatsWithAddress},
+        mev::MevType,
+    };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+    use crate::clickhouse::dbms::ClickhouseSearcherStats;
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
@@ -301,5 +312,23 @@ mod tests {
 
         let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
         let queried = db.inner().execute_remote(query, &()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn searcher_stats() {
+        let db = spawn_clickhouse();
+        let case0 = SearcherStatsWithAddress::default();
+
+        let res = db
+            .inner()
+            .insert_one::<ClickhouseSearcherStats>(&case0)
+            .await
+            .unwrap();
+        //assert!(res.is_ok());
+
+        let query = "SELECT * FROM brontes.searcher_stats";
+        let queried: SearcherStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
     }
 }

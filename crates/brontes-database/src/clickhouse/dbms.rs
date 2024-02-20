@@ -1,7 +1,7 @@
 use brontes_types::{
     db::{
         dex::DexQuotes,
-        searcher::{JoinedSearcherInfo, SearcherInfo},
+        searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
         token_info::TokenInfoWithAddress,
     },
     mev::*,
@@ -31,7 +31,8 @@ clickhouse_dbms!(
         ClickhouseSearcherInfo,
         ClickhouseDexQuotes,
         ClickhouseTxTraces,
-        ClickhouseTokenInfo
+        ClickhouseTokenInfo,
+        ClickhouseSearcherStats
     ]
 );
 
@@ -72,6 +73,14 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseSearcherInfo,
     JoinedSearcherInfo,
+    NO_FILE
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "brontes",
+    ClickhouseSearcherStats,
+    SearcherStatsWithAddress,
     NO_FILE
 );
 
