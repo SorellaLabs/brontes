@@ -19,7 +19,10 @@ use sorella_db_databases::{
     Database,
 };
 
-use super::{dbms::BrontesClickhouseTables, ClickhouseHandle};
+use super::{
+    dbms::{BrontesClickhouseTables, ClickhouseTxTraces},
+    ClickhouseHandle,
+};
 use crate::{
     clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
     libmdbx::{
@@ -146,10 +149,10 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseTxTraces>(&(traces.into()))
-        //     .await?;
+    pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+        self.client
+            .insert_many::<ClickhouseTxTraces>(&traces)
+            .await?;
 
         Ok(())
     }
@@ -216,5 +219,37 @@ impl ClickhouseHandle for Clickhouse {
 
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
         &self.client
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use brontes_core::{get_db_handle, init_trace_parser};
+    use brontes_types::structured_trace::TransactionTraceWithLogs;
+    use tokio::sync::mpsc::unbounded_channel;
+
+    use super::*;
+
+    fn spawn_clickhouse() -> Clickhouse {
+        dotenv::dotenv().ok();
+
+        Clickhouse::default()
+    }
+
+    #[tokio::test]
+    async fn tx_traces() {
+        let db = spawn_clickhouse();
+
+        let libmdbx = get_db_handle();
+        let (a, b) = unbounded_channel();
+        let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
+
+        let binding = tracer.execute_block(18000000).await.unwrap();
+        let exec = binding.0.first().unwrap();
+
+        db.inner()
+            .insert_one::<ClickhouseTxTraces>(&exec)
+            .await
+            .unwrap();
     }
 }
