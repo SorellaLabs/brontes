@@ -34,32 +34,52 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             has_from_address: None,
         }
     }
-    /// takes a function ptr and will or the result with other defined functions
+
+    /// Will collect all actions that the search passes if it is equal to the given function arg.
+    /// if no child node search args are set. The search will use this action as the default.
     pub fn with_action(mut self, action_fn: fn(&V) -> bool) -> Self {
         self.with_actions.push(action_fn);
         self
     }
 
-    /// takes a function ptrs and will or the result with other defined functions
+    /// Will collect all actions that the search passes if it equals one of the function args
+    /// passed in. If no child node search args are set. These action fn will be used to search
+    /// for child nodes
     pub fn with_actions<const N: usize>(mut self, action_fns: [fn(&V) -> bool; N]) -> Self {
         self.with_actions.extend(action_fns);
         self
     }
 
-    /// when searching for child nodes, makes sure that there is atleast one of the following
-    /// actions defined by the args
+    /// When searching for child nodes, makes sure that there is atleast one of the following
+    /// actions defined by the given functions
     pub fn child_nodes_have<const H: usize>(mut self, action_fns: [fn(&V) -> bool; H]) -> Self {
+        if !self.child_nodes_contains.is_empty() {
+            tracing::error!(
+                "child nodes contains already set, only one of contains, or have is allowed"
+            );
+            return self;
+        }
+
         self.child_node_have = action_fns.to_vec();
         self
     }
 
-    /// when searching for child nodes. will check that the tree has the entire set of different
-    /// actions, specified by this args
+    /// When searching for child nodes, makes sure that there is all of the following
+    /// actions defined by the given functions
     pub fn child_nodes_contain<const C: usize>(mut self, action_fns: [fn(&V) -> bool; C]) -> Self {
+        if !self.child_node_have.is_empty() {
+            tracing::error!(
+                "child nodes contains already set, only one of contains, or have is allowed"
+            );
+            return self;
+        }
         self.child_nodes_contains = action_fns.to_vec();
         self
     }
 
+    /// There can only be 1 address set currently. When this is set.
+    /// only nodes that have this address + any other arguments specified will
+    /// be collected.
     pub fn with_from_address(mut self, address: Address) -> Self {
         self.has_from_address = Some(address);
         self

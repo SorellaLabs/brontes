@@ -125,6 +125,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
+    /// Collects all spans defined by the Search Args, then will allow modifications
+    /// of the nodes found in the spans.
     pub fn modify_spans<F>(&mut self, find: TreeSearchBuilder<V>, modify: F)
     where
         F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
@@ -136,6 +138,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         });
     }
 
+    /// For the given tx hash, goes through the tree and collects all actions
+    /// specified by the tree search builder.
     pub fn collect(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<V> {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect(&call)
@@ -144,6 +148,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
+    /// For all transactions, goes through the tree and collects all actions
+    /// specified by the tree search builder.
     pub fn collect_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<V>> {
         self.tp.install(|| {
             self.tx_roots
@@ -186,6 +192,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
+    /// Uses the search args to find a given nodes. Specifically if a node has childs
+    /// that the search args define. Then calls the modify function on the current node.
     pub fn modify_node_if_contains_childs<F>(&mut self, find: TreeSearchBuilder<V>, modify: F)
     where
         F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
@@ -197,6 +205,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
+    /// Uses search args to collect two types of nodes. Nodes that could be a parent to
+    /// a child node that we want to remove. and child nodes we want to remove.
+    /// These are both collected and passed to the classifiy removal index function.
+    /// This function will allow the user to look at all of the parent nodes and possible removal
+    /// nodes and return the index of nodes that will be removed from the tree.
     pub fn remove_duplicate_data<ClassifyRemovalIndex, WantedData, R>(
         &mut self,
         find: TreeSearchBuilder<V>,
