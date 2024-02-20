@@ -118,20 +118,21 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                     let root_trace = trace.trace.remove(0);
                     let address = root_trace.get_from_addr();
+                    let trace_idx = root_trace.trace_idx;
                     let classification = self
                         .process_classification(
                             header.number,
                             None,
                             &NodeData(vec![]),
                             tx_idx as u64,
-                            0,
+                            trace_idx,
                             root_trace,
                             &mut further_classification_requests,
                             &mut pool_updates,
                         )
                         .await;
 
-                    let node = Node::new(0, address, vec![]);
+                    let node = Node::new(trace_idx, address, vec![]);
 
                     let mut tx_root = Root {
                         position: tx_idx,
@@ -148,7 +149,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         data_store: NodeData(vec![Some(classification)]),
                     };
 
-                    for (index, trace) in trace.trace.into_iter().enumerate() {
+                    for trace in trace.trace.into_iter() {
                         if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
                             *coinbase +=
                                 get_coinbase_transfer(header.beneficiary, &trace.trace.action)
@@ -164,7 +165,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 Some(&tx_root.head),
                                 &tx_root.data_store,
                                 tx_idx as u64,
-                                (index + 1) as u64,
+                                trace.trace_idx,
                                 trace.clone(),
                                 &mut further_classification_requests,
                                 &mut pool_updates,
@@ -173,8 +174,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                         let from_addr = trace.get_from_addr();
 
-                        let node =
-                            Node::new((index + 1) as u64, from_addr, trace.trace.trace_address);
+                        let node = Node::new(trace.trace_idx, from_addr, trace.trace.trace_address);
 
                         tx_root.insert(node, classification);
                     }
