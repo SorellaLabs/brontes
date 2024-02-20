@@ -10,7 +10,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, TreeSearchArgs, TxInfo,
+    GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
 use clickhouse::{fixed_string::FixedString, row::*};
@@ -64,21 +64,14 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
-                            tree.collect(tx, |node, info| TreeSearchArgs {
-                                collect_current_node: info
-                                    .get_ref(node.data)
-                                    .map(|node| {
-                                        node.is_mint() || node.is_burn() || node.is_collect()
-                                    })
-                                    .unwrap_or_default(),
-                                child_node_to_collect: node
-                                    .subactions
-                                    .iter()
-                                    .filter_map(|node| info.get_ref(*node))
-                                    .any(|action| {
-                                        action.is_mint() || action.is_collect() || action.is_burn()
-                                    }),
-                            })
+                            tree.collect(
+                                tx,
+                                TreeSearchBuilder::default().with_actions([
+                                    Actions::is_mint,
+                                    Actions::is_burn,
+                                    Actions::is_collect,
+                                ]),
+                            )
                         })
                         .collect::<Vec<Vec<Actions>>>();
                     tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
@@ -106,17 +99,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.collect(*victim, |node, data| TreeSearchArgs {
-                                collect_current_node: data
-                                    .get_ref(node.data)
-                                    .map(|node| node.is_swap())
-                                    .unwrap_or_default(),
-                                child_node_to_collect: node
-                                    .get_all_sub_actions()
-                                    .iter()
-                                    .filter_map(|node| data.get_ref(*node))
-                                    .any(|action| action.is_swap()),
-                            })
+                            tree.collect(
+                                *victim,
+                                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                            )
                         })
                         .collect_vec();
 

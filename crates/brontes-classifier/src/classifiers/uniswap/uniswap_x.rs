@@ -167,9 +167,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
-    use brontes_types::{
-        normalized_actions::Actions, Node, NodeData, ToScaledRational, TreeSearchArgs,
-    };
+    use brontes_types::{normalized_actions::Actions, ToScaledRational, TreeSearchBuilder};
 
     use super::*;
 
@@ -238,20 +236,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|b| b.is_batch())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|node| data.get_ref(*node))
-                .any(|action| action.is_batch()),
-        };
-
         classifier_utils
-            .contains_action(execute_batch_with_callback, 0, eq_action, search_fn)
+            .contains_action(
+                execute_batch_with_callback,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_batch),
+            )
             .await
             .unwrap();
     }
@@ -296,20 +287,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|b| b.is_batch())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|node| data.get_ref(*node))
-                .any(|action| action.is_batch()),
-        };
-
         classifier_utils
-            .contains_action(execute_batch_with_callback, 0, eq_action, search_fn)
+            .contains_action(
+                execute_batch_with_callback,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_batch),
+            )
             .await
             .unwrap();
     }
