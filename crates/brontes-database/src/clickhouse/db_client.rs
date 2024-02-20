@@ -254,13 +254,13 @@ mod tests {
             dex::DexPrices,
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
         },
-        mev::MevType,
+        mev::{MevType, PossibleMev, PossibleMevCollection},
         pair::Pair,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::ClickhouseSearcherStats;
+    use crate::clickhouse::dbms::{ClickhouseMevBlocks, ClickhouseSearcherStats};
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
@@ -388,6 +388,27 @@ mod tests {
 
         let query = "SELECT * FROM brontes.dex_price_mapping";
         let queried: DexQuotesWithBlockNumber = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+    }
+
+    #[tokio::test]
+    async fn mev_block() {
+        let db = spawn_clickhouse();
+
+        let case0_possible = PossibleMev::default();
+        let mut case0 = MevBlock::default();
+        case0.possible_mev = PossibleMevCollection(vec![case0_possible]);
+
+        let res = db
+            .inner()
+            .insert_one::<ClickhouseMevBlocks>(&case0)
+            .await
+            .unwrap();
+        //assert!(res.is_ok());
+
+        // let query = "SELECT * FROM mev.mev_blocks";
+        //  let queried: MevBlock = db.inner().query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
