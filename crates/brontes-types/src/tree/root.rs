@@ -73,7 +73,43 @@ impl<V: NormalizedAction> Root<V> {
             .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
             .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
 
+        let is_classified = self
+            .data_store
+            .get_ref(self.head.data)
+            .map(|f| f.is_classified())
+            .unwrap_or_default();
+
+        let emits_logs = self
+            .data_store
+            .get_ref(self.head.data)
+            .unwrap()
+            .get_action()
+            .emitted_logs();
+        let is_cex_dex_call = matches!(
+            self.data_store.get_ref(self.head.data).unwrap().get_action(),
+            Actions::Unclassified(data) if data.is_cex_dex_call()
+        );
+
         let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
+
+        // If the to address is a verified contract, or emits logs, or is classified then shouldn't pass it as mev_contract to avoid the misclassification of protocol addresses as mev contracts
+        if is_verified_contract || is_classified || emits_logs {
+            return Ok(TxInfo::new(
+                block_number,
+                self.position as u64,
+                self.head.address,
+                None,
+                self.tx_hash,
+                self.gas_details,
+                is_classified,
+                is_cex_dex_call,
+                self.private,
+                is_verified_contract,
+                searcher_eoa_info,
+                None,
+            ));
+        }
+
         let searcher_contract_info =
             database.try_fetch_searcher_contract_info(self.get_to_address())?;
 
@@ -81,17 +117,11 @@ impl<V: NormalizedAction> Root<V> {
             block_number,
             self.position as u64,
             self.head.address,
-            to_address,
+            Some(to_address),
             self.tx_hash,
             self.gas_details,
-            self.data_store
-                .get_ref(self.head.data)
-                .map(|f| f.is_classified())
-                .unwrap_or_default(),
-            matches!(
-                self.data_store.get_ref(self.head.data).unwrap().get_action(),
-                Actions::Unclassified(data) if data.is_cex_dex_call()
-            ),
+            is_classified,
+            is_cex_dex_call,
             self.private,
             is_verified_contract,
             searcher_eoa_info,
