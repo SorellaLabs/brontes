@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_intialize_clickhouse_no_args_tables() {
+    async fn test_intialize_clickhouse_tables() {
         init_tracing();
         let block_range = (17000000, 17000100);
 
@@ -363,7 +363,9 @@ mod tests {
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = Tables::ALL;
+        //let tables = Tables::ALL;
+        let tables = [Tables::TxTraces];
+
         intializer
             .initialize(&tables, false, Some(block_range))
             .await
@@ -395,12 +397,17 @@ mod tests {
             .unwrap();
 
         // Builder
-        // Builder::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        Builder::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
         // AddressMeta
         AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
+
+        // TxTraces
+        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
     }

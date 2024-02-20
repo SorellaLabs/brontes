@@ -10,6 +10,7 @@ use brontes_types::{
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
+        clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
@@ -161,7 +162,15 @@ impl Tables {
             Tables::DexPrice => Ok(()),
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
-            Tables::TxTraces => Ok(()),
+            Tables::TxTraces => {
+                initializer
+                    .initialize_table_from_clickhouse::<TxTraces, TxTracesData>(
+                        block_range,
+                        clear_table,
+                        Some(META_FLAG),
+                    )
+                    .await
+            }
             Tables::Builder => {
                 initializer
                     .clickhouse_init_no_args::<Builder, BuilderData>(clear_table)
@@ -552,12 +561,14 @@ compressed_table!(
         #[serde_as]
         Data {
             key: u64,
+            #[serde(deserialize_with = "tx_traces_inner::deserialize")]
             value: TxTracesInner,
             compressed_value: TxTracesInnerRedefined
         },
         Init {
-            init_size: None,
-            init_method: Other
+            init_size: Some(10_000),
+            init_method: Clickhouse,
+            http_endpoint: ""
         },
         CLI {
             can_insert: False
