@@ -244,7 +244,7 @@ mod tests {
         let (a, b) = unbounded_channel();
         let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
 
-        let binding = tracer.execute_block(18000000).await.unwrap();
+        let binding = tracer.execute_block(18900000).await.unwrap();
         let exec = binding.0.first().unwrap();
 
         db.inner()
