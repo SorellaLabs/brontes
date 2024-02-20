@@ -41,22 +41,28 @@ impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseLogs {
-    pub logs: Vec<Vec<(u64, String, Vec<String>, String)>>,
+    pub trace_idx: Vec<u64>,
+    pub log_idx: Vec<u64>,
+    pub address: Vec<String>,
+    pub topics: Vec<Vec<String>>,
+    pub data: Vec<String>,
 }
 
 impl<'a> From<&'a TxTrace> for ClickhouseLogs {
     fn from(value: &'a TxTrace) -> Self {
-        let logs = value
+        let mut this = Self::default();
+        value
             .trace
             .iter()
-            .map(|trace| {
+            .flat_map(|trace| {
                 trace
                     .logs
                     .iter()
                     .enumerate()
-                    .map(|(idx, log)| {
+                    .map(|(log_idx, log)| {
                         (
-                            idx as u64,
+                            trace.trace_idx,
+                            log_idx as u64,
                             format!("{:?}", log.address),
                             log.topics()
                                 .iter()
@@ -67,9 +73,15 @@ impl<'a> From<&'a TxTrace> for ClickhouseLogs {
                     })
                     .collect_vec()
             })
-            .collect_vec();
+            .for_each(|(t_idx, l, a, t, d)| {
+                this.trace_idx.push(t_idx);
+                this.log_idx.push(l);
+                this.address.push(a);
+                this.topics.push(t);
+                this.data.push(d);
+            });
 
-        Self { logs }
+        this
     }
 }
 

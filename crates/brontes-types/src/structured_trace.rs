@@ -3,7 +3,6 @@ use std::str::FromStr;
 use alloy_primitives::{Address, Log, U256};
 use clickhouse::{DbRow, Row};
 use itertools::Itertools;
-use malachite::strings::ToDebugString;
 use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
@@ -267,39 +266,39 @@ impl Serialize for TxTrace {
         ser_struct.serialize_field("is_success", &self.is_success)?;
 
         let trace_idx = self.trace.iter().map(|trace| trace.trace_idx).collect_vec();
-        ser_struct.serialize_field("trace.trace_idx", &trace_idx)?;
+        ser_struct.serialize_field("trace_meta.trace_idx", &trace_idx)?;
 
         let msg_sender = self
             .trace
             .iter()
             .map(|trace| format!("{:?}", trace.msg_sender))
             .collect_vec();
-        ser_struct.serialize_field("trace.msg_sender", &msg_sender)?;
+        ser_struct.serialize_field("trace_meta.msg_sender", &msg_sender)?;
 
         let decoded_data = ClickhouseDecodedCallData::from(self);
         ser_struct.serialize_field(
-            "trace.decoded_data.function_name",
+            "trace_meta.decoded_data.function_name",
             &decoded_data.function_name,
         )?;
-        ser_struct.serialize_field("trace.decoded_data.call_data", &decoded_data.call_data)?;
-        ser_struct.serialize_field("trace.decoded_data.return_data", &decoded_data.return_data)?;
-
-        let logs = ClickhouseLogs::from(self);
-        ser_struct.serialize_field("trace.logs", &logs.logs)?;
+        ser_struct.serialize_field("trace_meta.decoded_data.call_data", &decoded_data.call_data)?;
+        ser_struct.serialize_field(
+            "trace_meta.decoded_data.return_data",
+            &decoded_data.return_data,
+        )?;
 
         let error = self
             .trace
             .iter()
             .map(|trace| trace.trace.error.clone())
             .collect_vec();
-        ser_struct.serialize_field("trace.error", &error)?;
+        ser_struct.serialize_field("trace_meta.error", &error)?;
 
         let subtraces = self
             .trace
             .iter()
             .map(|trace| trace.trace.subtraces as u64)
             .collect_vec();
-        ser_struct.serialize_field("trace.subtraces", &subtraces)?;
+        ser_struct.serialize_field("trace_meta.subtraces", &subtraces)?;
 
         let trace_address = self
             .trace
@@ -313,52 +312,59 @@ impl Serialize for TxTrace {
                     .collect_vec()
             })
             .collect_vec();
-        ser_struct.serialize_field("trace.trace_address", &trace_address)?;
+        ser_struct.serialize_field("trace_meta.trace_address", &trace_address)?;
+
+        let logs = ClickhouseLogs::from(self);
+        ser_struct.serialize_field("trace_logs.trace_idx", &logs.trace_idx)?;
+        ser_struct.serialize_field("trace_logs.log_idx", &logs.log_idx)?;
+        ser_struct.serialize_field("trace_logs.address", &logs.address)?;
+        ser_struct.serialize_field("trace_logs.topics", &logs.topics)?;
+        ser_struct.serialize_field("trace_logs.data", &logs.data)?;
 
         let create_action = ClickhouseCreateAction::from(self);
-        ser_struct.serialize_field("trace.create_action.from", &create_action.from)?;
-        ser_struct.serialize_field("trace.create_action.gas", &create_action.gas)?;
-        ser_struct.serialize_field("trace.create_action.init", &create_action.init)?;
-        ser_struct.serialize_field("trace.create_action.value", &create_action.value)?;
+        ser_struct.serialize_field("trace_create_actions.from", &create_action.from)?;
+        ser_struct.serialize_field("trace_create_actions.gas", &create_action.gas)?;
+        ser_struct.serialize_field("trace_create_actions.init", &create_action.init)?;
+        ser_struct.serialize_field("trace_create_actions.value", &create_action.value)?;
 
         let call_action = ClickhouseCallAction::from(self);
-        ser_struct.serialize_field("trace.call_action.from", &call_action.from)?;
-        ser_struct.serialize_field("trace.call_action.call_type", &call_action.call_type)?;
-        ser_struct.serialize_field("trace.call_action.gas", &call_action.gas)?;
-        ser_struct.serialize_field("trace.call_action.input", &call_action.input)?;
-        ser_struct.serialize_field("trace.call_action.to", &call_action.to)?;
-        ser_struct.serialize_field("trace.call_action.value", &call_action.value)?;
+        ser_struct.serialize_field("trace_call_actions.from", &call_action.from)?;
+        ser_struct.serialize_field("trace_call_actions.call_type", &call_action.call_type)?;
+        ser_struct.serialize_field("trace_call_actions.gas", &call_action.gas)?;
+        ser_struct.serialize_field("trace_call_actions.input", &call_action.input)?;
+        ser_struct.serialize_field("trace_call_actions.to", &call_action.to)?;
+        ser_struct.serialize_field("trace_call_actions.value", &call_action.value)?;
 
         let self_destruct_action = ClickhouseSelfDestructAction::from(self);
         ser_struct.serialize_field(
-            "trace.self_destruct_action.address",
+            "trace_self_destruct_actions.address",
             &self_destruct_action.address,
         )?;
         ser_struct.serialize_field(
-            "trace.self_destruct_action.balance",
+            "trace_self_destruct_actions.balance",
             &self_destruct_action.balance,
         )?;
         ser_struct.serialize_field(
-            "trace.self_destruct_action.refund_address",
+            "trace_self_destruct_actions.refund_address",
             &self_destruct_action.refund_address,
         )?;
 
         let reward_action = ClickhouseRewardAction::from(self);
-        ser_struct.serialize_field("trace.reward_action.author", &reward_action.author)?;
-        ser_struct.serialize_field("trace.reward_action.value", &reward_action.value)?;
+        ser_struct.serialize_field("trace_reward_actions.author", &reward_action.author)?;
+        ser_struct.serialize_field("trace_reward_actions.value", &reward_action.value)?;
         ser_struct.serialize_field(
-            "trace.reward_action.reward_type",
+            "trace_reward_actions.reward_type",
             &reward_action.reward_type,
         )?;
 
         let call_output = ClickhouseCallOutput::from(self);
-        ser_struct.serialize_field("trace.call_output.gas_used", &call_output.gas_used)?;
-        ser_struct.serialize_field("trace.call_output.output", &call_output.output)?;
+        ser_struct.serialize_field("trace_call_outputs.gas_used", &call_output.gas_used)?;
+        ser_struct.serialize_field("trace_call_outputs.output", &call_output.output)?;
 
         let create_output = ClickhouseCreateOutput::from(self);
-        ser_struct.serialize_field("trace.create_output.address", &create_output.address)?;
-        ser_struct.serialize_field("trace.create_output.code", &create_output.code)?;
-        ser_struct.serialize_field("trace.create_output.gas_used", &create_output.gas_used)?;
+        ser_struct.serialize_field("trace_create_outputs.address", &create_output.address)?;
+        ser_struct.serialize_field("trace_create_outputs.code", &create_output.code)?;
+        ser_struct.serialize_field("trace_create_outputs.gas_used", &create_output.gas_used)?;
 
         ser_struct.end()
     }
@@ -371,35 +377,39 @@ impl DbRow for TxTrace {
         "effective_price",
         "tx_index",
         "is_success",
-        "trace.trace_idx",
-        "trace.msg_sender",
-        "trace.decoded_data.function_name",
-        "trace.decoded_data.call_data",
-        "trace.decoded_data.return_data",
-        "trace.logs",
-        "trace.error",
-        "trace.subtraces",
-        "trace.trace_address",
-        "trace.create_action.from",
-        "trace.create_action.gas",
-        "trace.create_action.init",
-        "trace.create_action.value",
-        "trace.call_action.from",
-        "trace.call_action.call_type",
-        "trace.call_action.gas",
-        "trace.call_action.input",
-        "trace.call_action.to",
-        "trace.call_action.value",
-        "trace.self_destruct_action.address",
-        "trace.self_destruct_action.balance",
-        "trace.self_destruct_action.refund_address",
-        "trace.reward_action.author",
-        "trace.reward_action.reward_type",
-        "trace.reward_action.value",
-        "trace.call_output.gas_used",
-        "trace.call_output.output",
-        "trace.create_output.address",
-        "trace.create_output.code",
-        "trace.create_output.gas_used",
+        "trace_meta.trace_idx",
+        "trace_meta.msg_sender",
+        "trace_meta.decoded_data.function_name",
+        "trace_meta.decoded_data.call_data",
+        "trace_meta.decoded_data.return_data",
+        "trace_meta.error",
+        "trace_meta.subtraces",
+        "trace_meta.trace_address",
+        "trace_logs.trace_idx",
+        "trace_logs.log_idx",
+        "trace_logs.address",
+        "trace_logs.topics",
+        "trace_logs.data",
+        "trace_create_actions.from",
+        "trace_create_actions.gas",
+        "trace_create_actions.init",
+        "trace_create_actions.value",
+        "trace_call_actions.from",
+        "trace_call_actions.call_type",
+        "trace_call_actions.gas",
+        "trace_call_actions.input",
+        "trace_call_actions.to",
+        "trace_call_actions.value",
+        "trace_self_destruct_actions.address",
+        "trace_self_destruct_actions.balance",
+        "trace_self_destruct_actions.refund_address",
+        "trace_reward_actions.author",
+        "trace_reward_actions.reward_type",
+        "trace_reward_actions.value",
+        "trace_call_outputs.gas_used",
+        "trace_call_outputs.output",
+        "trace_create_outputs.address",
+        "trace_create_outputs.code",
+        "trace_create_outputs.gas_used",
     ];
 }
