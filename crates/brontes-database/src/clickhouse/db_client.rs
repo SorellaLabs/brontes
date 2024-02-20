@@ -271,7 +271,7 @@ mod tests {
             .insert_one::<ClickhouseSearcherInfo>(&case0)
             .await
             .unwrap();
-        assert!(res.is_ok());
+        //assert!(res.is_ok());
 
         let query = "SELECT * FROM brontes.searcher_info";
         let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
