@@ -11,6 +11,11 @@ pub mod dex_quote {
 
     use crate::{db::dex::DexPrices, pair::Pair};
 
+    type DexPriceQuotesVec = Vec<(
+        (String, String),
+        (([u8; 32], [u8; 32]), ([u8; 32], [u8; 32])),
+    )>;
+
     #[allow(dead_code)]
     pub fn serialize<S>(
         value: &Option<HashMap<Pair, DexPrices>>,
@@ -19,10 +24,7 @@ pub mod dex_quote {
     where
         S: Serializer,
     {
-        let to_ser: Vec<(
-            (String, String),
-            (([u8; 32], [u8; 32]), ([u8; 32], [u8; 32])),
-        )> = if let Some(quotes) = value {
+        let to_ser: DexPriceQuotesVec = if let Some(quotes) = value {
             quotes
                 .into_iter()
                 .map(|(pair, dex_price)| {
@@ -67,10 +69,7 @@ pub mod dex_quote {
     where
         D: Deserializer<'de>,
     {
-        let des: Vec<(
-            (String, String),
-            (([u8; 32], [u8; 32]), ([u8; 32], [u8; 32])),
-        )> = Deserialize::deserialize(deserializer)?;
+        let des: DexPriceQuotesVec = Deserialize::deserialize(deserializer)?;
 
         if des.is_empty() {
             return Ok(None);
