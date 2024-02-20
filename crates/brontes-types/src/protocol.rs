@@ -72,6 +72,7 @@ utils!(
         AaveV3,
         BalancerV1,
         UniswapX,
+        ZeroX,
         CurveBasePool2,
         CurveBasePool3,
         CurveBasePool4,

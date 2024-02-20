@@ -1,4 +1,4 @@
-use alloy_primitives::{U256,Address};
+// use alloy_primitives::{U256,Address};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
@@ -42,6 +42,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
+            msg_value: info.msg_value
         })
     }
 );
