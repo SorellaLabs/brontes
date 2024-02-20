@@ -276,17 +276,6 @@ impl Serialize for TxTrace {
             .collect_vec();
         ser_struct.serialize_field("trace_meta.msg_sender", &msg_sender)?;
 
-        let decoded_data = ClickhouseDecodedCallData::from(self);
-
-        ser_struct.serialize_field("trace_decoded_data.trace_idx", &decoded_data.trace_idx)?;
-        ser_struct.serialize_field(
-            "trace_decoded_data.function_name",
-            &decoded_data.function_name,
-        )?;
-        println!("Call Data: {}", decoded_data.call_data.len());
-        ser_struct.serialize_field("trace_decoded_data.call_data", &decoded_data.call_data)?;
-        ser_struct.serialize_field("trace_decoded_data.return_data", &decoded_data.return_data)?;
-
         let error = self
             .trace
             .iter()
@@ -314,6 +303,16 @@ impl Serialize for TxTrace {
             })
             .collect_vec();
         ser_struct.serialize_field("trace_meta.trace_address", &trace_address)?;
+
+        let decoded_data = ClickhouseDecodedCallData::from(self);
+        ser_struct.serialize_field("trace_decoded_data.trace_idx", &decoded_data.trace_idx)?;
+        ser_struct.serialize_field(
+            "trace_decoded_data.function_name",
+            &decoded_data.function_name,
+        )?;
+        println!("Call Data: {}", decoded_data.call_data.len());
+        ser_struct.serialize_field("trace_decoded_data.call_data", &decoded_data.call_data)?;
+        ser_struct.serialize_field("trace_decoded_data.return_data", &decoded_data.return_data)?;
 
         let logs = ClickhouseLogs::from(self);
         ser_struct.serialize_field("trace_logs.trace_idx", &logs.trace_idx)?;
