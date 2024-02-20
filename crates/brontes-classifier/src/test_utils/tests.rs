@@ -253,7 +253,7 @@ impl ClassifierTestUtils {
             // triggers close
             drop(classifier);
 
-            if let Some((p_block, pricing)) = pricer.next().await {
+            if let Some((_p_block, pricing)) = pricer.next().await {
                 Some(pricing)
             } else {
                 return Err(ClassifierTestUtilsError::DexPricingError);
@@ -348,7 +348,7 @@ impl ClassifierTestUtils {
 
             let mut prices = Vec::new();
 
-            while let Some((p_block, quotes)) = pricer.next().await {
+            while let Some((_p_block, quotes)) = pricer.next().await {
                 prices.push(quotes);
             }
             prices
