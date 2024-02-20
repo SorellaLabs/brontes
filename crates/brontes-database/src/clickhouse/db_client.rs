@@ -240,7 +240,7 @@ mod tests {
         let db = spawn_clickhouse();
 
         let libmdbx = get_db_handle();
-        let (a, b) = unbounded_channel();
+        let (a, _b) = unbounded_channel();
         let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
 
         let binding = tracer.execute_block(18900000).await.unwrap();
