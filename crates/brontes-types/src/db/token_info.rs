@@ -9,7 +9,7 @@ use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
-use super::clickhouse_serde::token_info::token_info;
+use super::clickhouse_serde::token_info::token_info_des;
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::AddressRedefined,
@@ -23,7 +23,7 @@ pub struct TokenInfoWithAddress {
     #[serde(with = "addresss")]
     pub address: Address,
     #[redefined(same_fields)]
-    #[serde(deserialize_with = "token_info::deserialize")]
+    #[serde(deserialize_with = "token_info_des::deserialize")]
     pub inner: TokenInfo,
 }
 

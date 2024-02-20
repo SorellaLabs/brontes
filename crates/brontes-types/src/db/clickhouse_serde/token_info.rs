@@ -1,4 +1,4 @@
-pub mod token_info {
+pub mod token_info_des {
 
     use serde::de::{Deserialize, Deserializer};
 
