@@ -6,9 +6,9 @@ use crate::structured_trace::TxTrace;
 #[derive(Debug, Default)]
 pub struct ClickhouseDecodedCallData {
     pub trace_idx: Vec<u64>,
-    pub function_name: Vec<Option<String>>,
-    pub call_data: Vec<Vec<(Option<String>, Option<String>, Option<String>)>>,
-    pub return_data: Vec<Vec<(Option<String>, Option<String>, Option<String>)>>,
+    pub function_name: Vec<String>,
+    pub call_data: Vec<Vec<(String, String, String)>>,
+    pub return_data: Vec<Vec<(String, String, String)>>,
 }
 impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
     fn from(value: &'a TxTrace) -> Self {
@@ -16,48 +16,33 @@ impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
         value
             .trace
             .iter()
-            .map(|trace| {
-                (
-                    trace.trace_idx,
-                    trace.decoded_data.as_ref().map(|data| {
+            .filter_map(|trace| {
+                trace.decoded_data.as_ref().map(|data| {
+                    (
+                        trace.trace_idx,
                         (
                             data.function_name.clone(),
                             data.call_data
                                 .iter()
                                 .map(|d| {
-                                    (
-                                        Some(d.field_name.clone()),
-                                        Some(d.field_type.clone()),
-                                        Some(d.value.clone()),
-                                    )
+                                    (d.field_name.clone(), d.field_type.clone(), d.value.clone())
                                 })
                                 .collect_vec(),
                             data.return_data
                                 .iter()
                                 .map(|d| {
-                                    (
-                                        Some(d.field_name.clone()),
-                                        Some(d.field_type.clone()),
-                                        Some(d.value.clone()),
-                                    )
+                                    (d.field_name.clone(), d.field_type.clone(), d.value.clone())
                                 })
                                 .collect_vec(),
-                        )
-                    }),
-                )
+                        ),
+                    )
+                })
             })
-            .for_each(|(trace_idx, decoded)| {
-                if let Some((f, c, r)) = decoded {
-                    this.trace_idx.push(trace_idx);
-                    this.function_name.push(Some(f));
-                    this.call_data.push(c);
-                    this.return_data.push(r);
-                } else {
-                    this.trace_idx.push(trace_idx);
-                    this.function_name.push(None);
-                    this.call_data.push(vec![]);
-                    this.return_data.push(vec![]);
-                }
+            .for_each(|(trace_idx, (f, c, r))| {
+                this.trace_idx.push(trace_idx);
+                this.function_name.push(f);
+                this.call_data.push(c);
+                this.return_data.push(r);
             });
 
         println!("THIS trace_idx: {:?}\n", this.trace_idx);
