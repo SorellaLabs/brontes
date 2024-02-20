@@ -255,13 +255,18 @@ mod tests {
             dex::DexPrices,
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
         },
-        mev::{CexDex, MevType, PossibleMev, PossibleMevCollection},
+        mev::{
+            CexDex, JitLiquidity, JitLiquiditySandwich, MevType, PossibleMev, PossibleMevCollection,
+        },
         pair::Pair,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::{ClickhouseCexDex, ClickhouseMevBlocks, ClickhouseSearcherStats};
+    use crate::clickhouse::dbms::{
+        ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich, ClickhouseMevBlocks,
+        ClickhouseSearcherStats,
+    };
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
@@ -412,10 +417,29 @@ mod tests {
             .insert_one::<ClickhouseCexDex>(&case0)
             .await
             .unwrap();
+    }
 
-        // let query = "SELECT * FROM mev.mev_blocks";
-        //  let queried: MevBlock = db.inner().query_one(query, &()).await.unwrap();
+    #[tokio::test]
+    async fn jit() {
+        let db = spawn_clickhouse();
 
-        //assert_eq!(queried, case0);
+        let case0 = JitLiquidity::default();
+
+        db.inner()
+            .insert_one::<ClickhouseJit>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn jit_sandwich() {
+        let db = spawn_clickhouse();
+
+        let case0 = JitLiquiditySandwich::default();
+
+        db.inner()
+            .insert_one::<ClickhouseJitSandwich>(&case0)
+            .await
+            .unwrap();
     }
 }

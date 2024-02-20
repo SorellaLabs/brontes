@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
 #[allow(unused)]
-use clickhouse::{fixed_string::FixedString, row::*};
+use clickhouse::row::*;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -187,10 +187,7 @@ impl Serialize for JitLiquiditySandwich {
         // frontruns
         ser_struct.serialize_field(
             "frontrun_tx_hash",
-            &FixedString::from(format!(
-                "{:?}",
-                self.frontrun_tx_hash.first().unwrap_or_default()
-            )),
+            &format!("{:?}", self.frontrun_tx_hash.first().unwrap_or_default()),
         )?;
 
         let frontrun_swaps: ClickhouseDoubleVecNormalizedSwap =
@@ -211,7 +208,7 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("frontrun_mints.tx_hash", &frontrun_mints.tx_hash)?;
         ser_struct.serialize_field("frontrun_mints.trace_idx", &frontrun_mints.trace_index)?;
         ser_struct.serialize_field("frontrun_mints.from", &frontrun_mints.from)?;
-        ser_struct.serialize_field("frontrun_mints.to", &frontrun_mints.to)?;
+        ser_struct.serialize_field("frontrun_mints.pool", &frontrun_mints.pool)?;
         ser_struct.serialize_field("frontrun_mints.recipient", &frontrun_mints.recipient)?;
         ser_struct.serialize_field("frontrun_mints.tokens", &frontrun_mints.tokens)?;
         ser_struct.serialize_field("frontrun_mints.amounts", &frontrun_mints.amounts)?;
@@ -279,14 +276,14 @@ impl Serialize for JitLiquiditySandwich {
         )?;
 
         // backrun
-        let fixed_str_backrun_tx_hash = FixedString::from(format!("{:?}", &self.backrun_tx_hash));
+        let fixed_str_backrun_tx_hash = format!("{:?}", &self.backrun_tx_hash);
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
         let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
         let backrun_tx_hash_repeated = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()
-            .map(|tx| FixedString::from(format!("{:?}", &tx)))
+            .map(|tx| format!("{:?}", &tx))
             .collect::<Vec<_>>();
 
         ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated)?;
@@ -304,7 +301,7 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_tx_hash_repeated)?;
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;
-        ser_struct.serialize_field("backrun_burns.to", &backrun_burns.to)?;
+        ser_struct.serialize_field("backrun_burns.pool", &backrun_burns.pool)?;
         ser_struct.serialize_field("backrun_burns.recipient", &backrun_burns.recipient)?;
         ser_struct.serialize_field("backrun_burns.tokens", &backrun_burns.tokens)?;
         ser_struct.serialize_field("backrun_burns.amounts", &backrun_burns.amounts)?;

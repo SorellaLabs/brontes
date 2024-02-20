@@ -78,14 +78,14 @@ impl Serialize for JitLiquidity {
         // frontrun mint
         ser_struct.serialize_field(
             "frontrun_mint_tx_hash",
-            &FixedString::from(format!("{:?}", self.frontrun_mint_tx_hash)),
+            &format!("{:?}", self.frontrun_mint_tx_hash),
         )?;
 
         let frontrun_mints: ClickhouseVecNormalizedMintOrBurn = self.frontrun_mints.clone().into();
 
         ser_struct.serialize_field("frontrun_mints.trace_idx", &frontrun_mints.trace_index)?;
         ser_struct.serialize_field("frontrun_mints.from", &frontrun_mints.from)?;
-        ser_struct.serialize_field("frontrun_mints.to", &frontrun_mints.to)?;
+        ser_struct.serialize_field("frontrun_mints.pool", &frontrun_mints.pool)?;
         ser_struct.serialize_field("frontrun_mints.recipient", &frontrun_mints.recipient)?;
         ser_struct.serialize_field("frontrun_mints.tokens", &frontrun_mints.tokens)?;
         ser_struct.serialize_field("frontrun_mints.amounts", &frontrun_mints.amounts)?;
@@ -145,7 +145,7 @@ impl Serialize for JitLiquidity {
 
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;
-        ser_struct.serialize_field("backrun_burns.to", &backrun_burns.to)?;
+        ser_struct.serialize_field("backrun_burns.pool", &backrun_burns.pool)?;
         ser_struct.serialize_field("backrun_burns.recipient", &backrun_burns.recipient)?;
         ser_struct.serialize_field("backrun_burns.tokens", &backrun_burns.tokens)?;
         ser_struct.serialize_field("backrun_burns.amounts", &backrun_burns.amounts)?;
@@ -168,7 +168,7 @@ impl DbRow for JitLiquidity {
         "frontrun_mint_tx_hash",
         "frontrun_mints.trace_idx",
         "frontrun_mints.from",
-        "frontrun_mints.to",
+        "frontrun_mints.pool",
         "frontrun_mints.recipient",
         "frontrun_mints.tokens",
         "frontrun_mints.amounts",
@@ -190,7 +190,7 @@ impl DbRow for JitLiquidity {
         "backrun_burn_tx_hash",
         "backrun_burns.trace_idx",
         "backrun_burns.from",
-        "backrun_burns.to",
+        "backrun_burns.pool",
         "backrun_burns.recipient",
         "backrun_burns.tokens",
         "backrun_burns.amounts",
