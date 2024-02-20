@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -9,36 +10,37 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
-};
+use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::info;
 
-use super::shared::{inserts::process_results, state_collector::StateCollector};
+use super::shared::state_collector::StateCollector;
+use crate::Processor;
 pub struct RangeExecutorWithPricing<
     T: TracingProvider,
     DB: DBWriter + LibmdbxReader,
     CH: ClickhouseHandle,
+    P: Processor,
 > {
     collector: StateCollector<T, DB, CH>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     current_block: u64,
     end_block: u64,
     libmdbx: &'static DB,
-    inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+    inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
+    _p: PhantomData<P>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
-    RangeExecutorWithPricing<T, DB, CH>
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: Processor>
+    RangeExecutorWithPricing<T, DB, CH, P>
 {
     pub fn new(
         start_block: u64,
         end_block: u64,
         state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
-        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+        inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     ) -> Self {
         Self {
             collector: state_collector,
@@ -47,6 +49,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             end_block,
             libmdbx,
             inspectors,
+            _p: PhantomData::default(),
         }
     }
 
@@ -68,7 +71,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
         info!(target:"brontes","Completed DEX pricing");
-        self.insert_futures.push(Box::pin(process_results(
+        self.insert_futures.push(Box::pin(P::process_results(
             self.libmdbx,
             self.inspectors,
             tree.into(),
@@ -77,8 +80,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Future
-    for RangeExecutorWithPricing<T, DB, CH>
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: Processor> Future
+    for RangeExecutorWithPricing<T, DB, CH, P>
 {
     type Output = ();
 
