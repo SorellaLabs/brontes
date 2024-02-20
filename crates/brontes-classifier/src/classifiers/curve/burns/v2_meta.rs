@@ -272,49 +272,36 @@ mod tests {
             Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
             Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let burn = B256::from(hex!(
-            "65205c76ff56bcc1e3b26dc56f02d5990b84aac3baa6469d1d09b8f24581611a"
-        ));
+        let burn =
+            B256::from(hex!("65205c76ff56bcc1e3b26dc56f02d5990b84aac3baa6469d1d09b8f24581611a"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "STBT".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "STBT".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "3Crv".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "3Crv".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2MetaPool,
+            protocol:    Protocol::CurveV2MetaPool,
             trace_index: 1,
-            from: Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
-            recipient: Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
-            pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
-            token: vec![token0, token1],
-            amount: vec![
+            from:        Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
+            recipient:   Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
+            pool:        Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
+            token:       vec![token0, token1],
+            amount:      vec![
                 U256::from(627992358239302043763875_u128).to_scaled_rational(18),
                 U256::from(579890756974932941933194_u128).to_scaled_rational(18),
             ],
@@ -339,40 +326,30 @@ mod tests {
             Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
             Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let burn = B256::from(hex!(
-            "5dba3dc01218fcd657f1a24e4235e901994aeae30d47feff4c2a86f5d0a1f0bd"
-        ));
+        let burn =
+            B256::from(hex!("5dba3dc01218fcd657f1a24e4235e901994aeae30d47feff4c2a86f5d0a1f0bd"));
 
         let token = TokenInfoWithAddress {
             address: Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "3Crv".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "3Crv".to_string() },
         };
 
         classifier_utils.ensure_token(token.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2MetaPool,
+            protocol:    Protocol::CurveV2MetaPool,
             trace_index: 1,
-            from: Address::new(hex!("3F7734E28ed8856B89e13137bd2E9112C40ebD51")),
-            recipient: Address::new(hex!("3F7734E28ed8856B89e13137bd2E9112C40ebD51")),
-            pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
-            token: vec![token],
-            amount: vec![U256::from(183708410783845567136_u128).to_scaled_rational(18)],
+            from:        Address::new(hex!("3F7734E28ed8856B89e13137bd2E9112C40ebD51")),
+            recipient:   Address::new(hex!("3F7734E28ed8856B89e13137bd2E9112C40ebD51")),
+            pool:        Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
+            token:       vec![token],
+            amount:      vec![U256::from(183708410783845567136_u128).to_scaled_rational(18)],
         });
 
         classifier_utils

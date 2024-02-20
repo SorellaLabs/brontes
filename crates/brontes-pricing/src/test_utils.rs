@@ -18,17 +18,14 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 type PricingResult<T> = Result<T, PricingTestError>;
 
 pub struct PricingTestUtils {
-    tracer: TraceLoader,
+    tracer:        TraceLoader,
     quote_address: Address,
 }
 
 impl PricingTestUtils {
     pub async fn new(quote_address: Address) -> Self {
         let tracer = TraceLoader::new().await;
-        Self {
-            tracer,
-            quote_address,
-        }
+        Self { tracer, quote_address }
     }
 
     async fn init_dex_pricer(
@@ -99,12 +96,8 @@ impl PricingTestUtils {
         tx_hash: TxHash,
     ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>, PricingTestError>
     {
-        let TxTracesWithHeaderAnd {
-            trace,
-            header,
-            block,
-            ..
-        } = self.tracer.get_tx_trace_with_header(tx_hash).await?;
+        let TxTracesWithHeaderAnd { trace, header, block, .. } =
+            self.tracer.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());

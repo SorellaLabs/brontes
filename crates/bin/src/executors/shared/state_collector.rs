@@ -31,9 +31,9 @@ type CollectionFut<'a> =
 pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
     metadata_fetcher: MetadataFetcher<T, DB, CH>,
-    classifier: &'static Classifier<'static, T, DB>,
-    parser: &'static Parser<'static, T, DB>,
-    db: &'static DB,
+    classifier:       &'static Classifier<'static, T, DB>,
+    parser:           &'static Parser<'static, T, DB>,
+    db:               &'static DB,
 
     collection_future: Option<CollectionFut<'static>>,
 }
@@ -48,14 +48,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         parser: &'static Parser<'static, T, DB>,
         db: &'static DB,
     ) -> Self {
-        Self {
-            mark_as_finished,
-            metadata_fetcher,
-            classifier,
-            parser,
-            db,
-            collection_future: None,
-        }
+        Self { mark_as_finished, metadata_fetcher, classifier, parser, db, collection_future: None }
     }
 
     pub fn get_shutdown(&self) -> Arc<AtomicBool> {

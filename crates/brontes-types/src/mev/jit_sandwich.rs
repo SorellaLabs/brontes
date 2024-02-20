@@ -24,21 +24,21 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct JitLiquiditySandwich {
-    pub frontrun_tx_hash: Vec<B256>,
-    pub frontrun_swaps: Vec<Vec<NormalizedSwap>>,
-    pub frontrun_mints: Vec<Option<Vec<NormalizedMint>>>,
+    pub frontrun_tx_hash:     Vec<B256>,
+    pub frontrun_swaps:       Vec<Vec<NormalizedSwap>>,
+    pub frontrun_mints:       Vec<Option<Vec<NormalizedMint>>>,
     #[redefined(same_fields)]
     pub frontrun_gas_details: Vec<GasDetails>,
 
-    pub victim_swaps_tx_hashes: Vec<Vec<B256>>,
-    pub victim_swaps: Vec<Vec<NormalizedSwap>>,
+    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
+    pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
     #[redefined(same_fields)]
     pub victim_swaps_gas_details: Vec<GasDetails>,
 
     // Similar to frontrun fields, backrun fields are also vectors to handle multiple transactions.
-    pub backrun_tx_hash: B256,
-    pub backrun_swaps: Vec<NormalizedSwap>,
-    pub backrun_burns: Vec<NormalizedBurn>,
+    pub backrun_tx_hash:     B256,
+    pub backrun_swaps:       Vec<NormalizedSwap>,
+    pub backrun_burns:       Vec<NormalizedBurn>,
     #[redefined(same_fields)]
     pub backrun_gas_details: GasDetails,
 }
@@ -160,21 +160,18 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
 
     // Create new classified MEV data
     let new_classified = BundleHeader {
-        tx_index: classified_sandwich.tx_index,
-        tx_hash: *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
-        mev_type: MevType::JitSandwich,
-        block_number: classified_sandwich.block_number,
-        eoa: jit_classified.eoa,
-        mev_contract: classified_sandwich.mev_contract,
-        profit_usd: jit_liq_profit,
+        tx_index:      classified_sandwich.tx_index,
+        tx_hash:       *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
+        mev_type:      MevType::JitSandwich,
+        block_number:  classified_sandwich.block_number,
+        eoa:           jit_classified.eoa,
+        mev_contract:  classified_sandwich.mev_contract,
+        profit_usd:    jit_liq_profit,
         token_profits: classified_sandwich.token_profits,
-        bribe_usd: classified_sandwich.bribe_usd,
+        bribe_usd:     classified_sandwich.bribe_usd,
     };
 
-    Bundle {
-        header: new_classified,
-        data: BundleData::JitSandwich(jit_sand),
-    }
+    Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
 }
 
 impl Serialize for JitLiquiditySandwich {
@@ -187,10 +184,7 @@ impl Serialize for JitLiquiditySandwich {
         // frontruns
         ser_struct.serialize_field(
             "frontrun_tx_hash",
-            &FixedString::from(format!(
-                "{:?}",
-                self.frontrun_tx_hash.first().unwrap_or_default()
-            )),
+            &FixedString::from(format!("{:?}", self.frontrun_tx_hash.first().unwrap_or_default())),
         )?;
 
         let frontrun_swaps: ClickhouseDoubleVecNormalizedSwap =
@@ -216,15 +210,10 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("frontrun_mints.tokens", &frontrun_mints.tokens)?;
         ser_struct.serialize_field("frontrun_mints.amounts", &frontrun_mints.amounts)?;
 
-        let frontrun_gas_details: ClickhouseVecGasDetails = (
-            self.frontrun_tx_hash.clone(),
-            self.frontrun_gas_details.clone(),
-        )
-            .into();
-        ser_struct.serialize_field(
-            "frontrun_gas_details.tx_hash",
-            &frontrun_gas_details.tx_hash,
-        )?;
+        let frontrun_gas_details: ClickhouseVecGasDetails =
+            (self.frontrun_tx_hash.clone(), self.frontrun_gas_details.clone()).into();
+        ser_struct
+            .serialize_field("frontrun_gas_details.tx_hash", &frontrun_gas_details.tx_hash)?;
         ser_struct.serialize_field(
             "frontrun_gas_details.coinbase_transfer",
             &frontrun_gas_details.coinbase_transfer,
@@ -233,21 +222,16 @@ impl Serialize for JitLiquiditySandwich {
             "frontrun_gas_details.priority_fee",
             &frontrun_gas_details.priority_fee,
         )?;
-        ser_struct.serialize_field(
-            "frontrun_gas_details.gas_used",
-            &frontrun_gas_details.gas_used,
-        )?;
+        ser_struct
+            .serialize_field("frontrun_gas_details.gas_used", &frontrun_gas_details.gas_used)?;
         ser_struct.serialize_field(
             "frontrun_gas_details.effective_gas_price",
             &frontrun_gas_details.effective_gas_price,
         )?;
 
         // victims
-        let victim_swaps: ClickhouseDoubleVecNormalizedSwap = (
-            self.victim_swaps_tx_hashes.clone(),
-            self.victim_swaps.clone(),
-        )
-            .into();
+        let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
+            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
         ser_struct.serialize_field("victim_swaps.trace_idx", &victim_swaps.trace_index)?;
         ser_struct.serialize_field("victim_swaps.from", &victim_swaps.from)?;
@@ -258,20 +242,15 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("victim_swaps.amount_in", &victim_swaps.amount_in)?;
         ser_struct.serialize_field("victim_swaps.amount_out", &victim_swaps.amount_out)?;
 
-        let victim_gas_details: ClickhouseVecGasDetails = (
-            self.victim_swaps_tx_hashes.clone(),
-            self.victim_swaps_gas_details.clone(),
-        )
-            .into();
+        let victim_gas_details: ClickhouseVecGasDetails =
+            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps_gas_details.clone()).into();
         ser_struct.serialize_field("victim_gas_details.tx_hash", &victim_gas_details.tx_hash)?;
         ser_struct.serialize_field(
             "victim_gas_details.coinbase_transfer",
             &victim_gas_details.coinbase_transfer,
         )?;
-        ser_struct.serialize_field(
-            "victim_gas_details.priority_fee",
-            &victim_gas_details.priority_fee,
-        )?;
+        ser_struct
+            .serialize_field("victim_gas_details.priority_fee", &victim_gas_details.priority_fee)?;
         ser_struct.serialize_field("victim_gas_details.gas_used", &victim_gas_details.gas_used)?;
         ser_struct.serialize_field(
             "victim_gas_details.effective_gas_price",
@@ -309,10 +288,8 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_burns.tokens", &backrun_burns.tokens)?;
         ser_struct.serialize_field("backrun_burns.amounts", &backrun_burns.amounts)?;
 
-        ser_struct.serialize_field(
-            "backrun_gas_details.tx_hash",
-            &vec![fixed_str_backrun_tx_hash],
-        )?;
+        ser_struct
+            .serialize_field("backrun_gas_details.tx_hash", &vec![fixed_str_backrun_tx_hash])?;
         ser_struct.serialize_field(
             "backrun_gas_details.coinbase_transfer",
             &vec![self.backrun_gas_details.coinbase_transfer],

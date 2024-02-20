@@ -140,24 +140,17 @@ mod tests {
             None,
         );
 
-        let swap = B256::from(hex!(
-            "ae902afa8e19c08948c71ad3fe8be6eb7eb04ecd683ce577768fc6bdc0af0f4d"
-        ));
+        let swap =
+            B256::from(hex!("ae902afa8e19c08948c71ad3fe8be6eb7eb04ecd683ce577768fc6bdc0af0f4d"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "CRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -205,24 +198,17 @@ mod tests {
             None,
         );
 
-        let swap = B256::from(hex!(
-            "088ca9fd8ea73ecd33ba1bef7aafd1bd57a22275d15d6a79c7f3889d88ba3720"
-        ));
+        let swap =
+            B256::from(hex!("088ca9fd8ea73ecd33ba1bef7aafd1bd57a22275d15d6a79c7f3889d88ba3720"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "CRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());

@@ -8,7 +8,7 @@ use crate::{implement_table_value_codecs_with_zc, mev::*};
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct MevBlockWithClassified {
     pub block: MevBlock,
-    pub mev: Vec<Bundle>,
+    pub mev:   Vec<Bundle>,
 }
 
 implement_table_value_codecs_with_zc!(MevBlockWithClassifiedRedefined);

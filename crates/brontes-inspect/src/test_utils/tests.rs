@@ -39,19 +39,15 @@ type StateTests = Option<Box<dyn for<'a> Fn(&'a Bundle)>>;
 
 /// Inspector Specific testing functionality
 pub struct InspectorTestUtils {
-    classifier_inspector: ClassifierTestUtils,
-    quote_address: Address,
+    classifier_inspector:  ClassifierTestUtils,
+    quote_address:         Address,
     max_result_difference: f64,
 }
 
 impl InspectorTestUtils {
     pub async fn new(quote_address: Address, max_result_difference: f64) -> Self {
         let classifier_inspector = ClassifierTestUtils::new().await;
-        Self {
-            classifier_inspector,
-            quote_address,
-            max_result_difference,
-        }
+        Self { classifier_inspector, quote_address, max_result_difference }
     }
 
     async fn get_tree_txes(
@@ -169,12 +165,7 @@ impl InspectorTestUtils {
         );
 
         let results = inspector.process_tree(tree.into(), metadata.into()).await;
-        assert_eq!(
-            results.len(),
-            0,
-            "found mev when we shouldn't of {:#?}",
-            results
-        );
+        assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
 
         Ok(())
     }
@@ -407,27 +398,27 @@ impl InspectorTestUtils {
 /// bundle.
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
-    pub metadata_override: Option<Metadata>,
-    pub mev_tx_hashes: Option<Vec<TxHash>>,
-    pub block: Option<u64>,
+    pub metadata_override:   Option<Metadata>,
+    pub mev_tx_hashes:       Option<Vec<TxHash>>,
+    pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
-    pub expected_gas_usd: Option<f64>,
-    pub expected_mev_type: Inspectors,
-    pub needs_dex_prices: bool,
-    pub needs_tokens: Vec<Address>,
+    pub expected_gas_usd:    Option<f64>,
+    pub expected_mev_type:   Inspectors,
+    pub needs_dex_prices:    bool,
+    pub needs_tokens:        Vec<Address>,
 }
 
 impl InspectorTxRunConfig {
     pub fn new(mev: Inspectors) -> Self {
         Self {
-            expected_mev_type: mev,
-            block: None,
-            mev_tx_hashes: None,
+            expected_mev_type:   mev,
+            block:               None,
+            mev_tx_hashes:       None,
             expected_profit_usd: None,
-            expected_gas_usd: None,
-            metadata_override: None,
-            needs_tokens: Vec::new(),
-            needs_dex_prices: false,
+            expected_gas_usd:    None,
+            metadata_override:   None,
+            needs_tokens:        Vec::new(),
+            needs_dex_prices:    false,
         }
     }
 
@@ -476,16 +467,16 @@ impl InspectorTxRunConfig {
 
 #[derive(Debug, Clone)]
 pub struct ComposerRunConfig {
-    pub inspectors: Vec<Inspectors>,
-    pub expected_mev_type: MevType,
-    pub metadata_override: Option<Metadata>,
-    pub mev_tx_hashes: Option<Vec<TxHash>>,
-    pub block: Option<u64>,
+    pub inspectors:          Vec<Inspectors>,
+    pub expected_mev_type:   MevType,
+    pub metadata_override:   Option<Metadata>,
+    pub mev_tx_hashes:       Option<Vec<TxHash>>,
+    pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
-    pub expected_gas_usd: Option<f64>,
+    pub expected_gas_usd:    Option<f64>,
     pub prune_opportunities: Option<Vec<TxHash>>,
-    pub needs_dex_prices: bool,
-    pub needs_tokens: Vec<Address>,
+    pub needs_dex_prices:    bool,
+    pub needs_tokens:        Vec<Address>,
 }
 
 impl ComposerRunConfig {
