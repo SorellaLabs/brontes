@@ -5,6 +5,7 @@ use std::{
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use clickhouse::Row;
+use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 use redefined::Redefined;
 use reth_db::DatabaseError;
@@ -13,7 +14,7 @@ use serde::{self, Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
-    db::redefined_types::malachite::RationalRedefined,
+    db::{clickhouse_serde::dex::dex_quote, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
 };
@@ -168,4 +169,27 @@ pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
     let end_key = base.concat_const([u8::MAX; 2].into());
 
     (start_key.into(), end_key.into())
+}
+
+#[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
+pub struct DexQuotesWithBlockNumber {
+    pub block_number: u64,
+    pub tx_idx: u64,
+    #[serde(with = "dex_quote")]
+    pub quote: Option<HashMap<Pair, DexPrices>>,
+}
+
+impl DexQuotesWithBlockNumber {
+    pub fn new_with_block(block_number: u64, quotes: DexQuotes) -> Vec<Self> {
+        quotes
+            .0
+            .into_iter()
+            .enumerate()
+            .map(|(i, quote)| DexQuotesWithBlockNumber {
+                block_number,
+                tx_idx: i as u64,
+                quote,
+            })
+            .collect_vec()
+    }
 }

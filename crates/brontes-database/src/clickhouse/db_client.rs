@@ -403,7 +403,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_cex_dex() {
+    async fn cex_dex() {
         let db = spawn_clickhouse();
 
         let case0 = CexDex::default();
