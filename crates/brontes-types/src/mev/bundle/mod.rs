@@ -62,8 +62,6 @@ impl fmt::Display for Bundle {
 
 #[derive(
     Debug,
-    Serialize,
-    Deserialize,
     PartialEq,
     Eq,
     Hash,
@@ -88,8 +86,6 @@ pub enum MevType {
     Unknown,
 }
 
-self_convert_redefined!(MevType);
-
 impl MevType {
     pub fn use_cex_pricing_for_deltas(&self) -> bool {
         match self {
@@ -103,6 +99,46 @@ impl MevType {
         }
     }
 }
+
+impl From<String> for MevType {
+    fn from(value: String) -> Self {
+        let val = value.as_str();
+
+        match val {
+            "CexDex" => MevType::CexDex,
+            "Sandwich" => MevType::Sandwich,
+            "Jit" => MevType::Jit,
+            "Liquidation" => MevType::Liquidation,
+            "JitSandwich" => MevType::JitSandwich,
+            "AtomicArb" => MevType::AtomicArb,
+            _ => MevType::Unknown,
+        }
+    }
+}
+
+impl Serialize for MevType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mev_type = format!("{}", self);
+
+        Serialize::serialize(&mev_type, serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for MevType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let mev_type: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(mev_type.into())
+    }
+}
+
+self_convert_redefined!(MevType);
 
 pub trait Mev: erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone {
     fn mev_type(&self) -> MevType;
