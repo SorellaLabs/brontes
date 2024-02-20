@@ -326,8 +326,8 @@ mod tests {
 
         assert_eq!(queried, case0);
 
-        let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
-        db.inner().execute_remote(query, &()).await.unwrap();
+        //let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
+        //db.inner().execute_remote(query, &()).await.unwrap();
     }
 
     #[tokio::test]
