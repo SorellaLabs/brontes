@@ -45,10 +45,6 @@ impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
                 this.return_data.push(r);
             });
 
-        println!("THIS trace_idx: {:?}\n", this.trace_idx);
-        println!("THIS function_name: {:?}\n", this.function_name);
-        println!("THIS call_data: {:?}\n", this.call_data);
-        println!("THIS return_data: {:?}\n", this.return_data);
         this
     }
 }
@@ -101,6 +97,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseLogs {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseCreateAction {
+    pub trace_idx: Vec<u64>,
     pub from: Vec<String>,
     pub gas: Vec<u64>,
     pub init: Vec<String>,
@@ -117,6 +114,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateAction {
             .filter(|trace| trace.trace.action.is_create())
             .for_each(|trace| match &trace.trace.action {
                 Action::Create(c) => {
+                    this.trace_idx.push(trace.trace_idx);
                     this.from.push(format!("{:?}", c.from));
                     this.gas.push(c.gas.to::<u64>());
                     this.init.push(format!("{:?}", c.init));
@@ -131,6 +129,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateAction {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseCallAction {
+    pub trace_idx: Vec<u64>,
     pub from: Vec<String>,
     pub call_type: Vec<String>,
     pub gas: Vec<u64>,
@@ -149,6 +148,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallAction {
             .filter(|trace| trace.trace.action.is_call())
             .for_each(|trace| match &trace.trace.action {
                 Action::Call(c) => {
+                    this.trace_idx.push(trace.trace_idx);
                     this.from.push(format!("{:?}", c.from));
                     this.call_type.push(format!("{:?}", c.call_type));
                     this.gas.push(c.gas.to::<u64>());
@@ -165,6 +165,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallAction {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseSelfDestructAction {
+    pub trace_idx: Vec<u64>,
     pub address: Vec<String>,
     pub balance: Vec<[u8; 32]>,
     pub refund_address: Vec<String>,
@@ -180,6 +181,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseSelfDestructAction {
             .filter(|trace| trace.trace.action.is_selfdestruct())
             .for_each(|trace| match &trace.trace.action {
                 Action::Selfdestruct(c) => {
+                    this.trace_idx.push(trace.trace_idx);
                     this.address.push(format!("{:?}", c.address));
                     this.refund_address.push(format!("{:?}", c.refund_address));
                     this.balance.push(c.balance.to_le_bytes() as [u8; 32]);
@@ -193,6 +195,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseSelfDestructAction {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseRewardAction {
+    pub trace_idx: Vec<u64>,
     pub author: Vec<String>,
     pub value: Vec<[u8; 32]>,
     pub reward_type: Vec<String>,
@@ -208,6 +211,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseRewardAction {
             .filter(|trace| trace.trace.action.is_reward())
             .for_each(|trace| match &trace.trace.action {
                 Action::Reward(c) => {
+                    this.trace_idx.push(trace.trace_idx);
                     this.author.push(format!("{:?}", c.author));
                     this.reward_type.push(format!("{:?}", c.reward_type));
                     this.value.push(c.value.to_le_bytes() as [u8; 32]);
@@ -221,6 +225,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseRewardAction {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseCallOutput {
+    pub trace_idx: Vec<u64>,
     pub gas_used: Vec<u64>,
     pub output: Vec<String>,
 }
@@ -238,14 +243,17 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
                     .result
                     .as_ref()
                     .map(|res| match res {
-                        TraceOutput::Call(c) => {
-                            Some((c.gas_used.to::<u64>(), format!("{:?}", c.output)))
-                        }
+                        TraceOutput::Call(c) => Some((
+                            trace.trace_idx,
+                            c.gas_used.to::<u64>(),
+                            format!("{:?}", c.output),
+                        )),
                         _ => None,
                     })
                     .flatten()
             })
-            .for_each(|(g, o)| {
+            .for_each(|(i, g, o)| {
+                this.trace_idx.push(a);
                 this.gas_used.push(g);
                 this.output.push(o);
             });
@@ -256,6 +264,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseCreateOutput {
+    pub trace_idx: Vec<u64>,
     pub address: Vec<String>,
     pub code: Vec<String>,
     pub gas_used: Vec<u64>,
@@ -275,6 +284,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
                     .as_ref()
                     .map(|res| match res {
                         TraceOutput::Create(c) => Some((
+                            trace.trace_idx,
                             format!("{:?}", c.address),
                             format!("{:?}", c.code),
                             c.gas_used.to::<u64>(),
@@ -283,7 +293,8 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
                     })
                     .flatten()
             })
-            .for_each(|(a, c, g)| {
+            .for_each(|(i, a, c, g)| {
+                this.trace_idx.push(a);
                 this.address.push(a);
                 this.code.push(c);
                 this.gas_used.push(g);
