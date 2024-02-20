@@ -5,7 +5,7 @@ use std::{
 };
 
 use alloy_primitives::{TxHash, U256};
-use clickhouse::{fixed_string::FixedString, Row};
+use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -21,7 +21,7 @@ use crate::{
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
     mev::StatArbDetails,
-    Protocol, ToFloatNearest,
+    rational_to_clickhouse_tuple, Protocol, ToFloatNearest,
 };
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
@@ -94,84 +94,75 @@ impl Display for NormalizedSwap {
 
 pub struct ClickhouseVecNormalizedSwap {
     pub trace_index: Vec<u64>,
-    pub from: Vec<FixedString>,
-    pub recipient: Vec<FixedString>,
-    pub pool: Vec<FixedString>,
-    pub token_in: Vec<FixedString>,
-    pub token_out: Vec<FixedString>,
-    pub amount_in: Vec<[u8; 32]>,
-    pub amount_out: Vec<[u8; 32]>,
+    pub from: Vec<String>,
+    pub recipient: Vec<String>,
+    pub pool: Vec<String>,
+    pub token_in: Vec<String>,
+    pub token_out: Vec<String>,
+    pub amount_in: Vec<([u8; 32], [u8; 32])>,
+    pub amount_out: Vec<([u8; 32], [u8; 32])>,
 }
 
 impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
-    fn from(_value: Vec<NormalizedSwap>) -> Self {
-        todo!("Joe");
-        // ClickhouseVecNormalizedSwap {
-        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
-        //     from:        value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.from).into())
-        //         .collect(),
-        //     recipient:   value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.recipient).into())
-        //         .collect(),
-        //     pool:        value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.pool).into())
-        //         .collect(),
-        //     token_in:    value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.token_in).into())
-        //         .collect(),
-        //     token_out:   value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.token_out).into())
-        //         .collect(),
-        //     amount_in:   value
-        //         .iter()
-        //         .map(|val| val.amount_in.to_le_bytes())
-        //         .collect(),
-        //     amount_out:  value
-        //         .iter()
-        //         .map(|val| val.amount_out.to_le_bytes())
-        //         .collect(),
-        // }
+    fn from(value: Vec<NormalizedSwap>) -> Self {
+        ClickhouseVecNormalizedSwap {
+            trace_index: value.iter().map(|val| val.trace_index).collect(),
+            from: value.iter().map(|val| format!("{:?}", val.from)).collect(),
+            recipient: value
+                .iter()
+                .map(|val| format!("{:?}", val.recipient))
+                .collect(),
+            pool: value.iter().map(|val| format!("{:?}", val.pool)).collect(),
+            token_in: value
+                .iter()
+                .map(|val| format!("{:?}", val.token_in))
+                .collect(),
+            token_out: value
+                .iter()
+                .map(|val| format!("{:?}", val.token_out))
+                .collect(),
+            amount_in: value
+                .iter()
+                .map(|val| rational_to_clickhouse_tuple(&val.amount_in))
+                .collect(),
+            amount_out: value
+                .iter()
+                .map(|val| rational_to_clickhouse_tuple(&val.amount_out))
+                .collect(),
+        }
     }
 }
 
 #[derive(Default)]
 pub struct ClickhouseDoubleVecNormalizedSwap {
-    pub tx_hash: Vec<FixedString>, /* clickhouse requires nested fields to have the same
-                                    * number of rows */
+    pub tx_hash: Vec<String>, /* clickhouse requires nested fields to have the same
+                               * number of rows */
     pub trace_index: Vec<u64>,
-    pub from: Vec<FixedString>,
-    pub recipient: Vec<FixedString>,
-    pub pool: Vec<FixedString>,
-    pub token_in: Vec<FixedString>,
-    pub token_out: Vec<FixedString>,
-    pub amount_in: Vec<[u8; 32]>,
-    pub amount_out: Vec<[u8; 32]>,
+    pub from: Vec<String>,
+    pub recipient: Vec<String>,
+    pub pool: Vec<String>,
+    pub token_in: Vec<String>,
+    pub token_out: Vec<String>,
+    pub amount_in: Vec<([u8; 32], [u8; 32])>,
+    pub amount_out: Vec<([u8; 32], [u8; 32])>,
 }
 
 impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
     fn from(value: (Vec<TxHash>, Vec<Vec<NormalizedSwap>>)) -> Self {
-        let swaps: Vec<(FixedString, ClickhouseVecNormalizedSwap, usize)> = value
+        let swaps: Vec<(String, ClickhouseVecNormalizedSwap, usize)> = value
             .0
             .into_iter()
             .zip(value.1)
             .map(|(tx, swaps)| {
                 let num_swaps = swaps.len();
-                (format!("{:?}", tx).into(), swaps.into(), num_swaps)
+                (format!("{:?}", tx), swaps.into(), num_swaps)
             })
             .collect::<Vec<_>>();
 
         let mut this = ClickhouseDoubleVecNormalizedSwap::default();
 
         swaps.into_iter().for_each(|(tx, inner_swaps, num_swaps)| {
-            let tx_repeated = (0..num_swaps)
-                .map(|_| tx.clone())
-                .collect::<Vec<FixedString>>();
+            let tx_repeated = (0..num_swaps).map(|_| tx.clone()).collect::<Vec<String>>();
 
             if tx_repeated.len() != num_swaps {
                 panic!(
