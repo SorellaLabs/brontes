@@ -30,6 +30,7 @@ use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn is_classified(&self) -> bool;
+    fn emitted_logs(&self) -> bool;
     fn get_action(&self) -> &Actions;
     fn continue_classification(&self) -> bool;
     fn get_trace_index(&self) -> u64;
@@ -40,6 +41,14 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone {
 impl NormalizedAction for Actions {
     fn is_classified(&self) -> bool {
         !matches!(self, Actions::Unclassified(_))
+    }
+
+    /// Only relevant for unclassified actions
+    fn emitted_logs(&self) -> bool {
+        match self {
+            Actions::Unclassified(u) => !u.logs.is_empty(),
+            _ => true,
+        }
     }
 
     fn get_action(&self) -> &Actions {

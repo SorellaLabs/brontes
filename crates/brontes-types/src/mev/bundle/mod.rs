@@ -35,7 +35,7 @@ pub struct Bundle {
 }
 
 impl Bundle {
-    pub fn get_searcher_contract(&self) -> Address {
+    pub fn get_searcher_contract(&self) -> Option<Address> {
         self.header.mev_contract
     }
 
