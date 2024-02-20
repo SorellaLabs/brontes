@@ -20,7 +20,7 @@ pub use search_args::*;
 
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
-const MAX_SEARCH_THREADS: usize = 3;
+const MAX_SEARCH_THREADS: usize = 4;
 
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
@@ -50,7 +50,11 @@ impl<V: NormalizedAction> BlockTree<V> {
             self.tx_roots
                 .par_iter()
                 .find_any(|r| r.tx_hash == tx_hash)
-                .map(|root| root.get_tx_info(self.header.number, database))
+                .and_then(|root| {
+                    root.get_tx_info(self.header.number, database)
+                        .map_err(|e| error!("Database Error: {}", e))
+                        .ok()
+                })
         })
     }
 

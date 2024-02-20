@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
+use clickhouse::InsertRow;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize, Serializer};
-use sorella_db_databases::clickhouse::InsertRow;
 use strum::{Display, EnumIter};
 
 use super::Mev;

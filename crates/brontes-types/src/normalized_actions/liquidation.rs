@@ -1,16 +1,13 @@
 use std::fmt::{self, Debug};
 
 use alloy_primitives::U256;
+use clickhouse::{fixed_string::FixedString, Row};
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, Row},
-};
 
 pub use super::{Actions, NormalizedSwap};
 use crate::{
@@ -66,23 +63,27 @@ impl fmt::Display for NormalizedLiquidation {
 
 impl NormalizedLiquidation {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
-        actions
-            .into_iter()
-            .find_map(|(index, action)| {
-                if let Actions::Transfer(transfer) = action {
-                    // because aave has the option to return the Atoken or regular,
-                    // we can't filter by collateral filter. This might be an issue...
-                    // tbd tho
-                    if transfer.to == self.liquidator {
-                        self.liquidated_collateral = transfer.amount;
-                        return Some(index);
+        if self.protocol == Protocol::AaveV3 || self.protocol == Protocol::AaveV2 {
+            actions
+                .into_iter()
+                .find_map(|(index, action)| {
+                    if let Actions::Transfer(transfer) = action {
+                        // because aave has the option to return the Atoken or regular,
+                        // we can't filter by collateral filter. This might be an issue...
+                        // tbd tho
+                        if transfer.to == self.liquidator {
+                            self.liquidated_collateral = transfer.amount;
+                            return Some(index);
+                        }
                     }
-                }
 
-                None
-            })
-            .map(|e| vec![e])
-            .unwrap_or_default()
+                    None
+                })
+                .map(|e| vec![e])
+                .unwrap_or_default()
+        } else {
+            vec![]
+        }
     }
 
     pub fn pretty_print(&self, f: &mut fmt::Formatter<'_>, spaces: usize) -> fmt::Result {

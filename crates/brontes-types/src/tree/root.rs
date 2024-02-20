@@ -1,13 +1,13 @@
 use std::{collections::HashSet, fmt, fmt::Display};
 
 use alloy_primitives::TxHash;
+use clickhouse::{fixed_string::FixedString, Row};
 use colored::Colorize;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use redefined::self_convert_redefined;
 use reth_primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{self, fixed_string::FixedString, Row};
 
 use super::Node;
 use crate::{
@@ -55,7 +55,11 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
-    pub fn get_tx_info<DB: LibmdbxReader>(&self, block_number: u64, database: &DB) -> TxInfo {
+    pub fn get_tx_info<DB: LibmdbxReader>(
+        &self,
+        block_number: u64,
+        database: &DB,
+    ) -> eyre::Result<TxInfo> {
         let to_address = self
             .data_store
             .get_ref(self.head.data)
@@ -64,31 +68,65 @@ impl<V: NormalizedAction> Root<V> {
             .get_action()
             .get_to_address();
 
-        let is_verified_contract = match database.try_fetch_address_metadata(to_address) {
-            Ok(metadata) => metadata.is_verified(),
-            Err(_) => false,
-        };
-        let searcher_info = database.try_fetch_searcher_info(self.head.address).ok();
+        let is_verified_contract = database
+            .try_fetch_address_metadata(to_address)
+            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
+            .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
 
-        TxInfo::new(
+        let is_classified = self
+            .data_store
+            .get_ref(self.head.data)
+            .map(|f| f.is_classified())
+            .unwrap_or_default();
+
+        let emits_logs = self
+            .data_store
+            .get_ref(self.head.data)
+            .unwrap()
+            .get_action()
+            .emitted_logs();
+        let is_cex_dex_call = matches!(
+            self.data_store.get_ref(self.head.data).unwrap().get_action(),
+            Actions::Unclassified(data) if data.is_cex_dex_call()
+        );
+
+        let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
+
+        // If the to address is a verified contract, or emits logs, or is classified then shouldn't pass it as mev_contract to avoid the misclassification of protocol addresses as mev contracts
+        if is_verified_contract || is_classified || emits_logs {
+            return Ok(TxInfo::new(
+                block_number,
+                self.position as u64,
+                self.head.address,
+                None,
+                self.tx_hash,
+                self.gas_details,
+                is_classified,
+                is_cex_dex_call,
+                self.private,
+                is_verified_contract,
+                searcher_eoa_info,
+                None,
+            ));
+        }
+
+        let searcher_contract_info =
+            database.try_fetch_searcher_contract_info(self.get_to_address())?;
+
+        Ok(TxInfo::new(
             block_number,
             self.position as u64,
             self.head.address,
-            to_address,
+            Some(to_address),
             self.tx_hash,
             self.gas_details,
-            self.data_store
-                .get_ref(self.head.data)
-                .map(|f| f.is_classified())
-                .unwrap_or_default(),
-            matches!(
-                self.data_store.get_ref(self.head.data).unwrap().get_action(),
-                Actions::Unclassified(data) if data.is_cex_dex_call()
-            ),
+            is_classified,
+            is_cex_dex_call,
             self.private,
             is_verified_contract,
-            searcher_info,
-        )
+            searcher_eoa_info,
+            searcher_contract_info,
+        ))
     }
     pub fn get_from_address(&self) -> Address {
         self.head.address

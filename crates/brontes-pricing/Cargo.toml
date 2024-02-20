@@ -3,7 +3,6 @@ name = "brontes-pricing"
 version = "0.1.0"
 edition = "2021"
 
-
 # [[bench]]
 # name = "graph"
 # harness = false
@@ -15,8 +14,6 @@ brontes-types.workspace = true
 
 itertools = "0.12.0"
 redefined.workspace = true
-
-sorella-db-databases.workspace = true
 
 futures.workspace = true
 thiserror.workspace = true
@@ -92,7 +89,8 @@ rand = "0.8.5"
 eyre.workspace = true
 
 [features]
+default = []
 testing = []
 uni-v3-ticks = []
 benchmarking = []
-local = ["reth-tracing-ext/local"]
+local-reth = ["brontes-types/local-reth"]

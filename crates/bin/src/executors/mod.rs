@@ -1,6 +1,6 @@
 mod range;
 mod shared;
-use brontes_database::Tables;
+use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
 use std::{
@@ -13,10 +13,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
-};
+use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use brontes_types::mev::Bundle;
@@ -35,7 +32,7 @@ use crate::cli::static_object;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-pub struct BrontesRunConfig<T: TracingProvider> {
+pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> {
     pub start_block: u64,
     pub end_block: Option<u64>,
     pub max_tasks: u64,
@@ -44,12 +41,12 @@ pub struct BrontesRunConfig<T: TracingProvider> {
     pub with_dex_pricing: bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
-    pub clickhouse: &'static Clickhouse,
-    pub parser: &'static Parser<'static, T, LibmdbxReadWriter>,
-    pub libmdbx: &'static LibmdbxReadWriter,
+    pub clickhouse: &'static CH,
+    pub parser: &'static Parser<'static, T, DB>,
+    pub libmdbx: &'static DB,
 }
 
-impl<T: TracingProvider> BrontesRunConfig<T> {
+impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig<T, DB, CH> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
@@ -60,10 +57,10 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         with_dex_pricing: bool,
 
         inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
-        clickhouse: &'static Clickhouse,
+        clickhouse: &'static CH,
 
-        parser: &'static Parser<'static, T, LibmdbxReadWriter>,
-        libmdbx: &'static LibmdbxReadWriter,
+        parser: &'static Parser<'static, T, DB>,
+        libmdbx: &'static DB,
     ) -> Self {
         Self {
             clickhouse,
@@ -85,7 +82,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         executor: TaskExecutor,
         end_block: u64,
         tip: bool,
-    ) -> Vec<RangeExecutorWithPricing<T, LibmdbxReadWriter>> {
+    ) -> Vec<RangeExecutorWithPricing<T, DB, CH>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block;
@@ -139,7 +136,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         &self,
         executor: TaskExecutor,
         start_block: u64,
-    ) -> TipInspector<T, LibmdbxReadWriter> {
+    ) -> TipInspector<T, DB, CH> {
         let state_collector = self
             .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
@@ -153,7 +150,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         )
     }
 
-    fn state_collector_no_dex_price(&self) -> StateCollector<T, LibmdbxReadWriter> {
+    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB, CH> {
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
 
@@ -173,7 +170,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         start_block: u64,
         end_block: u64,
         tip: bool,
-    ) -> StateCollector<T, LibmdbxReadWriter> {
+    ) -> StateCollector<T, DB, CH> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
@@ -265,9 +262,9 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         if let Some(end_block) = self.end_block {
             (true, end_block)
         } else {
-            #[cfg(not(feature = "local"))]
+            #[cfg(feature = "local-reth")]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
-            #[cfg(feature = "local")]
+            #[cfg(not(feature = "local-reth"))]
             let chain_tip = self.parser.get_latest_block_number().await.unwrap();
             (false, chain_tip)
         }

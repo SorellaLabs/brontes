@@ -49,12 +49,12 @@ impl TracingProvider for LocalProvider {
             .map_err(Into::into)
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     fn best_block_number(&self) -> eyre::Result<u64> {
         unreachable!("local provider should only be used with local feature flag")
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     async fn best_block_number(&self) -> eyre::Result<u64> {
         self.provider.get_block_number().await.map_err(Into::into)
     }

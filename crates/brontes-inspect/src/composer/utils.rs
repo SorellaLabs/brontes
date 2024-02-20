@@ -253,15 +253,23 @@ pub fn calculate_builder_profit(
         }
     };
     // Calculate the builder's mev profit from it's associated vertically integrated searchers
-    let mev_searching_profit: f64 = if !builder_info.searchers.is_empty() {
-        bundles
-            .iter()
-            .filter(|bundle| builder_info.searchers.contains(&bundle.header.eoa))
-            .map(|bundle| bundle.header.profit_usd)
-            .sum()
-    } else {
-        0.0
-    };
+    let mev_searching_profit: f64 =
+        if builder_info.searchers_eoas.is_empty() && builder_info.searchers_contracts.is_empty() {
+            0.0
+        } else {
+            bundles
+                .iter()
+                .filter(|bundle| {
+                    builder_info.searchers_eoas.contains(&bundle.header.eoa)
+                        || bundle
+                            .header
+                            .mev_contract
+                            .map(|mc| builder_info.searchers_contracts.contains(&mc))
+                            .unwrap_or(false)
+                })
+                .map(|bundle| bundle.header.profit_usd)
+                .sum()
+        };
 
     let collateral_address = match builder_info.ultrasound_relay_collateral_address {
         Some(address) => address,

@@ -113,11 +113,11 @@ pub(crate) mod vec_vec_fixed_string {
     use std::str::FromStr;
 
     use alloy_primitives::Address;
+    use clickhouse::fixed_string::FixedString;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &[Vec<Address>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
@@ -156,11 +156,11 @@ pub(crate) mod vec_vec_b256 {
     use std::str::FromStr;
 
     use alloy_primitives::B256;
+    use clickhouse::fixed_string::FixedString;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &[Vec<B256>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
@@ -579,23 +579,21 @@ pub mod option_contract_info {
     use alloy_primitives::Address;
     use serde::de::{Deserialize, Deserializer};
 
-    use crate::{db::address_metadata::ContractInfo, Protocol};
+    use crate::db::address_metadata::ContractInfo;
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let (verified_contract, contract_creator_opt, protocol, reputation): (
+        let (verified_contract, contract_creator_opt, reputation): (
             Option<bool>,
-            Option<String>,
             Option<String>,
             Option<u8>,
         ) = Deserialize::deserialize(deserializer)?;
 
         Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
             verified_contract,
-            contract_creator: Address::from_str(&contract_creator).unwrap(),
-            protocol: protocol.and_then(|p| Protocol::from_str(&p).ok()),
+            contract_creator: Address::from_str(&contract_creator).ok(),
             reputation,
         }))
     }
@@ -629,5 +627,20 @@ pub mod socials {
             linkedin,
         }
         .into())
+    }
+}
+
+pub mod option_fund {
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::db::searcher::Fund;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Fund>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let fund: Option<String> = Deserialize::deserialize(deserializer)?;
+
+        Ok(fund.map(Into::into))
     }
 }

@@ -4,6 +4,7 @@ use std::{
 };
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
+use clickhouse::Row;
 use malachite::{num::basic::traits::One, Rational};
 use redefined::Redefined;
 use reth_db::DatabaseError;
@@ -54,7 +55,7 @@ impl DexPrices {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {

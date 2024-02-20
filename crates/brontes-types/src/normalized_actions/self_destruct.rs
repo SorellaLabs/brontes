@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 
+use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::trace::parity::SelfdestructAction;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct SelfdestructWithIndex {

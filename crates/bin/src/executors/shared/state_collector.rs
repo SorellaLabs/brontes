@@ -9,10 +9,11 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
+use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{
         metadata::Metadata,
-        traits::{LibmdbxReader, LibmdbxWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::Actions,
     traits::TracingProvider,
@@ -27,9 +28,9 @@ use super::metadata::MetadataFetcher;
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Actions>>> + Send + 'a>>;
 
-pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
-    metadata_fetcher: MetadataFetcher<T, DB>,
+    metadata_fetcher: MetadataFetcher<T, DB, CH>,
     classifier: &'static Classifier<'static, T, DB>,
     parser: &'static Parser<'static, T, DB>,
     db: &'static DB,
@@ -37,10 +38,12 @@ pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter>
     collection_future: Option<CollectionFut<'static>>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
+    StateCollector<T, DB, CH>
+{
     pub fn new(
         mark_as_finished: Arc<AtomicBool>,
-        metadata_fetcher: MetadataFetcher<T, DB>,
+        metadata_fetcher: MetadataFetcher<T, DB, CH>,
         classifier: &'static Classifier<'static, T, DB>,
         parser: &'static Parser<'static, T, DB>,
         db: &'static DB,
@@ -82,7 +85,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateCollector<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
+    for StateCollector<T, DB, CH>
+{
     type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(

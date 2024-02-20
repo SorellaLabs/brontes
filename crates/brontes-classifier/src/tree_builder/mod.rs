@@ -8,7 +8,7 @@ use brontes_types::{
 };
 mod tree_pruning;
 mod utils;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::{Actions, NormalizedAction, SelfdestructWithIndex},
@@ -23,9 +23,7 @@ use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::Action;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, error, info};
-use tree_pruning::{
-    account_for_tax_tokens, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
-};
+use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
 use self::transfer::try_decode_transfer;
@@ -36,13 +34,13 @@ use crate::{
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
-pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx: &'db DB,
     provider: Arc<T>,
     pricing_update_sender: UnboundedSender<DexPriceMsg>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db, T, DB> {
+impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, DB> {
     pub fn new(
         libmdbx: &'db DB,
         pricing_update_sender: UnboundedSender<DexPriceMsg>,
@@ -95,9 +93,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
     pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
         // tax token accounting should always be first.
         account_for_tax_tokens(tree);
-        remove_swap_transfers(tree);
-        remove_mint_transfers(tree);
-        remove_collect_transfers(tree);
+        // remove_swap_transfers(tree);
+        // remove_mint_transfers(tree);
+        // remove_collect_transfers(tree);
     }
 
     pub(crate) async fn build_all_tx_trees(
@@ -290,7 +288,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        _trace_index: u64,
+        trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
             return (vec![], Actions::Unclassified(trace));
@@ -301,16 +299,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
             (vec![results.0], results.1)
-        } else if let Some(transfer) = self.classify_transfer(tx_idx, &trace, block).await {
+        } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
             return transfer;
         } else {
-            return (vec![], self.classify_eth_transfer(trace, tx_idx));
+            return (vec![], self.classify_eth_transfer(trace, trace_index));
         }
     }
 
     async fn classify_transfer(
         &self,
-        tx_idx: u64,
+        trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
     ) -> Option<(Vec<DexPriceMsg>, Actions)> {
@@ -323,7 +321,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
 
         // Attempt to decode the transfer
         match try_decode_transfer(
-            tx_idx,
+            trace_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
             token_address,
@@ -408,29 +406,34 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
         };
 
         (
-            DiscoveryProtocols::default()
-                .dispatch(
-                    self.provider.clone(),
-                    from_address,
-                    created_addr,
-                    trace_index,
-                    calldata,
-                )
-                .await
-                .into_iter()
-                // insert the pool returning if it has token values.
-                .filter(|pool| !self.contains_pool(pool.pool_address))
-                .filter_map(|pool| {
-                    self.insert_new_pool(block, &pool);
-                    pool.try_into().ok()
-                })
-                .map(DexPriceMsg::DiscoveredPool)
-                .collect::<Vec<_>>(),
+            join_all(
+                DiscoveryProtocols::default()
+                    .dispatch(
+                        self.provider.clone(),
+                        from_address,
+                        created_addr,
+                        trace_index,
+                        calldata,
+                    )
+                    .await
+                    .into_iter()
+                    // insert the pool returning if it has token values.
+                    .filter(|pool| !self.contains_pool(pool.pool_address))
+                    .map(|pool| async {
+                        self.insert_new_pool(block, &pool).await;
+                        pool.try_into().ok()
+                    }),
+            )
+            .await
+            .into_iter()
+            .flatten()
+            .map(DexPriceMsg::DiscoveredPool)
+            .collect_vec(),
             Actions::Unclassified(trace),
         )
     }
 
-    fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+    async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
         if self
             .libmdbx
             .insert_pool(
@@ -439,6 +442,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Classifier<'db,
                 [pool.tokens[0], pool.tokens[1]],
                 pool.protocol,
             )
+            .await
             .is_err()
         {
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");

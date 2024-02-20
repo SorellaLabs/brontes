@@ -23,7 +23,7 @@ futures.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
-alloy-rpc-types.workspace = true 
+alloy-rpc-types.workspace = true
 alloy-rlp.workspace = true
 
 # reth
@@ -62,11 +62,6 @@ criterion = { version = "0.5", features = [
   "async_tokio",
 ], optional = true }
 
-[features]
-tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
-default = []
-local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
-
 [dev-dependencies]
 strum = { workspace = true, features = ["derive"] }
 dotenv.workspace = true
@@ -83,7 +78,6 @@ brontes-macros.workspace = true
 
 [build-dependencies]
 tokio.workspace = true
-clickhouse.workspace = true
 hyper.workspace = true
 hyper-tls.workspace = true
 serde.workspace = true
@@ -97,3 +91,17 @@ futures.workspace = true
 itertools.workspace = true
 dotenv.workspace = true
 reth-tracing-ext.workspace = true
+
+[features]
+default = []
+tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
+local-reth = [
+  "brontes-core/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-types/local-reth",
+]
+
+local-clickhouse = [
+  "brontes-database/local-clickhouse",
+  "brontes-core/local-clickhouse",
+]

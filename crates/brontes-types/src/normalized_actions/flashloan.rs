@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 
+use clickhouse::Row;
 use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};

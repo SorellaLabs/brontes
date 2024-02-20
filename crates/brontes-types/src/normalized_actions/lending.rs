@@ -1,10 +1,10 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use alloy_primitives::U256;
+use clickhouse::Row;
 use malachite::Rational;
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 

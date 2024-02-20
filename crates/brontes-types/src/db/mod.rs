@@ -3,6 +3,7 @@ pub mod address_to_protocol_info;
 pub mod builder;
 pub mod cex;
 pub mod clickhouse;
+pub mod clickhouse_serde;
 pub mod codecs;
 pub mod dex;
 pub mod initialized_state;

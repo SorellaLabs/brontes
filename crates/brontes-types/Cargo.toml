@@ -38,7 +38,7 @@ serde_with.workspace = true
 serde_repr.workspace = true
 
 # database
-sorella-db-databases.workspace = true
+clickhouse.workspace = true
 
 # misc
 phf.workspace = true
@@ -61,6 +61,7 @@ indoc = "2"
 zstd = "0.13"
 paste = "1.0.14"
 pin-project = "1.1.4"
+clap.workspace = true 
 
 # stats
 statrs = "0.16"
@@ -78,8 +79,7 @@ brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
 
 
-
 [features]
-default = ["tests"]
+default = []
 tests = []
-local = ["brontes-core/local", "reth-tracing-ext/local"]
+local-reth = ["brontes-core/local-reth", "reth-tracing-ext/local-reth"]

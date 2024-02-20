@@ -4,7 +4,10 @@ use std::{
 };
 
 use brontes_core::decoding::TracingProvider;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{DBWriter, LibmdbxReader},
+};
 use brontes_inspect::Inspector;
 use brontes_types::{
     db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
@@ -14,21 +17,26 @@ use reth_tasks::shutdown::GracefulShutdown;
 use tracing::info;
 
 use super::shared::{inserts::process_results, state_collector::StateCollector};
-pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
-    collector: StateCollector<T, DB>,
+pub struct RangeExecutorWithPricing<
+    T: TracingProvider,
+    DB: DBWriter + LibmdbxReader,
+    CH: ClickhouseHandle,
+> {
+    collector: StateCollector<T, DB, CH>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-    // clickhouse db (feature)
     current_block: u64,
     end_block: u64,
     libmdbx: &'static DB,
     inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
+    RangeExecutorWithPricing<T, DB, CH>
+{
     pub fn new(
         start_block: u64,
         end_block: u64,
-        state_collector: StateCollector<T, DB>,
+        state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     ) -> Self {
@@ -69,8 +77,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPri
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future
-    for RangeExecutorWithPricing<T, DB>
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Future
+    for RangeExecutorWithPricing<T, DB, CH>
 {
     type Output = ();
 

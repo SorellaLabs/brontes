@@ -51,8 +51,11 @@ impl AddToDb {
             TxTraces,
             Builder,
             AddressMeta,
-            Searcher,
+            SearcherEOAs,
+            SearcherContracts,
             InitializedState,
+            BuilderStatistics,
+            SearcherStatistics,
             PoolCreationBlocks = &self.key,
             &self.value
         );
