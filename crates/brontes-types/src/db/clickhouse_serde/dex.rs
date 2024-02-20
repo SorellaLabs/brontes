@@ -26,7 +26,7 @@ pub mod dex_quote {
     {
         let to_ser: DexPriceQuotesVec = if let Some(quotes) = value {
             quotes
-                .into_iter()
+                .iter()
                 .map(|(pair, dex_price)| {
                     (
                         (format!("{:?}", pair.0), format!("{:?}", pair.1)),
