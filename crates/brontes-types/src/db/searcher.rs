@@ -18,11 +18,12 @@ use crate::{
 pub struct SearcherInfo {
     #[redefined(same_fields)]
     #[serde(default)]
-    pub fund: Fund,
+    pub fund:    Fund,
     #[redefined(same_fields)]
     #[serde(default)]
-    pub mev: Vec<MevType>,
-    /// If the searcher is vertically integrated, this will contain the corresponding builder's information.
+    pub mev:     Vec<MevType>,
+    /// If the searcher is vertically integrated, this will contain the
+    /// corresponding builder's information.
     #[serde(with = "option_addresss")]
     #[serde(default)]
     pub builder: Option<Address>,
@@ -46,15 +47,16 @@ impl SearcherInfo {
 
 implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
 
-/// Aggregated searcher statistics, updated once the brontes analytics are run. The key is the mev contract address.
+/// Aggregated searcher statistics, updated once the brontes analytics are run.
+/// The key is the mev contract address.
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherStats {
-    pub pnl: f64,
+    pub pnl:          f64,
     pub total_bribed: f64,
     pub bundle_count: u64,
     /// The block number of the most recent bundle involving this searcher.
-    pub last_active: u64,
+    pub last_active:  u64,
 }
 
 impl SearcherStats {
@@ -71,11 +73,11 @@ implement_table_value_codecs_with_zc!(SearcherStatsRedefined);
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize)]
 pub struct SearcherStatsWithAddress {
     #[serde(with = "addresss")]
-    pub address: Address,
-    pub pnl: f64,
+    pub address:      Address,
+    pub pnl:          f64,
     pub total_bribed: f64,
     pub bundle_count: u64,
-    pub last_active: u64,
+    pub last_active:  u64,
 }
 
 impl SearcherStatsWithAddress {
@@ -149,11 +151,11 @@ self_convert_redefined!(Fund);
 #[derive(Debug, Row, PartialEq, Clone, Serialize, Deserialize)]
 pub struct JoinedSearcherInfo {
     #[serde(with = "addresss")]
-    pub address: Address,
-    pub fund: Fund,
-    pub mev: Vec<MevType>,
+    pub address:         Address,
+    pub fund:            Fund,
+    pub mev:             Vec<MevType>,
     #[serde(with = "option_addresss")]
-    pub builder: Option<Address>,
+    pub builder:         Option<Address>,
     pub eoa_or_contract: SearcherEoaContract,
 }
 
@@ -182,6 +184,6 @@ impl JoinedSearcherInfo {
 #[derive(Debug, PartialEq, Clone, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
 pub enum SearcherEoaContract {
-    EOA = 0,
+    EOA      = 0,
     Contract = 1,
 }

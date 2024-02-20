@@ -26,11 +26,11 @@ pub type ClickhouseMetadataFuture =
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> {
-    clickhouse: Option<&'static CH>,
-    dex_pricer_stream: Option<WaitingForPricerFuture<T, DB>>,
+    clickhouse:         Option<&'static CH>,
+    dex_pricer_stream:  Option<WaitingForPricerFuture<T, DB>>,
     /// we will drain this in the case we aren't running a dex pricer to avoid
     /// being terrible on memory
-    no_price_chan: Option<UnboundedReceiver<DexPriceMsg>>,
+    no_price_chan:      Option<UnboundedReceiver<DexPriceMsg>>,
     clickhouse_futures: ClickhouseMetadataFuture,
 
     result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,

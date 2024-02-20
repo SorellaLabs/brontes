@@ -23,11 +23,11 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
-    pub eoa: Address,
-    pub frontrun_tx: B256,
-    pub backrun_tx: B256,
+    pub eoa:                   Address,
+    pub frontrun_tx:           B256,
+    pub backrun_tx:            B256,
     pub mev_executor_contract: Address,
-    pub victims: Vec<B256>,
+    pub victims:               Vec<B256>,
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -36,9 +36,7 @@ pub struct JitInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            inner: SharedInspectorUtils::new(quote, db),
-        }
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -128,11 +126,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
-type JitUnzip = (
-    Vec<Option<NormalizedMint>>,
-    Vec<Option<NormalizedBurn>>,
-    Vec<Option<NormalizedCollect>>,
-);
+type JitUnzip =
+    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
@@ -225,10 +220,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burns: burns,
         };
 
-        Some(Bundle {
-            header,
-            data: BundleData::Jit(jit_details),
-        })
+        Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {
@@ -264,11 +256,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa: root.head.address,
-                                    frontrun_tx: *prev_tx_hash,
-                                    backrun_tx: root.tx_hash,
+                                    eoa:                   root.head.address,
+                                    frontrun_tx:           *prev_tx_hash,
+                                    backrun_tx:            root.tx_hash,
                                     mev_executor_contract: root.get_to_address(),
-                                    victims: victims.clone(),
+                                    victims:               victims.clone(),
                                 });
                             }
                         }
@@ -294,11 +286,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa: root.head.address,
-                                    frontrun_tx: *prev_tx_hash,
-                                    backrun_tx: root.tx_hash,
+                                    eoa:                   root.head.address,
+                                    frontrun_tx:           *prev_tx_hash,
+                                    backrun_tx:            root.tx_hash,
                                     mev_executor_contract: root.get_to_address(),
-                                    victims: victims.clone(),
+                                    victims:               victims.clone(),
                                 });
                             }
                         }

@@ -26,8 +26,8 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AtomicArb {
-    pub tx_hash: B256,
-    pub swaps: Vec<NormalizedSwap>,
+    pub tx_hash:     B256,
+    pub swaps:       Vec<NormalizedSwap>,
     #[redefined(same_fields)]
     pub gas_details: GasDetails,
 }

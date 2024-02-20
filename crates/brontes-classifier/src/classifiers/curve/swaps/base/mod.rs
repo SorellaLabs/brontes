@@ -27,32 +27,23 @@ mod tests {
             Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
             Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            Some(Address::new(hex!(
-                "fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"
-            ))),
+            Some(Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"))),
             None,
             None,
             None,
         );
 
-        let swap = B256::from(hex!(
-            "6987133dd8ee7f5f76615a7484418905933625305a948350b38e924a905c0ef6"
-        ));
+        let swap =
+            B256::from(hex!("6987133dd8ee7f5f76615a7484418905933625305a948350b38e924a905c0ef6"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            inner: TokenInfo {
-                decimals: 8,
-                symbol: "WBTC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 8, symbol: "WBTC".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
-            inner: TokenInfo {
-                decimals: 8,
-                symbol: "renBTC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 8, symbol: "renBTC".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());

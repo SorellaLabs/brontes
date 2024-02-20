@@ -31,7 +31,7 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Bundle {
     pub header: BundleHeader,
-    pub data: BundleData,
+    pub data:   BundleData,
 }
 
 impl Bundle {

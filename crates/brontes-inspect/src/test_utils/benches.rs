@@ -10,8 +10,8 @@ use crate::{composer::compose_mev_results, Inspectors};
 
 pub struct InspectorBenchUtils {
     classifier_inspector: ClassifierTestUtils,
-    quote_address: Address,
-    pub rt: tokio::runtime::Runtime,
+    quote_address:        Address,
+    pub rt:               tokio::runtime::Runtime,
 }
 
 impl InspectorBenchUtils {
@@ -22,11 +22,7 @@ impl InspectorBenchUtils {
             .unwrap();
 
         let classifier_inspector = rt.block_on(ClassifierTestUtils::new());
-        Self {
-            classifier_inspector,
-            quote_address,
-            rt,
-        }
+        Self { classifier_inspector, quote_address, rt }
     }
 
     pub fn bench_inspectors_block(

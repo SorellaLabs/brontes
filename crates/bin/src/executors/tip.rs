@@ -24,13 +24,13 @@ pub struct TipInspector<
     CH: ClickhouseHandle,
     P: Processor,
 > {
-    current_block: u64,
-    parser: &'static Parser<'static, T, DB>,
-    state_collector: StateCollector<T, DB, CH>,
-    database: &'static DB,
-    inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
+    current_block:      u64,
+    parser:             &'static Parser<'static, T, DB>,
+    state_collector:    StateCollector<T, DB, CH>,
+    database:           &'static DB,
+    inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-    _p: PhantomData<P>,
+    _p:                 PhantomData<P>,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: Processor>

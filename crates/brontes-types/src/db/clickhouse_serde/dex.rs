@@ -11,10 +11,7 @@ pub mod dex_quote {
 
     use crate::{db::dex::DexPrices, pair::Pair};
 
-    type DexPriceQuotesVec = Vec<(
-        (String, String),
-        (([u8; 32], [u8; 32]), ([u8; 32], [u8; 32])),
-    )>;
+    type DexPriceQuotesVec = Vec<((String, String), (([u8; 32], [u8; 32]), ([u8; 32], [u8; 32])))>;
 
     #[allow(dead_code)]
     pub fn serialize<S>(
@@ -77,31 +74,22 @@ pub mod dex_quote {
 
         let val = des
             .into_iter()
-            .map(
-                |((pair0, pair1), ((pre_num, pre_den), (post_num, post_den)))| {
-                    (
-                        Pair(
-                            Address::from_str(&pair0).unwrap(),
-                            Address::from_str(&pair1).unwrap(),
-                        )
+            .map(|((pair0, pair1), ((pre_num, pre_den), (post_num, post_den)))| {
+                (
+                    Pair(Address::from_str(&pair0).unwrap(), Address::from_str(&pair1).unwrap())
                         .ordered(),
-                        DexPrices {
-                            pre_state: Rational::from_naturals(
-                                Natural::from_limbs_asc(&U256::from_le_bytes(pre_num).into_limbs()),
-                                Natural::from_limbs_asc(&U256::from_le_bytes(pre_den).into_limbs()),
-                            ),
-                            post_state: Rational::from_naturals(
-                                Natural::from_limbs_asc(
-                                    &U256::from_le_bytes(post_num).into_limbs(),
-                                ),
-                                Natural::from_limbs_asc(
-                                    &U256::from_le_bytes(post_den).into_limbs(),
-                                ),
-                            ),
-                        },
-                    )
-                },
-            )
+                    DexPrices {
+                        pre_state:  Rational::from_naturals(
+                            Natural::from_limbs_asc(&U256::from_le_bytes(pre_num).into_limbs()),
+                            Natural::from_limbs_asc(&U256::from_le_bytes(pre_den).into_limbs()),
+                        ),
+                        post_state: Rational::from_naturals(
+                            Natural::from_limbs_asc(&U256::from_le_bytes(post_num).into_limbs()),
+                            Natural::from_limbs_asc(&U256::from_le_bytes(post_den).into_limbs()),
+                        ),
+                    },
+                )
+            })
             .collect::<HashMap<Pair, DexPrices>>();
 
         Ok(Some(val))
