@@ -277,16 +277,15 @@ impl Serialize for TxTrace {
         ser_struct.serialize_field("trace_meta.msg_sender", &msg_sender)?;
 
         let decoded_data = ClickhouseDecodedCallData::from(self);
+
+        ser_struct.serialize_field("trace_decoded_data.trace_idx", &decoded_data.trace_idx)?;
         ser_struct.serialize_field(
-            "trace_meta.decoded_data.function_name",
+            "trace_decoded_data.function_name",
             &decoded_data.function_name,
         )?;
         println!("Call Data: {}", decoded_data.call_data.len());
-        ser_struct.serialize_field("trace_meta.decoded_data.call_data", &decoded_data.call_data)?;
-        ser_struct.serialize_field(
-            "trace_meta.decoded_data.return_data",
-            &decoded_data.return_data,
-        )?;
+        ser_struct.serialize_field("trace_decoded_data.call_data", &decoded_data.call_data)?;
+        ser_struct.serialize_field("trace_decoded_data.return_data", &decoded_data.return_data)?;
 
         let error = self
             .trace
@@ -381,12 +380,13 @@ impl DbRow for TxTrace {
         "is_success",
         "trace_meta.trace_idx",
         "trace_meta.msg_sender",
-        "trace_meta.decoded_data.function_name",
-        "trace_meta.decoded_data.call_data",
-        "trace_meta.decoded_data.return_data",
         "trace_meta.error",
         "trace_meta.subtraces",
         "trace_meta.trace_address",
+        "trace_decoded_data.trace_idx",
+        "trace_decoded_data.function_name",
+        "trace_decoded_data.call_data",
+        "trace_decoded_data.return_data",
         "trace_logs.trace_idx",
         "trace_logs.log_idx",
         "trace_logs.address",
