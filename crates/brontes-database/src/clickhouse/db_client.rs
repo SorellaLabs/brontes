@@ -129,16 +129,16 @@ impl Clickhouse {
 
     pub async fn write_token_info(
         &self,
-        _address: Address,
-        _decimals: u8,
-        _symbol: String,
+        address: Address,
+        decimals: u8,
+        symbol: String,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
-        //         address,
-        //         inner: TokenInfo { symbol, decimals },
-        //     })
-        //     .await?;
+        self.client
+            .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
+                address,
+                inner: TokenInfo { symbol, decimals },
+            })
+            .await?;
 
         Ok(())
     }

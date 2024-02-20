@@ -7,20 +7,24 @@ use alloy_primitives::Address;
 use clickhouse::Row;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
+use super::clickhouse_serde::token_info::token_info;
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
+    serde_utils::addresss,
 };
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
+#[derive(Debug, Default, Row, Clone, PartialEq, Eq, Hash, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenInfoWithAddress {
-    #[redefined(same_fields)]
-    pub inner: TokenInfo,
+    #[serde(with = "addresss")]
     pub address: Address,
+    #[redefined(same_fields)]
+    #[serde(deserialize_with = "token_info::deserialize")]
+    pub inner: TokenInfo,
 }
 
 impl TokenInfoWithAddress {
@@ -82,6 +86,21 @@ impl Deref for TokenInfoWithAddress {
 impl DerefMut for TokenInfoWithAddress {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
+    }
+}
+
+impl Serialize for TokenInfoWithAddress {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser_struct = serializer.serialize_struct("TokenInfoWithAddress", 3)?;
+
+        ser_struct.serialize_field("address", &format!("{:?}", self.address))?;
+        ser_struct.serialize_field("symbol", &self.symbol)?;
+        ser_struct.serialize_field("decimals", &self.decimals)?;
+
+        ser_struct.end()
     }
 }
 
