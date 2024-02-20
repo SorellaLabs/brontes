@@ -38,13 +38,7 @@ clickhouse_dbms!(
     ]
 );
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "brontes",
-    ClickhouseTxTraces,
-    TxTrace,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "brontes", ClickhouseTxTraces, TxTrace, NO_FILE);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -54,13 +48,7 @@ remote_clickhouse_table!(
     NO_FILE
 );
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "mev",
-    ClickhouseMevBlocks,
-    MevBlock,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseMevBlocks, MevBlock, NO_FILE);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -87,13 +75,7 @@ remote_clickhouse_table!(
 );
 
 // fix this 1
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "mev",
-    ClickhouseCexDex,
-    CexDex,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseCexDex, CexDex, NO_FILE);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -111,13 +93,7 @@ remote_clickhouse_table!(
     NO_FILE
 );
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "mev",
-    ClickhouseJit,
-    JitLiquidity,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseJit, JitLiquidity, NO_FILE);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,

@@ -28,13 +28,9 @@ pub(crate) async fn initialize_with_hooks<F: Hook + 'static>(
     let hooks: Vec<_> = hooks.into_iter().collect();
 
     // Start endpoint
-    start_endpoint(
-        listen_addr,
-        handle,
-        Arc::new(move || hooks.iter().for_each(|hook| hook())),
-    )
-    .await
-    .wrap_err("Could not start Prometheus endpoint")?;
+    start_endpoint(listen_addr, handle, Arc::new(move || hooks.iter().for_each(|hook| hook())))
+        .await
+        .wrap_err("Could not start Prometheus endpoint")?;
 
     // Build metrics stack
     Stack::new(recorder)

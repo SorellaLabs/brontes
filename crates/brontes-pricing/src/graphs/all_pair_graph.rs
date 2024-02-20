@@ -17,7 +17,7 @@ use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, Sub
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EdgeWithInsertBlock {
-    pub inner: PoolPairInformation,
+    pub inner:        PoolPairInformation,
     pub insert_block: u64,
 }
 
@@ -30,7 +30,7 @@ impl EdgeWithInsertBlock {
         block_added: u64,
     ) -> Self {
         Self {
-            inner: PoolPairInformation::new(pool_addr, dex, token0, token1),
+            inner:        PoolPairInformation::new(pool_addr, dex, token0, token1),
             insert_block: block_added,
         }
     }
@@ -72,7 +72,7 @@ impl DerefMut for EdgeWithInsertBlock {
 /// be temporarily infeasible or less desirable.
 #[derive(Debug, Clone)]
 pub struct AllPairGraph {
-    graph: UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
+    graph:          UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
     token_to_index: HashMap<Address, usize>,
 }
 
@@ -129,10 +129,7 @@ impl AllPairGraph {
             "built graph in {}us", delta
         );
 
-        Self {
-            graph,
-            token_to_index,
-        }
+        Self { graph, token_to_index }
     }
 
     pub fn edge_count(&self, n0: Address, n1: Address) -> usize {
@@ -238,13 +235,7 @@ impl AllPairGraph {
                         !ignore.contains(&created_pair)
                     })
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
-                    .map(|e| {
-                        if e.source() == cur_node {
-                            e.target()
-                        } else {
-                            e.source()
-                        }
-                    })
+                    .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
                     .map(|n| (n.index(), weight))
                     .collect_vec()
             },
@@ -280,7 +271,7 @@ impl AllPairGraph {
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
                                 PoolPairInfoDirection {
-                                    info: *info,
+                                    info:       *info,
                                     token_0_in: node0 == index,
                                 },
                                 i as u8,

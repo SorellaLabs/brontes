@@ -77,9 +77,7 @@ async fn query_base_pool<T: TracingProvider>(
     loop {
         let addr = if is_meta {
             let Ok(call) = make_call_request(
-                coins_1Call {
-                    arg0: U256::from(i as u64),
-                },
+                coins_1Call { arg0: U256::from(i as u64) },
                 tracer,
                 *base_pool,
                 None,
@@ -112,12 +110,7 @@ async fn parse_plain_pool<const N: usize>(
 ) -> Vec<NormalizedNewPool> {
     let tokens = tokens.into_iter().filter(|t| t != &Address::ZERO).collect();
 
-    vec![NormalizedNewPool {
-        pool_address: deployed_address,
-        trace_index,
-        protocol,
-        tokens,
-    }]
+    vec![NormalizedNewPool { pool_address: deployed_address, trace_index, protocol, tokens }]
 }
 
 async fn parse_meta_pool<T: TracingProvider>(
@@ -131,10 +124,5 @@ async fn parse_meta_pool<T: TracingProvider>(
     let mut tokens = query_base_pool(&tracer, &base_pool, true).await;
     tokens.push(meta_token);
 
-    vec![NormalizedNewPool {
-        pool_address: deployed_address,
-        trace_index,
-        protocol,
-        tokens,
-    }]
+    vec![NormalizedNewPool { pool_address: deployed_address, trace_index, protocol, tokens }]
 }

@@ -30,17 +30,14 @@ use crate::{
 #[derive(Debug)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
-    finalized_edge_state: HashMap<Address, PoolState>,
+    finalized_edge_state:    HashMap<Address, PoolState>,
     /// state that verification is using
     verification_edge_state: HashMap<Address, PoolStateWithBlock>,
 }
 
 impl StateTracker {
     pub fn new() -> Self {
-        Self {
-            finalized_edge_state: HashMap::new(),
-            verification_edge_state: HashMap::new(),
-        }
+        Self { finalized_edge_state: HashMap::new(), verification_edge_state: HashMap::new() }
     }
 
     pub fn finalized_state(&self) -> &HashMap<Address, PoolState> {

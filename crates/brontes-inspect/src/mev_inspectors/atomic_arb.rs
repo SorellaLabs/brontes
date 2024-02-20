@@ -25,9 +25,7 @@ pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            inner: SharedInspectorUtils::new(quote, db),
-        }
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -107,16 +105,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             MevType::AtomicArb,
         );
 
-        let backrun = AtomicArb {
-            tx_hash: info.tx_hash,
-            gas_details: info.gas_details,
-            swaps,
-        };
+        let backrun = AtomicArb { tx_hash: info.tx_hash, gas_details: info.gas_details, swaps };
 
-        Some(Bundle {
-            header,
-            data: BundleData::AtomicArb(backrun),
-        })
+        Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
 
     fn is_possible_arb(
