@@ -8,6 +8,7 @@ use brontes_types::{
         dex::DexQuotes,
         metadata::{BlockMetadata, Metadata},
         searcher::{JoinedSearcherInfo, SearcherInfo},
+        token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, MevBlock},
     structured_trace::TxTrace,
@@ -20,7 +21,9 @@ use sorella_db_databases::{
 };
 
 use super::{
-    dbms::{BrontesClickhouseTables, ClickhouseSearcherInfo, ClickhouseTxTraces},
+    dbms::{
+        BrontesClickhouseTables, ClickhouseSearcherInfo, ClickhouseTokenInfo, ClickhouseTxTraces,
+    },
     ClickhouseHandle,
 };
 use crate::{
@@ -134,7 +137,7 @@ impl Clickhouse {
         symbol: String,
     ) -> eyre::Result<()> {
         self.client
-            .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
+            .insert_one::<ClickhouseTokenInfo>(&TokenInfoWithAddress {
                 address,
                 inner: TokenInfo { symbol, decimals },
             })
@@ -277,5 +280,26 @@ mod tests {
         let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0)
+    }
+
+    #[tokio::test]
+    async fn token_info() {
+        let db = spawn_clickhouse();
+        let case0 = TokenInfoWithAddress::default();
+
+        let res = db
+            .inner()
+            .insert_one::<ClickhouseTokenInfo>(&case0)
+            .await
+            .unwrap();
+        //assert!(res.is_ok());
+
+        let query = "SELECT * FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
+        let queried: TokenInfoWithAddress = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+
+        let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
+        let queried = db.inner().execute_remote(query, &()).await.unwrap();
     }
 }
