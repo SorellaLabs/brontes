@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_intialize_clickhouse_no_args_tables() {
+    async fn test_intialize_clickhouse_tables() {
         init_tracing();
         let block_range = (17000000, 17000100);
 
