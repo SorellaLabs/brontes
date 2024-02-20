@@ -1,7 +1,7 @@
 use brontes_types::{
     db::{
         builder::BuilderStatsWithAddress,
-        dex::DexQuotes,
+        dex::{DexQuotes, DexQuotesWithBlockNumber},
         searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
         token_info::TokenInfoWithAddress,
     },
@@ -30,7 +30,7 @@ clickhouse_dbms!(
         ClickhouseJitSandwich,
         ClickhouseLiquidations,
         ClickhouseSearcherInfo,
-        ClickhouseDexQuotes,
+        ClickhouseDexPriceMapping,
         ClickhouseTxTraces,
         ClickhouseTokenInfo,
         ClickhouseSearcherStats,
@@ -49,8 +49,8 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
-    ClickhouseDexQuotes,
-    DexQuotes,
+    ClickhouseDexPriceMapping,
+    DexQuotesWithBlockNumber,
     NO_FILE
 );
 

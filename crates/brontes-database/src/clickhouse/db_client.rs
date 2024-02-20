@@ -5,7 +5,7 @@ use alloy_primitives::Address;
 use brontes_types::{
     db::{
         builder::{BuilderInfo, BuilderStats, BuilderStatsWithAddress},
-        dex::DexQuotes,
+        dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
         token_info::{TokenInfo, TokenInfoWithAddress},
@@ -22,8 +22,8 @@ use sorella_db_databases::{
 
 use super::{
     dbms::{
-        BrontesClickhouseTables, ClickhouseBuilderStats, ClickhouseSearcherInfo,
-        ClickhouseSearcherStats, ClickhouseTokenInfo, ClickhouseTxTraces,
+        BrontesClickhouseTables, ClickhouseBuilderStats, ClickhouseDexPriceMapping,
+        ClickhouseSearcherInfo, ClickhouseSearcherStats, ClickhouseTokenInfo, ClickhouseTxTraces,
     },
     ClickhouseHandle,
 };
@@ -131,14 +131,16 @@ impl Clickhouse {
 
     pub async fn write_dex_quotes(
         &self,
-        _block_num: u64,
-        _quotes: Option<DexQuotes>,
+        block_num: u64,
+        quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        // if let Some(quotes) = quotes {
-        //     self.client
-        //         .insert_one::<ClickhouseDexQuotes>(&quotes)
-        //         .await?;
-        // }
+        if let Some(q) = quotes {
+            let quotes_with_block = DexQuotesWithBlockNumber::new_with_block(block_num, q);
+
+            self.client
+                .insert_many::<ClickhouseDexPriceMapping>(&quotes_with_block)
+                .await?;
+        }
 
         Ok(())
     }
@@ -244,10 +246,16 @@ impl ClickhouseHandle for Clickhouse {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::searcher::{SearcherEoaContract, SearcherStatsWithAddress},
+        db::{
+            dex::DexPrices,
+            searcher::{SearcherEoaContract, SearcherStatsWithAddress},
+        },
         mev::MevType,
+        pair::Pair,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -352,6 +360,34 @@ mod tests {
 
         let query = "SELECT * FROM brontes.builder_stats";
         let queried: BuilderStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+    }
+
+    #[tokio::test]
+    async fn dex_price_mapping() {
+        let db = spawn_clickhouse();
+
+        let case0_pair = Pair::default();
+        let case0_dex_prices = DexPrices::default();
+        let mut case0_map = HashMap::new();
+        case0_map.insert(case0_pair, case0_dex_prices);
+
+        let case0 = DexQuotesWithBlockNumber {
+            block_number: Default::default(),
+            tx_idx: Default::default(),
+            quote: Some(case0_map),
+        };
+
+        let res = db
+            .inner()
+            .insert_one::<ClickhouseDexPriceMapping>(&case0)
+            .await
+            .unwrap();
+        //assert!(res.is_ok());
+
+        let query = "SELECT * FROM brontes.dex_price_mapping";
+        let queried: DexQuotesWithBlockNumber = db.inner().query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
