@@ -253,7 +253,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
                     .flatten()
             })
             .for_each(|(i, g, o)| {
-                this.trace_idx.push(a);
+                this.trace_idx.push(i);
                 this.gas_used.push(g);
                 this.output.push(o);
             });
@@ -294,7 +294,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
                     .flatten()
             })
             .for_each(|(i, a, c, g)| {
-                this.trace_idx.push(a);
+                this.trace_idx.push(i);
                 this.address.push(a);
                 this.code.push(c);
                 this.gas_used.push(g);

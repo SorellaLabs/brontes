@@ -320,12 +320,14 @@ impl Serialize for TxTrace {
         ser_struct.serialize_field("trace_logs.data", &logs.data)?;
 
         let create_action = ClickhouseCreateAction::from(self);
+        ser_struct.serialize_field("trace_create_actions.trace_idx", &create_action.trace_idx)?;
         ser_struct.serialize_field("trace_create_actions.from", &create_action.from)?;
         ser_struct.serialize_field("trace_create_actions.gas", &create_action.gas)?;
         ser_struct.serialize_field("trace_create_actions.init", &create_action.init)?;
         ser_struct.serialize_field("trace_create_actions.value", &create_action.value)?;
 
         let call_action = ClickhouseCallAction::from(self);
+        ser_struct.serialize_field("trace_call_actions.trace_idx", &call_action.trace_idx)?;
         ser_struct.serialize_field("trace_call_actions.from", &call_action.from)?;
         ser_struct.serialize_field("trace_call_actions.call_type", &call_action.call_type)?;
         ser_struct.serialize_field("trace_call_actions.gas", &call_action.gas)?;
@@ -334,6 +336,10 @@ impl Serialize for TxTrace {
         ser_struct.serialize_field("trace_call_actions.value", &call_action.value)?;
 
         let self_destruct_action = ClickhouseSelfDestructAction::from(self);
+        ser_struct.serialize_field(
+            "trace_self_destruct_actions.trace_idx",
+            &self_destruct_action.trace_idx,
+        )?;
         ser_struct.serialize_field(
             "trace_self_destruct_actions.address",
             &self_destruct_action.address,
@@ -348,6 +354,7 @@ impl Serialize for TxTrace {
         )?;
 
         let reward_action = ClickhouseRewardAction::from(self);
+        ser_struct.serialize_field("trace_reward_actions.trace_idx", &reward_action.trace_idx)?;
         ser_struct.serialize_field("trace_reward_actions.author", &reward_action.author)?;
         ser_struct.serialize_field("trace_reward_actions.value", &reward_action.value)?;
         ser_struct.serialize_field(
@@ -356,10 +363,12 @@ impl Serialize for TxTrace {
         )?;
 
         let call_output = ClickhouseCallOutput::from(self);
+        ser_struct.serialize_field("trace_call_outputs.trace_idx", &call_output.trace_idx)?;
         ser_struct.serialize_field("trace_call_outputs.gas_used", &call_output.gas_used)?;
         ser_struct.serialize_field("trace_call_outputs.output", &call_output.output)?;
 
         let create_output = ClickhouseCreateOutput::from(self);
+        ser_struct.serialize_field("trace_create_outputs.trace_idx", &create_output.trace_idx)?;
         ser_struct.serialize_field("trace_create_outputs.address", &create_output.address)?;
         ser_struct.serialize_field("trace_create_outputs.code", &create_output.code)?;
         ser_struct.serialize_field("trace_create_outputs.gas_used", &create_output.gas_used)?;
@@ -389,24 +398,30 @@ impl DbRow for TxTrace {
         "trace_logs.address",
         "trace_logs.topics",
         "trace_logs.data",
+        "trace_create_actions.trace_idx",
         "trace_create_actions.from",
         "trace_create_actions.gas",
         "trace_create_actions.init",
         "trace_create_actions.value",
+        "trace_call_actions.trace_idx",
         "trace_call_actions.from",
         "trace_call_actions.call_type",
         "trace_call_actions.gas",
         "trace_call_actions.input",
         "trace_call_actions.to",
         "trace_call_actions.value",
+        "trace_self_destruct_actions.trace_idx",
         "trace_self_destruct_actions.address",
         "trace_self_destruct_actions.balance",
         "trace_self_destruct_actions.refund_address",
+        "trace_reward_actions.trace_idx",
         "trace_reward_actions.author",
         "trace_reward_actions.reward_type",
         "trace_reward_actions.value",
+        "trace_call_outputs.trace_idx",
         "trace_call_outputs.gas_used",
         "trace_call_outputs.output",
+        "trace_create_outputs.trace_idx",
         "trace_create_outputs.address",
         "trace_create_outputs.code",
         "trace_create_outputs.gas_used",
