@@ -4,7 +4,7 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
-        builder::{BuilderInfo, BuilderStats},
+        builder::{BuilderInfo, BuilderStats, BuilderStatsWithAddress},
         dex::DexQuotes,
         metadata::{BlockMetadata, Metadata},
         searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
@@ -22,8 +22,8 @@ use sorella_db_databases::{
 
 use super::{
     dbms::{
-        BrontesClickhouseTables, ClickhouseSearcherInfo, ClickhouseSearcherStats,
-        ClickhouseTokenInfo, ClickhouseTxTraces,
+        BrontesClickhouseTables, ClickhouseBuilderStats, ClickhouseSearcherInfo,
+        ClickhouseSearcherStats, ClickhouseTokenInfo, ClickhouseTxTraces,
     },
     ClickhouseHandle,
 };
@@ -105,9 +105,15 @@ impl Clickhouse {
 
     pub async fn write_builder_stats(
         &self,
-        _builder_eoa: Address,
-        _builder_stats: BuilderStats,
+        builder_eoa: Address,
+        builder_stats: BuilderStats,
     ) -> eyre::Result<()> {
+        let stats = BuilderStatsWithAddress::new_with_address(builder_eoa, builder_stats);
+
+        self.client
+            .insert_one::<ClickhouseBuilderStats>(&stats)
+            .await?;
+
         Ok(())
     }
 
@@ -328,6 +334,24 @@ mod tests {
 
         let query = "SELECT * FROM brontes.searcher_stats";
         let queried: SearcherStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+    }
+
+    #[tokio::test]
+    async fn builder_stats() {
+        let db = spawn_clickhouse();
+        let case0 = BuilderStatsWithAddress::default();
+
+        let res = db
+            .inner()
+            .insert_one::<ClickhouseBuilderStats>(&case0)
+            .await
+            .unwrap();
+        //assert!(res.is_ok());
+
+        let query = "SELECT * FROM brontes.builder_stats";
+        let queried: BuilderStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
