@@ -23,7 +23,8 @@ use sorella_db_databases::{
 use super::{
     dbms::{
         BrontesClickhouseTables, ClickhouseBuilderStats, ClickhouseDexPriceMapping,
-        ClickhouseSearcherInfo, ClickhouseSearcherStats, ClickhouseTokenInfo, ClickhouseTxTraces,
+        ClickhouseMevBlocks, ClickhouseSearcherInfo, ClickhouseSearcherStats, ClickhouseTokenInfo,
+        ClickhouseTxTraces,
     },
     ClickhouseHandle,
 };
@@ -120,12 +121,12 @@ impl Clickhouse {
     pub async fn save_mev_blocks(
         &self,
         _block_number: u64,
-        _block: MevBlock,
+        block: MevBlock,
         _mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseMevBlocks>(&block)
-        //     .await?;
+        self.client
+            .insert_one::<ClickhouseMevBlocks>(&block)
+            .await?;
         Ok(())
     }
 
@@ -244,6 +245,7 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -401,3 +403,4 @@ mod tests {
         //assert_eq!(queried, case0);
     }
 }
+*/

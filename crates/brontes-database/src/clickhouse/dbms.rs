@@ -1,7 +1,7 @@
 use brontes_types::{
     db::{
         builder::BuilderStatsWithAddress,
-        dex::{DexQuotes, DexQuotesWithBlockNumber},
+        dex::DexQuotesWithBlockNumber,
         searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
         token_info::TokenInfoWithAddress,
     },
