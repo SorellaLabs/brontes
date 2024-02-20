@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use alloy_primitives::Address;
 
-use crate::{normalized_actions::NormalizedAction, Node, NodeData};
+use crate::{tree::NormalizedAction, Node, NodeData};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TreeSearchArgs {
@@ -13,14 +13,13 @@ pub struct TreeSearchArgs {
 #[derive(Debug, Clone)]
 pub struct TreeSearchBuilder<V: NormalizedAction> {
     /// these get or'd together
-    with_actions: Vec<usize>,
+    with_actions: Vec<fn(&V) -> bool>,
     /// get or'd together with contains
-    child_node_have: Vec<usize>,
+    child_node_have: Vec<fn(&V) -> bool>,
     /// gets and'd together
-    child_nodes_contains: Vec<usize>,
+    child_nodes_contains: Vec<fn(&V) -> bool>,
     /// gets and'd together
     has_from_address: Option<Address>,
-    _p: PhantomData<V>,
 }
 impl<V: NormalizedAction> Default for TreeSearchBuilder<V> {
     fn default() -> Self {
@@ -35,34 +34,31 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             child_node_have: vec![],
             child_nodes_contains: vec![],
             has_from_address: None,
-            _p: Default::default(),
         }
     }
     /// takes a function ptr and will or the result with other defined functions
     pub fn with_action(mut self, action_fn: fn(&V) -> bool) -> Self {
-        let ptr = action_fn as usize;
-        self.with_actions.push(ptr);
+        self.with_actions.push(action_fn);
         self
     }
 
     /// takes a function ptrs and will or the result with other defined functions
     pub fn with_actions<const N: usize>(mut self, action_fns: [fn(&V) -> bool; N]) -> Self {
-        self.with_actions
-            .extend(action_fns.into_iter().map(|f| f as usize));
+        self.with_actions.extend(action_fns);
         self
     }
 
     /// when searching for child nodes, makes sure that there is atleast one of the following
     /// actions defined by the args
-    pub fn child_nodes_have<const N: usize>(mut self, action_fns: [fn(&V) -> bool; N]) -> Self {
-        self.child_node_have = action_fns.into_iter().map(|f| f as usize).collect();
+    pub fn child_nodes_have<const H: usize>(mut self, action_fns: [fn(&V) -> bool; H]) -> Self {
+        self.child_node_have = action_fns.to_vec();
         self
     }
 
     /// when searching for child nodes. will check that the tree has the entire set of different
     /// actions, specified by this args
-    pub fn child_nodes_contain<const N: usize>(mut self, action_fns: [fn(&V) -> bool; N]) -> Self {
-        self.child_nodes_contains = action_fns.into_iter().map(|f| f as usize).collect();
+    pub fn child_nodes_contain<const C: usize>(mut self, action_fns: [fn(&V) -> bool; C]) -> Self {
+        self.child_nodes_contains = action_fns.to_vec();
         self
     }
 
@@ -93,8 +89,6 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                 self.with_actions
                     .iter()
                     .map(|ptr| {
-                        let ptr = *ptr as *const ();
-                        let ptr: fn(&V) -> bool = unsafe { std::mem::transmute(ptr) };
                         ptr(node_action)
                             && self
                                 .has_from_address
@@ -115,9 +109,6 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                 self.with_actions
                     .iter()
                     .map(|ptr| {
-                        let ptr = *ptr as *const ();
-                        let ptr: fn(&V) -> bool = unsafe { std::mem::transmute(ptr) };
-
                         ptr(action)
                             && self
                                 .has_from_address
@@ -143,8 +134,6 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                     .child_node_have
                     .iter()
                     .map(|ptr| {
-                        let ptr = *ptr as *const ();
-                        let ptr: fn(&V) -> bool = unsafe { std::mem::transmute(ptr) };
                         ptr(action)
                             && self
                                 .has_from_address
@@ -158,13 +147,9 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                     .iter()
                     .enumerate()
                     .for_each(|(i, ptr)| {
-                        let ptr = *ptr as *const ();
-                        let ptr: fn(&V) -> bool = unsafe { std::mem::transmute(ptr) };
                         all[i] |= ptr(action);
                     });
             });
-
-        tracing::info!(?all, %have_any, "has child nodes");
 
         // allows us to & these together
         let all = if all.is_empty() {
@@ -173,6 +158,12 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             all.iter().all(|a| *a)
         };
 
-        all & have_any
+        let has_any = if self.child_node_have.is_empty() {
+            true
+        } else {
+            have_any
+        };
+
+        all & has_any
     }
 }
