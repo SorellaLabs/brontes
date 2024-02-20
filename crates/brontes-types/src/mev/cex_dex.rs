@@ -69,7 +69,7 @@ impl Serialize for CexDex {
     {
         let mut ser_struct = serializer.serialize_struct("CexDex", 34)?;
 
-        ser_struct.serialize_field("tx_hash", &FixedString::from(format!("{:?}", self.tx_hash)))?;
+        ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
 
         let swaps: ClickhouseVecNormalizedSwap = self.swaps.clone().into();
 
