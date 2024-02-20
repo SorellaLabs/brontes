@@ -4,7 +4,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use clickhouse::Row;
+use clickhouse::{DbRow, Row};
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
@@ -17,7 +17,7 @@ use crate::{
     serde_utils::addresss,
 };
 
-#[derive(Debug, Default, Row, Clone, PartialEq, Eq, Hash, Deserialize, Redefined)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenInfoWithAddress {
     #[serde(with = "addresss")]
@@ -102,6 +102,10 @@ impl Serialize for TokenInfoWithAddress {
 
         ser_struct.end()
     }
+}
+
+impl DbRow for TokenInfoWithAddress {
+    const COLUMN_NAMES: &'static [&'static str] = &["address", "symbol", "decimals"];
 }
 
 #[derive(
