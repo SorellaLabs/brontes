@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use alloy_primitives::{Address, Log, U256};
-use clickhouse::{DbRow, Row};
+use clickhouse::DbRow;
 use itertools::Itertools;
 use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};

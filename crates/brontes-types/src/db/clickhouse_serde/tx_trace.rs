@@ -1,7 +1,5 @@
-use clickhouse::Row;
 use itertools::Itertools;
 use reth_rpc_types::trace::parity::{Action, TraceOutput};
-use serde::Serialize;
 
 use crate::structured_trace::TxTrace;
 

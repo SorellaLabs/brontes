@@ -370,7 +370,7 @@ mod tests {
             .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
-        /*
+
         // TokenDecimals
         TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
             .await
@@ -406,7 +406,6 @@ mod tests {
             .await
             .unwrap();
 
-            */
         // TxTraces
         TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
