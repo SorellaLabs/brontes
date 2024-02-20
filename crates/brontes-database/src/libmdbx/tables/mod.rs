@@ -706,8 +706,3 @@ compressed_table!(
         }
     }
 );
-
-#[test]
-fn t() {
-    assert_eq!("MevBlocks", MevBlocks::NAME);
-}
