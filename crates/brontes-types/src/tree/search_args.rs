@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use alloy_primitives::Address;
 
 use crate::{tree::NormalizedAction, Node, NodeData};
