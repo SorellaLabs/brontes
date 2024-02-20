@@ -228,6 +228,7 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+    use crate::TxTraces;
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
@@ -251,11 +252,11 @@ mod tests {
             .await
             .unwrap();
 
-        let query = format!(
-            "SELECT * FROM brontes.tx_traces WHERE tx_hash = {:?}",
-            exec.tx_hash
-        );
-        let des: TxTrace = db.inner().query_one(&query, &()).await.unwrap();
+        let des: TxTrace = db
+            .inner()
+            .query_one(TxTraces::INIT_QUERY.unwrap(), &())
+            .await
+            .unwrap();
 
         assert_eq!(des, exec);
     }
