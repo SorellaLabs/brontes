@@ -1,5 +1,8 @@
 use brontes_types::{
-    db::{dex::DexQuotes, searcher::SearcherInfo},
+    db::{
+        dex::DexQuotes,
+        searcher::{JoinedSearcherInfo, SearcherInfo},
+    },
     mev::*,
     structured_trace::TxTrace,
 };
@@ -66,10 +69,11 @@ remote_clickhouse_table!(
     BrontesClickhouseTables,
     "mev",
     ClickhouseSearcherInfo,
-    SearcherInfo,
+    JoinedSearcherInfo,
     NO_FILE
 );
 
+// fix this 1
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "mev",

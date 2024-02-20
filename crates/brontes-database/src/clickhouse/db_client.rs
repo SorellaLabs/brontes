@@ -7,7 +7,7 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderStats},
         dex::DexQuotes,
         metadata::{BlockMetadata, Metadata},
-        searcher::SearcherInfo,
+        searcher::{JoinedSearcherInfo, SearcherInfo},
     },
     mev::{Bundle, MevBlock},
     structured_trace::TxTrace,
@@ -20,7 +20,7 @@ use sorella_db_databases::{
 };
 
 use super::{
-    dbms::{BrontesClickhouseTables, ClickhouseTxTraces},
+    dbms::{BrontesClickhouseTables, ClickhouseSearcherInfo, ClickhouseTxTraces},
     ClickhouseHandle,
 };
 use crate::{
@@ -51,24 +51,28 @@ impl Clickhouse {
     // inserts
     pub async fn write_searcher_eoa_info(
         &self,
-        _searcher_eoa: Address,
-        _searcher_info: SearcherInfo,
+        searcher_eoa: Address,
+        searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
-        //     .await?;
+        let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
+
+        self.client
+            .insert_one::<ClickhouseSearcherInfo>(&joined)
+            .await?;
 
         Ok(())
     }
 
     pub async fn write_searcher_contract_info(
         &self,
-        _searcher_eoa: Address,
-        _searcher_info: SearcherInfo,
+        searcher_contract: Address,
+        searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
-        //     .await?;
+        let joined = JoinedSearcherInfo::new_eoa(searcher_contract, searcher_info);
+
+        self.client
+            .insert_one::<ClickhouseSearcherInfo>(&joined)
+            .await?;
 
         Ok(())
     }
@@ -225,6 +229,7 @@ impl ClickhouseHandle for Clickhouse {
 #[cfg(test)]
 mod tests {
     use brontes_core::{get_db_handle, init_trace_parser};
+    use brontes_types::{db::searcher::SearcherEoaContract, mev::MevType};
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
@@ -248,5 +253,28 @@ mod tests {
 
         let res = db.inner().insert_one::<ClickhouseTxTraces>(&exec).await;
         assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn searcher_info() {
+        let db = spawn_clickhouse();
+        let case0 = JoinedSearcherInfo {
+            address: Default::default(),
+            fund: Default::default(),
+            mev: vec![MevType::default()],
+            builder: Some(Default::default()),
+            eoa_or_contract: SearcherEoaContract::Contract,
+        };
+
+        let res = db
+            .inner()
+            .insert_one::<ClickhouseSearcherInfo>(&case0)
+            .await;
+        assert!(res.is_ok());
+
+        let query = "SELECT * FROM brontes.searcher_info";
+        let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0)
     }
 }
