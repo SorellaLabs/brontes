@@ -1,0 +1,96 @@
+name: MEV False Positive Report
+description: Use this form to report MEV bundles that Brontes incorrectly classified as MEV.
+labels: ["mev-false-positive", "S-needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a false positive in MEV classification by Brontes. Your feedback helps us improve our accuracy. Please provide as much detail as possible to help us investigate.
+
+  - type: dropdown
+    id: mev-type
+    attributes:
+      label: Type of MEV
+      description: What type of MEV was the bundle classified as?
+      options:
+        - sandwich
+        - jit-sandwich
+        - jit
+        - cex-dex
+        - atomic-arbitrage
+        - liquidation
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: transaction-links
+    attributes:
+      label: Etherscan Links to Transactions
+      description: Please provide Etherscan links for each transaction involved in the incorrectly classified bundle.
+      placeholder: |
+        - https://etherscan.io/tx/0x...
+        - https://etherscan.io/tx/0x...
+    validations:
+      required: true
+
+  - type: textarea
+    id: protocols-interacted
+    attributes:
+      label: Protocols Interacted With in the Bundle
+      description: Specify the protocols that were interacted with in the incorrectly classified bundle.
+      placeholder: |
+        - Protocol 1
+        - Protocol 2
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: protocols-supported
+    attributes:
+      label: Were all protocols correctly supported?
+      description: Indicate if all protocols in the bundle were correctly supported (i.e., we had accurate classifiers for these protocols).
+      options:
+        - label: Yes, all protocols were correctly supported.
+        - label: No, there were issues with protocol support.
+    validations:
+      required: true
+
+  - type: textarea
+    id: misclassification-details
+    attributes:
+      label: Details of Misclassification
+      description: Please describe the nature of the misclassification. For example, was the bundle incorrectly identified as a certain type of MEV?
+      placeholder: |
+        - Describe the misclassification here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-classification
+    attributes:
+      label: Expected Correct Classification (Optional)
+      description: If applicable, describe how you believe the bundle should have been classified.
+      placeholder: |
+        - Describe the expected correct classification here.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context (Optional)
+      description: Provide any additional context that might help us understand the false positive (e.g., related transactions, temporal context).
+      placeholder: |
+        - Any additional information here.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/SorellaLabs/brontes/blob/main/CONTRIBUTING.md#code-of-conduct).
+      options:
+        - label: I agree to follow the Code of Conduct.
+          required: true

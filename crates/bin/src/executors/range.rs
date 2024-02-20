@@ -4,31 +4,41 @@ use std::{
 };
 
 use brontes_core::decoding::TracingProvider;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{DBWriter, LibmdbxReader},
+};
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
+};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::info;
 
 use super::shared::{inserts::process_results, state_collector::StateCollector};
-pub struct RangeExecutorWithPricing<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> {
-    collector:      StateCollector<T, DB>,
+pub struct RangeExecutorWithPricing<
+    T: TracingProvider,
+    DB: DBWriter + LibmdbxReader,
+    CH: ClickhouseHandle,
+> {
+    collector: StateCollector<T, DB, CH>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-
     current_block: u64,
-    end_block:     u64,
-    libmdbx:       &'static DB,
-    inspectors:    &'static [&'static dyn Inspector],
+    end_block: u64,
+    libmdbx: &'static DB,
+    inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPricing<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
+    RangeExecutorWithPricing<T, DB, CH>
+{
     pub fn new(
         start_block: u64,
         end_block: u64,
-        state_collector: StateCollector<T, DB>,
+        state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
-        inspectors: &'static [&'static dyn Inspector],
+        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
     ) -> Self {
         Self {
             collector: state_collector,
@@ -67,15 +77,18 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> RangeExecutorWithPri
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future
-    for RangeExecutorWithPricing<T, DB>
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Future
+    for RangeExecutorWithPricing<T, DB, CH>
 {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut work = 256;
         loop {
-            if !self.collector.is_collecting_state() && self.current_block != self.end_block {
+            if !self.collector.is_collecting_state()
+                && self.collector.should_process_next_block()
+                && self.current_block != self.end_block
+            {
                 let block = self.current_block;
                 self.collector.fetch_state_for(block);
                 self.current_block += 1;
@@ -105,7 +118,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Future
             work -= 1;
             if work == 0 {
                 cx.waker().wake_by_ref();
-                return Poll::Pending
+                return Poll::Pending;
             }
         }
     }

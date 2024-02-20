@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
-use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-use reth_primitives::{Address, Header, B256};
-use serde::{Deserialize, Serialize};
+use rayon::{
+    prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
+    ThreadPool, ThreadPoolBuilder,
+};
+use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::error;
 
@@ -18,12 +20,15 @@ pub use search_args::*;
 
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
-#[derive(Debug, Serialize, Deserialize)]
+const MAX_SEARCH_THREADS: usize = 4;
+
+#[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots:             Vec<Root<V>>,
-    pub header:               Header,
+    pub tx_roots: Vec<Root<V>>,
+    pub header: Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee:     f64,
+    pub avg_priority_fee: f64,
+    pub tp: ThreadPool,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -33,18 +38,28 @@ impl<V: NormalizedAction> BlockTree<V> {
             header,
             priority_fee_std_dev: 0.0,
             avg_priority_fee: 0.0,
+            tp: ThreadPoolBuilder::new()
+                .num_threads(MAX_SEARCH_THREADS)
+                .build()
+                .unwrap(),
         }
     }
 
     pub fn get_tx_info<DB: LibmdbxReader>(&self, tx_hash: B256, database: &DB) -> Option<TxInfo> {
-        self.tx_roots
-            .par_iter()
-            .find_any(|r| r.tx_hash == tx_hash)
-            .map(|root| root.get_tx_info(self.header.number, database))
+        self.tp.install(|| {
+            self.tx_roots
+                .par_iter()
+                .find_any(|r| r.tx_hash == tx_hash)
+                .and_then(|root| {
+                    root.get_tx_info(self.header.number, database)
+                        .map_err(|e| error!("Database Error: {}", e))
+                        .ok()
+                })
+        })
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
-        self.tx_roots.par_iter().find_any(|r| r.tx_hash == tx_hash)
+        self.tx_roots.iter().find(|r| r.tx_hash == tx_hash)
     }
 
     pub fn get_gas_details(&self, hash: B256) -> Option<&GasDetails> {
@@ -73,7 +88,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         if self.tx_roots.is_empty() {
             error!(block = self.header.number, "The block tree is empty");
             self.tx_roots.iter_mut().for_each(|root| root.finalize());
-            return
+            return;
         }
 
         // Initialize accumulator for total priority fee and vector of priority fees
@@ -95,13 +110,6 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.priority_fee_std_dev = std_dev;
     }
 
-    pub fn insert_node(&mut self, node: Node<V>) {
-        self.tx_roots
-            .last_mut()
-            .expect("no root_nodes inserted")
-            .insert(node);
-    }
-
     pub fn get_hashes(&self) -> Vec<B256> {
         self.tx_roots.iter().map(|r| r.tx_hash).collect()
     }
@@ -111,7 +119,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// transaction that contain the wanted actions.
     pub fn collect_spans<F>(&self, hash: B256, call: F) -> Vec<Vec<V>>
     where
-        F: Fn(&Node<V>) -> bool,
+        F: Fn(&Node, &NodeData<V>) -> bool,
     {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect_spans(&call)
@@ -122,17 +130,19 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     pub fn modify_spans<T, F>(&mut self, find: T, modify: F)
     where
-        T: Fn(&Node<V>) -> bool + Send + Sync,
-        F: Fn(Vec<&mut Node<V>>) + Send + Sync,
+        T: Fn(&Node, &NodeData<V>) -> bool + Send + Sync,
+        F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
     {
-        self.tx_roots.par_iter_mut().for_each(|root| {
-            root.modify_spans(&find, &modify);
+        self.tp.install(|| {
+            self.tx_roots.par_iter_mut().for_each(|root| {
+                root.modify_spans(&find, &modify);
+            });
         });
     }
 
     pub fn collect<F>(&self, hash: B256, call: F) -> Vec<V>
     where
-        F: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
     {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect(&call)
@@ -144,12 +154,14 @@ impl<V: NormalizedAction> BlockTree<V> {
     //TODO: (Will) Write the docs for this
     pub fn collect_all<F>(&self, call: F) -> HashMap<B256, Vec<V>>
     where
-        F: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
+        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
     {
-        self.tx_roots
-            .par_iter()
-            .map(|r| (r.tx_hash, r.collect(&call)))
-            .collect()
+        self.tp.install(|| {
+            self.tx_roots
+                .par_iter()
+                .map(|r| (r.tx_hash, r.collect(&call)))
+                .collect()
+        })
     }
 
     /// Takes Vec<(TransactionIndex, Vec<ActionIndex>)>
@@ -163,12 +175,14 @@ impl<V: NormalizedAction> BlockTree<V> {
             .zip(search_params.iter())
             .collect::<Vec<_>>();
 
-        roots_with_search_params
-            .par_iter_mut()
-            .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
-            .for_each(|(root, (_, subtraces))| {
-                root.collect_child_traces_and_classify(subtraces);
-            });
+        self.tp.install(|| {
+            roots_with_search_params
+                .par_iter_mut()
+                .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
+                .for_each(|(root, (_, subtraces))| {
+                    root.collect_child_traces_and_classify(subtraces);
+                });
+        });
     }
 
     /// Collects all subsets of actions that match the action criteria specified
@@ -176,37 +190,26 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// transaction that contain the wanted actions.
     pub fn collect_spans_all<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
     where
-        F: Fn(&Node<V>) -> bool + Send + Sync,
+        F: Fn(&Node, &NodeData<V>) -> bool + Send + Sync,
     {
-        self.tx_roots
-            .par_iter()
-            .map(|r| (r.tx_hash, r.collect_spans(&call)))
-            .collect()
-    }
-
-    //TODO: (Will) Write the docs for this
-    /// The first function parses down the tree to the point where we
-    /// are at the lowest subset of the valid action. It then the dynamically
-    /// decodes the call gets executed in order to capture the
-    pub fn dyn_classify<T, F>(&mut self, find: T, call: F) -> Vec<(Address, (Address, Address))>
-    where
-        T: Fn(Address, &Node<V>) -> TreeSearchArgs + Sync,
-        F: Fn(&mut Node<V>) -> Option<(Address, (Address, Address))> + Send + Sync,
-    {
-        self.tx_roots
-            .par_iter_mut()
-            .flat_map(|root| root.dyn_classify(&find, &call))
-            .collect()
+        self.tp.install(|| {
+            self.tx_roots
+                .par_iter()
+                .map(|r| (r.tx_hash, r.collect_spans(&call)))
+                .collect()
+        })
     }
 
     pub fn modify_node_if_contains_childs<T, F>(&mut self, find: T, modify: F)
     where
-        T: Fn(&Node<V>) -> TreeSearchArgs + Send + Sync,
-        F: Fn(&mut Node<V>) + Send + Sync,
+        T: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
+        F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
     {
-        self.tx_roots
-            .par_iter_mut()
-            .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
+        self.tp.install(|| {
+            self.tx_roots
+                .par_iter_mut()
+                .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
+        })
     }
 
     pub fn remove_duplicate_data<FindActionHead, FindRemoval, ClassifyRemovalIndex, WantedData, R>(
@@ -216,19 +219,21 @@ impl<V: NormalizedAction> BlockTree<V> {
         info: WantedData,
         classify: ClassifyRemovalIndex,
     ) where
-        WantedData: Fn(&Node<V>) -> R + Sync,
-        ClassifyRemovalIndex: Fn(&Vec<R>, &Node<V>) -> Vec<u64> + Sync,
-        FindActionHead: Fn(&Node<V>) -> TreeSearchArgs + Sync,
-        FindRemoval: Fn(&Node<V>) -> TreeSearchArgs + Sync,
+        WantedData: Fn(&Node, &NodeData<V>) -> R + Sync,
+        ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
+        FindActionHead: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
+        FindRemoval: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
     {
-        self.tx_roots
-            .par_iter_mut()
-            .for_each(|root| root.remove_duplicate_data(&find, &classify, &info, &find_removal));
+        self.tp.install(|| {
+            self.tx_roots.par_iter_mut().for_each(|root| {
+                root.remove_duplicate_data(&find, &classify, &info, &find_removal)
+            });
+        })
     }
 
     pub fn label_private_txes(&mut self, metadata: &Metadata) {
         self.tx_roots
-            .par_iter_mut()
+            .iter_mut()
             .for_each(|root| root.label_private_tx(metadata));
     }
 }

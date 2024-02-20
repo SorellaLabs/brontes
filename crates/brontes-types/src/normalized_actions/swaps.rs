@@ -5,6 +5,7 @@ use std::{
 };
 
 use alloy_primitives::{TxHash, U256};
+use clickhouse::{fixed_string::FixedString, Row};
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -12,10 +13,6 @@ use redefined::Redefined;
 use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, Row},
-};
 
 use super::Actions;
 use crate::{
@@ -29,8 +26,8 @@ use crate::{
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
 pub struct NormalizedSwapWithFee {
-    pub swap:       NormalizedSwap,
-    pub fee_token:  TokenInfoWithAddress,
+    pub swap: NormalizedSwap,
+    pub fee_token: TokenInfoWithAddress,
     pub fee_amount: Rational,
 }
 
@@ -51,25 +48,25 @@ impl DerefMut for NormalizedSwapWithFee {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedSwap {
     #[redefined(same_fields)]
-    pub protocol:    Protocol,
+    pub protocol: Protocol,
     pub trace_index: u64,
-    pub from:        Address,
-    pub recipient:   Address,
+    pub from: Address,
+    pub recipient: Address,
     /// For batch swaps (e.g. UniswapX, CowSwap), the pool address is the
     /// address of the settlement contract
-    pub pool:        Address,
-    pub token_in:    TokenInfoWithAddress,
-    pub token_out:   TokenInfoWithAddress,
-    pub amount_in:   Rational,
-    pub amount_out:  Rational,
-    pub msg_value:   U256,
+    pub pool: Address,
+    pub token_in: TokenInfoWithAddress,
+    pub token_out: TokenInfoWithAddress,
+    pub amount_in: Rational,
+    pub amount_out: Rational,
+    pub msg_value: U256,
 }
 
 impl NormalizedSwap {
     /// Calculates the exchange rate for a given DEX swap
     pub fn swap_rate(&self) -> Rational {
         if self.amount_out == Rational::ZERO {
-            return Rational::ZERO
+            return Rational::ZERO;
         }
 
         &self.amount_in / &self.amount_out
@@ -97,13 +94,13 @@ impl Display for NormalizedSwap {
 
 pub struct ClickhouseVecNormalizedSwap {
     pub trace_index: Vec<u64>,
-    pub from:        Vec<FixedString>,
-    pub recipient:   Vec<FixedString>,
-    pub pool:        Vec<FixedString>,
-    pub token_in:    Vec<FixedString>,
-    pub token_out:   Vec<FixedString>,
-    pub amount_in:   Vec<[u8; 32]>,
-    pub amount_out:  Vec<[u8; 32]>,
+    pub from: Vec<FixedString>,
+    pub recipient: Vec<FixedString>,
+    pub pool: Vec<FixedString>,
+    pub token_in: Vec<FixedString>,
+    pub token_out: Vec<FixedString>,
+    pub amount_in: Vec<[u8; 32]>,
+    pub amount_out: Vec<[u8; 32]>,
 }
 
 impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
@@ -145,16 +142,16 @@ impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
 
 #[derive(Default)]
 pub struct ClickhouseDoubleVecNormalizedSwap {
-    pub tx_hash:     Vec<FixedString>, /* clickhouse requires nested fields to have the same
-                                        * number of rows */
+    pub tx_hash: Vec<FixedString>, /* clickhouse requires nested fields to have the same
+                                    * number of rows */
     pub trace_index: Vec<u64>,
-    pub from:        Vec<FixedString>,
-    pub recipient:   Vec<FixedString>,
-    pub pool:        Vec<FixedString>,
-    pub token_in:    Vec<FixedString>,
-    pub token_out:   Vec<FixedString>,
-    pub amount_in:   Vec<[u8; 32]>,
-    pub amount_out:  Vec<[u8; 32]>,
+    pub from: Vec<FixedString>,
+    pub recipient: Vec<FixedString>,
+    pub pool: Vec<FixedString>,
+    pub token_in: Vec<FixedString>,
+    pub token_out: Vec<FixedString>,
+    pub amount_in: Vec<[u8; 32]>,
+    pub amount_out: Vec<[u8; 32]>,
 }
 
 impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
@@ -210,10 +207,10 @@ impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecN
 
 #[derive(Default)]
 pub struct ClickhouseStatArbDetails {
-    pub cex_exchange:     String,
-    pub cex_price:        ([u8; 32], [u8; 32]),
-    pub dex_exchange:     String,
-    pub dex_price:        ([u8; 32], [u8; 32]),
+    pub cex_exchange: String,
+    pub cex_price: ([u8; 32], [u8; 32]),
+    pub dex_exchange: String,
+    pub dex_price: ([u8; 32], [u8; 32]),
     pub pnl_maker_profit: ([u8; 32], [u8; 32]),
     pub pnl_taker_profit: ([u8; 32], [u8; 32]),
 }
@@ -221,10 +218,10 @@ pub struct ClickhouseStatArbDetails {
 impl From<StatArbDetails> for ClickhouseStatArbDetails {
     fn from(value: StatArbDetails) -> Self {
         Self {
-            cex_exchange:     format!("{:?}", value.cex_exchange),
-            cex_price:        rational_to_u256_bytes(value.cex_price),
-            dex_exchange:     value.dex_exchange.to_string(),
-            dex_price:        rational_to_u256_bytes(value.dex_price),
+            cex_exchange: format!("{:?}", value.cex_exchange),
+            cex_price: rational_to_u256_bytes(value.cex_price),
+            dex_exchange: value.dex_exchange.to_string(),
+            dex_price: rational_to_u256_bytes(value.dex_price),
             pnl_maker_profit: rational_to_u256_bytes(value.pnl_pre_gas.maker_profit),
             pnl_taker_profit: rational_to_u256_bytes(value.pnl_pre_gas.taker_profit),
         }
@@ -233,10 +230,10 @@ impl From<StatArbDetails> for ClickhouseStatArbDetails {
 
 #[derive(Default)]
 pub struct ClickhouseVecStatArbDetails {
-    pub cex_exchange:     Vec<String>,
-    pub cex_price:        Vec<([u8; 32], [u8; 32])>,
-    pub dex_exchange:     Vec<String>,
-    pub dex_price:        Vec<([u8; 32], [u8; 32])>,
+    pub cex_exchange: Vec<String>,
+    pub cex_price: Vec<([u8; 32], [u8; 32])>,
+    pub dex_exchange: Vec<String>,
+    pub dex_price: Vec<([u8; 32], [u8; 32])>,
     pub pnl_maker_profit: Vec<([u8; 32], [u8; 32])>,
     pub pnl_taker_profit: Vec<([u8; 32], [u8; 32])>,
 }

@@ -9,10 +9,11 @@ use std::{
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
+use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{
         metadata::Metadata,
-        traits::{LibmdbxReader, LibmdbxWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::Actions,
     traits::TracingProvider,
@@ -27,25 +28,34 @@ use super::metadata::MetadataFetcher;
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Actions>>> + Send + 'a>>;
 
-pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
-    metadata_fetcher: MetadataFetcher<T, DB>,
-    classifier:       &'static Classifier<'static, T, DB>,
-    parser:           &'static Parser<'static, T, DB>,
-    db:               &'static DB,
+    metadata_fetcher: MetadataFetcher<T, DB, CH>,
+    classifier: &'static Classifier<'static, T, DB>,
+    parser: &'static Parser<'static, T, DB>,
+    db: &'static DB,
 
     collection_future: Option<CollectionFut<'static>>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
+    StateCollector<T, DB, CH>
+{
     pub fn new(
         mark_as_finished: Arc<AtomicBool>,
-        metadata_fetcher: MetadataFetcher<T, DB>,
+        metadata_fetcher: MetadataFetcher<T, DB, CH>,
         classifier: &'static Classifier<'static, T, DB>,
         parser: &'static Parser<'static, T, DB>,
         db: &'static DB,
     ) -> Self {
-        Self { mark_as_finished, metadata_fetcher, classifier, parser, db, collection_future: None }
+        Self {
+            mark_as_finished,
+            metadata_fetcher,
+            classifier,
+            parser,
+            db,
+            collection_future: None,
+        }
     }
 
     pub fn get_shutdown(&self) -> Arc<AtomicBool> {
@@ -54,6 +64,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
 
     pub fn is_collecting_state(&self) -> bool {
         self.collection_future.is_some()
+    }
+
+    pub fn should_process_next_block(&self) -> bool {
+        self.metadata_fetcher.should_process_next_block()
     }
 
     pub fn fetch_state_for(&mut self, block: u64) {
@@ -71,7 +85,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> StateCollector<T, DB
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateCollector<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
+    for StateCollector<T, DB, CH>
+{
     type Item = (BlockTree<Actions>, Metadata);
 
     fn poll_next(
@@ -86,7 +102,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
                 }
                 Poll::Ready(Err(e)) => {
                     tracing::error!(error = %e, "state collector");
-                    return Poll::Ready(None)
+                    return Poll::Ready(None);
                 }
                 Poll::Pending => {
                     self.collection_future = Some(collection_future);
@@ -98,7 +114,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Stream for StateColl
             && self.metadata_fetcher.is_finished()
             && self.collection_future.is_none()
         {
-            return Poll::Ready(None)
+            return Poll::Ready(None);
         }
 
         self.metadata_fetcher.poll_next_unpin(cx)

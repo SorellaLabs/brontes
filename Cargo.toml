@@ -11,16 +11,16 @@ members = [
   "crates/brontes-database",
   "crates/brontes-macros",
   "crates/brontes-pricing",
+  "crates/brontes-analytics"
 ]
 
 resolver = "2"
 
 [workspace.dependencies]
 # Database
-sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", branch = "main" }
-clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs" }
+clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs", branch = "master" }
 
-# Poirot
+# Brontes
 brontes-core = { path = "./crates/brontes-core" }
 brontes-inspect = { path = "./crates/brontes-inspect" }
 brontes-types = { path = "./crates/brontes-types/" }
@@ -31,48 +31,49 @@ brontes-macros = { path = "./crates/brontes-macros/" }
 brontes-pricing = { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/brontes-tracing" }
+brontes-analytics = { path = "./crates/brontes-analytics" }
 
 # Reth
-reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "cc1c02a" }
-reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "cc1c02a" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "cc1c02a" }
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "cc1c02a" }
-reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "cc1c02a" }
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "cc1c02a" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "cc1c02a" }
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "cc1c02a" }
-reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "cc1c02a" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "cc1c02a" }
-reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "cc1c02a" }
-reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "cc1c02a" }
-reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "cc1c02a" }
-reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "cc1c02a" }
+reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "bcc95b1" }
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "bcc95b1" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "bcc95b1" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "bcc95b1" }
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "bcc95b1" }
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "bcc95b1" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "bcc95b1" }
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "bcc95b1" }
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "bcc95b1" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "bcc95b1" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "bcc95b1" }
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "bcc95b1" }
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "bcc95b1" }
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "bcc95b1" }
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [
   "test-utils",
-], rev = "cc1c02a" }
+], rev = "bcc95b1" }
 reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
   "test-utils",
-], rev = "cc1c02a" }
-reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "cc1c02a" }
-reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "cc1c02a" }
-reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "cc1c02a" }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "cc1c02a" }
-reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "cc1c02a" }
-reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "cc1c02a" }
-codecs-derive = { git = "https://github.com/paradigmxyz/reth", package = "codecs-derive", rev = "cc1c02a" }
+], rev = "bcc95b1" }
+reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "bcc95b1" }
+reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "bcc95b1" }
+reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "bcc95b1" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "bcc95b1" }
+reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "bcc95b1" }
+reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "bcc95b1" }
+codecs-derive = { git = "https://github.com/paradigmxyz/reth", package = "codecs-derive", rev = "bcc95b1" }
 
 # ruint
 ruint = "1.9.0"
 
 # revm
-revm = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
+revm = { version = "5.0", features = [
   "std",
   "secp256k1",
 ], default-features = false }
-revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
+revm-primitives = { version = "2.0", features = [
   "std",
 ], default-features = false }
-
+revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "ac63f06" }
 
 
 # Alloy
@@ -85,13 +86,13 @@ alloy-json-abi = "0.6.0"
 alloy-dyn-abi = "0.6.0 "
 # Alloy core
 
-alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
-alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
-alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
-alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
-alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "098ad56" }
+alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "5062eaf" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "5062eaf" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "5062eaf" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "5062eaf" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "5062eaf" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "5062eaf" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "5062eaf" }
 
 # Async
 tokio = "1.13.0"
@@ -129,6 +130,9 @@ serde_json = "1.0.1"
 serde_with = "3.4.0"
 serde_repr = "0.1.16"
 
+# cli
+clap = { version = "4.4.6", features = ["derive"] }
+
 
 # Numbers
 malachite = "0.4.0"
@@ -163,10 +167,17 @@ redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 
 [profile.dev]
-opt-level = 0           # No optimizations
-debug = true            # Generate debug information
-rpath = false           # Don't set the rpath in executables
-lto = false             # No link-time optimization
-debug-assertions = true # Enable assertions in debug mode
-codegen-units = 16      # Increase parallel code generation units for faster compiles
-incremental = true      # Enable incremental compilation
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 16
+incremental = true
+
+
+[profile.maxperf]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+incremental = false

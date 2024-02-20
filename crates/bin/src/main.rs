@@ -1,7 +1,6 @@
 use std::error::Error;
 
 use brontes::{
-    banner,
     cli::{Args, Commands},
     runner,
 };
@@ -10,7 +9,6 @@ use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
 fn main() {
-    banner::print_banner();
     dotenv::dotenv().ok();
     init_tracing();
 
@@ -35,12 +33,14 @@ fn run() -> eyre::Result<()> {
         Commands::QueryDb(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::AddToDb(command) => runner::run_command_until_exit(|_| command.execute()),
         Commands::TraceRange(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
+        Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
     }
 }
 
 fn init_tracing() {
     let verbosity_level = Level::INFO;
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+
     let layers = vec![brontes_tracing::stdout(directive)];
 
     brontes_tracing::init(layers);

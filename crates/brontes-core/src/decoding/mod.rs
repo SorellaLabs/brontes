@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
@@ -27,25 +27,25 @@ use reth_primitives::BlockId;
 pub type ParserFuture<'a> =
     Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
 
-pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
+pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     executor: Executor,
-    parser:   TraceParser<'a, T, DB>,
+    parser: TraceParser<'a, T, DB>,
 }
 
-impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB> {
-    pub fn new(
+impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
+    pub async fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
         libmdbx: &'a DB,
         tracing: T,
     ) -> Self {
         let executor = Executor::new();
 
-        let parser = TraceParser::new(libmdbx, Arc::new(tracing), Arc::new(metrics_tx));
+        let parser = TraceParser::new(libmdbx, Arc::new(tracing), Arc::new(metrics_tx)).await;
 
         Self { executor, parser }
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     pub async fn get_latest_block_number(&self) -> eyre::Result<u64> {
         self.parser.tracer.best_block_number().await
     }
@@ -54,7 +54,7 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> Parser<'a, T, DB
         self.parser.get_tracer()
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     pub fn get_latest_block_number(&self) -> eyre::Result<u64> {
         self.parser.tracer.best_block_number()
     }

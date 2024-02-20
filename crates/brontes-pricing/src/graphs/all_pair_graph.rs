@@ -17,7 +17,7 @@ use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, Sub
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EdgeWithInsertBlock {
-    pub inner:        PoolPairInformation,
+    pub inner: PoolPairInformation,
     pub insert_block: u64,
 }
 
@@ -30,7 +30,7 @@ impl EdgeWithInsertBlock {
         block_added: u64,
     ) -> Self {
         Self {
-            inner:        PoolPairInformation::new(pool_addr, dex, token0, token1),
+            inner: PoolPairInformation::new(pool_addr, dex, token0, token1),
             insert_block: block_added,
         }
     }
@@ -72,7 +72,7 @@ impl DerefMut for EdgeWithInsertBlock {
 /// be temporarily infeasible or less desirable.
 #[derive(Debug, Clone)]
 pub struct AllPairGraph {
-    graph:          UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
+    graph: UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
     token_to_index: HashMap<Address, usize>,
 }
 
@@ -86,7 +86,7 @@ impl AllPairGraph {
         let t0 = SystemTime::now();
         for ((pool_addr, dex), pair) in all_pool_data {
             if !dex.has_state_updater() {
-                continue
+                continue;
             }
             // because this is undirected, doesn't matter what order the nodes are connected
             // so we sort so we can just have a collection of edges for just one
@@ -129,16 +129,25 @@ impl AllPairGraph {
             "built graph in {}us", delta
         );
 
-        Self { graph, token_to_index }
+        Self {
+            graph,
+            token_to_index,
+        }
     }
 
     pub fn edge_count(&self, n0: Address, n1: Address) -> usize {
-        let Some(n0) = self.token_to_index.get(&n0) else { return 0 };
-        let Some(n1) = self.token_to_index.get(&n1) else { return 0 };
+        let Some(n0) = self.token_to_index.get(&n0) else {
+            return 0;
+        };
+        let Some(n1) = self.token_to_index.get(&n1) else {
+            return 0;
+        };
         let n0 = *n0;
         let n1 = *n1;
 
-        let Some(edge) = self.graph.find_edge(n0.into(), n1.into()) else { return 0 };
+        let Some(edge) = self.graph.find_edge(n0.into(), n1.into()) else {
+            return 0;
+        };
         self.graph.edge_weight(edge).unwrap().len()
     }
 
@@ -195,18 +204,18 @@ impl AllPairGraph {
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
-            return vec![]
+            return vec![];
         }
 
         let Some(start_idx) = self.token_to_index.get(&pair.0) else {
             let addr = pair.0;
             error!(?addr, "no node for address");
-            return vec![]
+            return vec![];
         };
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
             error!(?addr, "no node for address");
-            return vec![]
+            return vec![];
         };
 
         yen(
@@ -221,7 +230,7 @@ impl AllPairGraph {
                     .into_iter()
                     .filter(|f| {
                         if f.weight().iter().all(|e| e.insert_block > block) {
-                            return false
+                            return false;
                         }
 
                         let edge = f.weight().first().unwrap();
@@ -229,7 +238,13 @@ impl AllPairGraph {
                         !ignore.contains(&created_pair)
                     })
                     .filter(|e| !(e.source() == cur_node && e.target() == cur_node))
-                    .map(|e| if e.source() == cur_node { e.target() } else { e.source() })
+                    .map(|e| {
+                        if e.source() == cur_node {
+                            e.target()
+                        } else {
+                            e.source()
+                        }
+                    })
                     .map(|n| (n.index(), weight))
                     .collect_vec()
             },
@@ -265,7 +280,7 @@ impl AllPairGraph {
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
                                 PoolPairInfoDirection {
-                                    info:       *info,
+                                    info: *info,
                                     token_0_in: node0 == index,
                                 },
                                 i as u8,

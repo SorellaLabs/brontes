@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use alloy_primitives::Address;
 use brontes_types::{pair::Pair, ToFloatNearest};
 use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use super::{
@@ -36,7 +37,7 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   system.
 #[derive(Debug)]
 pub struct SubgraphVerifier {
-    pending_subgraphs:           HashMap<Pair, Subgraph>,
+    pending_subgraphs: HashMap<Pair, Subgraph>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
@@ -47,7 +48,7 @@ pub struct SubgraphVerifier {
 impl SubgraphVerifier {
     pub fn new() -> Self {
         Self {
-            pending_subgraphs:           HashMap::new(),
+            pending_subgraphs: HashMap::new(),
             subgraph_verification_state: HashMap::new(),
         }
     }
@@ -72,7 +73,7 @@ impl SubgraphVerifier {
 
         let subgraph = PairSubGraph::init(pair, path);
         if self.pending_subgraphs.contains_key(&pair) {
-            return vec![]
+            return vec![];
         };
 
         self.pending_subgraphs.insert(
@@ -105,9 +106,13 @@ impl SubgraphVerifier {
         removals
             .iter()
             .filter_map(|(k, v)| {
-                // look for edges that have been complety removed
+                // look for edges that have been completely removed
                 if all_graph.edge_count(k.0, k.1) == v.len() {
-                    Some(v.clone().into_iter())
+                    Some(
+                        v.clone()
+                            .into_iter()
+                            .filter(|v| v.liquidity != Rational::ZERO),
+                    )
                 } else {
                     None
                 }
@@ -175,7 +180,6 @@ impl SubgraphVerifier {
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
-
                     tracing::debug!(?pair, "requerying",);
 
                     return VerificationResults::Failed(VerificationFailed {
@@ -184,7 +188,7 @@ impl SubgraphVerifier {
                         prune_state: removals,
                         ignore_state: ignores,
                         frayed_ends: result.frayed_ends,
-                    })
+                    });
                 }
 
                 self.passed_verification(pair, block, subgraph, removals, state_tracker)
@@ -214,6 +218,7 @@ impl SubgraphVerifier {
                             .iter()
                             .map(|e| Pair(e.token_0, e.token_1))
                             .collect::<HashSet<_>>();
+
                         tracing::debug!(
                             ?pair,
                             "connected with {:#?}",
@@ -247,8 +252,8 @@ impl SubgraphVerifier {
                 let result = if rundown {
                     VerificationOutcome {
                         should_requery: false,
-                        removals:       HashMap::new(),
-                        frayed_ends:    vec![],
+                        removals: HashMap::new(),
+                        frayed_ends: vec![],
                     }
                 } else {
                     subgraph
@@ -277,17 +282,22 @@ impl SubgraphVerifier {
             state_tracker.mark_state_as_finalized(block, pool.pool_addr);
         });
 
-        VerificationResults::Passed(VerificationPass { pair, subgraph, prune_state: removals })
+        VerificationResults::Passed(VerificationPass {
+            pair,
+            block,
+            subgraph,
+            prune_state: removals,
+        })
     }
 }
 
 #[derive(Debug)]
 pub struct Subgraph {
-    pub subgraph:              PairSubGraph,
+    pub subgraph: PairSubGraph,
     pub frayed_end_extensions: HashMap<u64, Vec<SubGraphEdge>>,
-    pub id:                    u64,
-    pub in_rundown:            bool,
-    pub iters:                 usize,
+    pub id: u64,
+    pub in_rundown: bool,
+    pub iters: usize,
 }
 impl Subgraph {
     pub fn add_extension(&mut self, edges: Vec<SubGraphEdge>) -> u64 {
@@ -301,20 +311,21 @@ impl Subgraph {
 
 #[derive(Debug)]
 pub struct VerificationPass {
-    pub pair:        Pair,
-    pub subgraph:    PairSubGraph,
+    pub pair: Pair,
+    pub block: u64,
+    pub subgraph: PairSubGraph,
     pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
 }
 #[derive(Debug)]
 pub struct VerificationFailed {
-    pub pair:         Pair,
-    pub block:        u64,
+    pub pair: Pair,
+    pub block: u64,
     // prunes the partial edges of this state.
-    pub prune_state:  HashMap<Pair, HashSet<BadEdge>>,
+    pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
     // the state that should be ignored when we re-query.
     pub ignore_state: HashSet<Pair>,
     // ends that we were able to get to before disjointness occurred
-    pub frayed_ends:  Vec<Address>,
+    pub frayed_ends: Vec<Address>,
 }
 
 #[derive(Debug)]
@@ -337,7 +348,7 @@ pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
     /// we can lookup the edge with the best liquidity.
-    edges:            EdgesWithLiq,
+    edges: EdgesWithLiq,
     /// when we are recusing we remove most liquidity edges until we find a
     /// proper path. However we want to make sure on recusion that these
     /// don't get removed
@@ -345,7 +356,7 @@ pub struct SubgraphVerificationState {
 }
 
 impl SubgraphVerificationState {
-    /// returns pairs to ignore from highest to lowest liquidity.
+    /// returns pairs to ignore from lowest to highest liquidity.
     fn sorted_ignore_nodes_by_liquidity(&self) -> Vec<Pair> {
         self.edges
             .0

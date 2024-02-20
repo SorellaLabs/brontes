@@ -7,7 +7,7 @@ use super::ACTION_SIG_NAME;
 pub struct ActionDispatch {
     // required for all
     struct_name: Ident,
-    rest:        Vec<Ident>,
+    rest: Vec<Ident>,
 }
 
 impl ActionDispatch {
@@ -16,7 +16,10 @@ impl ActionDispatch {
 
         if rest.is_empty() {
             // Generate a compile_error! invocation as part of the output TokenStream
-            return Err(syn::Error::new(Span::call_site(), "need classifiers to dispatch to"))
+            return Err(syn::Error::new(
+                Span::call_site(),
+                "need classifiers to dispatch to",
+            ));
         }
         let (var_name, const_fns): (Vec<_>, Vec<_>) = rest
             .iter()
@@ -43,7 +46,7 @@ impl ActionDispatch {
 
                     impl crate::ActionCollection for #struct_name {
                         fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader
-        + ::brontes_database::libmdbx::LibmdbxWriter
+        + ::brontes_database::libmdbx::DBWriter
                             > (
                             &self,
                             call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
@@ -95,7 +98,10 @@ impl Parse for ActionDispatch {
         }
 
         if !input.is_empty() {
-            return Err(syn::Error::new(input.span(), "Unwanted input at end of macro"))
+            return Err(syn::Error::new(
+                input.span(),
+                "Unwanted input at end of macro",
+            ));
         }
 
         Ok(Self { rest, struct_name })

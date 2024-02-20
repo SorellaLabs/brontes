@@ -9,7 +9,7 @@ mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{
-    db::traits::{LibmdbxReader, LibmdbxWriter},
+    db::traits::{DBWriter, LibmdbxReader},
     pair::Pair,
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };
@@ -50,19 +50,19 @@ use crate::{types::PoolState, Protocol};
 ///   integrity of associated subgraphs.
 /// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
 ///   state for the generated subgraphs.
-pub struct GraphManager<DB: LibmdbxReader + LibmdbxWriter> {
-    all_pair_graph:     AllPairGraph,
+pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
+    all_pair_graph: AllPairGraph,
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
     /// deals with the verification process of our subgraphs
-    subgraph_verifier:  SubgraphVerifier,
+    subgraph_verifier: SubgraphVerifier,
     /// tracks all state needed for our subgraphs
-    graph_state:        StateTracker,
+    graph_state: StateTracker,
     /// allows us to save a load subgraphs.
-    db:                 &'static DB,
+    db: &'static DB,
 }
 
-impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
+impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: HashMap<(Address, Protocol), Pair>,
         sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,
@@ -99,11 +99,8 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connectivity_wight: usize,
         connections: usize,
     ) -> Vec<SubGraphEdge> {
-        let ordered_pair = pair.ordered();
-
-        if let Ok((_, edges)) = self.db.try_load_pair_before(block, ordered_pair.ordered()) {
-            info!("db load");
-            return edges
+        if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
+            return edges;
         }
 
         self.all_pair_graph
@@ -133,13 +130,13 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         connectivity_wight: usize,
         connections: usize,
     ) -> Vec<PoolPairInfoDirection> {
-        let ordered_pair = pair.ordered();
-
-        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, ordered_pair) {
-            info!("db load");
-            return self
-                .subgraph_verifier
-                .create_new_subgraph(pair, block, edges, &self.graph_state)
+        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
+            return self.subgraph_verifier.create_new_subgraph(
+                pair,
+                block,
+                edges,
+                &self.graph_state,
+            );
         }
 
         let paths = self
@@ -158,35 +155,26 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
         // search failed
         if paths.is_empty() {
             info!(?pair, "empty search path");
-            return vec![]
+            return vec![];
         }
 
         self.subgraph_verifier
             .create_new_subgraph(pair, block, paths, &self.graph_state)
     }
 
-    pub fn bad_pool_state(
-        &mut self,
-        subgraph_pair: Pair,
-        pool_pair: Pair,
-        pool_address: Address,
-    ) -> (bool, Option<(Address, Protocol, Pair)>) {
-        let requery_subgraph = self.sub_graph_registry.bad_pool_state(
-            subgraph_pair.ordered(),
-            pool_pair.ordered(),
-            pool_address,
-        );
-
-        (
-            requery_subgraph,
-            self.all_pair_graph
-                .remove_empty_address(pool_pair, pool_address),
+    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
+        if let Err(e) = self.db.save_pair_at(
+            block,
+            pair,
+            subgraph.get_all_pools().flatten().cloned().collect(),
+        ) {
+            tracing::error!(error=%e, "failed to save new subgraph pair");
+        }
+        self.sub_graph_registry.add_verified_subgraph(
+            pair,
+            subgraph,
+            &self.graph_state.all_state(block),
         )
-    }
-
-    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph) {
-        self.sub_graph_registry
-            .add_verified_subgraph(pair, subgraph)
     }
 
     pub fn remove_pair_graph_address(
@@ -198,6 +186,8 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
             .remove_empty_address(pool_pair, pool_address)
     }
 
+    /// Returns all pairs that have been ignored from lowest to highest
+    /// liquidity
     pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
         self.subgraph_verifier
             .verify_subgraph_on_new_path_failure(pair)
@@ -253,5 +243,14 @@ impl<DB: LibmdbxWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn finalize_block(&mut self, block: u64) {
         self.graph_state.finalize_block(block);
+    }
+
+    /// removes all subgraphs that have a pool that's current liquidity
+    /// is less than its liquidity when it was verified.
+    /// nothing is done as we won't bother re-verifying until pricing for the
+    /// graph is needed again
+    pub fn audit_subgraphs(&mut self) {
+        self.sub_graph_registry
+            .audit_subgraphs(self.graph_state.finalized_state())
     }
 }

@@ -15,11 +15,11 @@ pub use crate::graphs::dijkstras::*;
 #[derive(Eq, PartialEq, Debug)]
 struct Path<N: Eq + Hash + Clone, E: Eq + Hash + Clone, C: Zero + Ord + Copy> {
     /// The nodes along the path
-    nodes:   Vec<N>,
+    nodes: Vec<N>,
     /// wieghts,
     weights: Vec<E>,
     /// The total cost of the path
-    cost:    C,
+    cost: C,
 }
 
 impl<N, E, C> PartialOrd for Path<N, E, C>
@@ -82,9 +82,10 @@ where
 ///         'g' => vec![('h', 2)],
 ///         'h' => vec![],
 ///         _ => panic!(""),
-///         },
-///         |c| *c == 'h',
-/// 3);
+///     },
+///     |c| *c == 'h',
+///     3,
+/// );
 /// assert_eq!(paths.len(), 3);
 /// assert_eq!(paths[0], (vec!['c', 'e', 'f', 'h'], 5));
 /// assert_eq!(paths[1], (vec!['c', 'e', 'g', 'h'], 7));
@@ -99,7 +100,8 @@ where
 ///         _ => panic!(""),
 ///     },
 ///     |c| *c == 'h',
-///     2);
+///     2,
+/// );
 /// assert!(empty.is_empty());
 /// ```
 
@@ -120,21 +122,29 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: FnMut(&N) -> bool,
 {
-    let Some((e, n, c)) =
-        dijkstra_internal(start, &mut successors, &mut path_value, &mut success, 20_000)
-    else {
+    let Some((e, n, c)) = dijkstra_internal(
+        start,
+        &mut successors,
+        &mut path_value,
+        &mut success,
+        20_000,
+    ) else {
         return vec![];
     };
 
     let mut visited = HashSet::new();
     // A vector containing our paths.
-    let mut routes = vec![Path { nodes: n, weights: e, cost: c }];
+    let mut routes = vec![Path {
+        nodes: n,
+        weights: e,
+        cost: c,
+    }];
     // A min-heap to store our lowest-cost route candidate
     let mut k_routes = BinaryHeap::new();
     for ki in 0..(k - 1) {
         if routes.len() <= ki || routes.len() == k {
             // We have no more routes to explore, or we have found enough.
-            break
+            break;
         }
         // Take the most recent route to explore new spurs.
         let previous = &routes[ki].nodes;
@@ -180,7 +190,11 @@ where
                 if !visited.contains(&nodes) {
                     // Since we don't know the root_path cost, we need to recalculate.
                     let cost = make_cost(&nodes, &mut successors);
-                    let path = Path { nodes, weights, cost };
+                    let path = Path {
+                        nodes,
+                        weights,
+                        cost,
+                    };
                     // Mark as visited
                     visited.insert(path.nodes.clone());
                     // Build a min-heap
@@ -204,7 +218,7 @@ where
                     };
                     routes.push(k_route.0);
                 } else {
-                    break // Other routes have higher cost
+                    break; // Other routes have higher cost
                 }
             }
         }

@@ -52,30 +52,39 @@ use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]
 pub struct ComposerResults {
-    pub block_details:     MevBlock,
-    pub mev_details:       Vec<Bundle>,
+    pub block_details: MevBlock,
+    pub mev_details: Vec<Bundle>,
     /// all txes with coinbase.transfers that weren't classified
     pub possible_mev_txes: PossibleMevCollection,
 }
 
 pub async fn compose_mev_results(
-    orchestra: &[&dyn Inspector],
+    orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
-    let pre_processing = pre_process(tree.clone(), metadata.clone());
+    let pre_processing = pre_process(tree.clone());
     let (possible_mev_txes, classified_mev) =
         run_inspectors(orchestra, tree.clone(), metadata.clone()).await;
 
     let possible_arbs = possible_mev_txes.clone();
 
-    let (block_details, mev_details) =
-        on_orchestra_resolution(pre_processing, tree, possible_mev_txes, metadata, classified_mev);
-    ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
+    let (block_details, mev_details) = on_orchestra_resolution(
+        pre_processing,
+        tree,
+        possible_mev_txes,
+        metadata,
+        classified_mev,
+    );
+    ComposerResults {
+        block_details,
+        mev_details,
+        possible_mev_txes: possible_arbs,
+    }
 }
 
 async fn run_inspectors(
-    orchestra: &[&dyn Inspector],
+    orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
@@ -121,14 +130,6 @@ fn on_orchestra_resolution(
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
 ) -> (MevBlock, Vec<Bundle>) {
-    let mut header = build_mev_header(
-        metadata.clone(),
-        tree,
-        &pre_processing,
-        possible_mev_txes,
-        &orchestra_data,
-    );
-
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
     MEV_COMPOSABILITY_FILTER
@@ -145,7 +146,14 @@ fn on_orchestra_resolution(
 
     let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
 
-    header.mev_count = mev_count;
+    let header = build_mev_header(
+        &metadata,
+        tree,
+        &pre_processing,
+        possible_mev_txes,
+        mev_count,
+        &filtered_bundles,
+    );
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
@@ -227,7 +235,7 @@ fn try_compose_mev(
                 if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
                     let indexes = find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes);
                     if indexes.is_empty() {
-                        break
+                        break;
                     }
                     for index in indexes {
                         let other_bundle = &other_mev_data_list[index];
@@ -236,7 +244,7 @@ fn try_compose_mev(
                         temp_removal_indices.push((other_mev_type, index));
                     }
                 } else {
-                    break
+                    break;
                 }
             }
 

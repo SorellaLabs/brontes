@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, price_graph_types::*, Protocol};
-use itertools::Itertools;
+use brontes_types::{pair::Pair, price_graph_types::*};
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use super::{subgraph::PairSubGraph, PoolState};
 
@@ -24,119 +24,51 @@ use super::{subgraph::PairSubGraph, PoolState};
 /// exchange context.
 #[derive(Debug)]
 pub struct SubGraphRegistry {
-    /// tracks which tokens have a edge in the subgraph,
-    /// this allows us to possibly insert a new node to a subgraph
-    /// if it fits the criteria
-    token_to_sub_graph: HashMap<Address, HashSet<Pair>>,
     /// all currently known sub-graphs
-    sub_graphs:         HashMap<Pair, PairSubGraph>,
+    sub_graphs: HashMap<Pair, PairSubGraph>,
 }
 
 impl SubGraphRegistry {
     pub fn new(subgraphs: HashMap<Pair, Vec<SubGraphEdge>>) -> Self {
-        let mut token_to_sub_graph: HashMap<Address, HashSet<Pair>> = HashMap::new();
         let sub_graphs = subgraphs
             .into_iter()
-            .map(|(pair, edges)| {
-                edges
-                    .iter()
-                    .flat_map(|e| vec![e.token_0, e.token_1])
-                    .for_each(|token| {
-                        token_to_sub_graph.entry(token).or_default().insert(pair);
-                    });
-
-                (pair.ordered(), PairSubGraph::init(pair, edges))
-            })
+            .map(|(pair, edges)| (pair.ordered(), PairSubGraph::init(pair, edges)))
             .collect();
-        Self { token_to_sub_graph, sub_graphs }
+        Self { sub_graphs }
     }
 
-    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph) {
-        // add all tokens
-        subgraph
-            .get_all_pools()
-            .flat_map(|e| {
-                e.iter()
-                    .flat_map(|e| vec![e.token_0, e.token_1])
-                    .collect_vec()
-            })
-            .unique()
-            .for_each(|token| {
-                self.token_to_sub_graph
-                    .entry(token)
-                    .or_default()
-                    .insert(pair.ordered());
-            });
-
+    pub fn add_verified_subgraph(
+        &mut self,
+        pair: Pair,
+        mut subgraph: PairSubGraph,
+        graph_state: &HashMap<Address, PoolState>,
+    ) {
+        subgraph.save_last_verification_liquidity(graph_state);
         if self.sub_graphs.insert(pair.ordered(), subgraph).is_some() {
             tracing::error!(?pair, "already had a verified sub-graph for pair");
         }
     }
 
+    /// looks through the subgraph for any pools that have had significant
+    /// liquidity drops. when this occurs. removes the pair
+    pub fn audit_subgraphs(&mut self, graph_state: &HashMap<Address, PoolState>) {
+        let bad_graphs = self
+            .sub_graphs
+            .par_iter()
+            .filter_map(|(pair, graph)| {
+                if graph.has_stale_liquidity(graph_state) {
+                    Some(*pair)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        self.sub_graphs.retain(|k, _| !bad_graphs.contains(k));
+    }
+
     pub fn has_subpool(&self, pair: &Pair) -> bool {
         self.sub_graphs.contains_key(&pair.ordered())
-    }
-
-    pub fn bad_pool_state(
-        &mut self,
-        subgraph: Pair,
-        pool_pair: Pair,
-        pool_address: Address,
-    ) -> bool {
-        let Some(mut graph) = self.sub_graphs.remove(&subgraph.ordered()) else { return true };
-
-        let is_disjoint_graph = graph.remove_bad_node(pool_pair, pool_address);
-        if !is_disjoint_graph {
-            self.sub_graphs.insert(subgraph.ordered(), graph);
-        } else {
-            // remove pair from token lookup
-            self.token_to_sub_graph.retain(|_, v| {
-                v.remove(&subgraph.ordered());
-                !v.is_empty()
-            });
-        }
-
-        is_disjoint_graph
-    }
-
-    #[allow(unused)]
-    pub fn try_extend_subgraphs(
-        &mut self,
-        pool_address: Address,
-        dex: Protocol,
-        pair: Pair,
-    ) -> Vec<(Pair, Vec<SubGraphEdge>)> {
-        let token_0 = pair.0;
-        let token_1 = pair.1;
-
-        let Some(t0_subgraph) = self.token_to_sub_graph.get(&token_0) else { return vec![] };
-        let Some(t1_subgraph) = self.token_to_sub_graph.get(&token_1) else { return vec![] };
-
-        t0_subgraph
-            .intersection(t1_subgraph)
-            .map(|subgraph_pair| {
-                (
-                    subgraph_pair,
-                    PoolPairInformation {
-                        pool_addr: pool_address,
-                        dex_type:  dex,
-                        token_0:   pair.0,
-                        token_1:   pair.1,
-                    },
-                )
-            })
-            .filter_map(|(pair, info)| {
-                if let Some(subgraph) = self.sub_graphs.get_mut(pair) {
-                    if subgraph.add_new_edge(info) {
-                        return Some((
-                            *pair,
-                            subgraph.get_all_pools().flatten().cloned().collect_vec(),
-                        ))
-                    }
-                }
-                None
-            })
-            .collect_vec()
     }
 
     pub fn get_price(
@@ -150,14 +82,12 @@ impl SubGraphRegistry {
             .get(&pair)
             .map(|graph| (graph.get_unordered_pair(), graph))
             .and_then(|(default_pair, graph)| Some((default_pair, graph.fetch_price(edge_state)?)))
-            .map(
-                |(default_pair, res)| {
-                    if !unordered_pair.eq_unordered(&default_pair) {
-                        res.reciprocal()
-                    } else {
-                        res
-                    }
-                },
-            )
+            .map(|(default_pair, res)| {
+                if !unordered_pair.eq_unordered(&default_pair) {
+                    res.reciprocal()
+                } else {
+                    res
+                }
+            })
     }
 }

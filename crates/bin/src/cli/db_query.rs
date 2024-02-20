@@ -19,7 +19,7 @@ pub struct DatabaseQuery {
     /// --key 80
     /// or --key 80..100
     #[arg(long, short)]
-    pub key:   String,
+    pub key: String,
 }
 
 impl DatabaseQuery {
@@ -76,8 +76,11 @@ impl DatabaseQuery {
                 AddressToProtocolInfo,
                 PoolCreationBlocks,
                 Builder,
+                BuilderStatistics,
                 AddressMeta,
-                Searcher,
+                SearcherEOAs,
+                SearcherContracts,
+                SearcherStatistics,
                 SubGraphs,
                 TxTraces
             );
@@ -93,9 +96,12 @@ impl DatabaseQuery {
                 TokenDecimals,
                 AddressToProtocolInfo,
                 Builder,
+                BuilderStatistics,
                 InitializedState,
                 AddressMeta,
-                Searcher,
+                SearcherEOAs,
+                SearcherContracts,
+                SearcherStatistics,
                 SubGraphs,
                 TxTraces,
                 PoolCreationBlocks = &self.key

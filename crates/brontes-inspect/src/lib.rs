@@ -80,17 +80,10 @@
 //! results to identify more complex strategies.
 //TODO: Update composer section once finished
 
-pub mod atomic_arb;
-pub mod cex_dex;
 pub mod composer;
 pub mod discovery;
-pub mod jit;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod liquidations;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod long_tail;
-pub mod sandwich;
-pub mod shared_utils;
+pub mod mev_inspectors;
+pub use mev_inspectors::*;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
@@ -99,9 +92,8 @@ use std::sync::Arc;
 
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
-use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::Metadata},
+    db::{cex::CexExchange, metadata::Metadata, traits::LibmdbxReader},
     mev::{Bundle, BundleData},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -112,16 +104,15 @@ use liquidations::LiquidationInspector;
 use long_tail::LongTailInspector;
 use sandwich::SandwichInspector;
 
-#[allow(non_camel_case_types)]
-pub struct _b_ {}
-
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
+    type Result: Send + Sync;
+
     async fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-    ) -> Vec<Bundle>;
+    ) -> Self::Result;
 }
 
 #[derive(
@@ -136,26 +127,31 @@ pub enum Inspectors {
     Sandwich,
 }
 
+type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
+
 impl Inspectors {
-    pub fn init_inspector(
+    pub fn init_mev_inspector<DB: LibmdbxReader>(
         &self,
         quote_token: Address,
-        db: &'static LibmdbxReadWriter,
+        db: &'static DB,
         cex_exchanges: &[CexExchange],
-    ) -> &'static dyn Inspector {
+    ) -> DynMevInspector {
         match &self {
-            Self::AtomicArb => static_object(AtomicArbInspector::new(quote_token, db))
-                as &'static (dyn Inspector + 'static),
-            Self::Jit => static_object(JitInspector::new(quote_token, db))
-                as &'static (dyn Inspector + 'static),
-            Self::LongTail => static_object(LongTailInspector::new(quote_token, db))
-                as &'static (dyn Inspector + 'static),
+            Self::AtomicArb => {
+                static_object(AtomicArbInspector::new(quote_token, db)) as DynMevInspector
+            }
+            Self::Jit => static_object(JitInspector::new(quote_token, db)) as DynMevInspector,
+            Self::LongTail => {
+                static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
+            }
             Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
-                as &'static (dyn Inspector + 'static),
-            Self::Sandwich => static_object(SandwichInspector::new(quote_token, db))
-                as &'static (dyn Inspector + 'static),
-            Self::Liquidations => static_object(LiquidationInspector::new(quote_token, db))
-                as &'static (dyn Inspector + 'static),
+                as DynMevInspector,
+            Self::Sandwich => {
+                static_object(SandwichInspector::new(quote_token, db)) as DynMevInspector
+            }
+            Self::Liquidations => {
+                static_object(LiquidationInspector::new(quote_token, db)) as DynMevInspector
+            }
         }
     }
 }

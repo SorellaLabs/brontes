@@ -29,7 +29,7 @@ impl ProtocolState for PoolState {
 
 #[derive(Clone)]
 pub struct PoolState {
-    variant:         PoolVariants,
+    variant: PoolVariants,
     pub last_update: u64,
 }
 impl Debug for PoolState {
@@ -46,7 +46,10 @@ impl Debug for PoolState {
 
 impl PoolState {
     pub fn new(variant: PoolVariants, last_update: u64) -> Self {
-        Self { variant, last_update }
+        Self {
+            variant,
+            last_update,
+        }
     }
 
     pub fn pair(&self) -> Pair {
@@ -120,29 +123,33 @@ impl DexPriceMsg {
         match self {
             Self::Update(u) => u.action.clone(),
             Self::DiscoveredPool(p) => Actions::PoolConfigUpdate(p.clone()),
-            _ => unreachable!(),
+            _ => unreachable!("called get action on closed msg"),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct DiscoveredPool {
-    pub protocol:     Protocol,
+    pub protocol: Protocol,
     pub pool_address: Address,
-    pub tokens:       Vec<Address>,
+    pub tokens: Vec<Address>,
 }
 
 impl DiscoveredPool {
     pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: Protocol) -> Self {
-        Self { protocol, pool_address, tokens }
+        Self {
+            protocol,
+            pool_address,
+            tokens,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct PoolUpdate {
-    pub block:  u64,
+    pub block: u64,
     pub tx_idx: u64,
-    pub logs:   Vec<Log>,
+    pub logs: Vec<Log>,
     pub action: Actions,
 }
 

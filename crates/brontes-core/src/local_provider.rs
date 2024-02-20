@@ -17,7 +17,9 @@ pub struct LocalProvider {
 impl LocalProvider {
     pub fn new(url: String) -> Self {
         let http = Http::new(url.parse().unwrap());
-        Self { provider: Arc::new(Provider::new(http)) }
+        Self {
+            provider: Arc::new(Provider::new(http)),
+        }
     }
 }
 
@@ -47,12 +49,12 @@ impl TracingProvider for LocalProvider {
             .map_err(Into::into)
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     fn best_block_number(&self) -> eyre::Result<u64> {
         unreachable!("local provider should only be used with local feature flag")
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     async fn best_block_number(&self) -> eyre::Result<u64> {
         self.provider.get_block_number().await.map_err(Into::into)
     }
@@ -93,30 +95,30 @@ impl TracingProvider for LocalProvider {
             .ok_or_else(err)?;
 
         let header = Header {
-            number:                   block.header.number.ok_or_else(err)?.to::<u64>(),
-            base_fee_per_gas:         block.header.base_fee_per_gas.map(|i| i.to::<u64>()),
-            mix_hash:                 block.header.mix_hash.ok_or_else(err)?,
-            withdrawals_root:         block.header.withdrawals_root,
+            number: block.header.number.ok_or_else(err)?.to::<u64>(),
+            base_fee_per_gas: block.header.base_fee_per_gas.map(|i| i.to::<u64>()),
+            mix_hash: block.header.mix_hash.ok_or_else(err)?,
+            withdrawals_root: block.header.withdrawals_root,
             parent_beacon_block_root: block.header.parent_beacon_block_root,
-            nonce:                    block
+            nonce: block
                 .header
                 .nonce
                 .map(|i| u64::from_be_bytes(*i))
                 .ok_or_else(err)?,
-            gas_used:                 block.header.gas_used.to::<u64>(),
-            gas_limit:                block.header.gas_limit.to::<u64>(),
-            timestamp:                block.header.timestamp.to::<u64>(),
-            difficulty:               block.header.difficulty,
-            state_root:               block.header.state_root,
-            parent_hash:              block.header.parent_hash,
-            receipts_root:            block.header.receipts_root,
-            transactions_root:        block.header.transactions_root,
-            logs_bloom:               block.header.logs_bloom,
-            extra_data:               block.header.extra_data,
-            blob_gas_used:            block.header.blob_gas_used.map(|i| i.to::<u64>()),
-            excess_blob_gas:          block.header.excess_blob_gas.map(|i| i.to::<u64>()),
-            ommers_hash:              block.header.uncles_hash,
-            beneficiary:              block.header.miner,
+            gas_used: block.header.gas_used.to::<u64>(),
+            gas_limit: block.header.gas_limit.to::<u64>(),
+            timestamp: block.header.timestamp.to::<u64>(),
+            difficulty: block.header.difficulty,
+            state_root: block.header.state_root,
+            parent_hash: block.header.parent_hash,
+            receipts_root: block.header.receipts_root,
+            transactions_root: block.header.transactions_root,
+            logs_bloom: block.header.logs_bloom,
+            extra_data: block.header.extra_data,
+            blob_gas_used: block.header.blob_gas_used.map(|i| i.to::<u64>()),
+            excess_blob_gas: block.header.excess_blob_gas.map(|i| i.to::<u64>()),
+            ommers_hash: block.header.uncles_hash,
+            beneficiary: block.header.miner,
         };
 
         Ok(Some(header))

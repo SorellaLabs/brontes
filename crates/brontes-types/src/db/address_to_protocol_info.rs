@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use alloy_primitives::Address;
+use clickhouse::Row;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
@@ -27,17 +27,19 @@ use crate::{
 pub struct ProtocolInfo {
     #[serde(with = "static_bindings")]
     #[redefined(same_fields)]
-    pub protocol:   Protocol,
+    pub protocol: Protocol,
     #[serde(with = "addresss")]
-    pub token0:     Address,
+    pub token0: Address,
     #[serde(with = "addresss")]
-    pub token1:     Address,
+    pub token1: Address,
     #[serde(with = "option_addresss")]
-    pub token2:     Option<Address>,
+    pub token2: Option<Address>,
     #[serde(with = "option_addresss")]
-    pub token3:     Option<Address>,
+    pub token3: Option<Address>,
     #[serde(with = "option_addresss")]
-    pub token4:     Option<Address>,
+    pub token4: Option<Address>,
+    #[serde(with = "option_addresss")]
+    pub curve_lp_token: Option<Address>,
     pub init_block: u64,
 }
 
@@ -46,18 +48,25 @@ impl IntoIterator for ProtocolInfo {
     type Item = Address;
 
     fn into_iter(self) -> Self::IntoIter {
-        vec![Some(self.token0), Some(self.token1), self.token2, self.token3, self.token4]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>()
-            .into_iter()
+        vec![
+            Some(self.token0),
+            Some(self.token1),
+            self.token2,
+            self.token3,
+            self.token4,
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .into_iter()
     }
 }
 
-impl From<(Vec<String>, u64, String)> for ProtocolInfo {
-    fn from(value: (Vec<String>, u64, String)) -> Self {
+impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
+    fn from(value: (Vec<String>, u64, String, Option<String>)) -> Self {
         let init_block = value.1;
         let protocol = Protocol::parse_string(value.2);
+        let curve_lp_token = value.3.map(|s| Address::from_str(&s).unwrap());
         let value = value.0;
         let mut iter = value.into_iter();
         ProtocolInfo {
@@ -67,6 +76,7 @@ impl From<(Vec<String>, u64, String)> for ProtocolInfo {
             token2: iter.next().and_then(|a| Address::from_str(&a).ok()),
             token3: iter.next().and_then(|a| Address::from_str(&a).ok()),
             token4: iter.next().and_then(|a| Address::from_str(&a).ok()),
+            curve_lp_token,
             init_block,
         }
     }

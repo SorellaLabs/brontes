@@ -1,12 +1,16 @@
 use std::fmt::Debug;
 
-use ::serde::ser::{SerializeStruct, Serializer};
+use ::clickhouse::{self, DbRow};
+#[allow(unused)]
+use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::{
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Serialize,
+};
 use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
 use crate::{
@@ -18,6 +22,7 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     tree::GasDetails,
 };
+
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -95,8 +100,11 @@ impl Serialize for JitLiquidity {
         ser_struct.serialize_field("frontrun_mint_gas_details", &(frontrun_mint_gas_details))?;
 
         // victim swaps
-        let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
+        let victim_swaps: ClickhouseDoubleVecNormalizedSwap = (
+            self.victim_swaps_tx_hashes.clone(),
+            self.victim_swaps.clone(),
+        )
+            .into();
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
         ser_struct.serialize_field("victim_swaps.trace_idx", &victim_swaps.trace_index)?;
         ser_struct.serialize_field("victim_swaps.from", &victim_swaps.from)?;
@@ -117,8 +125,10 @@ impl Serialize for JitLiquidity {
             "victim_gas_details.coinbase_transfer",
             &victim_gas_details.coinbase_transfer,
         )?;
-        ser_struct
-            .serialize_field("victim_gas_details.priority_fee", &victim_gas_details.priority_fee)?;
+        ser_struct.serialize_field(
+            "victim_gas_details.priority_fee",
+            &victim_gas_details.priority_fee,
+        )?;
         ser_struct.serialize_field("victim_gas_details.gas_used", &victim_gas_details.gas_used)?;
         ser_struct.serialize_field(
             "victim_gas_details.effective_gas_price",

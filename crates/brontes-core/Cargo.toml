@@ -44,9 +44,9 @@ alloy-sol-macro.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
-alloy-providers.workspace = true 
+alloy-providers.workspace = true
 alloy-rpc-types.workspace = true
-alloy-transport-http.workspace = true 
+alloy-transport-http.workspace = true
 
 # Serde 
 serde.workspace = true
@@ -71,6 +71,7 @@ auto_impl.workspace = true
 dotenv.workspace = true
 itertools.workspace = true
 
+
 [dev-dependencies]
 serial_test.workspace = true
 brontes-core = { workspace = true, features = ["tests"] }
@@ -80,26 +81,13 @@ tokio.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5", features = ["async", "async_tokio"] }
 
-
-[build-dependencies]
-rayon.workspace = true
-walkdir = "2.4.0"
-convert_case = "0.6.0"
-quote = "1.0.35"
-dotenv.workspace = true
-brontes-database.workspace = true
-serde.workspace = true
-toml = "0.8.9"
-brontes-types.workspace = true
-alloy-primitives.workspace = true
-
-
 [features]
 default = []
 dyn-decode = []
 tests = []
-local = [
-  "brontes-types/local",
-  "reth-tracing-ext/local",
-  "brontes-database/local",
+local-reth = [
+  "brontes-types/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-database/local-reth",
 ]
+local-clickhouse = ["brontes-database/local-clickhouse"]

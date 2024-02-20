@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use alloy_primitives::{Address, Log, U256};
+use clickhouse::Row;
 use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
@@ -83,7 +84,9 @@ impl TraceActions for TransactionTraceWithLogs {
     }
 
     fn get_return_calldata(&self) -> Bytes {
-        let Some(res) = &self.trace.result else { return Bytes::default() };
+        let Some(res) = &self.trace.result else {
+            return Bytes::default();
+        };
         match res {
             reth_rpc_types::trace::parity::TraceOutput::Call(bytes) => bytes.output.clone(),
             _ => Bytes::default(),
@@ -92,14 +95,14 @@ impl TraceActions for TransactionTraceWithLogs {
 
     fn get_callframe_info(&self) -> CallFrameInfo<'_> {
         CallFrameInfo {
-            trace_idx:      self.trace_idx,
-            call_data:      self.get_calldata(),
-            return_data:    self.get_return_calldata(),
+            trace_idx: self.trace_idx,
+            call_data: self.get_calldata(),
+            return_data: self.get_return_calldata(),
             target_address: self.get_to_address(),
-            from_address:   self.get_from_addr(),
-            logs:           &self.logs,
-            msg_sender:     self.msg_sender,
-            msg_value:      self.get_msg_value(),
+            from_address: self.get_from_addr(),
+            logs: &self.logs,
+            msg_sender: self.msg_sender,
+            msg_value: self.get_msg_value(),
         }
     }
 }
@@ -110,8 +113,8 @@ impl TraceActions for TransactionTraceWithLogs {
 
 pub struct DecodedCallData {
     pub function_name: String,
-    pub call_data:     Vec<DecodedParams>,
-    pub return_data:   Vec<DecodedParams>,
+    pub call_data: Vec<DecodedParams>,
+    pub return_data: Vec<DecodedParams>,
 }
 
 self_convert_redefined!(DecodedCallData);
@@ -122,52 +125,52 @@ self_convert_redefined!(DecodedCallData);
 pub struct DecodedParams {
     pub field_name: String,
     pub field_type: String,
-    pub value:      String,
+    pub value: String,
 }
 
 self_convert_redefined!(DecodedParams);
 
 #[derive(Debug, Clone)]
 pub struct CallFrameInfo<'a> {
-    pub trace_idx:      u64,
-    pub call_data:      Bytes,
-    pub return_data:    Bytes,
+    pub trace_idx: u64,
+    pub call_data: Bytes,
+    pub return_data: Bytes,
     pub target_address: Address,
-    pub from_address:   Address,
-    pub logs:           &'a [Log],
-    pub msg_sender:     Address,
-    pub msg_value:      U256,
+    pub from_address: Address,
+    pub logs: &'a [Log],
+    pub msg_sender: Address,
+    pub msg_value: U256,
 }
 
 #[derive(Debug, Clone)]
 pub struct CallInfo {
-    pub trace_idx:      u64,
+    pub trace_idx: u64,
     pub target_address: Address,
-    pub from_address:   Address,
-    pub msg_sender:     Address,
-    pub msg_value:      U256,
+    pub from_address: Address,
+    pub msg_sender: Address,
+    pub msg_value: U256,
 }
 
 impl CallFrameInfo<'_> {
     pub fn get_fixed_fields(&self) -> CallInfo {
         CallInfo {
-            trace_idx:      self.trace_idx,
+            trace_idx: self.trace_idx,
             target_address: self.target_address,
-            from_address:   self.from_address,
-            msg_sender:     self.msg_sender,
-            msg_value:      self.msg_value,
+            from_address: self.from_address,
+            msg_sender: self.msg_sender,
+            msg_value: self.msg_value,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
-    pub trace:        TransactionTrace,
-    pub logs:         Vec<Log>,
+    pub trace: TransactionTrace,
+    pub logs: Vec<Log>,
     /// the msg.sender of the trace. This allows us to properly deal with
     /// delegate calls and the headache they cause when it comes to proxies
-    pub msg_sender:   Address,
-    pub trace_idx:    u64,
+    pub msg_sender: Address,
+    pub trace_idx: u64,
     pub decoded_data: Option<DecodedCallData>,
 }
 
@@ -203,16 +206,26 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Row, Serialize, Deserialize)]
+pub struct TxTraces {
+    pub traces: Vec<TxTrace>,
+}
 
+impl From<Vec<TxTrace>> for TxTraces {
+    fn from(value: Vec<TxTrace>) -> Self {
+        Self { traces: value }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TxTrace {
-    pub trace:           Vec<TransactionTraceWithLogs>,
-    pub tx_hash:         B256,
-    pub gas_used:        u128,
+    pub trace: Vec<TransactionTraceWithLogs>,
+    pub tx_hash: B256,
+    pub gas_used: u128,
     pub effective_price: u128,
-    pub tx_index:        u64,
+    pub tx_index: u64,
     // False if the transaction reverted
-    pub is_success:      bool,
+    pub is_success: bool,
 }
 
 impl TxTrace {
@@ -224,6 +237,13 @@ impl TxTrace {
         effective_price: u128,
         is_success: bool,
     ) -> Self {
-        Self { trace, tx_hash, tx_index, effective_price, gas_used, is_success }
+        Self {
+            trace,
+            tx_hash,
+            tx_index,
+            effective_price,
+            gas_used,
+            is_success,
+        }
     }
 }

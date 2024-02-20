@@ -4,6 +4,7 @@ use std::{
 };
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
+use clickhouse::Row;
 use malachite::{num::basic::traits::One, Rational};
 use redefined::Redefined;
 use reth_db::DatabaseError;
@@ -29,7 +30,7 @@ use crate::{
     Archive
 ))]
 pub struct DexPrices {
-    pub pre_state:  Rational,
+    pub pre_state: Rational,
     pub post_state: Rational,
 }
 
@@ -54,7 +55,7 @@ impl DexPrices {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
 pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {
@@ -62,15 +63,18 @@ impl DexQuotes {
     /// the price at all previous indexes in the block
     pub fn price_at_or_before(&self, pair: Pair, mut tx: usize) -> Option<DexPrices> {
         if pair.0 == pair.1 {
-            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
+            return Some(DexPrices {
+                pre_state: Rational::ONE,
+                post_state: Rational::ONE,
+            });
         }
 
         loop {
             if let Some(price) = self.get_price(pair, tx) {
-                return Some(price.clone())
+                return Some(price.clone());
             }
             if tx == 0 {
-                break
+                break;
             }
 
             tx -= 1;
@@ -113,7 +117,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
 ))]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote:  Vec<(Pair, DexPrices)>,
+    pub quote: Vec<(Pair, DexPrices)>,
 }
 
 impl From<DexQuote> for Vec<(Pair, DexPrices)> {

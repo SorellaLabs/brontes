@@ -4,10 +4,10 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use clickhouse::Row;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
@@ -19,35 +19,47 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenInfoWithAddress {
     #[redefined(same_fields)]
-    pub inner:   TokenInfo,
+    pub inner: TokenInfo,
     pub address: Address,
 }
 
 impl TokenInfoWithAddress {
     pub fn native_eth() -> Self {
         Self {
-            inner:   TokenInfo { decimals: 18, symbol: "ETH".to_string() },
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "ETH".to_string(),
+            },
             address: WETH_ADDRESS,
         }
     }
 
     pub fn weth() -> Self {
         Self {
-            inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "WETH".to_string(),
+            },
             address: WETH_ADDRESS,
         }
     }
 
     pub fn usdt() -> Self {
         Self {
-            inner:   TokenInfo { decimals: 6, symbol: "USDT".to_string() },
+            inner: TokenInfo {
+                decimals: 6,
+                symbol: "USDT".to_string(),
+            },
             address: USDT_ADDRESS,
         }
     }
 
     pub fn usdc() -> Self {
         Self {
-            inner:   TokenInfo { decimals: 6, symbol: "USDC".to_string() },
+            inner: TokenInfo {
+                decimals: 6,
+                symbol: "USDC".to_string(),
+            },
             address: USDC_ADDRESS,
         }
     }
@@ -78,7 +90,7 @@ impl DerefMut for TokenInfoWithAddress {
 )]
 pub struct TokenInfo {
     pub decimals: u8,
-    pub symbol:   String,
+    pub symbol: String,
 }
 
 impl TokenInfo {
@@ -97,6 +109,9 @@ impl<'de> serde::Deserialize<'de> for TokenInfo {
     {
         let val: (u8, String) = serde::Deserialize::deserialize(deserializer)?;
 
-        Ok(Self { decimals: val.0, symbol: val.1 })
+        Ok(Self {
+            decimals: val.0,
+            symbol: val.1,
+        })
     }
 }

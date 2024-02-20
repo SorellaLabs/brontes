@@ -17,8 +17,6 @@
 //! - [brontes-pricing](../brontes_pricing/index.html): Handles DEX pricing
 //! - [brontes-database](../brontes_database/index.html): Handles database
 //!   related functionalities.
-//! - [brontes-database-libmdbx](../brontes_database_libmdbx/index.html):
-//!   Provides libmdbx database functionalities for our local libmdbx database.
 //! - [reth-tracing-ext](../reth_tracing_ext/index.html): Provides extended
 //!   tracing capabilities to match transaction traces to their corresponding
 //!   logs.

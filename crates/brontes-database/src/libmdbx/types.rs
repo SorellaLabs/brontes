@@ -9,7 +9,7 @@ where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
-    pub key:   T::Key,
+    pub key: T::Key,
     pub value: T::DecompressedValue,
 }
 
@@ -19,7 +19,10 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
     fn from(value: (T::Key, T::DecompressedValue)) -> Self {
-        Self { key: value.0, value: value.1 }
+        Self {
+            key: value.0,
+            value: value.1,
+        }
     }
 }
 
@@ -52,4 +55,5 @@ where
     type DecompressedValue: Debug + PartialEq;
     const INIT_CHUNK_SIZE: Option<usize>;
     const INIT_QUERY: Option<&'static str>;
+    const HTTP_ENDPOINT: Option<&'static str>;
 }

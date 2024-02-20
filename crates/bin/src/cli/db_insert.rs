@@ -10,7 +10,7 @@ pub struct AddToDb {
     pub table: Tables,
     // key of value
     #[arg(long, short)]
-    pub key:   String,
+    pub key: String,
     // value
     #[arg(long, short)]
     pub value: String,
@@ -51,8 +51,11 @@ impl AddToDb {
             TxTraces,
             Builder,
             AddressMeta,
-            Searcher,
+            SearcherEOAs,
+            SearcherContracts,
             InitializedState,
+            BuilderStatistics,
+            SearcherStatistics,
             PoolCreationBlocks = &self.key,
             &self.value
         );

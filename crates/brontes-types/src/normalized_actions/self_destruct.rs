@@ -1,19 +1,22 @@
 use std::fmt::Debug;
 
+use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use reth_rpc_types::trace::parity::SelfdestructAction;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct SelfdestructWithIndex {
-    pub trace_index:   u64,
+    pub trace_index: u64,
     pub self_destruct: SelfdestructAction,
 }
 
 impl SelfdestructWithIndex {
     pub fn new(trace_index: u64, self_destruct: SelfdestructAction) -> Self {
-        Self { trace_index, self_destruct }
+        Self {
+            trace_index,
+            self_destruct,
+        }
     }
 
     pub fn get_address(&self) -> Address {

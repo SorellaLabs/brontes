@@ -6,7 +6,7 @@ use std::sync::Arc;
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_metrics::{
     trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
     PoirotMetricEvents,
@@ -28,19 +28,23 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 //#[derive(Clone)]
-pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    libmdbx:               &'db DB,
-    pub tracer:            Arc<T>,
+pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
+    libmdbx: &'db DB,
+    pub tracer: Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db, T, DB> {
-    pub fn new(
+impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, DB> {
+    pub async fn new(
         libmdbx: &'db DB,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        Self { libmdbx, tracer, metrics_tx }
+        Self {
+            libmdbx,
+            tracer,
+            metrics_tx,
+        }
     }
 
     pub fn get_tracer(&self) -> Arc<T> {
@@ -58,12 +62,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
-            return Some(res)
+            return Some(res);
         }
-        #[cfg(feature = "local")]
+        #[cfg(not(feature = "local-reth"))]
         {
             tracing::error!("no block found in db");
-            return None
+            return None;
         }
 
         let parity_trace = self.trace_block(block_num).await;
@@ -78,11 +82,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
             let _ = self
                 .metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
-            return None
+            return None;
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
-            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .fill_metadata(
+                parity_trace.0.unwrap(),
+                parity_trace.1,
+                receipts.0.unwrap(),
+                block_num,
+            )
             .await;
         #[cfg(not(feature = "dyn-decode"))]
         let traces = self
@@ -96,6 +105,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> TraceParser<'db
         if self
             .libmdbx
             .save_traces(block_num, traces.0.clone())
+            .await
             .is_err()
         {
             error!(%block_num, "failed to store traces for block");

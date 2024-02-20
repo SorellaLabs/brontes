@@ -269,7 +269,10 @@ where
     CURSOR: DbCursorRO<T>,
 {
     pub fn new(cursor: &'cursor mut CURSOR, start: IterCompressedPairResult<T>) -> Self {
-        Self(ReverseWalker::new(cursor, start.map(|opt| opt.map(Into::into))))
+        Self(ReverseWalker::new(
+            cursor,
+            start.map(|opt| opt.map(Into::into)),
+        ))
     }
 
     pub fn forward(self) -> CompressedWalker<'cursor, T, CURSOR> {

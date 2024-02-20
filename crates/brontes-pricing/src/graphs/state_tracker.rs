@@ -30,18 +30,28 @@ use crate::{
 #[derive(Debug)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
-    finalized_edge_state:    HashMap<Address, PoolState>,
+    finalized_edge_state: HashMap<Address, PoolState>,
     /// state that verification is using
     verification_edge_state: HashMap<Address, PoolStateWithBlock>,
 }
 
 impl StateTracker {
     pub fn new() -> Self {
-        Self { finalized_edge_state: HashMap::new(), verification_edge_state: HashMap::new() }
+        Self {
+            finalized_edge_state: HashMap::new(),
+            verification_edge_state: HashMap::new(),
+        }
     }
 
     pub fn finalized_state(&self) -> &HashMap<Address, PoolState> {
         &self.finalized_edge_state
+    }
+
+    pub fn all_state(&self, block: u64) -> HashMap<Address, PoolState> {
+        self.state_for_verification(block)
+            .into_iter()
+            .chain(self.finalized_state().clone())
+            .collect()
     }
 
     pub fn state_for_verification(&self, block: u64) -> HashMap<Address, PoolState> {
@@ -53,7 +63,7 @@ impl StateTracker {
                     .iter()
                     .filter_map(|(addr, state)| {
                         if state.last_update == block {
-                            return Some((*addr, state.clone()))
+                            return Some((*addr, state.clone()));
                         }
                         None
                     }),
@@ -64,7 +74,7 @@ impl StateTracker {
     pub fn mark_state_as_finalized(&mut self, block: u64, pool: Address) {
         let Some(pool_state) = self.verification_edge_state.get_mut(&pool) else {
             debug!(?pool, "tried to mark a pool that didn't exist as finalized");
-            return
+            return;
         };
 
         pool_state.mark_state_as_finalized(block);
@@ -106,7 +116,9 @@ impl StateTracker {
     }
 
     pub fn update_pool_state(&mut self, address: Address, update: PoolUpdate) {
-        let Some(state) = self.finalized_edge_state.get_mut(&address) else { return };
+        let Some(state) = self.finalized_edge_state.get_mut(&address) else {
+            return;
+        };
 
         state.increment_state(update);
     }
@@ -131,19 +143,16 @@ impl PoolStateWithBlock {
         for (finalized, state) in &mut self.0 {
             if block == state.last_update {
                 *finalized = true;
-                break
+                break;
             }
         }
     }
 
     pub fn get_state(&self, block: u64) -> Option<&PoolState> {
-        for (_, state) in &self.0 {
-            if block == state.last_update {
-                return Some(state)
-            }
-        }
-
-        None
+        self.0
+            .iter()
+            .map(|(_, state)| state)
+            .find(|&state| block == state.last_update)
     }
 
     pub fn remove_state(&mut self, block: u64) -> Option<(bool, PoolState)> {
@@ -151,7 +160,7 @@ impl PoolStateWithBlock {
         self.0.retain(|(keep, state)| {
             if state.last_update == block {
                 res = Some((*keep, state.clone()));
-                return false
+                return false;
             }
             true
         });
@@ -166,7 +175,7 @@ impl PoolStateWithBlock {
     pub fn contains_block_state(&self, block: u64) -> bool {
         for (_, state) in &self.0 {
             if block == state.last_update {
-                return true
+                return true;
             }
         }
 

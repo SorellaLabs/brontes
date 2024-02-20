@@ -1,176 +1,105 @@
 use std::sync::Arc;
 
 use alloy_primitives::{Address, U256};
-use alloy_sol_types::SolCall;
-use brontes_macros::discovery_impl;
+use brontes_macros::{curve_discovery_impl, discovery_impl};
 use brontes_pricing::make_call_request;
 use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, traits::TracingProvider, Protocol,
 };
-use itertools::Itertools;
 
-discovery_impl!(
-    CurveV1MetapoolBaseDiscovery,
-    crate::CurveV1MetapoolFactory::add_base_poolCall,
+curve_discovery_impl!(
+    CurveV1,
+    crate::CurveV1MetapoolFactory,
     0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
-    |deployed_address: Address, trace_index: u64, call: add_base_poolCall, tracer: Arc<T>| {
-        parse_base_bool(
-            Protocol::CurveV1BasePool,
-            deployed_address,
-            call._base_pool,
+    (1, 0)
+);
+
+curve_discovery_impl!(
+    CurveV2,
+    crate::CurveV2MetapoolFactory,
+    0xb9fc157394af804a3578134a6585c0dc9cc990d4,
+    (2, 3)
+);
+
+curve_discovery_impl!(
+    CurvecrvUSD,
+    crate::CurvecrvUSDFactory,
+    0x4f8846ae9380b90d2e71d5e3d042dff3e7ebb40d,
+    (2, 3)
+);
+
+discovery_impl!(
+    CurveCryptoSwapDiscovery,
+    crate::CurveCryptoSwapFactory::deploy_poolCall,
+    0xf18056bbd320e96a48e3fbf8bc061322531aac99,
+    |deployed_address: Address, trace_index: u64, call_data: deploy_poolCall, _| async move {
+        vec![NormalizedNewPool {
             trace_index,
-            tracer,
-        )
+            protocol: Protocol::CurveCryptoSwapPool,
+            pool_address: deployed_address,
+            tokens: call_data._coins.to_vec(),
+        }]
     }
 );
 
 discovery_impl!(
-    CurveV1MetapoolMetaDiscovery,
-    crate::CurveV1MetapoolFactory::deploy_metapoolCall,
-    0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
-    |deployed_address: Address, trace_index: u64, call: deploy_metapoolCall, tracer: Arc<T>| {
-        parse_meta_pool(
-            Protocol::CurveV1MetaPool,
-            deployed_address,
-            call._base_pool,
-            call._coin,
+    CurveTriCryptoDiscovery,
+    crate::CurveTriCryptoFactory::deploy_poolCall,
+    0x0c0e5f2ff0ff18a3be9b835635039256dc4b4963,
+    |deployed_address: Address, trace_index: u64, call_data: deploy_poolCall, _| async move {
+        let mut tokens = call_data._coins.to_vec();
+
+        if !tokens.contains(&call_data._weth) {
+            tokens.push(call_data._weth);
+        }
+
+        vec![NormalizedNewPool {
             trace_index,
-            tracer,
-        )
+            protocol: Protocol::CurveCryptoSwapPool,
+            pool_address: deployed_address,
+            tokens: call_data._coins.to_vec(),
+        }]
     }
 );
-
-discovery_impl!(
-    CurveV2MetapoolBaseDiscovery,
-    crate::CurveV2MetapoolFactory::add_base_poolCall,
-    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
-    |deployed_address: Address, trace_index: u64, call: add_base_poolCall, tracer: Arc<T>| {
-        parse_base_bool(
-            Protocol::CurveV2BasePool,
-            call._base_pool,
-            deployed_address,
-            trace_index,
-            tracer,
-        )
-    }
-);
-
-discovery_impl!(
-    CurveV2MetapoolMetaDiscovery0,
-    crate::CurveV2MetapoolFactory::deploy_metapool_0Call,
-    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
-    |deployed_address: Address, trace_index: u64, call: deploy_metapool_0Call, tracer: Arc<T>| {
-        parse_meta_pool(
-            Protocol::CurveV2MetaPool,
-            deployed_address,
-            call._base_pool,
-            call._coin,
-            trace_index,
-            tracer,
-        )
-    }
-);
-
-discovery_impl!(
-    CurveV2MetapoolMetaDiscovery1,
-    crate::CurveV2MetapoolFactory::deploy_metapool_1Call,
-    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
-    |deployed_address: Address, trace_index: u64, call: deploy_metapool_1Call, tracer: Arc<T>| {
-        parse_meta_pool(
-            Protocol::CurveV2MetaPool,
-            deployed_address,
-            call._base_pool,
-            call._coin,
-            trace_index,
-            tracer,
-        )
-    }
-);
-
-discovery_impl!(
-    CurveV2MetapoolPlainDiscovery0,
-    crate::CurveV2MetapoolFactory::deploy_plain_pool_0Call,
-    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
-    |deployed_address: Address, trace_index: u64, call: deploy_plain_pool_0Call, _| {
-        parse_plain_pool(Protocol::CurveV2PlainPool, deployed_address, trace_index, call._coins)
-    }
-);
-
-discovery_impl!(
-    CurveV2MetapoolPlainDiscovery1,
-    crate::CurveV2MetapoolFactory::deploy_plain_pool_1Call,
-    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
-    |deployed_address: Address, trace_index: u64, call: deploy_plain_pool_1Call, _| {
-        parse_plain_pool(Protocol::CurveV2PlainPool, deployed_address, trace_index, call._coins)
-    }
-);
-discovery_impl!(
-    CurveV2MetapoolPlainDiscovery2,
-    crate::CurveV2MetapoolFactory::deploy_plain_pool_2Call,
-    0xB9fC157394Af804a3578134A6585C0dc9cc990d4,
-    |deployed_address: Address, trace_index: u64, call: deploy_plain_pool_2Call, _| {
-        parse_plain_pool(Protocol::CurveV2PlainPool, deployed_address, trace_index, call._coins)
-    }
-);
-
-// discovery_impl!(
-//     CurvecrvUSDBaseDiscovery,
-//     CurvecrvUSDFactory,
-//     BasePoolAdded,
-//     true,
-//     false,
-//     |protocol: Protocol,
-//      decoded_events: Vec<(alloy_primitives::Log<crvUSDBasePoolAdded>, u64)>|
-// {         curve_base_pool!(protocol, decoded_events)
-//     }
-// );
-//
-// discovery_impl!(
-//     CurvecrvUSDMetaDiscovery,
-//     CurvecrvUSDFactory,
-//     MetaPoolDeployed,
-//     false,
-//     true,
-//     |node_handle: Arc<T>,
-//      protocol: Protocol,
-//      decoded_events: Vec<(
-//         alloy_primitives::Log<crvUSDMetaPoolDeployed>,
-//         u64,
-//         Pin<Box<dyn Future<Output = Option<Address>> + Send>>
-//     )>| { curve_meta_pool!(protocol, decoded_events) }
-// );
-//
-// discovery_impl!(
-//     CurvecrvUSDPlainDiscovery,
-//     CurvecrvUSDFactory,
-//     PlainPoolDeployed,
-//     false,
-//     true,
-//     |node_handle: Arc<T>,
-//      protocol: Protocol,
-//      decoded_events: Vec<(
-//         alloy_primitives::Log<crvUSDPlainPoolDeployed>,
-//         u64,
-//         Pin<Box<dyn Future<Output = Option<Address>> + Send>>
-//     )>| { curve_plain_pool!(protocol, decoded_events) }
-// );
 
 alloy_sol_types::sol!(
+    function coins(int128 arg0) external view returns (address);
     function coins(uint256 arg0) external view returns (address);
 );
 
-async fn query_base_pool<T: TracingProvider>(tracer: &Arc<T>, base_pool: Address) -> Vec<Address> {
+async fn query_base_pool<T: TracingProvider>(
+    tracer: &Arc<T>,
+    base_pool: &Address,
+    is_meta: bool,
+) -> Vec<Address> {
     let mut result = Vec::new();
     let mut i = 0;
     loop {
-        let Ok(call) =
-            make_call_request(coinsCall::new((U256::from(i),)), tracer, base_pool, None).await
-        else {
-            break
+        let addr = if is_meta {
+            let Ok(call) = make_call_request(
+                coins_1Call {
+                    arg0: U256::from(i as u64),
+                },
+                tracer,
+                *base_pool,
+                None,
+            )
+            .await
+            else {
+                break;
+            };
+            call._0
+        } else {
+            let Ok(call) =
+                make_call_request(coins_0Call { arg0: i }, tracer, *base_pool, None).await
+            else {
+                break;
+            };
+            call._0
         };
 
         i += 1;
-        result.push(call._0);
+        result.push(addr);
     }
     result
 }
@@ -181,16 +110,14 @@ async fn parse_plain_pool<const N: usize>(
     trace_index: u64,
     tokens: [Address; N],
 ) -> Vec<NormalizedNewPool> {
-    tokens
-        .into_iter()
-        .permutations(2)
-        .map(|tokens| NormalizedNewPool {
-            pool_address: deployed_address,
-            trace_index,
-            protocol,
-            tokens,
-        })
-        .collect_vec()
+    let tokens = tokens.into_iter().filter(|t| t != &Address::ZERO).collect();
+
+    vec![NormalizedNewPool {
+        pool_address: deployed_address,
+        trace_index,
+        protocol,
+        tokens,
+    }]
 }
 
 async fn parse_meta_pool<T: TracingProvider>(
@@ -201,36 +128,13 @@ async fn parse_meta_pool<T: TracingProvider>(
     trace_index: u64,
     tracer: Arc<T>,
 ) -> Vec<NormalizedNewPool> {
-    let mut base_tokens = query_base_pool(&tracer, base_pool).await;
-    base_tokens.push(meta_token);
-    base_tokens
-        .into_iter()
-        .permutations(2)
-        .map(|tokens| NormalizedNewPool {
-            pool_address: deployed_address,
-            trace_index,
-            protocol,
-            tokens,
-        })
-        .collect_vec()
-}
+    let mut tokens = query_base_pool(&tracer, &base_pool, true).await;
+    tokens.push(meta_token);
 
-async fn parse_base_bool<T: TracingProvider>(
-    protocol: Protocol,
-    deployed_address: Address,
-    base_pool: Address,
-    trace_index: u64,
-    tracer: Arc<T>,
-) -> Vec<NormalizedNewPool> {
-    query_base_pool(&tracer, base_pool)
-        .await
-        .into_iter()
-        .permutations(2)
-        .map(|tokens| NormalizedNewPool {
-            pool_address: deployed_address,
-            trace_index,
-            protocol,
-            tokens,
-        })
-        .collect_vec()
+    vec![NormalizedNewPool {
+        pool_address: deployed_address,
+        trace_index,
+        protocol,
+        tokens,
+    }]
 }

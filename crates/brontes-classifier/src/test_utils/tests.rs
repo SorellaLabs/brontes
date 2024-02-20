@@ -23,12 +23,12 @@ use brontes_pricing::{
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
-        traits::LibmdbxWriter,
+        traits::DBWriter,
     },
     normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
     structured_trace::TraceActions,
-    tree::{BlockTree, Node},
+    tree::{root::NodeData, BlockTree, Node},
     TreeSearchArgs,
 };
 use futures::{future::join_all, StreamExt};
@@ -46,7 +46,7 @@ use crate::{
 
 pub struct ClassifierTestUtils {
     trace_loader: TraceLoader,
-    classifier:   Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
+    classifier: Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
 
     dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
@@ -55,7 +55,11 @@ impl ClassifierTestUtils {
         let trace_loader = TraceLoader::new().await;
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(trace_loader.libmdbx, tx, trace_loader.get_provider());
-        Self { classifier, trace_loader, dex_pricing_receiver: rx }
+        Self {
+            classifier,
+            trace_loader,
+            dex_pricing_receiver: rx,
+        }
     }
 
     pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
@@ -69,7 +73,10 @@ impl ClassifierTestUtils {
         quote_asset: Address,
         rx: UnboundedReceiver<DexPriceMsg>,
     ) -> Result<
-        (Arc<AtomicBool>, BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>),
+        (
+            Arc<AtomicBool>,
+            BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+        ),
         ClassifierTestUtilsError,
     > {
         let pairs = self
@@ -221,14 +228,22 @@ impl ClassifierTestUtils {
         quote_asset: Address,
         needs_tokens: Vec<Address>,
     ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), ClassifierTestUtilsError> {
-        let TxTracesWithHeaderAnd { trace, header, block, .. } =
-            self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
+        let TxTracesWithHeaderAnd {
+            trace,
+            header,
+            block,
+            ..
+        } = self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header).await;
 
-        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) {
+            Some(m)
+        } else {
+            None
+        };
 
         let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx) {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
@@ -241,10 +256,11 @@ impl ClassifierTestUtils {
             if let Some((p_block, pricing)) = pricer.next().await {
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(pricing.clone()))
+                    .await
                     .unwrap();
                 Some(pricing)
             } else {
-                return Err(ClassifierTestUtilsError::DexPricingError)
+                return Err(ClassifierTestUtilsError::DexPricingError);
             }
         } else {
             price
@@ -312,7 +328,7 @@ impl ClassifierTestUtils {
                 }
                 Err(_) => {
                     failed = true;
-                    break
+                    break;
                 }
             }
         }
@@ -339,6 +355,7 @@ impl ClassifierTestUtils {
             while let Some((p_block, quotes)) = pricer.next().await {
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(quotes.clone()))
+                    .await
                     .unwrap();
 
                 prices.push(quotes);
@@ -379,7 +396,11 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(traces, header).await;
 
-        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) {
+            Some(m)
+        } else {
+            None
+        };
 
         let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx) {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
@@ -393,10 +414,11 @@ impl ClassifierTestUtils {
                 // because we have pricing for full block. we store it
                 self.libmdbx
                     .write_dex_quotes(p_block, Some(pricing.clone()))
+                    .await
                     .unwrap();
                 Some(pricing)
             } else {
-                return Err(ClassifierTestUtilsError::DexPricingError)
+                return Err(ClassifierTestUtilsError::DexPricingError);
             }
         } else {
             price
@@ -410,14 +432,33 @@ impl ClassifierTestUtils {
         tx_hash: TxHash,
         action_number_in_tx: usize,
         eq_action: Actions,
-        tree_collect_fn: impl Fn(&Node<Actions>) -> TreeSearchArgs,
+        tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
+        assert!(
+            !tree.tx_roots.is_empty(),
+            "empty tree. most likely a invalid hash"
+        );
+
         let root = tree.tx_roots.remove(0);
         let mut actions = root.collect(&tree_collect_fn);
+        assert!(
+            !actions.is_empty(),
+            "no actions collected. protocol is either missing
+                from db or not added to dispatch"
+        );
+        assert!(
+            actions.len() > action_number_in_tx,
+            "incorrect action index"
+        );
+
         let action = actions.remove(action_number_in_tx);
 
-        assert_eq!(eq_action, action, "got: {:#?} != given: {:#?}", action, eq_action);
+        assert_eq!(
+            eq_action, action,
+            "got: {:#?} != given: {:#?}",
+            action, eq_action
+        );
 
         Ok(())
     }
@@ -425,7 +466,7 @@ impl ClassifierTestUtils {
     pub async fn has_no_actions(
         &self,
         tx_hash: TxHash,
-        tree_collect_fn: impl Fn(&Node<Actions>) -> TreeSearchArgs,
+        tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
@@ -446,7 +487,10 @@ impl ClassifierTestUtils {
         self.libmdbx
             .0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
-                AddressToProtocolInfoData { key: address, value: protocol },
+                AddressToProtocolInfoData {
+                    key: address,
+                    value: protocol,
+                },
             ])?;
 
         let TxTracesWithHeaderAnd { trace, block, .. } =
@@ -489,7 +533,9 @@ impl ClassifierTestUtils {
         if trace_addr.len() > 1 {
             trace_addr.pop().unwrap();
         } else {
-            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))
+            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(
+                created_pool,
+            ));
         };
 
         let p_trace = trace
@@ -498,7 +544,9 @@ impl ClassifierTestUtils {
             .find(|f| f.get_trace_address() == trace_addr)
             .ok_or_else(|| ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))?;
 
-        let Action::Call(call) = &p_trace.trace.action else { panic!() };
+        let Action::Call(call) = &p_trace.trace.action else {
+            panic!()
+        };
 
         let from_address = found_trace.get_from_addr();
         let created_addr = found_trace.get_create_output();
@@ -506,7 +554,13 @@ impl ClassifierTestUtils {
         let trace_index = found_trace.trace_idx;
 
         let res = DiscoveryProtocols::default()
-            .dispatch(self.get_provider(), from_address, created_addr, trace_index, calldata)
+            .dispatch(
+                self.get_provider(),
+                from_address,
+                created_addr,
+                trace_index,
+                calldata,
+            )
             .await;
 
         cmp_fn(res);
@@ -520,29 +574,48 @@ impl ClassifierTestUtils {
         address: Address,
         token0: Address,
         token1: Address,
+        token2: Option<Address>,
+        token3: Option<Address>,
+        token4: Option<Address>,
+        curve_lp_token: Option<Address>,
     ) {
-        self.libmdbx
+        if let Err(e) = self
+            .libmdbx
             .0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData {
-                    key:   address,
-                    value: ProtocolInfo { protocol, token0, token1, ..Default::default() },
+                    key: address,
+                    value: ProtocolInfo {
+                        protocol,
+                        token0,
+                        token1,
+                        token2,
+                        token3,
+                        token4,
+                        curve_lp_token,
+                        init_block: 0,
+                    },
                 },
             ])
-            .unwrap();
+        {
+            tracing::error!(error=%e, %protocol, ?address, "failed to ensure protocol is in db");
+        }
     }
 
     pub fn ensure_token(&self, token: TokenInfoWithAddress) {
-        self.libmdbx
+        if let Err(e) = self
+            .libmdbx
             .0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
-                key:   token.address,
+                key: token.address,
                 value: brontes_types::db::token_info::TokenInfo {
                     decimals: token.decimals,
-                    symbol:   token.symbol.clone(),
+                    symbol: token.symbol.clone(),
                 },
             }])
-            .unwrap();
+        {
+            tracing::error!(error=%e, ?token, "failed to ensure token is in db");
+        }
     }
 }
 
@@ -576,25 +649,31 @@ pub enum ClassifierTestUtilsError {
 /// this swap is empty such that we don't effect the state
 const fn make_fake_swap(pair: Pair) -> Actions {
     let t_in = TokenInfoWithAddress {
-        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
+        inner: brontes_types::db::token_info::TokenInfo {
+            decimals: 0,
+            symbol: String::new(),
+        },
         address: pair.0,
     };
 
     let t_out = TokenInfoWithAddress {
-        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
+        inner: brontes_types::db::token_info::TokenInfo {
+            decimals: 0,
+            symbol: String::new(),
+        },
         address: pair.1,
     };
 
     Actions::Swap(NormalizedSwap {
-        protocol:    Protocol::Unknown,
+        protocol: Protocol::Unknown,
         trace_index: 0,
-        from:        Address::ZERO,
-        recipient:   Address::ZERO,
-        pool:        Address::ZERO,
-        token_in:    t_in,
-        token_out:   t_out,
-        amount_in:   Rational::ZERO,
-        amount_out:  Rational::ZERO,
-        msg_value:   U256::ZERO,
+        from: Address::ZERO,
+        recipient: Address::ZERO,
+        pool: Address::ZERO,
+        token_in: t_in,
+        token_out: t_out,
+        amount_in: Rational::ZERO,
+        amount_out: Rational::ZERO,
+        msg_value: U256::ZERO,
     })
 }

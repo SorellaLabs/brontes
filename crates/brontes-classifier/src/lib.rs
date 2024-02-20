@@ -1,7 +1,10 @@
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+
 use std::{fmt::Debug, sync::Arc};
 
 use alloy_primitives::{Address, Bytes};
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, structured_trace::CallFrameInfo,
@@ -27,11 +30,30 @@ sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
 sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
 sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
+sol!(CurveBase2, "./classifier-abis/CurveBase2.json");
+sol!(CurveBase3, "./classifier-abis/CurveBase3.json");
+sol!(CurveBase4, "./classifier-abis/CurveBase4.json");
+sol!(
+    CurveV1MetapoolImpl,
+    "./classifier-abis/CurveV1MetapoolImpl.json"
+);
+sol!(
+    CurveV2MetapoolImpl,
+    "./classifier-abis/CurveV2MetapoolImpl.json"
+);
+sol!(CurveV2PlainImpl, "./classifier-abis/CurveV2PlainImpl.json");
+sol!(
+    CurvecrvUSDPlainImpl,
+    "./classifier-abis/CurvecrvUSDPlainImpl.json"
+);
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
-sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
+sol!(
+    UniswapX,
+    "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json"
+);
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
 
 sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
@@ -40,12 +62,30 @@ sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
-sol!(CurveV1MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV1.json");
-sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
-sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
-sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
-sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
-sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
+sol!(
+    CurveV1MetapoolFactory,
+    "./classifier-abis/CurveMetapoolFactoryV1.json"
+);
+sol!(
+    CurveV2MetapoolFactory,
+    "./classifier-abis/CurveMetapoolFactoryV2.json"
+);
+sol!(
+    CurvecrvUSDFactory,
+    "./classifier-abis/CurveCRVUSDFactory.json"
+);
+sol!(
+    CurveCryptoSwapFactory,
+    "./classifier-abis/CurveCryptoSwapFactory.json"
+);
+sol!(
+    CurveTriCryptoFactory,
+    "./classifier-abis/CurveTriCryptoFactory.json"
+);
+sol!(
+    PancakeSwapV3PoolDeployer,
+    "./classifier-abis/PancakeSwapV3PoolDeployer.json"
+);
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);
@@ -55,7 +95,7 @@ sol! {
 }
 
 pub trait ActionCollection: Sync + Send {
-    fn dispatch<DB: LibmdbxReader + LibmdbxWriter>(
+    fn dispatch<DB: LibmdbxReader + DBWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
         db_tx: &DB,
@@ -66,7 +106,7 @@ pub trait ActionCollection: Sync + Send {
 
 pub trait IntoAction: Debug + Send + Sync {
     #[allow(clippy::too_many_arguments)]
-    fn decode_trace_data<DB: LibmdbxReader + LibmdbxWriter>(
+    fn decode_trace_data<DB: LibmdbxReader + DBWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
         block: u64,
