@@ -255,13 +255,13 @@ mod tests {
             dex::DexPrices,
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
         },
-        mev::{MevType, PossibleMev, PossibleMevCollection},
+        mev::{CexDex, MevType, PossibleMev, PossibleMevCollection},
         pair::Pair,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::{ClickhouseMevBlocks, ClickhouseSearcherStats};
+    use crate::clickhouse::dbms::{ClickhouseCexDex, ClickhouseMevBlocks, ClickhouseSearcherStats};
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
