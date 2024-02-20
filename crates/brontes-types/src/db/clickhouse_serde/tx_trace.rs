@@ -306,7 +306,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
     }
 }
 
-pub mod des_clickhouse_tx_trace {
+pub mod tx_traces_inner {
     use std::{collections::HashMap, str::FromStr};
 
     use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256, U64};
@@ -317,29 +317,39 @@ pub mod des_clickhouse_tx_trace {
     };
     use serde::de::{Deserialize, Deserializer};
 
-    use crate::structured_trace::{DecodedCallData, DecodedParams, TransactionTraceWithLogs};
+    use crate::{
+        db::traces::TxTracesInner,
+        structured_trace::{DecodedCallData, DecodedParams, TransactionTraceWithLogs, TxTrace},
+    };
 
     type TxTraceClickhouseTuple = (
-        Vec<(u64, String, Option<String>, u64, Vec<u64>)>, // meta
-        Vec<(
-            u64,
-            String,
-            Vec<(String, String, String)>,
-            Vec<(String, String, String)>,
-        )>, // decoded data
-        Vec<(u64, u64, String, Vec<String>, String)>,      // logs
-        Vec<(u64, String, u64, String, [u8; 32])>,         // create action
-        Vec<(u64, String, String, u64, String, String, [u8; 32])>, // call action
-        Vec<(u64, String, [u8; 32], String)>,              // self destruct action
-        Vec<(u64, String, String, [u8; 32])>,              // reward action
-        Vec<(u64, u64, String)>,                           // call output
-        Vec<(u64, String, String, u64)>,                   // create output
+        u64,
+        (
+            Vec<(u64, String, Option<String>, u64, Vec<u64>)>, // meta
+            Vec<(
+                u64,
+                String,
+                Vec<(String, String, String)>,
+                Vec<(String, String, String)>,
+            )>, // decoded data
+            Vec<(u64, u64, String, Vec<String>, String)>,      // logs
+            Vec<(u64, String, u64, String, [u8; 32])>,         // create action
+            Vec<(u64, String, String, u64, String, String, [u8; 32])>, // call action
+            Vec<(u64, String, [u8; 32], String)>,              // self destruct action
+            Vec<(u64, String, String, [u8; 32])>,              // reward action
+            Vec<(u64, u64, String)>,                           // call output
+            Vec<(u64, String, String, u64)>,                   // create output
+        ),
+        String,
+        u128,
+        u128,
+        u64,
+        bool,
     );
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<TransactionTraceWithLogs>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
+    fn des_tx_trace(value: TxTraceClickhouseTuple) -> TxTrace {
+        let mut tx_trace = TxTrace::default();
+
         let default_trace = TransactionTraceWithLogs {
             trace: TransactionTrace {
                 action: Action::Selfdestruct(SelfdestructAction {
@@ -359,16 +369,31 @@ pub mod des_clickhouse_tx_trace {
         };
 
         let (
-            meta,
-            decoded_data,
-            logs,
-            create_action,
-            call_action,
-            self_destruct_action,
-            reward_action,
-            call_output,
-            create_output,
-        ): TxTraceClickhouseTuple = Deserialize::deserialize(deserializer)?;
+            block_num,
+            (
+                meta,
+                decoded_data,
+                logs,
+                create_action,
+                call_action,
+                self_destruct_action,
+                reward_action,
+                call_output,
+                create_output,
+            ),
+            tx_hash,
+            gas_used,
+            effective_price,
+            tx_index,
+            is_success,
+        ) = value;
+
+        tx_trace.block_number = block_num;
+        tx_trace.tx_hash = TxHash::from_str(&tx_hash).unwrap();
+        tx_trace.gas_used = gas_used;
+        tx_trace.effective_price = effective_price;
+        tx_trace.tx_index = tx_index;
+        tx_trace.is_success = is_success;
 
         let mut map = HashMap::new();
 
@@ -564,30 +589,30 @@ pub mod des_clickhouse_tx_trace {
         let mut tx_traces_with_logs = map.into_iter().collect_vec();
         tx_traces_with_logs.sort_by_key(|(idx, _)| *idx);
 
-        Ok(tx_traces_with_logs
+        tx_trace.trace = tx_traces_with_logs
             .into_iter()
             .map(|(_, trace)| trace)
-            .collect_vec())
+            .collect_vec();
+
+        tx_trace
     }
-}
-
-pub mod tx_traces_inner {
-
-    use serde::de::{Deserialize, Deserializer};
-
-    use crate::{db::traces::TxTracesInner, structured_trace::TxTrace};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<TxTracesInner, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let traces: Vec<TxTrace> = Deserialize::deserialize(deserializer)?;
+        let values: Vec<TxTraceClickhouseTuple> = Deserialize::deserialize(deserializer)?;
 
-        if traces.is_empty() {
+        let converted = values
+            .into_iter()
+            .map(|val| des_tx_trace(val))
+            .collect_vec();
+
+        if converted.is_empty() {
             Ok(TxTracesInner { traces: None })
         } else {
             Ok(TxTracesInner {
-                traces: Some(traces),
+                traces: Some(converted),
             })
         }
     }

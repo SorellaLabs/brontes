@@ -216,7 +216,6 @@ impl TransactionTraceWithLogs {
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct TxTrace {
     pub block_number: u64,
-    #[serde(with = "des_clickhouse_tx_trace")]
     pub trace: Vec<TransactionTraceWithLogs>,
     #[serde(with = "u256")]
     pub tx_hash: B256,

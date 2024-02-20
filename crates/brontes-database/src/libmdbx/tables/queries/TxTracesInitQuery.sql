@@ -94,27 +94,35 @@ WITH
             trace_create_outputs.gas_used
         ) AS create
         FROM brontes.tx_traces
+    ),
+    block_traces AS (
+        SELECT
+            tx_traces.block_number AS block_number,
+            (
+                m.data, 
+                d.data, 
+                l.data, 
+                a.create,
+                a.call,
+                a.self_destr,
+                a.reward,
+                o.call,
+                o.create
+            ) AS trace,
+            tx_traces.tx_hash AS tx_hash,
+            tx_traces.gas_used AS gas_used,
+            tx_traces.effective_price AS effective_price,
+            tx_traces.tx_index AS tx_index,
+            tx_traces.is_success AS is_success
+        FROM brontes.tx_traces AS tx_traces
+        INNER JOIN meta AS m ON m.tx_hash = tx_traces.tx_hash
+        INNER JOIN decoded_data AS d ON d.tx_hash = tx_traces.tx_hash
+        INNER JOIN logs AS l ON l.tx_hash = tx_traces.tx_hash
+        INNER JOIN actions AS a ON a.tx_hash = tx_traces.tx_hash
+        INNER JOIN outputs AS o ON o.tx_hash = tx_traces.tx_hash
     )
-SELECT
-    (
-        m.data, 
-        d.data, 
-        l.data, 
-        a.create,
-        a.call,
-        a.self_destr,
-        a.reward,
-        o.call,
-        o.create
-    ) AS trace,
-    tx_traces.tx_hash,
-    tx_traces.gas_used,
-    tx_traces.effective_price,
-    tx_traces.tx_index,
-    tx_traces.is_success
-FROM brontes.tx_traces AS tx_traces
-INNER JOIN meta AS m ON m.tx_hash = tx_traces.tx_hash
-INNER JOIN decoded_data AS d ON d.tx_hash = tx_traces.tx_hash
-INNER JOIN logs AS l ON l.tx_hash = tx_traces.tx_hash
-INNER JOIN actions AS a ON a.tx_hash = tx_traces.tx_hash
-INNER JOIN outputs AS o ON o.tx_hash = tx_traces.tx_hash
+SELECT 
+    block_number,
+    groupArray((block_number, trace, tx_hash, gas_used, effective_price, tx_index, is_success)) 
+FROM block_traces
+GROUP BY block_number
