@@ -125,4 +125,5 @@ SELECT
     block_number,
     groupArray((block_number, trace, tx_hash, gas_used, effective_price, tx_index, is_success)) 
 FROM block_traces
+WHERE block_number >= ? AND block_number < ?  
 GROUP BY block_number
