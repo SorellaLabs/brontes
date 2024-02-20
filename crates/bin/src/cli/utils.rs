@@ -1,4 +1,4 @@
-use std::{env, path::Path, sync::Arc};
+use std::{env, path::Path};
 
 use alloy_primitives::Address;
 #[cfg(feature = "local")]
@@ -61,10 +61,8 @@ pub fn get_env_vars() -> eyre::Result<String> {
 pub fn get_tracing_provider(_: &Path, _: u64, _: TaskExecutor) -> LocalProvider {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let db_path = env::var("DB_PATH").expect("No DB in .env");
-    let db = reth_db::open_db(Path::new(&db_path), Default::default()).expect("Could not open db");
     let url = format!("{db_endpoint}:{db_port}");
-    LocalProvider::new(url, Arc::new(db))
+    LocalProvider::new(url)
 }
 
 #[cfg(not(feature = "local"))]

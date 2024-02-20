@@ -426,10 +426,8 @@ pub fn init_trace_parser(
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
     let url = format!("{db_endpoint}:{db_port}");
-    let db = reth_db::open_db(std::path::Path::new(&db_path), Default::default()).unwrap();
-    let tracer = Box::new(LocalProvider::new(url, Arc::new(db))) as Box<dyn TracingProvider>;
+    let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
 
     TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx))
 }

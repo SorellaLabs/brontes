@@ -3,11 +3,11 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{fixed_bytes, hex, Bytes, U256};
+use alloy_primitives::{hex, Bytes, FixedBytes, U256};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
-use reth_primitives::Address;
+use reth_primitives::{Address, Bytecode, StorageValue};
 use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 use super::UniswapV3Pool;
@@ -16,7 +16,10 @@ sol!(
     IGetUniswapV3TickDataBatchRequest,
     "./src/protocols/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequestABI.json"
 );
-sol!(IGetERC20DataRequest, "./src/protocols/uniswap_v3/batch_request/GetERC20DataABI.json");
+sol!(
+    IGetERC20DataRequest,
+    "./src/protocols/uniswap_v3/batch_request/GetERC20DataABI.json"
+);
 
 sol!(
     struct ERC20Data {
@@ -95,17 +98,20 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
     // Pool Storage Slots
-    let slot0_slot =
-        fixed_bytes!("0000000000000000000000000000000000000000000000000000000000000000");
-    let liquidity_slot =
-        fixed_bytes!("0000000000000000000000000000000000000000000000000000000000000004");
+    let slot0_slot: FixedBytes<32> = FixedBytes::new([0u8; 32]);
+    let liquidity_slot: FixedBytes<32> = FixedBytes::with_last_byte(4);
 
     // Fetch from db
-    let slot0 = middleware.get_storage(block_number, pool.address, slot0_slot)?;
-    let liquidity = middleware.get_storage(block_number, pool.address, liquidity_slot)?;
+    let slot0: Option<StorageValue> = middleware
+        .get_storage(block_number, pool.address, slot0_slot)
+        .await?;
+    let liquidity: Option<StorageValue> = middleware
+        .get_storage(block_number, pool.address, liquidity_slot)
+        .await?;
 
     // Fetch bytecode
-    let pool_bytecode = middleware.get_bytecode(block_number, pool.address)?;
+    let pool_bytecode: Option<Bytecode> =
+        middleware.get_bytecode(block_number, pool.address).await?;
 
     // Decode slot0 into sqrt_price and tick
     if let Some(slot0) = slot0 {

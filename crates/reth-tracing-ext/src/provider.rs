@@ -94,7 +94,7 @@ impl TracingProvider for TracingClient {
     }
 
     // DB Access Methods
-    fn get_storage(
+    async fn get_storage(
         &self,
         block_number: Option<u64>,
         address: Address,
@@ -110,7 +110,7 @@ impl TracingProvider for TracingClient {
         Ok(storage_value)
     }
 
-    fn get_bytecode(
+    async fn get_bytecode(
         &self,
         block_number: Option<u64>,
         address: Address,

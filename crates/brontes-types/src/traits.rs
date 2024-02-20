@@ -42,14 +42,14 @@ pub trait TracingProvider: Send + Sync + 'static {
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)>;
 
     // DB Access Methods
-    fn get_storage(
+    async fn get_storage(
         &self,
         block_number: Option<u64>,
         address: Address,
         storage_key: B256,
     ) -> eyre::Result<Option<StorageValue>>;
 
-    fn get_bytecode(
+    async fn get_bytecode(
         &self,
         block_number: Option<u64>,
         address: Address,
