@@ -12,7 +12,7 @@ use crate::{
     banner,
     cli::{get_tracing_provider, init_inspectors},
     runner::CliContext,
-    BrontesRunConfig,
+    BrontesRunConfig, MevProcessor,
 };
 
 #[derive(Debug, Parser)]
@@ -74,7 +74,7 @@ impl RunArgs {
         let result = executor
             .clone()
             .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
-                if let Ok(brontes) = BrontesRunConfig::new(
+                if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
                     self.start_block,
                     self.end_block,
                     max_tasks,
