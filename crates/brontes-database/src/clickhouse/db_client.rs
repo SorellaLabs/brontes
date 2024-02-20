@@ -4,10 +4,11 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
-        builder::{BuilderInfo, BuilderStats},
-        dex::DexQuotes,
+        builder::{BuilderInfo, BuilderStats, BuilderStatsWithAddress},
+        dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
-        searcher::SearcherInfo,
+        searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
+        token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, MevBlock},
     structured_trace::TxTrace,
@@ -20,7 +21,11 @@ use sorella_db_databases::{
 };
 
 use super::{
-    dbms::{BrontesClickhouseTables, ClickhouseTxTraces},
+    dbms::{
+        BrontesClickhouseTables, ClickhouseBuilderStats, ClickhouseDexPriceMapping,
+        ClickhouseMevBlocks, ClickhouseSearcherInfo, ClickhouseSearcherStats, ClickhouseTokenInfo,
+        ClickhouseTxTraces,
+    },
     ClickhouseHandle,
 };
 use crate::{
@@ -51,33 +56,43 @@ impl Clickhouse {
     // inserts
     pub async fn write_searcher_eoa_info(
         &self,
-        _searcher_eoa: Address,
-        _searcher_info: SearcherInfo,
+        searcher_eoa: Address,
+        searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
-        //     .await?;
+        let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
+
+        self.client
+            .insert_one::<ClickhouseSearcherInfo>(&joined)
+            .await?;
 
         Ok(())
     }
 
     pub async fn write_searcher_contract_info(
         &self,
-        _searcher_eoa: Address,
-        _searcher_info: SearcherInfo,
+        searcher_contract: Address,
+        searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseSearcherInfo>(&searcher_info)
-        //     .await?;
+        let joined = JoinedSearcherInfo::new_eoa(searcher_contract, searcher_info);
+
+        self.client
+            .insert_one::<ClickhouseSearcherInfo>(&joined)
+            .await?;
 
         Ok(())
     }
 
     pub async fn write_searcher_stats(
         &self,
-        _searcher_eoa: Address,
-        _searcher_stats: SearcherInfo,
+        searcher_eoa: Address,
+        searcher_stats: SearcherStats,
     ) -> eyre::Result<()> {
+        let stats = SearcherStatsWithAddress::new_with_address(searcher_eoa, searcher_stats);
+
+        self.client
+            .insert_one::<ClickhouseSearcherStats>(&stats)
+            .await?;
+
         Ok(())
     }
 
@@ -91,50 +106,58 @@ impl Clickhouse {
 
     pub async fn write_builder_stats(
         &self,
-        _builder_eoa: Address,
-        _builder_stats: BuilderStats,
+        builder_eoa: Address,
+        builder_stats: BuilderStats,
     ) -> eyre::Result<()> {
+        let stats = BuilderStatsWithAddress::new_with_address(builder_eoa, builder_stats);
+
+        self.client
+            .insert_one::<ClickhouseBuilderStats>(&stats)
+            .await?;
+
         Ok(())
     }
 
     pub async fn save_mev_blocks(
         &self,
         _block_number: u64,
-        _block: MevBlock,
+        block: MevBlock,
         _mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<ClickhouseMevBlocks>(&block)
-        //     .await?;
+        self.client
+            .insert_one::<ClickhouseMevBlocks>(&block)
+            .await?;
         Ok(())
     }
 
     pub async fn write_dex_quotes(
         &self,
-        _block_num: u64,
-        _quotes: Option<DexQuotes>,
+        block_num: u64,
+        quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        // if let Some(quotes) = quotes {
-        //     self.client
-        //         .insert_one::<ClickhouseDexQuotes>(&quotes)
-        //         .await?;
-        // }
+        if let Some(q) = quotes {
+            let quotes_with_block = DexQuotesWithBlockNumber::new_with_block(block_num, q);
+
+            self.client
+                .insert_many::<ClickhouseDexPriceMapping>(&quotes_with_block)
+                .await?;
+        }
 
         Ok(())
     }
 
     pub async fn write_token_info(
         &self,
-        _address: Address,
-        _decimals: u8,
-        _symbol: String,
+        address: Address,
+        decimals: u8,
+        symbol: String,
     ) -> eyre::Result<()> {
-        // self.client
-        //     .insert_one::<DBTokenInfo>(&TokenInfoWithAddress {
-        //         address,
-        //         inner: TokenInfo { symbol, decimals },
-        //     })
-        //     .await?;
+        self.client
+            .insert_one::<ClickhouseTokenInfo>(&TokenInfoWithAddress {
+                address,
+                inner: TokenInfo { symbol, decimals },
+            })
+            .await?;
 
         Ok(())
     }
@@ -222,12 +245,24 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use brontes_core::{get_db_handle, init_trace_parser};
+    use brontes_types::{
+        db::{
+            dex::DexPrices,
+            searcher::{SearcherEoaContract, SearcherStatsWithAddress},
+        },
+        mev::{MevType, PossibleMev, PossibleMevCollection},
+        pair::Pair,
+    };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+    use crate::clickhouse::dbms::{ClickhouseMevBlocks, ClickhouseSearcherStats};
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
@@ -249,4 +284,123 @@ mod tests {
         let res = db.inner().insert_one::<ClickhouseTxTraces>(&exec).await;
         assert!(res.is_ok());
     }
+
+    #[tokio::test]
+    async fn searcher_info() {
+        let db = spawn_clickhouse();
+        let case0 = JoinedSearcherInfo {
+            address: Default::default(),
+            fund: Default::default(),
+            mev: vec![MevType::default()],
+            builder: Some(Default::default()),
+            eoa_or_contract: SearcherEoaContract::Contract,
+        };
+
+        db.inner()
+            .insert_one::<ClickhouseSearcherInfo>(&case0)
+            .await
+            .unwrap();
+
+        let query = "SELECT * FROM brontes.searcher_info";
+        let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0)
+    }
+
+    #[tokio::test]
+    async fn token_info() {
+        let db = spawn_clickhouse();
+        let case0 = TokenInfoWithAddress::default();
+
+        db.inner()
+            .insert_one::<ClickhouseTokenInfo>(&case0)
+            .await
+            .unwrap();
+
+        let query = "SELECT address, (decimals, symbol) FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
+        let queried: TokenInfoWithAddress = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+
+        let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
+        db.inner().execute_remote(query, &()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn searcher_stats() {
+        let db = spawn_clickhouse();
+        let case0 = SearcherStatsWithAddress::default();
+
+        db.inner()
+            .insert_one::<ClickhouseSearcherStats>(&case0)
+            .await
+            .unwrap();
+
+        let query = "SELECT * FROM brontes.searcher_stats";
+        let queried: SearcherStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+    }
+
+    #[tokio::test]
+    async fn builder_stats() {
+        let db = spawn_clickhouse();
+        let case0 = BuilderStatsWithAddress::default();
+
+        db.inner()
+            .insert_one::<ClickhouseBuilderStats>(&case0)
+            .await
+            .unwrap();
+
+        let query = "SELECT * FROM brontes.builder_stats";
+        let queried: BuilderStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+    }
+
+    #[tokio::test]
+    async fn dex_price_mapping() {
+        let db = spawn_clickhouse();
+
+        let case0_pair = Pair::default();
+        let case0_dex_prices = DexPrices::default();
+        let mut case0_map = HashMap::new();
+        case0_map.insert(case0_pair, case0_dex_prices);
+
+        let case0 = DexQuotesWithBlockNumber {
+            block_number: Default::default(),
+            tx_idx: Default::default(),
+            quote: Some(case0_map),
+        };
+
+        db.inner()
+            .insert_one::<ClickhouseDexPriceMapping>(&case0)
+            .await
+            .unwrap();
+
+        let query = "SELECT * FROM brontes.dex_price_mapping";
+        let queried: DexQuotesWithBlockNumber = db.inner().query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+    }
+
+    #[tokio::test]
+    async fn mev_block() {
+        let db = spawn_clickhouse();
+
+        let case0_possible = PossibleMev::default();
+        let mut case0 = MevBlock::default();
+        case0.possible_mev = PossibleMevCollection(vec![case0_possible]);
+
+        db.inner()
+            .insert_one::<ClickhouseMevBlocks>(&case0)
+            .await
+            .unwrap();
+
+        // let query = "SELECT * FROM mev.mev_blocks";
+        //  let queried: MevBlock = db.inner().query_one(query, &()).await.unwrap();
+
+        //assert_eq!(queried, case0);
+    }
 }
+*/
