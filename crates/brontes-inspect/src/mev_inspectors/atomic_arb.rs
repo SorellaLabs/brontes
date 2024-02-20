@@ -427,6 +427,7 @@ mod tests {
         let tx = hex!("ac1127310fdec0b07e618407eabfb7cdf5ada81dc47e914c76fc759843346a0e").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("c18360217d8f7ab5e7c516566761ea12ce7f9d72").into())
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
