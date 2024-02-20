@@ -67,7 +67,7 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
+    "brontes",
     ClickhouseSearcherInfo,
     JoinedSearcherInfo,
     NO_FILE
