@@ -1,43 +1,47 @@
 use std::{
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::ClickhouseHandle,
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
-};
+use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::{debug, info};
 
-use super::shared::{inserts::process_results, state_collector::StateCollector};
+use super::shared::state_collector::StateCollector;
+use crate::Processor;
 
-pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
+pub struct TipInspector<
+    T: TracingProvider,
+    DB: LibmdbxReader + DBWriter,
+    CH: ClickhouseHandle,
+    P: Processor,
+> {
     current_block: u64,
     parser: &'static Parser<'static, T, DB>,
     state_collector: StateCollector<T, DB, CH>,
     database: &'static DB,
-    inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+    inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
+    _p: PhantomData<P>,
 }
 
-impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
-    TipInspector<T, DB, CH>
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: Processor>
+    TipInspector<T, DB, CH, P>
 {
     pub fn new(
         current_block: u64,
-        _quote_asset: Address,
         state_collector: StateCollector<T, DB, CH>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
-        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+        inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     ) -> Self {
         Self {
             state_collector,
@@ -46,6 +50,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             parser,
             processing_futures: FuturesUnordered::new(),
             database,
+            _p: PhantomData,
         }
     }
 
@@ -119,7 +124,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
         info!(target:"brontes","Completed DEX pricing");
-        self.processing_futures.push(Box::pin(process_results(
+        self.processing_futures.push(Box::pin(P::process_results(
             self.database,
             self.inspectors,
             tree.into(),
@@ -128,8 +133,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     }
 }
 
-impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Future
-    for TipInspector<T, DB, CH>
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: Processor> Future
+    for TipInspector<T, DB, CH, P>
 {
     type Output = ();
 
