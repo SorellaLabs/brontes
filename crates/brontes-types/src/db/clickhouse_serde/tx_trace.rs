@@ -59,6 +59,11 @@ impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
                     this.return_data.push(vec![]);
                 }
             });
+
+        println!("THIS trace_idx: {:?}\n", this.trace_idx);
+        println!("THIS function_name: {:?}\n", this.function_name);
+        println!("THIS call_data: {:?}\n", this.call_data);
+        println!("THIS return_data: {:?}\n", this.return_data);
         this
     }
 }
