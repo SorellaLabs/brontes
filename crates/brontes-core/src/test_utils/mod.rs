@@ -1,10 +1,10 @@
+#[cfg(feature = "local-reth")]
+use std::sync::OnceLock;
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
     sync::Arc,
 };
-#[cfg(feature = "local-reth")]
-use std::sync::OnceLock;
 
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
@@ -365,7 +365,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint)),
             ));
 
-            let (tx, rx) = unbounded_channel();
+            let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse()));
             if this.init_full_range_tables(clickhouse).await {
                 let tracer = init_trace_parser(handle, tx, &this, 5).await;
