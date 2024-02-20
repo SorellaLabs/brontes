@@ -266,6 +266,7 @@ impl Serialize for TxTrace {
         ser_struct.serialize_field("is_success", &self.is_success)?;
 
         let trace_idx = self.trace.iter().map(|trace| trace.trace_idx).collect_vec();
+        println!("Trace Idx: {}", trace_idx.len());
         ser_struct.serialize_field("trace_meta.trace_idx", &trace_idx)?;
 
         let msg_sender = self
@@ -280,6 +281,7 @@ impl Serialize for TxTrace {
             "trace_meta.decoded_data.function_name",
             &decoded_data.function_name,
         )?;
+        println!("Call Data: {}", decoded_data.call_data.len());
         ser_struct.serialize_field("trace_meta.decoded_data.call_data", &decoded_data.call_data)?;
         ser_struct.serialize_field(
             "trace_meta.decoded_data.return_data",
