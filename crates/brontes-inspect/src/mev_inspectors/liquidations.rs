@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
-    ToFloatNearest, TreeSearchArgs, TxInfo,
+    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
 };
 use hyper::header;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -37,16 +37,8 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(|node, info| TreeSearchArgs {
-            collect_current_node: info
-                .get_ref(node.data)
-                .map(|node| node.is_swap() || node.is_liquidation())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|node| info.get_ref(*node))
-                .any(|action| action.is_swap() || action.is_liquidation()),
+        let liq_txs = tree.collect_all(|node, info| {
+            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_liquidation])
         });
 
         liq_txs

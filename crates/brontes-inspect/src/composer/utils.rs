@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational, TreeSearchArgs,
+    ToScaledRational, TreeSearchArgs, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
@@ -219,17 +219,11 @@ pub fn calculate_builder_profit(
         return (builder_payments, 0.0);
     }
 
-    let builder_sponsorships = tree.collect_all(|node, info| TreeSearchArgs {
-        collect_current_node: info
-            .get_ref(node.data)
-            .map(|node| node.is_eth_transfer() && node.get_from_address() == builder_address)
-            .unwrap_or_default(),
-        child_node_to_collect: node
-            .subactions
-            .iter()
-            .filter_map(|node| info.get_ref(*node))
-            .any(|action| action.is_eth_transfer() && action.get_from_address() == builder_address),
-    });
+    let builder_sponsorships = tree.collect_all(
+        TreeSearchBuilder::default()
+            .with_action(Actions::is_eth_transfer)
+            .with_from_address(builder_address),
+    );
 
     let builder_sponsorship_amount: i128 = builder_sponsorships
         .values()

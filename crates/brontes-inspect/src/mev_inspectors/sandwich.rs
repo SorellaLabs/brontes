@@ -11,7 +11,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     root::NodeData,
     tree::{BlockTree, GasDetails, Node, TxInfo},
-    ToFloatNearest, TreeSearchArgs,
+    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -50,17 +50,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let search_fn = |node: &Node, info: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: info
-                .get_ref(node.data)
-                .map(|node| node.is_swap() || node.is_transfer())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|node| info.get_ref(*node))
-                .any(|action| action.is_swap() || action.is_transfer()),
-        };
+        let search_args =
+            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_transfer]);
 
         Self::get_possible_sandwich(tree.clone())
             .into_iter()
@@ -91,7 +82,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|victim| {
                             victim
                                 .iter()
-                                .map(|v| tree.collect(*v, search_fn))
+                                .map(|v| tree.collect(*v, serach_args))
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<_>>();
@@ -127,7 +118,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                     let searcher_actions = possible_frontruns
                         .iter()
                         .chain(vec![&possible_backrun])
-                        .map(|tx| tree.collect(*tx, search_fn))
+                        .map(|tx| tree.collect(*tx, search_args))
                         .filter(|f| !f.is_empty())
                         .collect::<Vec<Vec<Actions>>>();
 

@@ -7,7 +7,7 @@ use brontes_types::{
     mev::{AtomicArb, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     tree::BlockTree,
-    ToFloatNearest, TreeSearchArgs, TxInfo,
+    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
 };
 use itertools::{Either, Itertools};
 use malachite::{num::basic::traits::Zero, Rational};
@@ -40,27 +40,12 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        let interesting_state = tree.collect_all(|node, info| TreeSearchArgs {
-            collect_current_node: info
-                .get_ref(node.data)
-                .map(|action| {
-                    action.is_transfer()
-                        || action.is_flash_loan()
-                        || action.is_swap()
-                        || action.is_collect()
-                })
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|node| info.get_ref(*node))
-                .any(|action| {
-                    action.is_transfer()
-                        || action.is_flash_loan()
-                        || action.is_swap()
-                        || action.is_collect()
-                }),
-        });
+        let interesting_state = tree.collect_all(TreeSearchBuilder::default().with_actions([
+            Actions::is_transfer,
+            Actions::is_flash_loan,
+            Actions::is_swap,
+            Actions::is_collect,
+        ]));
 
         interesting_state
             .into_par_iter()

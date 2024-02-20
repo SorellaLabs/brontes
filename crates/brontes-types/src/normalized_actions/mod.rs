@@ -193,40 +193,6 @@ impl Serialize for Actions {
     }
 }
 
-macro_rules! search_fn {
-    ($($fn_call:ident),+) => {
-        ::paste::paste!(
-            impl Actions {
-                $(
-                pub fn [<get _$fn_call>](node: Node, data: NodeData<Actions>) -> TreeSearchArgs {
-                        TreeSearchArgs {
-                            collect_current_node: data
-                                .get_ref(node.data)
-                                .map(|s| s.$fn_call())
-                                .unwrap_or_default(),
-
-                            child_node_to_collect: node
-                                .inner
-                                .iter()
-                                .filter_map(|a| data.get_ref(a.data))
-                                .any(|n| n.$fn_call()),
-                    }
-                }
-            )+
-        }
-        );
-    };
-}
-
-search_fn!(
-    is_transfer,
-    is_swap,
-    is_mint,
-    is_burn,
-    is_collect,
-    is_eth_transfer
-);
-
 impl Actions {
     pub fn force_liquidation(self) -> NormalizedLiquidation {
         match self {
@@ -386,6 +352,7 @@ impl Actions {
     pub const fn is_eth_transfer(&self) -> bool {
         matches!(self, Actions::EthTransfer(_))
     }
+
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
             return u.is_static_call();

@@ -50,7 +50,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    ToFloatNearest, TxInfo,
+    ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use malachite::{
     num::basic::traits::{Two, Zero},
@@ -110,17 +110,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let swap_txes = tree.collect_all(|node, info| brontes_types::TreeSearchArgs {
-            collect_current_node: info
-                .get_ref(node.data)
-                .map(|node| node.is_swap())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|node| info.get_ref(*node))
-                .any(|action| action.is_swap()),
-        });
+        let swap_txes = tree
+            .collect_all(|node, info| TreeSearchBuilder::default().with_action(Actions::is_swap));
 
         swap_txes
             .into_par_iter()

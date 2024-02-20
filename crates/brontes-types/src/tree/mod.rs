@@ -136,7 +136,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         });
     }
 
-    pub fn collect<F>(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<V> {
+    pub fn collect(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<V> {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect(&call)
         } else {
