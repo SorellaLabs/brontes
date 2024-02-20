@@ -151,7 +151,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseSelfDestructAction {
         value
             .trace
             .iter()
-            .filter(|trace| trace.trace.action.is_call())
+            .filter(|trace| trace.trace.action.is_selfdestruct())
             .for_each(|trace| match &trace.trace.action {
                 Action::Selfdestruct(c) => {
                     this.address.push(format!("{:?}", c.address));
@@ -179,7 +179,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseRewardAction {
         value
             .trace
             .iter()
-            .filter(|trace| trace.trace.action.is_call())
+            .filter(|trace| trace.trace.action.is_reward())
             .for_each(|trace| match &trace.trace.action {
                 Action::Reward(c) => {
                     this.author.push(format!("{:?}", c.author));
