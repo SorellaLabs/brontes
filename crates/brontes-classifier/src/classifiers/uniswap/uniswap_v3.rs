@@ -167,7 +167,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node, NodeData,
-        Protocol::UniswapV3, ToScaledRational, TreeSearchArgs,
+        Protocol::UniswapV3, ToScaledRational, TreeSearchArgs, TreeSearchBuilder,
     };
 
     use super::*;
@@ -195,20 +195,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_swap())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_swap()),
-        };
-
         classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
             .await
             .unwrap();
     }
@@ -237,20 +230,13 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_mint())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_mint()),
-        };
-
         classifier_utils
-            .contains_action(mint, 0, eq_action, search_fn)
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
             .await
             .unwrap();
     }
@@ -277,20 +263,13 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_burn())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_burn()),
-        };
-
         classifier_utils
-            .contains_action(burn, 0, eq_action, search_fn)
+            .contains_action(
+                burn,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_burn),
+            )
             .await
             .unwrap();
     }
@@ -317,20 +296,13 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_collect())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_collect()),
-        };
-
         classifier_utils
-            .contains_action(collect, 0, eq_action, search_fn)
+            .contains_action(
+                collect,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_collect),
+            )
             .await
             .unwrap();
     }

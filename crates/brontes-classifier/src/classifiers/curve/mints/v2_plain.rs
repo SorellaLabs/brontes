@@ -84,7 +84,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs,
+        Node, NodeData, ToScaledRational, TreeSearchArgs, TreeSearchBuilder,
     };
 
     use super::*;
@@ -139,20 +139,13 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_mint())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_mint()),
-        };
-
         classifier_utils
-            .contains_action(mint, 0, eq_action, search_fn)
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
             .await
             .unwrap();
     }

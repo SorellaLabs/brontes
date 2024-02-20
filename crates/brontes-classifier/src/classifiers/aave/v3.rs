@@ -119,7 +119,7 @@ mod tests {
     use brontes_types::{
         normalized_actions::{Actions, NormalizedLiquidation},
         tree::root::NodeData,
-        Node, Protocol, TreeSearchArgs,
+        Node, Protocol, TreeSearchArgs, TreeSearchBuilder,
     };
     use malachite::Rational;
 
@@ -149,20 +149,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|a| a.is_liquidation())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|node| data.get_ref(*node))
-                .any(|action| action.is_liquidation()),
-        };
-
         classifier_utils
-            .contains_action(aave_v3_liquidation, 0, eq_action, search_fn)
+            .contains_action(
+                aave_v3_liquidation,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_liquidation),
+            )
             .await
             .unwrap();
     }
