@@ -495,13 +495,16 @@ impl DBWriter for LibmdbxReadWriter {
     async fn write_searcher_info(
         &self,
         eoa_address: Address,
-        contract_address: Address,
+        contract_address: Option<Address>,
         eoa_info: SearcherInfo,
-        contract_info: SearcherInfo,
+        contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
         self.write_searcher_eoa_info(eoa_address, eoa_info).await?;
-        self.write_searcher_contract_info(contract_address, contract_info)
-            .await?;
+
+        if let Some(contract_address) = contract_address {
+            self.write_searcher_contract_info(contract_address, contract_info.unwrap_or_default())
+                .await?;
+        }
         Ok(())
     }
 

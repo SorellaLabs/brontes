@@ -23,11 +23,16 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn try_fetch_searcher_info(
         &self,
         eoa_address: Address,
-        contract_address: Address,
+        contract_address: Option<Address>,
     ) -> eyre::Result<(Option<SearcherInfo>, Option<SearcherInfo>)> {
         let eoa_info = self.try_fetch_searcher_eoa_info(eoa_address)?;
-        let contract_info = self.try_fetch_searcher_contract_info(contract_address)?;
-        Ok((eoa_info, contract_info))
+
+        if let Some(contract_address) = contract_address {
+            let contract_info = self.try_fetch_searcher_contract_info(contract_address)?;
+            Ok((eoa_info, contract_info))
+        } else {
+            Ok((eoa_info, None))
+        }
     }
 
     fn try_fetch_searcher_eoa_info(

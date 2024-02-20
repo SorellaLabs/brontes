@@ -261,9 +261,11 @@ pub fn calculate_builder_profit(
                 .iter()
                 .filter(|bundle| {
                     builder_info.searchers_eoas.contains(&bundle.header.eoa)
-                        || builder_info
-                            .searchers_contracts
-                            .contains(&bundle.header.mev_contract)
+                        || bundle
+                            .header
+                            .mev_contract
+                            .map(|mc| builder_info.searchers_contracts.contains(&mc))
+                            .unwrap_or(false)
                 })
                 .map(|bundle| bundle.header.profit_usd)
                 .sum()

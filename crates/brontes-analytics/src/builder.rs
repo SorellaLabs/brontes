@@ -27,13 +27,15 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         for mev_block in mev_blocks {
             for bundle in mev_block.mev {
                 if let Some(types) = &mev_type {
-                    if !types.contains(&bundle.mev_type()) {
+                    if !types.contains(&bundle.mev_type())
+                        || bundle.get_searcher_contract().is_none()
+                    {
                         continue;
                     }
                 }
 
                 let (stats, builders) = searcher_to_builder_map
-                    .entry(bundle.get_searcher_contract())
+                    .entry(bundle.get_searcher_contract().unwrap())
                     .or_insert_with(|| (SearcherStats::default(), HashSet::new()));
 
                 stats.update_with_bundle(&bundle.header);

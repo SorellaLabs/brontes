@@ -53,9 +53,9 @@ pub trait DBWriter: Send + Unpin + 'static {
     fn write_searcher_info(
         &self,
         eoa_address: Address,
-        contract_address: Address,
+        contract_address: Option<Address>,
         eoa_info: SearcherInfo,
-        contract_info: SearcherInfo,
+        contract_info: Option<SearcherInfo>,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
             .write_searcher_info(eoa_address, contract_address, eoa_info, contract_info)
