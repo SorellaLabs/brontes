@@ -3,6 +3,18 @@
 [builders."0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"]
 name = "beaverbuild"
 fund = "SymbolicCapitalPartners"
+pub_keys = [
+    "0x93582c97ac58670ba118aae52cf6355d8c680a2a538bf77c90873e3fe7ddc0a6dd231e2e2ea06bdc07e9b160883512a3",
+    "0x8d2b4626cd64c2889ff4822c6bdb25161bbd8a3976f087086403c7ecf185eee4f2f71006c2a0dc8ade3bf0d8552236f4",
+    "0xb9f88bc584a53fabb5b295e50638b20218c8b2303f3d26daef84ddb9609f1f93a95608806c94e564ebcd6e3976d3838d",
+    "0xabcf636b7081e47edf77cf3f42b9e8b0c3a27a049b8eef3fa810ce6f7262036bea1910bc36a9a4791e8ee21587b82bf3",
+    "0xacb407cfb554255db2fbbb320f79bb7f1cc1e8d2dc43324e8e31baafd0836340d49c43eebc51828f53bf6d364f9ac207",
+    "0x88e1d82a11804c7f4596b2b0aecf19f62f4a6cf1e893c152242b0ca15374b9085755870e3c3456789befa618bbccadc8",
+    "0x840c9dafb68f5cd460b5d5677b85114e89187e7c890f11a8c5fc4a3e4f4aa74136ef0fcd62cf7de9741afcf7d4d3360d",
+    "0x8c75cfb66562e7d8c39ef6dfd40b2f464a058f0ff939a1fd535f18c85a74100a1298555d3931367e9655504c4a9f38bf"
+
+
+]
 searchers_eoas = [
     "0x0cac3d1a887206e0f6169222C4504301A8b4b993",
     "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9",
@@ -84,11 +96,18 @@ searchers_contracts = ["0x32801ab1957aaad1c65289b51603373802b4e8bb", "0xD198fBE6
 [builders."0x8186b214A917fb4922Eb984fb80CFAfA30EE8810"]
 name = "loki builder"
 
-#[builders.""]
-#name = "Builder+"
-#pub_keys = ["0x8042acb1f21ff5ee9d0035c2ea5d9a09c3810b048ba28f89e9a94e8e76c5fdd5bebce9b88af4e489ccd1daf735b829bb"]
-#searchers = []
-#ultrasound_relay_collateral_address = ""
+[builders."0xdcca982701a264e8d629a6e8cfba9c1a27912623"]
+name = "Tokka Builder"
+fund = "TokkaLabs"
+searchers_contracts = ["0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
+
+
+
+[builders."0xedcb63f859905be353d85d53041e9697dbea5f81"]
+name = "Builder+"
+pub_keys = ["0x8042acb1f21ff5ee9d0035c2ea5d9a09c3810b048ba28f89e9a94e8e76c5fdd5bebce9b88af4e489ccd1daf735b829bb"]
+
+
 
 [builders."0xFeebabE6b0418eC13b30aAdF129F5DcDd4f70CeA"]
 name = "eth-builder"
@@ -236,16 +255,17 @@ builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 [searcher_contracts."0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
 fund = "TokkaLabs"
 mev = ["CexDex"] 
-builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
+builder = "0xdcca982701a264e8d629a6e8cfba9c1a27912623"
 
 [searcher_contracts."0xeeaa83b2d581a3a790774d4dae7bf354fffe3376"]
 fund = "EthBuilder"
 mev = ["CexDex"] 
-builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
+builder = "0xFeebabE6b0418eC13b30aAdF129F5DcDd4f70CeA"
 
 [searcher_contracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]
 fund = "ICANHAZBLOCK"
 mev = ["Sandwich"]
+builder = "0x229b8325bb9ac04602898b7e8989998710235d5f"
 
 [searcher_contracts."0x9507c04b10486547584c37bcbd931b2a4fee9a41"]
 fund = "JumpTrading"
