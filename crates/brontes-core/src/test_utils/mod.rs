@@ -1,7 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
-    sync::{Arc, OnceLock},
+    sync::Arc,
 };
 
 #[cfg(feature = "local-clickhouse")]
@@ -347,21 +347,23 @@ pub struct BlockTracesWithHeaderAnd<T> {
 }
 
 // done because we can only have 1 instance of libmdbx or we error
-static DB_HANDLE: tokio::sync::OnceCell<LibmdbxReadWriter> = OnceCell::const_new();
+static DB_HANDLE: tokio::sync::OnceCell<&'static LibmdbxReadWriter> = OnceCell::const_new();
 #[cfg(feature = "local-reth")]
 static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
 pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
-    DB_HANDLE
+    *DB_HANDLE
         .get_or_init(|| async {
             let _ = dotenv::dotenv();
             init_tracing();
             let brontes_db_endpoint =
                 env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-            let this = LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
-                .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint));
+            let this = &*Box::leak(Box::new(
+                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
+                    .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint)),
+            ));
 
-            let (tx, rx) = unbounded_channel();
+            let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse()));
             if this.init_full_range_tables(clickhouse).await {
                 let tracer = init_trace_parser(handle, tx, &this, 5).await;
