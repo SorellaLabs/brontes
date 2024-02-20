@@ -300,30 +300,30 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
 
-        ser_struct.serialize_field("mev_count.mev_count", &self.mev_count.mev_count)?;
+        ser_struct.serialize_field("mev_count.mev_count", &vec![self.mev_count.mev_count])?;
         ser_struct.serialize_field(
             "mev_count.sandwich_count",
-            &self.mev_count.sandwich_count.unwrap_or_default(),
+            &vec![self.mev_count.sandwich_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
             "mev_count.cex_dex_count",
-            &self.mev_count.cex_dex_count.unwrap_or_default(),
+            &vec![self.mev_count.cex_dex_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
             "mev_count.jit_count",
-            &self.mev_count.jit_count.unwrap_or_default(),
+            &vec![self.mev_count.jit_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
             "mev_count.jit_sandwich_count",
-            &self.mev_count.jit_sandwich_count.unwrap_or_default(),
+            &vec![self.mev_count.jit_sandwich_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
             "mev_count.atomic_backrun_count",
-            &self.mev_count.atomic_backrun_count.unwrap_or_default(),
+            &vec![self.mev_count.atomic_backrun_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
             "mev_count.liquidation_count",
-            &self.mev_count.liquidation_count.unwrap_or_default(),
+            &vec![self.mev_count.liquidation_count.unwrap_or_default()],
         )?;
 
         ser_struct.serialize_field("eth_price", &self.eth_price)?;

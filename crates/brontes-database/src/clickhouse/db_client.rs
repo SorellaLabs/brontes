@@ -294,12 +294,10 @@ mod tests {
             eoa_or_contract: SearcherEoaContract::Contract,
         };
 
-        let res = db
-            .inner()
+        db.inner()
             .insert_one::<ClickhouseSearcherInfo>(&case0)
             .await
             .unwrap();
-        //assert!(res.is_ok());
 
         let query = "SELECT * FROM brontes.searcher_info";
         let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
@@ -312,12 +310,10 @@ mod tests {
         let db = spawn_clickhouse();
         let case0 = TokenInfoWithAddress::default();
 
-        let res = db
-            .inner()
+        db.inner()
             .insert_one::<ClickhouseTokenInfo>(&case0)
             .await
             .unwrap();
-        //assert!(res.is_ok());
 
         let query = "SELECT address, (decimals, symbol) FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
         let queried: TokenInfoWithAddress = db.inner().query_one(query, &()).await.unwrap();
@@ -325,7 +321,7 @@ mod tests {
         assert_eq!(queried, case0);
 
         let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
-        let queried = db.inner().execute_remote(query, &()).await.unwrap();
+        db.inner().execute_remote(query, &()).await.unwrap();
     }
 
     #[tokio::test]
@@ -333,12 +329,10 @@ mod tests {
         let db = spawn_clickhouse();
         let case0 = SearcherStatsWithAddress::default();
 
-        let res = db
-            .inner()
+        db.inner()
             .insert_one::<ClickhouseSearcherStats>(&case0)
             .await
             .unwrap();
-        //assert!(res.is_ok());
 
         let query = "SELECT * FROM brontes.searcher_stats";
         let queried: SearcherStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
@@ -351,12 +345,10 @@ mod tests {
         let db = spawn_clickhouse();
         let case0 = BuilderStatsWithAddress::default();
 
-        let res = db
-            .inner()
+        db.inner()
             .insert_one::<ClickhouseBuilderStats>(&case0)
             .await
             .unwrap();
-        //assert!(res.is_ok());
 
         let query = "SELECT * FROM brontes.builder_stats";
         let queried: BuilderStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
@@ -379,12 +371,10 @@ mod tests {
             quote: Some(case0_map),
         };
 
-        let res = db
-            .inner()
+        db.inner()
             .insert_one::<ClickhouseDexPriceMapping>(&case0)
             .await
             .unwrap();
-        //assert!(res.is_ok());
 
         let query = "SELECT * FROM brontes.dex_price_mapping";
         let queried: DexQuotesWithBlockNumber = db.inner().query_one(query, &()).await.unwrap();
@@ -400,12 +390,10 @@ mod tests {
         let mut case0 = MevBlock::default();
         case0.possible_mev = PossibleMevCollection(vec![case0_possible]);
 
-        let res = db
-            .inner()
+        db.inner()
             .insert_one::<ClickhouseMevBlocks>(&case0)
             .await
             .unwrap();
-        //assert!(res.is_ok());
 
         // let query = "SELECT * FROM mev.mev_blocks";
         //  let queried: MevBlock = db.inner().query_one(query, &()).await.unwrap();
