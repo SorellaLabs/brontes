@@ -8,10 +8,12 @@ use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::{
     constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
     db::clickhouse_serde::tx_trace::*,
+    serde_utils::u256,
 };
 pub trait TraceActions {
     fn get_callframe_info(&self) -> CallFrameInfo<'_>;
@@ -210,20 +212,12 @@ impl TransactionTraceWithLogs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Row, Serialize, Deserialize)]
-pub struct TxTraces {
-    pub traces: Vec<TxTrace>,
-}
-
-impl From<Vec<TxTrace>> for TxTraces {
-    fn from(value: Vec<TxTrace>) -> Self {
-        Self { traces: value }
-    }
-}
-
+#[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct TxTrace {
+    #[serde(with = "des_clickhouse_tx_trace")]
     pub trace: Vec<TransactionTraceWithLogs>,
+    #[serde(with = "u256")]
     pub tx_hash: B256,
     pub gas_used: u128,
     pub effective_price: u128,

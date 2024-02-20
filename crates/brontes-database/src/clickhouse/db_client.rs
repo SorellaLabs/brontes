@@ -250,5 +250,13 @@ mod tests {
             .insert_one::<ClickhouseTxTraces>(&exec)
             .await
             .unwrap();
+
+        let query = format!(
+            "SELECT * FROM brontes.tx_traces WHERE tx_hash = {:?}",
+            exec.tx_hash
+        );
+        let des: TxTrace = db.inner().query_one(&query, &()).await.unwrap();
+
+        assert_eq!(des, exec);
     }
 }

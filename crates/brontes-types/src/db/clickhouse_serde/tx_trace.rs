@@ -303,3 +303,267 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
         this
     }
 }
+
+pub mod des_clickhouse_tx_trace {
+    use std::{collections::HashMap, str::FromStr};
+
+    use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256, U64};
+    use itertools::Itertools;
+    use reth_rpc_types::trace::parity::{
+        Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction,
+        RewardType, SelfdestructAction, TraceOutput, TransactionTrace,
+    };
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::structured_trace::{DecodedCallData, DecodedParams, TransactionTraceWithLogs};
+
+    type TxTraceClickhouseTuple = (
+        Vec<(u64, String, Option<String>, u64, Vec<u64>)>, // meta
+        Vec<(
+            u64,
+            String,
+            Vec<(String, String, String)>,
+            Vec<(String, String, String)>,
+        )>, // decoded data
+        Vec<(u64, u64, String, Vec<String>, String)>,      // logs
+        Vec<(u64, String, u64, String, [u8; 32])>,         // create action
+        Vec<(u64, String, String, u64, String, String, [u8; 32])>, // call action
+        Vec<(u64, String, [u8; 32], String)>,              // self destruct action
+        Vec<(u64, String, String, [u8; 32])>,              // reward action
+        Vec<(u64, u64, String)>,                           // call output
+        Vec<(u64, String, String, u64)>,                   // create output
+    );
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<TransactionTraceWithLogs>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let default_trace = TransactionTraceWithLogs {
+            trace: TransactionTrace {
+                action: Action::Selfdestruct(SelfdestructAction {
+                    address: Default::default(),
+                    balance: Default::default(),
+                    refund_address: Default::default(),
+                }),
+                error: None,
+                result: None,
+                subtraces: 0,
+                trace_address: Vec::new(),
+            },
+            logs: Vec::new(),
+            msg_sender: Default::default(),
+            trace_idx: Default::default(),
+            decoded_data: None,
+        };
+
+        let (
+            meta,
+            decoded_data,
+            logs,
+            create_action,
+            call_action,
+            self_destruct_action,
+            reward_action,
+            call_output,
+            create_output,
+        ): TxTraceClickhouseTuple = Deserialize::deserialize(deserializer)?;
+
+        let mut map = HashMap::new();
+
+        // meta
+        meta.into_iter()
+            .for_each(|(trace_idx, msg_sender, error, subtraces, trace_address)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                entry.msg_sender = Address::from_str(&msg_sender).unwrap();
+                entry.trace.error = error;
+                entry.trace.subtraces = subtraces as usize;
+                entry.trace.trace_address = trace_address.into_iter().map(|v| v as usize).collect();
+            });
+
+        // decoded_data
+        decoded_data
+            .into_iter()
+            .for_each(|(trace_idx, function_name, call_data, return_data)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                let decoded_data = DecodedCallData {
+                    function_name,
+                    call_data: call_data
+                        .into_iter()
+                        .map(|(field_name, field_type, value)| DecodedParams {
+                            field_name,
+                            field_type,
+                            value,
+                        })
+                        .collect_vec(),
+                    return_data: return_data
+                        .into_iter()
+                        .map(|(field_name, field_type, value)| DecodedParams {
+                            field_name,
+                            field_type,
+                            value,
+                        })
+                        .collect_vec(),
+                };
+
+                entry.decoded_data = Some(decoded_data);
+            });
+
+        // logs
+        let mut log_map = HashMap::new();
+        logs.into_iter()
+            .for_each(|(trace_idx, log_idx, address, topics, data)| {
+                let log_entry = log_map.entry(trace_idx).or_insert(HashMap::new());
+
+                log_entry.insert(
+                    log_idx,
+                    Log {
+                        address: Address::from_str(&address).unwrap(),
+                        data: LogData::new_unchecked(
+                            topics
+                                .into_iter()
+                                .map(|t| TxHash::from_str(&t).unwrap())
+                                .collect_vec(),
+                            Bytes::from_str(&data).unwrap(),
+                        ),
+                    },
+                );
+            });
+        log_map.into_iter().for_each(|(trace_idx, log_map)| {
+            let max_idx = log_map.len();
+
+            let trace_entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+            (0..max_idx).into_iter().for_each(|i| {
+                trace_entry
+                    .logs
+                    .push(log_map.get(&(i as u64)).cloned().unwrap())
+            })
+        });
+
+        // create_action
+        create_action
+            .into_iter()
+            .for_each(|(trace_idx, from, gas, init, value)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                let create = CreateAction {
+                    from: Address::from_str(&from).unwrap(),
+                    gas: U64::from(gas),
+                    init: Bytes::from_str(&init).unwrap(),
+                    value: U256::from_le_bytes(value),
+                };
+
+                entry.trace.action = Action::Create(create);
+            });
+
+        // call_action
+        call_action
+            .into_iter()
+            .for_each(|(trace_idx, from, call_type, gas, input, to, value)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                let call_type = if call_type.as_str() == "Call" {
+                    CallType::Call
+                } else if call_type.as_str() == "CallCode" {
+                    CallType::CallCode
+                } else if call_type.as_str() == "DelegateCall" {
+                    CallType::DelegateCall
+                } else if call_type.as_str() == "StaticCall" {
+                    CallType::StaticCall
+                } else {
+                    CallType::None
+                };
+
+                let call = CallAction {
+                    from: Address::from_str(&from).unwrap(),
+                    gas: U64::from(gas),
+                    value: U256::from_le_bytes(value),
+                    call_type,
+                    input: Bytes::from_str(&input).unwrap(),
+                    to: Address::from_str(&to).unwrap(),
+                };
+
+                entry.trace.action = Action::Call(call);
+            });
+
+        // self_destruct_action
+        self_destruct_action.into_iter().for_each(
+            |(trace_idx, address, balance, refund_address)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                let self_destruct = SelfdestructAction {
+                    address: Address::from_str(&address).unwrap(),
+                    balance: U256::from_le_bytes(balance),
+                    refund_address: Address::from_str(&refund_address).unwrap(),
+                };
+
+                entry.trace.action = Action::Selfdestruct(self_destruct);
+            },
+        );
+
+        // reward_action
+        reward_action
+            .into_iter()
+            .for_each(|(trace_idx, author, reward_type, value)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                let reward_type = if reward_type.as_str() == "Block" {
+                    RewardType::Block
+                } else if reward_type.as_str() == "Uncle" {
+                    RewardType::Uncle
+                } else {
+                    unreachable!(
+                        "reward type must be either 'Block' or 'Uncle' - have: {}",
+                        reward_type
+                    )
+                };
+
+                let reward = RewardAction {
+                    author: Address::from_str(&author).unwrap(),
+                    reward_type,
+                    value: U256::from_le_bytes(value),
+                };
+
+                entry.trace.action = Action::Reward(reward);
+            });
+
+        // call_output
+        call_output
+            .into_iter()
+            .for_each(|(trace_idx, gas_used, output)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                let call = CallOutput {
+                    gas_used: U64::from(gas_used),
+                    output: Bytes::from_str(&output).unwrap(),
+                };
+
+                entry.trace.result = Some(TraceOutput::Call(call))
+            });
+
+        // create_output
+        create_output
+            .into_iter()
+            .for_each(|(trace_idx, address, code, gas_used)| {
+                let entry = map.entry(trace_idx).or_insert(default_trace.clone());
+
+                let create = CreateOutput {
+                    gas_used: U64::from(gas_used),
+                    address: Address::from_str(&address).unwrap(),
+                    code: Bytes::from_str(&code).unwrap(),
+                };
+
+                entry.trace.result = Some(TraceOutput::Create(create))
+            });
+
+        let mut tx_traces_with_logs = map.into_iter().collect_vec();
+        tx_traces_with_logs.sort_by_key(|(idx, _)| *idx);
+
+        Ok(tx_traces_with_logs
+            .into_iter()
+            .map(|(_, trace)| trace)
+            .collect_vec())
+    }
+}
