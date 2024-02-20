@@ -379,6 +379,7 @@ pub mod des_clickhouse_tx_trace {
                 entry.trace.error = error;
                 entry.trace.subtraces = subtraces as usize;
                 entry.trace.trace_address = trace_address.into_iter().map(|v| v as usize).collect();
+                entry.trace_idx = trace_idx;
             });
 
         // decoded_data
