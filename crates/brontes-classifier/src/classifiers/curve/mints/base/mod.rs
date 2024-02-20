@@ -15,7 +15,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::{Actions, NormalizedMint},
-        Node, NodeData, Protocol, ToScaledRational, TreeSearchArgs, TreeSearchBuilder,
+        Protocol, ToScaledRational, TreeSearchBuilder,
     };
 
     #[brontes_macros::test]

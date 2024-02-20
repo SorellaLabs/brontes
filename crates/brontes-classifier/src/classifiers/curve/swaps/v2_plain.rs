@@ -121,7 +121,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs, TreeSearchBuilder,
+        ToScaledRational, TreeSearchBuilder,
     };
 
     use super::*;

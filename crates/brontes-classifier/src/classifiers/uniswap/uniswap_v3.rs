@@ -166,8 +166,8 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node, NodeData,
-        Protocol::UniswapV3, ToScaledRational, TreeSearchArgs, TreeSearchBuilder,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::UniswapV3,
+        ToScaledRational, TreeSearchBuilder,
     };
 
     use super::*;

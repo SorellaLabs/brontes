@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational, TreeSearchArgs, TreeSearchBuilder,
+    ToScaledRational, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};

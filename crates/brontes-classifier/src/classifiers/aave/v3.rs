@@ -118,8 +118,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
         normalized_actions::{Actions, NormalizedLiquidation},
-        tree::root::NodeData,
-        Node, Protocol, TreeSearchArgs, TreeSearchBuilder,
+        Protocol, TreeSearchBuilder,
     };
     use malachite::Rational;
 

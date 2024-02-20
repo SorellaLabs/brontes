@@ -167,10 +167,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
-    use brontes_types::{
-        normalized_actions::Actions, Node, NodeData, ToScaledRational, TreeSearchArgs,
-        TreeSearchBuilder,
-    };
+    use brontes_types::{normalized_actions::Actions, ToScaledRational, TreeSearchBuilder};
 
     use super::*;
 
