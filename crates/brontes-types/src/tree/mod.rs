@@ -117,10 +117,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// Collects all subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
-    pub fn collect_spans<F>(&self, hash: B256, call: F) -> Vec<Vec<V>>
-    where
-        F: Fn(&Node, &NodeData<V>) -> bool,
-    {
+    pub fn collect_spans(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect_spans(&call)
         } else {
@@ -128,9 +125,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
-    pub fn modify_spans<T, F>(&mut self, find: T, modify: F)
+    pub fn modify_spans<F>(&mut self, find: TreeSearchBuilder<V>, modify: F)
     where
-        T: Fn(&Node, &NodeData<V>) -> bool + Send + Sync,
         F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
     {
         self.tp.install(|| {
@@ -140,10 +136,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         });
     }
 
-    pub fn collect<F>(&self, hash: B256, call: F) -> Vec<V>
-    where
-        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
-    {
+    pub fn collect<F>(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<V> {
         if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
             root.collect(&call)
         } else {
@@ -151,11 +144,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
-    //TODO: (Will) Write the docs for this
-    pub fn collect_all<F>(&self, call: F) -> HashMap<B256, Vec<V>>
-    where
-        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
-    {
+    pub fn collect_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<V>> {
         self.tp.install(|| {
             self.tx_roots
                 .par_iter()
@@ -188,10 +177,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// Collects all subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
-    pub fn collect_spans_all<F>(&self, call: F) -> HashMap<B256, Vec<Vec<V>>>
-    where
-        F: Fn(&Node, &NodeData<V>) -> bool + Send + Sync,
-    {
+    pub fn collect_spans_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<Vec<V>>> {
         self.tp.install(|| {
             self.tx_roots
                 .par_iter()
@@ -200,9 +186,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    pub fn modify_node_if_contains_childs<T, F>(&mut self, find: T, modify: F)
+    pub fn modify_node_if_contains_childs<F>(&mut self, find: TreeSearchBuilder<V>, modify: F)
     where
-        T: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Send + Sync,
         F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
     {
         self.tp.install(|| {
@@ -212,17 +197,15 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    pub fn remove_duplicate_data<FindActionHead, FindRemoval, ClassifyRemovalIndex, WantedData, R>(
+    pub fn remove_duplicate_data<ClassifyRemovalIndex, WantedData, R>(
         &mut self,
-        find: FindActionHead,
-        find_removal: FindRemoval,
+        find: TreeSearchBuilder<V>,
+        find_removal: TreeSearchBuilder<V>,
         info: WantedData,
         classify: ClassifyRemovalIndex,
     ) where
         WantedData: Fn(&Node, &NodeData<V>) -> R + Sync,
         ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
-        FindActionHead: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
-        FindRemoval: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
     {
         self.tp.install(|| {
             self.tx_roots.par_iter_mut().for_each(|root| {
