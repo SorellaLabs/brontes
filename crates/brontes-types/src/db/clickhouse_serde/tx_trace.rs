@@ -5,9 +5,9 @@ use crate::structured_trace::TxTrace;
 
 #[derive(Debug, Default)]
 pub struct ClickhouseDecodedCallData {
-    pub function_name: Vec<String>,
-    pub call_data: Vec<Vec<(String, String, String)>>,
-    pub return_data: Vec<Vec<(String, String, String)>>,
+    pub function_name: Vec<Option<String>>,
+    pub call_data: Vec<Vec<(Option<String>, Option<String>, Option<String>)>>,
+    pub return_data: Vec<Vec<(Option<String>, Option<String>, Option<String>)>>,
 }
 impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
     fn from(value: &'a TxTrace) -> Self {
@@ -15,25 +15,43 @@ impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
         value
             .trace
             .iter()
-            .filter_map(|trace| {
+            .map(|trace| {
                 trace.decoded_data.as_ref().map(|data| {
                     (
                         data.function_name.clone(),
                         data.call_data
                             .iter()
-                            .map(|d| (d.field_name.clone(), d.field_type.clone(), d.value.clone()))
+                            .map(|d| {
+                                (
+                                    Some(d.field_name.clone()),
+                                    Some(d.field_type.clone()),
+                                    Some(d.value.clone()),
+                                )
+                            })
                             .collect_vec(),
                         data.return_data
                             .iter()
-                            .map(|d| (d.field_name.clone(), d.field_type.clone(), d.value.clone()))
+                            .map(|d| {
+                                (
+                                    Some(d.field_name.clone()),
+                                    Some(d.field_type.clone()),
+                                    Some(d.value.clone()),
+                                )
+                            })
                             .collect_vec(),
                     )
                 })
             })
-            .for_each(|(f, c, r)| {
-                this.function_name.push(f);
-                this.call_data.push(c);
-                this.return_data.push(r);
+            .for_each(|decoded| {
+                if let Some((f, c, r)) = decoded {
+                    this.function_name.push(Some(f));
+                    this.call_data.push(c);
+                    this.return_data.push(r);
+                } else {
+                    this.function_name.push(None);
+                    this.call_data.push(vec![]);
+                    this.return_data.push(vec![]);
+                }
             });
         this
     }
