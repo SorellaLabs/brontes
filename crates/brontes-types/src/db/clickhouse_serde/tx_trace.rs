@@ -238,19 +238,14 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
             .trace
             .iter()
             .filter_map(|trace| {
-                trace
-                    .trace
-                    .result
-                    .as_ref()
-                    .map(|res| match res {
-                        TraceOutput::Call(c) => Some((
-                            trace.trace_idx,
-                            c.gas_used.to::<u64>(),
-                            format!("{:?}", c.output),
-                        )),
-                        _ => None,
-                    })
-                    .flatten()
+                trace.trace.result.as_ref().and_then(|res| match res {
+                    TraceOutput::Call(c) => Some((
+                        trace.trace_idx,
+                        c.gas_used.to::<u64>(),
+                        format!("{:?}", c.output),
+                    )),
+                    _ => None,
+                })
             })
             .for_each(|(i, g, o)| {
                 this.trace_idx.push(i);
@@ -278,20 +273,15 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
             .trace
             .iter()
             .filter_map(|trace| {
-                trace
-                    .trace
-                    .result
-                    .as_ref()
-                    .map(|res| match res {
-                        TraceOutput::Create(c) => Some((
-                            trace.trace_idx,
-                            format!("{:?}", c.address),
-                            format!("{:?}", c.code),
-                            c.gas_used.to::<u64>(),
-                        )),
-                        _ => None,
-                    })
-                    .flatten()
+                trace.trace.result.as_ref().and_then(|res| match res {
+                    TraceOutput::Create(c) => Some((
+                        trace.trace_idx,
+                        format!("{:?}", c.address),
+                        format!("{:?}", c.code),
+                        c.gas_used.to::<u64>(),
+                    )),
+                    _ => None,
+                })
             })
             .for_each(|(i, a, c, g)| {
                 this.trace_idx.push(i);
@@ -461,7 +451,7 @@ pub mod tx_traces_inner {
 
             let trace_entry = map.entry(trace_idx).or_insert(default_trace.clone());
 
-            (0..max_idx).into_iter().for_each(|i| {
+            (0..max_idx).for_each(|i| {
                 trace_entry
                     .logs
                     .push(log_map.get(&(i as u64)).cloned().unwrap())
@@ -601,10 +591,7 @@ pub mod tx_traces_inner {
     {
         let values: Vec<TxTraceClickhouseTuple> = Deserialize::deserialize(deserializer)?;
 
-        let converted = values
-            .into_iter()
-            .map(|val| des_tx_trace(val))
-            .collect_vec();
+        let converted = values.into_iter().map(des_tx_trace).collect_vec();
 
         if converted.is_empty() {
             Ok(TxTracesInner { traces: None })
