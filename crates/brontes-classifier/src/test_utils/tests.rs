@@ -28,8 +28,8 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
     structured_trace::TraceActions,
-    tree::{root::NodeData, BlockTree, Node},
-    TreeSearchArgs,
+    tree::BlockTree,
+    TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
 use itertools::Itertools;
@@ -432,7 +432,7 @@ impl ClassifierTestUtils {
         tx_hash: TxHash,
         action_number_in_tx: usize,
         eq_action: Actions,
-        tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
+        tree_collect_builder: TreeSearchBuilder<Actions>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         assert!(
@@ -441,7 +441,7 @@ impl ClassifierTestUtils {
         );
 
         let root = tree.tx_roots.remove(0);
-        let mut actions = root.collect(&tree_collect_fn);
+        let mut actions = root.collect(&tree_collect_builder);
         assert!(
             !actions.is_empty(),
             "no actions collected. protocol is either missing
@@ -466,11 +466,11 @@ impl ClassifierTestUtils {
     pub async fn has_no_actions(
         &self,
         tx_hash: TxHash,
-        tree_collect_fn: impl Fn(&Node, &NodeData<Actions>) -> TreeSearchArgs,
+        tree_collect_builder: TreeSearchBuilder<Actions>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
-        let actions = root.collect(&tree_collect_fn);
+        let actions = root.collect(&tree_collect_builder);
 
         assert!(actions.is_empty(), "found: {:#?}", actions);
         Ok(())
