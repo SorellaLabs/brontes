@@ -2,7 +2,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwapWithFee},
     tree::BlockTree,
     unzip_either::IterExt,
-    TreeSearchArgs,
+    TreeSearchBuilder,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 
@@ -159,17 +159,9 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // This is needed when swapping into the tax token as the amount out of the swap
     // will be wrong
     tree.modify_spans(
-        |node, data| {
-            node.get_all_sub_actions()
-                .iter()
-                .filter_map(|n| data.get_ref(*n))
-                .any(|d| d.is_swap())
-                && node
-                    .get_all_sub_actions()
-                    .iter()
-                    .filter_map(|n| data.get_ref(*n))
-                    .any(|d| d.is_transfer())
-        },
+        TreeSearchBuilder::default()
+            .with_action(Actions::is_swap)
+            .child_nodes_have([Actions::is_transfer]),
         |span, data| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
                 .into_iter()
@@ -234,44 +226,14 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // when a tax token is transfered and the taxed amount is swapped into
     // a more stable currency
     tree.modify_node_if_contains_childs(
-        |node, data| {
-            let mut has_transfer = false;
-            let mut has_swap = false;
-
-            for action in &node.get_all_sub_actions() {
-                let Some(val) = data.get_ref(*action) else {
-                    continue;
-                };
-                if val.is_transfer() {
-                    has_transfer = true;
-                } else if val.is_swap() {
-                    has_swap = true;
-                }
-            }
-
-            TreeSearchArgs {
-                collect_current_node: data
-                    .get_ref(node.data)
-                    .map(|node| node.is_transfer())
-                    .unwrap_or_default(),
-                child_node_to_collect: has_swap && has_transfer,
-            }
-        },
+        TreeSearchBuilder::default()
+            .with_action(Actions::is_transfer)
+            .child_nodes_contain([Actions::is_swap, Actions::is_transfer]),
         |node, data| {
             let mut swap_idx = Vec::new();
             node.collect(
                 &mut swap_idx,
-                &|node, data_inner| TreeSearchArgs {
-                    collect_current_node: data_inner
-                        .get_ref(node.data)
-                        .map(|node_data: &Actions| node_data.is_swap())
-                        .unwrap_or_default(),
-                    child_node_to_collect: node
-                        .get_all_sub_actions()
-                        .iter()
-                        .filter_map(|node| data.get_ref(*node))
-                        .any(|action| action.is_swap()),
-                },
+                &TreeSearchBuilder::default().with_action(Actions::is_swap),
                 &|node, _| node.index,
                 data,
             );
@@ -285,7 +247,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
 
 #[cfg(test)]
 mod test {
-    use brontes_types::TreeSearchArgs;
+    use brontes_types::{normalized_actions::Actions, TreeSearchBuilder};
     use hex_literal::hex;
 
     use crate::test_utils::ClassifierTestUtils;
@@ -303,17 +265,7 @@ mod test {
 
         let swaps = tree.collect(
             hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-            |node, data| TreeSearchArgs {
-                collect_current_node: data
-                    .get_ref(node.data)
-                    .map(|s| s.is_swap())
-                    .unwrap_or_default(),
-                child_node_to_collect: node
-                    .inner
-                    .iter()
-                    .filter_map(|a| data.get_ref(a.data))
-                    .any(|n| n.is_swap()),
-            },
+            TreeSearchBuilder::default().with_action(Actions::is_swap),
         );
         assert!(swaps.len() == 6, "didn't filter tax token");
     }
