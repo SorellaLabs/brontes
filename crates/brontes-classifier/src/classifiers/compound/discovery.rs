@@ -40,7 +40,9 @@ mod tests {
             trace_index: 6,
             protocol: Protocol::CompoundV2,
             pool_address: Address::from(hex!("4Ddc2D193948926D02f9B1fE9e1daa0718270ED5")),
-            tokens: vec![Address::from(hex!("4Ddc2D193948926D02f9B1fE9e1daa0718270ED5"))],
+            tokens: vec![Address::from(hex!(
+                "4Ddc2D193948926D02f9B1fE9e1daa0718270ED5"
+            ))],
         });
 
         let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
