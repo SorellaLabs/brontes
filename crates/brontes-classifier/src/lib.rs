@@ -88,6 +88,7 @@ sol!(
     CompoundV2Comptroller,
     "./classifier-abis/CompoundV2Comptroller.json"
 );
+sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

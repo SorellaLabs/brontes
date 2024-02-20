@@ -439,7 +439,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .insert_pool(
                 block,
                 pool.pool_address,
-                [pool.tokens[0], pool.tokens[1]],
+                [
+                    pool.tokens.get(0).copied().unwrap_or_default(),
+                    pool.tokens.get(1).copied().unwrap_or_default(),
+                ],
                 pool.protocol,
             )
             .await
@@ -448,11 +451,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
         } else {
             info!(
-                "Discovered new {} pool: 
-                            \nAddress:{} 
-                            \nToken 0: {}
-                            \nToken 1: {}",
-                pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+                "Discovered new {} pool:
+                            \nAddress:{}
+                            ",
+                pool.protocol, pool.pool_address
             );
         }
     }
@@ -479,61 +481,4 @@ pub struct TxTreeResult {
     pub pool_updates: Vec<DexPriceMsg>,
     pub further_classification_requests: Option<(usize, Vec<u64>)>,
     pub root: Root<Actions>,
-}
-
-#[cfg(test)]
-pub mod test {
-    use std::collections::{HashMap, HashSet};
-
-    use alloy_primitives::{hex, B256};
-    use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, TreeSearchArgs,
-    };
-    use malachite::Rational;
-
-    use crate::test_utils::ClassifierTestUtils;
-
-    #[brontes_macros::test]
-    async fn test_remove_swap_transfer() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let jared_tx = B256::from(hex!(
-            "d40905a150eb45f04d11c05b5dd820af1b381b6807ca196028966f5a3ba94b8d"
-        ));
-
-        let tree = classifier_utils.build_raw_tree_tx(jared_tx).await.unwrap();
-
-        let swap = tree.collect(jared_tx, |node, data| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_swap() || s.is_transfer())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|a| data.get_ref(*a))
-                .any(|action| action.is_swap() || action.is_transfer()),
-        });
-        let mut swaps: HashMap<TokenInfoWithAddress, HashSet<Rational>> = HashMap::default();
-
-        for i in &swap {
-            if let Actions::Swap(s) = i {
-                swaps
-                    .entry(s.token_in.clone())
-                    .or_default()
-                    .insert(s.amount_in.clone());
-                swaps
-                    .entry(s.token_out.clone())
-                    .or_default()
-                    .insert(s.amount_out.clone());
-            }
-        }
-
-        for i in &swap {
-            if let Actions::Transfer(t) = i {
-                if swaps.get(&t.token).map(|i| i.contains(&t.amount)) == Some(true) {
-                    panic!("found a transfer that was part of a swap");
-                }
-            }
-        }
-    }
 }

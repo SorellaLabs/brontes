@@ -2,7 +2,7 @@ use reth_primitives::Address;
 use tracing::error;
 
 use super::NodeData;
-use crate::{normalized_actions::NormalizedAction, TreeSearchArgs};
+use crate::{normalized_actions::NormalizedAction, TreeSearchArgs, TreeSearchBuilder};
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -65,22 +65,10 @@ impl Node {
     ) {
         if head == self.index {
             let mut results = Vec::new();
-            let classification = nodes
+            let collect_fn = nodes
                 .get_mut(self.data)
                 .unwrap()
                 .continued_classification_types();
-
-            let collect_fn = |node: &Node, nodes: &NodeData<V>| TreeSearchArgs {
-                collect_current_node: nodes
-                    .get_ref(node.data)
-                    .map(&classification)
-                    .unwrap_or_default(),
-                child_node_to_collect: node
-                    .get_all_sub_actions()
-                    .iter()
-                    .filter_map(|node| nodes.get_ref(*node))
-                    .any(&classification),
-            };
 
             self.collect(
                 &mut results,
@@ -156,20 +144,19 @@ impl Node {
         error!("was not able to find node in tree, should be unreachable");
     }
 
-    pub fn modify_node_if_contains_childs<T, F, V: NormalizedAction>(
+    pub fn modify_node_if_contains_childs<F, V: NormalizedAction>(
         &mut self,
-        find: &T,
+        find: &TreeSearchBuilder<V>,
         modify: &F,
         data: &mut NodeData<V>,
     ) -> bool
     where
-        T: Fn(&Self, &NodeData<V>) -> TreeSearchArgs,
         F: Fn(&mut Self, &mut NodeData<V>),
     {
         let TreeSearchArgs {
             collect_current_node,
             child_node_to_collect,
-        } = find(self, &*data);
+        } = find.generate_search_args(self, &*data);
 
         if !child_node_to_collect {
             return false;
@@ -194,17 +181,16 @@ impl Node {
         false
     }
 
-    pub fn modify_node_spans<T, F, V: NormalizedAction>(
+    pub fn modify_node_spans<F, V: NormalizedAction>(
         &mut self,
-        find: &T,
+        find: &TreeSearchBuilder<V>,
         modify: &F,
         data: &mut NodeData<V>,
     ) -> bool
     where
-        T: Fn(&Self, &NodeData<V>) -> bool,
         F: Fn(Vec<&mut Self>, &mut NodeData<V>),
     {
-        if !find(self, &*data) {
+        if !find.generate_search_args(self, &*data).collect_current_node {
             return false;
         }
 
@@ -367,17 +353,14 @@ impl Node {
     }
 
     // only grabs the lowest subset of specified actions
-    pub fn collect_spans<F, V: NormalizedAction>(
+    pub fn collect_spans<V: NormalizedAction>(
         &self,
         result: &mut Vec<Vec<V>>,
-        call: &F,
+        call: &TreeSearchBuilder<V>,
         data: &NodeData<V>,
-    ) -> bool
-    where
-        F: Fn(&Node, &NodeData<V>) -> bool,
-    {
+    ) -> bool {
         // the previous sub-action was the last one to meet the criteria
-        if !call(self, data) {
+        if !call.generate_search_args(self, data).collect_current_node {
             return false;
         }
 
@@ -406,20 +389,19 @@ impl Node {
 
     /// Collects all actions that match the call closure. This is useful for
     /// fetching all actions that match a certain criteria.
-    pub fn collect<F, T, R, V: NormalizedAction>(
+    pub fn collect<T, R, V: NormalizedAction>(
         &self,
         results: &mut Vec<R>,
-        call: &F,
+        call: &TreeSearchBuilder<V>,
         wanted_data: &T,
         data: &NodeData<V>,
     ) where
-        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
         T: Fn(&Node, &NodeData<V>) -> R,
     {
         let TreeSearchArgs {
             collect_current_node,
             child_node_to_collect,
-        } = call(self, data);
+        } = call.generate_search_args(self, data);
         if collect_current_node {
             results.push(wanted_data(self, data))
         }

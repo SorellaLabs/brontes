@@ -3,17 +3,31 @@ use brontes_macros::discovery_impl;
 use brontes_pricing::Protocol;
 
 discovery_impl!(
-    CompoundV2Discovery,
-    crate::CompoundV2Comptroller::_supportMarketCall,
-    0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B,
-    |deployed_address: Address, trace_index: u64, call_data: _supportMarketCall, _| async move {
-        let token = call_data.cToken;
+    CompoundV2Discovery0,
+    crate::CErc20Delegate::initialize_0Call,
+    0x99ee778B9A6205657DD03B2B91415C8646d521ec,
+    |deployed_address: Address, trace_index: u64, call_data: initialize_0Call, _| async move {
+        // let token = call_data.;
 
         vec![NormalizedNewPool {
             pool_address: deployed_address,
             trace_index,
             protocol: Protocol::CompoundV2,
-            tokens: vec![token],
+            tokens: vec![],
+        }]
+    }
+);
+
+discovery_impl!(
+    CompoundV2Discovery1,
+    crate::CErc20Delegate::initialize_1Call,
+    0x99ee778B9A6205657DD03B2B91415C8646d521ec,
+    |deployed_address: Address, trace_index: u64, call_data: initialize_1Call, _| async move {
+        vec![NormalizedNewPool {
+            pool_address: deployed_address,
+            trace_index,
+            protocol: Protocol::CompoundV2,
+            tokens: vec![],
         }]
     }
 );

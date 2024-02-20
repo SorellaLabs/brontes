@@ -16,8 +16,8 @@ action_impl!(
     call_data: liquidateBorrowCall,
     log_data: CompoundV2liquidateBorrowCallLogs,
     db_tx: &DB | {
-        let debt_asset = db_tx.get_protocol_details(info.target_address).unwrap().token0;
         let logs = log_data.LiquidateBorrow_field;
+        let debt_asset = info.target_address;
         let debt_info = db_tx.try_fetch_token_info(debt_asset)?;
         let collateral = db_tx.try_fetch_token_info(call_data.cTokenCollateral)?;
         let debt_covered = logs.repayAmount.to_scaled_rational(debt_info.decimals);
@@ -26,7 +26,7 @@ action_impl!(
             protocol: Protocol::CompoundV2,
             trace_index: info.trace_idx,
             pool: info.target_address,
-            liquidator: info.msg_sender,
+            liquidator: logs.liquidator,
             debtor: call_data.borrower,
             collateral_asset: collateral,
             debt_asset: debt_info,
@@ -42,8 +42,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
         normalized_actions::{Actions, NormalizedLiquidation},
-        tree::root::NodeData,
-        Node, Protocol, TreeSearchArgs,
+        Protocol, TreeSearchBuilder,
     };
     use malachite::Rational;
 
@@ -73,20 +72,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|a| a.is_liquidation())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|node| data.get_ref(*node))
-                .any(|action| action.is_liquidation()),
-        };
-
         classifier_utils
-            .contains_action(compound_v2_liquidation, 0, eq_action, search_fn)
+            .contains_action(
+                compound_v2_liquidation,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_liquidation),
+            )
             .await
             .unwrap();
     }
