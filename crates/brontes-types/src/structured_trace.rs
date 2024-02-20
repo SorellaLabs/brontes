@@ -215,6 +215,7 @@ impl TransactionTraceWithLogs {
 #[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct TxTrace {
+    pub block_number: u64,
     #[serde(with = "des_clickhouse_tx_trace")]
     pub trace: Vec<TransactionTraceWithLogs>,
     #[serde(with = "u256")]
@@ -228,6 +229,7 @@ pub struct TxTrace {
 
 impl TxTrace {
     pub fn new(
+        block_number: u64,
         trace: Vec<TransactionTraceWithLogs>,
         tx_hash: B256,
         tx_index: u64,
@@ -236,6 +238,7 @@ impl TxTrace {
         is_success: bool,
     ) -> Self {
         Self {
+            block_number,
             trace,
             tx_hash,
             tx_index,
@@ -253,6 +256,7 @@ impl Serialize for TxTrace {
     {
         let mut ser_struct = serializer.serialize_struct("TxTrace", 30)?;
 
+        ser_struct.serialize_field("block_number", &format!("{:?}", self.block_number))?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("gas_used", &self.gas_used)?;
         ser_struct.serialize_field("effective_price", &self.effective_price)?;
@@ -373,6 +377,7 @@ impl Serialize for TxTrace {
 
 impl DbRow for TxTrace {
     const COLUMN_NAMES: &'static [&'static str] = &[
+        "block_number",
         "tx_hash",
         "gas_used",
         "effective_price",

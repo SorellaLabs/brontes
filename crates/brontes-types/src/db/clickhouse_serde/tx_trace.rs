@@ -1,5 +1,7 @@
+use clickhouse::Row;
 use itertools::Itertools;
 use reth_rpc_types::trace::parity::{Action, TraceOutput};
+use serde::Serialize;
 
 use crate::structured_trace::TxTrace;
 
@@ -566,5 +568,27 @@ pub mod des_clickhouse_tx_trace {
             .into_iter()
             .map(|(_, trace)| trace)
             .collect_vec())
+    }
+}
+
+pub mod tx_traces_inner {
+
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::{db::traces::TxTracesInner, structured_trace::TxTrace};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<TxTracesInner, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let traces: Vec<TxTrace> = Deserialize::deserialize(deserializer)?;
+
+        if traces.is_empty() {
+            Ok(TxTracesInner { traces: None })
+        } else {
+            Ok(TxTracesInner {
+                traces: Some(traces),
+            })
+        }
     }
 }

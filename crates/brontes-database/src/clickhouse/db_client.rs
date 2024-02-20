@@ -244,7 +244,7 @@ mod tests {
         let (a, _b) = unbounded_channel();
         let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
 
-        let binding = tracer.execute_block(18900000).await.unwrap();
+        let binding = tracer.execute_block(17000010).await.unwrap();
         let exec = binding.0.first().unwrap().clone();
 
         db.inner()
@@ -355,6 +355,7 @@ mod tests {
         FROM brontes.tx_traces
     )
 SELECT
+    tx_traces.block_number,
     (
         m.data, 
         d.data, 

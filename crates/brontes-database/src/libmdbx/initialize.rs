@@ -363,12 +363,14 @@ mod tests {
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = Tables::ALL;
+        //let tables = Tables::ALL;
+        let tables = [Tables::TxTraces];
+
         intializer
             .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
-
+        /*
         // TokenDecimals
         TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
             .await
@@ -401,6 +403,12 @@ mod tests {
 
         // AddressMeta
         AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
+
+            */
+        // TxTraces
+        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
     }

@@ -203,6 +203,7 @@ impl TracingInspectorLocal {
         let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
         TxTrace {
+            block_number: info.block_number.clone().unwrap_or_default(),
             trace: trace.unwrap_or_default(),
             tx_hash: info.hash.unwrap(),
             gas_used,
