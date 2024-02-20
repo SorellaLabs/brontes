@@ -244,7 +244,7 @@ mod tests {
         let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
 
         let binding = tracer.execute_block(18900000).await.unwrap();
-        let mut exec = binding.0.first().unwrap();
+        let mut exec = binding.0.first().unwrap().clone();
         exec.trace = vec![exec.trace.first().unwrap().clone()];
 
         db.inner()
