@@ -28,7 +28,7 @@ pub use transfer::*;
 use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
-    Node, NodeData, TreeSearchArgs, TreeSearchBuilder,
+    TreeSearchBuilder,
 };
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {

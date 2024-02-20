@@ -7,7 +7,7 @@ use brontes_types::{
     mev::{AtomicArb, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     tree::BlockTree,
-    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
+    ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::{Either, Itertools};
 use malachite::{num::basic::traits::Zero, Rational};

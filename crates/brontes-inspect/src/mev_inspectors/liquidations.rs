@@ -37,9 +37,9 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(|node, info| {
-            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_liquidation])
-        });
+        let liq_txs = tree.collect_all(
+            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_liquidation]),
+        );
 
         liq_txs
             .into_par_iter()

@@ -10,7 +10,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
+    GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
 use clickhouse::{fixed_string::FixedString, row::*};
@@ -64,13 +64,14 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
-                            tree.collect(tx, |node, info| {
+                            tree.collect(
+                                tx,
                                 TreeSearchBuilder::default().with_actions([
                                     Actions::is_mint,
                                     Actions::is_burn,
                                     Actions::is_collect,
-                                ])
-                            })
+                                ]),
+                            )
                         })
                         .collect::<Vec<Vec<Actions>>>();
                     tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
@@ -98,9 +99,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.collect(*victim, |node, data| {
-                                TreeSearchBuilder::default().with_action(Actions::is_swap)
-                            })
+                            tree.collect(
+                                *victim,
+                                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                            )
                         })
                         .collect_vec();
 

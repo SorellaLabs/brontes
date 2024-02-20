@@ -110,8 +110,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let swap_txes = tree
-            .collect_all(|node, info| TreeSearchBuilder::default().with_action(Actions::is_swap));
+        let swap_txes =
+            tree.collect_all(TreeSearchBuilder::default().with_action(Actions::is_swap));
 
         swap_txes
             .into_par_iter()

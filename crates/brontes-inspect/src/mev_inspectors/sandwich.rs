@@ -9,9 +9,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
-    root::NodeData,
-    tree::{BlockTree, GasDetails, Node, TxInfo},
-    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder,
+    tree::{BlockTree, GasDetails, TxInfo},
+    ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -82,7 +81,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|victim| {
                             victim
                                 .iter()
-                                .map(|v| tree.collect(*v, serach_args))
+                                .map(|v| tree.collect(*v, search_args.clone()))
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<_>>();
@@ -118,7 +117,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                     let searcher_actions = possible_frontruns
                         .iter()
                         .chain(vec![&possible_backrun])
-                        .map(|tx| tree.collect(*tx, search_args))
+                        .map(|tx| tree.collect(*tx, search_args.clone()))
                         .filter(|f| !f.is_empty())
                         .collect::<Vec<Vec<Actions>>>();
 

@@ -131,10 +131,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
 
     fn has_child_nodes(&self, node: &Node, node_data: &NodeData<V>) -> bool {
         let mut all = Vec::new();
-        for _ in 0..self.child_nodes_contains.len() {
-            all.push(false);
-        }
-
+        all.resize(self.child_nodes_contains.len(), false);
         let mut have_any = false;
 
         node.get_all_sub_actions()
