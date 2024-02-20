@@ -245,7 +245,6 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -402,5 +401,21 @@ mod tests {
 
         //assert_eq!(queried, case0);
     }
+
+    #[tokio::test]
+    async fn test_cex_dex() {
+        let db = spawn_clickhouse();
+
+        let case0 = CexDex::default();
+
+        db.inner()
+            .insert_one::<ClickhouseCexDex>(&case0)
+            .await
+            .unwrap();
+
+        // let query = "SELECT * FROM mev.mev_blocks";
+        //  let queried: MevBlock = db.inner().query_one(query, &()).await.unwrap();
+
+        //assert_eq!(queried, case0);
+    }
 }
-*/
