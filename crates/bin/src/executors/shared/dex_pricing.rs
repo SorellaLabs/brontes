@@ -26,10 +26,10 @@ pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, 
 
 pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     receiver: PricingReceiver<T, DB>,
-    tx: PricingSender<T, DB>,
+    tx:       PricingSender<T, DB>,
 
     pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, Metadata)>,
-    task_executor: TaskExecutor,
+    task_executor:            TaskExecutor,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
@@ -42,12 +42,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         });
 
         task_executor.spawn_critical("dex pricer", fut);
-        Self {
-            pending_trees: HashMap::default(),
-            task_executor,
-            tx,
-            receiver: rx,
-        }
+        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
     }
 
     pub fn is_done(&self) -> bool {

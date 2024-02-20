@@ -24,9 +24,9 @@ pub enum LoadResult {
     /// for this block as it will cause incorrect data
     PoolInitOnBlock,
     Err {
-        protocol: Protocol,
+        protocol:     Protocol,
         pool_address: Address,
-        pool_pair: Pair,
+        pool_pair:    Pair,
     },
 }
 impl LoadResult {
@@ -36,8 +36,8 @@ impl LoadResult {
 }
 
 pub struct LazyResult {
-    pub state: Option<PoolState>,
-    pub block: u64,
+    pub state:       Option<PoolState>,
+    pub block:       u64,
     pub load_result: LoadResult,
 }
 
@@ -227,11 +227,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                 Ok((block, addr, state, load)) => {
                     self.remove_state_trackers(block, &addr);
 
-                    let res = LazyResult {
-                        block,
-                        state: Some(state),
-                        load_result: load,
-                    };
+                    let res = LazyResult { block, state: Some(state), load_result: load };
                     Poll::Ready(Some(res))
                 }
                 Err((pool_address, dex, block, pool_pair, err)) => {
@@ -242,11 +238,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult {
                         state: None,
                         block,
-                        load_result: LoadResult::Err {
-                            pool_pair,
-                            pool_address,
-                            protocol: dex,
-                        },
+                        load_result: LoadResult::Err { pool_pair, pool_address, protocol: dex },
                     };
                     Poll::Ready(Some(res))
                 }

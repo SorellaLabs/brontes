@@ -23,13 +23,13 @@ pub struct RangeExecutorWithPricing<
     CH: ClickhouseHandle,
     P: Processor,
 > {
-    collector: StateCollector<T, DB, CH>,
+    collector:      StateCollector<T, DB, CH>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-    current_block: u64,
-    end_block: u64,
-    libmdbx: &'static DB,
-    inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
-    _p: PhantomData<P>,
+    current_block:  u64,
+    end_block:      u64,
+    libmdbx:        &'static DB,
+    inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
+    _p:             PhantomData<P>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: Processor>

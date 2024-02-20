@@ -228,36 +228,23 @@ mod tests {
             Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
             Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let swap = B256::from(hex!(
-            "c32dc9024f2680772ce9d6c153f4293085ee0bd5fe97f100566df0b89aec4d23"
-        ));
+        let swap =
+            B256::from(hex!("c32dc9024f2680772ce9d6c153f4293085ee0bd5fe97f100566df0b89aec4d23"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "3Crv".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "3Crv".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "STBT".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "STBT".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -299,34 +286,23 @@ mod tests {
             Address::new(hex!("400d4C984779A747462e88373c3fE369EF9F5b50")),
             Address::new(hex!("c56c2b7e71B54d38Aab6d52E94a04Cbfa8F604fA")),
             Address::new(hex!("853d955aCEf822Db058eb8505911ED77F175b99e")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
             None,
             None,
-            Some(Address::new(hex!(
-                "3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"
-            ))),
+            Some(Address::new(hex!("3175Df0976dFA876431C2E9eE6Bc45b65d3473CC"))),
         );
 
-        let swap = B256::from(hex!(
-            "b457e8feea90502f81cd3326009069fe0ebe7409ae02a23d32c5edebc3314a6b"
-        ));
+        let swap =
+            B256::from(hex!("b457e8feea90502f81cd3326009069fe0ebe7409ae02a23d32c5edebc3314a6b"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("c56c2b7e71B54d38Aab6d52E94a04Cbfa8F604fA")),
-            inner: TokenInfo {
-                decimals: 6,
-                symbol: "ZUSD".to_string(),
-            },
+            inner:   TokenInfo { decimals: 6, symbol: "ZUSD".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("3175Df0976dFA876431C2E9eE6Bc45b65d3473CC")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "crvFRAX".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "crvFRAX".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -366,36 +342,23 @@ mod tests {
             Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
             Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let swap = B256::from(hex!(
-            "248b8f2c6b80b138bcaeb53a4a2aea7f4dbc397313a887682cddf2909b676072"
-        ));
+        let swap =
+            B256::from(hex!("248b8f2c6b80b138bcaeb53a4a2aea7f4dbc397313a887682cddf2909b676072"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "STBT".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "STBT".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
-            inner: TokenInfo {
-                decimals: 6,
-                symbol: "USDT".to_string(),
-            },
+            inner:   TokenInfo { decimals: 6, symbol: "USDT".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -435,36 +398,23 @@ mod tests {
             Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
             Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let swap = B256::from(hex!(
-            "a835d77e510a6218199c44aa911ac0056ebbb339015c3a0d56c4020c5ca5a115"
-        ));
+        let swap =
+            B256::from(hex!("a835d77e510a6218199c44aa911ac0056ebbb339015c3a0d56c4020c5ca5a115"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")),
-            inner: TokenInfo {
-                decimals: 6,
-                symbol: "USDC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 6, symbol: "USDC".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "STBT".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "STBT".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());

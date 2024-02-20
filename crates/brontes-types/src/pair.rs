@@ -115,10 +115,7 @@ impl Decode for Pair {
         let address0 = &value.as_ref()[0..20];
         let address1 = &value.as_ref()[20..];
 
-        Ok(Pair(
-            Address::from_slice(address0),
-            Address::from_slice(address1),
-        ))
+        Ok(Pair(Address::from_slice(address0), Address::from_slice(address1)))
     }
 }
 

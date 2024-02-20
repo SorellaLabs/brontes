@@ -6,13 +6,13 @@ use crate::{normalized_actions::NormalizedAction, TreeSearchArgs, TreeSearchBuil
 
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub inner: Vec<Node>,
-    pub finalized: bool,
-    pub index: u64,
-    pub subactions: Vec<usize>,
+    pub inner:         Vec<Node>,
+    pub finalized:     bool,
+    pub index:         u64,
+    pub subactions:    Vec<usize>,
     pub trace_address: Vec<usize>,
-    pub address: Address,
-    pub data: usize,
+    pub address:       Address,
+    pub data:          usize,
 }
 
 impl Node {
@@ -153,10 +153,8 @@ impl Node {
     where
         F: Fn(&mut Self, &mut NodeData<V>),
     {
-        let TreeSearchArgs {
-            collect_current_node,
-            child_node_to_collect,
-        } = find.generate_search_args(self, &*data);
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } =
+            find.generate_search_args(self, &*data);
 
         if !child_node_to_collect {
             return false;
@@ -398,10 +396,8 @@ impl Node {
     ) where
         T: Fn(&Node, &NodeData<V>) -> R,
     {
-        let TreeSearchArgs {
-            collect_current_node,
-            child_node_to_collect,
-        } = call.generate_search_args(self, data);
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } =
+            call.generate_search_args(self, data);
         if collect_current_node {
             results.push(wanted_data(self, data))
         }

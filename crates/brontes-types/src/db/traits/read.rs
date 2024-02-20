@@ -92,9 +92,10 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
 
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo>;
 
-    /// returns protocol details with the tokens sorted from smallest to biggest. This
-    /// is needed as for some reason the tokens in the database for a given protocol don't
-    /// seems to always be ordered correctly
+    /// returns protocol details with the tokens sorted from smallest to
+    /// biggest. This is needed as for some reason the tokens in the
+    /// database for a given protocol don't seems to always be ordered
+    /// correctly
     fn get_protocol_details_sorted(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         self.get_protocol_details(address).map(|mut info| {
             if info.token0 > info.token1 {

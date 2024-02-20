@@ -27,8 +27,8 @@ pub enum PoirotMetricEvents {
 /// receiver. Upon receiving new event, related metrics are updated.
 #[derive(Debug)]
 pub struct PoirotMetricsListener {
-    events_rx: UnboundedReceiver<PoirotMetricEvents>,
-    tx_metrics: TraceMetrics,
+    events_rx:        UnboundedReceiver<PoirotMetricEvents>,
+    tx_metrics:       TraceMetrics,
     contract_metrics: HashMap<String, DynamicContractMetrics>,
 }
 

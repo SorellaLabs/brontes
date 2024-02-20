@@ -37,7 +37,7 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   system.
 #[derive(Debug)]
 pub struct SubgraphVerifier {
-    pending_subgraphs: HashMap<Pair, Subgraph>,
+    pending_subgraphs:           HashMap<Pair, Subgraph>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
@@ -48,7 +48,7 @@ pub struct SubgraphVerifier {
 impl SubgraphVerifier {
     pub fn new() -> Self {
         Self {
-            pending_subgraphs: HashMap::new(),
+            pending_subgraphs:           HashMap::new(),
             subgraph_verification_state: HashMap::new(),
         }
     }
@@ -252,8 +252,8 @@ impl SubgraphVerifier {
                 let result = if rundown {
                     VerificationOutcome {
                         should_requery: false,
-                        removals: HashMap::new(),
-                        frayed_ends: vec![],
+                        removals:       HashMap::new(),
+                        frayed_ends:    vec![],
                     }
                 } else {
                     subgraph
@@ -293,11 +293,11 @@ impl SubgraphVerifier {
 
 #[derive(Debug)]
 pub struct Subgraph {
-    pub subgraph: PairSubGraph,
+    pub subgraph:              PairSubGraph,
     pub frayed_end_extensions: HashMap<u64, Vec<SubGraphEdge>>,
-    pub id: u64,
-    pub in_rundown: bool,
-    pub iters: usize,
+    pub id:                    u64,
+    pub in_rundown:            bool,
+    pub iters:                 usize,
 }
 impl Subgraph {
     pub fn add_extension(&mut self, edges: Vec<SubGraphEdge>) -> u64 {
@@ -311,21 +311,21 @@ impl Subgraph {
 
 #[derive(Debug)]
 pub struct VerificationPass {
-    pub pair: Pair,
-    pub block: u64,
-    pub subgraph: PairSubGraph,
+    pub pair:        Pair,
+    pub block:       u64,
+    pub subgraph:    PairSubGraph,
     pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
 }
 #[derive(Debug)]
 pub struct VerificationFailed {
-    pub pair: Pair,
-    pub block: u64,
+    pub pair:         Pair,
+    pub block:        u64,
     // prunes the partial edges of this state.
-    pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub prune_state:  HashMap<Pair, HashSet<BadEdge>>,
     // the state that should be ignored when we re-query.
     pub ignore_state: HashSet<Pair>,
     // ends that we were able to get to before disjointness occurred
-    pub frayed_ends: Vec<Address>,
+    pub frayed_ends:  Vec<Address>,
 }
 
 #[derive(Debug)]
@@ -348,7 +348,7 @@ pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
     /// we can lookup the edge with the best liquidity.
-    edges: EdgesWithLiq,
+    edges:            EdgesWithLiq,
     /// when we are recusing we remove most liquidity edges until we find a
     /// proper path. However we want to make sure on recusion that these
     /// don't get removed
