@@ -13,7 +13,7 @@ use super::Node;
 use crate::{
     db::{metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::{Actions, NormalizedAction},
-    TreeSearchArgs, TxInfo,
+    TreeSearchBuilder, TxInfo,
 };
 
 #[derive(Debug)]
@@ -155,29 +155,22 @@ impl<V: NormalizedAction> Root<V> {
         self.head.insert(node)
     }
 
-    pub fn collect_spans<F>(&self, call: &F) -> Vec<Vec<V>>
-    where
-        F: Fn(&Node, &NodeData<V>) -> bool,
-    {
+    pub fn collect_spans(&self, call: &TreeSearchBuilder<V>) -> Vec<Vec<V>> {
         let mut result = Vec::new();
         self.head.collect_spans(&mut result, call, &self.data_store);
 
         result
     }
 
-    pub fn modify_spans<T, F>(&mut self, find: &T, modify: &F)
+    pub fn modify_spans<F>(&mut self, find: &TreeSearchBuilder<V>, modify: &F)
     where
-        T: Fn(&Node, &NodeData<V>) -> bool,
         F: Fn(Vec<&mut Node>, &mut NodeData<V>),
     {
         self.head
             .modify_node_spans(find, modify, &mut self.data_store);
     }
 
-    pub fn collect<F>(&self, call: &F) -> Vec<V>
-    where
-        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
-    {
+    pub fn collect(&self, call: &TreeSearchBuilder<V>) -> Vec<V> {
         let mut result = Vec::new();
         self.head.collect(
             &mut result,
@@ -191,9 +184,8 @@ impl<V: NormalizedAction> Root<V> {
         result
     }
 
-    pub fn modify_node_if_contains_childs<T, F>(&mut self, find: &T, modify: &F)
+    pub fn modify_node_if_contains_childs<F>(&mut self, find: &TreeSearchBuilder<V>, modify: &F)
     where
-        T: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
         F: Fn(&mut Node, &mut NodeData<V>),
     {
         self.head
@@ -207,17 +199,15 @@ impl<V: NormalizedAction> Root<V> {
         });
     }
 
-    pub fn remove_duplicate_data<F, C, T, R, Re>(
+    pub fn remove_duplicate_data<C, T, R>(
         &mut self,
-        find: &F,
+        find: &TreeSearchBuilder<V>,
         classify: &C,
         info: &T,
-        removal: &Re,
+        removal: &TreeSearchBuilder<V>,
     ) where
         T: Fn(&Node, &NodeData<V>) -> R + Sync,
         C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
-        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
-        Re: Fn(&Node, &NodeData<V>) -> TreeSearchArgs + Sync,
     {
         let mut find_res = Vec::new();
         self.head.collect(
