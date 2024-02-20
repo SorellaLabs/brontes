@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt::{self, Debug, Display},
-};
+use std::fmt::{self, Debug, Display};
 
 use alloy_primitives::Address;
 use clickhouse::{fixed_string::FixedString, Row};
@@ -13,9 +10,12 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::MevType;
-use crate::db::{
-    redefined_types::primitives::*,
-    token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+use crate::{
+    db::{
+        redefined_types::primitives::*,
+        token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+    },
+    serde_utils::option_addresss,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -35,8 +35,8 @@ pub struct BundleHeader {
     pub tx_hash: B256,
     #[serde_as(as = "FixedString")]
     pub eoa: Address,
-    #[serde_as(as = "FixedString")]
-    pub mev_contract: Address,
+    #[serde(with = "option_addresss")]
+    pub mev_contract: Option<Address>,
     pub profit_usd: f64,
     pub token_profits: TokenProfits,
     pub bribe_usd: f64,
@@ -98,7 +98,8 @@ impl TokenProfits {
     pub fn print_with_labels(
         &self,
         f: &mut fmt::Formatter,
-        labels: Option<&HashMap<Address, String>>,
+        mev_contract_address: Option<Address>,
+        eoa_address: Address,
     ) -> fmt::Result {
         writeln!(
             f,
@@ -106,40 +107,32 @@ impl TokenProfits {
             "Token Deltas:\n".bold().bright_white().underline()
         )?;
 
-        let mut profits_by_collector: HashMap<Address, Vec<&TokenProfit>> = HashMap::new();
         for profit in &self.profits {
-            profits_by_collector
-                .entry(profit.profit_collector)
-                .or_default()
-                .push(profit);
-        }
+            let collector_label = match profit.profit_collector {
+                _ if Some(profit.profit_collector) == mev_contract_address => "MEV Contract",
+                _ if profit.profit_collector == eoa_address => "EOA",
+                _ => "Other",
+            };
 
-        for (collector, profits) in &profits_by_collector {
-            let label = labels
-                .and_then(|l| l.get(collector))
-                .map_or_else(|| collector.to_string(), |l| l.clone());
+            let amount_display = if profit.amount >= 0.0 {
+                format!("{:.7}", profit.amount).green()
+            } else {
+                format!("{:.7}", profit.amount.abs()).red()
+            };
 
-            writeln!(f, " - {}: ", label.bright_white())?;
-
-            for profit in profits {
-                let amount_display = if profit.amount >= 0.0 {
-                    format!("{:.7}", profit.amount).green()
+            writeln!(
+                f,
+                " - {}: {} {}: {} (worth ${:.2})",
+                collector_label.bright_white(),
+                if profit.amount >= 0.0 {
+                    "Gained"
                 } else {
-                    format!("{:.7}", profit.amount.abs()).red()
-                };
-                writeln!(
-                    f,
-                    "    {}: {} {} (worth ${:.3})",
-                    if profit.amount >= 0.0 {
-                        "Gained"
-                    } else {
-                        "Lost"
-                    },
-                    amount_display,
-                    profit.token.inner.symbol.bold(),
-                    profit.usd_value.abs()
-                )?;
-            }
+                    "Lost"
+                },
+                profit.token.inner.symbol.bold(),
+                amount_display,
+                profit.usd_value.abs()
+            )?;
         }
 
         Ok(())
@@ -148,7 +141,7 @@ impl TokenProfits {
 
 impl Display for TokenProfits {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.print_with_labels(f, None)?;
+        self.print_with_labels(f, None, Address::default())?;
 
         Ok(())
     }

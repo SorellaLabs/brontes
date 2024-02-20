@@ -94,7 +94,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
                 mev.header.eoa,
                 mev.header.mev_contract,
                 eoa_info,
-                contract_info,
+                Some(contract_info),
             )
             .await
         {
