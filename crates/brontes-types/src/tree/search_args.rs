@@ -164,6 +164,8 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                     });
             });
 
+        tracing::info!(?all, %have_any, "has child nodes");
+
         // allows us to & these together
         let all = if all.is_empty() {
             true
