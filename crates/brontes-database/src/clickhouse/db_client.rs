@@ -294,7 +294,7 @@ mod tests {
             .unwrap();
         //assert!(res.is_ok());
 
-        let query = "SELECT * FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
+        let query = "SELECT address, (decimals, symbol) FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
         let queried: TokenInfoWithAddress = db.inner().query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
