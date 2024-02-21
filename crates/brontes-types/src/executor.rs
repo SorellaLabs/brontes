@@ -2,7 +2,6 @@
 use std::{
     any::Any,
     fmt::{Display, Formatter},
-    panic::set_hook,
     pin::Pin,
     sync::{
         atomic::{AtomicUsize, Ordering},

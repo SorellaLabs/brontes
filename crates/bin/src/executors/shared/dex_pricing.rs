@@ -19,7 +19,7 @@ use brontes_types::{
 };
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tracing::info;
+use tracing::{info, span, Instrument, Level};
 
 pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
 pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
@@ -37,7 +37,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         let (tx, rx) = channel(2);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
-            let res = pricer.next().await;
+            let block = pricer.current_block_processing();
+            let res = pricer
+                .next()
+                .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
+                .await;
             tx_clone.try_send((pricer, res)).unwrap();
         });
 
@@ -90,10 +94,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
                 let finalized_meta = meta.into_full_metadata(prices);
 
-                return Poll::Ready(Some((tree, finalized_meta)));
+                return Poll::Ready(Some((tree, finalized_meta)))
             } else {
                 // means we have completed chunks
-                return Poll::Ready(None);
+                return Poll::Ready(None)
             }
         }
 
