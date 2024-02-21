@@ -536,14 +536,14 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_block(18500018)
-            .needs_tokens(vec![
-                hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into(),
-                hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into(),
-                hex!("ca5b0ae1d104030a9b8f879523508efd86c14483").into(),
-                hex!("0a13a5929e5f0ff0eaba4bd9e9512c91fce40280").into(),
-                hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
-                USDC_ADDRESS,
-            ])
+            // .needs_tokens(vec![
+            //     hex!("d9016a907dc0ecfa3ca425ab20b6b785b42f2373").into(),
+            //     hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into(),
+            //     hex!("ca5b0ae1d104030a9b8f879523508efd86c14483").into(),
+            //     hex!("0a13a5929e5f0ff0eaba4bd9e9512c91fce40280").into(),
+            //     hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+            //     USDC_ADDRESS,
+            // ])
             .with_dex_prices()
             .with_gas_paid_usd(40.26)
             .with_expected_profit_usd(-56.44);

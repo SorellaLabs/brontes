@@ -76,7 +76,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     if searcher_actions.is_empty() {
                         tracing::debug!("no searcher actions found");
-                        return None;
+                        return None
                     }
 
                     let info = [
@@ -91,7 +91,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .any(|d| mev_executor_contract == d.get_to_address())
                     {
                         tracing::debug!("victim address is same as mev executor contract");
-                        return None;
+                        return None
                     }
 
                     let victim_actions = victims
@@ -106,7 +106,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
                         tracing::debug!("no victim actions found");
-                        return None;
+                        return None
                     }
 
                     let victim_info = victims
@@ -159,7 +159,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");
-            return None;
+            return None
         }
 
         let jit_fee =
@@ -227,7 +227,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let iter = tree.tx_roots.iter();
 
         if iter.len() < 3 {
-            return vec![];
+            return vec![]
         }
 
         let mut set: HashSet<PossibleJit> = HashSet::new();
@@ -238,7 +238,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         for root in iter {
             if root.get_root_action().is_revert() {
-                continue;
+                continue
             }
 
             match duplicate_mev_contracts.entry(root.get_to_address()) {
@@ -410,10 +410,6 @@ mod tests {
         let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
-            .needs_tokens(vec![
-                hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into(),
-                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
-            ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)
             .with_expected_profit_usd(26.50);
