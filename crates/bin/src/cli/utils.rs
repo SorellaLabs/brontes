@@ -14,9 +14,9 @@ use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{
     db::{cex::CexExchange, traits::LibmdbxReader},
     mev::Bundle,
+    BrontesTaskExecutor,
 };
 use itertools::Itertools;
-use reth_tasks::TaskExecutor;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
@@ -91,7 +91,7 @@ pub fn get_env_vars() -> eyre::Result<String> {
 }
 
 #[cfg(not(feature = "local-reth"))]
-pub fn get_tracing_provider(_: &Path, _: u64, _: TaskExecutor) -> LocalProvider {
+pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
@@ -102,7 +102,7 @@ pub fn get_tracing_provider(_: &Path, _: u64, _: TaskExecutor) -> LocalProvider 
 pub fn get_tracing_provider(
     db_path: &Path,
     tracing_tasks: u64,
-    executor: TaskExecutor,
+    executor: BrontesTaskExecutor,
 ) -> TracingClient {
     TracingClient::new(db_path, tracing_tasks, executor.clone())
 }
