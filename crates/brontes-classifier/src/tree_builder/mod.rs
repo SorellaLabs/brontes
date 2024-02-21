@@ -106,7 +106,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .map(|(tx_idx, mut trace)| async move {
                     // here only traces where the root tx failed are filtered out
                     if trace.trace.is_empty() || !trace.is_success {
-                        return None;
+                        return None
                     }
                     // post classification processing collectors
                     let mut further_classification_requests = Vec::new();
@@ -249,7 +249,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.trace.error.is_some() {
-            return (vec![], Actions::Revert);
+            return (vec![], Actions::Revert)
         }
         match trace.action_type() {
             Action::Call(_) => self.classify_call(block, tx_idx, trace, trace_index).await,
@@ -272,7 +272,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
-            return (vec![], Actions::Unclassified(trace));
+            return (vec![], Actions::Unclassified(trace))
         }
         let call_info = trace.get_callframe_info();
 
@@ -281,9 +281,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         {
             (vec![results.0], results.1)
         } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
-            return transfer;
+            return transfer
         } else {
-            return (vec![], self.classify_eth_transfer(trace, trace_index));
+            return (vec![], self.classify_eth_transfer(trace, trace_index))
         }
     }
 
@@ -317,7 +317,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             || transfer.from != from
                             || transfer.to != to
                         {
-                            continue;
+                            continue
                         }
 
                         let decimals = transfer.token.decimals;
@@ -329,7 +329,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             transfer.amount = transferred_amount;
                             transfer.fee = fee;
                         }
-                        break;
+                        break
                     }
                 }
 

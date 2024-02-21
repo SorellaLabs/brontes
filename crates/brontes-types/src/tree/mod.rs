@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, panic::AssertUnwindSafe};
 
 use rayon::{
     prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
@@ -6,7 +6,7 @@ use rayon::{
 };
 use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
-use tracing::error;
+use tracing::{error, span, Level};
 
 use crate::db::traits::LibmdbxReader;
 pub mod node;
@@ -52,7 +52,7 @@ impl<V: NormalizedAction> BlockTree<V> {
                 .find_any(|r| r.tx_hash == tx_hash)
                 .and_then(|root| {
                     root.get_tx_info(self.header.number, database)
-                        .map_err(|e| error!("Database Error: {}", e))
+                        .map_err(|e| error!(block=%self.header.number,"Database Error: {}", e ))
                         .ok()
                 })
         })
@@ -84,30 +84,32 @@ impl<V: NormalizedAction> BlockTree<V> {
     }
 
     pub fn finalize_tree(&mut self) {
-        // in case the block is empty
-        if self.tx_roots.is_empty() {
-            error!(block = self.header.number, "The block tree is empty");
-            self.tx_roots.iter_mut().for_each(|root| root.finalize());
-            return;
-        }
+        self.run_in_span_mut(|this| {
+            // in case the block is empty
+            if this.tx_roots.is_empty() {
+                error!(block = this.header.number, "The block tree is empty");
+                this.tx_roots.iter_mut().for_each(|root| root.finalize());
+                return
+            }
 
-        // Initialize accumulator for total priority fee and vector of priority fees
-        let mut total_priority_fee: f64 = 0.0;
-        let mut priority_fees: Vec<f64> = Vec::new();
+            // Initialize accumulator for total priority fee and vector of priority fees
+            let mut total_priority_fee: f64 = 0.0;
+            let mut priority_fees: Vec<f64> = Vec::new();
 
-        for tx in &mut self.tx_roots {
-            let priority_fee = (tx.gas_details.effective_gas_price
-                - self.header.base_fee_per_gas.unwrap() as u128)
-                as f64;
-            priority_fees.push(priority_fee);
-            total_priority_fee += priority_fee;
+            for tx in &mut this.tx_roots {
+                let priority_fee = (tx.gas_details.effective_gas_price
+                    - this.header.base_fee_per_gas.unwrap() as u128)
+                    as f64;
+                priority_fees.push(priority_fee);
+                total_priority_fee += priority_fee;
 
-            tx.finalize();
-        }
+                tx.finalize();
+            }
 
-        self.avg_priority_fee = total_priority_fee / self.tx_roots.len() as f64;
-        let std_dev = priority_fees.population_std_dev();
-        self.priority_fee_std_dev = std_dev;
+            this.avg_priority_fee = total_priority_fee / this.tx_roots.len() as f64;
+            let std_dev = priority_fees.population_std_dev();
+            this.priority_fee_std_dev = std_dev;
+        })
     }
 
     pub fn get_hashes(&self) -> Vec<B256> {
@@ -118,11 +120,13 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
     pub fn collect_spans(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
-        if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
-            root.collect_spans(&call)
-        } else {
-            vec![]
-        }
+        self.run_in_span_ref(|this| {
+            if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == hash) {
+                root.collect_spans(&call)
+            } else {
+                vec![]
+            }
+        })
     }
 
     /// Collects all spans defined by the Search Args, then will allow
@@ -131,31 +135,37 @@ impl<V: NormalizedAction> BlockTree<V> {
     where
         F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
     {
-        self.tp.install(|| {
-            self.tx_roots.par_iter_mut().for_each(|root| {
-                root.modify_spans(&find, &modify);
+        self.run_in_span_mut(|this| {
+            this.tp.install(|| {
+                this.tx_roots.par_iter_mut().for_each(|root| {
+                    root.modify_spans(&find, &modify);
+                });
             });
-        });
+        })
     }
 
     /// For the given tx hash, goes through the tree and collects all actions
     /// specified by the tree search builder.
     pub fn collect(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<V> {
-        if let Some(root) = self.tx_roots.iter().find(|r| r.tx_hash == hash) {
-            root.collect(&call)
-        } else {
-            vec![]
-        }
+        self.run_in_span_ref(|this| {
+            if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == hash) {
+                root.collect(&call)
+            } else {
+                vec![]
+            }
+        })
     }
 
     /// For all transactions, goes through the tree and collects all actions
     /// specified by the tree search builder.
     pub fn collect_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<V>> {
-        self.tp.install(|| {
-            self.tx_roots
-                .par_iter()
-                .map(|r| (r.tx_hash, r.collect(&call)))
-                .collect()
+        self.run_in_span_ref(|this| {
+            this.tp.install(|| {
+                this.tx_roots
+                    .par_iter()
+                    .map(|r| (r.tx_hash, r.collect(&call)))
+                    .collect()
+            })
         })
     }
 
@@ -164,31 +174,35 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// child nodes of the action index if and only if they are specified in
     /// the classification function of the action index node.
     pub fn collect_and_classify(&mut self, search_params: &[Option<(usize, Vec<u64>)>]) {
-        let mut roots_with_search_params = self
-            .tx_roots
-            .iter_mut()
-            .zip(search_params.iter())
-            .collect::<Vec<_>>();
+        self.run_in_span_mut(|this| {
+            let mut roots_with_search_params = this
+                .tx_roots
+                .iter_mut()
+                .zip(search_params.iter())
+                .collect::<Vec<_>>();
 
-        self.tp.install(|| {
-            roots_with_search_params
-                .par_iter_mut()
-                .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
-                .for_each(|(root, (_, subtraces))| {
-                    root.collect_child_traces_and_classify(subtraces);
-                });
-        });
+            this.tp.install(|| {
+                roots_with_search_params
+                    .par_iter_mut()
+                    .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
+                    .for_each(|(root, (_, subtraces))| {
+                        root.collect_child_traces_and_classify(subtraces);
+                    });
+            });
+        })
     }
 
     /// Collects all subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
     pub fn collect_spans_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<Vec<V>>> {
-        self.tp.install(|| {
-            self.tx_roots
-                .par_iter()
-                .map(|r| (r.tx_hash, r.collect_spans(&call)))
-                .collect()
+        self.run_in_span_ref(|this| {
+            this.tp.install(|| {
+                this.tx_roots
+                    .par_iter()
+                    .map(|r| (r.tx_hash, r.collect_spans(&call)))
+                    .collect()
+            })
         })
     }
 
@@ -199,10 +213,12 @@ impl<V: NormalizedAction> BlockTree<V> {
     where
         F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
     {
-        self.tp.install(|| {
-            self.tx_roots
-                .par_iter_mut()
-                .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
+        self.run_in_span_mut(|this| {
+            this.tp.install(|| {
+                this.tx_roots
+                    .par_iter_mut()
+                    .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
+            })
         })
     }
 
@@ -222,10 +238,12 @@ impl<V: NormalizedAction> BlockTree<V> {
         WantedData: Fn(&Node, &NodeData<V>) -> R + Sync,
         ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
     {
-        self.tp.install(|| {
-            self.tx_roots.par_iter_mut().for_each(|root| {
-                root.remove_duplicate_data(&find, &classify, &info, &find_removal)
-            });
+        self.run_in_span_mut(|this| {
+            this.tp.install(|| {
+                this.tx_roots.par_iter_mut().for_each(|root| {
+                    root.remove_duplicate_data(&find, &classify, &info, &find_removal)
+                });
+            })
         })
     }
 
@@ -233,5 +251,43 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.tx_roots
             .iter_mut()
             .for_each(|root| root.label_private_tx(metadata));
+    }
+
+    /// catches all panics and errors and makes sure to log with block number to
+    /// ensure easy debugging
+    fn run_in_span_mut<Ret: Send>(&mut self, action: impl Fn(&mut Self) -> Ret) -> Ret {
+        let span = span!(Level::ERROR, "brontes-tree", block = self.header.number);
+        let g = span.enter();
+
+        let res = std::panic::catch_unwind(AssertUnwindSafe(|| action(self)));
+
+        let res = match res {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!(error=?e, "hit panic on a tree action, exiting");
+                panic!("{:?}", e)
+            }
+        };
+        drop(g);
+
+        res
+    }
+
+    fn run_in_span_ref<Ret: Send>(&self, action: impl Fn(&Self) -> Ret) -> Ret {
+        let span = span!(Level::ERROR, "brontes-tree", block = self.header.number);
+        let g = span.enter();
+
+        let res = std::panic::catch_unwind(AssertUnwindSafe(|| action(self)));
+
+        let res = match res {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!(error=?e, "hit panic on a tree action, exiting");
+                panic!("{:?}", e)
+            }
+        };
+        drop(g);
+
+        res
     }
 }

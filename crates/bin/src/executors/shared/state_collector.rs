@@ -16,17 +16,23 @@ use brontes_types::{
         traits::{DBWriter, LibmdbxReader},
     },
     normalized_actions::Actions,
+    structured_trace::TxTrace,
     traits::TracingProvider,
     BlockTree,
 };
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
-use tracing::debug;
+use reth_primitives::Header;
+use tokio::task::JoinError;
+use tracing::{debug, Level};
 
 use super::metadata::MetadataFetcher;
 
 type CollectionFut<'a> =
     Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Actions>>> + Send + 'a>>;
+
+type ExecutionFut<'a> =
+    Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
 
 pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
@@ -63,14 +69,27 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         self.metadata_fetcher.should_process_next_block()
     }
 
+    async fn state_future(
+        fut: ExecutionFut<'static>,
+        classifier: &'static Classifier<'static, T, DB>,
+        block: u64,
+    ) -> eyre::Result<BlockTree<Actions>> {
+        let span = tracing::span!(Level::ERROR, "state collection", block_number = block);
+        let guard = span.enter();
+
+        let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
+
+        debug!("Got {} traces + header", traces.len());
+        let res = classifier.build_block_tree(traces, header).await;
+        drop(guard);
+
+        Ok(res)
+    }
+
     pub fn fetch_state_for(&mut self, block: u64) {
         let execute_fut = self.parser.execute(block);
-        self.collection_future = Some(Box::pin(async {
-            let (traces, header) = execute_fut.await?.ok_or_else(|| eyre!("no traces found"))?;
-
-            debug!("Got {} traces + header", traces.len());
-            Ok(self.classifier.build_block_tree(traces, header).await)
-        }));
+        self.collection_future =
+            Some(Box::pin(Self::state_future(execute_fut, self.classifier, block)))
     }
 
     pub fn range_finished(&self) {
@@ -95,7 +114,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 }
                 Poll::Ready(Err(e)) => {
                     tracing::error!(error = %e, "state collector");
-                    return Poll::Ready(None);
+                    return Poll::Ready(None)
                 }
                 Poll::Pending => {
                     self.collection_future = Some(collection_future);
@@ -107,7 +126,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             && self.metadata_fetcher.is_finished()
             && self.collection_future.is_none()
         {
-            return Poll::Ready(None);
+            return Poll::Ready(None)
         }
 
         self.metadata_fetcher.poll_next_unpin(cx)
