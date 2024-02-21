@@ -289,7 +289,6 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -339,10 +338,10 @@ mod tests {
     async fn searcher_info() {
         let db = spawn_clickhouse();
         let case0 = JoinedSearcherInfo {
-            address: Default::default(),
-            fund: Default::default(),
-            mev: vec![MevType::default()],
-            builder: Some(Default::default()),
+            address:         Default::default(),
+            fund:            Default::default(),
+            mev:             vec![MevType::default()],
+            builder:         Some(Default::default()),
             eoa_or_contract: SearcherEoaContract::Contract,
         };
 
@@ -367,13 +366,17 @@ mod tests {
             .await
             .unwrap();
 
-        //let query = "SELECT address, (decimals, symbol) FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
-        //let queried: TokenInfoWithAddress = db.inner().query_one(query, &()).await.unwrap();
+        //let query = "SELECT address, (decimals, symbol) FROM
+        // brontes.token_info WHERE address =
+        // '0x0000000000000000000000000000000000000000'"; let queried:
+        // TokenInfoWithAddress = db.inner().query_one(query,
+        // &()).await.unwrap();
 
         //assert_eq!(queried, case0);
 
-        //let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
-        //db.inner().execute_remote(query, &()).await.unwrap();
+        //let query = "DELETE FROM brontes.token_info WHERE address =
+        // '0x0000000000000000000000000000000000000000'"; db.inner().
+        // execute_remote(query, &()).await.unwrap();
     }
 
     #[tokio::test]
@@ -419,8 +422,8 @@ mod tests {
 
         let case0 = DexQuotesWithBlockNumber {
             block_number: Default::default(),
-            tx_idx: Default::default(),
-            quote: Some(case0_map),
+            tx_idx:       Default::default(),
+            quote:        Some(case0_map),
         };
 
         db.inner()
@@ -537,20 +540,20 @@ mod tests {
         let db = spawn_clickhouse();
 
         let case0 = ProtocolInfoClickhouse {
-            protocol: "NONE".to_string(),
+            protocol:         "NONE".to_string(),
             protocol_subtype: "NONE".to_string(),
-            address: "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+            address:          "0x229b8325bb9Ac04602898B7e8989998710235d5f"
                 .to_string()
                 .into(),
-            tokens: vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
+            tokens:           vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
                 .to_string()
                 .into()],
-            curve_lp_token: Some(
+            curve_lp_token:   Some(
                 "0x229b8325bb9Ac04602898B7e8989998710235d5f"
                     .to_string()
                     .into(),
             ),
-            init_block: 0,
+            init_block:       0,
         };
 
         db.inner()
@@ -571,4 +574,3 @@ mod tests {
             .unwrap();
     }
 }
-*/
