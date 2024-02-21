@@ -1,7 +1,10 @@
 use std::{fmt::Debug, path::Path, sync::Arc};
 
 use alloy_primitives::{Log, B256};
-use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
+use brontes_types::{
+    structured_trace::{TransactionTraceWithLogs, TxTrace},
+    BrontesTaskExecutor,
+};
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
@@ -65,7 +68,7 @@ impl TracingClient {
     pub fn new_with_db(
         db: Arc<DatabaseEnv>,
         max_tasks: u64,
-        task_executor: reth_tasks::TaskExecutor,
+        task_executor: BrontesTaskExecutor,
     ) -> Self {
         let chain = MAINNET.clone();
         let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
@@ -141,7 +144,7 @@ impl TracingClient {
         Self { api, trace }
     }
 
-    pub fn new(db_path: &Path, max_tasks: u64, task_executor: reth_tasks::TaskExecutor) -> Self {
+    pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
         let db = Arc::new(init_db(db_path).unwrap());
         Self::new_with_db(db, max_tasks, task_executor)
     }
@@ -228,7 +231,7 @@ impl TracingInspectorLocal {
         block_number: u64,
     ) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
-            return None;
+            return None
         }
 
         let mut traces: Vec<TransactionTraceWithLogs> =
@@ -318,12 +321,12 @@ impl TracingInspectorLocal {
     fn trace_address(&self, nodes: &[CallTraceNode], idx: usize) -> Vec<usize> {
         if idx == 0 {
             // root call has empty traceAddress
-            return vec![];
+            return vec![]
         }
         let mut graph = vec![];
         let mut node = &nodes[idx];
         if node.trace.maybe_precompile.unwrap_or(false) {
-            return graph;
+            return graph
         }
         while let Some(parent) = node.parent {
             // the index of the child call in the arena

@@ -320,11 +320,11 @@ mod tests {
         Clickhouse::default()
     }
 
-    #[tokio::test]
+    #[brontes_macros::test]
     async fn tx_traces() {
         let db = spawn_clickhouse();
 
-        let libmdbx = get_db_handle();
+        let libmdbx = get_db_handle(tokio::runtime::Handle::current()).await;
         let (a, _b) = unbounded_channel();
         let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
 

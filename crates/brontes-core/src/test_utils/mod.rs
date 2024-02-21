@@ -1,7 +1,9 @@
+#[cfg(feature = "local-reth")]
+use std::sync::OnceLock;
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
-    sync::{Arc, OnceLock},
+    sync::Arc,
 };
 
 #[cfg(feature = "local-clickhouse")]
@@ -18,15 +20,16 @@ use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
-use reth_tasks::TaskManager;
-#[cfg(feature = "local-reth")]
 use reth_tracing_ext::init_db;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use thiserror::Error;
 use tokio::{
     runtime::Handle,
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        OnceCell,
+    },
 };
 use tracing::Level;
 use tracing_subscriber::filter::Directive;
@@ -45,15 +48,13 @@ pub struct TraceLoader {
 
 impl TraceLoader {
     pub async fn new() -> Self {
-        let libmdbx = get_db_handle();
-        let (a, b) = unbounded_channel();
         let handle = tokio::runtime::Handle::current();
+        let libmdbx = get_db_handle(handle.clone()).await;
+
+        let (a, b) = unbounded_channel();
         let tracing_provider = init_trace_parser(handle, a, libmdbx, 10).await;
 
-        let this = Self { libmdbx, tracing_provider, _metrics: b };
-        this.init_on_start().await.unwrap();
-
-        this
+        Self { libmdbx, tracing_provider, _metrics: b }
     }
 
     pub fn get_provider(&self) -> Arc<Box<dyn TracingProvider>> {
@@ -89,29 +90,8 @@ impl TraceLoader {
             self.fetch_missing_metadata(block).await?;
             return self
                 .test_metadata(block)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block));
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
         }
-    }
-
-    async fn init_on_start(&self) -> eyre::Result<()> {
-        let clickhouse = Box::leak(Box::new(load_clickhouse()));
-        if self.libmdbx.init_full_range_tables(clickhouse).await {
-            self.libmdbx
-                .initialize_tables(
-                    clickhouse,
-                    self.tracing_provider.get_tracer(),
-                    &[
-                        Tables::PoolCreationBlocks,
-                        Tables::TokenDecimals,
-                        Tables::AddressToProtocolInfo,
-                    ],
-                    false,
-                    None,
-                )
-                .await?;
-        }
-
-        Ok(())
     }
 
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
@@ -319,19 +299,44 @@ pub struct BlockTracesWithHeaderAnd<T> {
 }
 
 // done because we can only have 1 instance of libmdbx or we error
-static DB_HANDLE: OnceLock<LibmdbxReadWriter> = OnceLock::new();
+static DB_HANDLE: tokio::sync::OnceCell<&'static LibmdbxReadWriter> = OnceCell::const_new();
 #[cfg(feature = "local-reth")]
 static RETH_DB_HANDLE: OnceLock<Arc<DatabaseEnv>> = OnceLock::new();
 
-pub fn get_db_handle() -> &'static LibmdbxReadWriter {
-    DB_HANDLE.get_or_init(|| {
-        let _ = dotenv::dotenv();
-        init_tracing();
-        let brontes_db_endpoint =
-            env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
-            .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint))
-    })
+pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
+    *DB_HANDLE
+        .get_or_init(|| async {
+            let _ = dotenv::dotenv();
+            init_tracing();
+            let brontes_db_endpoint =
+                env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+            let this = &*Box::leak(Box::new(
+                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
+                    .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint)),
+            ));
+
+            let (tx, _rx) = unbounded_channel();
+            let clickhouse = Box::leak(Box::new(load_clickhouse()));
+            if this.init_full_range_tables(clickhouse).await {
+                let tracer = init_trace_parser(handle, tx, this, 5).await;
+                this.initialize_tables(
+                    clickhouse,
+                    tracer.get_tracer(),
+                    &[
+                        Tables::PoolCreationBlocks,
+                        Tables::TokenDecimals,
+                        Tables::AddressToProtocolInfo,
+                    ],
+                    false,
+                    None,
+                )
+                .await
+                .unwrap();
+            }
+
+            this
+        })
+        .await
 }
 
 #[cfg(feature = "local-reth")]
@@ -364,7 +369,7 @@ pub async fn init_trace_parser(
     libmdbx: &LibmdbxReadWriter,
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    let executor = TaskManager::new(handle.clone());
+    let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
     let client =
         TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
     handle.spawn(executor);

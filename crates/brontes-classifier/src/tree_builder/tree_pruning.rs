@@ -9,7 +9,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 // pub(crate) fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
 //     tree.remove_duplicate_data(
 //         |node, data| TreeSearchArgs {
-//             collect_current_node: data
+//             collect_current_node:  data
 //                 .get_ref(node.data)
 //                 .map(|data| data.is_swap())
 //                 .unwrap_or_default(),
@@ -20,7 +20,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 //                 .any(|data| data.is_swap()),
 //         },
 //         |node, data| TreeSearchArgs {
-//             collect_current_node: data
+//             collect_current_node:  data
 //                 .get_ref(node.data)
 //                 .map(|data| data.is_transfer())
 //                 .unwrap_or_default(),
@@ -48,7 +48,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 //                         || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
 //                         && (transfer.to == swap_data.pool || transfer.from ==
 // swap_data.pool)                     {
-//                         return Some(*index);
+//                         return Some(*index)
 //                     }
 //                     None
 //                 })
@@ -106,7 +106,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 // pub(crate) fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
 //     tree.remove_duplicate_data(
 //         |node, data| TreeSearchArgs {
-//             collect_current_node: data
+//             collect_current_node:  data
 //                 .get_ref(node.data)
 //                 .map(|data| data.is_collect())
 //                 .unwrap_or_default(),
@@ -117,7 +117,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 //                 .any(|data| data.is_collect()),
 //         },
 //         |node, data| TreeSearchArgs {
-//             collect_current_node: data
+//             collect_current_node:  data
 //                 .get_ref(node.data)
 //                 .map(|data| data.is_transfer())
 //                 .unwrap_or_default(),
@@ -130,8 +130,8 @@ use malachite::{num::basic::traits::Zero, Rational};
 //         |node, data| (node.index, data.get_ref(node.data).cloned()),
 //         |other_nodes, node, node_info| {
 //             let Some(Actions::Collect(collect_data)) =
-// node_info.get_ref(node.data) else {                 unreachable!("value not
-// collect")             };
+// node_info.get_ref(node.data) else {                 unreachable!("value
+// notcollect")             };
 //             other_nodes
 //                 .iter()
 //                 .filter_map(|(index, data)| {
@@ -141,7 +141,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 //                     for (amount, token) in
 // collect_data.amount.iter().zip(&collect_data.token) {
 // if transfer.amount.eq(amount) && transfer.token.eq(token) {
-// return Some(*index);                         }
+// return Some(*index)                         }
 //                     }
 //                     None
 //                 })
@@ -168,9 +168,9 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 .filter_map(|action| {
                     let data = data.get_ref(action.data)?;
                     if data.is_swap() {
-                        return Some((Some((action.data, data.clone())), None));
+                        return Some((Some((action.data, data.clone())), None))
                     } else if data.is_transfer() {
-                        return Some((None, Some((action.data, data.clone()))));
+                        return Some((None, Some((action.data, data.clone()))))
                     }
                     None
                 })
@@ -181,7 +181,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                     let mut swap = node.clone().force_swap();
                     let transfer = transfer.force_transfer_mut();
                     if transfer.fee == Rational::ZERO {
-                        return;
+                        return
                     }
 
                     // adjust the amount out case
@@ -216,7 +216,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                             fee_token: transfer.token.clone(),
                         });
                         data.replace(swap_idx, swap);
-                        return;
+                        return
                     }
                 });
             }
