@@ -115,7 +115,7 @@ pub trait DBWriter: Send + Unpin + 'static {
         classifier_name: Protocol,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
     }
 
     fn save_traces(
