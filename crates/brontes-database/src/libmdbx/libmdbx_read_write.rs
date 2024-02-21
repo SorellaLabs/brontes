@@ -47,7 +47,6 @@ use crate::libmdbx::CompressedTable;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
-    AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
