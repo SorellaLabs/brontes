@@ -61,7 +61,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      victims,
                  }| {
                     if victims.iter().flatten().count() == 0 {
-                        return None;
+                        return None
                     };
 
                     let victim_info = victims
@@ -93,7 +93,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .count()
                         == 0
                     {
-                        return None;
+                        return None
                     }
 
                     if victims
@@ -102,7 +102,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|v| tree.get_root(*v).unwrap().get_root_action())
                         .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
                     {
-                        return None;
+                        return None
                     }
 
                     let frontrun_info = possible_frontruns
@@ -183,7 +183,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .count()
                     == 0
                 {
-                    return None;
+                    return None
                 }
 
                 return self.calculate_sandwich(
@@ -193,10 +193,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions,
                     victim_info,
                     victim_actions,
-                );
+                )
             }
 
-            return None;
+            return None
         }
 
         let victim_swaps = victim_actions
@@ -335,7 +335,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// comprehensive set of potential sandwich attacks.
     fn get_possible_sandwich(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
         if tree.tx_roots.len() < 3 {
-            return vec![];
+            return vec![]
         }
 
         let tree_clone_for_senders = tree.clone();
@@ -362,7 +362,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {
-            continue;
+            continue
         }
         match duplicate_senders.entry(root.head.address) {
             // If we have not seen this sender before, we insert the tx hash into the map
@@ -427,7 +427,7 @@ fn get_possible_sandwich_duplicate_contracts(
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {
-            continue;
+            continue
         }
 
         match duplicate_mev_contracts.entry(root.get_to_address()) {
@@ -505,7 +505,6 @@ mod tests {
                 hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
             ])
             .with_dex_prices()
-            .needs_tokens(vec![hex!("0588504472198e9296a248edca6ccdc40bd237cb").into()])
             .with_gas_paid_usd(34.3368)
             .with_expected_profit_usd(23.9);
 

@@ -241,7 +241,7 @@ impl ClassifierTestUtils {
             if let Some((_p_block, pricing)) = pricer.next().await {
                 Some(pricing)
             } else {
-                return Err(ClassifierTestUtilsError::DexPricingError);
+                return Err(ClassifierTestUtilsError::DexPricingError)
             }
         } else {
             price
@@ -309,7 +309,7 @@ impl ClassifierTestUtils {
                 }
                 Err(_) => {
                     failed = true;
-                    break;
+                    break
                 }
             }
         }
@@ -390,7 +390,7 @@ impl ClassifierTestUtils {
                 //     .unwrap();
                 Some(pricing)
             } else {
-                return Err(ClassifierTestUtilsError::DexPricingError);
+                return Err(ClassifierTestUtilsError::DexPricingError)
             }
         } else {
             price
@@ -492,7 +492,7 @@ impl ClassifierTestUtils {
         if trace_addr.len() > 1 {
             trace_addr.pop().unwrap();
         } else {
-            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool));
+            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))
         };
 
         let p_trace = trace
