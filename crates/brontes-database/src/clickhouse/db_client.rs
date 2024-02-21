@@ -532,7 +532,22 @@ mod tests {
     async fn pools() {
         let db = spawn_clickhouse();
 
-        let case0 = ProtocolInfoClickhouse::default();
+        let case0 = ProtocolInfoClickhouse {
+            protocol: "NONE".to_string(),
+            protocol_subtype: "NONE".to_string(),
+            address: "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                .to_string()
+                .into(),
+            tokens: vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                .to_string()
+                .into()],
+            curve_lp_token: Some(
+                "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                    .to_string()
+                    .into(),
+            ),
+            init_block: 0,
+        };
 
         db.inner()
             .insert_one::<ClickhousePools>(&case0)
