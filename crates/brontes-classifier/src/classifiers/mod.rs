@@ -22,6 +22,9 @@ pub use pancakeswap::*;
 pub mod maker;
 pub use maker::*;
 
+pub mod cowswap;
+pub use cowswap::*;
+
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,

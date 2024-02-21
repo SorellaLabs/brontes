@@ -44,6 +44,8 @@ sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
 
+sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
+
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
