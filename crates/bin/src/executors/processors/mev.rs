@@ -11,7 +11,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use tracing::{error, info};
+use tracing::{error, info, span, Level};
 
 use crate::Processor;
 
@@ -27,6 +27,9 @@ impl Processor for MevProcessor {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) {
+        let span = span!(Level::ERROR, "mev processor", block = metadata.block_num);
+        let guard = span.enter();
+
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
             compose_mev_results(inspectors, tree, metadata.clone()).await;
 
@@ -38,6 +41,7 @@ impl Processor for MevProcessor {
         }
 
         insert_mev_results(db, block_details, mev_details).await;
+        drop(guard);
     }
 }
 

@@ -86,6 +86,10 @@ impl Metadata {
         self.builder_info = Some(builder_info);
         self
     }
+
+    pub fn block_num(&self) -> u64 {
+        self.block_num
+    }
 }
 
 /// Block Metadata
