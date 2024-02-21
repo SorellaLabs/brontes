@@ -304,22 +304,35 @@ impl<V: NormalizedAction> BlockTree<V> {
 
 #[cfg(test)]
 pub mod test {
+    use brontes_classifier::test_utils::ClassifierTestUtils;
 
     #[brontes_macros::test]
-    async fn test_collect_all() {}
+    async fn test_collect_all() {
+        let _classifier_utils = ClassifierTestUtils::new().await;
+    }
 
     #[brontes_macros::test]
-    async fn test_modify_spans() {}
+    async fn test_modify_spans() {
+        let _classifier_utils = ClassifierTestUtils::new().await;
+    }
 
     #[brontes_macros::test]
-    async fn test_collect_spans() {}
+    async fn test_collect_spans() {
+        let _classifier_utils = ClassifierTestUtils::new().await;
+    }
 
     #[brontes_macros::test]
-    async fn test_remove_duplicate_data() {}
+    async fn test_remove_duplicate_data() {
+        let _classifier_utils = ClassifierTestUtils::new().await;
+    }
 
     #[brontes_macros::test]
-    async fn test_modify_node_if_child_contains() {}
+    async fn test_modify_node_if_child_contains() {
+        let _classifier_utils = ClassifierTestUtils::new().await;
+    }
 
     #[brontes_macros::test]
-    async fn test_collect_and_classify() {}
+    async fn test_collect_and_classify() {
+        let _classifier_utils = ClassifierTestUtils::new().await;
+    }
 }
