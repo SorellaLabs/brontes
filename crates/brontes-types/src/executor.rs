@@ -159,8 +159,8 @@ impl BrontesTaskExecutor {
             .panicked_tasks_tx
             .send(PanickedTaskError { error: None, task_name });
 
-        // forever give back to the executor until the exit occurs
         self.block_on(async {
+            // forever give back to the executor until the exit occurs
             loop {
                 tokio::task::yield_now().await;
             }

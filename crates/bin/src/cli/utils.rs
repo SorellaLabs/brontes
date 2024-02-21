@@ -1,4 +1,5 @@
 use std::{env, path::Path};
+use brontes_types::BrontesTaskExecutor;
 
 use alloy_primitives::Address;
 #[cfg(not(feature = "local-reth"))]
@@ -16,7 +17,6 @@ use brontes_types::{
     mev::Bundle,
 };
 use itertools::Itertools;
-use reth_tasks::TaskExecutor;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
@@ -91,7 +91,9 @@ pub fn get_env_vars() -> eyre::Result<String> {
 }
 
 #[cfg(not(feature = "local-reth"))]
-pub fn get_tracing_provider(_: &Path, _: u64, _: TaskExecutor) -> LocalProvider {
+pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
+    use brontes_types::BrontesTaskExecutor;
+
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
@@ -102,7 +104,9 @@ pub fn get_tracing_provider(_: &Path, _: u64, _: TaskExecutor) -> LocalProvider 
 pub fn get_tracing_provider(
     db_path: &Path,
     tracing_tasks: u64,
-    executor: TaskExecutor,
+    executor: BrontesTaskExecutor,
 ) -> TracingClient {
+    use brontes_types::BrontesTaskExecutor;
+
     TracingClient::new(db_path, tracing_tasks, executor.clone())
 }
