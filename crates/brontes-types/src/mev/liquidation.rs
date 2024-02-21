@@ -60,10 +60,8 @@ impl Serialize for Liquidation {
         let mut ser_struct = serializer.serialize_struct("Liquidation", 34)?;
 
         // frontrun
-        ser_struct.serialize_field(
-            "liquidation_tx_hash",
-            &FixedString::from(format!("{:?}", self.liquidation_tx_hash)),
-        )?;
+        ser_struct
+            .serialize_field("liquidation_tx_hash", &format!("{:?}", self.liquidation_tx_hash))?;
 
         let liquidation_swaps: ClickhouseVecNormalizedSwap = self.liquidation_swaps.clone().into();
 
