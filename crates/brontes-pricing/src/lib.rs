@@ -1016,9 +1016,48 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
 #[cfg(test)]
 pub mod test {
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{constants::USDC_ADDRESS, db::dex::DexQuotes};
+    use futures::future::join_all;
+    // given that the only thing that
+    #[brontes_macros::test]
+    async fn test_pricing_variance() {
+        let utils = ClassifierTestUtils::new().await;
+        let bad_block = 18500018;
+        let mut dex_quotes: Vec<DexQuotes> = join_all((0..10).into_iter().map(|_| async {
+            utils
+                .build_block_tree_with_pricing(bad_block, USDC_ADDRESS, vec![])
+                .await
+                .unwrap()
+                .1
+                .unwrap()
+        }))
+        .await;
 
-    use alloy_primitives::{hex, Address, FixedBytes};
+        // generate a bitmap of all locations that are valid
+        let mut expected = [0u8; 88];
 
-    pub const USDC_ADDRESS: Address =
-        Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
+        let last = dex_quotes.pop().unwrap();
+        last.0.iter().enumerate().for_each(|(i, p_entry)| {
+            if p_entry.is_some() {
+                expected[i / 8] |= 1 << i % 8;
+            }
+        });
+
+        dex_quotes.iter().for_each(|quotes| {
+            quotes.0.iter().enumerate().for_each(|(i, p_entry)| {
+                if p_entry.is_some() {
+                    assert!(
+                        expected[i / 8] & 1 << i % 8 != 0,
+                        "have a entry where another generation doesn't: tx {i}"
+                    )
+                } else {
+                    assert!(
+                        expected[i / 8] & 1 << i % 8 == 0,
+                        "missing a entry where another generation has one: tx {i}"
+                    )
+                }
+            });
+        });
+    }
 }

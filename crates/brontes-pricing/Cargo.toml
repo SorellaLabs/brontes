@@ -91,7 +91,6 @@ eyre.workspace = true
 [features]
 default = []
 testing = []
-audit = []
 uni-v3-ticks = []
 benchmarking = []
 local-reth = ["brontes-types/local-reth"]

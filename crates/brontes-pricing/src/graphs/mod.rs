@@ -100,7 +100,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         connections: usize,
     ) -> Vec<SubGraphEdge> {
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
-            return edges;
+            return edges
         }
 
         self.all_pair_graph
@@ -130,13 +130,11 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         connectivity_wight: usize,
         connections: usize,
     ) -> Vec<PoolPairInfoDirection> {
+        #[cfg(not(feature = "testing"))]
         if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
-            return self.subgraph_verifier.create_new_subgraph(
-                pair,
-                block,
-                edges,
-                &self.graph_state,
-            );
+            return self
+                .subgraph_verifier
+                .create_new_subgraph(pair, block, edges, &self.graph_state)
         }
 
         let paths = self
@@ -155,7 +153,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         // search failed
         if paths.is_empty() {
             info!(?pair, "empty search path");
-            return vec![];
+            return vec![]
         }
 
         self.subgraph_verifier
@@ -163,6 +161,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     }
 
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
+        #[cfg(not(feature = "testing"))]
         if let Err(e) =
             self.db
                 .save_pair_at(block, pair, subgraph.get_all_pools().flatten().cloned().collect())
