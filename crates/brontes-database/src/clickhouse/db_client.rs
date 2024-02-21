@@ -285,8 +285,8 @@ mod tests {
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
         },
         mev::{
-            BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation, MevType,
-            PossibleMev, PossibleMevCollection, Sandwich,
+            AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
+            MevType, PossibleMev, PossibleMevCollection, Sandwich,
         },
         pair::Pair,
     };
@@ -500,6 +500,18 @@ mod tests {
 
         db.inner()
             .insert_one::<ClickhouseSandwiches>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn atomic_arb() {
+        let db = spawn_clickhouse();
+
+        let case0 = AtomicArb::default();
+
+        db.inner()
+            .insert_one::<ClickhouseAtomicArbs>(&case0)
             .await
             .unwrap();
     }
