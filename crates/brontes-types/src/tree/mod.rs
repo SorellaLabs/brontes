@@ -264,8 +264,9 @@ impl<V: NormalizedAction> BlockTree<V> {
         let res = match res {
             Ok(r) => r,
             Err(e) => {
-                tracing::error!(error=?e, "hit panic on a tree action, exiting");
-                BrontesTaskExecutor::current().trigger_shutdown("tree panic")
+                let error = e.downcast_ref::<String>();
+                tracing::error!(error=?error, "hit panic on a tree action, exiting");
+                panic!("{e:?}");
             }
         };
         drop(g);
@@ -282,8 +283,9 @@ impl<V: NormalizedAction> BlockTree<V> {
         let res = match res {
             Ok(r) => r,
             Err(e) => {
-                tracing::error!(error=?e, "hit panic on a tree action, exiting");
-                BrontesTaskExecutor::current().trigger_shutdown("tree panic")
+                let error = e.downcast_ref::<String>();
+                tracing::error!(error=?error, "hit panic on a tree action, exiting");
+                panic!("{e:?}");
             }
         };
         drop(g);

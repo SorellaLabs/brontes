@@ -2,6 +2,7 @@
 use std::{
     any::Any,
     fmt::{Display, Formatter},
+    future::poll_fn,
     pin::Pin,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -11,8 +12,8 @@ use std::{
 };
 
 use futures::{
-    future::{select, BoxFuture, FusedFuture, Shared},
-    pin_mut, Future, FutureExt, TryFutureExt,
+    future::{poll_immediate, select, BoxFuture, FusedFuture, Shared},
+    pin_mut, poll, Future, FutureExt, TryFutureExt,
 };
 use reth_tasks::{shutdown::GracefulShutdown, TaskSpawner, TaskSpawnerExt};
 use tokio::{
@@ -154,21 +155,10 @@ impl BrontesTaskExecutor {
     }
 
     /// Causes a shutdown to occur.
-    pub fn trigger_shutdown(&self, task_name: &'static str) -> ! {
+    pub fn trigger_shutdown(&self, task_name: &'static str) -> () {
         let _ = self
             .panicked_tasks_tx
             .send(PanickedTaskError { error: None, task_name });
-
-        self.spawn_task_as(
-            async {
-                // forever give back to the executor until the exit occurs
-                loop {
-                    tokio::task::yield_now().await;
-                }
-            },
-            TaskKind::Default,
-        );
-        loop {}
     }
 
     /// Returns the [Handle] to the tokio runtime.

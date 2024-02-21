@@ -1,5 +1,4 @@
 use std::{env, path::Path};
-use brontes_types::BrontesTaskExecutor;
 
 use alloy_primitives::Address;
 #[cfg(not(feature = "local-reth"))]
@@ -15,6 +14,7 @@ use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{
     db::{cex::CexExchange, traits::LibmdbxReader},
     mev::Bundle,
+    BrontesTaskExecutor,
 };
 use itertools::Itertools;
 #[cfg(feature = "local-reth")]

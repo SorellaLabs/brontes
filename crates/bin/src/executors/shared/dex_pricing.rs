@@ -7,11 +7,15 @@ use std::{
 use brontes_core::decoding::TracingProvider;
 use brontes_pricing::BrontesBatchPricer;
 use brontes_types::{
-    constants::START_OF_CHAINBOUND_MEMPOOL_DATA, db::{
+    constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
+    db::{
         dex::DexQuotes,
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
-    }, normalized_actions::Actions, tree::BlockTree, BrontesTaskExecutor
+    },
+    normalized_actions::Actions,
+    tree::BlockTree,
+    BrontesTaskExecutor,
 };
 use futures::{Stream, StreamExt};
 use reth_tasks::TaskExecutor;
