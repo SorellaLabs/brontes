@@ -2,6 +2,7 @@
 use std::{
     any::Any,
     fmt::{Display, Formatter},
+    panic::set_hook,
     pin::Pin,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -63,6 +64,23 @@ impl BrontesTaskManager {
     pub fn new(handle: Handle) -> Self {
         let (panicked_tasks_tx, panicked_tasks_rx) = unbounded_channel();
         let (signal, on_shutdown) = signal();
+
+        let tx = panicked_tasks_tx.clone();
+
+        std::panic::set_hook(Box::new(move |info| {
+            let location = info.location().unwrap();
+
+            let msg = match info.payload().downcast_ref::<&'static str>() {
+                Some(s) => *s,
+                None => match info.payload().downcast_ref::<String>() {
+                    Some(s) => &s[..],
+                    None => "Box<dyn Any>",
+                },
+            };
+            let error_msg = format!("panic happened at {location}:\n {msg}");
+
+            let _ = tx.send(PanickedTaskError::new("thread", Box::new(error_msg)));
+        }));
 
         let this = Self {
             handle,
