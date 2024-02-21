@@ -67,20 +67,24 @@ impl BrontesTaskManager {
 
         let tx = panicked_tasks_tx.clone();
 
-        std::panic::set_hook(Box::new(move |info| {
-            let location = info.location().unwrap();
+        let bt_level = std::env::var("RUST_BACKTRACE").unwrap_or(String::new("0"));
 
-            let msg = match info.payload().downcast_ref::<&'static str>() {
-                Some(s) => *s,
-                None => match info.payload().downcast_ref::<String>() {
-                    Some(s) => &s[..],
-                    None => "Box<dyn Any>",
-                },
-            };
-            let error_msg = format!("panic happened at {location}:\n {msg}");
+        if bt_level == "0" {
+            std::panic::set_hook(Box::new(move |info| {
+                let location = info.location().unwrap();
 
-            let _ = tx.send(PanickedTaskError::new("thread", Box::new(error_msg)));
-        }));
+                let msg = match info.payload().downcast_ref::<&'static str>() {
+                    Some(s) => *s,
+                    None => match info.payload().downcast_ref::<String>() {
+                        Some(s) => &s[..],
+                        None => "Box<dyn Any>",
+                    },
+                };
+                let error_msg = format!("panic happened at {location}:\n {msg}");
+
+                let _ = tx.send(PanickedTaskError::new("thread", Box::new(error_msg)));
+            }));
+        }
 
         let this = Self {
             handle,
