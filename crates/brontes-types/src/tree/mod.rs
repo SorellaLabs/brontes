@@ -301,3 +301,25 @@ impl<V: NormalizedAction> BlockTree<V> {
         res
     }
 }
+
+#[cfg(test)]
+pub mod test {
+
+    #[brontes_macros::test]
+    async fn test_collect_all() {}
+
+    #[brontes_macros::test]
+    async fn test_modify_spans() {}
+
+    #[brontes_macros::test]
+    async fn test_collect_spans() {}
+
+    #[brontes_macros::test]
+    async fn test_remove_duplicate_data() {}
+
+    #[brontes_macros::test]
+    async fn test_modify_node_if_child_contains() {}
+
+    #[brontes_macros::test]
+    async fn test_collect_and_classify() {}
+}

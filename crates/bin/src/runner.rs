@@ -135,7 +135,7 @@ impl AsyncCliRunner {
     /// execute commands asynchronously.
     fn new() -> Result<Self, std::io::Error> {
         let tokio_runtime = tokio_runtime()?;
-        let task_manager = BrontesTaskManager::new(tokio_runtime.handle().clone());
+        let task_manager = BrontesTaskManager::new(tokio_runtime.handle().clone(), false);
         let task_executor = task_manager.executor();
         Ok(Self { context: CliContext { task_executor }, task_manager, tokio_runtime })
     }

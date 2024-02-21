@@ -369,7 +369,7 @@ pub async fn init_trace_parser(
     libmdbx: &LibmdbxReadWriter,
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-    let executor = brontes_types::BrontesTaskManager::new(handle.clone());
+    let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
     let client =
         TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
     handle.spawn(executor);

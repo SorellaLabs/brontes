@@ -61,7 +61,7 @@ indoc = "2"
 zstd = "0.13"
 paste = "1.0.14"
 pin-project = "1.1.4"
-clap.workspace = true 
+clap.workspace = true
 
 # stats
 statrs = "0.16"
@@ -74,6 +74,7 @@ thiserror.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
+brontes-macros.workspace = true
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }

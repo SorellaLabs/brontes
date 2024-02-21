@@ -1781,6 +1781,7 @@ dependencies = [
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
+ "brontes-macros",
  "bytes",
  "clap",
  "clickhouse",

@@ -56,11 +56,11 @@ impl BrontesTaskManager {
     /// This will panic if called outside the context of a Tokio runtime.
     pub fn current() -> Self {
         let handle = Handle::current();
-        Self::new(handle)
+        Self::new(handle, false)
     }
 
     /// Create a new instance connected to the given handle's tokio runtime.
-    pub fn new(handle: Handle) -> Self {
+    pub fn new(handle: Handle, no_panic_override: bool) -> Self {
         let (panicked_tasks_tx, panicked_tasks_rx) = unbounded_channel();
         let (signal, on_shutdown) = signal();
 
@@ -68,7 +68,7 @@ impl BrontesTaskManager {
 
         let bt_level = std::env::var("RUST_BACKTRACE").unwrap_or(String::from("0"));
 
-        if bt_level == "0" {
+        if bt_level == "0" && !no_panic_override {
             std::panic::set_hook(Box::new(move |info| {
                 let location = info.location().unwrap();
 
