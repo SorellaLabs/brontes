@@ -75,6 +75,7 @@ dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
 brontes-macros.workspace = true
+brontes-types = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
@@ -84,4 +85,13 @@ reth-tracing-ext.workspace = true
 [features]
 default = []
 tests = []
-local-reth = ["brontes-core/local-reth", "reth-tracing-ext/local-reth"]
+local-clickhouse = [
+  "brontes-database/local-clickhouse",
+  "brontes-classifier/local-clickhouse",
+]
+
+local-reth = [
+  "brontes-core/local-reth",
+  "brontes-classifier/local-reth",
+  "reth-tracing-ext/local-reth",
+]

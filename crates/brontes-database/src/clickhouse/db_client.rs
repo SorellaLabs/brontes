@@ -323,7 +323,7 @@ mod tests {
         Clickhouse::default()
     }
 
-    #[tokio::test]
+    #[brontes_macros::test]
     async fn tx_traces() {
         let db = spawn_clickhouse();
 

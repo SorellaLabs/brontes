@@ -94,9 +94,7 @@ impl BrontesTaskManager {
             graceful_tasks: Arc::new(AtomicUsize::new(0)),
         };
 
-        EXECUTOR
-            .set(this.executor())
-            .expect("failed to set executor for task manager");
+        let _ = EXECUTOR.set(this.executor());
 
         this
     }
