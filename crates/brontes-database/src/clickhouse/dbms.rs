@@ -79,10 +79,6 @@ remote_clickhouse_table!(
     NO_FILE
 );
 
-// fix this 1
-remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseCexDex, CexDex, NO_FILE);
-
-// fix this 1
 remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseCexDex, CexDex, NO_FILE);
 
 remote_clickhouse_table!(
@@ -102,22 +98,6 @@ remote_clickhouse_table!(
 );
 
 remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseJit, JitLiquidity, NO_FILE);
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "brontes",
-    ClickhouseTokenInfo,
-    TokenInfoWithAddress,
-    NO_FILE
-);
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "brontes",
-    ClickhouseBuilderStats,
-    BuilderStatsWithAddress,
-    NO_FILE
-);
 
 remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseSandwiches, Sandwich, NO_FILE);
 
