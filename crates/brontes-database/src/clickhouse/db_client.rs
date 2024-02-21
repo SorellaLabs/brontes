@@ -10,24 +10,18 @@ use brontes_types::{
         searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
-    mev::{Bundle, MevBlock},
+    mev::{Bundle, BundleData, MevBlock},
     structured_trace::TxTrace,
     Protocol,
 };
+use futures::future::join_all;
 use serde::Deserialize;
 use sorella_db_databases::{
-    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient},
+    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient, errors::ClickhouseError},
     Database,
 };
 
-use super::{
-    dbms::{
-        BrontesClickhouseTables, ClickhouseBuilderStats, ClickhouseDexPriceMapping,
-        ClickhouseMevBlocks, ClickhouseSearcherInfo, ClickhouseSearcherStats, ClickhouseTokenInfo,
-        ClickhouseTxTraces,
-    },
-    ClickhouseHandle,
-};
+use super::{dbms::*, ClickhouseHandle};
 use crate::{
     clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
     libmdbx::{
@@ -96,13 +90,13 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn write_builder_info(
-        &self,
-        _builder_eoa: Address,
-        _builder_info: BuilderInfo,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
+    // pub async fn write_builder_info(
+    //     &self,
+    //     _builder_eoa: Address,
+    //     _builder_info: BuilderInfo,
+    // ) -> eyre::Result<()> {
+    //     Ok(())
+    // }
 
     pub async fn write_builder_stats(
         &self,
@@ -122,11 +116,46 @@ impl Clickhouse {
         &self,
         _block_number: u64,
         block: MevBlock,
-        _mev: Vec<Bundle>,
+        mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
         self.client
             .insert_one::<ClickhouseMevBlocks>(&block)
             .await?;
+
+        let (bundle_headers, bundle_data): (Vec<_>, Vec<_>) = mev
+            .into_iter()
+            .map(|bundle| (bundle.header, bundle.data))
+            .unzip();
+
+        self.client
+            .insert_many::<ClickhouseBundleHeader>(&bundle_headers)
+            .await?;
+
+        join_all(bundle_data.into_iter().map(|data| async move {
+            match data {
+                BundleData::Sandwich(s) => {
+                    self.client.insert_one::<ClickhouseSandwiches>(&s).await?
+                }
+                BundleData::AtomicArb(a) => {
+                    self.client.insert_one::<ClickhouseAtomicArbs>(&a).await?
+                }
+                BundleData::JitSandwich(j) => {
+                    self.client.insert_one::<ClickhouseJitSandwich>(&j).await?
+                }
+                BundleData::Jit(j) => self.client.insert_one::<ClickhouseJit>(&j).await?,
+                BundleData::CexDex(c) => self.client.insert_one::<ClickhouseCexDex>(&c).await?,
+                BundleData::Liquidation(l) => {
+                    self.client.insert_one::<ClickhouseLiquidations>(&l).await?
+                }
+                BundleData::Unknown => (),
+            };
+
+            Ok(())
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, ClickhouseError>>()?;
+
         Ok(())
     }
 
@@ -257,7 +286,7 @@ mod tests {
         },
         mev::{
             BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation, MevType,
-            PossibleMev, PossibleMevCollection,
+            PossibleMev, PossibleMevCollection, Sandwich,
         },
         pair::Pair,
     };
@@ -459,6 +488,18 @@ mod tests {
 
         db.inner()
             .insert_one::<ClickhouseBundleHeader>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn sandwich() {
+        let db = spawn_clickhouse();
+
+        let case0 = Sandwich::default();
+
+        db.inner()
+            .insert_one::<ClickhouseSandwiches>(&case0)
             .await
             .unwrap();
     }

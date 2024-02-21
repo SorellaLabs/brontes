@@ -28,6 +28,8 @@ clickhouse_dbms!(
         ClickhouseCexDex,
         ClickhouseJit,
         ClickhouseJitSandwich,
+        ClickhouseSandwiches,
+        ClickhouseAtomicArbs,
         ClickhouseLiquidations,
         ClickhouseSearcherInfo,
         ClickhouseDexPriceMapping,
@@ -116,6 +118,22 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseJit,
     JitLiquidity,
+    NO_FILE
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "mev",
+    ClickhouseSandwiches,
+    Sandwich,
+    NO_FILE
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "mev",
+    ClickhouseAtomicArbs,
+    AtomicArb,
     NO_FILE
 );
 

@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
-use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -135,10 +134,7 @@ impl Serialize for Sandwich {
         // frontrun
         ser_struct.serialize_field(
             "frontrun_tx_hash",
-            &FixedString::from(format!(
-                "{:?}",
-                self.frontrun_tx_hash.first().unwrap_or_default()
-            )),
+            &format!("{:?}", self.frontrun_tx_hash.first().unwrap_or_default()),
         )?;
 
         let frontrun_swaps: ClickhouseDoubleVecNormalizedSwap =
@@ -216,14 +212,14 @@ impl Serialize for Sandwich {
         )?;
 
         // backrun
-        let fixed_str_backrun_tx_hash = FixedString::from(format!("{:?}", &self.backrun_tx_hash));
+        let fixed_str_backrun_tx_hash = format!("{:?}", &self.backrun_tx_hash);
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
         let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
         let backrun_tx_hash_repeated = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()
-            .map(|tx| FixedString::from(format!("{:?}", &tx)))
+            .map(|tx| format!("{:?}", &tx))
             .collect::<Vec<_>>();
 
         ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated)?;
