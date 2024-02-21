@@ -439,7 +439,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .insert_pool(
                 block,
                 pool.pool_address,
-                [pool.tokens[0], pool.tokens[1]],
+                pool.tokens.clone(),
+                None,
                 pool.protocol,
             )
             .await

@@ -5,7 +5,7 @@ use alloy_primitives::Address;
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
-        builder::{BuilderStats, BuilderStatsWithAddress},
+        builder::{BuilderInfo, BuilderInfoWithAddress, BuilderStats, BuilderStatsWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
@@ -91,13 +91,19 @@ impl Clickhouse {
         Ok(())
     }
 
-    // pub async fn write_builder_info(
-    //     &self,
-    //     _builder_eoa: Address,
-    //     _builder_info: BuilderInfo,
-    // ) -> eyre::Result<()> {
-    //     Ok(())
-    // }
+    pub async fn write_builder_info(
+        &self,
+        builder_eoa: Address,
+        builder_info: BuilderInfo,
+    ) -> eyre::Result<()> {
+        let info = BuilderInfoWithAddress::new_with_address(builder_eoa, builder_info);
+
+        self.client
+            .insert_one::<ClickhouseBuilderInfo>(&info)
+            .await?;
+
+        Ok(())
+    }
 
     pub async fn write_builder_stats(
         &self,
@@ -551,6 +557,18 @@ mod tests {
 
         db.inner()
             .insert_one::<ClickhousePools>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn builder_info() {
+        let db = spawn_clickhouse();
+
+        let case0 = BuilderInfoWithAddress::default();
+
+        db.inner()
+            .insert_one::<ClickhouseBuilderInfo>(&case0)
             .await
             .unwrap();
     }
