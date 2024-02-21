@@ -337,7 +337,7 @@ pub mod test {
         );
 
         assert!(!spans.is_empty());
-        assert_eq!(spans.len(), 3);
+        assert_eq!(spans.len(), 4);
     }
 
     #[brontes_macros::test]
