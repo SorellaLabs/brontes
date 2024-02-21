@@ -1,5 +1,6 @@
 use brontes_types::{
     db::{
+        address_to_protocol_info::ProtocolInfoClickhouse,
         builder::BuilderStatsWithAddress,
         dex::DexQuotesWithBlockNumber,
         searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
@@ -36,7 +37,8 @@ clickhouse_dbms!(
         ClickhouseTxTraces,
         ClickhouseTokenInfo,
         ClickhouseSearcherStats,
-        ClickhouseBuilderStats
+        ClickhouseBuilderStats,
+        ClickhousePools
     ]
 );
 
@@ -150,5 +152,13 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseBuilderStats,
     BuilderStatsWithAddress,
+    NO_FILE
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "ethereum",
+    ClickhousePools,
+    ProtocolInfoClickhouse,
     NO_FILE
 );

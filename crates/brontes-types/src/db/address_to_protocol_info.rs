@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use alloy_primitives::Address;
-use clickhouse::Row;
+use clickhouse::{fixed_string::FixedString, Row};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
@@ -83,3 +83,36 @@ impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
 }
 
 implement_table_value_codecs_with_zc!(ProtocolInfoRedefined);
+
+#[derive(Debug, Row, PartialEq, Clone, Eq, Serialize, Deserialize)]
+pub struct ProtocolInfoClickhouse {
+    pub protocol: String,
+    pub protocol_subtype: String,
+    pub address: FixedString,
+    pub tokens: Vec<FixedString>,
+    pub curve_lp_token: Option<FixedString>,
+    pub init_block: u64,
+}
+
+impl ProtocolInfoClickhouse {
+    pub fn new(
+        block: u64,
+        address: Address,
+        tokens: Vec<Address>,
+        curve_lp_token: Option<Address>,
+        classifier_name: Protocol,
+    ) -> Self {
+        let (protocol, protocol_subtype) = classifier_name.into_clickhouse_protocol();
+        Self {
+            protocol: protocol.to_string(),
+            protocol_subtype: protocol_subtype.to_string(),
+            address: format!("{:?}", address).into(),
+            tokens: tokens
+                .into_iter()
+                .map(|t| format!("{:?}", t).into())
+                .collect(),
+            curve_lp_token: curve_lp_token.map(|t| format!("{:?}", t).into()),
+            init_block: block,
+        }
+    }
+}

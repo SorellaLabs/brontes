@@ -4,7 +4,8 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
-        builder::{BuilderInfo, BuilderStats, BuilderStatsWithAddress},
+        address_to_protocol_info::ProtocolInfoClickhouse,
+        builder::{BuilderStats, BuilderStatsWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
@@ -193,11 +194,22 @@ impl Clickhouse {
 
     pub async fn insert_pool(
         &self,
-        _block: u64,
-        _address: Address,
-        _tokens: [Address; 2],
-        _classifier_name: Protocol,
+        block: u64,
+        address: Address,
+        tokens: Vec<Address>,
+        curve_lp_token: Option<Address>,
+        classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        self.client
+            .insert_one::<ClickhousePools>(&ProtocolInfoClickhouse::new(
+                block,
+                address,
+                tokens,
+                curve_lp_token,
+                classifier_name,
+            ))
+            .await?;
+
         Ok(())
     }
 
@@ -512,6 +524,18 @@ mod tests {
 
         db.inner()
             .insert_one::<ClickhouseAtomicArbs>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn pools() {
+        let db = spawn_clickhouse();
+
+        let case0 = ProtocolInfoClickhouse::default();
+
+        db.inner()
+            .insert_one::<ClickhousePools>(&case0)
             .await
             .unwrap();
     }
