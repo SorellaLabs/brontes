@@ -642,7 +642,6 @@ impl DBWriter for LibmdbxReadWriter {
                 AddressToProtocolInfoData::new(
                     address,
                     ProtocolInfo {
-<<<<<<< HEAD
                         protocol: classifier_name,
                         init_block: block,
                         token0: *tokens.next().unwrap(),
@@ -651,16 +650,6 @@ impl DBWriter for LibmdbxReadWriter {
                         token3: tokens.next().cloned(),
                         token4: tokens.next().cloned(),
                         curve_lp_token,
-=======
-                        protocol:       classifier_name,
-                        init_block:     block,
-                        token0:         tokens[0],
-                        token1:         tokens[1],
-                        token2:         None,
-                        token3:         None,
-                        token4:         None,
-                        curve_lp_token: None,
->>>>>>> main
                     },
                 ),
             ])?;
