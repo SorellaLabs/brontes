@@ -20,49 +20,49 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedMint {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:    Protocol,
     pub trace_index: u64,
-    pub from: Address,
-    pub recipient: Address,
-    pub pool: Address,
-    pub token: Vec<TokenInfoWithAddress>,
-    pub amount: Vec<Rational>,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedBurn {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:    Protocol,
     pub trace_index: u64,
-    pub from: Address,
-    pub recipient: Address,
-    pub pool: Address,
-    pub token: Vec<TokenInfoWithAddress>,
-    pub amount: Vec<Rational>,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedCollect {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:    Protocol,
     pub trace_index: u64,
-    pub from: Address,
-    pub recipient: Address,
-    pub pool: Address,
-    pub token: Vec<TokenInfoWithAddress>,
-    pub amount: Vec<Rational>,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 #[derive(Default)]
 pub struct ClickhouseVecNormalizedMintOrBurn {
     pub trace_index: Vec<u64>,
-    pub from: Vec<FixedString>,
-    pub to: Vec<FixedString>,
-    pub recipient: Vec<FixedString>,
-    pub tokens: Vec<Vec<FixedString>>,
-    pub amounts: Vec<Vec<[u8; 32]>>,
+    pub from:        Vec<FixedString>,
+    pub to:          Vec<FixedString>,
+    pub recipient:   Vec<FixedString>,
+    pub tokens:      Vec<Vec<FixedString>>,
+    pub amounts:     Vec<Vec<[u8; 32]>>,
 }
 
 impl fmt::Display for NormalizedMint {
@@ -79,12 +79,7 @@ impl fmt::Display for NormalizedMint {
             })
             .collect();
 
-        write!(
-            f,
-            "Added [{}] Liquidity on {}",
-            mint_info.join(", "),
-            protocol
-        )
+        write!(f, "Added [{}] Liquidity on {}", mint_info.join(", "), protocol)
     }
 }
 
@@ -102,12 +97,7 @@ impl fmt::Display for NormalizedBurn {
             })
             .collect();
 
-        write!(
-            f,
-            "Removed [{}] Liquidity on {}",
-            mint_info.join(", "),
-            protocol
-        )
+        write!(f, "Removed [{}] Liquidity on {}", mint_info.join(", "), protocol)
     }
 }
 
@@ -201,13 +191,13 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
 
 #[derive(Default)]
 pub struct ClickhouseVecNormalizedMintOrBurnWithTxHash {
-    pub tx_hash: Vec<FixedString>,
+    pub tx_hash:     Vec<FixedString>,
     pub trace_index: Vec<u64>,
-    pub from: Vec<FixedString>,
-    pub to: Vec<FixedString>,
-    pub recipient: Vec<FixedString>,
-    pub tokens: Vec<Vec<FixedString>>,
-    pub amounts: Vec<Vec<[u8; 32]>>,
+    pub from:        Vec<FixedString>,
+    pub to:          Vec<FixedString>,
+    pub recipient:   Vec<FixedString>,
+    pub tokens:      Vec<Vec<FixedString>>,
+    pub amounts:     Vec<Vec<[u8; 32]>>,
 }
 
 // (tx_hashes, mints)

@@ -1,5 +1,10 @@
 use brontes_types::{
-    db::{dex::DexQuotes, searcher::SearcherInfo},
+    db::{
+        builder::BuilderStatsWithAddress,
+        dex::DexQuotesWithBlockNumber,
+        searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
+        token_info::TokenInfoWithAddress,
+    },
     mev::*,
     structured_trace::TxTrace,
 };
@@ -25,34 +30,25 @@ clickhouse_dbms!(
         ClickhouseJitSandwich,
         ClickhouseLiquidations,
         ClickhouseSearcherInfo,
-        ClickhouseDexQuotes,
-        ClickhouseTxTraces
+        ClickhouseDexPriceMapping,
+        ClickhouseTxTraces,
+        ClickhouseTokenInfo,
+        ClickhouseSearcherStats,
+        ClickhouseBuilderStats
     ]
 );
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "brontes",
-    ClickhouseTxTraces,
-    TxTrace,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "brontes", ClickhouseTxTraces, TxTrace, NO_FILE);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
-    ClickhouseDexQuotes,
-    DexQuotes,
+    ClickhouseDexPriceMapping,
+    DexQuotesWithBlockNumber,
     NO_FILE
 );
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "mev",
-    ClickhouseMevBlocks,
-    MevBlock,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseMevBlocks, MevBlock, NO_FILE);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -64,19 +60,22 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
+    "brontes",
     ClickhouseSearcherInfo,
-    SearcherInfo,
+    JoinedSearcherInfo,
     NO_FILE
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseCexDex,
-    SearcherInfo,
+    "brontes",
+    ClickhouseSearcherStats,
+    SearcherStatsWithAddress,
     NO_FILE
 );
+
+// fix this 1
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseCexDex, CexDex, NO_FILE);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -94,10 +93,20 @@ remote_clickhouse_table!(
     NO_FILE
 );
 
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseJit, JitLiquidity, NO_FILE);
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseJit,
-    JitLiquidity,
+    "brontes",
+    ClickhouseTokenInfo,
+    TokenInfoWithAddress,
+    NO_FILE
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "brontes",
+    ClickhouseBuilderStats,
+    BuilderStatsWithAddress,
     NO_FILE
 );

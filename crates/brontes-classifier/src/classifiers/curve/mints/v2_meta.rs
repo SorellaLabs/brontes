@@ -89,7 +89,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs,
+        ToScaledRational, TreeSearchBuilder,
     };
 
     use super::*;
@@ -102,68 +102,48 @@ mod tests {
             Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
             Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
             Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let mint = B256::from(hex!(
-            "f56e28f6c8f3610f1705c34a3f179dc09dafbf8cdc8695cefb683d0f32995251"
-        ));
+        let mint =
+            B256::from(hex!("f56e28f6c8f3610f1705c34a3f179dc09dafbf8cdc8695cefb683d0f32995251"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("530824DA86689C9C17CdC2871Ff29B058345b44a")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "STBT".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "STBT".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "3Crv".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "3Crv".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Mint(NormalizedMint {
-            protocol: Protocol::CurveV2MetaPool,
+            protocol:    Protocol::CurveV2MetaPool,
             trace_index: 1,
-            from: Address::new(hex!("d236A1a8340DE9d4f91C7bDB72eF0e4B3a90e4fd")),
-            recipient: Address::new(hex!("d236A1a8340DE9d4f91C7bDB72eF0e4B3a90e4fd")),
-            pool: Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
-            token: vec![token0, token1],
-            amount: vec![
+            from:        Address::new(hex!("d236A1a8340DE9d4f91C7bDB72eF0e4B3a90e4fd")),
+            recipient:   Address::new(hex!("d236A1a8340DE9d4f91C7bDB72eF0e4B3a90e4fd")),
+            pool:        Address::new(hex!("892D701d94a43bDBCB5eA28891DaCA2Fa22A690b")),
+            token:       vec![token0, token1],
+            amount:      vec![
                 U256::from(0_u128).to_scaled_rational(18),
                 U256::from(100000000000000000000_u128).to_scaled_rational(18),
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_mint())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_mint()),
-        };
-
         classifier_utils
-            .contains_action(mint, 0, eq_action, search_fn)
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
             .await
             .unwrap();
     }

@@ -29,16 +29,13 @@ impl From<DynamicContractMetricEvent> for PoirotMetricEvents {
 
 #[derive(Clone, Debug)]
 pub struct ContractMetric {
-    pub address: Address,
+    pub address:         Address,
     pub function_called: String,
 }
 
 impl ContractMetric {
     pub fn new(address: Address, function_called: String) -> Self {
-        Self {
-            address,
-            function_called,
-        }
+        Self { address, function_called }
     }
 
     pub fn trace(&self) {

@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
-    ToFloatNearest, TreeSearchArgs, TxInfo,
+    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
 };
 use hyper::header;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -22,9 +22,7 @@ pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            inner: SharedInspectorUtils::new(quote, db),
-        }
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -37,17 +35,9 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(|node, info| TreeSearchArgs {
-            collect_current_node: info
-                .get_ref(node.data)
-                .map(|node| node.is_swap() || node.is_liquidation())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .subactions
-                .iter()
-                .filter_map(|node| info.get_ref(*node))
-                .any(|action| action.is_swap() || action.is_liquidation()),
-        });
+        let liq_txs = tree.collect_all(
+            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_liquidation]),
+        );
 
         liq_txs
             .into_par_iter()
@@ -69,25 +59,21 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     ) -> Option<Bundle> {
         let swaps = actions
             .iter()
-            .filter_map(|action| {
-                if let Actions::Swap(swap) = action {
-                    Some(swap)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
             .cloned()
             .collect::<Vec<_>>();
 
         let liqs = actions
             .iter()
-            .filter_map(|action| {
-                if let Actions::Liquidation(liq) = action {
-                    Some(liq)
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |action| {
+                    if let Actions::Liquidation(liq) = action {
+                        Some(liq)
+                    } else {
+                        None
+                    }
+                },
+            )
             .cloned()
             .collect::<Vec<_>>();
 
@@ -139,16 +125,13 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let new_liquidation = Liquidation {
             liquidation_tx_hash: info.tx_hash,
-            trigger: b256!(),
-            liquidation_swaps: swaps,
-            liquidations: liqs,
-            gas_details: info.gas_details,
+            trigger:             b256!(),
+            liquidation_swaps:   swaps,
+            liquidations:        liqs,
+            gas_details:         info.gas_details,
         };
 
-        Some(Bundle {
-            header,
-            data: BundleData::Liquidation(new_liquidation),
-        })
+        Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
 }
 

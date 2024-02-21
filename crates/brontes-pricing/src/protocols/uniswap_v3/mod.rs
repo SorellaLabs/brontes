@@ -127,18 +127,18 @@ pub const MINT_EVENT_SIGNATURE: B256 = FixedBytes([
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UniswapV3Pool {
-    pub address: Address,
-    pub token_a: Address,
+    pub address:          Address,
+    pub token_a:          Address,
     pub token_a_decimals: u8,
-    pub token_b: Address,
+    pub token_b:          Address,
     pub token_b_decimals: u8,
-    pub liquidity: u128,
-    pub sqrt_price: U256,
-    pub fee: u32,
-    pub tick: i32,
-    pub tick_spacing: i32,
-    pub tick_bitmap: HashMap<i16, U256>,
-    pub ticks: HashMap<i32, Info>,
+    pub liquidity:        u128,
+    pub sqrt_price:       U256,
+    pub fee:              u32,
+    pub tick:             i32,
+    pub tick_spacing:     i32,
+    pub tick_bitmap:      HashMap<i16, U256>,
+    pub ticks:            HashMap<i32, Info>,
 
     // non v3 native state
     pub reserve_0: U256,
@@ -231,10 +231,7 @@ impl Decodable for TickBitMapEncodeHelper {
         let key: [u8; 2] = Decodable::decode(buf)?;
         let val = U256::decode(buf)?;
 
-        Ok(Self {
-            key: i16::from_be_bytes(key),
-            val,
-        })
+        Ok(Self { key: i16::from_be_bytes(key), val })
     }
 }
 
@@ -256,18 +253,15 @@ impl Decodable for TicksEncodeHelper {
         let key: [u8; 4] = Decodable::decode(buf)?;
         let val = Info::decode(buf)?;
 
-        Ok(Self {
-            key: i32::from_be_bytes(key),
-            val,
-        })
+        Ok(Self { key: i32::from_be_bytes(key), val })
     }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Info {
     pub liquidity_gross: u128,
-    pub liquidity_net: i128,
-    pub initialized: bool,
+    pub liquidity_net:   i128,
+    pub initialized:     bool,
 }
 
 impl Encodable for Info {
@@ -284,21 +278,13 @@ impl Decodable for Info {
         let liquidity_net: [u8; 16] = Decodable::decode(buf)?;
         let initialized = bool::decode(buf)?;
 
-        Ok(Self {
-            liquidity_gross,
-            liquidity_net: i128::from_be_bytes(liquidity_net),
-            initialized,
-        })
+        Ok(Self { liquidity_gross, liquidity_net: i128::from_be_bytes(liquidity_net), initialized })
     }
 }
 
 impl Info {
     pub fn new(liquidity_gross: u128, liquidity_net: i128, initialized: bool) -> Self {
-        Info {
-            liquidity_gross,
-            liquidity_net,
-            initialized,
-        }
+        Info { liquidity_gross, liquidity_net, initialized }
     }
 }
 
@@ -504,11 +490,7 @@ impl UniswapV3Pool {
         self.reserve_1 += mint_event.amount1;
 
         #[cfg(feature = "uni-v3-ticks")]
-        self.modify_position(
-            mint_event.tickLower,
-            mint_event.tickUpper,
-            mint_event.amount as i128,
-        );
+        self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
 
         Ok(())
     }
@@ -662,12 +644,12 @@ impl UniswapV3Pool {
 #[derive(Default)]
 pub struct StepComputations {
     pub sqrt_price_start_x_96: U256,
-    pub tick_next: i32,
-    pub initialized: bool,
-    pub sqrt_price_next_x96: U256,
-    pub amount_in: U256,
-    pub amount_out: U256,
-    pub fee_amount: U256,
+    pub tick_next:             i32,
+    pub initialized:           bool,
+    pub sqrt_price_next_x96:   U256,
+    pub amount_in:             U256,
+    pub amount_out:            U256,
+    pub fee_amount:            U256,
 }
 
 pub struct Tick {

@@ -28,20 +28,20 @@ use crate::{
 #[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
-    pub block_number: u64,
-    pub tx_index: u64,
+    pub block_number:  u64,
+    pub tx_index:      u64,
     #[serde_as(as = "FixedString")]
     // For a sandwich this is always the first frontrun tx hash
     pub tx_hash: B256,
     #[serde_as(as = "FixedString")]
-    pub eoa: Address,
+    pub eoa:           Address,
     #[serde(with = "option_addresss")]
-    pub mev_contract: Option<Address>,
-    pub profit_usd: f64,
+    pub mev_contract:  Option<Address>,
+    pub profit_usd:    f64,
     pub token_profits: TokenProfits,
-    pub bribe_usd: f64,
+    pub bribe_usd:     f64,
     #[redefined(same_fields)]
-    pub mev_type: MevType,
+    pub mev_type:      MevType,
 }
 
 #[serde_as]
@@ -56,9 +56,9 @@ pub struct TokenProfits {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenProfit {
     pub profit_collector: Address,
-    pub token: TokenInfoWithAddress,
-    pub amount: f64,
-    pub usd_value: f64,
+    pub token:            TokenInfoWithAddress,
+    pub amount:           f64,
+    pub usd_value:        f64,
 }
 
 impl TokenProfits {
@@ -101,11 +101,7 @@ impl TokenProfits {
         mev_contract_address: Option<Address>,
         eoa_address: Address,
     ) -> fmt::Result {
-        writeln!(
-            f,
-            "\n{}",
-            "Token Deltas:\n".bold().bright_white().underline()
-        )?;
+        writeln!(f, "\n{}", "Token Deltas:\n".bold().bright_white().underline())?;
 
         for profit in &self.profits {
             let collector_label = match profit.profit_collector {
@@ -124,11 +120,7 @@ impl TokenProfits {
                 f,
                 " - {}: {} {}: {} (worth ${:.2})",
                 collector_label.bright_white(),
-                if profit.amount >= 0.0 {
-                    "Gained"
-                } else {
-                    "Lost"
-                },
+                if profit.amount >= 0.0 { "Gained" } else { "Lost" },
                 profit.token.inner.symbol.bold(),
                 amount_display,
                 profit.usd_value.abs()
@@ -150,17 +142,9 @@ impl Display for TokenProfits {
 impl Display for TokenProfit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (profit_or_loss, amount_str, usd_value_str) = if self.amount < 0.0 {
-            (
-                "lost",
-                self.amount.to_string().red(),
-                format!("$ {}", self.usd_value).red(),
-            )
+            ("lost", self.amount.to_string().red(), format!("$ {}", self.usd_value).red())
         } else {
-            (
-                "gained",
-                self.amount.to_string().green(),
-                format!("$ {}", self.usd_value).green(),
-            )
+            ("gained", self.amount.to_string().green(), format!("$ {}", self.usd_value).green())
         };
 
         writeln!(

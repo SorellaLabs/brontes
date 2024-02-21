@@ -166,8 +166,8 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Node, NodeData,
-        Protocol::UniswapV3, ToScaledRational, TreeSearchArgs,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::UniswapV3,
+        ToScaledRational, TreeSearchBuilder,
     };
 
     use super::*;
@@ -175,40 +175,32 @@ mod tests {
     #[brontes_macros::test]
     async fn test_univ3_swap() {
         let classifier_utils = ClassifierTestUtils::new().await;
-        let swap = B256::from(hex!(
-            "057f1d5b3ddabec1b8d78ac7181f562f755669494514f94a767247af800339b1"
-        ));
+        let swap =
+            B256::from(hex!("057f1d5b3ddabec1b8d78ac7181f562f755669494514f94a767247af800339b1"));
 
         let eq_action = Actions::Swap(NormalizedSwap {
-            protocol: UniswapV3,
+            protocol:    UniswapV3,
             trace_index: 2,
-            from: Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
-            recipient: Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
-            pool: Address::new(hex!("88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")),
-            token_in: TokenInfoWithAddress::weth(),
-            amount_in: U256::from_str("39283347298163243343")
+            from:        Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
+            recipient:   Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
+            pool:        Address::new(hex!("88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")),
+            token_in:    TokenInfoWithAddress::weth(),
+            amount_in:   U256::from_str("39283347298163243343")
                 .unwrap()
                 .to_scaled_rational(18),
-            token_out: TokenInfoWithAddress::usdc(),
-            amount_out: U256::from_str("98019119714").unwrap().to_scaled_rational(6),
+            token_out:   TokenInfoWithAddress::usdc(),
+            amount_out:  U256::from_str("98019119714").unwrap().to_scaled_rational(6),
 
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_swap())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_swap()),
-        };
-
         classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
             .await
             .unwrap();
     }
@@ -216,18 +208,17 @@ mod tests {
     #[brontes_macros::test]
     async fn test_uniswap_v3_mints() {
         let classifier_utils = ClassifierTestUtils::new().await;
-        let mint = B256::from(hex!(
-            "0089210683170b3f17201c8abeafdc4c022a26c7af1e44d351556eaa48d0fee8"
-        ));
+        let mint =
+            B256::from(hex!("0089210683170b3f17201c8abeafdc4c022a26c7af1e44d351556eaa48d0fee8"));
 
         let eq_action = Actions::Mint(NormalizedMint {
-            protocol: UniswapV3,
+            protocol:    UniswapV3,
             trace_index: 21,
-            from: Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
-            recipient: Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
-            pool: Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
-            token: vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
-            amount: vec![
+            from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
+            token:       vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
+            amount:      vec![
                 U256::from_str("102642322850")
                     .unwrap()
                     .to_scaled_rational(6),
@@ -237,20 +228,13 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_mint())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_mint()),
-        };
-
         classifier_utils
-            .contains_action(mint, 0, eq_action, search_fn)
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
             .await
             .unwrap();
     }
@@ -258,18 +242,17 @@ mod tests {
     #[brontes_macros::test]
     async fn test_uniswap_v3_burn() {
         let classifier_utils = ClassifierTestUtils::new().await;
-        let burn = B256::from(hex!(
-            "f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"
-        ));
+        let burn =
+            B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: UniswapV3,
+            protocol:    UniswapV3,
             trace_index: 12,
-            from: Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
-            recipient: Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
-            pool: Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
-            token: vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
-            amount: vec![
+            from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
+            token:       vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
+            amount:      vec![
                 U256::from_str("347057356182")
                     .unwrap()
                     .to_scaled_rational(6),
@@ -277,20 +260,13 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_burn())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_burn()),
-        };
-
         classifier_utils
-            .contains_action(burn, 0, eq_action, search_fn)
+            .contains_action(
+                burn,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_burn),
+            )
             .await
             .unwrap();
     }
@@ -298,18 +274,17 @@ mod tests {
     #[brontes_macros::test]
     async fn test_uniswap_v3_collect() {
         let classifier_utils = ClassifierTestUtils::new().await;
-        let collect = B256::from(hex!(
-            "f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"
-        ));
+        let collect =
+            B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
 
         let eq_action = Actions::Collect(NormalizedCollect {
-            protocol: UniswapV3,
+            protocol:    UniswapV3,
             trace_index: 13,
-            from: Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
-            recipient: Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
-            pool: Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
-            token: vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
-            amount: vec![
+            from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
+            token:       vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
+            amount:      vec![
                 U256::from_str("347081800129")
                     .unwrap()
                     .to_scaled_rational(6),
@@ -317,20 +292,13 @@ mod tests {
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_collect())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|idx| data.get_ref(*idx))
-                .any(|action| action.is_collect()),
-        };
-
         classifier_utils
-            .contains_action(collect, 0, eq_action, search_fn)
+            .contains_action(
+                collect,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_collect),
+            )
             .await
             .unwrap();
     }

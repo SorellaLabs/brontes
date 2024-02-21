@@ -5,6 +5,7 @@ use std::{
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use clickhouse::Row;
+use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 use redefined::Redefined;
 use reth_db::DatabaseError;
@@ -13,7 +14,7 @@ use serde::{self, Deserialize, Serialize};
 use tracing::error;
 
 use crate::{
-    db::redefined_types::malachite::RationalRedefined,
+    db::{clickhouse_serde::dex::dex_quote, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
 };
@@ -30,7 +31,7 @@ use crate::{
     Archive
 ))]
 pub struct DexPrices {
-    pub pre_state: Rational,
+    pub pre_state:  Rational,
     pub post_state: Rational,
 }
 
@@ -63,10 +64,7 @@ impl DexQuotes {
     /// the price at all previous indexes in the block
     pub fn price_at_or_before(&self, pair: Pair, mut tx: usize) -> Option<DexPrices> {
         if pair.0 == pair.1 {
-            return Some(DexPrices {
-                pre_state: Rational::ONE,
-                post_state: Rational::ONE,
-            });
+            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE });
         }
 
         loop {
@@ -117,7 +115,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
 ))]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote: Vec<(Pair, DexPrices)>,
+    pub quote:  Vec<(Pair, DexPrices)>,
 }
 
 impl From<DexQuote> for Vec<(Pair, DexPrices)> {
@@ -168,4 +166,23 @@ pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
     let end_key = base.concat_const([u8::MAX; 2].into());
 
     (start_key.into(), end_key.into())
+}
+
+#[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
+pub struct DexQuotesWithBlockNumber {
+    pub block_number: u64,
+    pub tx_idx:       u64,
+    #[serde(with = "dex_quote")]
+    pub quote:        Option<HashMap<Pair, DexPrices>>,
+}
+
+impl DexQuotesWithBlockNumber {
+    pub fn new_with_block(block_number: u64, quotes: DexQuotes) -> Vec<Self> {
+        quotes
+            .0
+            .into_iter()
+            .enumerate()
+            .map(|(i, quote)| DexQuotesWithBlockNumber { block_number, tx_idx: i as u64, quote })
+            .collect_vec()
+    }
 }

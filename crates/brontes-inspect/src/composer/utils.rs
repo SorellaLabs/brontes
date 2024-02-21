@@ -6,17 +6,17 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational, TreeSearchArgs,
+    ToScaledRational, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use tracing::log::debug;
 
 pub struct BlockPreprocessing {
-    cumulative_gas_used: u128,
+    cumulative_gas_used:     u128,
     cumulative_priority_fee: u128,
-    total_bribe: u128,
-    builder_address: Address,
+    total_bribe:             u128,
+    builder_address:         Address,
 }
 
 /// Pre-processes the block data for the Composer.
@@ -61,17 +61,17 @@ pub(crate) fn build_mev_header(
     mev_count: MevCount,
     orchestra_data: &[Bundle],
 ) -> MevBlock {
-    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd) = orchestra_data.iter().fold(
-        (0u128, 0f64),
-        |(total_fee_paid, total_profit_usd), bundle| {
-            let fee_paid = bundle
-                .data
-                .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128);
-            let profit_usd = bundle.header.profit_usd;
+    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd) =
+        orchestra_data
+            .iter()
+            .fold((0u128, 0f64), |(total_fee_paid, total_profit_usd), bundle| {
+                let fee_paid = bundle.data.total_priority_fee_paid(
+                    tree.header.base_fee_per_gas.unwrap_or_default() as u128,
+                );
+                let profit_usd = bundle.header.profit_usd;
 
-            (total_fee_paid + fee_paid, total_profit_usd + profit_usd)
-        },
-    );
+                (total_fee_paid + fee_paid, total_profit_usd + profit_usd)
+            });
 
     let (builder_eth_profit, builder_mev_profit_usd) = calculate_builder_profit(
         tree,
@@ -124,13 +124,10 @@ pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> HashMap<MevType, 
     orchestra_data
         .into_iter()
         .map(|bundle| (bundle.header.mev_type, bundle))
-        .fold(
-            HashMap::default(),
-            |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
-                acc.entry(mev_type).or_default().push(v);
-                acc
-            },
-        )
+        .fold(HashMap::default(), |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
+            acc.entry(mev_type).or_default().push(v);
+            acc
+        })
 }
 
 /// Finds the index of the first classified mev in the list whose transaction
@@ -163,10 +160,7 @@ pub fn filter_and_count_bundles(
         let filtered_bundles: Vec<Bundle> = bundles
             .into_iter()
             .filter(|bundle| {
-                if matches!(
-                    mev_type,
-                    MevType::Sandwich | MevType::Jit | MevType::AtomicArb
-                ) {
+                if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::AtomicArb) {
                     bundle.header.profit_usd > 0.0
                 } else {
                     true
@@ -203,7 +197,8 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 
 /// Calculate builder profit
 ///
-/// Accounts for ultrasound relay bid adjustments & vertically integrated builder profit
+/// Accounts for ultrasound relay bid adjustments & vertically integrated
+/// builder profit
 pub fn calculate_builder_profit(
     tree: Arc<BlockTree<Actions>>,
     metadata: &Arc<Metadata>,
@@ -219,17 +214,11 @@ pub fn calculate_builder_profit(
         return (builder_payments, 0.0);
     }
 
-    let builder_sponsorships = tree.collect_all(|node, info| TreeSearchArgs {
-        collect_current_node: info
-            .get_ref(node.data)
-            .map(|node| node.is_eth_transfer() && node.get_from_address() == builder_address)
-            .unwrap_or_default(),
-        child_node_to_collect: node
-            .subactions
-            .iter()
-            .filter_map(|node| info.get_ref(*node))
-            .any(|action| action.is_eth_transfer() && action.get_from_address() == builder_address),
-    });
+    let builder_sponsorships = tree.collect_all(
+        TreeSearchBuilder::default()
+            .with_action(Actions::is_eth_transfer)
+            .with_from_address(builder_address),
+    );
 
     let builder_sponsorship_amount: i128 = builder_sponsorships
         .values()
@@ -252,7 +241,8 @@ pub fn calculate_builder_profit(
             );
         }
     };
-    // Calculate the builder's mev profit from it's associated vertically integrated searchers
+    // Calculate the builder's mev profit from it's associated vertically integrated
+    // searchers
     let mev_searching_profit: f64 =
         if builder_info.searchers_eoas.is_empty() && builder_info.searchers_contracts.is_empty() {
             0.0
@@ -274,7 +264,8 @@ pub fn calculate_builder_profit(
     let collateral_address = match builder_info.ultrasound_relay_collateral_address {
         Some(address) => address,
         None => {
-            // If there's no ultrasound relay collateral address, we don't have to account for collateral address based payments
+            // If there's no ultrasound relay collateral address, we don't have to account
+            // for collateral address based payments
             debug!("No ultrasound relay collateral address found.");
             return (
                 builder_payments
@@ -290,7 +281,8 @@ pub fn calculate_builder_profit(
             && root.get_to_address() == metadata.block_metadata.proposer_fee_recipient.unwrap()
         {
             match root.get_root_action() {
-                Actions::EthTransfer(transfer) => transfer.value.to(), // Assuming transfer.value is u128
+                Actions::EthTransfer(transfer) => transfer.value.to(), /* Assuming transfer. */
+                // value is u128
                 _ => 0,
             }
         } else {
@@ -298,7 +290,8 @@ pub fn calculate_builder_profit(
         }
     });
 
-    // Calculate final profit considering the sponsorship amount and any collateral payment
+    // Calculate final profit considering the sponsorship amount and any collateral
+    // payment
     (
         builder_payments - builder_sponsorship_amount - payment_from_collateral_addr,
         mev_searching_profit,

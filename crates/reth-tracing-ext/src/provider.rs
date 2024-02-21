@@ -19,15 +19,9 @@ impl TracingProvider for TracingClient {
         block_overrides: Option<Box<BlockOverrides>>,
     ) -> eyre::Result<Bytes> {
         // NOTE: these types are equivalent, however we want ot
-        EthApiServer::call(
-            &self.api,
-            request,
-            block_number,
-            state_overrides,
-            block_overrides,
-        )
-        .await
-        .map_err(Into::into)
+        EthApiServer::call(&self.api, request, block_number, state_overrides, block_overrides)
+            .await
+            .map_err(Into::into)
     }
 
     async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>> {
@@ -77,10 +71,7 @@ impl TracingProvider for TracingClient {
             return Err(eyre!("no transaction found"));
         };
 
-        Ok((
-            tx.block_number.unwrap().to::<u64>(),
-            tx.transaction_index.unwrap().to::<usize>(),
-        ))
+        Ok((tx.block_number.unwrap().to::<u64>(), tx.transaction_index.unwrap().to::<usize>()))
     }
 
     async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>> {

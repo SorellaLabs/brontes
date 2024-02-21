@@ -34,8 +34,8 @@ const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
     pub(crate) libmdbx: &'static LibmdbxReadWriter,
-    clickhouse: &'static CH,
-    tracer: Arc<TP>,
+    clickhouse:         &'static CH,
+    tracer:             Arc<TP>,
 }
 
 impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
@@ -44,11 +44,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clickhouse: &'static CH,
         tracer: Arc<TP>,
     ) -> Self {
-        Self {
-            libmdbx,
-            clickhouse,
-            tracer,
-        }
+        Self { libmdbx, clickhouse, tracer }
     }
 
     pub async fn initialize(
@@ -127,13 +123,15 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         let pair_ranges = block_range_chunks
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
-            .filter_map(|chk| {
-                if !chk.is_empty() {
-                    Some((chk[0], chk[chk.len() - 1]))
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |chk| {
+                    if !chk.is_empty() {
+                        Some((chk[0], chk[chk.len() - 1]))
+                    } else {
+                        None
+                    }
+                },
+            )
             .collect_vec();
 
         let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
@@ -317,15 +315,15 @@ fn workspace_dir() -> path::PathBuf {
 
 #[derive(Debug, Deserialize, Default)]
 pub struct TokenInfoWithAddressToml {
-    pub symbol: String,
+    pub symbol:   String,
     pub decimals: u8,
-    pub address: Address,
+    pub address:  Address,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BSConfig {
-    builders: HashMap<String, BuilderInfo>,
-    searcher_eoas: HashMap<String, SearcherInfo>,
+    builders:           HashMap<String, BuilderInfo>,
+    searcher_eoas:      HashMap<String, SearcherInfo>,
     searcher_contracts: HashMap<String, SearcherInfo>,
 }
 

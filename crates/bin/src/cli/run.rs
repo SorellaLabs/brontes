@@ -12,33 +12,33 @@ use crate::{
     banner,
     cli::{get_tracing_provider, init_inspectors},
     runner::CliContext,
-    BrontesRunConfig,
+    BrontesRunConfig, MevProcessor,
 };
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
     /// Start Block
     #[arg(long, short)]
-    pub start_block: u64,
+    pub start_block:     u64,
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
-    pub end_block: Option<u64>,
+    pub end_block:       Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks: Option<u64>,
+    pub max_tasks:       Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size: u64,
+    pub min_batch_size:  u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset: String,
+    pub quote_asset:     String,
     /// inspectors wanted for the run. If empty will run all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors: Option<Vec<Inspectors>>,
+    pub inspectors:      Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
-    pub cex_exchanges: Option<Vec<String>>,
+    pub cex_exchanges:   Option<Vec<String>>,
     /// If the dex pricing calculation should be run, even if we have the stored
     /// dex prices.
     #[arg(long, short, default_value = "false")]
@@ -74,7 +74,7 @@ impl RunArgs {
         let result = executor
             .clone()
             .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
-                if let Ok(brontes) = BrontesRunConfig::new(
+                if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
                     self.start_block,
                     self.end_block,
                     max_tasks,

@@ -84,7 +84,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs,
+        ToScaledRational, TreeSearchBuilder,
     };
 
     use super::*;
@@ -103,56 +103,42 @@ mod tests {
             None,
         );
 
-        let mint = B256::from(hex!(
-            "41abafaca09899889ef6d14d6aa95f00cd4558dce879f062dc55624994514329"
-        ));
+        let mint =
+            B256::from(hex!("41abafaca09899889ef6d14d6aa95f00cd4558dce879f062dc55624994514329"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "CRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Mint(NormalizedMint {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
-            from: Address::new(hex!("fE894446bfaD2993B16428C990D69c99623b89B7")),
-            recipient: Address::new(hex!("fE894446bfaD2993B16428C990D69c99623b89B7")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token: vec![token0, token1],
-            amount: vec![
+            from:        Address::new(hex!("fE894446bfaD2993B16428C990D69c99623b89B7")),
+            recipient:   Address::new(hex!("fE894446bfaD2993B16428C990D69c99623b89B7")),
+            pool:        Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token:       vec![token0, token1],
+            amount:      vec![
                 U256::from(2503890709681717311281_u128).to_scaled_rational(18),
                 U256::from(798080784008874713734_u128).to_scaled_rational(18),
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_mint())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_mint()),
-        };
-
         classifier_utils
-            .contains_action(mint, 0, eq_action, search_fn)
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
             .await
             .unwrap();
     }
