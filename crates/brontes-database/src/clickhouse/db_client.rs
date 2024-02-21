@@ -303,7 +303,11 @@ mod tests {
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
         },
+        normalized_actions::{
+            NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+        },
         pair::Pair,
+        GasDetails,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -319,7 +323,7 @@ mod tests {
         Clickhouse::default()
     }
 
-    #[brontes_macros::test]
+    #[tokio::test]
     async fn tx_traces() {
         let db = spawn_clickhouse();
 
@@ -467,7 +471,16 @@ mod tests {
     async fn jit() {
         let db = spawn_clickhouse();
 
-        let case0 = JitLiquidity::default();
+        let mut case0 = JitLiquidity::default();
+        let swap = NormalizedSwap::default();
+        let mint = NormalizedMint::default();
+        let burn = NormalizedBurn::default();
+        let gas_details = GasDetails::default();
+
+        case0.frontrun_mints = vec![mint];
+        case0.backrun_burns = vec![burn];
+        case0.victim_swaps = vec![vec![swap]];
+        case0.victim_swaps_gas_details = vec![gas_details];
 
         db.inner()
             .insert_one::<ClickhouseJit>(&case0)
@@ -479,7 +492,16 @@ mod tests {
     async fn jit_sandwich() {
         let db = spawn_clickhouse();
 
-        let case0 = JitLiquiditySandwich::default();
+        let mut case0 = JitLiquiditySandwich::default();
+        let swap = NormalizedSwap::default();
+        let mint = NormalizedMint::default();
+        let burn = NormalizedBurn::default();
+        let gas_details = GasDetails::default();
+
+        case0.frontrun_mints = vec![Some(vec![mint])];
+        case0.backrun_burns = vec![burn];
+        case0.victim_swaps = vec![vec![swap]];
+        case0.victim_swaps_gas_details = vec![gas_details];
 
         db.inner()
             .insert_one::<ClickhouseJitSandwich>(&case0)
@@ -491,7 +513,14 @@ mod tests {
     async fn liquidations() {
         let db = spawn_clickhouse();
 
-        let case0 = Liquidation::default();
+        let mut case0 = Liquidation::default();
+        let swap = NormalizedSwap::default();
+        let liquidation = NormalizedLiquidation::default();
+        let gas_details = GasDetails::default();
+
+        case0.liquidation_swaps = vec![swap];
+        case0.liquidations = vec![liquidation];
+        case0.gas_details = gas_details;
 
         db.inner()
             .insert_one::<ClickhouseLiquidations>(&case0)
@@ -515,7 +544,16 @@ mod tests {
     async fn sandwich() {
         let db = spawn_clickhouse();
 
-        let case0 = Sandwich::default();
+        let mut case0 = Sandwich::default();
+        let swap0 = NormalizedSwap::default();
+        let swap1 = NormalizedSwap::default();
+        let swap2 = NormalizedSwap::default();
+        let gas_details = GasDetails::default();
+
+        case0.frontrun_swaps = vec![vec![swap0]];
+        case0.victim_swaps = vec![vec![swap1]];
+        case0.victim_swaps_gas_details = vec![gas_details];
+        case0.backrun_swaps = vec![swap2];
 
         db.inner()
             .insert_one::<ClickhouseSandwiches>(&case0)
@@ -527,7 +565,12 @@ mod tests {
     async fn atomic_arb() {
         let db = spawn_clickhouse();
 
-        let case0 = AtomicArb::default();
+        let mut case0 = AtomicArb::default();
+        let swap = NormalizedSwap::default();
+        let gas_details = GasDetails::default();
+
+        case0.swaps = vec![swap];
+        case0.gas_details = gas_details;
 
         db.inner()
             .insert_one::<ClickhouseAtomicArbs>(&case0)
