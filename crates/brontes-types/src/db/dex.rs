@@ -10,7 +10,7 @@ use malachite::{num::basic::traits::One, Rational};
 use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
