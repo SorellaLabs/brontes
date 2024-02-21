@@ -50,6 +50,7 @@ discovery_dispatch!(
 
 action_dispatch!(
     ProtocolClassifications,
+    ZeroXsellToUniswapCall,
     UniswapV2swapCall,
     UniswapV2mintCall,
     UniswapV2burnCall,

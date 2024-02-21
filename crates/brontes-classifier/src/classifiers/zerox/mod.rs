@@ -1,1 +1,3 @@
-pub mod zerox;
+mod zerox;
+
+pub use zerox::*;
