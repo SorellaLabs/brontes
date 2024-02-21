@@ -26,8 +26,7 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> impl Future<Output = ()> + Send {
-        let span = span!(Level::ERROR, "mev processor", block = metadata.block_num);
-        let _guard = span.enter();
+        let block_number = metadata.block_num;
         async move {
             if let Err(e) =
                 AssertUnwindSafe(Self::process_results_inner(db, inspectors, tree, metadata))
@@ -45,6 +44,6 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
                 BrontesTaskExecutor::current().trigger_shutdown("process mev results")
             }
         }
-        .in_current_span()
+        .instrument(span!(Level::ERROR, "mev processor", %block_number))
     }
 }

@@ -24,7 +24,7 @@ use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
-use tracing::{debug, Instrument, Level};
+use tracing::{debug, span, Instrument, Level};
 
 use super::metadata::MetadataFetcher;
 
@@ -73,27 +73,20 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         fut: ExecutionFut<'static>,
         classifier: &'static Classifier<'static, T, DB>,
     ) -> eyre::Result<BlockTree<Actions>> {
-        let (traces, header) = fut
-            .in_current_span()
-            .await?
-            .ok_or_else(|| eyre!("no traces found"))?;
+        let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
 
         debug!("Got {} traces + header", traces.len());
-        let res = classifier
-            .build_block_tree(traces, header)
-            .in_current_span()
-            .await;
+        let res = classifier.build_block_tree(traces, header).await;
 
         Ok(res)
     }
 
     pub fn fetch_state_for(&mut self, block: u64) {
-        let span = tracing::span!(Level::ERROR, "state collection", block_number = block);
-        let _guard = span.enter();
-
         let execute_fut = self.parser.execute(block);
-        self.collection_future =
-            Some(Box::pin(Self::state_future(execute_fut, self.classifier).in_current_span()))
+        self.collection_future = Some(Box::pin(
+            Self::state_future(execute_fut, self.classifier)
+                .instrument(span!(Level::ERROR, "mev processor", block_number=%block)),
+        ))
     }
 
     pub fn range_finished(&self) {
