@@ -24,7 +24,7 @@ use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
-use tracing::{debug, Level};
+use tracing::{debug, Instrument, Level};
 
 use super::metadata::MetadataFetcher;
 
@@ -77,10 +77,16 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         let span = tracing::span!(Level::ERROR, "state collection", block_number = block);
         let guard = span.enter();
 
-        let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
+        let (traces, header) = fut
+            .in_current_span()
+            .await?
+            .ok_or_else(|| eyre!("no traces found"))?;
 
         debug!("Got {} traces + header", traces.len());
-        let res = classifier.build_block_tree(traces, header).await;
+        let res = classifier
+            .build_block_tree(traces, header)
+            .in_current_span()
+            .await;
         drop(guard);
 
         Ok(res)

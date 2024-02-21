@@ -4,9 +4,9 @@ use std::{
 };
 
 use brontes_metrics::prometheus_exporter::initialize;
+use brontes_types::{BrontesTaskExecutor, BrontesTaskManager};
 use futures::pin_mut;
 use metrics_process::Collector;
-use reth_tasks::{TaskExecutor, TaskManager};
 use tracing::{error, info, trace};
 
 use crate::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
@@ -14,7 +14,7 @@ use crate::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 pub fn run_command_until_exit<F, E>(command: impl FnOnce(CliContext) -> F) -> Result<(), E>
 where
     F: Future<Output = Result<(), E>>,
-    E: Send + Sync + From<std::io::Error> + From<reth_tasks::PanickedTaskError> + 'static,
+    E: Send + Sync + From<std::io::Error> + From<brontes_types::PanickedTaskError> + 'static,
 {
     let AsyncCliRunner { context, task_manager, tokio_runtime } = AsyncCliRunner::new()?;
     // initalize prometheus if we don't already have a endpoint
@@ -64,10 +64,13 @@ async fn try_initialize_prometheus() {
     }
 }
 
-async fn run_to_completion_or_panic<F, E>(mut tasks: TaskManager, fut: F) -> Result<TaskManager, E>
+async fn run_to_completion_or_panic<F, E>(
+    mut tasks: BrontesTaskManager,
+    fut: F,
+) -> Result<BrontesTaskManager, E>
 where
     F: Future<Output = Result<(), E>>,
-    E: Send + Sync + From<reth_tasks::PanickedTaskError> + 'static,
+    E: Send + Sync + From<brontes_types::PanickedTaskError> + 'static,
 {
     {
         pin_mut!(fut);
@@ -95,10 +98,10 @@ where
 
         tokio::select! {
             _ = ctrl_c => {
-                trace!(target: "reth::cli",  "Received ctrl-c");
+                trace!(target: "brontes::cli",  "Received ctrl-c");
             },
             _ = sigterm => {
-                trace!(target: "reth::cli",  "Received SIGTERM");
+                trace!(target: "brontes::cli",  "Received SIGTERM");
             },
             res = fut => res?,
         }
@@ -121,7 +124,7 @@ where
 
 struct AsyncCliRunner {
     context:       CliContext,
-    task_manager:  TaskManager,
+    task_manager:  BrontesTaskManager,
     tokio_runtime: tokio::runtime::Runtime,
 }
 
@@ -132,7 +135,7 @@ impl AsyncCliRunner {
     /// execute commands asynchronously.
     fn new() -> Result<Self, std::io::Error> {
         let tokio_runtime = tokio_runtime()?;
-        let task_manager = TaskManager::new(tokio_runtime.handle().clone());
+        let task_manager = BrontesTaskManager::new(tokio_runtime.handle().clone());
         let task_executor = task_manager.executor();
         Ok(Self { context: CliContext { task_executor }, task_manager, tokio_runtime })
     }
@@ -141,5 +144,5 @@ impl AsyncCliRunner {
 /// Additional context provided by the [CliRunner] when executing commands
 pub struct CliContext {
     /// Used to execute/spawn tasks
-    pub task_executor: TaskExecutor,
+    pub task_executor: BrontesTaskExecutor,
 }

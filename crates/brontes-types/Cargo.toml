@@ -68,6 +68,7 @@ statrs = "0.16"
 
 # errors
 eyre.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 dotenv.workspace = true

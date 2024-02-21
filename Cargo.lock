@@ -1816,6 +1816,7 @@ dependencies = [
  "serial_test",
  "statrs",
  "strum 0.25.0",
+ "thiserror",
  "tokio",
  "tracing",
  "zstd 0.13.0",

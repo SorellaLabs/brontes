@@ -3,10 +3,12 @@ use std::{panic::AssertUnwindSafe, sync::Arc};
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree, BrontesTaskExecutor,
+};
 use futures::{Future, FutureExt};
 pub use mev::*;
-use tracing::{span, Level};
+use tracing::{span, Instrument, Level};
 
 pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
     type InspectType: Send + Sync + Unpin;
@@ -30,10 +32,11 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
             if let Err(e) =
                 AssertUnwindSafe(Self::process_results_inner(db, inspectors, tree, metadata))
                     .catch_unwind()
+                    .in_current_span()
                     .await
             {
                 tracing::error!(error=?e, "hit panic while processing results");
-                panic!("{:?}", e)
+                BrontesTaskExecutor::current().trigger_shutdown("process mev results")
             }
 
             drop(guard);

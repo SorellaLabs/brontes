@@ -8,7 +8,7 @@ use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, span, Level};
 
-use crate::db::traits::LibmdbxReader;
+use crate::{db::traits::LibmdbxReader, BrontesTaskExecutor};
 pub mod node;
 pub mod root;
 pub mod tx_info;
@@ -265,7 +265,7 @@ impl<V: NormalizedAction> BlockTree<V> {
             Ok(r) => r,
             Err(e) => {
                 tracing::error!(error=?e, "hit panic on a tree action, exiting");
-                panic!("{:?}", e)
+                BrontesTaskExecutor::current().trigger_shutdown("tree panic")
             }
         };
         drop(g);
@@ -283,7 +283,7 @@ impl<V: NormalizedAction> BlockTree<V> {
             Ok(r) => r,
             Err(e) => {
                 tracing::error!(error=?e, "hit panic on a tree action, exiting");
-                panic!("{:?}", e)
+                BrontesTaskExecutor::current().trigger_shutdown("tree panic")
             }
         };
         drop(g);
