@@ -84,7 +84,7 @@ impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
 
 implement_table_value_codecs_with_zc!(ProtocolInfoRedefined);
 
-#[derive(Debug, Row, PartialEq, Clone, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize)]
 pub struct ProtocolInfoClickhouse {
     pub protocol: String,
     pub protocol_subtype: String,

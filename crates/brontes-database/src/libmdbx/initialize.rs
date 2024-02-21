@@ -219,7 +219,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 };
 
                 self.libmdbx
-                    .insert_pool(init_block, token_addr, token_addrs, protocol)
+                    .insert_pool(init_block, token_addr, token_addrs.to_vec(), None, protocol)
                     .await
                     .unwrap();
             }
