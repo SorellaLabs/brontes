@@ -18,7 +18,7 @@ use brontes_types::{
     BrontesTaskExecutor,
 };
 use futures::{Stream, StreamExt};
-use reth_tasks::TaskExecutor;
+
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::info;
 

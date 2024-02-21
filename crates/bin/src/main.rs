@@ -26,7 +26,7 @@ fn main() -> eyre::Result<()> {
                 error!("Caused by: {:?}", err);
                 source = err.source();
             }
-            return Err(eyre!("program exited via error"))
+            Err(eyre!("program exited via error"))
         }
     }
 }

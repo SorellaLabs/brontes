@@ -8,7 +8,7 @@ use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, span, Level};
 
-use crate::{db::traits::LibmdbxReader, BrontesTaskExecutor};
+use crate::{db::traits::LibmdbxReader};
 pub mod node;
 pub mod root;
 pub mod tx_info;

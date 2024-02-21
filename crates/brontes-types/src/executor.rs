@@ -2,7 +2,6 @@
 use std::{
     any::Any,
     fmt::{Display, Formatter},
-    future::poll_fn,
     pin::Pin,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -12,8 +11,8 @@ use std::{
 };
 
 use futures::{
-    future::{poll_immediate, select, BoxFuture, FusedFuture, Shared},
-    pin_mut, poll, Future, FutureExt, TryFutureExt,
+    future::{select, BoxFuture, FusedFuture, Shared},
+    pin_mut, Future, FutureExt, TryFutureExt,
 };
 use reth_tasks::{shutdown::GracefulShutdown, TaskSpawner, TaskSpawnerExt};
 use tokio::{
@@ -26,7 +25,7 @@ use tokio::{
 };
 use tracing::{debug, error, Instrument};
 
-pub(self) static EXECUTOR: OnceCell<BrontesTaskExecutor> = OnceCell::const_new();
+ static EXECUTOR: OnceCell<BrontesTaskExecutor> = OnceCell::const_new();
 
 #[derive(Debug)]
 #[must_use = "BrontesTaskManager must be polled to monitor critical tasks"]
@@ -155,7 +154,7 @@ impl BrontesTaskExecutor {
     }
 
     /// Causes a shutdown to occur.
-    pub fn trigger_shutdown(&self, task_name: &'static str) -> () {
+    pub fn trigger_shutdown(&self, task_name: &'static str) {
         let _ = self
             .panicked_tasks_tx
             .send(PanickedTaskError { error: None, task_name });
