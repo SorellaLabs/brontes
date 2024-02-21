@@ -85,4 +85,5 @@ reth-tracing-ext.workspace = true
 [features]
 default = []
 tests = []
+local-clickhouse = ["brontes-database/local-clickhouse"]
 local-reth = ["brontes-core/local-reth", "reth-tracing-ext/local-reth"]
