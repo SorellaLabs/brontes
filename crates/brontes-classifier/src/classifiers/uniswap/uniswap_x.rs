@@ -188,7 +188,7 @@ mod tests {
             user_swaps:          vec![
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 3,
+                    trace_index: 4,
                     from:        Address::new(hex!(
                         "
             86C2c32cea0F9cb6ef9742a138D0D4843598d0d6"
@@ -212,7 +212,7 @@ mod tests {
                 },
                 NormalizedSwap {
                     protocol:    UniswapX,
-                    trace_index: 5,
+                    trace_index: 7,
                     from:        Address::new(hex!(
                         "
                     569d9f244e4ed4f0731f39675492740dcdab6b15"
@@ -259,7 +259,7 @@ mod tests {
             settlement_contract: Address::new(hex!("6000da47483062A0D734Ba3dc7576Ce6A0B645C4")),
             user_swaps:          vec![NormalizedSwap {
                 protocol:    UniswapX,
-                trace_index: 2,
+                trace_index: 3,
                 from:        Address::new(hex!(
                     "
                         92069F3B51FF505e519378ba8229E3D1f51d472a"

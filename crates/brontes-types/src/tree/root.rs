@@ -109,7 +109,7 @@ impl<V: NormalizedAction> Root<V> {
                 is_verified_contract,
                 searcher_eoa_info,
                 None,
-            ));
+            ))
         }
 
         let searcher_contract_info =
