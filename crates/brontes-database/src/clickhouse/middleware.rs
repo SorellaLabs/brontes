@@ -111,25 +111,32 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
     //TODO: JOE
     async fn write_builder_info(
         &self,
-        _builder_coinbase_addr: Address,
-        _builder_info: BuilderInfo,
+        builder_coinbase_addr: Address,
+        builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        Ok(())
+        self.client
+            .write_builder_info(builder_coinbase_addr, builder_info.clone())
+            .await?;
+
+        self.inner()
+            .write_builder_info(builder_coinbase_addr, builder_info)
+            .await
     }
 
     async fn insert_pool(
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
         self.client
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await?;
 
         self.inner()
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await
     }
 
