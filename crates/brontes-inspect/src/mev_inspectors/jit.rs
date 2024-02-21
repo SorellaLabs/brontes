@@ -381,6 +381,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
+    use brontes_types::constants::WETH_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
@@ -410,6 +411,10 @@ mod tests {
         let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
+            .needs_tokens(vec![
+                hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into(),
+                WETH_ADDRESS,
+            ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)
             .with_expected_profit_usd(26.50);

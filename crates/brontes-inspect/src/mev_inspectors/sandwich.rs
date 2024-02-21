@@ -505,6 +505,7 @@ mod tests {
                 hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
             ])
             .with_dex_prices()
+            .needs_token(hex!("0588504472198e9296a248edca6ccdc40bd237cb").into())
             .with_gas_paid_usd(34.3368)
             .with_expected_profit_usd(15.43);
 
@@ -536,6 +537,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_block(18500018)
             .with_dex_prices()
+            .needs_token(hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into())
             .with_gas_paid_usd(40.26)
             .with_expected_profit_usd(-56.44);
 
