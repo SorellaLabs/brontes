@@ -21,7 +21,8 @@ action_impl!(
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -62,7 +63,8 @@ action_impl!(
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -101,7 +103,8 @@ action_impl!(
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -140,7 +143,8 @@ action_impl!(
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;

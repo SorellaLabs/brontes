@@ -11,7 +11,7 @@ use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
-use tracing::error;
+use tracing::warn;
 
 use crate::{
     db::{clickhouse_serde::dex::dex_quote, redefined_types::malachite::RationalRedefined},
@@ -77,7 +77,7 @@ impl DexQuotes {
 
             tx -= 1;
         }
-        error!(?pair, "no price for pair");
+        warn!(?pair, "no price for pair");
         None
     }
 
