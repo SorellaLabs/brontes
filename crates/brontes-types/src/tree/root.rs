@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt, fmt::Display};
 
 use alloy_primitives::TxHash;
-use clickhouse::{fixed_string::FixedString, Row};
+use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -46,12 +46,12 @@ impl<V: NormalizedAction> NodeData<V> {
 
 #[derive(Debug)]
 pub struct Root<V: NormalizedAction> {
-    pub head: Node,
-    pub position: usize,
-    pub tx_hash: B256,
-    pub private: bool,
+    pub head:        Node,
+    pub position:    usize,
+    pub tx_hash:     B256,
+    pub private:     bool,
     pub gas_details: GasDetails,
-    pub data_store: NodeData<V>,
+    pub data_store:  NodeData<V>,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -92,7 +92,9 @@ impl<V: NormalizedAction> Root<V> {
 
         let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
 
-        // If the to address is a verified contract, or emits logs, or is classified then shouldn't pass it as mev_contract to avoid the misclassification of protocol addresses as mev contracts
+        // If the to address is a verified contract, or emits logs, or is classified
+        // then shouldn't pass it as mev_contract to avoid the misclassification of
+        // protocol addresses as mev contracts
         if is_verified_contract || is_classified || emits_logs {
             return Ok(TxInfo::new(
                 block_number,
@@ -128,6 +130,7 @@ impl<V: NormalizedAction> Root<V> {
             searcher_contract_info,
         ))
     }
+
     pub fn get_from_address(&self) -> Address {
         self.head.address
     }
@@ -210,12 +213,8 @@ impl<V: NormalizedAction> Root<V> {
         C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
     {
         let mut find_res = Vec::new();
-        self.head.collect(
-            &mut find_res,
-            find,
-            &|data, _| data.clone(),
-            &self.data_store,
-        );
+        self.head
+            .collect(&mut find_res, find, &|data, _| data.clone(), &self.data_store);
 
         let indexes = find_res
             .into_par_iter()
@@ -261,9 +260,9 @@ impl<V: NormalizedAction> Root<V> {
     rkyv::Archive,
 )]
 pub struct GasDetails {
-    pub coinbase_transfer: Option<u128>,
-    pub priority_fee: u128,
-    pub gas_used: u128,
+    pub coinbase_transfer:   Option<u128>,
+    pub priority_fee:        u128,
+    pub gas_used:            u128,
     pub effective_gas_price: u128,
 }
 //TODO: Fix this
@@ -315,14 +314,8 @@ impl GasDetails {
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
             ("Gas Used", self.gas_used.to_string()),
-            (
-                "Effective Gas Price",
-                format!("{} Wei", self.effective_gas_price),
-            ),
-            (
-                "Total Gas Paid in ETH",
-                format!("{:.7} ETH", self.gas_paid() as f64 / 1e18),
-            ),
+            ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
+            ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
         ];
 
         let max_label_length = labels
@@ -356,10 +349,10 @@ impl GasDetails {
 }
 
 pub struct ClickhouseVecGasDetails {
-    pub tx_hash: Vec<FixedString>,
-    pub coinbase_transfer: Vec<Option<u128>>,
-    pub priority_fee: Vec<u128>,
-    pub gas_used: Vec<u128>,
+    pub tx_hash:             Vec<String>,
+    pub coinbase_transfer:   Vec<Option<u128>>,
+    pub priority_fee:        Vec<u128>,
+    pub gas_used:            Vec<u128>,
     pub effective_gas_price: Vec<u128>,
 }
 
@@ -371,7 +364,7 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .zip(value.1)
             .map(|(tx, gas)| {
                 (
-                    FixedString::from(format!("{:?}", tx)),
+                    format!("{:?}", tx),
                     gas.coinbase_transfer,
                     gas.priority_fee,
                     gas.gas_used,
@@ -381,10 +374,10 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .collect::<Vec<_>>();
 
         ClickhouseVecGasDetails {
-            tx_hash: vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
-            coinbase_transfer: vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
-            priority_fee: vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
-            gas_used: vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
+            tx_hash:             vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
+            coinbase_transfer:   vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
+            priority_fee:        vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
+            gas_used:            vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
             effective_gas_price: vec_vals.iter().map(|val| val.4.to_owned()).collect_vec(),
         }
     }

@@ -1,12 +1,13 @@
 use std::fmt::{self, Debug, Display};
 
 use alloy_primitives::Address;
-use clickhouse::{fixed_string::FixedString, Row};
+use clickhouse::{DbRow, Row};
 use colored::Colorize;
+use itertools::Itertools;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::MevType;
@@ -15,7 +16,7 @@ use crate::{
         redefined_types::primitives::*,
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    serde_utils::option_addresss,
+    serde_utils::{addresss, option_addresss, txhash},
 };
 #[allow(unused_imports)]
 use crate::{
@@ -25,23 +26,23 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
-    pub block_number: u64,
-    pub tx_index: u64,
-    #[serde_as(as = "FixedString")]
+    pub block_number:  u64,
+    pub tx_index:      u64,
+    #[serde(with = "txhash")]
     // For a sandwich this is always the first frontrun tx hash
     pub tx_hash: B256,
-    #[serde_as(as = "FixedString")]
-    pub eoa: Address,
+    #[serde(with = "addresss")]
+    pub eoa:           Address,
     #[serde(with = "option_addresss")]
-    pub mev_contract: Option<Address>,
-    pub profit_usd: f64,
+    pub mev_contract:  Option<Address>,
+    pub profit_usd:    f64,
     pub token_profits: TokenProfits,
-    pub bribe_usd: f64,
+    pub bribe_usd:     f64,
     #[redefined(same_fields)]
-    pub mev_type: MevType,
+    pub mev_type:      MevType,
 }
 
 #[serde_as]
@@ -56,9 +57,9 @@ pub struct TokenProfits {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenProfit {
     pub profit_collector: Address,
-    pub token: TokenInfoWithAddress,
-    pub amount: f64,
-    pub usd_value: f64,
+    pub token:            TokenInfoWithAddress,
+    pub amount:           f64,
+    pub usd_value:        f64,
 }
 
 impl TokenProfits {
@@ -101,11 +102,7 @@ impl TokenProfits {
         mev_contract_address: Option<Address>,
         eoa_address: Address,
     ) -> fmt::Result {
-        writeln!(
-            f,
-            "\n{}",
-            "Token Deltas:\n".bold().bright_white().underline()
-        )?;
+        writeln!(f, "\n{}", "Token Deltas:\n".bold().bright_white().underline())?;
 
         for profit in &self.profits {
             let collector_label = match profit.profit_collector {
@@ -124,11 +121,7 @@ impl TokenProfits {
                 f,
                 " - {}: {} {}: {} (worth ${:.2})",
                 collector_label.bright_white(),
-                if profit.amount >= 0.0 {
-                    "Gained"
-                } else {
-                    "Lost"
-                },
+                if profit.amount >= 0.0 { "Gained" } else { "Lost" },
                 profit.token.inner.symbol.bold(),
                 amount_display,
                 profit.usd_value.abs()
@@ -150,17 +143,9 @@ impl Display for TokenProfits {
 impl Display for TokenProfit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (profit_or_loss, amount_str, usd_value_str) = if self.amount < 0.0 {
-            (
-                "lost",
-                self.amount.to_string().red(),
-                format!("$ {}", self.usd_value).red(),
-            )
+            ("lost", self.amount.to_string().red(), format!("$ {}", self.usd_value).red())
         } else {
-            (
-                "gained",
-                self.amount.to_string().green(),
-                format!("$ {}", self.usd_value).green(),
-            )
+            ("gained", self.amount.to_string().green(), format!("$ {}", self.usd_value).green())
         };
 
         writeln!(
@@ -173,4 +158,79 @@ impl Display for TokenProfit {
             usd_value_str
         )
     }
+}
+
+impl Serialize for BundleHeader {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser_struct = serializer.serialize_struct("BundleHeader", 10)?;
+
+        ser_struct.serialize_field("block_number", &self.block_number)?;
+        ser_struct.serialize_field("tx_index", &self.tx_index)?;
+        ser_struct.serialize_field("tx_hash", &format!("{:?}", &self.tx_hash))?;
+        ser_struct.serialize_field("eoa", &format!("{:?}", &self.eoa))?;
+        ser_struct
+            .serialize_field("mev_contract", &self.mev_contract.map(|a| format!("{:?}", a)))?;
+        ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
+
+        let profit_collector = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| format!("{:?}", tp.profit_collector))
+            .collect_vec();
+        let token = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| {
+                (
+                    format!("{:?}", tp.token.address),
+                    tp.token.decimals,
+                    tp.token.inner.symbol.clone(),
+                )
+            })
+            .collect_vec();
+        let amount = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| tp.amount)
+            .collect_vec();
+        let usd_value = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| tp.usd_value)
+            .collect_vec();
+
+        ser_struct.serialize_field("token_profits.profit_collector", &profit_collector)?;
+        ser_struct.serialize_field("token_profits.token", &token)?;
+        ser_struct.serialize_field("token_profits.amount", &amount)?;
+        ser_struct.serialize_field("token_profits.usd_value", &usd_value)?;
+
+        ser_struct.serialize_field("bribe_usd", &self.bribe_usd)?;
+        ser_struct.serialize_field("mev_type", &self.mev_type)?;
+
+        ser_struct.end()
+    }
+}
+
+impl DbRow for BundleHeader {
+    const COLUMN_NAMES: &'static [&'static str] = &[
+        "block_number",
+        "tx_index",
+        "tx_hash",
+        "eoa",
+        "mev_contract",
+        "profit_usd",
+        "token_profits.profit_collector",
+        "token_profits.token",
+        "token_profits.amount",
+        "token_profits.usd_value",
+        "bribe_usd",
+        "mev_type",
+    ];
 }

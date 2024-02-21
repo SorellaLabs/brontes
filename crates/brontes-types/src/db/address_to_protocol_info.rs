@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use alloy_primitives::Address;
-use clickhouse::Row;
+use clickhouse::{fixed_string::FixedString, Row};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Deserialize, Serialize};
@@ -27,20 +27,20 @@ use crate::{
 pub struct ProtocolInfo {
     #[serde(with = "static_bindings")]
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:       Protocol,
     #[serde(with = "addresss")]
-    pub token0: Address,
+    pub token0:         Address,
     #[serde(with = "addresss")]
-    pub token1: Address,
+    pub token1:         Address,
     #[serde(with = "option_addresss")]
-    pub token2: Option<Address>,
+    pub token2:         Option<Address>,
     #[serde(with = "option_addresss")]
-    pub token3: Option<Address>,
+    pub token3:         Option<Address>,
     #[serde(with = "option_addresss")]
-    pub token4: Option<Address>,
+    pub token4:         Option<Address>,
     #[serde(with = "option_addresss")]
     pub curve_lp_token: Option<Address>,
-    pub init_block: u64,
+    pub init_block:     u64,
 }
 
 impl IntoIterator for ProtocolInfo {
@@ -48,17 +48,11 @@ impl IntoIterator for ProtocolInfo {
     type Item = Address;
 
     fn into_iter(self) -> Self::IntoIter {
-        vec![
-            Some(self.token0),
-            Some(self.token1),
-            self.token2,
-            self.token3,
-            self.token4,
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>()
-        .into_iter()
+        vec![Some(self.token0), Some(self.token1), self.token2, self.token3, self.token4]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
@@ -83,3 +77,33 @@ impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
 }
 
 implement_table_value_codecs_with_zc!(ProtocolInfoRedefined);
+
+#[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize)]
+pub struct ProtocolInfoClickhouse {
+    pub protocol:         String,
+    pub protocol_subtype: String,
+    pub address:          FixedString,
+    pub tokens:           Vec<FixedString>,
+    pub curve_lp_token:   Option<FixedString>,
+    pub init_block:       u64,
+}
+
+impl ProtocolInfoClickhouse {
+    pub fn new(
+        block: u64,
+        address: Address,
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
+        classifier_name: Protocol,
+    ) -> Self {
+        let (protocol, protocol_subtype) = classifier_name.into_clickhouse_protocol();
+        Self {
+            protocol:         protocol.to_string(),
+            protocol_subtype: protocol_subtype.to_string(),
+            address:          format!("{:?}", address).into(),
+            tokens:           tokens.iter().map(|t| format!("{:?}", t).into()).collect(),
+            curve_lp_token:   curve_lp_token.map(|t| format!("{:?}", t).into()),
+            init_block:       block,
+        }
+    }
+}

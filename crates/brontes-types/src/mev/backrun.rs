@@ -2,8 +2,6 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
-#[allow(unused)]
-use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -26,8 +24,8 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AtomicArb {
-    pub tx_hash: B256,
-    pub swaps: Vec<NormalizedSwap>,
+    pub tx_hash:     B256,
+    pub swaps:       Vec<NormalizedSwap>,
     #[redefined(same_fields)]
     pub gas_details: GasDetails,
 }
@@ -61,7 +59,7 @@ impl Serialize for AtomicArb {
     {
         let mut ser_struct = serializer.serialize_struct("AtomicArb", 34)?;
 
-        ser_struct.serialize_field("tx_hash", &FixedString::from(format!("{:?}", self.tx_hash)))?;
+        ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
 
         let swaps: ClickhouseVecNormalizedSwap = self.swaps.clone().into();
 

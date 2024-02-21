@@ -35,8 +35,8 @@ use crate::{
 //TODO: Document this module
 #[derive(Debug, Clone)]
 pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx: &'db DB,
-    provider: Arc<T>,
+    libmdbx:               &'db DB,
+    provider:              Arc<T>,
     pricing_update_sender: UnboundedSender<DexPriceMsg>,
 }
 
@@ -46,11 +46,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         pricing_update_sender: UnboundedSender<DexPriceMsg>,
         provider: Arc<T>,
     ) -> Self {
-        Self {
-            libmdbx,
-            pricing_update_sender,
-            provider,
-        }
+        Self { libmdbx, pricing_update_sender, provider }
     }
 
     pub async fn build_block_tree(
@@ -135,18 +131,18 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     let node = Node::new(trace_idx, address, vec![]);
 
                     let mut tx_root = Root {
-                        position: tx_idx,
-                        head: node,
-                        tx_hash: trace.tx_hash,
-                        private: false,
+                        position:    tx_idx,
+                        head:        node,
+                        tx_hash:     trace.tx_hash,
+                        private:     false,
                         gas_details: GasDetails {
-                            coinbase_transfer: None,
-                            gas_used: trace.gas_used,
+                            coinbase_transfer:   None,
+                            gas_used:            trace.gas_used,
                             effective_gas_price: trace.effective_price,
-                            priority_fee: trace.effective_price
+                            priority_fee:        trace.effective_price
                                 - (header.base_fee_per_gas.unwrap() as u128),
                         },
-                        data_store: NodeData(vec![Some(classification)]),
+                        data_store:  NodeData(vec![Some(classification)]),
                     };
 
                     for trace in trace.trace.into_iter() {
@@ -215,14 +211,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Actions {
         let (update, classification) = self
-            .classify_node(
-                block_number,
-                root_head,
-                node_data_store,
-                tx_index,
-                trace,
-                trace_index,
-            )
+            .classify_node(block_number, root_head, node_data_store, tx_index, trace, trace_index)
             .await;
 
         // Here we are marking more complex actions that require data
@@ -265,20 +254,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         match trace.action_type() {
             Action::Call(_) => self.classify_call(block, tx_idx, trace, trace_index).await,
             Action::Create(_) => {
-                self.classify_create(
-                    block,
-                    root_head,
-                    node_data_store,
-                    tx_idx,
-                    trace,
-                    trace_index,
-                )
-                .await
+                self.classify_create(block, root_head, node_data_store, tx_idx, trace, trace_index)
+                    .await
             }
-            Action::Selfdestruct(sd) => (
-                vec![],
-                Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)),
-            ),
+            Action::Selfdestruct(sd) => {
+                (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+            }
             Action::Reward(_) => (vec![], Actions::Unclassified(trace)),
         }
     }
@@ -313,11 +294,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         block: u64,
     ) -> Option<(Vec<DexPriceMsg>, Actions)> {
         // Determine the appropriate address based on whether it's a delegate call
-        let token_address = if trace.is_delegate_call() {
-            trace.get_from_addr()
-        } else {
-            trace.get_to_address()
-        };
+        let token_address =
+            if trace.is_delegate_call() { trace.get_from_addr() } else { trace.get_to_address() };
 
         // Attempt to decode the transfer
         match try_decode_transfer(
@@ -436,12 +414,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
         if self
             .libmdbx
-            .insert_pool(
-                block,
-                pool.pool_address,
-                [pool.tokens[0], pool.tokens[1]],
-                pool.protocol,
-            )
+            .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)
             .await
             .is_err()
         {

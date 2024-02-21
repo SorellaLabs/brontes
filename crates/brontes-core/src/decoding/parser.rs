@@ -29,8 +29,8 @@ use crate::errors::TraceParseError;
 /// to decode each call for later analysis.
 //#[derive(Clone)]
 pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx: &'db DB,
-    pub tracer: Arc<T>,
+    libmdbx:               &'db DB,
+    pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
@@ -40,11 +40,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
-        Self {
-            libmdbx,
-            tracer,
-            metrics_tx,
-        }
+        Self { libmdbx, tracer, metrics_tx }
     }
 
     pub fn get_tracer(&self) -> Arc<T> {
@@ -86,12 +82,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
-            .fill_metadata(
-                parity_trace.0.unwrap(),
-                parity_trace.1,
-                receipts.0.unwrap(),
-                block_num,
-            )
+            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
             .await;
         #[cfg(not(feature = "dyn-decode"))]
         let traces = self

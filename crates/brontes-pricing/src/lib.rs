@@ -88,33 +88,33 @@ use crate::types::PoolState;
 /// 5) Processes and returns formatted data from the applied state transitions
 /// before proceeding to the next block.
 pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
-    quote_asset: Address,
-    current_block: u64,
+    quote_asset:     Address,
+    current_block:   u64,
     completed_block: u64,
-    finished: Arc<AtomicBool>,
+    finished:        Arc<AtomicBool>,
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx: UnboundedReceiver<DexPriceMsg>,
+    update_rx:       UnboundedReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
-    buffer: StateBuffer,
+    buffer:          StateBuffer,
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
     new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager: GraphManager<DB>,
+    graph_manager:   GraphManager<DB>,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader: LazyExchangeLoader<T>,
-    dex_quotes: HashMap<u64, DexQuotes>,
+    lazy_loader:     LazyExchangeLoader<T>,
+    dex_quotes:      HashMap<u64, DexQuotes>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
-    overlap_update: Option<PoolUpdate>,
+    overlap_update:  Option<PoolUpdate>,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
@@ -280,14 +280,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             return;
         };
 
-        let price0 = DexPrices {
-            post_state: price0.clone(),
-            pre_state: price0,
-        };
-        let price1 = DexPrices {
-            post_state: price1.clone(),
-            pre_state: price1,
-        };
+        let price0 = DexPrices { post_state: price0.clone(), pre_state: price0 };
+        let price1 = DexPrices { post_state: price1.clone(), pre_state: price1 };
 
         self.store_dex_price(block, tx_idx, pair0, price0);
         self.store_dex_price(block, tx_idx, pair1, price1);
@@ -328,20 +322,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             block,
             tx_idx,
             pair0,
-            DexPrices {
-                pre_state: price0_pre,
-                post_state: price0_post,
-            },
+            DexPrices { pre_state: price0_pre, post_state: price0_post },
         );
 
         self.store_dex_price(
             block,
             tx_idx,
             pair1,
-            DexPrices {
-                pre_state: price1_pre,
-                post_state: price1_post,
-            },
+            DexPrices { pre_state: price1_pre, post_state: price1_post },
         );
     }
 
@@ -361,11 +349,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// asynchronous pool state loading operations, ensuring the graph remains
     /// accurate and up-to-date.
     fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult {
-            block,
-            state,
-            load_result,
-        } = state;
+        let LazyResult { block, state, load_result } = state;
 
         if let Some(state) = state {
             let addr = state.address();
@@ -376,12 +360,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else if let LoadResult::Err {
-            pool_address,
-            pool_pair,
-            protocol,
-        } = load_result
-        {
+        } else if let LoadResult::Err { pool_address, pool_pair, protocol } = load_result {
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
         }
@@ -435,12 +414,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         }
                     });
 
-                    Some((
-                        failed.pair,
-                        failed.block,
-                        failed.ignore_state,
-                        failed.frayed_ends,
-                    ))
+                    Some((failed.pair, failed.block, failed.ignore_state, failed.frayed_ends))
                 }
             })
             .collect_vec();
@@ -525,14 +499,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .iter()
                 .copied()
                 .combinations(ignores.len() - 1)
-                .map(|ignores| {
-                    (
-                        pair,
-                        block,
-                        ignores.into_iter().collect::<HashSet<_>>(),
-                        vec![],
-                    )
-                })
+                .map(|ignores| (pair, block, ignores.into_iter().collect::<HashSet<_>>(), vec![]))
                 .collect_vec()
         } else {
             ignores
@@ -542,12 +509,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .collect_vec()
         };
 
-        tracing::debug!(
-            ?pair,
-            ?block,
-            subgraph_variations = queries.len(),
-            "starting rundown"
-        );
+        tracing::debug!(?pair, ?block, subgraph_variations = queries.len(), "starting rundown");
 
         let edges = par_state_query(&self.graph_manager, queries)
             .into_iter()
@@ -865,7 +827,7 @@ enum PollResult {
 /// loading of pools is being applied
 pub struct StateBuffer {
     /// updates for a given block in order that they occur
-    pub updates: HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     /// when we have a override for a given address at a block. it means that
     /// we don't want to apply any pool updates for the block. This is useful
     /// for when a pool is initted at a block and we can only query the end
@@ -882,10 +844,7 @@ impl Default for StateBuffer {
 
 impl StateBuffer {
     pub fn new() -> Self {
-        Self {
-            updates: HashMap::default(),
-            overrides: HashMap::default(),
-        }
+        Self { updates: HashMap::default(), overrides: HashMap::default() }
     }
 }
 
@@ -893,39 +852,30 @@ impl StateBuffer {
 /// this swap is empty such that we don't effect the state
 const fn make_fake_swap(pair: Pair) -> Actions {
     let t_in = TokenInfoWithAddress {
-        inner: brontes_types::db::token_info::TokenInfo {
-            decimals: 0,
-            symbol: String::new(),
-        },
+        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
         address: pair.0,
     };
 
     let t_out = TokenInfoWithAddress {
-        inner: brontes_types::db::token_info::TokenInfo {
-            decimals: 0,
-            symbol: String::new(),
-        },
+        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
         address: pair.1,
     };
 
     Actions::Swap(NormalizedSwap {
-        protocol: Protocol::Unknown,
+        protocol:    Protocol::Unknown,
         trace_index: 0,
-        from: Address::ZERO,
-        recipient: Address::ZERO,
-        pool: Address::ZERO,
-        token_in: t_in,
-        token_out: t_out,
-        amount_in: Rational::ZERO,
-        amount_out: Rational::ZERO,
-        msg_value: U256::ZERO,
+        from:        Address::ZERO,
+        recipient:   Address::ZERO,
+        pool:        Address::ZERO,
+        token_in:    t_in,
+        token_out:   t_out,
+        amount_in:   Rational::ZERO,
+        amount_out:  Rational::ZERO,
+        msg_value:   U256::ZERO,
     })
 }
 
-type GraphSeachParRes = (
-    Vec<Vec<(Address, PoolUpdate)>>,
-    Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>,
-);
+type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>);
 
 fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -962,11 +912,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .into_par_iter()
         .map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return (
-                    pair,
-                    block,
-                    vec![graph.create_subgraph(block, pair, ignore, 100, 3)],
-                );
+                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)]);
             }
             (
                 pair,
@@ -985,10 +931,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .collect::<Vec<_>>()
 }
 
-type NewPoolPair = (
-    Vec<(Address, PoolUpdate)>,
-    Vec<(Vec<SubGraphEdge>, Pair, u64)>,
-);
+type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>);
 
 fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -1050,13 +993,10 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         return None;
     }
 
-    Some((
-        (trigger_update.get_pool_address(), trigger_update.clone()),
-        {
-            let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100, 5);
-            (subgraph, pair, trigger_update.block)
-        },
-    ))
+    Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
+        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100, 5);
+        (subgraph, pair, trigger_update.block)
+    }))
 }
 
 #[cfg(feature = "testing")]
@@ -1075,7 +1015,6 @@ pub mod test {
 
     use alloy_primitives::{hex, Address, FixedBytes};
 
-    pub const USDC_ADDRESS: Address = Address(FixedBytes::<20>(hex!(
-        "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-    )));
+    pub const USDC_ADDRESS: Address =
+        Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
 }

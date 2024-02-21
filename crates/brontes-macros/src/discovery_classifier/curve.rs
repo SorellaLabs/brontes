@@ -19,26 +19,22 @@ pub fn curve_discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStrea
 struct CurveParse {
     // required for all
     contract_protocol: Ident,
-    abi_crate_path: Path,
-    meta_pool_impls: u8,
-    plain_pool_impls: u8,
-    factory_address: Literal,
+    abi_crate_path:    Path,
+    meta_pool_impls:   u8,
+    plain_pool_impls:  u8,
+    factory_address:   Literal,
 }
 
 impl CurveParse {
     fn make_meta_pools(&self) -> TokenStream {
-        let full_contract_protocol = Ident::new(
-            &format!("{}MetaPool", self.contract_protocol),
-            Span::call_site(),
-        );
+        let full_contract_protocol =
+            Ident::new(&format!("{}MetaPool", self.contract_protocol), Span::call_site());
         let path = &self.abi_crate_path;
         let address = &self.factory_address;
 
         if self.meta_pool_impls == 1 {
-            let decoder_name = Ident::new(
-                &format!("{}MetaDiscovery", self.contract_protocol),
-                Span::call_site(),
-            );
+            let decoder_name =
+                Ident::new(&format!("{}MetaDiscovery", self.contract_protocol), Span::call_site());
             let end_function_call_path = Ident::new("deploy_metapoolCall", Span::call_site());
             let function_call_path = quote!(#path::#end_function_call_path);
 
@@ -109,18 +105,14 @@ impl CurveParse {
     }
 
     fn make_plain_pools(&self) -> TokenStream {
-        let full_contract_protocol = Ident::new(
-            &format!("{}PlainPool", self.contract_protocol),
-            Span::call_site(),
-        );
+        let full_contract_protocol =
+            Ident::new(&format!("{}PlainPool", self.contract_protocol), Span::call_site());
         let path = &self.abi_crate_path;
         let address = &self.factory_address;
 
         if self.plain_pool_impls == 1 {
-            let decoder_name = Ident::new(
-                &format!("{}PlainDiscovery", self.contract_protocol),
-                Span::call_site(),
-            );
+            let decoder_name =
+                Ident::new(&format!("{}PlainDiscovery", self.contract_protocol), Span::call_site());
             let end_function_call_path = Ident::new("deploy_plain_poolCall", Span::call_site());
             let function_call_path = quote!(#path::#end_function_call_path);
 

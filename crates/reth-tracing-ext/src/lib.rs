@@ -57,7 +57,7 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api: EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
+    pub api:   EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
     pub trace: TraceApi<Provider, RethApi>,
 }
 
@@ -96,11 +96,7 @@ impl TracingClient {
         );
 
         let transaction_validator = EthTransactionValidatorBuilder::new(chain.clone())
-            .build_with_tasks(
-                provider.clone(),
-                task_executor.clone(),
-                NoopBlobStore::default(),
-            );
+            .build_with_tasks(provider.clone(), task_executor.clone(), NoopBlobStore::default());
 
         let tx_pool = reth_transaction_pool::Pool::eth_pool(
             transaction_validator,
@@ -156,12 +152,12 @@ impl TracingClient {
         block_id: BlockId,
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let config = TracingInspectorConfig {
-            record_logs: true,
-            record_steps: false,
-            record_state_diff: false,
-            record_stack_snapshots: reth_revm::tracing::StackSnapshotType::None,
-            record_memory_snapshots: false,
-            record_call_return_data: true,
+            record_logs:              true,
+            record_steps:             false,
+            record_state_diff:        false,
+            record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
+            record_memory_snapshots:  false,
+            record_call_return_data:  true,
             exclude_precompile_calls: true,
         };
 
@@ -180,21 +176,21 @@ impl TracingClient {
 #[derive(Debug, Clone)]
 pub struct TracingInspectorLocal {
     /// Configures what and how the inspector records traces.
-    pub _config: TracingInspectorConfig,
+    pub _config:                TracingInspectorConfig,
     /// Records all call traces
-    pub traces: CallTraceArena,
+    pub traces:                 CallTraceArena,
     /// Tracks active calls
-    pub _trace_stack: Vec<usize>,
+    pub _trace_stack:           Vec<usize>,
     /// Tracks active steps
-    pub _step_stack: Vec<StackStep>,
+    pub _step_stack:            Vec<StackStep>,
     /// Tracks the return value of the last call
     pub _last_call_return_data: Option<Bytes>,
     /// The gas inspector used to track remaining gas.
-    pub _gas_inspector: GasInspector,
+    pub _gas_inspector:         GasInspector,
     /// The spec id of the EVM.
     ///
     /// This is filled during execution.
-    pub _spec_id: Option<SpecId>,
+    pub _spec_id:               Option<SpecId>,
 }
 
 impl TracingInspectorLocal {
@@ -245,10 +241,7 @@ impl TracingInspectorLocal {
             let logs = node
                 .logs
                 .iter()
-                .map(|log| Log {
-                    address: node.trace.address,
-                    data: log.clone(),
-                })
+                .map(|log| Log { address: node.trace.address, data: log.clone() })
                 .collect::<Vec<_>>();
 
             let msg_sender = if let Action::Call(c) = &trace.action {
@@ -366,9 +359,9 @@ impl TracingInspectorLocal {
     pub(crate) fn parity_selfdestruct_action(&self, node: &CallTraceNode) -> Option<Action> {
         if node.trace.selfdestruct_refund_target.is_some() {
             Some(Action::Selfdestruct(SelfdestructAction {
-                address: node.trace.address,
+                address:        node.trace.address,
                 refund_address: node.trace.selfdestruct_refund_target.unwrap_or_default(),
-                balance: node.trace.value,
+                balance:        node.trace.value,
             }))
         } else {
             None
@@ -379,19 +372,19 @@ impl TracingInspectorLocal {
         match node.trace.kind {
             CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
                 Action::Call(CallAction {
-                    from: node.trace.caller,
-                    to: node.trace.address,
-                    value: node.trace.value,
-                    gas: U64::from(node.trace.gas_limit),
-                    input: node.trace.data.clone(),
+                    from:      node.trace.caller,
+                    to:        node.trace.address,
+                    value:     node.trace.value,
+                    gas:       U64::from(node.trace.gas_limit),
+                    input:     node.trace.data.clone(),
                     call_type: node.trace.kind.into(),
                 })
             }
             CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
-                from: node.trace.caller,
+                from:  node.trace.caller,
                 value: node.trace.value,
-                gas: U64::from(node.trace.gas_limit),
-                init: node.trace.data.clone(),
+                gas:   U64::from(node.trace.gas_limit),
+                init:  node.trace.data.clone(),
             }),
         }
     }
@@ -401,13 +394,13 @@ impl TracingInspectorLocal {
             CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
                 TraceOutput::Call(CallOutput {
                     gas_used: U64::from(node.trace.gas_used),
-                    output: node.trace.output.clone(),
+                    output:   node.trace.output.clone(),
                 })
             }
             CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
                 gas_used: U64::from(node.trace.gas_used),
-                code: node.trace.output.clone(),
-                address: node.trace.address,
+                code:     node.trace.output.clone(),
+                address:  node.trace.address,
             }),
         }
     }
@@ -440,20 +433,14 @@ impl TracingInspectorLocal {
             Some(self.parity_trace_output(node))
         };
         let error = self.as_error_msg(node);
-        TransactionTrace {
-            action,
-            error,
-            result,
-            trace_address,
-            subtraces: node.children.len(),
-        }
+        TransactionTrace { action, error, result, trace_address, subtraces: node.children.len() }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct StackStep {
     _trace_idx: usize,
-    _step_idx: usize,
+    _step_idx:  usize,
 }
 
 /// Opens up an existing database at the specified path.
