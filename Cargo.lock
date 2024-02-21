@@ -1631,7 +1631,6 @@ dependencies = [
  "brontes-pricing",
  "brontes-types",
  "clickhouse",
- "convert_case 0.6.0",
  "criterion",
  "dotenv",
  "eyre",
@@ -1641,7 +1640,6 @@ dependencies = [
  "itertools 0.11.0",
  "lazy_static",
  "malachite",
- "quote",
  "rand 0.8.5",
  "rayon",
  "reqwest",
@@ -1657,10 +1655,8 @@ dependencies = [
  "strum 0.25.0",
  "thiserror",
  "tokio",
- "toml",
  "tracing",
  "tracing-subscriber",
- "walkdir",
 ]
 
 [[package]]
