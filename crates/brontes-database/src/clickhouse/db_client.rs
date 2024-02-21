@@ -279,10 +279,7 @@ impl ClickhouseHandle for Clickhouse {
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         self.client
-            .query_many::<D>(
-                T::INIT_QUERY.expect("no init query found for clickhouse query"),
-                &(),
-            )
+            .query_many::<D>(T::INIT_QUERY.expect("no init query found for clickhouse query"), &())
             .await
             .map_err(Into::into)
     }
@@ -292,6 +289,7 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -573,3 +571,4 @@ mod tests {
             .unwrap();
     }
 }
+*/

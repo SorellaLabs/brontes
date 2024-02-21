@@ -3,7 +3,7 @@ use brontes_database::libmdbx::LibmdbxInit;
 use brontes_types::traits::TracingProvider;
 
 pub struct BrontesAnalytics<T: TracingProvider, DB: LibmdbxInit> {
-    pub db: &'static DB,
+    pub db:             &'static DB,
     pub tracing_client: T,
 }
 

@@ -24,7 +24,7 @@ use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
     client: Clickhouse,
-    inner: I,
+    inner:  I,
 }
 
 impl<I: DBWriter> ClickhouseMiddleware<I> {
@@ -200,6 +200,7 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
     ) -> eyre::Result<Option<BuilderInfo>> {
         self.inner.try_fetch_builder_info(builder_coinbase_addr)
     }
+
     //TODO: JOE
     fn try_fetch_mev_blocks(
         &self,

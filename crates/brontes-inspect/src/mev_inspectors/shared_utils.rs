@@ -25,22 +25,19 @@ use tracing::warn;
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
     #[allow(dead_code)]
-    pub(crate) db: &'db DB,
+    pub(crate) db:    &'db DB,
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
     pub fn new(quote_address: Address, db: &'db DB) -> Self {
-        SharedInspectorUtils {
-            quote: quote_address,
-            db,
-        }
+        SharedInspectorUtils { quote: quote_address, db }
     }
 }
 
 /// user => token => otherside => amount
 /// otherside is the person who is on the otherside of the token transfer
-/// eg if it was a transfer and the amount is negative, it would be the to address of the transfer
-/// and visa versa
+/// eg if it was a transfer and the amount is negative, it would be the to
+/// address of the transfer and visa versa
 type TokenDeltasCalc = HashMap<Address, HashMap<Address, HashMap<Address, Rational>>>;
 type TokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
 
@@ -256,16 +253,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 Some(TokenProfit {
                     profit_collector: collector,
-                    token: self.db.try_fetch_token_info(*token).ok()?,
-                    amount: amount.clone().to_float(),
-                    usd_value: usd_value.to_float(),
+                    token:            self.db.try_fetch_token_info(*token).ok()?,
+                    amount:           amount.clone().to_float(),
+                    usd_value:        usd_value.to_float(),
                 })
             })
             .collect();
 
-        Some(TokenProfits {
-            profits: token_profits,
-        })
+        Some(TokenProfits { profits: token_profits })
     }
 
     fn get_cex_usd_value(&self, token: Address, amount: Rational, metadata: &Metadata) -> Rational {
@@ -335,12 +330,7 @@ impl ActionRevenueCalculation for Actions {
                 apply_entry(transfer.token.address, transfer.to, -from_amount_in, entry);
                 // add to recipient
                 let entry = delta_map.entry(transfer.to).or_default();
-                apply_entry(
-                    transfer.token.address,
-                    transfer.from,
-                    transfer.amount.clone(),
-                    entry,
-                );
+                apply_entry(transfer.token.address, transfer.from, transfer.amount.clone(), entry);
             }
             Actions::Mint(mint) => {
                 let entry = delta_map.entry(mint.from).or_default();
@@ -378,10 +368,7 @@ impl ActionRevenueCalculation for Actions {
                     });
             }
             action => {
-                warn!(
-                    ?action,
-                    "revenue calculation is not supported for action variant"
-                );
+                warn!(?action, "revenue calculation is not supported for action variant");
             }
         }
     }

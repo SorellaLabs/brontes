@@ -17,7 +17,8 @@ pub struct Analytics {
 
 #[derive(Debug, Subcommand)]
 pub enum AnalyticsCommands {
-    /// Identifies vertically integrated searchers & maps them to their builders in the database
+    /// Identifies vertically integrated searchers & maps them to their builders
+    /// in the database
     #[command(name = "vertically-integrated-builders", alias = "vi-builders")]
     ViBuilders(SearcherBuilder),
 }
@@ -29,14 +30,15 @@ pub struct SearcherBuilder {
     pub start_block: u64,
     /// Optional End Block, if omitted it will continue to run until killed
     #[arg(long, short)]
-    pub end_block: Option<u64>,
+    pub end_block:   Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks: Option<u64>,
-    /// Optional MevType to filter by (e.g. only CexDex bundles will be considered when identifying searcher to builder relationships)
+    pub max_tasks:   Option<u64>,
+    /// Optional MevType to filter by (e.g. only CexDex bundles will be
+    /// considered when identifying searcher to builder relationships)
     #[arg(long, short, value_delimiter = ',')]
-    pub mev_type: Option<Vec<MevType>>,
+    pub mev_type:    Option<Vec<MevType>>,
 }
 
 impl Analytics {

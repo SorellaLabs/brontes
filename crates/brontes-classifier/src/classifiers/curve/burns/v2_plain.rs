@@ -277,37 +277,30 @@ mod tests {
             None,
         );
 
-        let burn = B256::from(hex!(
-            "01263e507a992709a0a53c014ead38c109edc7aa08bc8329a94d051530da8258"
-        ));
+        let burn =
+            B256::from(hex!("01263e507a992709a0a53c014ead38c109edc7aa08bc8329a94d051530da8258"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "CRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
-            from: Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
-            recipient: Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token: vec![token0, token1],
-            amount: vec![
+            from:        Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
+            recipient:   Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
+            pool:        Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token:       vec![token0, token1],
+            amount:      vec![
                 U256::from(7558238951551444616838_u128).to_scaled_rational(18),
                 U256::from(33415347097773187822792_u128).to_scaled_rational(18),
             ],
@@ -338,37 +331,30 @@ mod tests {
             None,
         );
 
-        let burn = B256::from(hex!(
-            "d6ea9a7ee442796536490731fb1236fad076ce6994aeda37735670f3690ad06a"
-        ));
+        let burn =
+            B256::from(hex!("d6ea9a7ee442796536490731fb1236fad076ce6994aeda37735670f3690ad06a"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "CRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
-            from: Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
-            recipient: Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token: vec![token0, token1],
-            amount: vec![
+            from:        Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
+            recipient:   Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
+            pool:        Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token:       vec![token0, token1],
+            amount:      vec![
                 U256::from(827904920210000000000000_u128).to_scaled_rational(18),
                 U256::from(332024620000000000000000_u128).to_scaled_rational(18),
             ],
@@ -399,28 +385,24 @@ mod tests {
             None,
         );
 
-        let burn = B256::from(hex!(
-            "c6efe6fdf9d1e872765c98730455a9803781958fab7774c48a0be9148ad1165e"
-        ));
+        let burn =
+            B256::from(hex!("c6efe6fdf9d1e872765c98730455a9803781958fab7774c48a0be9148ad1165e"));
 
         let token = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
-            from: Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
-            recipient: Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token: vec![token],
-            amount: vec![U256::from(915720089431618525538_u128).to_scaled_rational(18)],
+            from:        Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
+            recipient:   Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
+            pool:        Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token:       vec![token],
+            amount:      vec![U256::from(915720089431618525538_u128).to_scaled_rational(18)],
         });
 
         classifier_utils

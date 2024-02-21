@@ -166,15 +166,9 @@ where
     let mut i = 0usize;
     let mut visited = HashSet::new();
     let mut to_see = BinaryHeap::new();
-    to_see.push(SmallestHolder {
-        cost: Zero::zero(),
-        index: 0,
-    });
+    to_see.push(SmallestHolder { cost: Zero::zero(), index: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
-    parents.insert(
-        start.clone(),
-        (usize::max_value(), Zero::zero(), E::default()),
-    );
+    parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
     let mut target_reached = None;
     while let Some(SmallestHolder { cost, index }) = to_see.pop() {
         if i == max_iter {
@@ -219,10 +213,7 @@ where
                 }
             }
 
-            to_see.push(SmallestHolder {
-                cost: new_cost,
-                index: n,
-            });
+            to_see.push(SmallestHolder { cost: new_cost, index: n });
         }
         visited.insert(base_node);
     }
@@ -277,7 +268,7 @@ where
 }
 
 struct SmallestHolder<K> {
-    cost: K,
+    cost:  K,
     index: usize,
 }
 

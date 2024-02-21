@@ -24,11 +24,11 @@ const MAX_SEARCH_THREADS: usize = 4;
 
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots: Vec<Root<V>>,
-    pub header: Header,
+    pub tx_roots:             Vec<Root<V>>,
+    pub header:               Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee: f64,
-    pub tp: ThreadPool,
+    pub avg_priority_fee:     f64,
+    pub tp:                   ThreadPool,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -125,8 +125,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
-    /// Collects all spans defined by the Search Args, then will allow modifications
-    /// of the nodes found in the spans.
+    /// Collects all spans defined by the Search Args, then will allow
+    /// modifications of the nodes found in the spans.
     pub fn modify_spans<F>(&mut self, find: TreeSearchBuilder<V>, modify: F)
     where
         F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
@@ -192,8 +192,9 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    /// Uses the search args to find a given nodes. Specifically if a node has childs
-    /// that the search args define. Then calls the modify function on the current node.
+    /// Uses the search args to find a given nodes. Specifically if a node has
+    /// childs that the search args define. Then calls the modify function
+    /// on the current node.
     pub fn modify_node_if_contains_childs<F>(&mut self, find: TreeSearchBuilder<V>, modify: F)
     where
         F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
@@ -205,11 +206,12 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    /// Uses search args to collect two types of nodes. Nodes that could be a parent to
-    /// a child node that we want to remove. and child nodes we want to remove.
-    /// These are both collected and passed to the classifiy removal index function.
-    /// This function will allow the user to look at all of the parent nodes and possible removal
-    /// nodes and return the index of nodes that will be removed from the tree.
+    /// Uses search args to collect two types of nodes. Nodes that could be a
+    /// parent to a child node that we want to remove. and child nodes we
+    /// want to remove. These are both collected and passed to the classifiy
+    /// removal index function. This function will allow the user to look at
+    /// all of the parent nodes and possible removal nodes and return the
+    /// index of nodes that will be removed from the tree.
     pub fn remove_duplicate_data<ClassifyRemovalIndex, WantedData, R>(
         &mut self,
         find: TreeSearchBuilder<V>,

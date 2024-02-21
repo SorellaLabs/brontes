@@ -488,6 +488,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
 impl DBWriter for LibmdbxReadWriter {
     type Inner = Self;
+
     fn inner(&self) -> &Self::Inner {
         unreachable!()
     }
@@ -569,7 +570,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .map(|(idx, value)| {
                     let index = DexQuoteWithIndex {
                         tx_idx: idx as u16,
-                        quote: value.into_iter().collect_vec(),
+                        quote:  value.into_iter().collect_vec(),
                     };
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
@@ -670,12 +671,7 @@ impl DBWriter for LibmdbxReadWriter {
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        let table = TxTracesData::new(
-            block,
-            TxTracesInner {
-                traces: Some(traces),
-            },
-        );
+        let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
         self.0.write_table(&vec![table])?;
 
         self.init_state_updating(block, TRACE_FLAG)
@@ -725,12 +721,9 @@ impl LibmdbxReadWriter {
 
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
-        let res = tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
-            eyre!(
-                "Failed to fetch Metadata's block info for block {}",
-                block_num
-            )
-        });
+        let res = tx
+            .get::<BlockInfo>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num));
 
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;

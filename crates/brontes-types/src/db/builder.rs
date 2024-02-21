@@ -115,9 +115,9 @@ impl BuilderInfoWithAddress {
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BuilderStats {
-    pub pnl: f64,
+    pub pnl:          f64,
     pub blocks_built: u64,
-    pub last_active: u64,
+    pub last_active:  u64,
 }
 
 implement_table_value_codecs_with_zc!(BuilderStatsRedefined);
@@ -133,10 +133,10 @@ impl BuilderStats {
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize)]
 pub struct BuilderStatsWithAddress {
     #[serde(with = "addresss")]
-    pub address: Address,
-    pub pnl: f64,
+    pub address:      Address,
+    pub pnl:          f64,
     pub blocks_built: u64,
-    pub last_active: u64,
+    pub last_active:  u64,
 }
 
 impl BuilderStatsWithAddress {
