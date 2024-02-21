@@ -121,15 +121,16 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: Vec<Address>,
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
         self.client
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await?;
 
         self.inner()
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await
     }
 

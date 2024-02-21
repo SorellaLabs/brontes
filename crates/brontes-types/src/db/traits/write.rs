@@ -110,7 +110,8 @@ pub trait DBWriter: Send + Unpin + 'static {
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: Vec<Address>,
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
