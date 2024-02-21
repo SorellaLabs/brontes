@@ -1,7 +1,7 @@
 pub mod dex_quote {
     use std::{collections::HashMap, str::FromStr};
 
-    use alloy_primitives::{Address, U256};
+    use alloy_primitives::Address;
     use itertools::Itertools;
     use malachite::{Natural, Rational};
     use serde::{
@@ -11,7 +11,7 @@ pub mod dex_quote {
 
     use crate::{db::dex::DexPrices, pair::Pair};
 
-    type DexPriceQuotesVec = Vec<((String, String), (([u8; 32], [u8; 32]), ([u8; 32], [u8; 32])))>;
+    type DexPriceQuotesVec = Vec<((String, String), ((Vec<u64>, Vec<u64>), (Vec<u64>, Vec<u64>)))>;
 
     #[allow(dead_code)]
     pub fn serialize<S>(
@@ -29,24 +29,12 @@ pub mod dex_quote {
                         (format!("{:?}", pair.0), format!("{:?}", pair.1)),
                         (
                             (
-                                U256::from_limbs_slice(
-                                    &dex_price.pre_state.numerator_ref().to_limbs_asc(),
-                                )
-                                .to_le_bytes(),
-                                U256::from_limbs_slice(
-                                    &dex_price.pre_state.denominator_ref().to_limbs_asc(),
-                                )
-                                .to_le_bytes(),
+                                dex_price.pre_state.numerator_ref().to_limbs_asc(),
+                                dex_price.pre_state.denominator_ref().to_limbs_asc(),
                             ),
                             (
-                                U256::from_limbs_slice(
-                                    &dex_price.post_state.numerator_ref().to_limbs_asc(),
-                                )
-                                .to_le_bytes(),
-                                U256::from_limbs_slice(
-                                    &dex_price.post_state.denominator_ref().to_limbs_asc(),
-                                )
-                                .to_le_bytes(),
+                                dex_price.post_state.numerator_ref().to_limbs_asc(),
+                                dex_price.post_state.denominator_ref().to_limbs_asc(),
                             ),
                         ),
                     )
@@ -69,7 +57,7 @@ pub mod dex_quote {
         let des: DexPriceQuotesVec = Deserialize::deserialize(deserializer)?;
 
         if des.is_empty() {
-            return Ok(None);
+            return Ok(None)
         }
 
         let val = des
@@ -80,12 +68,12 @@ pub mod dex_quote {
                         .ordered(),
                     DexPrices {
                         pre_state:  Rational::from_naturals(
-                            Natural::from_limbs_asc(&U256::from_le_bytes(pre_num).into_limbs()),
-                            Natural::from_limbs_asc(&U256::from_le_bytes(pre_den).into_limbs()),
+                            Natural::from_owned_limbs_asc(pre_num),
+                            Natural::from_owned_limbs_asc(pre_den),
                         ),
                         post_state: Rational::from_naturals(
-                            Natural::from_limbs_asc(&U256::from_le_bytes(post_num).into_limbs()),
-                            Natural::from_limbs_asc(&U256::from_le_bytes(post_den).into_limbs()),
+                            Natural::from_owned_limbs_asc(post_num),
+                            Natural::from_owned_limbs_asc(post_den),
                         ),
                     },
                 )

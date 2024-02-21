@@ -108,7 +108,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
             .await
     }
 
-    //TODO: JOE
     async fn write_builder_info(
         &self,
         builder_coinbase_addr: Address,

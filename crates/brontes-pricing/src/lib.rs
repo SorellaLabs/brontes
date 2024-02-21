@@ -142,6 +142,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
     }
 
+    pub fn current_block_processing(&self) -> u64 {
+        self.completed_block
+    }
+
     /// Handles pool updates for the BrontesBatchPricer system.
     ///
     /// This function processes a vector of `PoolUpdate` messages, updating the
@@ -157,7 +161,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the decentralized exchange pricing mechanism.
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
-            return;
+            return
         };
 
         if let Some(msg) = updates.first() {
@@ -197,12 +201,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .for_each(|(graph_edges, pair, block)| {
                 if graph_edges.is_empty() {
                     error!(?pair, "new pool has no graph edges");
-                    return;
+                    return
                 }
 
                 if self.graph_manager.has_subgraph(pair) {
                     error!(?pair, "already have pairs");
-                    return;
+                    return
                 }
 
                 self.add_subgraph(pair, block, graph_edges, false);
@@ -211,7 +215,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
         if pool_pair.0 == pool_pair.1 {
-            return Some(Rational::ONE);
+            return Some(Rational::ONE)
         }
         self.graph_manager.get_price(pool_pair)
     }
@@ -436,7 +440,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// paths or pairs.
     fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>) {
         if pairs.is_empty() {
-            return;
+            return
         }
         tracing::debug!("requerying bad state");
 
@@ -453,7 +457,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 // add regularly
                 if edges.is_empty() {
                     self.rundown(pair, block);
-                    return;
+                    return
                 }
 
                 let Some((id, need_state, force_rundown)) =
@@ -538,7 +542,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         if edges.is_empty() {
             tracing::error!(?pair, ?block, "failed to find connection for graph");
-            return;
+            return
         } else {
             let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
                 return;
@@ -636,7 +640,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
         if !self.can_progress() {
-            return None;
+            return None
         }
 
         self.graph_manager.finalize_block(self.completed_block);
@@ -680,7 +684,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
         if self.completed_block > self.current_block {
-            return None;
+            return None
         }
 
         self.graph_manager.finalize_block(self.completed_block);
@@ -751,15 +755,15 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             work -= 1;
             if work == 0 {
                 cx.waker().wake_by_ref();
-                return Poll::Pending;
+                return Poll::Pending
             }
 
             if let Some(new_prices) = self.poll_state_processing(cx) {
-                return new_prices;
+                return new_prices
             }
 
             if !self.process_future_blocks() {
-                continue;
+                continue
             }
 
             let mut block_updates = Vec::new();
@@ -791,7 +795,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                                 block_updates.push(update);
                             } else {
                                 self.overlap_update = Some(update);
-                                break;
+                                break
                             }
                         }
                     }
@@ -801,9 +805,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
-                            return Poll::Ready(self.on_close());
+                            return Poll::Ready(self.on_close())
                         }
-                        break;
+                        break
                     }
                 }
 
@@ -912,7 +916,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .into_par_iter()
         .map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)]);
+                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)])
             }
             (
                 pair,
@@ -990,7 +994,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     trigger_update: PoolUpdate,
 ) -> LoadingReturns {
     if pair.0 == pair.1 {
-        return None;
+        return None
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
