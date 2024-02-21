@@ -1,5 +1,6 @@
 mod processors;
 mod range;
+use brontes_types::BrontesTaskExecutor;
 pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
@@ -22,7 +23,7 @@ use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
@@ -86,7 +87,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     #[allow(clippy::async_yields_async)]
     async fn build_range_executors(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         end_block: u64,
         tip: bool,
     ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
@@ -137,7 +138,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     async fn build_tip_inspector(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         start_block: u64,
     ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self
@@ -162,7 +163,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     async fn state_collector_dex_price(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         start_block: u64,
         end_block: u64,
         tip: bool,
@@ -268,7 +269,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     async fn build_internal(
         self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         had_end_block: bool,
         end_block: u64,
     ) -> eyre::Result<Brontes> {
@@ -311,7 +312,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     pub async fn build(
         self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         shutdown: GracefulShutdown,
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
@@ -344,11 +345,11 @@ impl Future for Brontes {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.0.is_empty() {
-            return Poll::Ready(());
+            return Poll::Ready(())
         }
 
         if let Poll::Ready(None) = self.0.poll_next_unpin(cx) {
-            return Poll::Ready(());
+            return Poll::Ready(())
         }
 
         cx.waker().wake_by_ref();

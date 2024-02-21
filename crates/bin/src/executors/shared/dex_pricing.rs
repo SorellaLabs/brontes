@@ -7,14 +7,11 @@ use std::{
 use brontes_core::decoding::TracingProvider;
 use brontes_pricing::BrontesBatchPricer;
 use brontes_types::{
-    constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
-    db::{
+    constants::START_OF_CHAINBOUND_MEMPOOL_DATA, db::{
         dex::DexQuotes,
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
-    },
-    normalized_actions::Actions,
-    tree::BlockTree,
+    }, normalized_actions::Actions, tree::BlockTree, BrontesTaskExecutor
 };
 use futures::{Stream, StreamExt};
 use reth_tasks::TaskExecutor;
@@ -29,11 +26,11 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     tx:       PricingSender<T, DB>,
 
     pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, Metadata)>,
-    task_executor:            TaskExecutor,
+    task_executor:            BrontesTaskExecutor,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
-    pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: TaskExecutor) -> Self {
+    pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
         let (tx, rx) = channel(2);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
