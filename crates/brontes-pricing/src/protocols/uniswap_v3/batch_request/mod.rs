@@ -28,7 +28,6 @@ sol!(
     }
     function getERC20Data(address token0, address token1, address pool) returns (ERC20Data[]);
 );
-
 sol!(
     struct PoolData {
         address tokenA;
@@ -60,19 +59,18 @@ sol!(
         int24 tickSpacing
     ) returns (TickData[], uint64);
 );
+// Positions of Uni v3 immutables in the bytecode
+const TOKEN0_RANGE: std::ops::Range<usize> = 4542..4542 + 40;
+const TOKEN1_RANGE: std::ops::Range<usize> = 9128..9128 + 40;
+const FEE_RANGE: std::ops::Range<usize> = 6682..6682 + 6;
+const TICK_SPACING_RANGE: std::ops::Range<usize> = 6146..6146 + 64;
 
 fn extract_uni_v3_immutables(bytecode: Bytes) -> (Address, Address, u32, i32) {
-    // Position of the immutables in the bytecode
-    let token0_range = 4542..4542 + 40;
-    let token1_range = 9128..9128 + 40;
-    let fee_range = 6682..6682 + 6;
-    let tick_spacing_range = 6146..6146 + 64;
-
     // Slices
-    let token0_slice = &bytecode[token0_range];
-    let token1_slice = &bytecode[token1_range];
-    let fee_slice = &bytecode[fee_range];
-    let tick_spacing_slice = &bytecode[tick_spacing_range];
+    let token0_slice = &bytecode[TOKEN0_RANGE];
+    let token1_slice = &bytecode[TOKEN1_RANGE];
+    let fee_slice = &bytecode[FEE_RANGE];
+    let tick_spacing_slice = &bytecode[TICK_SPACING_RANGE];
 
     // To UTF-8 String
     let token0 = from_utf8(token0_slice).unwrap();
