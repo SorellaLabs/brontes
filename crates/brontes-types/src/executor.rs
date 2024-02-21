@@ -25,7 +25,7 @@ use tokio::{
 };
 use tracing::{debug, error, Instrument};
 
- static EXECUTOR: OnceCell<BrontesTaskExecutor> = OnceCell::const_new();
+static EXECUTOR: OnceCell<BrontesTaskExecutor> = OnceCell::const_new();
 
 #[derive(Debug)]
 #[must_use = "BrontesTaskManager must be polled to monitor critical tasks"]

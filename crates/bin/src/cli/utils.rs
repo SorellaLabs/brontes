@@ -92,8 +92,6 @@ pub fn get_env_vars() -> eyre::Result<String> {
 
 #[cfg(not(feature = "local-reth"))]
 pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
-    
-
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
