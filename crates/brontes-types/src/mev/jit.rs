@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use ::clickhouse::{self, DbRow};
+use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};

@@ -256,7 +256,8 @@ mod tests {
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
         },
         mev::{
-            CexDex, JitLiquidity, JitLiquiditySandwich, MevType, PossibleMev, PossibleMevCollection,
+            CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation, MevType, PossibleMev,
+            PossibleMevCollection,
         },
         pair::Pair,
     };
@@ -264,8 +265,8 @@ mod tests {
 
     use super::*;
     use crate::clickhouse::dbms::{
-        ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich, ClickhouseMevBlocks,
-        ClickhouseSearcherStats,
+        ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich, ClickhouseLiquidations,
+        ClickhouseMevBlocks, ClickhouseSearcherStats,
     };
 
     fn spawn_clickhouse() -> Clickhouse {
@@ -439,6 +440,18 @@ mod tests {
 
         db.inner()
             .insert_one::<ClickhouseJitSandwich>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn liquidations() {
+        let db = spawn_clickhouse();
+
+        let case0 = Liquidation::default();
+
+        db.inner()
+            .insert_one::<ClickhouseLiquidations>(&case0)
             .await
             .unwrap();
     }
