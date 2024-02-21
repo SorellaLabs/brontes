@@ -188,7 +188,10 @@ impl Node {
     where
         F: Fn(Vec<&mut Self>, &mut NodeData<V>),
     {
-        if !find.generate_search_args(self, &*data).collect_current_node {
+        if !find
+            .generate_search_args(self, &*data)
+            .child_node_to_collect
+        {
             return false
         }
 
@@ -358,7 +361,7 @@ impl Node {
         data: &NodeData<V>,
     ) -> bool {
         // the previous sub-action was the last one to meet the criteria
-        if !call.generate_search_args(self, data).collect_current_node {
+        if !call.generate_search_args(self, data).child_node_to_collect {
             return false
         }
 
@@ -368,7 +371,7 @@ impl Node {
             .map(|i| i.collect_spans(result, call, data))
             .collect::<Vec<bool>>();
 
-        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
+        let lower_has_better = lower_has_better_collect.into_iter().all(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
