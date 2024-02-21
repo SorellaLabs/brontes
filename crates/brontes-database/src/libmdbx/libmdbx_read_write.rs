@@ -636,7 +636,7 @@ impl DBWriter for LibmdbxReadWriter {
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
         // add to default table
-        let mut tokens = tokens.into_iter();
+        let mut tokens = tokens.iter();
         self.0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData::new(
