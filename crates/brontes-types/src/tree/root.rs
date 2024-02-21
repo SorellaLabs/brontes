@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt, fmt::Display};
 
 use alloy_primitives::TxHash;
-use clickhouse::{fixed_string::FixedString, Row};
+use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -349,7 +349,7 @@ impl GasDetails {
 }
 
 pub struct ClickhouseVecGasDetails {
-    pub tx_hash:             Vec<FixedString>,
+    pub tx_hash:             Vec<String>,
     pub coinbase_transfer:   Vec<Option<u128>>,
     pub priority_fee:        Vec<u128>,
     pub gas_used:            Vec<u128>,
@@ -364,7 +364,7 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .zip(value.1)
             .map(|(tx, gas)| {
                 (
-                    FixedString::from(format!("{:?}", tx)),
+                    format!("{:?}", tx),
                     gas.coinbase_transfer,
                     gas.priority_fee,
                     gas.gas_used,

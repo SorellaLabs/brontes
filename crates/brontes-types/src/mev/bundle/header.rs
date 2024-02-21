@@ -1,12 +1,13 @@
 use std::fmt::{self, Debug, Display};
 
 use alloy_primitives::Address;
-use clickhouse::{fixed_string::FixedString, Row};
+use clickhouse::{DbRow, Row};
 use colored::Colorize;
+use itertools::Itertools;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::MevType;
@@ -15,7 +16,7 @@ use crate::{
         redefined_types::primitives::*,
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    serde_utils::option_addresss,
+    serde_utils::{addresss, option_addresss, txhash},
 };
 #[allow(unused_imports)]
 use crate::{
@@ -25,15 +26,15 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
     pub block_number:  u64,
     pub tx_index:      u64,
-    #[serde_as(as = "FixedString")]
+    #[serde(with = "txhash")]
     // For a sandwich this is always the first frontrun tx hash
     pub tx_hash: B256,
-    #[serde_as(as = "FixedString")]
+    #[serde(with = "addresss")]
     pub eoa:           Address,
     #[serde(with = "option_addresss")]
     pub mev_contract:  Option<Address>,
@@ -157,4 +158,79 @@ impl Display for TokenProfit {
             usd_value_str
         )
     }
+}
+
+impl Serialize for BundleHeader {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser_struct = serializer.serialize_struct("BundleHeader", 10)?;
+
+        ser_struct.serialize_field("block_number", &self.block_number)?;
+        ser_struct.serialize_field("tx_index", &self.tx_index)?;
+        ser_struct.serialize_field("tx_hash", &format!("{:?}", &self.tx_hash))?;
+        ser_struct.serialize_field("eoa", &format!("{:?}", &self.eoa))?;
+        ser_struct
+            .serialize_field("mev_contract", &self.mev_contract.map(|a| format!("{:?}", a)))?;
+        ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
+
+        let profit_collector = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| format!("{:?}", tp.profit_collector))
+            .collect_vec();
+        let token = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| {
+                (
+                    format!("{:?}", tp.token.address),
+                    tp.token.decimals,
+                    tp.token.inner.symbol.clone(),
+                )
+            })
+            .collect_vec();
+        let amount = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| tp.amount)
+            .collect_vec();
+        let usd_value = self
+            .token_profits
+            .profits
+            .iter()
+            .map(|tp| tp.usd_value)
+            .collect_vec();
+
+        ser_struct.serialize_field("token_profits.profit_collector", &profit_collector)?;
+        ser_struct.serialize_field("token_profits.token", &token)?;
+        ser_struct.serialize_field("token_profits.amount", &amount)?;
+        ser_struct.serialize_field("token_profits.usd_value", &usd_value)?;
+
+        ser_struct.serialize_field("bribe_usd", &self.bribe_usd)?;
+        ser_struct.serialize_field("mev_type", &self.mev_type)?;
+
+        ser_struct.end()
+    }
+}
+
+impl DbRow for BundleHeader {
+    const COLUMN_NAMES: &'static [&'static str] = &[
+        "block_number",
+        "tx_index",
+        "tx_hash",
+        "eoa",
+        "mev_contract",
+        "profit_usd",
+        "token_profits.profit_collector",
+        "token_profits.token",
+        "token_profits.amount",
+        "token_profits.usd_value",
+        "bribe_usd",
+        "mev_type",
+    ];
 }

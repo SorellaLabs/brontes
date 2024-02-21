@@ -1,6 +1,7 @@
 use brontes_types::{
     db::{
-        builder::BuilderStatsWithAddress,
+        address_to_protocol_info::ProtocolInfoClickhouse,
+        builder::{BuilderInfoWithAddress, BuilderStatsWithAddress},
         dex::DexQuotesWithBlockNumber,
         searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
         token_info::TokenInfoWithAddress,
@@ -28,13 +29,17 @@ clickhouse_dbms!(
         ClickhouseCexDex,
         ClickhouseJit,
         ClickhouseJitSandwich,
+        ClickhouseSandwiches,
+        ClickhouseAtomicArbs,
         ClickhouseLiquidations,
         ClickhouseSearcherInfo,
         ClickhouseDexPriceMapping,
         ClickhouseTxTraces,
         ClickhouseTokenInfo,
         ClickhouseSearcherStats,
-        ClickhouseBuilderStats
+        ClickhouseBuilderStats,
+        ClickhousePools,
+        ClickhouseBuilderInfo
     ]
 );
 
@@ -74,7 +79,6 @@ remote_clickhouse_table!(
     NO_FILE
 );
 
-// fix this 1
 remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseCexDex, CexDex, NO_FILE);
 
 remote_clickhouse_table!(
@@ -95,6 +99,10 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseJit, JitLiquidity, NO_FILE);
 
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseSandwiches, Sandwich, NO_FILE);
+
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseAtomicArbs, AtomicArb, NO_FILE);
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
@@ -108,5 +116,21 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseBuilderStats,
     BuilderStatsWithAddress,
+    NO_FILE
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "ethereum",
+    ClickhousePools,
+    ProtocolInfoClickhouse,
+    NO_FILE
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "brontes",
+    ClickhouseBuilderInfo,
+    BuilderInfoWithAddress,
     NO_FILE
 );
