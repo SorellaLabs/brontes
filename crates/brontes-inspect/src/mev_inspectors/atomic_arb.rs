@@ -1,10 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
-    mev::{AtomicArb, Bundle, MevType},
+    mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     tree::BlockTree,
     ToFloatNearest, TreeSearchBuilder, TxInfo,
@@ -14,19 +14,16 @@ use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
-use crate::{
-    mev_inspectors::shared_utils::ActionRevenueCalculation, shared_utils::SharedInspectorUtils,
-    BundleData, Inspector, Metadata,
-};
+use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, Metadata};
 
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
-    inner: SharedInspectorUtils<'db, DB>,
+    utils: SharedInspectorUtils<'db, DB>,
 }
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
         Self {
-            inner: SharedInspectorUtils::new(quote, db),
+            utils: SharedInspectorUtils::new(quote, db),
         }
     }
 }
@@ -40,17 +37,14 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        let interesting_state = tree.collect_all(TreeSearchBuilder::default().with_actions([
-            Actions::is_transfer,
-            Actions::is_flash_loan,
-            Actions::is_swap,
-            Actions::is_collect,
-        ]));
+        let interesting_state = tree.collect_all(
+            TreeSearchBuilder::default().with_actions([Actions::is_flash_loan, Actions::is_swap]),
+        );
 
         interesting_state
             .into_par_iter()
             .filter_map(|(tx, actions)| {
-                let info = tree.get_tx_info(tx, self.inner.db)?;
+                let info = tree.get_tx_info(tx, self.utils.db)?;
 
                 self.process_swaps(info, meta_data.clone(), actions)
             })
@@ -83,25 +77,27 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             })
             .partition_map(|either| either);
 
-        let possible_arb_type = self.is_possible_arb(&swaps, &transfers)?;
+        let possible_arb_type = self.is_possible_arb(&swaps)?;
 
         let actions = searcher_actions.clone();
 
         let profit = match possible_arb_type {
-            AtomicArbType::LongTail => self.process_long_tail(&info, metadata.clone(), &[actions]),
             AtomicArbType::Triangle => {
-                self.process_triangle_arb(&info, metadata.clone(), &[actions])
+                self.process_triangle_arb(&info, metadata.clone(), &[actions], &swaps)
             }
             AtomicArbType::CrossPair(jump_index) => {
                 self.process_cross_pair_arb(&info, metadata.clone(), &swaps, &[actions], jump_index)
             }
+            AtomicArbType::StablecoinArb => {
+                todo!()
+            }
         }?;
 
-        let header = self.inner.build_bundle_header(
+        let header = self.utils.build_bundle_header(
             &info,
             profit.to_float(),
             PriceAt::Average,
-            &[searcher_actions],
+            &transfers,
             &[info.gas_details],
             metadata,
             MevType::AtomicArb,
@@ -111,6 +107,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             tx_hash: info.tx_hash,
             gas_details: info.gas_details,
             swaps,
+            arb_type: possible_arb_type,
         };
 
         Some(Bundle {
@@ -119,48 +116,40 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         })
     }
 
-    fn is_possible_arb(
-        &self,
-        swaps: &[NormalizedSwap],
-        transfers: &[NormalizedTransfer],
-    ) -> Option<AtomicArbType> {
+    fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
         match swaps.len() {
-            0 | 1 => {
-                if transfers.len() > 2 {
-                    Some(AtomicArbType::LongTail)
+            0 | 1 => None,
+            2 => {
+                // TODO account for stable arbs here
+                let start = swaps[0].token_in.address;
+                let end = swaps[1].token_out.address;
+                let is_triangle = start == end;
+
+                let is_continuous = swaps[0].token_out.address == swaps[1].token_in.address;
+
+                if is_triangle && is_continuous {
+                    Some(AtomicArbType::Triangle)
+                } else if is_triangle {
+                    Some(AtomicArbType::CrossPair(1))
                 } else {
                     None
                 }
             }
-            2 => {
-                let start = swaps[0].token_in.address;
-                let end = swaps[1].token_out.address;
-                let is_triangle =
-                    start == end && swaps[0].token_out.address == swaps[1].token_in.address;
-                let is_cross_pair = start == end;
-
-                if is_triangle {
-                    Some(AtomicArbType::Triangle)
-                } else if is_cross_pair {
-                    Some(AtomicArbType::CrossPair(1))
-                } else {
-                    Some(AtomicArbType::LongTail)
-                }
-            }
-            _ => Some(identify_arb_sequence(swaps)),
+            _ => identify_arb_sequence(swaps),
         }
     }
-
+    // Fix atomic arb to solely work based on swaps & move any transfer related impls to long tail to deal with the scenario in which we have unclassified pools
     fn process_triangle_arb(
         &self,
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
         searcher_actions: &[Vec<Actions>],
+        swaps: &[NormalizedSwap],
     ) -> Option<Rational> {
-        let rev_usd = self.inner.get_dex_revenue_usd(
+        let rev_usd = self.utils.get_swap_deltas_usd(
             tx_info.tx_index,
             PriceAt::Average,
-            searcher_actions,
+            swaps,
             metadata.clone(),
         )?;
 
@@ -189,10 +178,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Rational> {
         let is_stable_arb = is_stable_arb(swaps, jump_index);
 
-        let rev_usd = self.get_dex_revenue_usd_with_transfers(
+        let rev_usd = self.utils.get_swap_deltas_usd(
             tx_info.tx_index,
             PriceAt::After,
-            searcher_actions,
+            swaps,
             metadata.clone(),
         )?;
 
@@ -214,98 +203,33 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .then_some(profit)
         }
     }
-
-    fn process_long_tail(
-        &self,
-        tx_info: &TxInfo,
-        metadata: Arc<Metadata>,
-        searcher_actions: &[Vec<Actions>],
-    ) -> Option<Rational> {
-        // check the following:
-        // no liquidity collects,
-        // more than 2 transfers or more than 1 swap
-
-        let collect = searcher_actions.iter().flatten().any(|a| a.is_collect());
-        if collect {
-            return None;
-        }
-
-        let swaps = searcher_actions
-            .iter()
-            .flatten()
-            .map(|a| if a.is_swap() { 1 } else { 0 })
-            .sum::<u64>();
-        let transfers = searcher_actions
-            .iter()
-            .flatten()
-            .map(|a| if a.is_transfer() { 1 } else { 0 })
-            .sum::<u64>();
-
-        // if we have a collect and no swaps then return
-        if swaps == 0 || transfers < 3 {
-            return None;
-        }
-
-        let gas_used = tx_info.gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
-
-        let rev_usd = self.get_dex_revenue_usd_with_transfers(
-            tx_info.tx_index,
-            PriceAt::Lowest,
-            searcher_actions,
-            metadata.clone(),
-        )?;
-
-        let profit = &rev_usd - &gas_used_usd;
-
-        let is_profitable = profit > Rational::ZERO;
-        is_profitable.then_some(profit)
-    }
-
-    fn get_dex_revenue_usd_with_transfers(
-        &self,
-        idx: u64,
-        at: PriceAt,
-        actions: &[Vec<Actions>],
-        metadata: Arc<Metadata>,
-    ) -> Option<Rational> {
-        let mut deltas = HashMap::new();
-        actions
-            .iter()
-            .flatten()
-            .for_each(|action| action.apply_token_deltas(&mut deltas));
-
-        let deltas = flatten_token_deltas(deltas, actions)?;
-        let addr_usd_deltas =
-            self.inner
-                .usd_delta_by_address(idx as usize, at, &deltas, metadata.clone(), false)?;
-
-        Some(
-            addr_usd_deltas
-                .values()
-                .fold(Rational::ZERO, |acc, delta| acc + delta),
-        )
-    }
 }
 
-fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> AtomicArbType {
-    let start_token = swaps.first().unwrap().token_in.address;
-    let end_token = swaps.last().unwrap().token_out.address;
+fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
+    let start_token = &swaps.first().unwrap().token_in.symbol;
+    let end_token = &swaps.last().unwrap().token_out.symbol;
 
-    if start_token != end_token {
-        return AtomicArbType::LongTail;
+    let start_address = &swaps.first().unwrap().token_in.address;
+    let end_address = &swaps.last().unwrap().token_out.address;
+
+    if start_address != end_address {
+        if is_stable_pair(start_token, end_token) {
+            return Some(AtomicArbType::StablecoinArb);
+        } else {
+            return None;
+        }
     }
 
     let mut last_out = swaps.first().unwrap().token_out.address;
 
     for (index, swap) in swaps.iter().skip(1).enumerate() {
         if swap.token_in.address != last_out {
-            return AtomicArbType::CrossPair(index + 1);
+            return Some(AtomicArbType::CrossPair(index + 1));
         }
         last_out = swap.token_out.address;
     }
 
-    AtomicArbType::Triangle
+    Some(AtomicArbType::Triangle)
 }
 
 fn is_stable_arb(swaps: &[NormalizedSwap], jump_index: usize) -> bool {
@@ -313,87 +237,19 @@ fn is_stable_arb(swaps: &[NormalizedSwap], jump_index: usize) -> bool {
     let token_sold = &swaps[jump_index].token_in.symbol;
 
     // Check if this is a stable arb
-    if let Some(stable_type) = get_stable_type(token_bought) {
+    is_stable_pair(token_sold, token_bought)
+}
+
+fn is_stable_pair(token_in: &str, token_out: &str) -> bool {
+    if let Some(stable_type) = get_stable_type(token_in) {
         match stable_type {
-            StableType::USD => is_usd_stable(token_sold),
-            StableType::EURO => is_euro_stable(token_sold),
-            StableType::GOLD => is_gold_stable(token_sold),
+            StableType::USD => is_usd_stable(token_out),
+            StableType::EURO => is_euro_stable(token_out),
+            StableType::GOLD => is_gold_stable(token_out),
         }
     } else {
         false
     }
-}
-type TokenDeltasCalc = HashMap<Address, HashMap<Address, HashMap<Address, Rational>>>;
-type TokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
-
-// if theres any address with a single non-zero token delta. Then
-// that is the person with the result delta and we just use that.
-// otherwise, if 2 transfers, last transfer to, else same first last
-// this also assumes that a arber doesn't dust any contracts
-fn flatten_token_deltas(deltas: TokenDeltasCalc, actions: &[Vec<Actions>]) -> Option<TokenDeltas> {
-    let mut deltas = deltas
-        .into_iter()
-        .map(|(k, v)| {
-            (
-                k,
-                v.into_iter()
-                    .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
-                    .filter(|(_, v)| v.ne(&Rational::ZERO))
-                    .into_grouping_map()
-                    .sum(),
-            )
-        })
-        .filter(|(_, v)| !v.is_empty())
-        .collect::<HashMap<_, HashMap<_, _>>>();
-
-    // if there is a address with a single token delta, then it
-    // is the proper pool.
-    if deltas.iter().any(|(_, v)| v.len() == 1) {
-        deltas.retain(|_, v| v.len() == 1);
-        return Some(deltas);
-    }
-
-    let transfers = actions
-        .iter()
-        .flatten()
-        .filter(|t| t.is_transfer())
-        .map(|t| t.clone().force_transfer())
-        .sorted_by(|a, b| a.trace_index.cmp(&b.trace_index))
-        .collect_vec();
-
-    // if just two transfers, result person will always be last,
-    match transfers.len() {
-        0 | 1 => None,
-        2 => {
-            let final_address = transfers.last().unwrap().to;
-            deltas.retain(|k, _| *k == final_address);
-            Some(deltas)
-        }
-        _ => {
-            // grab first and last transfers
-            let first = transfers.first().unwrap();
-            let last = transfers.last().unwrap();
-            if first.to == last.from {
-                deltas.retain(|k, _| *k == first.to);
-                Some(deltas)
-            } else if first.from == last.to {
-                deltas.retain(|k, _| *k == first.from);
-                Some(deltas)
-            } else {
-                tracing::error!("shouldn't be hit");
-                None
-            }
-        }
-    }
-}
-
-/// Represents the different types of atomic arb
-/// A triangle arb is a simple arb that goes from token A -> B -> C -> A
-/// A cross pair arb is a more complex arb that goes from token A -> B -> C -> A
-enum AtomicArbType {
-    LongTail,
-    Triangle,
-    CrossPair(usize),
 }
 
 #[cfg(test)]

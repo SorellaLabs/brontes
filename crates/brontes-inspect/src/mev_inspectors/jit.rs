@@ -31,13 +31,13 @@ struct PossibleJit {
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
-    inner: SharedInspectorUtils<'db, DB>,
+    utils: SharedInspectorUtils<'db, DB>,
 }
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
         Self {
-            inner: SharedInspectorUtils::new(quote, db),
+            utils: SharedInspectorUtils::new(quote, db),
         }
     }
 }
@@ -82,8 +82,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     }
 
                     let info = [
-                        tree.get_tx_info(frontrun_tx, self.inner.db)?,
-                        tree.get_tx_info(backrun_tx, self.inner.db)?,
+                        tree.get_tx_info(frontrun_tx, self.utils.db)?,
+                        tree.get_tx_info(backrun_tx, self.utils.db)?,
                     ];
 
                     if victims
@@ -113,7 +113,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     let victim_info = victims
                         .into_iter()
-                        .map(|v| tree.get_tx_info(v, self.inner.db).unwrap())
+                        .map(|v| tree.get_tx_info(v, self.utils.db).unwrap())
                         .collect_vec();
 
                     self.calculate_jit(
@@ -191,7 +191,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let bribe = self.get_bribes(metadata.clone(), &gas_details);
         let profit = jit_fee - mint - &bribe;
 
-        let header = self.inner.build_bundle_header(
+        let header = self.utils.build_bundle_header(
             &info[1],
             profit.to_float(),
             PriceAt::After,
@@ -373,8 +373,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .zip(amount)
             .filter_map(|(token, amount)| {
                 Some(
-                    self.inner
-                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())
+                    self.utils
+                        .get_token_price_on_dex(idx, PriceAt::After, token, &metadata)
                         .or_else(|| {
                             tracing::debug!(?token, "failed to get price for token");
                             None

@@ -219,7 +219,7 @@ impl CexPriceMap {
 }
 
 type CexPriceMapDeser = Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)>;
-//TODO: Joe remove the extra string for token_0 it should just be
+
 // base_token_addr
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

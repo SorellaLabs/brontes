@@ -5,21 +5,19 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_database::libmdbx::LibmdbxReader;
+use brontes_database::libmdbx::{tx, LibmdbxReader};
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
-    normalized_actions::Actions,
+    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     pair::Pair,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
 };
-use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Two, Zero},
+    num::basic::traits::{One, Zero},
     Rational,
 };
-use tracing::warn;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
@@ -36,63 +34,52 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
         }
     }
 }
-
-/// user => token => otherside => amount
-/// otherside is the person who is on the otherside of the token transfer
-/// eg if it was a transfer and the amount is negative, it would be the to address of the transfer
-/// and visa versa
-type TokenDeltasCalc = HashMap<Address, HashMap<Address, HashMap<Address, Rational>>>;
-type TokenDeltas = HashMap<Address, HashMap<Address, Rational>>;
+type TokenDeltas = HashMap<Address, Rational>;
+type AddressDeltas = HashMap<Address, TokenDeltas>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
-    /// Calculates the swap deltas.
-    pub(crate) fn calculate_swap_deltas(&self, actions: &[Vec<Actions>]) -> TokenDeltas {
+    /// Calculates the token balance deltas by address for a given set of swaps
+    /// Note this does not account for the pool delta's, only the swapper and recipient delta's
+    pub(crate) fn calculate_swap_deltas(&self, swaps: &[NormalizedSwap]) -> AddressDeltas {
         // Address and there token delta's
-        let mut deltas = HashMap::new();
-        actions
+        let mut deltas: AddressDeltas = HashMap::new();
+        swaps
             .iter()
-            .flatten()
-            .filter(|f| f.is_swap())
-            .for_each(|action| action.apply_token_deltas(&mut deltas));
+            .for_each(|swap| swap.apply_token_deltas(&mut deltas));
 
         deltas
-            .into_iter()
-            .map(|(k, v)| {
-                (
-                    k,
-                    v.into_iter()
-                        .map(|(k, v)| (k, v.into_values().sum::<Rational>()))
-                        .filter(|(_, v)| v.ne(&Rational::ZERO))
-                        .into_grouping_map()
-                        .sum(),
-                )
-            })
-            .filter(|(_, v)| !v.is_empty())
-            .collect::<HashMap<_, HashMap<_, _>>>()
     }
 
-    /// Calculates the usd delta by address
+    /// Calculates the token balance deltas by address for a given set of transfers
+    pub fn calculate_transfer_deltas(&self, transfers: &[NormalizedTransfer]) -> AddressDeltas {
+        let mut deltas: AddressDeltas = HashMap::new();
+        transfers
+            .iter()
+            .for_each(|transfer| transfer.apply_token_deltas(&mut deltas));
+
+        deltas
+    }
+    /// Calculates the USD value of the token balance deltas by address
     pub fn usd_delta_by_address(
         &self,
-        tx_position: usize,
+        tx_position: u64,
         at: PriceAt,
-        deltas: &TokenDeltas,
+        deltas: &AddressDeltas,
         metadata: Arc<Metadata>,
         cex: bool,
     ) -> Option<HashMap<Address, Rational>> {
         let mut usd_deltas = HashMap::new();
 
-        for (address, inner_map) in deltas {
-            for (token_addr, amount) in inner_map {
+        for (address, token_deltas) in deltas {
+            for (token_addr, amount) in token_deltas {
                 let pair = Pair(*token_addr, self.quote);
                 let price = if cex {
-                    // Fetch CEX price
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
                 } else {
                     metadata
                         .dex_quotes
                         .as_ref()?
-                        .price_at_or_before(pair, tx_position)
+                        .price_at_or_before(pair, tx_position as usize)
                         .map(|price| price.get_price(at))?
                         .clone()
                 };
@@ -106,9 +93,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         Some(usd_deltas)
     }
 
-    pub fn calculate_dex_usd_amount(
+    pub fn get_token_value_dex(
         &self,
-        block_position: usize,
+        tx_index: usize,
         at: PriceAt,
         token_address: Address,
         amount: &Rational,
@@ -117,35 +104,45 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         if token_address == self.quote {
             return Some(amount.clone());
         }
-
-        let pair = Pair(token_address, self.quote);
-        Some(
-            metadata
-                .dex_quotes
-                .as_ref()?
-                .price_at_or_before(pair, block_position)?
-                .get_price(at)
-                * amount,
-        )
+        let price = self.get_token_price_on_dex(tx_index, at, token_address, metadata)?;
+        Some(price * amount)
     }
 
-    pub fn get_dex_usd_price(
+    pub fn get_token_price_on_dex(
         &self,
-        block_position: usize,
+        tx_index: usize,
         at: PriceAt,
         token_address: Address,
-        metadata: Arc<Metadata>,
+        metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
             return Some(Rational::ONE);
         }
 
         let pair = Pair(token_address, self.quote);
+
+        Some(
+            metadata
+                .dex_quotes
+                .as_ref()?
+                .price_at_or_before(pair, tx_index)?
+                .get_price(at),
+        )
+    }
+
+    fn get_token_value_cex(
+        &self,
+        token: Address,
+        amount: Rational,
+        metadata: &Metadata,
+    ) -> Rational {
         metadata
-            .dex_quotes
-            .as_ref()?
-            .price_at_or_before(pair, block_position)
-            .map(|price| price.get_price(at))
+            .cex_quotes
+            .get_quote(&Pair(token, self.quote), &CexExchange::Binance)
+            .unwrap_or_default()
+            .price
+            .1
+            * amount
     }
 
     pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
@@ -161,16 +158,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         info: &TxInfo,
         profit_usd: f64,
         at: PriceAt,
-        actions: &[Vec<Actions>],
+        bundle_actions: &[Vec<Actions>],
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
+        //TODO: Figure out how we can calculate the token profits for this bundle using generic actions
         let token_profits = self
             .get_profit_collectors(
                 info.tx_index,
                 at,
-                actions,
+                bundle_transfers,
                 metadata.clone(),
                 mev_type.use_cex_pricing_for_deltas(),
             )
@@ -194,17 +192,35 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
     }
 
-    pub fn get_dex_revenue_usd(
+    pub fn get_swap_deltas_usd(
         &self,
         tx_index: u64,
         at: PriceAt,
-        bundle_actions: &[Vec<Actions>],
+        swaps: &[NormalizedSwap],
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
-        let deltas = self.calculate_swap_deltas(bundle_actions);
+        let deltas = self.calculate_swap_deltas(swaps);
 
         let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), false)?;
+            self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
+        Some(
+            addr_usd_deltas
+                .values()
+                .fold(Rational::ZERO, |acc, delta| acc + delta),
+        )
+    }
+
+    pub fn get_transfers_deltas_usd(
+        &self,
+        tx_index: u64,
+        at: PriceAt,
+        transfers: &[NormalizedTransfer],
+        metadata: Arc<Metadata>,
+    ) -> Option<Rational> {
+        let deltas = self.calculate_transfer_deltas(transfers);
+
+        let addr_usd_deltas =
+            self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
         Some(
             addr_usd_deltas
                 .values()
@@ -216,27 +232,34 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         tx_index: u64,
         at: PriceAt,
-        bundle_actions: &[Vec<Actions>],
+        bundle_transfers: &[NormalizedTransfer],
         metadata: Arc<Metadata>,
         pricing: bool,
     ) -> Option<TokenProfits> {
-        let deltas = self.calculate_swap_deltas(bundle_actions);
+        let deltas = self.calculate_transfer_deltas(bundle_transfers);
 
         let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index as usize, at, &deltas, metadata.clone(), pricing)?;
+            self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), pricing)?;
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
-        self.get_token_profits(tx_index, at, metadata, profit_collectors, deltas, pricing)
+        self.get_token_profits(
+            tx_index as usize,
+            at,
+            metadata,
+            profit_collectors,
+            deltas,
+            pricing,
+        )
     }
 
     pub fn get_token_profits(
         &self,
-        tx_index: u64,
+        tx_index: usize,
         at: PriceAt,
         metadata: Arc<Metadata>,
         profit_collectors: Vec<Address>,
-        deltas: TokenDeltas,
+        deltas: AddressDeltas,
         use_cex_pricing: bool,
     ) -> Option<TokenProfits> {
         let token_profits = profit_collectors
@@ -249,9 +272,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             })
             .filter_map(|((token, amount), collector)| {
                 let usd_value = if use_cex_pricing {
-                    self.get_cex_usd_value(*token, amount.clone(), &metadata)
+                    self.get_token_value_cex(*token, amount.clone(), &metadata)
                 } else {
-                    self.get_dex_usd_value(*token, at, amount.clone(), tx_index, &metadata)?
+                    self.get_token_value_dex(tx_index, at, *token, amount, &metadata)?
                 };
 
                 Some(TokenProfit {
@@ -267,140 +290,52 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             profits: token_profits,
         })
     }
+}
 
-    fn get_cex_usd_value(&self, token: Address, amount: Rational, metadata: &Metadata) -> Rational {
-        metadata
-            .cex_quotes
-            .get_quote(&Pair(token, self.quote), &CexExchange::Binance)
-            .unwrap_or_default()
-            .price
-            .1
-            * amount
-    }
+pub trait TokenAccounting {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas);
+}
 
-    fn get_dex_usd_value(
-        &self,
-        token: Address,
-        at: PriceAt,
-        amount: Rational,
-        tx_index: u64,
-        metadata: &Metadata,
-    ) -> Option<Rational> {
-        Some(
-            metadata
-                .dex_quotes
-                .as_ref()?
-                .price_at_or_before(Pair(token, self.quote), tx_index as usize)
-                .map(|price| price.get_price(at).clone())
-                .unwrap_or_else(|| {
-                    tracing::error!(?token, "unwrap occured for");
-                    Rational::ZERO
-                })
-                * amount,
-        )
+impl TokenAccounting for NormalizedSwap {
+    /// Note that we skip the pool deltas accounting to focus solely on the swapper & recipients delta.
+    /// We might want to change this in the future.
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let amount_in = -self.amount_in.clone();
+        let amount_out = self.amount_out.clone();
+
+        apply_delta(self.from, self.token_in.address, amount_in, delta_map);
+        apply_delta(
+            self.recipient,
+            self.token_out.address,
+            amount_out,
+            delta_map,
+        );
     }
 }
 
-pub trait ActionRevenueCalculation {
-    fn apply_token_deltas(&self, delta_map: &mut TokenDeltasCalc);
-}
+impl TokenAccounting for NormalizedTransfer {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let amount_sent = &self.amount + &self.fee;
 
-impl ActionRevenueCalculation for Actions {
-    fn apply_token_deltas(&self, delta_map: &mut TokenDeltasCalc) {
-        match self {
-            Actions::Swap(swap) => {
-                let amount_in = -swap.amount_in.clone();
-                let amount_out = swap.amount_out.clone();
-                // we track the address deltas so we can apply transfers later on the profit
-                if swap.from == swap.recipient {
-                    // apply delta to person
-                    let entry = delta_map.entry(swap.from).or_default();
-                    apply_entry(swap.token_out.address, swap.pool, amount_out, entry);
-                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry);
-                } else {
-                    let entry_recipient = delta_map.entry(swap.from).or_default();
-                    apply_entry(swap.token_in.address, swap.pool, amount_in, entry_recipient);
+        apply_delta(
+            self.from,
+            self.token.address,
+            -amount_sent.clone(),
+            delta_map,
+        );
 
-                    let entry_from = delta_map.entry(swap.recipient).or_default();
-                    apply_entry(swap.token_out.address, swap.pool, amount_out, entry_from);
-                }
-            }
-            Actions::SwapWithFee(swap) => {
-                Actions::Swap(swap.swap.clone()).apply_token_deltas(delta_map)
-            }
-            Actions::Transfer(transfer) => {
-                // subtract token from sender
-                let from_amount_in = &transfer.amount + &transfer.fee;
-                let entry = delta_map.entry(transfer.from).or_default();
-                apply_entry(transfer.token.address, transfer.to, -from_amount_in, entry);
-                // add to recipient
-                let entry = delta_map.entry(transfer.to).or_default();
-                apply_entry(
-                    transfer.token.address,
-                    transfer.from,
-                    transfer.amount.clone(),
-                    entry,
-                );
-            }
-            Actions::Mint(mint) => {
-                let entry = delta_map.entry(mint.from).or_default();
-                mint.token
-                    .iter()
-                    .zip(mint.amount.iter())
-                    .for_each(|(token, amount)| {
-                        apply_entry(token.address, mint.pool, -amount.clone(), entry);
-                    });
-
-                let entry = delta_map.entry(mint.pool).or_default();
-                mint.token
-                    .iter()
-                    .zip(mint.amount.iter())
-                    .for_each(|(token, amount)| {
-                        apply_entry(token.address, mint.from, amount.clone(), entry);
-                    });
-            }
-            Actions::Collect(collect) => {
-                let entry = delta_map.entry(collect.recipient).or_default();
-                collect
-                    .token
-                    .iter()
-                    .zip(collect.amount.iter())
-                    .for_each(|(token, amount)| {
-                        apply_entry(token.address, collect.pool, amount.clone(), entry);
-                    });
-                let entry = delta_map.entry(collect.pool).or_default();
-                collect
-                    .token
-                    .iter()
-                    .zip(collect.amount.iter())
-                    .for_each(|(token, amount)| {
-                        apply_entry(token.address, collect.recipient, -amount.clone(), entry);
-                    });
-            }
-            action => {
-                warn!(
-                    ?action,
-                    "revenue calculation is not supported for action variant"
-                );
-            }
-        }
+        apply_delta(self.to, self.token.address, self.amount.clone(), delta_map);
     }
 }
 
-fn apply_entry<K: PartialEq + Hash + Eq>(
+fn apply_delta<K: PartialEq + Hash + Eq>(
+    address: K,
     token: K,
-    otherside: K,
     amount: Rational,
-    token_map: &mut HashMap<K, HashMap<K, Rational>>,
+    delta_map: &mut HashMap<K, HashMap<K, Rational>>,
 ) {
-    match token_map.entry(token).or_default().entry(otherside) {
+    match delta_map.entry(address).or_default().entry(token) {
         Entry::Occupied(mut o) => {
-            let entry = o.get();
-            // avoids possible double counts that are caused by transfers
-            if entry * Rational::TWO == entry + &amount {
-                return;
-            }
-
             *o.get_mut() += amount;
         }
         Entry::Vacant(v) => {

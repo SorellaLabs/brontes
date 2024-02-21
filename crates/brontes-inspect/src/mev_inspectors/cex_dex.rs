@@ -63,7 +63,7 @@ use tracing::debug;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
-    inner: SharedInspectorUtils<'db, DB>,
+    utils: SharedInspectorUtils<'db, DB>,
     cex_exchanges: Vec<CexExchange>,
 }
 
@@ -78,7 +78,7 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     ///   arbitrage.
     pub fn new(quote: Address, db: &'db DB, cex_exchanges: &[CexExchange]) -> Self {
         Self {
-            inner: SharedInspectorUtils::new(quote, db),
+            utils: SharedInspectorUtils::new(quote, db),
             cex_exchanges: cex_exchanges.to_owned(),
         }
     }
@@ -117,7 +117,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
             .into_par_iter()
             .filter(|(_, swaps)| !swaps.is_empty())
             .filter_map(|(tx, swaps)| {
-                let tx_info = tree.get_tx_info(tx, self.inner.db)?;
+                let tx_info = tree.get_tx_info(tx, self.utils.db)?;
 
                 // For each swap in the transaction, detect potential CEX-DEX
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
@@ -141,7 +141,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 let cex_dex =
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
-                let header = self.inner.build_bundle_header(
+                let header = self.utils.build_bundle_header(
                     &tx_info,
                     possible_cex_dex.pnl.taker_profit.clone().to_float(),
                     PriceAt::After,
@@ -209,7 +209,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let token_price = metadata
             .cex_quotes
             .get_quote_direct_or_via_intermediary(
-                &Pair(swap.token_in.address, self.inner.quote),
+                &Pair(swap.token_in.address, self.utils.quote),
                 &exchange_cex_price.0,
             )?
             .price
@@ -412,15 +412,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         }
 
         let profit = self
-            .inner
-            .get_dex_revenue_usd(
+            .utils
+            .get_swap_deltas_usd(
                 tx_info.tx_index,
                 PriceAt::Average,
-                &[possible_cex_dex
-                    .swaps
-                    .iter()
-                    .map(|s| s.to_action())
-                    .collect()],
+                &[possible_cex_dex.swaps.as_slice()],
                 metadata.clone(),
             )
             .unwrap_or_default();
