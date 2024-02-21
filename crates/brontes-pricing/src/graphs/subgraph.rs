@@ -21,7 +21,7 @@ use petgraph::{
     algo::connected_components,
     graph::{DiGraph, EdgeReference, Edges},
     prelude::*,
-    visit::{IntoEdgeReferences, IntoEdges, VisitMap, Visitable},
+    visit::{VisitMap, Visitable},
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::error;
@@ -201,7 +201,7 @@ impl PairSubGraph {
                 if !edge_weight.contains(&edge) {
                     edge_weight.push(edge);
                 }
-                continue;
+                continue
             }
 
             connections.entry((addr0, addr1)).or_default().push(edge);
@@ -270,9 +270,9 @@ impl PairSubGraph {
         let node1 = (*n1).into();
 
         if let Some(edge) = self.graph.find_edge(node0, node1) {
-            return add_edge(&mut self.graph, edge, edge_info, true);
+            return add_edge(&mut self.graph, edge, edge_info, true)
         } else if let Some(edge) = self.graph.find_edge(node1, node0) {
-            return add_edge(&mut self.graph, edge, edge_info, false);
+            return add_edge(&mut self.graph, edge, edge_info, false)
         } else {
             // find the edge with shortest path
             let Some(to_start) = self
@@ -294,7 +294,7 @@ impl PairSubGraph {
             };
 
             if !(to_start <= 1 && to_end <= 1) {
-                return false;
+                return false
             }
 
             let d0 = PoolPairInfoDirection { info: edge_info, token_0_in: true };
@@ -391,7 +391,7 @@ impl PairSubGraph {
             }
 
             if weight == Rational::ZERO {
-                return None;
+                return None
             }
 
             let local_weighted_price = pxw / weight;
@@ -492,7 +492,7 @@ impl PairSubGraph {
         while let Some((next_edge, prev_price)) = visit_next.pop_front() {
             let id = next_edge.id();
             if visited.contains(&id) {
-                continue;
+                continue
             }
             visited.insert(id);
 
@@ -527,7 +527,7 @@ impl PairSubGraph {
         while let Some(next_edge) = visit_next.pop_front() {
             let id = next_edge.id();
             if visited.contains(&id) {
-                continue;
+                continue
             }
             visited.insert(id);
 
@@ -546,7 +546,7 @@ impl PairSubGraph {
                         .unwrap()
                         .0,
                 );
-                continue;
+                continue
             }
             visit_next.extend(next_edges);
         }
@@ -564,7 +564,7 @@ fn add_edge(
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
     if weights.iter().any(|w| w.pool_addr == edge_info.pool_addr) {
-        return false;
+        return false
     }
 
     let first = weights.first().unwrap();
@@ -573,7 +573,7 @@ fn add_edge(
     let to_end = first.distance_to_end_node;
 
     if !(to_start <= 1 && to_end <= 1) {
-        return false;
+        return false
     }
 
     let new_edge = SubGraphEdge::new(
@@ -586,17 +586,14 @@ fn add_edge(
     true
 }
 
-pub fn dijkstra_path<G, T>(
-    graph: G,
-    start: G::NodeId,
-    goal: G::NodeId,
+pub fn dijkstra_path<T>(
+    graph: &DiGraph<(), Vec<SubGraphEdge>, u16>,
+    start: NodeIndex<u16>,
+    goal: NodeIndex<u16>,
     state: &HashMap<Address, T>,
 ) -> Option<Rational>
 where
     T: ProtocolState,
-    G: IntoEdgeReferences<EdgeWeight = Vec<SubGraphEdge>>,
-    G: IntoEdges + Visitable,
-    G::NodeId: Eq + Hash,
 {
     let mut visited = graph.visit_map();
     let mut scores = HashMap::new();
@@ -608,17 +605,17 @@ where
 
     while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
         if visited.is_visited(&node) {
-            continue;
+            continue
         }
 
         if goal == node {
-            break;
+            break
         }
 
         for edge in graph.edges(node) {
             let next = edge.target();
             if visited.is_visited(&next) {
-                continue;
+                continue
             }
 
             let mut pxw = Rational::ZERO;
@@ -649,7 +646,7 @@ where
             }
 
             if weight == Rational::ZERO {
-                continue;
+                continue
             }
 
             let local_weighted_price = pxw / weight;
