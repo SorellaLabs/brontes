@@ -11,10 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::{
-    db::redefined_types::primitives::*,
-    normalized_actions::{ClickhouseVecNormalizedLiquidation, ClickhouseVecNormalizedSwap},
-};
+use crate::db::redefined_types::primitives::*;
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 

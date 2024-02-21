@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use clickhouse::{self, Row};
+use clickhouse::Row;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
