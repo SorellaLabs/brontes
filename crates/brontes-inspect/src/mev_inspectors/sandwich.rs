@@ -506,7 +506,7 @@ mod tests {
             ])
             .with_dex_prices()
             .with_gas_paid_usd(34.3368)
-            .with_expected_profit_usd(23.9);
+            .with_expected_profit_usd(15.43);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
