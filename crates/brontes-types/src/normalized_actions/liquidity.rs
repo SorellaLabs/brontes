@@ -140,7 +140,7 @@ impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
                 .map(|val| {
                     val.amount
                         .iter()
-                        .map(|amt| rational_to_clickhouse_tuple(amt))
+                        .map(rational_to_clickhouse_tuple)
                         .collect_vec()
                 })
                 .collect(),
@@ -168,7 +168,7 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
                 .map(|val| {
                     val.amount
                         .iter()
-                        .map(|amt| rational_to_clickhouse_tuple(amt))
+                        .map(rational_to_clickhouse_tuple)
                         .collect_vec()
                 })
                 .collect(),

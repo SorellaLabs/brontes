@@ -364,7 +364,7 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .zip(value.1)
             .map(|(tx, gas)| {
                 (
-                    String::from(format!("{:?}", tx)),
+                    format!("{:?}", tx),
                     gas.coinbase_transfer,
                     gas.priority_fee,
                     gas.gas_used,
