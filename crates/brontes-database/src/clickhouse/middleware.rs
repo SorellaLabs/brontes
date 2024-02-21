@@ -121,7 +121,7 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         &self,
         block: u64,
         address: Address,
-        tokens: Vec<Address>,
+        tokens: &[Address],
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {

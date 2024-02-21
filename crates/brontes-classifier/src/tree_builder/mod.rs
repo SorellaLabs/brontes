@@ -436,13 +436,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
         if self
             .libmdbx
-            .insert_pool(
-                block,
-                pool.pool_address,
-                pool.tokens.clone(),
-                None,
-                pool.protocol,
-            )
+            .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)
             .await
             .is_err()
         {
