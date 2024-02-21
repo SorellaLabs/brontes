@@ -46,11 +46,7 @@ use crate::clickhouse::{
 use crate::libmdbx::CompressedTable;
 use crate::{
     clickhouse::ClickhouseHandle,
-    libmdbx::{
-        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, *},
-        types::LibmdbxData,
-        Libmdbx, LibmdbxInitializer,
-    },
+    libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
     AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
 };
 
