@@ -82,7 +82,7 @@ reth-tracing-ext.workspace = true
 criterion = { version = "0.5", features = ["async", "async_tokio"] }
 
 [features]
-default = []
+default = ["local-clickhouse", "local-reth"]
 dyn-decode = []
 tests = []
 local-reth = [
