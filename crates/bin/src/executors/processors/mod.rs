@@ -3,7 +3,9 @@ use std::{panic::AssertUnwindSafe, sync::Arc};
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree, BrontesTaskExecutor,
+};
 use futures::{Future, FutureExt};
 pub use mev::*;
 use tracing::{span, Instrument, Level};
@@ -39,7 +41,7 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
                 );
 
                 tracing::error!(error=%error, "hit panic while processing results");
-                panic!("{error}");
+                BrontesTaskExecutor::current().trigger_shutdown("processor");
             }
         }
         .instrument(span!(Level::ERROR, "mev processor", %block_number))
