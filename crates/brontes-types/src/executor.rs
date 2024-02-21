@@ -67,7 +67,7 @@ impl BrontesTaskManager {
 
         let tx = panicked_tasks_tx.clone();
 
-        let bt_level = std::env::var("RUST_BACKTRACE").unwrap_or(String::new("0"));
+        let bt_level = std::env::var("RUST_BACKTRACE").unwrap_or(String::from("0"));
 
         if bt_level == "0" {
             std::panic::set_hook(Box::new(move |info| {
