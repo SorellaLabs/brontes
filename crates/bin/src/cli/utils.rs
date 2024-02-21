@@ -104,7 +104,5 @@ pub fn get_tracing_provider(
     tracing_tasks: u64,
     executor: BrontesTaskExecutor,
 ) -> TracingClient {
-    use brontes_types::BrontesTaskExecutor;
-
     TracingClient::new(db_path, tracing_tasks, executor.clone())
 }

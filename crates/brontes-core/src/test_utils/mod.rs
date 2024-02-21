@@ -20,8 +20,6 @@ use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
-use reth_tasks::TaskManager;
-#[cfg(feature = "local-reth")]
 use reth_tracing_ext::init_db;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
