@@ -22,7 +22,7 @@ use reth_revm::{
     },
     tracing::{
         types::{CallKind, CallTraceNode},
-        TracingInspectorConfig, *,
+        *,
     },
     EvmProcessorFactory,
 };
@@ -35,10 +35,7 @@ use reth_rpc::{
     },
     BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
 };
-use reth_rpc_types::{
-    trace::parity::{TransactionTrace, *},
-    TransactionInfo,
-};
+use reth_rpc_types::{trace::parity::*, TransactionInfo};
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
