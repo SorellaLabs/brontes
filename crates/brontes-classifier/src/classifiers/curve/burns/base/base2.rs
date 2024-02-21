@@ -1,8 +1,6 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::{
-    normalized_actions::NormalizedBurn, structured_trace::CallInfo, ToScaledRational,
-};
+use brontes_types::{normalized_actions::NormalizedBurn, structured_trace::CallInfo};
 
 action_impl!(
     Protocol::CurveBasePool2,
