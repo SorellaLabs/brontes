@@ -256,8 +256,8 @@ mod tests {
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
         },
         mev::{
-            CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation, MevType, PossibleMev,
-            PossibleMevCollection,
+            BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation, MevType,
+            PossibleMev, PossibleMevCollection,
         },
         pair::Pair,
     };
@@ -265,8 +265,8 @@ mod tests {
 
     use super::*;
     use crate::clickhouse::dbms::{
-        ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich, ClickhouseLiquidations,
-        ClickhouseMevBlocks, ClickhouseSearcherStats,
+        ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
+        ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
     };
 
     fn spawn_clickhouse() -> Clickhouse {
@@ -401,11 +401,6 @@ mod tests {
             .insert_one::<ClickhouseMevBlocks>(&case0)
             .await
             .unwrap();
-
-        // let query = "SELECT * FROM mev.mev_blocks";
-        //  let queried: MevBlock = db.inner().query_one(query, &()).await.unwrap();
-
-        //assert_eq!(queried, case0);
     }
 
     #[tokio::test]
@@ -452,6 +447,18 @@ mod tests {
 
         db.inner()
             .insert_one::<ClickhouseLiquidations>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn bundle_header() {
+        let db = spawn_clickhouse();
+
+        let case0 = BundleHeader::default();
+
+        db.inner()
+            .insert_one::<ClickhouseBundleHeader>(&case0)
             .await
             .unwrap();
     }

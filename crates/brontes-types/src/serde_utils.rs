@@ -437,6 +437,35 @@ pub mod vec_txhash {
     }
 }
 
+pub mod txhash {
+
+    use std::{fmt::Debug, str::FromStr};
+
+    use alloy_primitives::TxHash;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    #[allow(dead_code)]
+    pub fn serialize<S: Serializer, D: Into<TxHash> + Debug>(
+        u: &D,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let data = format!("{:?}", u);
+
+        data.serialize(serializer)
+    }
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D, T: From<TxHash>>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(TxHash::from_str(&data).unwrap().into())
+    }
+}
+
 pub mod option_r_address {
 
     use std::str::FromStr;
