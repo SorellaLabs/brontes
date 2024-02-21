@@ -11,7 +11,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use tracing::{error, info, span, Level};
+use tracing::{error, info};
 
 use crate::Processor;
 
@@ -21,15 +21,12 @@ pub struct MevProcessor;
 impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
-    async fn process_results<DB: DBWriter + LibmdbxReader>(
+    async fn process_results_inner<DB: DBWriter + LibmdbxReader>(
         db: &DB,
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) {
-        let span = span!(Level::ERROR, "mev processor", block = metadata.block_num);
-        let guard = span.enter();
-
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
             compose_mev_results(inspectors, tree, metadata.clone()).await;
 
@@ -41,7 +38,6 @@ impl Processor for MevProcessor {
         }
 
         insert_mev_results(db, block_details, mev_details).await;
-        drop(guard);
     }
 }
 

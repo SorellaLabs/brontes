@@ -33,7 +33,6 @@ where
     // pools (including blocking pool) are shutdown. In other words
     // `drop(tokio_runtime)` would block the current thread but we want to exit
     // right away.
-    println!("DROPPING ON OTHER THREAD");
     std::thread::spawn(move || drop(tokio_runtime));
     Ok(())
 }

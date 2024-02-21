@@ -5,15 +5,19 @@ use brontes::{
     runner,
 };
 use clap::Parser;
+use eyre::eyre;
 use tracing::{error, info, Level};
 use tracing_subscriber::filter::Directive;
 
-fn main() {
+fn main() -> eyre::Result<()> {
     dotenv::dotenv().ok();
     init_tracing();
 
     match run() {
-        Ok(()) => info!(target: "brontes", "SUCCESS!"),
+        Ok(()) => {
+            info!(target: "brontes", "successful shutdown");
+            Ok(())
+        }
         Err(e) => {
             error!("Error: {:?}", e);
 
@@ -22,6 +26,7 @@ fn main() {
                 error!("Caused by: {:?}", err);
                 source = err.source();
             }
+            return Err(eyre!("program exited via error"))
         }
     }
 }
