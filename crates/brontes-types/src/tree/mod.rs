@@ -264,8 +264,12 @@ impl<V: NormalizedAction> BlockTree<V> {
         let res = match res {
             Ok(r) => r,
             Err(e) => {
-                let error = e.downcast_ref::<String>();
-                tracing::error!(error=?error, "hit panic on a tree action, exiting");
+                let error = e.downcast_ref::<String>().cloned().unwrap_or(
+                    e.downcast_ref::<&str>()
+                        .map(|s| (*s).to_string())
+                        .unwrap_or_default(),
+                );
+                tracing::error!(error=%error, "hit panic on a tree action, exiting");
                 panic!("{e:?}");
             }
         };
@@ -283,8 +287,12 @@ impl<V: NormalizedAction> BlockTree<V> {
         let res = match res {
             Ok(r) => r,
             Err(e) => {
-                let error = e.downcast_ref::<String>();
-                tracing::error!(error=?error, "hit panic on a tree action, exiting");
+                let error = e.downcast_ref::<String>().cloned().unwrap_or(
+                    e.downcast_ref::<&str>()
+                        .map(|s| (*s).to_string())
+                        .unwrap_or_default(),
+                );
+                tracing::error!(error=%error, "hit panic on a tree action, exiting");
                 panic!("{e:?}");
             }
         };

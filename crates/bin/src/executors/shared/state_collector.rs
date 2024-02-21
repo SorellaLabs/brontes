@@ -72,11 +72,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     async fn state_future(
         fut: ExecutionFut<'static>,
         classifier: &'static Classifier<'static, T, DB>,
-        block: u64,
     ) -> eyre::Result<BlockTree<Actions>> {
-        let span = tracing::span!(Level::ERROR, "state collection", block_number = block);
-        let guard = span.enter();
-
         let (traces, header) = fut
             .in_current_span()
             .await?
@@ -87,15 +83,17 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             .build_block_tree(traces, header)
             .in_current_span()
             .await;
-        drop(guard);
 
         Ok(res)
     }
 
     pub fn fetch_state_for(&mut self, block: u64) {
+        let span = tracing::span!(Level::ERROR, "state collection", block_number = block);
+        let _guard = span.enter();
+
         let execute_fut = self.parser.execute(block);
         self.collection_future =
-            Some(Box::pin(Self::state_future(execute_fut, self.classifier, block)))
+            Some(Box::pin(Self::state_future(execute_fut, self.classifier).in_current_span()))
     }
 
     pub fn range_finished(&self) {

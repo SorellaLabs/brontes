@@ -35,8 +35,13 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
                     .in_current_span()
                     .await
             {
-                let error = e.downcast_ref::<String>();
-                tracing::error!(error=?error, "hit panic while processing results");
+                let error = e.downcast_ref::<String>().cloned().unwrap_or(
+                    e.downcast_ref::<&str>()
+                        .map(|s| (*s).to_string())
+                        .unwrap_or_default(),
+                );
+
+                tracing::error!(error=%error, "hit panic while processing results");
                 BrontesTaskExecutor::current().trigger_shutdown("process mev results")
             }
         }
