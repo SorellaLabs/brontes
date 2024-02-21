@@ -129,10 +129,8 @@ impl Serialize for JitLiquidity {
         )?;
 
         // backrun burn
-        ser_struct.serialize_field(
-            "backrun_burn_tx_hash",
-            &format!("{:?}", self.backrun_burn_tx_hash),
-        )?;
+        ser_struct
+            .serialize_field("backrun_burn_tx_hash", &format!("{:?}", self.backrun_burn_tx_hash))?;
 
         let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
 
