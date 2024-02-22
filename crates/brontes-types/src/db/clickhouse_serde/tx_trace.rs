@@ -312,7 +312,7 @@ pub mod tx_traces_inner {
         u64,
         (
             Vec<(u64, String, Option<String>, u64, Vec<u64>)>, // meta
-            Vec<(u64, String, Vec<(String, String, String)>, Vec<(String, String, String)>)>, /* decoded data */
+            Vec<(u64, String, Vec<(String, String, String)>, Vec<(String, String, String)>)>,
             Vec<(u64, u64, String, Vec<String>, String)>, // logs
             Vec<(u64, String, u64, String, [u8; 32])>,    // create action
             Vec<(u64, String, String, u64, String, String, [u8; 32])>, // call action

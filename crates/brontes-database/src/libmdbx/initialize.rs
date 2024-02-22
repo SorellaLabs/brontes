@@ -217,7 +217,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 };
 
                 self.libmdbx
-                    .insert_pool(init_block, token_addr, token_addrs, protocol)
+                    .insert_pool(init_block, token_addr, &token_addrs, None, protocol)
                     .await
                     .unwrap();
             }
@@ -354,7 +354,7 @@ mod tests {
         let block_range = (17000000, 17000100);
 
         let clickhouse = Box::leak(Box::new(load_clickhouse()));
-        let libmdbx = get_db_handle();
+        let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
         let (tx, _rx) = unbounded_channel();
         let tracing_client =
             init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;

@@ -110,11 +110,12 @@ pub trait DBWriter: Send + Unpin + 'static {
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
     }
 
     fn save_traces(

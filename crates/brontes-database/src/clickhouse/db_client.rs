@@ -4,30 +4,25 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
-        builder::{BuilderInfo, BuilderStats, BuilderStatsWithAddress},
+        address_to_protocol_info::ProtocolInfoClickhouse,
+        builder::{BuilderInfo, BuilderInfoWithAddress, BuilderStats, BuilderStatsWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
-    mev::{Bundle, MevBlock},
+    mev::{Bundle, BundleData, MevBlock},
     structured_trace::TxTrace,
     Protocol,
 };
+use futures::future::join_all;
 use serde::Deserialize;
 use sorella_db_databases::{
-    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient},
+    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient, errors::ClickhouseError},
     Database,
 };
 
-use super::{
-    dbms::{
-        BrontesClickhouseTables, ClickhouseBuilderStats, ClickhouseDexPriceMapping,
-        ClickhouseMevBlocks, ClickhouseSearcherInfo, ClickhouseSearcherStats, ClickhouseTokenInfo,
-        ClickhouseTxTraces,
-    },
-    ClickhouseHandle,
-};
+use super::{dbms::*, ClickhouseHandle};
 use crate::{
     clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
     libmdbx::{
@@ -98,9 +93,15 @@ impl Clickhouse {
 
     pub async fn write_builder_info(
         &self,
-        _builder_eoa: Address,
-        _builder_info: BuilderInfo,
+        builder_eoa: Address,
+        builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
+        let info = BuilderInfoWithAddress::new_with_address(builder_eoa, builder_info);
+
+        self.client
+            .insert_one::<ClickhouseBuilderInfo>(&info)
+            .await?;
+
         Ok(())
     }
 
@@ -122,11 +123,46 @@ impl Clickhouse {
         &self,
         _block_number: u64,
         block: MevBlock,
-        _mev: Vec<Bundle>,
+        mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
         self.client
             .insert_one::<ClickhouseMevBlocks>(&block)
             .await?;
+
+        let (bundle_headers, bundle_data): (Vec<_>, Vec<_>) = mev
+            .into_iter()
+            .map(|bundle| (bundle.header, bundle.data))
+            .unzip();
+
+        self.client
+            .insert_many::<ClickhouseBundleHeader>(&bundle_headers)
+            .await?;
+
+        join_all(bundle_data.into_iter().map(|data| async move {
+            match data {
+                BundleData::Sandwich(s) => {
+                    self.client.insert_one::<ClickhouseSandwiches>(&s).await?
+                }
+                BundleData::AtomicArb(a) => {
+                    self.client.insert_one::<ClickhouseAtomicArbs>(&a).await?
+                }
+                BundleData::JitSandwich(j) => {
+                    self.client.insert_one::<ClickhouseJitSandwich>(&j).await?
+                }
+                BundleData::Jit(j) => self.client.insert_one::<ClickhouseJit>(&j).await?,
+                BundleData::CexDex(c) => self.client.insert_one::<ClickhouseCexDex>(&c).await?,
+                BundleData::Liquidation(l) => {
+                    self.client.insert_one::<ClickhouseLiquidations>(&l).await?
+                }
+                BundleData::Unknown => (),
+            };
+
+            Ok(())
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, ClickhouseError>>()?;
+
         Ok(())
     }
 
@@ -164,11 +200,22 @@ impl Clickhouse {
 
     pub async fn insert_pool(
         &self,
-        _block: u64,
-        _address: Address,
-        _tokens: [Address; 2],
-        _classifier_name: Protocol,
+        block: u64,
+        address: Address,
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
+        classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        self.client
+            .insert_one::<ClickhousePools>(&ProtocolInfoClickhouse::new(
+                block,
+                address,
+                tokens,
+                curve_lp_token,
+                classifier_name,
+            ))
+            .await?;
+
         Ok(())
     }
 
@@ -253,13 +300,19 @@ mod tests {
             dex::DexPrices,
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
         },
-        mev::{MevType, PossibleMev, PossibleMevCollection},
+        mev::{
+            AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
+            MevType, PossibleMev, PossibleMevCollection, Sandwich,
+        },
         pair::Pair,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::{ClickhouseMevBlocks, ClickhouseSearcherStats};
+    use crate::clickhouse::dbms::{
+        ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
+        ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
+    };
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
@@ -267,11 +320,11 @@ mod tests {
         Clickhouse::default()
     }
 
-    #[tokio::test]
+    #[brontes_macros::test]
     async fn tx_traces() {
         let db = spawn_clickhouse();
 
-        let libmdbx = get_db_handle();
+        let libmdbx = get_db_handle(tokio::runtime::Handle::current()).await;
         let (a, _b) = unbounded_channel();
         let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
 
@@ -286,10 +339,10 @@ mod tests {
     async fn searcher_info() {
         let db = spawn_clickhouse();
         let case0 = JoinedSearcherInfo {
-            address: Default::default(),
-            fund: Default::default(),
-            mev: vec![MevType::default()],
-            builder: Some(Default::default()),
+            address:         Default::default(),
+            fund:            Default::default(),
+            mev:             vec![MevType::default()],
+            builder:         Some(Default::default()),
             eoa_or_contract: SearcherEoaContract::Contract,
         };
 
@@ -314,13 +367,17 @@ mod tests {
             .await
             .unwrap();
 
-        let query = "SELECT address, (decimals, symbol) FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
-        let queried: TokenInfoWithAddress = db.inner().query_one(query, &()).await.unwrap();
+        //let query = "SELECT address, (decimals, symbol) FROM
+        // brontes.token_info WHERE address =
+        // '0x0000000000000000000000000000000000000000'"; let queried:
+        // TokenInfoWithAddress = db.inner().query_one(query,
+        // &()).await.unwrap();
 
-        assert_eq!(queried, case0);
+        //assert_eq!(queried, case0);
 
-        let query = "DELETE FROM brontes.token_info WHERE address = '0x0000000000000000000000000000000000000000'";
-        db.inner().execute_remote(query, &()).await.unwrap();
+        //let query = "DELETE FROM brontes.token_info WHERE address =
+        // '0x0000000000000000000000000000000000000000'"; db.inner().
+        // execute_remote(query, &()).await.unwrap();
     }
 
     #[tokio::test]
@@ -366,8 +423,8 @@ mod tests {
 
         let case0 = DexQuotesWithBlockNumber {
             block_number: Default::default(),
-            tx_idx: Default::default(),
-            quote: Some(case0_map),
+            tx_idx:       Default::default(),
+            quote:        Some(case0_map),
         };
 
         db.inner()
@@ -393,11 +450,130 @@ mod tests {
             .insert_one::<ClickhouseMevBlocks>(&case0)
             .await
             .unwrap();
+    }
 
-        // let query = "SELECT * FROM mev.mev_blocks";
-        //  let queried: MevBlock = db.inner().query_one(query, &()).await.unwrap();
+    #[tokio::test]
+    async fn cex_dex() {
+        let db = spawn_clickhouse();
 
-        //assert_eq!(queried, case0);
+        let case0 = CexDex::default();
+
+        db.inner()
+            .insert_one::<ClickhouseCexDex>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn jit() {
+        let db = spawn_clickhouse();
+
+        let case0 = JitLiquidity::default();
+
+        db.inner()
+            .insert_one::<ClickhouseJit>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn jit_sandwich() {
+        let db = spawn_clickhouse();
+
+        let case0 = JitLiquiditySandwich::default();
+
+        db.inner()
+            .insert_one::<ClickhouseJitSandwich>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn liquidations() {
+        let db = spawn_clickhouse();
+
+        let case0 = Liquidation::default();
+
+        db.inner()
+            .insert_one::<ClickhouseLiquidations>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn bundle_header() {
+        let db = spawn_clickhouse();
+
+        let case0 = BundleHeader::default();
+
+        db.inner()
+            .insert_one::<ClickhouseBundleHeader>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn sandwich() {
+        let db = spawn_clickhouse();
+
+        let case0 = Sandwich::default();
+
+        db.inner()
+            .insert_one::<ClickhouseSandwiches>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn atomic_arb() {
+        let db = spawn_clickhouse();
+
+        let case0 = AtomicArb::default();
+
+        db.inner()
+            .insert_one::<ClickhouseAtomicArbs>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn pools() {
+        let db = spawn_clickhouse();
+
+        let case0 = ProtocolInfoClickhouse {
+            protocol:         "NONE".to_string(),
+            protocol_subtype: "NONE".to_string(),
+            address:          "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                .to_string()
+                .into(),
+            tokens:           vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                .to_string()
+                .into()],
+            curve_lp_token:   Some(
+                "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                    .to_string()
+                    .into(),
+            ),
+            init_block:       0,
+        };
+
+        db.inner()
+            .insert_one::<ClickhousePools>(&case0)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn builder_info() {
+        let db = spawn_clickhouse();
+
+        let case0 = BuilderInfoWithAddress::default();
+
+        db.inner()
+            .insert_one::<ClickhouseBuilderInfo>(&case0)
+            .await
+            .unwrap();
     }
 }
+
 */
