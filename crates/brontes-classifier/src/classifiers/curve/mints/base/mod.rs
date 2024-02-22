@@ -15,7 +15,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::{Actions, NormalizedMint},
-        Node, NodeData, Protocol, ToScaledRational, TreeSearchArgs,
+        Protocol, ToScaledRational, TreeSearchBuilder,
     };
 
     #[brontes_macros::test]
@@ -26,73 +26,54 @@ mod tests {
             Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
             Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            Some(Address::new(hex!(
-                "fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"
-            ))),
+            Some(Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"))),
             None,
             None,
             None,
         );
 
-        let mint = B256::from(hex!(
-            "dbf57244aad3402faa04e1ff19d3af0f89e1ac9aff3dd3830d2d6415b4dfdc0c"
-        ));
+        let mint =
+            B256::from(hex!("dbf57244aad3402faa04e1ff19d3af0f89e1ac9aff3dd3830d2d6415b4dfdc0c"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
-            inner: TokenInfo {
-                decimals: 8,
-                symbol: "renBTC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 8, symbol: "renBTC".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            inner: TokenInfo {
-                decimals: 8,
-                symbol: "WBTC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 8, symbol: "WBTC".to_string() },
         };
 
         let token2 = TokenInfoWithAddress {
             address: Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "sBTC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "sBTC".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Mint(NormalizedMint {
-            protocol: Protocol::CurveBasePool3,
+            protocol:    Protocol::CurveBasePool3,
             trace_index: 0,
-            from: Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
-            recipient: Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
-            pool: Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
-            token: vec![token0, token1, token2],
-            amount: vec![
+            from:        Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
+            recipient:   Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
+            pool:        Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
+            token:       vec![token0, token1, token2],
+            amount:      vec![
                 U256::from(0).to_scaled_rational(8),
                 U256::from(27506).to_scaled_rational(8),
                 U256::from(0).to_scaled_rational(18),
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_mint())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_mint()),
-        };
-
         classifier_utils
-            .contains_action(mint, 0, eq_action, search_fn)
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
             .await
             .unwrap();
     }

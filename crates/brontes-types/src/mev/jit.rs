@@ -1,12 +1,14 @@
 use std::fmt::Debug;
 
-use ::serde::ser::{SerializeStruct, Serializer};
+use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::{
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Serialize,
+};
 use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
 use crate::{
@@ -18,6 +20,7 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     tree::GasDetails,
 };
+
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -73,14 +76,14 @@ impl Serialize for JitLiquidity {
         // frontrun mint
         ser_struct.serialize_field(
             "frontrun_mint_tx_hash",
-            &FixedString::from(format!("{:?}", self.frontrun_mint_tx_hash)),
+            &format!("{:?}", self.frontrun_mint_tx_hash),
         )?;
 
         let frontrun_mints: ClickhouseVecNormalizedMintOrBurn = self.frontrun_mints.clone().into();
 
         ser_struct.serialize_field("frontrun_mints.trace_idx", &frontrun_mints.trace_index)?;
         ser_struct.serialize_field("frontrun_mints.from", &frontrun_mints.from)?;
-        ser_struct.serialize_field("frontrun_mints.to", &frontrun_mints.to)?;
+        ser_struct.serialize_field("frontrun_mints.pool", &frontrun_mints.pool)?;
         ser_struct.serialize_field("frontrun_mints.recipient", &frontrun_mints.recipient)?;
         ser_struct.serialize_field("frontrun_mints.tokens", &frontrun_mints.tokens)?;
         ser_struct.serialize_field("frontrun_mints.amounts", &frontrun_mints.amounts)?;
@@ -95,11 +98,8 @@ impl Serialize for JitLiquidity {
         ser_struct.serialize_field("frontrun_mint_gas_details", &(frontrun_mint_gas_details))?;
 
         // victim swaps
-        let victim_swaps: ClickhouseDoubleVecNormalizedSwap = (
-            self.victim_swaps_tx_hashes.clone(),
-            self.victim_swaps.clone(),
-        )
-            .into();
+        let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
+            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
         ser_struct.serialize_field("victim_swaps.trace_idx", &victim_swaps.trace_index)?;
         ser_struct.serialize_field("victim_swaps.from", &victim_swaps.from)?;
@@ -120,10 +120,8 @@ impl Serialize for JitLiquidity {
             "victim_gas_details.coinbase_transfer",
             &victim_gas_details.coinbase_transfer,
         )?;
-        ser_struct.serialize_field(
-            "victim_gas_details.priority_fee",
-            &victim_gas_details.priority_fee,
-        )?;
+        ser_struct
+            .serialize_field("victim_gas_details.priority_fee", &victim_gas_details.priority_fee)?;
         ser_struct.serialize_field("victim_gas_details.gas_used", &victim_gas_details.gas_used)?;
         ser_struct.serialize_field(
             "victim_gas_details.effective_gas_price",
@@ -131,16 +129,14 @@ impl Serialize for JitLiquidity {
         )?;
 
         // backrun burn
-        ser_struct.serialize_field(
-            "backrun_burn_tx_hash",
-            &FixedString::from(format!("{:?}", self.backrun_burn_tx_hash)),
-        )?;
+        ser_struct
+            .serialize_field("backrun_burn_tx_hash", &format!("{:?}", self.backrun_burn_tx_hash))?;
 
         let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
 
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;
-        ser_struct.serialize_field("backrun_burns.to", &backrun_burns.to)?;
+        ser_struct.serialize_field("backrun_burns.pool", &backrun_burns.pool)?;
         ser_struct.serialize_field("backrun_burns.recipient", &backrun_burns.recipient)?;
         ser_struct.serialize_field("backrun_burns.tokens", &backrun_burns.tokens)?;
         ser_struct.serialize_field("backrun_burns.amounts", &backrun_burns.amounts)?;
@@ -163,7 +159,7 @@ impl DbRow for JitLiquidity {
         "frontrun_mint_tx_hash",
         "frontrun_mints.trace_idx",
         "frontrun_mints.from",
-        "frontrun_mints.to",
+        "frontrun_mints.pool",
         "frontrun_mints.recipient",
         "frontrun_mints.tokens",
         "frontrun_mints.amounts",
@@ -185,7 +181,7 @@ impl DbRow for JitLiquidity {
         "backrun_burn_tx_hash",
         "backrun_burns.trace_idx",
         "backrun_burns.from",
-        "backrun_burns.to",
+        "backrun_burns.pool",
         "backrun_burns.recipient",
         "backrun_burns.tokens",
         "backrun_burns.amounts",

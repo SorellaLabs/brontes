@@ -1,39 +1,47 @@
 use std::{
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
 
-use alloy_primitives::Address;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::libmdbx::{LibmdbxReader, LibmdbxWriter};
-use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::Metadata, mev::Bundle, normalized_actions::Actions, tree::BlockTree,
+use brontes_database::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{DBWriter, LibmdbxReader},
 };
+use brontes_inspect::Inspector;
+use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::{debug, info};
 
-use super::shared::{inserts::process_results, state_collector::StateCollector};
+use super::shared::state_collector::StateCollector;
+use crate::Processor;
 
-pub struct TipInspector<T: TracingProvider, DB: LibmdbxReader + LibmdbxWriter> {
-    current_block: u64,
-    parser: &'static Parser<'static, T, DB>,
-    state_collector: StateCollector<T, DB>,
-    // clickhouse db (feature)
-    database: &'static DB,
-    inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+pub struct TipInspector<
+    T: TracingProvider,
+    DB: LibmdbxReader + DBWriter,
+    CH: ClickhouseHandle,
+    P: Processor,
+> {
+    current_block:      u64,
+    parser:             &'static Parser<'static, T, DB>,
+    state_collector:    StateCollector<T, DB, CH>,
+    database:           &'static DB,
+    inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
+    _p:                 PhantomData<P>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: Processor>
+    TipInspector<T, DB, CH, P>
+{
     pub fn new(
         current_block: u64,
-        _quote_asset: Address,
-        state_collector: StateCollector<T, DB>,
+        state_collector: StateCollector<T, DB, CH>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
-        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+        inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     ) -> Self {
         Self {
             state_collector,
@@ -42,6 +50,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
             parser,
             processing_futures: FuturesUnordered::new(),
             database,
+            _p: PhantomData,
         }
     }
 
@@ -64,7 +73,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         drop(graceful_guard);
     }
 
-    #[cfg(not(feature = "local"))]
+    #[cfg(feature = "local-reth")]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
             return false;
@@ -86,7 +95,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
         }
     }
 
-    #[cfg(feature = "local")]
+    #[cfg(not(feature = "local-reth"))]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
             return false;
@@ -115,7 +124,7 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
         info!(target:"brontes","Completed DEX pricing");
-        self.processing_futures.push(Box::pin(process_results(
+        self.processing_futures.push(Box::pin(P::process_results(
             self.database,
             self.inspectors,
             tree.into(),
@@ -124,7 +133,9 @@ impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> TipInspector<T, DB> 
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxWriter + LibmdbxReader> Future for TipInspector<T, DB> {
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: Processor> Future
+    for TipInspector<T, DB, CH, P>
+{
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

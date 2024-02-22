@@ -71,3 +71,12 @@ impl ToFloatNearest for Rational {
         f64::rounding_from(self, RoundingMode::Nearest).0
     }
 }
+
+pub fn rational_to_clickhouse_tuple(rational: &Rational) -> ([u8; 32], [u8; 32]) {
+    let (num, denom) = (
+        U256::from_limbs_slice(&rational.numerator_ref().to_limbs_asc()),
+        U256::from_limbs_slice(&rational.denominator_ref().to_limbs_asc()),
+    );
+
+    (num.to_le_bytes(), denom.to_le_bytes())
+}

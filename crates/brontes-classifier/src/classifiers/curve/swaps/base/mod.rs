@@ -16,7 +16,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::{Actions, NormalizedSwap},
-        Node, NodeData, Protocol, ToScaledRational, TreeSearchArgs,
+        Protocol, ToScaledRational, TreeSearchBuilder,
     };
 
     #[brontes_macros::test]
@@ -27,30 +27,23 @@ mod tests {
             Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
             Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            None,
+            Some(Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"))),
             None,
             None,
             None,
         );
 
-        let swap = B256::from(hex!(
-            "6987133dd8ee7f5f76615a7484418905933625305a948350b38e924a905c0ef6"
-        ));
+        let swap =
+            B256::from(hex!("6987133dd8ee7f5f76615a7484418905933625305a948350b38e924a905c0ef6"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
-            inner: TokenInfo {
-                decimals: 8,
-                symbol: "WBTC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 8, symbol: "WBTC".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
-            inner: TokenInfo {
-                decimals: 8,
-                symbol: "renBTC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 8, symbol: "renBTC".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -69,20 +62,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_swap())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_swap()),
-        };
-
         classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
             .await
             .unwrap();
     }

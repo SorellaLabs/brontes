@@ -16,9 +16,7 @@ pub struct LongTailInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> LongTailInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            _inner: SharedInspectorUtils::new(quote, db),
-        }
+        Self { _inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 

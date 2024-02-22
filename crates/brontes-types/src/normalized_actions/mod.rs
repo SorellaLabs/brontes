@@ -10,8 +10,10 @@ pub mod swaps;
 pub mod transfer;
 use std::fmt::Debug;
 
+use ::clickhouse::DbRow;
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
+use clickhouse::InsertRow;
 pub use eth_transfer::*;
 pub use flashloan::*;
 pub use lending::*;
@@ -20,25 +22,36 @@ pub use liquidity::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::clickhouse::{DbRow, InsertRow};
 pub use swaps::*;
 pub use transfer::*;
 
 use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
-use crate::structured_trace::{TraceActions, TransactionTraceWithLogs};
+use crate::{
+    structured_trace::{TraceActions, TransactionTraceWithLogs},
+    TreeSearchBuilder,
+};
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone {
     fn is_classified(&self) -> bool;
+    fn emitted_logs(&self) -> bool;
     fn get_action(&self) -> &Actions;
     fn continue_classification(&self) -> bool;
     fn get_trace_index(&self) -> u64;
-    fn continued_classification_types(&self) -> Box<dyn Fn(&Self) -> bool + Send + Sync>;
+    fn continued_classification_types(&self) -> TreeSearchBuilder<Self>;
     fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64>;
 }
 
 impl NormalizedAction for Actions {
     fn is_classified(&self) -> bool {
         !matches!(self, Actions::Unclassified(_))
+    }
+
+    /// Only relevant for unclassified actions
+    fn emitted_logs(&self) -> bool {
+        match self {
+            Actions::Unclassified(u) => !u.logs.is_empty(),
+            _ => true,
+        }
     }
 
     fn get_action(&self) -> &Actions {
@@ -65,21 +78,23 @@ impl NormalizedAction for Actions {
         }
     }
 
-    fn continued_classification_types(&self) -> Box<dyn Fn(&Self) -> bool + Send + Sync> {
+    fn continued_classification_types(&self) -> TreeSearchBuilder<Self> {
         match self {
-            Actions::FlashLoan(_) => Box::new(|action: &Actions| {
-                action.is_liquidation()
-                    | action.is_batch()
-                    | action.is_swap()
-                    | action.is_mint()
-                    | action.is_burn()
-                    | action.is_transfer()
-                    | action.is_collect()
-            }),
-            Actions::Batch(_) => Box::new(|action: &Actions| {
-                action.is_swap() | action.is_transfer() | action.is_eth_transfer()
-            }),
-            Actions::Liquidation(_) => Box::new(|action: &Actions| action.is_transfer()),
+            Actions::FlashLoan(_) => TreeSearchBuilder::default().with_actions([
+                Self::is_batch,
+                Self::is_swap,
+                Self::is_liquidation,
+                Self::is_mint,
+                Self::is_burn,
+                Self::is_transfer,
+                Self::is_collect,
+            ]),
+            Actions::Batch(_) => TreeSearchBuilder::default().with_actions([
+                Self::is_swap,
+                Self::is_transfer,
+                Self::is_eth_transfer,
+            ]),
+            Actions::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
             action => unreachable!("no continue_classification function for {action:?}"),
         }
     }
@@ -194,10 +209,13 @@ impl Actions {
         }
     }
 
+    pub fn force_transfer(self) -> NormalizedTransfer {
+        let Actions::Transfer(transfer) = self else { unreachable!("not transfer") };
+        transfer
+    }
+
     pub fn force_transfer_mut(&mut self) -> &mut NormalizedTransfer {
-        let Actions::Transfer(transfer) = self else {
-            unreachable!("not transfer")
-        };
+        let Actions::Transfer(transfer) = self else { unreachable!("not transfer") };
         transfer
     }
 
@@ -284,44 +302,52 @@ impl Actions {
         }
     }
 
-    pub fn is_swap(&self) -> bool {
+    pub const fn is_swap(&self) -> bool {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }
 
-    pub fn is_flash_loan(&self) -> bool {
+    pub const fn is_flash_loan(&self) -> bool {
         matches!(self, Actions::FlashLoan(_))
     }
 
-    pub fn is_liquidation(&self) -> bool {
+    pub const fn is_liquidation(&self) -> bool {
         matches!(self, Actions::Liquidation(_))
     }
 
-    pub fn is_batch(&self) -> bool {
+    pub const fn is_batch(&self) -> bool {
         matches!(self, Actions::Batch(_))
     }
 
-    pub fn is_burn(&self) -> bool {
+    pub const fn is_burn(&self) -> bool {
         matches!(self, Actions::Burn(_))
     }
 
-    pub fn is_revert(&self) -> bool {
+    pub const fn is_revert(&self) -> bool {
         matches!(self, Actions::Revert)
     }
 
-    pub fn is_mint(&self) -> bool {
+    pub const fn is_mint(&self) -> bool {
         matches!(self, Actions::Mint(_))
     }
 
-    pub fn is_transfer(&self) -> bool {
+    pub const fn is_transfer(&self) -> bool {
         matches!(self, Actions::Transfer(_))
     }
 
-    pub fn is_collect(&self) -> bool {
+    pub const fn is_collect(&self) -> bool {
         matches!(self, Actions::Collect(_))
     }
 
-    pub fn is_self_destruct(&self) -> bool {
+    pub const fn is_self_destruct(&self) -> bool {
         matches!(self, Actions::SelfDestruct(_))
+    }
+
+    pub const fn is_unclassified(&self) -> bool {
+        matches!(self, Actions::Unclassified(_))
+    }
+
+    pub const fn is_eth_transfer(&self) -> bool {
+        matches!(self, Actions::EthTransfer(_))
     }
 
     pub fn is_static_call(&self) -> bool {
@@ -329,13 +355,5 @@ impl Actions {
             return u.is_static_call();
         }
         false
-    }
-
-    pub fn is_unclassified(&self) -> bool {
-        matches!(self, Actions::Unclassified(_))
-    }
-
-    pub fn is_eth_transfer(&self) -> bool {
-        matches!(self, Actions::EthTransfer(_))
     }
 }

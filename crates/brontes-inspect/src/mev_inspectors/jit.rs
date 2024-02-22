@@ -10,8 +10,10 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, TreeSearchArgs, TxInfo,
+    GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
+#[allow(unused)]
+use clickhouse::{fixed_string::FixedString, row::*};
 use itertools::Itertools;
 use malachite::Rational;
 
@@ -21,11 +23,11 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
-    pub eoa: Address,
-    pub frontrun_tx: B256,
-    pub backrun_tx: B256,
+    pub eoa:                   Address,
+    pub frontrun_tx:           B256,
+    pub backrun_tx:            B256,
     pub mev_executor_contract: Address,
-    pub victims: Vec<B256>,
+    pub victims:               Vec<B256>,
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -34,9 +36,7 @@ pub struct JitInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            inner: SharedInspectorUtils::new(quote, db),
-        }
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -62,21 +62,14 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = vec![frontrun_tx, backrun_tx]
                         .into_iter()
                         .map(|tx| {
-                            tree.collect(tx, |node, info| TreeSearchArgs {
-                                collect_current_node: info
-                                    .get_ref(node.data)
-                                    .map(|node| {
-                                        node.is_mint() || node.is_burn() || node.is_collect()
-                                    })
-                                    .unwrap_or_default(),
-                                child_node_to_collect: node
-                                    .subactions
-                                    .iter()
-                                    .filter_map(|node| info.get_ref(*node))
-                                    .any(|action| {
-                                        action.is_mint() || action.is_collect() || action.is_burn()
-                                    }),
-                            })
+                            tree.collect(
+                                tx,
+                                TreeSearchBuilder::default().with_actions([
+                                    Actions::is_mint,
+                                    Actions::is_burn,
+                                    Actions::is_collect,
+                                ]),
+                            )
                         })
                         .collect::<Vec<Vec<Actions>>>();
                     tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
@@ -104,17 +97,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.collect(*victim, |node, data| TreeSearchArgs {
-                                collect_current_node: data
-                                    .get_ref(node.data)
-                                    .map(|node| node.is_swap())
-                                    .unwrap_or_default(),
-                                child_node_to_collect: node
-                                    .get_all_sub_actions()
-                                    .iter()
-                                    .filter_map(|node| data.get_ref(*node))
-                                    .any(|action| action.is_swap()),
-                            })
+                            tree.collect(
+                                *victim,
+                                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                            )
                         })
                         .collect_vec();
 
@@ -140,11 +126,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
-type JitUnzip = (
-    Vec<Option<NormalizedMint>>,
-    Vec<Option<NormalizedBurn>>,
-    Vec<Option<NormalizedCollect>>,
-);
+type JitUnzip =
+    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
@@ -237,10 +220,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burns: burns,
         };
 
-        Some(Bundle {
-            header,
-            data: BundleData::Jit(jit_details),
-        })
+        Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {
@@ -276,11 +256,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa: root.head.address,
-                                    frontrun_tx: *prev_tx_hash,
-                                    backrun_tx: root.tx_hash,
+                                    eoa:                   root.head.address,
+                                    frontrun_tx:           *prev_tx_hash,
+                                    backrun_tx:            root.tx_hash,
                                     mev_executor_contract: root.get_to_address(),
-                                    victims: victims.clone(),
+                                    victims:               victims.clone(),
                                 });
                             }
                         }
@@ -306,11 +286,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa: root.head.address,
-                                    frontrun_tx: *prev_tx_hash,
-                                    backrun_tx: root.tx_hash,
+                                    eoa:                   root.head.address,
+                                    frontrun_tx:           *prev_tx_hash,
+                                    backrun_tx:            root.tx_hash,
                                     mev_executor_contract: root.get_to_address(),
-                                    victims: victims.clone(),
+                                    victims:               victims.clone(),
                                 });
                             }
                         }

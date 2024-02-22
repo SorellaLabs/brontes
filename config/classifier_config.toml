@@ -50,12 +50,7 @@ symbol = "USDP"
 init_block = 17777988
 
 
-#
-#
-#
 # Curve V1 Metapool Implementation Contracts
-#
-#
 
 [CurveV1MetapoolImpl."0x2f956eee002b0debd468cf2e0490d1aec65e027f"]
 init_block = 11942426
@@ -63,12 +58,9 @@ init_block = 11942426
 [CurveV1MetapoolImpl."0x5F890841f657d90E081bAbdB532A05996Af79Fe6"]
 init_block = 11942416
 
-#
-#
-#
+
 # Curve V2 Metapool Implementation Contracts
-#
-#
+
 
 [CurveV2MetapoolImpl."0xC6A8466d128Fbfd34AdA64a9FFFce325D57C9a52"]
 init_block = 12904548

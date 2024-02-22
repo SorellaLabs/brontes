@@ -4,7 +4,7 @@
 pub mod decoding;
 pub mod errors;
 pub mod executor;
-#[cfg(feature = "local")]
+#[cfg(not(feature = "local-reth"))]
 pub mod local_provider;
 pub mod missing_token_info;
 

@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
 use alloy_primitives::{Address, TxHash, U256};
+use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{self, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::{clickhouse, clickhouse::Row};
 
 use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{
@@ -34,15 +34,15 @@ use crate::{
 ))]
 pub struct BlockMetadataInner {
     #[serde(with = "u256")]
-    pub block_hash: U256,
-    pub block_timestamp: u64,
-    pub relay_timestamp: Option<u64>,
-    pub p2p_timestamp: Option<u64>,
+    pub block_hash:             U256,
+    pub block_timestamp:        u64,
+    pub relay_timestamp:        Option<u64>,
+    pub p2p_timestamp:          Option<u64>,
     #[serde(with = "option_addresss")]
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward: Option<u128>,
+    pub proposer_mev_reward:    Option<u128>,
     #[serde(with = "vec_txhash")]
-    pub private_flow: Vec<TxHash>,
+    pub private_flow:           Vec<TxHash>,
 }
 
 implement_table_value_codecs_with_zc!(BlockMetadataInnerRedefined);
@@ -53,9 +53,9 @@ pub struct Metadata {
     #[deref]
     #[as_ref]
     pub block_metadata: BlockMetadata,
-    pub cex_quotes: CexPriceMap,
-    pub dex_quotes: Option<DexQuotes>,
-    pub builder_info: Option<BuilderInfo>,
+    pub cex_quotes:     CexPriceMap,
+    pub dex_quotes:     Option<DexQuotes>,
+    pub builder_info:   Option<BuilderInfo>,
 }
 
 impl Metadata {
@@ -86,22 +86,26 @@ impl Metadata {
         self.builder_info = Some(builder_info);
         self
     }
+
+    pub fn block_num(&self) -> u64 {
+        self.block_num
+    }
 }
 
 /// Block Metadata
 #[derive(Debug, Clone, Default)]
 pub struct BlockMetadata {
-    pub block_num: u64,
-    pub block_hash: U256,
-    pub block_timestamp: u64,
-    pub relay_timestamp: Option<u64>,
-    pub p2p_timestamp: Option<u64>,
+    pub block_num:              u64,
+    pub block_hash:             U256,
+    pub block_timestamp:        u64,
+    pub relay_timestamp:        Option<u64>,
+    pub p2p_timestamp:          Option<u64>,
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward: Option<u128>,
+    pub proposer_mev_reward:    Option<u128>,
     /// Best ask at p2p timestamp
-    pub eth_prices: Rational,
+    pub eth_prices:             Rational,
     /// Tx
-    pub private_flow: HashSet<TxHash>,
+    pub private_flow:           HashSet<TxHash>,
 }
 
 impl BlockMetadata {
@@ -136,11 +140,6 @@ impl BlockMetadata {
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
     ) -> Metadata {
-        Metadata {
-            block_metadata: self,
-            cex_quotes,
-            dex_quotes,
-            builder_info,
-        }
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info }
     }
 }

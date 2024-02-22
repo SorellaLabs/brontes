@@ -2,17 +2,17 @@ use reth_primitives::Address;
 use tracing::error;
 
 use super::NodeData;
-use crate::{normalized_actions::NormalizedAction, TreeSearchArgs};
+use crate::{normalized_actions::NormalizedAction, TreeSearchArgs, TreeSearchBuilder};
 
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub inner: Vec<Node>,
-    pub finalized: bool,
-    pub index: u64,
-    pub subactions: Vec<usize>,
+    pub inner:         Vec<Node>,
+    pub finalized:     bool,
+    pub index:         u64,
+    pub subactions:    Vec<usize>,
     pub trace_address: Vec<usize>,
-    pub address: Address,
-    pub data: usize,
+    pub address:       Address,
+    pub data:          usize,
 }
 
 impl Node {
@@ -65,22 +65,10 @@ impl Node {
     ) {
         if head == self.index {
             let mut results = Vec::new();
-            let classification = nodes
+            let collect_fn = nodes
                 .get_mut(self.data)
                 .unwrap()
                 .continued_classification_types();
-
-            let collect_fn = |node: &Node, nodes: &NodeData<V>| TreeSearchArgs {
-                collect_current_node: nodes
-                    .get_ref(node.data)
-                    .map(&classification)
-                    .unwrap_or_default(),
-                child_node_to_collect: node
-                    .get_all_sub_actions()
-                    .iter()
-                    .filter_map(|node| nodes.get_ref(*node))
-                    .any(&classification),
-            };
 
             self.collect(
                 &mut results,
@@ -105,15 +93,15 @@ impl Node {
                 self.remove_node_and_children(index, nodes);
             });
 
-            return;
+            return
         }
 
         if self.inner.len() <= 1 {
             if let Some(inner) = self.inner.first_mut() {
-                return inner.get_all_children_for_complex_classification(head, nodes);
+                return inner.get_all_children_for_complex_classification(head, nodes)
             }
             error!("was not able to find node in tree");
-            return;
+            return
         }
 
         let mut iter = self.inner.iter_mut();
@@ -125,9 +113,9 @@ impl Node {
         for next_node in iter {
             // check if past nodes are the head
             if cur_inner_node.index == head {
-                return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
+                return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
             } else if next_inner_node.index == head {
-                return next_inner_node.get_all_children_for_complex_classification(head, nodes);
+                return next_inner_node.get_all_children_for_complex_classification(head, nodes)
             }
 
             // if the next node is smaller than the head, we continue
@@ -136,43 +124,40 @@ impl Node {
                 next_inner_node = next_node;
             } else {
                 // next node is bigger than head. thus current node is proper path
-                return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
+                return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
             }
         }
 
         // handle case where there are only two inner nodes to look at
         if cur_inner_node.index == head {
-            return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
+            return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
         } else if next_inner_node.index == head {
-            return next_inner_node.get_all_children_for_complex_classification(head, nodes);
+            return next_inner_node.get_all_children_for_complex_classification(head, nodes)
         } else if next_inner_node.index > head {
-            return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
+            return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
         }
         // handle inf case that is shown in the function docs
         else if let Some(last) = self.inner.last_mut() {
-            return last.get_all_children_for_complex_classification(head, nodes);
+            return last.get_all_children_for_complex_classification(head, nodes)
         }
 
         error!("was not able to find node in tree, should be unreachable");
     }
 
-    pub fn modify_node_if_contains_childs<T, F, V: NormalizedAction>(
+    pub fn modify_node_if_contains_childs<F, V: NormalizedAction>(
         &mut self,
-        find: &T,
+        find: &TreeSearchBuilder<V>,
         modify: &F,
         data: &mut NodeData<V>,
     ) -> bool
     where
-        T: Fn(&Self, &NodeData<V>) -> TreeSearchArgs,
         F: Fn(&mut Self, &mut NodeData<V>),
     {
-        let TreeSearchArgs {
-            collect_current_node,
-            child_node_to_collect,
-        } = find(self, &*data);
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } =
+            find.generate_search_args(self, &*data);
 
         if !child_node_to_collect {
-            return false;
+            return false
         }
 
         let lower_classification_results = self
@@ -186,26 +171,28 @@ impl Node {
             // we return false
             if collect_current_node {
                 modify(self, data);
-                return true;
+                return true
             } else {
-                return false;
+                return false
             }
         }
         false
     }
 
-    pub fn modify_node_spans<T, F, V: NormalizedAction>(
+    pub fn modify_node_spans<F, V: NormalizedAction>(
         &mut self,
-        find: &T,
+        find: &TreeSearchBuilder<V>,
         modify: &F,
         data: &mut NodeData<V>,
     ) -> bool
     where
-        T: Fn(&Self, &NodeData<V>) -> bool,
         F: Fn(Vec<&mut Self>, &mut NodeData<V>),
     {
-        if !find(self, &*data) {
-            return false;
+        if !find
+            .generate_search_args(self, &*data)
+            .child_node_to_collect
+        {
+            return false
         }
 
         let lower_has_better_collect = self
@@ -327,7 +314,7 @@ impl Node {
         if self.index >= lower && self.index <= upper {
             res.push(info_fn(self));
         } else {
-            return;
+            return
         }
 
         self.inner
@@ -345,16 +332,16 @@ impl Node {
         let res = loop {
             if let Some((i, inner)) = iter.next() {
                 if inner.index == index {
-                    break Some(i);
+                    break Some(i)
                 }
 
                 if inner.index < index {
                     inner.remove_node_and_children(index, data)
                 } else {
-                    break None;
+                    break None
                 }
             } else {
-                break None;
+                break None
             }
         };
 
@@ -367,18 +354,15 @@ impl Node {
     }
 
     // only grabs the lowest subset of specified actions
-    pub fn collect_spans<F, V: NormalizedAction>(
+    pub fn collect_spans<V: NormalizedAction>(
         &self,
         result: &mut Vec<Vec<V>>,
-        call: &F,
+        call: &TreeSearchBuilder<V>,
         data: &NodeData<V>,
-    ) -> bool
-    where
-        F: Fn(&Node, &NodeData<V>) -> bool,
-    {
+    ) -> bool {
         // the previous sub-action was the last one to meet the criteria
-        if !call(self, data) {
-            return false;
+        if !call.generate_search_args(self, data).child_node_to_collect {
+            return false
         }
 
         let lower_has_better_collect = self
@@ -387,7 +371,7 @@ impl Node {
             .map(|i| i.collect_spans(result, call, data))
             .collect::<Vec<bool>>();
 
-        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
+        let lower_has_better = lower_has_better_collect.into_iter().all(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
@@ -406,20 +390,17 @@ impl Node {
 
     /// Collects all actions that match the call closure. This is useful for
     /// fetching all actions that match a certain criteria.
-    pub fn collect<F, T, R, V: NormalizedAction>(
+    pub fn collect<T, R, V: NormalizedAction>(
         &self,
         results: &mut Vec<R>,
-        call: &F,
+        call: &TreeSearchBuilder<V>,
         wanted_data: &T,
         data: &NodeData<V>,
     ) where
-        F: Fn(&Node, &NodeData<V>) -> TreeSearchArgs,
         T: Fn(&Node, &NodeData<V>) -> R,
     {
-        let TreeSearchArgs {
-            collect_current_node,
-            child_node_to_collect,
-        } = call(self, data);
+        let TreeSearchArgs { collect_current_node, child_node_to_collect } =
+            call.generate_search_args(self, data);
         if collect_current_node {
             results.push(wanted_data(self, data))
         }

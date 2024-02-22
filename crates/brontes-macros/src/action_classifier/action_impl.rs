@@ -9,19 +9,19 @@ use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME}
 
 pub struct ActionMacro {
     // required for all
-    protocol_path: Path,
-    path_to_call: Path,
-    action_type: Ident,
+    protocol_path:        Path,
+    path_to_call:         Path,
+    action_type:          Ident,
     exchange_name_w_call: Ident,
-    log_types: Vec<LogConfig>,
+    log_types:            Vec<LogConfig>,
     /// wether we want logs or not
-    give_logs: bool,
+    give_logs:            bool,
     /// wether we want return data or not
-    give_returns: bool,
+    give_returns:         bool,
     /// wether we want call_data or not
-    give_call_data: bool,
+    give_call_data:       bool,
     /// The closure that we use to construct the normalized type
-    call_function: ExprClosure,
+    call_function:        ExprClosure,
 }
 
 impl ActionMacro {
@@ -49,10 +49,8 @@ impl ActionMacro {
             call_function,
         );
 
-        let call_fn_name = Ident::new(
-            &format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call),
-            Span::call_site(),
-        );
+        let call_fn_name =
+            Ident::new(&format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call), Span::call_site());
 
         let dex_price_return = if action_type.to_string().to_lowercase().as_str()
             == "poolconfigupdate"
@@ -104,7 +102,7 @@ impl ActionMacro {
 
             impl crate::IntoAction for #exchange_name_w_call {
                 fn decode_trace_data<DB: ::brontes_database::libmdbx::LibmdbxReader
-                    + ::brontes_database::libmdbx::LibmdbxWriter>(
+                    + ::brontes_database::libmdbx::DBWriter>(
                     &self,
                     call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
                     block: u64,
@@ -219,10 +217,7 @@ fn parse_config(input: &mut syn::parse::ParseStream) -> syn::Result<(bool, bool,
 
 fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path> {
     let protocol_path: Path = input.parse().map_err(|_| {
-        syn::Error::new(
-            input.span(),
-            "No Protocol Found, Should be Protocol::<ProtocolVarient>",
-        )
+        syn::Error::new(input.span(), "No Protocol Found, Should be Protocol::<ProtocolVarient>")
     })?;
 
     if protocol_path.segments.len() < 2 {
@@ -284,11 +279,7 @@ fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<LogConfig>
             can_repeat = true;
         }
 
-        log_types.push(LogConfig {
-            ignore_before,
-            can_repeat,
-            log_ident: log_type,
-        });
+        log_types.push(LogConfig { ignore_before, can_repeat, log_ident: log_type });
 
         let Ok(_) = content.parse::<Token![,]>() else {
             break;

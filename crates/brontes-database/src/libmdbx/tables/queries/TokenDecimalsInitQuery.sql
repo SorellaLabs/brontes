@@ -1,4 +1,4 @@
 SELECT 
-    toString(address) AS address, 
-    (decimals, name) AS info
-FROM ethereum.dex_tokens
+    address, 
+    (decimals, symbol) AS info
+FROM brontes.token_info

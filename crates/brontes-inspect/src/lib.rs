@@ -80,17 +80,10 @@
 //! results to identify more complex strategies.
 //TODO: Update composer section once finished
 
-pub mod atomic_arb;
-pub mod cex_dex;
 pub mod composer;
 pub mod discovery;
-pub mod jit;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod liquidations;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod long_tail;
-pub mod sandwich;
-pub mod shared_utils;
+pub mod mev_inspectors;
+pub use mev_inspectors::*;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
@@ -99,9 +92,8 @@ use std::sync::Arc;
 
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
-use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::Metadata},
+    db::{cex::CexExchange, metadata::Metadata, traits::LibmdbxReader},
     mev::{Bundle, BundleData},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -138,10 +130,10 @@ pub enum Inspectors {
 type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
 
 impl Inspectors {
-    pub fn init_mev_inspector(
+    pub fn init_mev_inspector<DB: LibmdbxReader>(
         &self,
         quote_token: Address,
-        db: &'static LibmdbxReadWriter,
+        db: &'static DB,
         cex_exchanges: &[CexExchange],
     ) -> DynMevInspector {
         match &self {

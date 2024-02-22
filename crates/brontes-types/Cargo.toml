@@ -38,7 +38,7 @@ serde_with.workspace = true
 serde_repr.workspace = true
 
 # database
-sorella-db-databases.workspace = true
+clickhouse.workspace = true
 
 # misc
 phf.workspace = true
@@ -61,25 +61,37 @@ indoc = "2"
 zstd = "0.13"
 paste = "1.0.14"
 pin-project = "1.1.4"
+clap.workspace = true
 
 # stats
 statrs = "0.16"
 
 # errors
 eyre.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
+brontes-macros.workspace = true
+brontes-types = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
 
 
-
 [features]
-default = ["tests"]
+default = []
 tests = []
-local = ["brontes-core/local", "reth-tracing-ext/local"]
+local-clickhouse = [
+  "brontes-database/local-clickhouse",
+  "brontes-classifier/local-clickhouse",
+]
+
+local-reth = [
+  "brontes-core/local-reth",
+  "brontes-classifier/local-reth",
+  "reth-tracing-ext/local-reth",
+]

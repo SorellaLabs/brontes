@@ -7,10 +7,7 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
     let vis = item.vis;
     let mut sig = item.sig;
     if sig.asyncness.is_none() {
-        return Err(syn::Error::new(
-            sig.asyncness.span(),
-            "function must be async",
-        ));
+        return Err(syn::Error::new(sig.asyncness.span(), "function must be async"));
     }
     sig.asyncness = None;
     let block = item.block;
@@ -24,7 +21,7 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
             std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
-                .worker_threads(2)
+                .worker_threads(4)
                 .build()
                 .unwrap()
                 .block_on(async move #block)
