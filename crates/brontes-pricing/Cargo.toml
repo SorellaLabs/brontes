@@ -78,11 +78,11 @@ brontes-pricing = { workspace = true, features = ["testing"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
-brontes-inspect.workspace = true
 brontes-types.workspace = true
 brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
+itertools.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5" }
 rand = "0.8.5"
@@ -93,4 +93,16 @@ default = []
 testing = []
 uni-v3-ticks = []
 benchmarking = []
-local-reth = ["brontes-types/local-reth"]
+local-reth = [
+  "brontes-types/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-core/local-reth",
+  "brontes-classifier/local-reth",
+  "brontes-database/local-reth",
+]
+local-clickhouse = [
+  "brontes-core/local-reth",
+  "brontes-classifier/local-reth",
+  "brontes-database/local-reth",
+  "reth-tracing-ext/local-reth",
+]

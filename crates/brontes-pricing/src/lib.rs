@@ -1016,9 +1016,18 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
 #[cfg(test)]
 pub mod test {
+    use std::collections::HashMap;
+
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{constants::USDC_ADDRESS, db::dex::DexQuotes};
+    use brontes_types::{
+        constants::USDC_ADDRESS,
+        db::dex::{DexPrices, DexQuotes},
+        pair::Pair,
+        ToFloatNearest,
+    };
     use futures::future::join_all;
+    use itertools::Itertools;
+    use malachite::{num::basic::traits::Zero, Rational};
     // given that the only thing that
     #[brontes_macros::test]
     async fn test_pricing_variance() {
@@ -1035,15 +1044,16 @@ pub mod test {
         .await;
 
         // generate a bitmap of all locations that are valid
-        let mut expected = [0u8; 88];
-
         let last = dex_quotes.pop().unwrap();
+        let mut expected = vec![0u8; last.0.len()];
+
         last.0.iter().enumerate().for_each(|(i, p_entry)| {
             if p_entry.is_some() {
                 expected[i / 8] |= 1 << i % 8;
             }
         });
 
+        // verify all align
         dex_quotes.iter().for_each(|quotes| {
             quotes.0.iter().enumerate().for_each(|(i, p_entry)| {
                 if p_entry.is_some() {
@@ -1059,5 +1069,63 @@ pub mod test {
                 }
             });
         });
+
+        let pair_to_batch_to_dex_price = dex_quotes
+            .iter()
+            .chain(vec![last].iter())
+            .map(|i| &i.0)
+            .flat_map(|quotes: &Vec<Option<HashMap<Pair, DexPrices>>>| {
+                quotes
+                    .into_iter()
+                    .filter_map(|a| Some(a.as_ref()?))
+                    .flat_map(|a| a.into_iter().map(|(p, b)| (*p, b.clone())))
+                    .into_group_map()
+                    .into_iter()
+            })
+            .into_group_map();
+
+        // check to make sure all prices are within 1% of each other over the batches
+        pair_to_batch_to_dex_price
+            .into_iter()
+            .for_each(|(pair, prices)| {
+                // with prices, its
+                // [batch [ position in batch ]]
+                // calcuate the average for each index of prices
+                let inner_len = prices[0].len();
+                for i in 0..inner_len {
+                    let mut pre_prices = vec![];
+                    let mut post_prices = vec![];
+                    for price in &prices {
+                        pre_prices.push(price[i].pre_state.clone());
+                        post_prices.push(price[i].post_state.clone());
+                    }
+                    // // check min max diff is below th
+                    let pre_min = pre_prices.iter().min().unwrap();
+                    let pre_max = pre_prices.iter().max().unwrap();
+
+                    let diff = (pre_max - pre_min) / pre_max;
+
+                    if diff > Rational::from_signeds(1, 100) {
+                        panic!(
+                            "{:?} pre state had a max diff that was more than 1% got: {}",
+                            pair,
+                            diff.to_float()
+                        );
+                    }
+
+                    let post_min = pre_prices.iter().min().unwrap();
+                    let post_max = pre_prices.iter().max().unwrap();
+
+                    let diff = (post_max - post_min) / post_max;
+
+                    if diff > Rational::from_signeds(1, 100) {
+                        panic!(
+                            "{:?} post state had a max diff that was more than 1% got: {}",
+                            pair,
+                            diff.to_float()
+                        );
+                    }
+                }
+            })
     }
 }
