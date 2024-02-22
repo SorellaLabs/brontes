@@ -33,9 +33,11 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(
-            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_liquidation]),
-        );
+        let liq_txs = tree.collect_all(TreeSearchBuilder::default().with_actions([
+            Actions::is_swap,
+            Actions::is_liquidation,
+            Actions::is_transfer,
+        ]));
 
         liq_txs
             .into_par_iter()
@@ -55,12 +57,6 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        let swaps = actions
-            .iter()
-            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
-            .cloned()
-            .collect::<Vec<_>>();
-
         let liqs = actions
             .iter()
             .filter_map(
@@ -79,17 +75,29 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None;
         }
 
+        let swaps = actions
+            .iter()
+            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let transfers = actions
+            .iter()
+            .filter_map(|action| if let Actions::Transfer(t) = action { Some(t) } else { None })
+            .cloned()
+            .collect::<Vec<_>>();
+
         let liq_profit = liqs
             .par_iter()
             .filter_map(|liq| {
-                let repaid_debt_usd = self.utils.calculate_dex_usd_amount(
+                let repaid_debt_usd = self.utils.get_token_value_dex(
                     info.tx_index as usize,
                     PriceAt::After,
                     liq.debt_asset.address,
                     &liq.covered_debt,
                     &metadata,
                 )?;
-                let collected_collateral = self.utils.calculate_dex_usd_amount(
+                let collected_collateral = self.utils.get_token_value_dex(
                     info.tx_index as usize,
                     PriceAt::After,
                     liq.collateral_asset.address,
@@ -100,10 +108,10 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             })
             .sum::<Rational>();
 
-        let rev_usd = self.utils.get_dex_revenue_usd(
+        let rev_usd = self.utils.get_swap_deltas_usd(
             info.tx_index,
             PriceAt::After,
-            &[actions.clone()],
+            &swaps,
             metadata.clone(),
         )? + liq_profit;
 
@@ -115,7 +123,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             &info,
             profit_usd,
             PriceAt::After,
-            &[actions],
+            &transfers,
             &[info.gas_details],
             metadata,
             MevType::Liquidation,

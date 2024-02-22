@@ -145,7 +145,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
         let searcher_transfers = searcher_actions
-            .into_iter()
+            .iter()
             .flatten()
             .filter(|f| f.is_transfer())
             .map(|s| s.clone().force_transfer())

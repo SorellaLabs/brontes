@@ -29,46 +29,51 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
-    pub block_number:  u64,
-    pub tx_index:      u64,
+    pub block_number:   u64,
+    pub tx_index:       u64,
     #[serde(with = "txhash")]
     // For a sandwich this is always the first frontrun tx hash
     pub tx_hash: B256,
     #[serde(with = "addresss")]
-    pub eoa:           Address,
+    pub eoa:            Address,
     #[serde(with = "option_addresss")]
-    pub mev_contract:  Option<Address>,
-    pub profit_usd:    f64,
-    pub token_profits: TokenProfits,
-    pub bribe_usd:     f64,
+    pub mev_contract:   Option<Address>,
+    pub profit_usd:     f64,
+    pub bribe_usd:      f64,
     #[redefined(same_fields)]
-    pub mev_type:      MevType,
-}
-
-#[serde_as]
-#[derive(Debug, Deserialize, PartialEq, Row, Clone, Default, Serialize, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct TokenProfits {
-    pub profits: Vec<TokenProfit>,
+    pub mev_type:       MevType,
+    pub balance_deltas: Vec<TransactionAccounting>,
 }
 
 #[serde_as]
 #[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct TokenProfit {
-    pub profit_collector: Address,
-    pub token:            TokenInfoWithAddress,
-    pub amount:           f64,
-    pub usd_value:        f64,
+pub struct TransactionAccounting {
+    pub address_deltas: Vec<AddressBalanceDeltas>,
 }
 
-impl TokenProfits {
-    //TODO: Find is short circuiting, in this case this should be fine but not
-    // entirely sure.
-    pub fn compose(&mut self, to_compose: &TokenProfits) {
-        for profit in &to_compose.profits {
+#[serde_as]
+#[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct AddressBalanceDeltas {
+    pub address:      Address,
+    pub token_deltas: Vec<TokenBalanceDelta>,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct TokenBalanceDelta {
+    pub token:     TokenInfoWithAddress,
+    pub amount:    f64,
+    pub usd_value: f64,
+}
+
+impl BalanceDeltas {
+    pub fn compose(&mut self, to_compose: &BalanceDeltas) {
+        for profit in &to_compose.transaction_deltas {
             if let Some(existing_profit) = self
-                .profits
+                .transaction_deltas
                 .iter_mut()
                 .find(|p| p.profit_collector == profit.profit_collector && p.token == profit.token)
             {
@@ -79,23 +84,6 @@ impl TokenProfits {
         }
     }
 
-    //TODO: Alternatively we could do something like this, but I'm not sure it's
-    // even necessary
-
-    /*
-    pub fn compose(&mut self, to_compose: &TokenProfits) {
-        for profit in &to_compose.profits {
-            for existing_profit in self.profits.iter_mut().filter(|p|
-                p.profit_collector == profit.profit_collector && p.token_address == profit.token_address
-            ) {
-                if existing_profit.amount < profit.amount {
-                    existing_profit.amount = profit.amount;
-                }
-            }
-        }
-    }
-     */
-
     pub fn print_with_labels(
         &self,
         f: &mut fmt::Formatter,
@@ -104,7 +92,7 @@ impl TokenProfits {
     ) -> fmt::Result {
         writeln!(f, "\n{}", "Token Deltas:\n".bold().bright_white().underline())?;
 
-        for profit in &self.profits {
+        for profit in &self.transaction_deltas {
             let collector_label = match profit.profit_collector {
                 _ if Some(profit.profit_collector) == mev_contract_address => "MEV Contract",
                 _ if profit.profit_collector == eoa_address => "EOA",
@@ -132,7 +120,7 @@ impl TokenProfits {
     }
 }
 
-impl Display for TokenProfits {
+impl Display for BalanceDeltas {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.print_with_labels(f, None, Address::default())?;
 
@@ -140,7 +128,7 @@ impl Display for TokenProfits {
     }
 }
 
-impl Display for TokenProfit {
+impl Display for BalanceDelta {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (profit_or_loss, amount_str, usd_value_str) = if self.amount < 0.0 {
             ("lost", self.amount.to_string().red(), format!("$ {}", self.usd_value).red())
@@ -151,7 +139,7 @@ impl Display for TokenProfit {
         writeln!(
             f,
             "Address: {} {} {} {} worth {}",
-            self.profit_collector,
+            self.transaction_deltas,
             profit_or_loss,
             amount_str,
             self.token.symbol.bold(),

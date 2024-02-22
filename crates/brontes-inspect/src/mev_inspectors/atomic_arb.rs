@@ -142,7 +142,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
-        searcher_actions: &[Vec<Actions>],
+        _searcher_actions: &[Vec<Actions>],
         swaps: &[NormalizedSwap],
     ) -> Option<Rational> {
         let rev_usd = self.utils.get_swap_deltas_usd(
@@ -172,7 +172,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
         swaps: &[NormalizedSwap],
-        searcher_actions: &[Vec<Actions>],
+        _searcher_actions: &[Vec<Actions>],
         jump_index: usize,
     ) -> Option<Rational> {
         let is_stable_arb = is_stable_arb(swaps, jump_index);

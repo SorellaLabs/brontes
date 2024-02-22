@@ -5,11 +5,11 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{tx, LibmdbxReader};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
-    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{NormalizedSwap, NormalizedTransfer},
     pair::Pair,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
@@ -158,7 +158,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         info: &TxInfo,
         profit_usd: f64,
         at: PriceAt,
-        bundle_actions: &[Vec<Actions>],
+        bundle_transfers: Vec<&[NormalizedTransfer]>,
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,

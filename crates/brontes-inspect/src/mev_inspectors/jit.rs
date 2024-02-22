@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
-    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
+    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedTransfer},
     GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
@@ -68,6 +68,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                     Actions::is_mint,
                                     Actions::is_burn,
                                     Actions::is_collect,
+                                    Actions::is_transfer,
                                 ]),
                             )
                         })
@@ -126,8 +127,12 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
-type JitUnzip =
-    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
+type JitUnzip = (
+    Vec<Option<NormalizedMint>>,
+    Vec<Option<NormalizedBurn>>,
+    Vec<Option<NormalizedCollect>>,
+    Vec<Option<NormalizedTransfer>>,
+);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
@@ -141,14 +146,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect): JitUnzip = searcher_actions
+        let (mints, burns, collect, transfers): JitUnzip = searcher_actions
             .clone()
             .into_iter()
             .flatten()
             .filter_map(|action| match action {
-                Actions::Burn(b) => Some((None, Some(b), None)),
-                Actions::Mint(m) => Some((Some(m), None, None)),
-                Actions::Collect(c) => Some((None, None, Some(c))),
+                Actions::Burn(b) => Some((None, Some(b), None, None)),
+                Actions::Mint(m) => Some((Some(m), None, None, None)),
+                Actions::Collect(c) => Some((None, None, Some(c), None)),
+                Actions::Transfer(t) => Some((None, None, None, Some(t))),
                 _ => None,
             })
             .multiunzip();
@@ -156,6 +162,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let mints = mints.into_iter().flatten().collect::<Vec<_>>();
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
+        let transfers = transfers.into_iter().flatten().collect::<Vec<_>>();
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");
@@ -190,7 +197,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             &info[1],
             profit.to_float(),
             PriceAt::After,
-            &searcher_actions,
+            &transfers,
             &gas_details,
             metadata,
             MevType::Jit,
