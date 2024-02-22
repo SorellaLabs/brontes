@@ -234,10 +234,8 @@ impl ClassifierTestUtils {
         {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
-
             ctr.store(true, SeqCst);
             // triggers close
-            drop(classifier);
 
             if let Some((_p_block, pricing)) = pricer.next().await {
                 Some(pricing)
@@ -331,10 +329,7 @@ impl ClassifierTestUtils {
                 .init_dex_pricer(start_block, None, quote_asset, rx)
                 .await?;
             classifier.close();
-
             ctr.store(true, SeqCst);
-            // triggers close
-            drop(classifier);
 
             let mut prices = Vec::new();
 
