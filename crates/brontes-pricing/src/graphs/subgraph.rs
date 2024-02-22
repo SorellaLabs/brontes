@@ -19,7 +19,7 @@ use malachite::{
 };
 use petgraph::{
     algo::connected_components,
-    graph::{DiGraph, EdgeReference, Edges},
+    graph::{EdgeReference, Edges},
     prelude::*,
     visit::{VisitMap, Visitable},
 };

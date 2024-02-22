@@ -4,7 +4,6 @@ use std::{
     cmp::{Ordering, Reverse},
     collections::{BinaryHeap, HashSet},
     hash::Hash,
-    iter::FromIterator,
 };
 
 use pathfinding::num_traits::Zero;

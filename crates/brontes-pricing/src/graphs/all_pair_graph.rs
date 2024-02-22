@@ -8,7 +8,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_types::pair::Pair;
 use itertools::Itertools;
-use petgraph::{graph::UnGraph, prelude::*};
+use petgraph::prelude::*;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, info};
 

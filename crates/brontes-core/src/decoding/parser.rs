@@ -1,18 +1,12 @@
 #[cfg(feature = "dyn-decode")]
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
-use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_metrics::{
-    trace::types::{BlockStats, TraceParseErrorKind, TransactionStats},
-    PoirotMetricEvents,
-};
+use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
 use futures::future::join_all;
-use reth_primitives::{Header, B256};
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::TransactionReceipt;
