@@ -163,7 +163,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if updates.is_empty() {
             return
         };
-        tracing::info!("on pool updates");
 
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
@@ -784,14 +783,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             };
                             Some(PollResult::DiscoveredPool)
                         }
-                        DexPriceMsg::Closed => {
-                            tracing::info!("got close");
-                            None
-                        }
+                        DexPriceMsg::Closed => None,
                     })
                 }) {
                     Poll::Ready(Some(u)) => {
-                        tracing::info!("got some");
                         if let PollResult::State(update) = u {
                             if let Some(overlap) = self.overlap_update.take() {
                                 block_updates.push(overlap);
@@ -810,7 +805,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
-                            tracing::info!("returning");
                             return Poll::Ready(self.on_close())
                         }
                         break
@@ -1039,7 +1033,7 @@ pub mod test {
     async fn test_pricing_variance() {
         let utils = Arc::new(ClassifierTestUtils::new().await);
         let bad_block = 18500018;
-        let mut dex_quotes: Vec<DexQuotes> = join_all((0..10).into_iter().map(|_| {
+        let mut dex_quotes: Vec<DexQuotes> = join_all((0..10).map(|_| {
             let c = utils.clone();
             tokio::spawn(async move {
                 c.build_block_tree_with_pricing(bad_block, USDC_ADDRESS, vec![])
@@ -1054,17 +1048,13 @@ pub mod test {
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
 
-        for quote in &dex_quotes {
-            tracing::info!(%quote);
-        }
-
         // generate a bitmap of all locations that are valid
         let last = dex_quotes.pop().unwrap();
         let mut expected = vec![0u8; last.0.len()];
 
         last.0.iter().enumerate().for_each(|(i, p_entry)| {
             if p_entry.is_some() {
-                expected[i / 8] |= 1 << i % 8;
+                expected[i / 8] |= 1 << (i % 8);
             }
         });
 
@@ -1073,12 +1063,12 @@ pub mod test {
             quotes.0.iter().enumerate().for_each(|(i, p_entry)| {
                 if p_entry.is_some() {
                     assert!(
-                        expected[i / 8] & 1 << i % 8 != 0,
+                        expected[i / 8] & 1 << (i % 8) != 0,
                         "have a entry where another generation doesn't: tx {i}"
                     )
                 } else {
                     assert!(
-                        expected[i / 8] & 1 << i % 8 == 0,
+                        expected[i / 8] & 1 << (i % 8) == 0,
                         "missing a entry where another generation has one: tx {i}"
                     )
                 }
@@ -1087,13 +1077,13 @@ pub mod test {
 
         let pair_to_batch_to_dex_price = dex_quotes
             .iter()
-            .chain(vec![last].iter())
+            .chain([last].iter())
             .map(|i| &i.0)
             .flat_map(|quotes: &Vec<Option<HashMap<Pair, DexPrices>>>| {
                 quotes
-                    .into_iter()
-                    .filter_map(|a| Some(a.as_ref()?))
-                    .flat_map(|a| a.into_iter().map(|(p, b)| (*p, b.clone())))
+                    .iter()
+                    .filter_map(|a| a.as_ref())
+                    .flat_map(|a| a.iter().map(|(p, b)| (*p, b.clone())))
                     .into_group_map()
                     .into_iter()
             })
@@ -1133,9 +1123,9 @@ pub mod test {
 
                     let diff = (post_max - post_min) / post_max;
 
-                    if diff > Rational::from_signeds(1, 100) {
+                    if diff > Rational::from_signeds(5, 1000) {
                         panic!(
-                            "{:?} post state had a max diff that was more than 1% got: {}",
+                            "{:?} post state had a max diff that was more than 0.5% got: {}",
                             pair,
                             diff.to_float()
                         );
