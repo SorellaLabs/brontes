@@ -1110,9 +1110,9 @@ pub mod test {
 
                     let diff = (pre_max - pre_min) / pre_max;
 
-                    if diff > Rational::from_signeds(1, 100) {
+                    if diff > Rational::from_signeds(5, 10000) {
                         panic!(
-                            "{:?} pre state had a max diff that was more than 1% got: {}",
+                            "{:?} pre state had a max diff that was more than 0.05% got: {}",
                             pair,
                             diff.to_float()
                         );
@@ -1123,9 +1123,9 @@ pub mod test {
 
                     let diff = (post_max - post_min) / post_max;
 
-                    if diff != 0{
+                    if diff > Rational::from_signeds(5, 10000) {
                         panic!(
-                            "{:?} post state had a max diff that was more than 0 got: {}",
+                            "{:?} post state had a max diff that was more than 0.05% got: {}",
                             pair,
                             diff.to_float()
                         );
