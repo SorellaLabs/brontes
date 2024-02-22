@@ -1042,7 +1042,6 @@ pub mod test {
                 .unwrap()
         }))
         .await;
-        tracing::info!(?dex_quotes);
 
         // generate a bitmap of all locations that are valid
         let last = dex_quotes.pop().unwrap();
