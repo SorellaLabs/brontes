@@ -1022,7 +1022,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
 #[cfg(test)]
 pub mod test {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, sync::Arc};
 
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
@@ -1037,17 +1037,22 @@ pub mod test {
     // given that the only thing that
     #[brontes_macros::test]
     async fn test_pricing_variance() {
-        let utils = ClassifierTestUtils::new().await;
+        let utils = Arc::new(ClassifierTestUtils::new().await);
         let bad_block = 18500018;
-        let mut dex_quotes: Vec<DexQuotes> = join_all((0..10).into_iter().map(|_| async {
-            utils
-                .build_block_tree_with_pricing(bad_block, USDC_ADDRESS, vec![])
-                .await
-                .unwrap()
-                .1
-                .unwrap()
+        let mut dex_quotes: Vec<DexQuotes> = join_all((0..10).into_iter().map(|_| {
+            let c = utils.clone();
+            tokio::spawn(async move {
+                c.build_block_tree_with_pricing(bad_block, USDC_ADDRESS, vec![])
+                    .await
+                    .unwrap()
+                    .1
+                    .unwrap()
+            })
         }))
-        .await;
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
 
         for quote in &dex_quotes {
             tracing::info!(%quote);
