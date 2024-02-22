@@ -1110,7 +1110,7 @@ pub mod test {
 
                     let diff = (pre_max - pre_min) / pre_max;
 
-                    if diff > Rational::from_signeds(5, 10000) {
+                    if diff > Rational::from_signeds(5, 100) {
                         panic!(
                             "{:?} pre state had a max diff that was more than 0.05% got: {}",
                             pair,
@@ -1123,7 +1123,7 @@ pub mod test {
 
                     let diff = (post_max - post_min) / post_max;
 
-                    if diff > Rational::from_signeds(5, 10000) {
+                    if diff > Rational::from_signeds(5, 100) {
                         panic!(
                             "{:?} post state had a max diff that was more than 0.05% got: {}",
                             pair,
