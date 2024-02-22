@@ -784,10 +784,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             };
                             Some(PollResult::DiscoveredPool)
                         }
-                        DexPriceMsg::Closed => None,
+                        DexPriceMsg::Closed => {
+                            tracing::info!("got close");
+                            None
+                        }
                     })
                 }) {
                     Poll::Ready(Some(u)) => {
+                        tracing::info!("got some");
                         if let PollResult::State(update) = u {
                             if let Some(overlap) = self.overlap_update.take() {
                                 block_updates.push(overlap);
@@ -806,6 +810,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
+                            tracing::info!("returning");
                             return Poll::Ready(self.on_close())
                         }
                         break
