@@ -82,7 +82,6 @@ brontes-types.workspace = true
 brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
-itertools.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5" }
 rand = "0.8.5"
@@ -92,7 +91,6 @@ eyre.workspace = true
 default = []
 testing = []
 uni-v3-ticks = []
-benchmarking = []
 local-reth = [
   "brontes-types/local-reth",
   "reth-tracing-ext/local-reth",
