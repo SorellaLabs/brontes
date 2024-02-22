@@ -289,7 +289,6 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -299,16 +298,12 @@ mod tests {
         db::{
             dex::DexPrices,
             searcher::{SearcherEoaContract, SearcherStatsWithAddress},
-        },
-        mev::{
+        }, mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
-        },
-        normalized_actions::{
+        }, normalized_actions::{
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
-        },
-        pair::Pair,
-        GasDetails,
+        }, pair::Pair, traits::TracingProvider, GasDetails
     };
     use tokio::sync::mpsc::unbounded_channel;
 
@@ -324,8 +319,9 @@ mod tests {
         Clickhouse::default()
     }
 
-    async fn run_many_traces(tracer: &u64) -> Vec<TxTrace> {
-        vec![]
+    async fn run_many_traces<T: TracingProvider>(tracer: &T, end_block: u64) -> Vec<TxTrace> {
+
+            
     }
 
     #[brontes_macros::test]
