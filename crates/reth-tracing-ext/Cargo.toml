@@ -43,8 +43,12 @@ eyre = "0.6.8"
 
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
+[dev-dependencies]
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-macros.workspace = true
 
 
 [features]
 tests = []
-local-reth = ["brontes-types/local-reth"]
+local-reth = ["brontes-types/local-reth", "brontes-core/local-clickhouse"]
+local-clickhouse = ["brontes-core/local-clickhouse"]

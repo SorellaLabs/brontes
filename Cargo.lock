@@ -7676,6 +7676,8 @@ dependencies = [
  "alloy-primitives",
  "async-trait",
  "bitflags 2.4.2",
+ "brontes-core",
+ "brontes-macros",
  "brontes-types",
  "eyre",
  "futures",

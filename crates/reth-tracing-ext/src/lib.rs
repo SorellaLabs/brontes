@@ -447,3 +447,24 @@ pub struct StackStep {
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
     reth_db::open_db(path.as_ref(), Default::default())
 }
+
+#[cfg(test)]
+pub mod test {
+
+    use brontes_core::test_utils::TraceLoader;
+    use futures::future::join_all;
+    #[brontes_macros::test]
+
+    async fn ensure_traces_eq() {
+        let block = 18500018;
+        let loader = TraceLoader::new().await;
+        let tp = loader.tracing_provider;
+        let mut traces =
+            join_all((0..20).map(|_| async { tp.execute_block(block).await.unwrap().0 })).await;
+
+        let cmp = traces.pop().unwrap();
+        traces
+            .into_iter()
+            .for_each(|trace| assert_eq!(cmp, trace, "got traces that aren't equal"));
+    }
+}
