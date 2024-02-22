@@ -308,24 +308,24 @@ mod tests {
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
         },
         pair::Pair,
+        traits::TracingProvider,
         GasDetails,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::{
-        ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
-        ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
+    use crate::{
+        clickhouse::dbms::{
+            ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
+            ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
+        },
+        TxTracesData,
     };
 
     fn spawn_clickhouse() -> Clickhouse {
         dotenv::dotenv().ok();
 
         Clickhouse::default()
-    }
-
-    async fn run_many_traces(tracer: &u64) -> Vec<TxTrace> {
-        vec![]
     }
 
     #[brontes_macros::test]
@@ -362,7 +362,7 @@ mod tests {
         let query = "SELECT * FROM brontes.searcher_info";
         let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
 
-        assert_eq!(queried, case0)
+        assert_eq!(queried, case0);
     }
 
     #[tokio::test]
@@ -621,6 +621,81 @@ mod tests {
             .await
             .unwrap();
     }
-}
 
+    const queryy: &str = "SELECT
+    block_number,
+    groupArray(
+        (
+            block_number,
+            arrayZip(
+                trace_meta.trace_idx,
+                trace_meta.msg_sender,
+                trace_meta.error,
+                trace_meta.subtraces,
+                trace_meta.trace_address
+            ),
+            arrayZip(
+                trace_decoded_data.trace_idx,
+                trace_decoded_data.function_name,
+                trace_decoded_data.call_data,
+                trace_decoded_data.return_data
+            ),
+            arrayZip(
+                trace_logs.trace_idx,
+                trace_logs.log_idx,
+                trace_logs.address,
+                trace_logs.topics,
+                trace_logs.data
+            ),
+            arrayZip(
+                trace_create_actions.trace_idx,
+                trace_create_actions.from,
+                trace_create_actions.gas,
+                trace_create_actions.init,
+                trace_create_actions.value
+            ),
+            arrayZip(
+                trace_call_actions.trace_idx,
+                trace_call_actions.from,
+                trace_call_actions.call_type,
+                trace_call_actions.gas,
+                trace_call_actions.input,
+                trace_call_actions.to,
+                trace_call_actions.value
+            ),
+            arrayZip(
+                trace_self_destruct_actions.trace_idx,
+                trace_self_destruct_actions.address,
+                trace_self_destruct_actions.balance,
+                trace_self_destruct_actions.refund_address
+            ),
+            arrayZip(
+                trace_reward_actions.trace_idx,
+                trace_reward_actions.author,
+                trace_reward_actions.reward_type,
+                trace_reward_actions.value
+            ),
+            arrayZip(
+                trace_call_outputs.trace_idx,
+                trace_call_outputs.gas_used,
+                trace_call_outputs.output
+            ),
+            arrayZip(
+                trace_create_outputs.trace_idx,
+                trace_create_outputs.address,
+                trace_create_outputs.code,
+                trace_create_outputs.gas_used
+            ),
+
+        tx_hash,
+        gas_used,
+        effective_price,
+        tx_index,
+        is_success
+    ))
+FROM brontes.tx_traces
+WHERE block_number = 15697312
+GROUP BY block_number
+";
+}
 */
