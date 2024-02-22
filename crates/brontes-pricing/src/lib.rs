@@ -1123,9 +1123,9 @@ pub mod test {
 
                     let diff = (post_max - post_min) / post_max;
 
-                    if diff > Rational::from_signeds(5, 1000) {
+                    if diff != 0{
                         panic!(
-                            "{:?} post state had a max diff that was more than 0.5% got: {}",
+                            "{:?} post state had a max diff that was more than 0 got: {}",
                             pair,
                             diff.to_float()
                         );
