@@ -101,8 +101,7 @@ local-reth = [
   "brontes-database/local-reth",
 ]
 local-clickhouse = [
-  "brontes-core/local-reth",
-  "brontes-classifier/local-reth",
-  "brontes-database/local-reth",
-  "reth-tracing-ext/local-reth",
+  "brontes-core/local-clickhouse",
+  "brontes-classifier/local-clickhouse",
+  "brontes-database/local-clickhouse",
 ]
