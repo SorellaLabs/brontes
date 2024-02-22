@@ -1,1 +1,3 @@
-pub mod cowswap;
+mod cowswap;
+
+pub use cowswap::*;

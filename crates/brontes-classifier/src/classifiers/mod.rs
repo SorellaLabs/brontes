@@ -56,6 +56,8 @@ action_dispatch!(
     SushiSwapV2swapCall,
     SushiSwapV2mintCall,
     SushiSwapV2burnCall,
+    CowswapsettleCall,
+    CowswapswapCall,
     PancakeSwapV2swapCall,
     PancakeSwapV2mintCall,
     PancakeSwapV2burnCall,
