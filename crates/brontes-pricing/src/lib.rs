@@ -1027,7 +1027,7 @@ pub mod test {
     };
     use futures::future::join_all;
     use itertools::Itertools;
-    use malachite::{num::basic::traits::Zero, Rational};
+    use malachite::Rational;
     // given that the only thing that
     #[brontes_macros::test]
     async fn test_pricing_variance() {
@@ -1042,6 +1042,7 @@ pub mod test {
                 .unwrap()
         }))
         .await;
+        tracing::info!(?dex_quotes);
 
         // generate a bitmap of all locations that are valid
         let last = dex_quotes.pop().unwrap();
