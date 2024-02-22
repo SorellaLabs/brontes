@@ -46,10 +46,14 @@ tokio = { version = "1.28.2", features = ["full"] }
 
 [dev-dependencies]
 brontes-core = { workspace = true, features = ["tests"] }
-reth-tracing-ext = { workspace = true, features = ["tests"] }
+reth-tracing-ext = { workspace = true, features = ["tests", "local-reth"] }
+
 brontes-macros.workspace = true
 
 [features]
 tests = []
 local-reth = ["brontes-types/local-reth", "brontes-core/local-clickhouse"]
-local-clickhouse = ["brontes-core/local-clickhouse","brontes-types/local-clickhouse"]
+local-clickhouse = [
+  "brontes-core/local-clickhouse",
+  "brontes-types/local-clickhouse",
+]
