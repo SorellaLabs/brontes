@@ -21,7 +21,6 @@ action_impl!(
     db_tx: &DB| {
 
         let user_swaps: Vec<NormalizedSwap> = log_data.Trade_field.into_iter().map(|trade| {
-
             let token_in_info = db_tx.try_fetch_token_info(trade.sellToken).unwrap();
             let token_out_info = db_tx.try_fetch_token_info(trade.buyToken).unwrap();
 
