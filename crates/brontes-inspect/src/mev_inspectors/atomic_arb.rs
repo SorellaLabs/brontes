@@ -22,9 +22,7 @@ pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            utils: SharedInspectorUtils::new(quote, db),
-        }
+        Self { utils: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -109,11 +107,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             swaps,
             arb_type: possible_arb_type,
         };
+        let backrun = AtomicArb { tx_hash: info.tx_hash, gas_details: info.gas_details, swaps };
 
-        Some(Bundle {
-            header,
-            data: BundleData::AtomicArb(backrun),
-        })
+        Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
 
     fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
@@ -138,7 +134,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             _ => identify_arb_sequence(swaps),
         }
     }
-    // Fix atomic arb to solely work based on swaps & move any transfer related impls to long tail to deal with the scenario in which we have unclassified pools
+
+    // Fix atomic arb to solely work based on swaps & move any transfer related
+    // impls to long tail to deal with the scenario in which we have unclassified
+    // pools
     fn process_triangle_arb(
         &self,
         tx_info: &TxInfo,
@@ -283,6 +282,7 @@ mod tests {
         let tx = hex!("ac1127310fdec0b07e618407eabfb7cdf5ada81dc47e914c76fc759843346a0e").into();
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("c18360217d8f7ab5e7c516566761ea12ce7f9d72").into())
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();

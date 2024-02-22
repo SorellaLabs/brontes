@@ -73,7 +73,11 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
             .collect();
 
         for (searcher, builder) in single_builder_searchers {
-            info!("Identified vertically integrated searcher-builder pair: Searcher {:?}, Builder {:?}", searcher, builder);
+            info!(
+                "Identified vertically integrated searcher-builder pair: Searcher {:?}, Builder \
+                 {:?}",
+                searcher, builder
+            );
             let mut builder_info = self
                 .db
                 .try_fetch_builder_info(builder)?

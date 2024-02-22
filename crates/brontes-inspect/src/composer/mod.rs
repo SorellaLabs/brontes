@@ -52,8 +52,8 @@ use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]
 pub struct ComposerResults {
-    pub block_details: MevBlock,
-    pub mev_details: Vec<Bundle>,
+    pub block_details:     MevBlock,
+    pub mev_details:       Vec<Bundle>,
     /// all txes with coinbase.transfers that weren't classified
     pub possible_mev_txes: PossibleMevCollection,
 }
@@ -69,18 +69,9 @@ pub async fn compose_mev_results(
 
     let possible_arbs = possible_mev_txes.clone();
 
-    let (block_details, mev_details) = on_orchestra_resolution(
-        pre_processing,
-        tree,
-        possible_mev_txes,
-        metadata,
-        classified_mev,
-    );
-    ComposerResults {
-        block_details,
-        mev_details,
-        possible_mev_txes: possible_arbs,
-    }
+    let (block_details, mev_details) =
+        on_orchestra_resolution(pre_processing, tree, possible_mev_txes, metadata, classified_mev);
+    ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
 async fn run_inspectors(

@@ -20,9 +20,7 @@ pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            utils: SharedInspectorUtils::new(quote, db),
-        }
+        Self { utils: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -59,25 +57,21 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     ) -> Option<Bundle> {
         let swaps = actions
             .iter()
-            .filter_map(|action| {
-                if let Actions::Swap(swap) = action {
-                    Some(swap)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
             .cloned()
             .collect::<Vec<_>>();
 
         let liqs = actions
             .iter()
-            .filter_map(|action| {
-                if let Actions::Liquidation(liq) = action {
-                    Some(liq)
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |action| {
+                    if let Actions::Liquidation(liq) = action {
+                        Some(liq)
+                    } else {
+                        None
+                    }
+                },
+            )
             .cloned()
             .collect::<Vec<_>>();
 
@@ -129,16 +123,13 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let new_liquidation = Liquidation {
             liquidation_tx_hash: info.tx_hash,
-            trigger: b256!(),
-            liquidation_swaps: swaps,
-            liquidations: liqs,
-            gas_details: info.gas_details,
+            trigger:             b256!(),
+            liquidation_swaps:   swaps,
+            liquidations:        liqs,
+            gas_details:         info.gas_details,
         };
 
-        Some(Bundle {
-            header,
-            data: BundleData::Liquidation(new_liquidation),
-        })
+        Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
 }
 

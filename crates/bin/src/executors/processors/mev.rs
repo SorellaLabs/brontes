@@ -11,34 +11,34 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use tracing::{error, info};
+use tracing::info;
 
-pub async fn process_results<DB: DBWriter + LibmdbxReader>(
-    db: &DB,
-    // clickhouse-db (feature)
-    inspectors: &[&dyn Inspector<Result = Vec<Bundle>>],
-    tree: Arc<BlockTree<Actions>>,
-    metadata: Arc<Metadata>,
-) {
-    let ComposerResults {
-        block_details,
-        mev_details,
-        possible_mev_txes: _,
-    } = compose_mev_results(inspectors, tree, metadata.clone()).await;
+use crate::Processor;
 
-    // insert the value to the respective table:
-    // clickhouse_db.insert_many::<T>(Vec<D>).await.unwrap()
-    // where T is the clickhouse table name
-    // and D is the clickhouse table's data type
+#[derive(Debug, Clone, Copy)]
+pub struct MevProcessor;
 
-    if let Err(e) = db
-        .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
-        .await
-    {
-        tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
+impl Processor for MevProcessor {
+    type InspectType = Vec<Bundle>;
+
+    async fn process_results_inner<DB: DBWriter + LibmdbxReader>(
+        db: &DB,
+        inspectors: &[&dyn Inspector<Result = Self::InspectType>],
+        tree: Arc<BlockTree<Actions>>,
+        metadata: Arc<Metadata>,
+    ) {
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
+            compose_mev_results(inspectors, tree, metadata.clone()).await;
+
+        if let Err(e) = db
+            .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
+            .await
+        {
+            panic!("{e} failed to insert dex pricing and state into db");
+        }
+
+        insert_mev_results(db, block_details, mev_details).await;
     }
-
-    insert_mev_results(db, block_details, mev_details).await;
 }
 
 async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
@@ -59,7 +59,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .await
     {
-        error!("Failed to insert classified data into libmdbx: {:?}", e);
+        panic!("Failed to insert classified data into libmdbx: {:?}", e);
     }
 }
 
@@ -98,7 +98,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             )
             .await
         {
-            error!("Failed to update searcher info in the database: {:?}", e);
+            panic!("Failed to update searcher info in the database: {:?}", e);
         }
     }
 }

@@ -1,10 +1,14 @@
+mod processors;
 mod range;
+use brontes_types::BrontesTaskExecutor;
+pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
 use std::{
     collections::HashMap,
+    marker::PhantomData,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
@@ -16,11 +20,10 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::mev::Bundle;
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
@@ -32,21 +35,25 @@ use crate::cli::static_object;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> {
-    pub start_block: u64,
-    pub end_block: Option<u64>,
-    pub max_tasks: u64,
-    pub min_batch_size: u64,
-    pub quote_asset: Address,
+pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
+{
+    pub start_block:      u64,
+    pub end_block:        Option<u64>,
+    pub max_tasks:        u64,
+    pub min_batch_size:   u64,
+    pub quote_asset:      Address,
     pub with_dex_pricing: bool,
 
-    pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+    pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
-    pub parser: &'static Parser<'static, T, DB>,
-    pub libmdbx: &'static DB,
+    pub parser:     &'static Parser<'static, T, DB>,
+    pub libmdbx:    &'static DB,
+    _p:             PhantomData<P>,
 }
 
-impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig<T, DB, CH> {
+impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
+    BrontesRunConfig<T, DB, CH, P>
+{
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
@@ -56,7 +63,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
         quote_asset: Address,
         with_dex_pricing: bool,
 
-        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
+        inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
 
         parser: &'static Parser<'static, T, DB>,
@@ -73,27 +80,24 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
             inspectors,
             quote_asset,
             end_block,
+            _p: PhantomData,
         }
     }
 
     #[allow(clippy::async_yields_async)]
     async fn build_range_executors(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         end_block: u64,
         tip: bool,
-    ) -> Vec<RangeExecutorWithPricing<T, DB, CH>> {
+    ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block;
         let cpus_min = range / self.min_batch_size + 1;
 
         let cpus = std::cmp::min(cpus_min, self.max_tasks);
-        let chunk_size = if cpus == 0 {
-            range + 1
-        } else {
-            (range / cpus) + 1
-        };
+        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
         join_all(
             (self.start_block..=end_block)
@@ -134,20 +138,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
 
     async fn build_tip_inspector(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         start_block: u64,
-    ) -> TipInspector<T, DB, CH> {
+    ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self
             .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
-        TipInspector::new(
-            start_block,
-            self.quote_asset,
-            state_collector,
-            self.parser,
-            self.libmdbx,
-            self.inspectors,
-        )
+        TipInspector::new(start_block, state_collector, self.parser, self.libmdbx, self.inspectors)
     }
 
     fn state_collector_no_dex_price(&self) -> StateCollector<T, DB, CH> {
@@ -166,7 +163,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
 
     async fn state_collector_dex_price(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         start_block: u64,
         end_block: u64,
         tip: bool,
@@ -272,7 +269,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
 
     async fn build_internal(
         self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         had_end_block: bool,
         end_block: u64,
     ) -> eyre::Result<Brontes> {
@@ -315,7 +312,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle> BrontesRunConfig
 
     pub async fn build(
         self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         shutdown: GracefulShutdown,
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
@@ -348,11 +345,11 @@ impl Future for Brontes {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.0.is_empty() {
-            return Poll::Ready(());
+            return Poll::Ready(())
         }
 
         if let Poll::Ready(None) = self.0.poll_next_unpin(cx) {
-            return Poll::Ready(());
+            return Poll::Ready(())
         }
 
         cx.waker().wake_by_ref();

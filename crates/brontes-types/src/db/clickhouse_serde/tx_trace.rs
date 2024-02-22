@@ -5,10 +5,10 @@ use crate::structured_trace::TxTrace;
 
 #[derive(Debug, Default)]
 pub struct ClickhouseDecodedCallData {
-    pub trace_idx: Vec<u64>,
+    pub trace_idx:     Vec<u64>,
     pub function_name: Vec<String>,
-    pub call_data: Vec<Vec<(String, String, String)>>,
-    pub return_data: Vec<Vec<(String, String, String)>>,
+    pub call_data:     Vec<Vec<(String, String, String)>>,
+    pub return_data:   Vec<Vec<(String, String, String)>>,
 }
 impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
     fn from(value: &'a TxTrace) -> Self {
@@ -52,10 +52,10 @@ impl<'a> From<&'a TxTrace> for ClickhouseDecodedCallData {
 #[derive(Debug, Default)]
 pub struct ClickhouseLogs {
     pub trace_idx: Vec<u64>,
-    pub log_idx: Vec<u64>,
-    pub address: Vec<String>,
-    pub topics: Vec<Vec<String>>,
-    pub data: Vec<String>,
+    pub log_idx:   Vec<u64>,
+    pub address:   Vec<String>,
+    pub topics:    Vec<Vec<String>>,
+    pub data:      Vec<String>,
 }
 
 impl<'a> From<&'a TxTrace> for ClickhouseLogs {
@@ -98,10 +98,10 @@ impl<'a> From<&'a TxTrace> for ClickhouseLogs {
 #[derive(Debug, Default)]
 pub struct ClickhouseCreateAction {
     pub trace_idx: Vec<u64>,
-    pub from: Vec<String>,
-    pub gas: Vec<u64>,
-    pub init: Vec<String>,
-    pub value: Vec<[u8; 32]>,
+    pub from:      Vec<String>,
+    pub gas:       Vec<u64>,
+    pub init:      Vec<String>,
+    pub value:     Vec<[u8; 32]>,
 }
 
 impl<'a> From<&'a TxTrace> for ClickhouseCreateAction {
@@ -130,12 +130,12 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateAction {
 #[derive(Debug, Default)]
 pub struct ClickhouseCallAction {
     pub trace_idx: Vec<u64>,
-    pub from: Vec<String>,
+    pub from:      Vec<String>,
     pub call_type: Vec<String>,
-    pub gas: Vec<u64>,
-    pub input: Vec<String>,
-    pub to: Vec<String>,
-    pub value: Vec<[u8; 32]>,
+    pub gas:       Vec<u64>,
+    pub input:     Vec<String>,
+    pub to:        Vec<String>,
+    pub value:     Vec<[u8; 32]>,
 }
 
 impl<'a> From<&'a TxTrace> for ClickhouseCallAction {
@@ -165,9 +165,9 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallAction {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseSelfDestructAction {
-    pub trace_idx: Vec<u64>,
-    pub address: Vec<String>,
-    pub balance: Vec<[u8; 32]>,
+    pub trace_idx:      Vec<u64>,
+    pub address:        Vec<String>,
+    pub balance:        Vec<[u8; 32]>,
     pub refund_address: Vec<String>,
 }
 
@@ -195,9 +195,9 @@ impl<'a> From<&'a TxTrace> for ClickhouseSelfDestructAction {
 
 #[derive(Debug, Default)]
 pub struct ClickhouseRewardAction {
-    pub trace_idx: Vec<u64>,
-    pub author: Vec<String>,
-    pub value: Vec<[u8; 32]>,
+    pub trace_idx:   Vec<u64>,
+    pub author:      Vec<String>,
+    pub value:       Vec<[u8; 32]>,
     pub reward_type: Vec<String>,
 }
 
@@ -226,8 +226,8 @@ impl<'a> From<&'a TxTrace> for ClickhouseRewardAction {
 #[derive(Debug, Default)]
 pub struct ClickhouseCallOutput {
     pub trace_idx: Vec<u64>,
-    pub gas_used: Vec<u64>,
-    pub output: Vec<String>,
+    pub gas_used:  Vec<u64>,
+    pub output:    Vec<String>,
 }
 
 impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
@@ -239,11 +239,9 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
             .iter()
             .filter_map(|trace| {
                 trace.trace.result.as_ref().and_then(|res| match res {
-                    TraceOutput::Call(c) => Some((
-                        trace.trace_idx,
-                        c.gas_used.to::<u64>(),
-                        format!("{:?}", c.output),
-                    )),
+                    TraceOutput::Call(c) => {
+                        Some((trace.trace_idx, c.gas_used.to::<u64>(), format!("{:?}", c.output)))
+                    }
                     _ => None,
                 })
             })
@@ -260,9 +258,9 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
 #[derive(Debug, Default)]
 pub struct ClickhouseCreateOutput {
     pub trace_idx: Vec<u64>,
-    pub address: Vec<String>,
-    pub code: Vec<String>,
-    pub gas_used: Vec<u64>,
+    pub address:   Vec<String>,
+    pub code:      Vec<String>,
+    pub gas_used:  Vec<u64>,
 }
 
 impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
@@ -314,19 +312,14 @@ pub mod tx_traces_inner {
         u64,
         (
             Vec<(u64, String, Option<String>, u64, Vec<u64>)>, // meta
-            Vec<(
-                u64,
-                String,
-                Vec<(String, String, String)>,
-                Vec<(String, String, String)>,
-            )>, // decoded data
-            Vec<(u64, u64, String, Vec<String>, String)>,      // logs
-            Vec<(u64, String, u64, String, [u8; 32])>,         // create action
+            Vec<(u64, String, Vec<(String, String, String)>, Vec<(String, String, String)>)>,
+            Vec<(u64, u64, String, Vec<String>, String)>, // logs
+            Vec<(u64, String, u64, String, [u8; 32])>,    // create action
             Vec<(u64, String, String, u64, String, String, [u8; 32])>, // call action
-            Vec<(u64, String, [u8; 32], String)>,              // self destruct action
-            Vec<(u64, String, String, [u8; 32])>,              // reward action
-            Vec<(u64, u64, String)>,                           // call output
-            Vec<(u64, String, String, u64)>,                   // create output
+            Vec<(u64, String, [u8; 32], String)>,         // self destruct action
+            Vec<(u64, String, String, [u8; 32])>,         // reward action
+            Vec<(u64, u64, String)>,                      // call output
+            Vec<(u64, String, String, u64)>,              // create output
         ),
         String,
         u128,
@@ -339,20 +332,20 @@ pub mod tx_traces_inner {
         let mut tx_trace = TxTrace::default();
 
         let default_trace = TransactionTraceWithLogs {
-            trace: TransactionTrace {
-                action: Action::Selfdestruct(SelfdestructAction {
-                    address: Default::default(),
-                    balance: Default::default(),
+            trace:        TransactionTrace {
+                action:        Action::Selfdestruct(SelfdestructAction {
+                    address:        Default::default(),
+                    balance:        Default::default(),
                     refund_address: Default::default(),
                 }),
-                error: None,
-                result: None,
-                subtraces: 0,
+                error:         None,
+                result:        None,
+                subtraces:     0,
                 trace_address: Vec::new(),
             },
-            logs: Vec::new(),
-            msg_sender: Default::default(),
-            trace_idx: Default::default(),
+            logs:         Vec::new(),
+            msg_sender:   Default::default(),
+            trace_idx:    Default::default(),
             decoded_data: None,
         };
 
@@ -436,7 +429,7 @@ pub mod tx_traces_inner {
                     log_idx,
                     Log {
                         address: Address::from_str(&address).unwrap(),
-                        data: LogData::new_unchecked(
+                        data:    LogData::new_unchecked(
                             topics
                                 .into_iter()
                                 .map(|t| TxHash::from_str(&t).unwrap())
@@ -465,9 +458,9 @@ pub mod tx_traces_inner {
                 let entry = map.entry(trace_idx).or_insert(default_trace.clone());
 
                 let create = CreateAction {
-                    from: Address::from_str(&from).unwrap(),
-                    gas: U64::from(gas),
-                    init: Bytes::from_str(&init).unwrap(),
+                    from:  Address::from_str(&from).unwrap(),
+                    gas:   U64::from(gas),
+                    init:  Bytes::from_str(&init).unwrap(),
                     value: U256::from_le_bytes(value),
                 };
 
@@ -510,8 +503,8 @@ pub mod tx_traces_inner {
                 let entry = map.entry(trace_idx).or_insert(default_trace.clone());
 
                 let self_destruct = SelfdestructAction {
-                    address: Address::from_str(&address).unwrap(),
-                    balance: U256::from_le_bytes(balance),
+                    address:        Address::from_str(&address).unwrap(),
+                    balance:        U256::from_le_bytes(balance),
                     refund_address: Address::from_str(&refund_address).unwrap(),
                 };
 
@@ -553,7 +546,7 @@ pub mod tx_traces_inner {
 
                 let call = CallOutput {
                     gas_used: U64::from(gas_used),
-                    output: Bytes::from_str(&output).unwrap(),
+                    output:   Bytes::from_str(&output).unwrap(),
                 };
 
                 entry.trace.result = Some(TraceOutput::Call(call))
@@ -567,8 +560,8 @@ pub mod tx_traces_inner {
 
                 let create = CreateOutput {
                     gas_used: U64::from(gas_used),
-                    address: Address::from_str(&address).unwrap(),
-                    code: Bytes::from_str(&code).unwrap(),
+                    address:  Address::from_str(&address).unwrap(),
+                    code:     Bytes::from_str(&code).unwrap(),
                 };
 
                 entry.trace.result = Some(TraceOutput::Create(create))
@@ -596,9 +589,7 @@ pub mod tx_traces_inner {
         if converted.is_empty() {
             Ok(TxTracesInner { traces: None })
         } else {
-            Ok(TxTracesInner {
-                traces: Some(converted),
-            })
+            Ok(TxTracesInner { traces: Some(converted) })
         }
     }
 }

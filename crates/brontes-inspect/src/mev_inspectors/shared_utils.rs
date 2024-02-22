@@ -23,15 +23,12 @@ use malachite::{
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
     #[allow(dead_code)]
-    pub(crate) db: &'db DB,
+    pub(crate) db:    &'db DB,
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
     pub fn new(quote_address: Address, db: &'db DB) -> Self {
-        SharedInspectorUtils {
-            quote: quote_address,
-            db,
-        }
+        SharedInspectorUtils { quote: quote_address, db }
     }
 }
 type TokenDeltas = HashMap<Address, Rational>;
@@ -39,7 +36,8 @@ type AddressDeltas = HashMap<Address, TokenDeltas>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the token balance deltas by address for a given set of swaps
-    /// Note this does not account for the pool delta's, only the swapper and recipient delta's
+    /// Note this does not account for the pool delta's, only the swapper and
+    /// recipient delta's
     pub(crate) fn calculate_swap_deltas(&self, swaps: &[NormalizedSwap]) -> AddressDeltas {
         // Address and there token delta's
         let mut deltas: AddressDeltas = HashMap::new();
@@ -50,7 +48,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         deltas
     }
 
-    /// Calculates the token balance deltas by address for a given set of transfers
+    /// Calculates the token balance deltas by address for a given set of
+    /// transfers
     pub fn calculate_transfer_deltas(&self, transfers: &[NormalizedTransfer]) -> AddressDeltas {
         let mut deltas: AddressDeltas = HashMap::new();
         transfers
@@ -59,6 +58,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         deltas
     }
+
     /// Calculates the USD value of the token balance deltas by address
     pub fn usd_delta_by_address(
         &self,
@@ -163,7 +163,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
-        //TODO: Figure out how we can calculate the token profits for this bundle using generic actions
+        //TODO: Figure out how we can calculate the token profits for this bundle using
+        // generic actions
         let token_profits = self
             .get_profit_collectors(
                 info.tx_index,
@@ -243,14 +244,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
-        self.get_token_profits(
-            tx_index as usize,
-            at,
-            metadata,
-            profit_collectors,
-            deltas,
-            pricing,
-        )
+        self.get_token_profits(tx_index as usize, at, metadata, profit_collectors, deltas, pricing)
     }
 
     pub fn get_token_profits(
@@ -279,16 +273,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 Some(TokenProfit {
                     profit_collector: collector,
-                    token: self.db.try_fetch_token_info(*token).ok()?,
-                    amount: amount.clone().to_float(),
-                    usd_value: usd_value.to_float(),
+                    token:            self.db.try_fetch_token_info(*token).ok()?,
+                    amount:           amount.clone().to_float(),
+                    usd_value:        usd_value.to_float(),
                 })
             })
             .collect();
 
-        Some(TokenProfits {
-            profits: token_profits,
-        })
+        Some(TokenProfits { profits: token_profits })
     }
 }
 
@@ -297,19 +289,15 @@ pub trait TokenAccounting {
 }
 
 impl TokenAccounting for NormalizedSwap {
-    /// Note that we skip the pool deltas accounting to focus solely on the swapper & recipients delta.
-    /// We might want to change this in the future.
+    /// Note that we skip the pool deltas accounting to focus solely on the
+    /// swapper & recipients delta. We might want to change this in the
+    /// future.
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         let amount_in = -self.amount_in.clone();
         let amount_out = self.amount_out.clone();
 
         apply_delta(self.from, self.token_in.address, amount_in, delta_map);
-        apply_delta(
-            self.recipient,
-            self.token_out.address,
-            amount_out,
-            delta_map,
-        );
+        apply_delta(self.recipient, self.token_out.address, amount_out, delta_map);
     }
 }
 
@@ -317,12 +305,7 @@ impl TokenAccounting for NormalizedTransfer {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         let amount_sent = &self.amount + &self.fee;
 
-        apply_delta(
-            self.from,
-            self.token.address,
-            -amount_sent.clone(),
-            delta_map,
-        );
+        apply_delta(self.from, self.token.address, -amount_sent.clone(), delta_map);
 
         apply_delta(self.to, self.token.address, self.amount.clone(), delta_map);
     }

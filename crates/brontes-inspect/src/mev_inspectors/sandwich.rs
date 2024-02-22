@@ -23,21 +23,19 @@ pub struct SandwichInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            utils: SharedInspectorUtils::new(quote, db),
-        }
+        Self { utils: SharedInspectorUtils::new(quote, db) }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct PossibleSandwich {
-    eoa: Address,
-    possible_frontruns: Vec<B256>,
-    possible_backrun: B256,
+    eoa:                   Address,
+    possible_frontruns:    Vec<B256>,
+    possible_backrun:      B256,
     mev_executor_contract: Address,
     // mapping of possible frontruns to set of possible victims
     // By definition the victims of latter txes are victims of the former
-    victims: Vec<Vec<B256>>,
+    victims:               Vec<Vec<B256>>,
 }
 
 #[async_trait::async_trait]
@@ -173,12 +171,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         //TODO: Check later if this method correctly identifies an incorrect middle
         // front run that is unrelated
-        if !Self::has_pool_overlap(
-            &front_run_swaps,
-            &back_run_swaps,
-            &victim_actions,
-            &victim_info,
-        ) {
+        if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions, &victim_info)
+        {
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
             if possible_front_runs_info.len() > 1 {
@@ -284,10 +278,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_gas_details: backrun_info.gas_details,
         };
 
-        Some(Bundle {
-            header,
-            data: BundleData::Sandwich(sandwich),
-        })
+        Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
 
     fn has_pool_overlap(
@@ -307,9 +298,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|swap| swap.pool)
             .collect::<HashSet<_>>();
 
-        // we group all victims by eoa, such that instead of a tx needing to be a victim,
-        // a eoa needs to be a victim. this allows for more complex detection such as
-        // having a approve and then a swap in different transactions.
+        // we group all victims by eoa, such that instead of a tx needing to be a
+        // victim, a eoa needs to be a victim. this allows for more complex
+        // detection such as having a approve and then a swap in different
+        // transactions.
         let grouped_victims = victim_info
             .iter()
             .zip(victim_actions)
@@ -391,11 +383,11 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
                     match possible_sandwiches.entry(root.head.address) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
-                                eoa: root.head.address,
-                                possible_frontruns: vec![prev_tx_hash],
-                                possible_backrun: root.tx_hash,
+                                eoa:                   root.head.address,
+                                possible_frontruns:    vec![prev_tx_hash],
+                                possible_backrun:      root.tx_hash,
                                 mev_executor_contract: root.get_to_address(),
-                                victims: vec![frontrun_victims],
+                                victims:               vec![frontrun_victims],
                             });
                         }
                         Entry::Occupied(mut o) => {
@@ -459,11 +451,11 @@ fn get_possible_sandwich_duplicate_contracts(
                     match possible_sandwiches.entry(root.get_to_address()) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
-                                eoa: *frontrun_eoa,
-                                possible_frontruns: vec![*prev_tx_hash],
-                                possible_backrun: root.tx_hash,
+                                eoa:                   *frontrun_eoa,
+                                possible_frontruns:    vec![*prev_tx_hash],
+                                possible_backrun:      root.tx_hash,
                                 mev_executor_contract: root.get_to_address(),
-                                victims: vec![frontrun_victims],
+                                victims:               vec![frontrun_victims],
                             });
                         }
                         Entry::Occupied(mut o) => {
@@ -537,9 +529,7 @@ mod tests {
                 hex!("67771f2e3b0ea51c11c5af156d679ccef6933db9a4d4d6cd7605b4eee27f9ac8").into(),
             ])
             .with_dex_prices()
-            .needs_token(Address::new(hex!(
-                "28cf5263108c1c40cf30e0fe390bd9ccf929bf82"
-            )))
+            .needs_token(Address::new(hex!("28cf5263108c1c40cf30e0fe390bd9ccf929bf82")))
             .with_gas_paid_usd(16.64)
             .with_expected_profit_usd(15.648);
 
@@ -562,7 +552,7 @@ mod tests {
             ])
             .with_dex_prices()
             .with_gas_paid_usd(40.26)
-            .with_expected_profit_usd(-95.19);
+            .with_expected_profit_usd(-56.44);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
