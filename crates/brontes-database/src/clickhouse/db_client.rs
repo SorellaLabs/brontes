@@ -288,6 +288,7 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 }
+
 /*
 #[cfg(test)]
 mod tests {
@@ -321,6 +322,10 @@ mod tests {
         dotenv::dotenv().ok();
 
         Clickhouse::default()
+    }
+
+    async fn run_many_traces(tracer: &u64) -> Vec<TxTrace> {
+        vec![]
     }
 
     #[brontes_macros::test]
@@ -617,4 +622,5 @@ mod tests {
             .unwrap();
     }
 }
+
 */
