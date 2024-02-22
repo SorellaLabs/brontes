@@ -229,7 +229,9 @@ impl ClassifierTestUtils {
 
         let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
 
-        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx) {
+        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx)
+            || price.as_ref().map(|v| v.0.is_empty()) == Some(true)
+        {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
 
@@ -316,6 +318,10 @@ impl ClassifierTestUtils {
         let prices = if possible_price
             .iter()
             .map(|(block, price)| {
+                if price.0.is_empty() {
+                    return true
+                };
+
                 self.need_dex_quotes(*block, quote_asset, Some(price), &needs_tokens, tx.clone())
             })
             .any(|f| f)
