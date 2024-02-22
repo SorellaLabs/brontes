@@ -453,14 +453,20 @@ pub mod test {
 
     use brontes_core::test_utils::TraceLoader;
     use futures::future::join_all;
+    use reth_primitives::{BlockId, BlockNumberOrTag};
     #[brontes_macros::test]
 
     async fn ensure_traces_eq() {
         let block = 18500018;
         let loader = TraceLoader::new().await;
-        let tp = loader.tracing_provider;
-        let mut traces =
-            join_all((0..20).map(|_| async { tp.execute_block(block).await.unwrap().0 })).await;
+        let tp = loader.tracing_provider.get_tracer();
+        let mut traces = join_all((0..20).map(|_| async {
+            tp.replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block)))
+                .await
+                .unwrap()
+                .unwrap()
+        }))
+        .await;
 
         let cmp = traces.pop().unwrap();
         traces
