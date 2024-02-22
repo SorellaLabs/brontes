@@ -45,7 +45,7 @@ impl TraceArgs {
         let amount = (self.end_block - self.start_block) as f64;
 
         futures::stream::iter(self.start_block..self.end_block)
-            .unordered_buffer_map(1000, |i| {
+            .unordered_buffer_map(100, |i| {
                 if i % 5000 == 0 {
                     tracing::info!(
                         "tracing {:.2}% done",
