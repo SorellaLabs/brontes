@@ -454,8 +454,8 @@ pub mod test {
     use brontes_core::test_utils::TraceLoader;
     use futures::future::join_all;
     use reth_primitives::{BlockId, BlockNumberOrTag};
-    #[brontes_macros::test]
 
+    #[brontes_macros::test]
     async fn ensure_traces_eq() {
         let block = 18500018;
         let loader = TraceLoader::new().await;

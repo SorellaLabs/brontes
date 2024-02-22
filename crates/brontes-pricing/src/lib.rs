@@ -1108,11 +1108,11 @@ pub mod test {
                     let pre_min = pre_prices.iter().min().unwrap();
                     let pre_max = pre_prices.iter().max().unwrap();
 
-                    let diff = (pre_max - pre_min) / pre_max;
+                    let diff = (pre_max - pre_min) / pre_max * Rational::from(100);
 
-                    if diff > Rational::from_signeds(5, 100) {
+                    if diff > Rational::from_signeds(1, 10) {
                         panic!(
-                            "{:?} pre state had a max diff that was more than 0.05% got: {}",
+                            "{:?} pre state had a max diff that was more than 0.1% got: {}",
                             pair,
                             diff.to_float()
                         );
@@ -1121,11 +1121,11 @@ pub mod test {
                     let post_min = pre_prices.iter().min().unwrap();
                     let post_max = pre_prices.iter().max().unwrap();
 
-                    let diff = (post_max - post_min) / post_max;
+                    let diff = (post_max - post_min) / post_max * Rational::from(100);
 
-                    if diff > Rational::from_signeds(5, 100) {
+                    if diff > Rational::from_signeds(1, 10) {
                         panic!(
-                            "{:?} post state had a max diff that was more than 0.05% got: {}",
+                            "{:?} post state had a max diff that was more than 0.1% got: {}",
                             pair,
                             diff.to_float()
                         );
