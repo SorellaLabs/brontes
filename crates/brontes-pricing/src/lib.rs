@@ -163,6 +163,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if updates.is_empty() {
             return
         };
+        tracing::info!("on pool updates");
 
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
