@@ -1043,6 +1043,10 @@ pub mod test {
         }))
         .await;
 
+        for quote in &dex_quotes {
+            tracing::info!(%quote);
+        }
+
         // generate a bitmap of all locations that are valid
         let last = dex_quotes.pop().unwrap();
         let mut expected = vec![0u8; last.0.len()];
