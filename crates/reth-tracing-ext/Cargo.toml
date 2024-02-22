@@ -52,4 +52,4 @@ brontes-macros.workspace = true
 [features]
 tests = []
 local-reth = ["brontes-types/local-reth", "brontes-core/local-clickhouse"]
-local-clickhouse = ["brontes-core/local-clickhouse"]
+local-clickhouse = ["brontes-core/local-clickhouse","brontes-types/local-clickhouse"]
