@@ -43,10 +43,11 @@ eyre = "0.6.8"
 
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
+
 [dev-dependencies]
 brontes-core = { workspace = true, features = ["tests"] }
+reth-tracing-ext = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
-
 
 [features]
 tests = []

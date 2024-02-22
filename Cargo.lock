@@ -7695,6 +7695,7 @@ dependencies = [
  "reth-rpc-api",
  "reth-rpc-types",
  "reth-tasks",
+ "reth-tracing-ext",
  "reth-transaction-pool",
  "revm 6.0.0 (git+https://github.com/bluealloy/revm?branch=main)",
  "revm-primitives 2.0.1 (git+https://github.com/bluealloy/revm?branch=main)",
