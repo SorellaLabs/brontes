@@ -386,7 +386,6 @@ macro_rules! split {
                             None
                         }
                     }
-
                 )*
             }
         );

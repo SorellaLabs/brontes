@@ -15,7 +15,7 @@ pub trait ActionSplit<FromI, Fns>: Iterator<Item = Actions> {
     fn action_unzip(self, filters: Fns) -> FromI;
 }
 
-//TODO: see if theres a good way to handle action reference varients for
+//TODO: see if there's a good way to handle action reference variants for
 // cloning
 macro_rules! action_split {
     ($(($fns:ident, $ret:ident, $from:ident)),*) => {

@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
-    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
+    normalized_actions::{NormalizedCollect},
     ActionIter, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
@@ -126,8 +126,6 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
-type JitUnzip =
-    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors

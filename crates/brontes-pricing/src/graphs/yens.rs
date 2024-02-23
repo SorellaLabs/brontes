@@ -124,7 +124,7 @@ where
     FS: Fn(&N) -> bool + Send + Sync,
 {
     let tp = rayon::ThreadPoolBuilder::default()
-        .num_threads(3)
+        .num_threads(4)
         .thread_name(|i| format!("yen thread {i}"))
         .build()
         .unwrap();
