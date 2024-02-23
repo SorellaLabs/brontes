@@ -3,7 +3,7 @@ use brontes_types::{
     constants::{ETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS},
     pair::Pair,
 };
-use criterion::{ Criterion};
+use criterion::Criterion;
 use pricing_test_utils::bench::BrontesPricingBencher;
 
 pub fn bench_v3_price_requests(c: &mut Criterion) {

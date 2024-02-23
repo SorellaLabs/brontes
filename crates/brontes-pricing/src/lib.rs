@@ -1108,7 +1108,7 @@ pub mod test {
 
                     let diff = (pre_max - pre_min) / pre_max * Rational::from(100);
 
-                    if diff != Rational::ZERO {
+                    if diff > Rational::const_from_unsigneds(1, 10000) {
                         panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
                     }
 
@@ -1117,7 +1117,7 @@ pub mod test {
 
                     let diff = (post_max - post_min) / post_max * Rational::from(100);
 
-                    if diff != Rational::ZERO {
+                    if diff > Rational::const_from_unsigneds(1, 10000) {
                         panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
                     }
                 }

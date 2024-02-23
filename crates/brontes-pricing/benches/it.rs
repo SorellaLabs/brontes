@@ -1,5 +1,5 @@
 use brontes_types::constants::USDC_ADDRESS;
-use criterion::{ Criterion};
+use criterion::Criterion;
 use pricing_test_utils::bench::BrontesPricingBencher;
 
 pub fn bench_block_pricing(c: &mut Criterion) {
