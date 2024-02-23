@@ -74,6 +74,7 @@ serial_test.workspace = true
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-inspect = { workspace = true, features = ["tests"] }
+brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 tracing-subscriber.workspace = true
 reth-db.workspace = true
