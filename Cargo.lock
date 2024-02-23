@@ -1709,6 +1709,7 @@ dependencies = [
  "bytes",
  "codecs-derive 0.1.0-alpha.18",
  "criterion",
+ "dashmap",
  "derive_more",
  "dotenv",
  "erased-serde",
