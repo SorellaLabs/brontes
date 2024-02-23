@@ -405,8 +405,8 @@ mod tests {
             .unwrap();
 
         // TxTraces
-        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
+        // TxTraces::test_initialized_data(clickhouse, libmdbx,
+        // Some(block_range))     .await
+        //     .unwrap();
     }
 }

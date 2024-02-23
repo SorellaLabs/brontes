@@ -1,4 +1,4 @@
-WITH
+/*WITH
     meta AS (
         SELECT 
             tx_hash,
@@ -127,3 +127,6 @@ SELECT
 FROM block_traces
 WHERE block_number >= ? AND block_number < ?  
 GROUP BY block_number
+
+
+*/
