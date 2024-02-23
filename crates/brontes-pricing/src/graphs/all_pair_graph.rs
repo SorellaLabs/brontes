@@ -84,28 +84,32 @@ impl AllPairGraph {
         let mut connections: HashMap<(usize, usize), Vec<EdgeWithInsertBlock>> = HashMap::new();
 
         let t0 = SystemTime::now();
-        for ((pool_addr, dex), pair) in all_pool_data {
-            if !dex.has_state_updater() {
-                continue;
-            }
-            // because this is undirected, doesn't matter what order the nodes are connected
-            // so we sort so we can just have a collection of edges for just one
-            // way
-            let ordered_pair = pair.ordered();
 
-            // fetch the node or create node it if it doesn't exist
-            let addr0 = *token_to_index
-                .entry(ordered_pair.0)
-                .or_insert_with(|| graph.add_node(()).index());
+        all_pool_data
+            .into_iter()
+            .sorted()
+            .for_each(|((pool_addr, dex), pair)| {
+                if !dex.has_state_updater() {
+                    return
+                }
+                // because this is undirected, doesn't matter what order the nodes are connected
+                // so we sort so we can just have a collection of edges for just one
+                // way
+                let ordered_pair = pair.ordered();
 
-            // fetch the node or create node it if it doesn't exist
-            let addr1 = *token_to_index
-                .entry(ordered_pair.1)
-                .or_insert_with(|| graph.add_node(()).index());
+                // fetch the node or create node it if it doesn't exist
+                let addr0 = *token_to_index
+                    .entry(ordered_pair.0)
+                    .or_insert_with(|| graph.add_node(()).index());
 
-            let info = EdgeWithInsertBlock::new(pool_addr, dex, pair.0, pair.1, 0);
-            connections.entry((addr0, addr1)).or_default().push(info);
-        }
+                // fetch the node or create node it if it doesn't exist
+                let addr1 = *token_to_index
+                    .entry(ordered_pair.1)
+                    .or_insert_with(|| graph.add_node(()).index());
+
+                let info = EdgeWithInsertBlock::new(pool_addr, dex, pair.0, pair.1, 0);
+                connections.entry((addr0, addr1)).or_default().push(info);
+            });
 
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
@@ -114,7 +118,7 @@ impl AllPairGraph {
 
         graph.extend_with_edges(
             connections
-                .into_par_iter()
+                .into_iter()
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
@@ -201,7 +205,7 @@ impl AllPairGraph {
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
-            return vec![];
+            return vec![]
         }
 
         let Some(start_idx) = self.token_to_index.get(&pair.0) else {
@@ -227,7 +231,7 @@ impl AllPairGraph {
                     .into_iter()
                     .filter(|f| {
                         if f.weight().iter().all(|e| e.insert_block > block) {
-                            return false;
+                            return false
                         }
 
                         let edge = f.weight().first().unwrap();
