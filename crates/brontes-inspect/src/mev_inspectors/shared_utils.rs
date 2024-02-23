@@ -1,6 +1,7 @@
 use core::hash::Hash;
 use std::{
     collections::{hash_map::Entry, HashMap},
+    ops::Add,
     sync::Arc,
 };
 
@@ -13,13 +14,14 @@ use brontes_types::{
         metadata::Metadata,
         mev::{TokenBalanceDelta, TransactionAccounting},
     },
-    mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
+    mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenProfit, TokenProfits},
     normalized_actions::{NormalizedSwap, NormalizedTransfer},
     pair::Pair,
     utils::ToFloatNearest,
     GasDetails, TxInfo,
 };
 use malachite::{
+    natural::arithmetic::add,
     num::basic::traits::{One, Zero},
     Rational,
 };
@@ -151,14 +153,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             * amount
     }
 
-    pub fn profit_collectors(&self, addr_usd_deltas: &HashMap<Address, Rational>) -> Vec<Address> {
-        addr_usd_deltas
-            .iter()
-            .filter(|&(_, value)| *value > Rational::ZERO)
-            .map(|(&addr, _)| addr)
-            .collect()
-    }
-
     pub fn build_bundle_header(
         &self,
         tree: Arc<BlockTree<Actions>>,
@@ -249,58 +243,86 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         )
     }
 
-    pub fn get_profit_collectors(
+    pub fn get_balance_deltas(
         &self,
         tx_index: u64,
         at: PriceAt,
-        bundle_transfers: &[NormalizedTransfer],
+        tx_transfers: &[NormalizedTransfer],
         metadata: Arc<Metadata>,
         pricing: bool,
-    ) -> Option<TokenProfits> {
+    ) -> Option<TransactionAccounting> {
         let deltas = self.calculate_transfer_deltas(bundle_transfers);
-
-        let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), pricing)?;
-
-        let profit_collectors = self.profit_collectors(&addr_usd_deltas);
 
         self.get_token_profits(tx_index as usize, at, metadata, profit_collectors, deltas, pricing)
     }
 
     pub fn get_token_profits(
         &self,
+        tx_hash: B256,
         tx_index: usize,
         at: PriceAt,
         metadata: Arc<Metadata>,
-        profit_collectors: Vec<Address>,
         deltas: AddressDeltas,
         use_cex_pricing: bool,
-    ) -> Option<TokenProfits> {
-        let token_profits = profit_collectors
+    ) -> Option<TransactionAccounting> {
+        let address_deltas: Vec<AddressBalanceDeltas> = deltas
             .into_iter()
-            .filter_map(|collector| deltas.get(&collector).map(|d| (collector, d)))
-            .flat_map(|(collector, token_amounts)| {
-                token_amounts
-                    .iter()
-                    .zip(vec![collector].into_iter().cycle())
-            })
-            .filter_map(|((token, amount), collector)| {
-                let usd_value = if use_cex_pricing {
-                    self.get_token_value_cex(*token, amount.clone(), &metadata)
-                } else {
-                    self.get_token_value_dex(tx_index, at, *token, amount, &metadata)?
-                };
+            .map(|(address, token_deltas)| {
+                let deltas: Vec<TokenBalanceDelta> = token_deltas
+                    .into_iter()
+                    .map(|(token, amount)| {
+                        let usd_value = if use_cex_pricing {
+                            self.get_token_value_cex(*token, amount.clone(), &metadata)
+                        } else {
+                            self.get_token_value_dex(tx_index, at, *token, *amount, &metadata)?
+                        };
 
-                Some(TokenProfit {
-                    profit_collector: collector,
-                    token:            self.db.try_fetch_token_info(*token).ok()?,
-                    amount:           amount.clone().to_float(),
-                    usd_value:        usd_value.to_float(),
-                })
+                        TokenBalanceDelta {
+                            token:     self.db.try_fetch_token_info(*token).ok()?,
+                            amount:    amount.clone().to_float(),
+                            usd_value: amount * usd_value,
+                        }
+                    })
+                    .collect();
+
+                let name = self.fetch_address_name(*address);
+
+                AddressBalanceDeltas { address, name, token_deltas: token_profits }
             })
             .collect();
 
-        Some(TokenProfits { profits: token_profits })
+        Some(TransactionAccounting { tx_hash, address_deltas })
+    }
+
+    pub fn fetch_address_name(&self, address: Address) -> Option<String> {
+        let protocol_name = self
+            .db
+            .get_protocol_de(address)
+            .ok()
+            .map(|protocol| protocol.to_string());
+
+        protocol_name.or_else(|| {
+            self.db
+                .try_fetch_searcher_info(address, Some(address))
+                .ok()
+                .and_then(|(searcher_eoa, searcher_contract)| {
+                    searcher_eoa
+                        .map(|eoa| eoa.describe())
+                        .or_else(|| searcher_contract.map(|contract| contract.describe()))
+                })
+                .or_else(|| {
+                    self.db
+                        .try_fetch_builder_info(address)
+                        .ok()
+                        .and_then(|builder_info| builder_info.map(|info| info.describe()))
+                })
+                .or_else(|| {
+                    self.db
+                        .try_fetch_address_metadata(address)
+                        .ok()
+                        .and_then(|metadata| metadata.describe())
+                })
+        })
     }
 }
 

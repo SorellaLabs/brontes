@@ -76,6 +76,27 @@ impl BuilderInfo {
             .ultrasound_relay_collateral_address
             .or(self.ultrasound_relay_collateral_address.take());
     }
+
+    pub fn describe(&self) -> String {
+        let mut description = String::new();
+
+        if let Some(name) = &self.name {
+            description.push_str(name);
+        } else {
+            // If no name is provided, use a placeholder or generic term
+            description.push_str("Unknown Block Builder");
+        }
+
+        // Add fund information if it exists and is not Fund::None
+        if let Some(fund) = &self.fund {
+            if *fund != Fund::None {
+                description.push_str(" operated by ");
+                description.push_str(&fund.to_string());
+            }
+        }
+
+        description
+    }
 }
 
 implement_table_value_codecs_with_zc!(BuilderInfoRedefined);

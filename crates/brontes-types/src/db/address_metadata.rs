@@ -32,6 +32,16 @@ impl AddressMetadata {
             .as_ref()
             .map_or(false, |c| c.verified_contract.unwrap_or(false))
     }
+
+    pub fn describe(&self) -> Option<String> {
+        self.entity_name
+            .clone()
+            .or_else(|| self.nametag.clone())
+            .or_else(|| self.address_type.clone())
+            .or_else(|| self.ens.clone())
+            .or_else(|| self.social_metadata.twitter.clone())
+            .or_else(|| self.labels.first().cloned())
+    }
 }
 
 implement_table_value_codecs_with_zc!(AddressMetadataRedefined);
