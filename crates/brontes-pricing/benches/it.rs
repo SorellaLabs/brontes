@@ -1,7 +1,6 @@
+use brontes_pricing::test_utils::BrontesPricingBencher;
 use brontes_types::constants::USDC_ADDRESS;
 use criterion::{criterion_group, criterion_main, Criterion};
-
-use crate::test_utils::BrontesPricingBencher;
 
 pub fn bench_block_pricing(c: &mut Criterion) {
     let bencher = BrontesPricingBencher::new(USDC_ADDRESS);
