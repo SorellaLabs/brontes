@@ -10,7 +10,10 @@ use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
 use bytes::BufMut;
 use ethers::{abi::ethabi::Bytes, prelude::AbiError};
-use malachite::Rational;
+use malachite::{
+    num::{arithmetic::traits::Pow, basic::traits::One},
+    Rational,
+};
 use serde::{Deserialize, Serialize};
 
 use self::batch_request::get_v3_pool_data_batch_request;
@@ -124,6 +127,9 @@ pub const MINT_EVENT_SIGNATURE: B256 = FixedBytes([
     122, 83, 8, 11, 164, 20, 21, 139, 231, 236, 105, 185, 135, 181, 251, 125, 7, 222, 225, 1, 254,
     133, 72, 143, 8, 83, 174, 22, 35, 157, 11, 222,
 ]);
+
+pub const PIP: Rational = Rational::const_from_unsigneds(10001u64, 10000u64);
+pub const TEN: Rational = Rational::const_from_unsigned(10);
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UniswapV3Pool {
@@ -319,19 +325,19 @@ impl UpdatableProtocol for UniswapV3Pool {
     }
 
     fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
-        let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
+        let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)? as i64;
         let shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
 
         let price = match shift.cmp(&0) {
-            Ordering::Less => 1.0001_f64.powi(tick) / 10_f64.powi(-shift as i32),
-            Ordering::Greater => 1.0001_f64.powi(tick) * 10_f64.powi(shift as i32),
-            Ordering::Equal => 1.0001_f64.powi(tick),
+            Ordering::Less => PIP.pow(tick) / TEN.pow(-shift as i64),
+            Ordering::Greater => PIP.pow(tick) * TEN.pow(shift as i64),
+            Ordering::Equal => PIP.pow(tick),
         };
 
         if base_token == self.token_a {
-            Ok(Rational::try_from(price).unwrap())
+            Ok(price)
         } else {
-            Ok(Rational::try_from(1.0 / price).unwrap())
+            Ok(Rational::ONE / price)
         }
     }
 
@@ -379,7 +385,7 @@ impl UniswapV3Pool {
         pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::NoStateError(pair_address));
+            return Err(AmmError::NoStateError(pair_address))
         }
 
         Ok(pool)
@@ -393,7 +399,7 @@ impl UniswapV3Pool {
         provider: Arc<M>,
     ) {
         if tick_amount.is_negative() {
-            return;
+            return
         }
 
         if self.tick == 0 {
