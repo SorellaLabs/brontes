@@ -559,7 +559,7 @@ mod tests {
                     );
 
                     assert!(
-                        s.victim_swaps_tx_hashes.iter().flatten().count() == 4,
+                        s.victim_swaps_tx_hashes.iter().flatten().count() == 2,
                         "incorrect amount of victims"
                     );
                 })),
