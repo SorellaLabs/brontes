@@ -290,17 +290,6 @@ impl AllPairGraph {
         .collect_vec()
     }
 
-    pub fn get_paths(
-        &self,
-        pair: Pair,
-        block: u64,
-        connectivity_wight: usize,
-        connections: usize,
-    ) -> Vec<Vec<Vec<SubGraphEdge>>> {
-        let ignore = HashSet::new();
-        self.get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections)
-    }
-
     pub fn get_all_known_addresses(&self) -> Vec<Address> {
         self.token_to_index.keys().copied().collect_vec()
     }
