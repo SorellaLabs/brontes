@@ -130,7 +130,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         connectivity_wight: usize,
         connections: usize,
     ) -> Vec<PoolPairInfoDirection> {
-        #[cfg(not(feature = "testing"))]
+        #[cfg(not(feature = "tests"))]
         if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
             return self
                 .subgraph_verifier
@@ -161,7 +161,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     }
 
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
-        #[cfg(not(feature = "testing"))]
+        #[cfg(not(feature = "tests"))]
         if let Err(e) =
             self.db
                 .save_pair_at(block, pair, subgraph.get_all_pools().flatten().cloned().collect())

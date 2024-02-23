@@ -14,7 +14,7 @@ use tracing::error;
 
 use crate::{
     lazy::{PoolFetchError, PoolFetchSuccess},
-    protocols::errors::{AmmError, ArithmeticError, EventLogError},
+    protocols::errors::{AmmError, ArithmeticError},
     uniswap_v2::UniswapV2Pool,
     uniswap_v3::UniswapV3Pool,
     LoadResult, PoolState,
@@ -25,8 +25,8 @@ pub trait UpdatableProtocol {
     fn address(&self) -> Address;
     fn tokens(&self) -> Vec<Address>;
     fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError>;
-    fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError>;
-    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError>;
+    fn sync_from_action(&mut self, action: Actions) -> Result<(), AmmError>;
+    fn sync_from_log(&mut self, log: Log) -> Result<(), AmmError>;
 }
 
 pub trait LoadState {

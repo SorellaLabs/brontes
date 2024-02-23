@@ -96,6 +96,7 @@ tests = [
   "brontes-database/tests",
   "brontes-classifier/tests",
   "brontes-inspect/tests",
+  "brontes-pricing/tests",
 ]
 
 local-reth = [

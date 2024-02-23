@@ -25,15 +25,12 @@ use brontes_types::normalized_actions::pool::NormalizedPoolConfigUpdate;
 mod graphs;
 pub mod protocols;
 pub mod types;
-use std::sync::atomic::Ordering::SeqCst;
-
-#[cfg(test)]
-#[cfg(feature = "testing")]
-pub mod test_utils;
-
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering::SeqCst},
+        Arc,
+    },
     task::{Context, Poll},
 };
 
@@ -1004,7 +1001,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     }))
 }
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "tests")]
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn get_lazy_loader(&mut self) -> &mut LazyExchangeLoader<T> {
         &mut self.lazy_loader

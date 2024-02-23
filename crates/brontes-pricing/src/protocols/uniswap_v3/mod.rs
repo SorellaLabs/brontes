@@ -2,7 +2,7 @@ pub mod batch_request;
 pub mod uniswap_v3_math;
 use std::{cmp::Ordering, collections::HashMap, sync::Arc};
 
-use alloy_primitives::{Address, FixedBytes, Log, B256, I256, U256};
+use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{Decodable, Encodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
@@ -299,11 +299,11 @@ impl UpdatableProtocol for UniswapV3Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
+    fn sync_from_action(&mut self, _action: Actions) -> Result<(), AmmError> {
         todo!("syncing from actions is currently not supported for v3")
     }
 
-    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
+    fn sync_from_log(&mut self, log: Log) -> Result<(), AmmError> {
         let event_signature = log.topics()[0];
 
         if event_signature == BURN_EVENT_SIGNATURE {

@@ -1,16 +1,10 @@
 [package]
-name = "brontes-pricing"
+name = "pricing-test-utils"
 version = "0.1.0"
 edition = "2021"
 
-[[bench]]
-name = "it"
-harness = false
-
 [dependencies]
 #brontes 
-brontes-types.workspace = true
-
 itertools = "0.12.0"
 redefined.workspace = true
 
@@ -27,7 +21,6 @@ reth-codecs.workspace = true
 tracing.workspace = true
 # async
 rayon.workspace = true
-tokio = { workspace = true, features = ["full"] }
 
 # numbers
 malachite = { workspace = true, features = ["enable_serde"] }
@@ -63,20 +56,12 @@ codecs-derive.workspace = true
 proptest = "1.4"
 proptest-derive = "0.4"
 arbitrary = "1.3"
-rand = "0.8.5"
 modular-bitfield = "0.11.2"
 bytes = "1.5"
-eyre.workspace = true
 rkyv.workspace = true
 dashmap = "5.5.3"
 
-criterion = { version = "0.5", features = [
-  "async",
-  "async_tokio",
-], optional = true }
-
-[dev-dependencies]
-pricing-test-utils = { path = "./pricing-test-utils" }
+criterion = { version = "0.5", features = ["async", "async_tokio"] }
 brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
@@ -91,18 +76,15 @@ eyre.workspace = true
 
 [features]
 default = []
-tests = ["criterion"]
 uni-v3-ticks = []
 local-reth = [
   "reth-tracing-ext/local-reth",
-  "pricing-test-utils/local-reth",
   "brontes-types/local-reth",
   "brontes-core/local-reth",
   "brontes-classifier/local-reth",
   "brontes-database/local-reth",
 ]
 local-clickhouse = [
-  "pricing-test-utils/local-clickhouse",
   "reth-tracing-ext/local-clickhouse",
   "brontes-core/local-clickhouse",
   "brontes-classifier/local-clickhouse",
