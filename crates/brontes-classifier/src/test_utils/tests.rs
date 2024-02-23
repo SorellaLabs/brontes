@@ -171,38 +171,39 @@ impl ClassifierTestUtils {
         tx: UnboundedSender<DexPriceMsg>,
     ) -> bool {
         if let Some(quote) = quotes {
-            needs_tokens
-                .iter()
-                .zip(vec![quote_token].into_iter().cycle())
-                .map(|(token, quote)| Pair(*token, quote))
-                .filter(|pair| !quote.has_quote(pair, 0))
-                .map(|pair| {
-                    let update = DexPriceMsg::Update(PoolUpdate {
-                        block,
-                        tx_idx: 0,
-                        logs: vec![],
-                        action: make_fake_swap(pair),
-                    });
-                    tx.send(update).unwrap();
-                })
-                .count()
-                != 0
-        } else {
-            needs_tokens
-                .iter()
-                .zip(vec![quote_token].into_iter().cycle())
-                .map(|(token, quote)| Pair(*token, quote))
-                .for_each(|pair| {
-                    let update = DexPriceMsg::Update(PoolUpdate {
-                        block,
-                        tx_idx: 0,
-                        logs: vec![],
-                        action: make_fake_swap(pair),
-                    });
-                    tx.send(update).unwrap();
-                });
-            true
+            if !quote.0.is_empty() {
+                return needs_tokens
+                    .iter()
+                    .zip(vec![quote_token].into_iter().cycle())
+                    .map(|(token, quote)| Pair(*token, quote))
+                    .filter(|pair| !quote.has_quote(pair, 0))
+                    .map(|pair| {
+                        let update = DexPriceMsg::Update(PoolUpdate {
+                            block,
+                            tx_idx: 0,
+                            logs: vec![],
+                            action: make_fake_swap(pair),
+                        });
+                        tx.send(update).unwrap();
+                    })
+                    .count()
+                    != 0
+            }
         }
+        needs_tokens
+            .iter()
+            .zip(vec![quote_token].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
+        true
     }
 
     pub async fn build_tree_tx(
@@ -235,7 +236,6 @@ impl ClassifierTestUtils {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
             ctr.store(true, SeqCst);
-            // triggers close
 
             if let Some((_p_block, pricing)) = pricer.next().await {
                 Some(pricing)
