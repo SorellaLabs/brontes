@@ -7,6 +7,10 @@ edition = "2021"
 name = "it"
 harness = false
 
+[[bench]]
+name = "state"
+harness = false
+
 [dependencies]
 #brontes 
 brontes-types.workspace = true
