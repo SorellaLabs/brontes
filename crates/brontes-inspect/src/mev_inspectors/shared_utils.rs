@@ -7,7 +7,12 @@ use std::{
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
+    db::{
+        cex::CexExchange,
+        dex::PriceAt,
+        metadata::Metadata,
+        mev::{TokenBalanceDelta, TransactionAccounting},
+    },
     mev::{BundleHeader, MevType, TokenProfit, TokenProfits},
     normalized_actions::{NormalizedSwap, NormalizedTransfer},
     pair::Pair,
@@ -18,6 +23,7 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
+use reth_primitives::TxHash;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
@@ -155,25 +161,39 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     pub fn build_bundle_header(
         &self,
+        tree: Arc<BlockTree<Actions>>,
+        bundle_txes: Option<Vec<TxHash>>,
         info: &TxInfo,
         profit_usd: f64,
         at: PriceAt,
-        bundle_transfers: Vec<&[NormalizedTransfer]>,
+        bundle_transfers: Option<Vec<&[NormalizedTransfer]>>,
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
-        //TODO: Figure out how we can calculate the token profits for this bundle using
-        // generic actions
-        let token_profits = self
-            .get_profit_collectors(
-                info.tx_index,
-                at,
-                bundle_transfers,
-                metadata.clone(),
-                mev_type.use_cex_pricing_for_deltas(),
-            )
-            .unwrap_or_default();
+        if let Some(bundle_transfers) = bundle_transfers {
+            let balance_deltas = self
+                .get_profit_collectors(
+                    info.tx_index,
+                    at,
+                    bundle_transfers,
+                    metadata.clone(),
+                    mev_type.use_cex_pricing_for_deltas(),
+                )
+                .unwrap_or_default();
+        } else {
+            let transfers = tree.collect_for_txes(
+                bundle_txes.unwrap(),
+                TreeSearchBuilder::default().with_actions(Actions::is_transfer),
+            );
+            transfers.iter().for_each(|(tx_hash, transfers)| {
+                let forced_transfers = transfers
+                    .iter()
+                    .map(|t| t.force_transfer())
+                    .collect::<Vec<_>>();
+                let deltas = self.calculate_transfer_deltas(&forced_transfers);
+            });
+        }
 
         let bribe_usd = gas_details
             .iter()
@@ -187,9 +207,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             eoa: info.eoa,
             mev_contract: info.mev_contract,
             profit_usd,
-            token_profits,
             bribe_usd,
             mev_type,
+            balance_deltas,
         }
     }
 

@@ -156,6 +156,26 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
+    /// For all specified transactions, goes through the tree and collects all
+    /// actions specified by the tree search builder.
+    pub fn collect_for_txes(
+        &self,
+        tx_hashes: Vec<B256>,
+        call: TreeSearchBuilder<V>,
+    ) -> HashMap<B256, Vec<V>> {
+        self.run_in_span_ref(|this| {
+            tx_hashes
+                .par_iter()
+                .filter_map(|hash| {
+                    this.tx_roots
+                        .iter()
+                        .find(|r| r.tx_hash == *hash)
+                        .map(|root| (hash.clone(), root.collect(&call)))
+                })
+                .collect()
+        })
+    }
+
     /// For all transactions, goes through the tree and collects all actions
     /// specified by the tree search builder.
     pub fn collect_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<V>> {

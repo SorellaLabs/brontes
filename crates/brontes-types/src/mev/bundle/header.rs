@@ -50,6 +50,7 @@ pub struct BundleHeader {
 #[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TransactionAccounting {
+    pub tx_hash:        B256,
     pub address_deltas: Vec<AddressBalanceDeltas>,
 }
 
@@ -69,22 +70,6 @@ pub struct TokenBalanceDelta {
     pub token:     TokenInfoWithAddress,
     pub amount:    f64,
     pub usd_value: f64,
-}
-
-impl AddressBalanceDeltas {
-    pub fn compose(&mut self, to_compose: &AddressBalanceDeltas) {
-        for profit in &to_compose.token_deltas {
-            if let Some(existing_profit) = self
-                .token_deltas
-                .iter_mut()
-                .find(|p| p.token == profit.token)
-            {
-                if existing_profit.amount < profit.amount {
-                    existing_profit.amount = profit.amount;
-                }
-            }
-        }
-    }
 }
 
 impl Display for AddressBalanceDeltas {
@@ -133,7 +118,7 @@ impl Display for AddressBalanceDeltas {
         Ok(())
     }
 }
-
+/*
 impl Serialize for BundleHeader {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -191,7 +176,7 @@ impl Serialize for BundleHeader {
         ser_struct.end()
     }
 }
-
+*/
 impl DbRow for BundleHeader {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "block_number",

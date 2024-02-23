@@ -154,21 +154,18 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
     let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.bribe_usd;
 
     // Compose token profits
-    classified_sandwich
-        .token_profits
-        .compose(&jit_classified.token_profits);
 
     // Create new classified MEV data
     let new_classified = BundleHeader {
-        tx_index:      classified_sandwich.tx_index,
-        tx_hash:       *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
-        mev_type:      MevType::JitSandwich,
-        block_number:  classified_sandwich.block_number,
-        eoa:           jit_classified.eoa,
-        mev_contract:  classified_sandwich.mev_contract,
-        profit_usd:    jit_liq_profit,
-        token_profits: classified_sandwich.token_profits,
-        bribe_usd:     classified_sandwich.bribe_usd,
+        tx_index:       classified_sandwich.tx_index,
+        tx_hash:        *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
+        mev_type:       MevType::JitSandwich,
+        block_number:   classified_sandwich.block_number,
+        eoa:            jit_classified.eoa,
+        mev_contract:   classified_sandwich.mev_contract,
+        profit_usd:     jit_liq_profit,
+        balance_deltas: classified_sandwich.balance_deltas,
+        bribe_usd:      classified_sandwich.bribe_usd,
     };
 
     Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
