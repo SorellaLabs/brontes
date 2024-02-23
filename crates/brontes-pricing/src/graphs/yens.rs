@@ -123,7 +123,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: Fn(&N) -> bool + Send + Sync,
 {
-    let tp = rayon::ThreadPoolBuilder::default()
+    let _tp = rayon::ThreadPoolBuilder::default()
         .num_threads(3)
         .thread_name(|i| format!("yen thread {i}"))
         .build()
@@ -148,60 +148,109 @@ where
         let previous = &routes[ki].nodes;
         let prev_weight = &routes[ki].weights;
 
-        let k_routes_vec = tp.install(|| {
-            (0..(previous.len() - 1))
-                .into_par_iter()
-                .filter_map(|i| {
-                    let spur_node = &previous[i];
-                    let root_path = &previous[0..i];
-                    let weight_root_path = &prev_weight[0..i];
+        // let k_routes_vec = _tp.install(|| {
+        //     (0..(previous.len() - 1))
+        //         .into_par_iter()
+        //         .filter_map(|i| {
+        //             let spur_node = &previous[i];
+        //             let root_path = &previous[0..i];
+        //             let weight_root_path = &prev_weight[0..i];
+        //
+        //             let mut filtered_edges = HashSet::new();
+        //             for path in &routes {
+        //                 if path.nodes.len() > i + 1
+        //                     && &path.nodes[0..i] == root_path
+        //                     && &path.nodes[i] == spur_node
+        //                 {
+        //                     filtered_edges.insert((&path.nodes[i], &path.nodes[i +
+        // 1]));                 }
+        //             }
+        //             let filtered_nodes: HashSet<&N> = HashSet::from_iter(root_path);
+        //             // We are creating a new successor function that will not return
+        // the             // filtered edges and nodes that routes already used.
+        //             let filtered_successor = |n: &N| {
+        //                 successors(n)
+        //                     .into_iter()
+        //                     .filter(|(n2, _)| {
+        //                         !filtered_nodes.contains(&n2) &&
+        // !filtered_edges.contains(&(n, n2))                     })
+        //                     .collect::<Vec<_>>()
+        //             };
+        //
+        //             // Let us find the spur path from the spur node to the sink
+        // using.             if let Some((values, spur_path, _)) =
+        // dijkstra_internal(                 spur_node,
+        //                 &filtered_successor,
+        //                 &path_value,
+        //                 &success,
+        //                 max_iters,
+        //             ) {
+        //                 let nodes: Vec<N> =
+        // root_path.iter().cloned().chain(spur_path).collect();
+        // let weights: Vec<E> =
+        // weight_root_path.iter().cloned().chain(values).collect();
+        // // If we have found the same path before, we will not add it.
+        //                 if !visited.contains(&nodes) {
+        //                     // Since we don't know the root_path cost, we need to
+        // recalculate.                     let cost = make_cost(&nodes,
+        // &successors);                     let path = Path { nodes, weights,
+        // cost };                     // Mark as visited
+        //                     visited.insert(path.nodes.clone());
+        //                     // Build a min-heap
+        //                     return Some(Reverse(path))
+        //                 }
+        //             }
+        //             None
+        //         })
+        //         .collect::<Vec<_>>()
+        // });
+        // k_routes.extend(k_routes_vec);
 
-                    let mut filtered_edges = HashSet::new();
-                    for path in &routes {
-                        if path.nodes.len() > i + 1
-                            && &path.nodes[0..i] == root_path
-                            && &path.nodes[i] == spur_node
-                        {
-                            filtered_edges.insert((&path.nodes[i], &path.nodes[i + 1]));
-                        }
-                    }
-                    let filtered_nodes: HashSet<&N> = HashSet::from_iter(root_path);
-                    // We are creating a new successor function that will not return the
-                    // filtered edges and nodes that routes already used.
-                    let filtered_successor = |n: &N| {
-                        successors(n)
-                            .into_iter()
-                            .filter(|(n2, _)| {
-                                !filtered_nodes.contains(&n2) && !filtered_edges.contains(&(n, n2))
-                            })
-                            .collect::<Vec<_>>()
-                    };
+        // Iterate over every node except the sink node.
+        for i in 0..(previous.len() - 1) {
+            let spur_node = &previous[i];
+            let root_path = &previous[0..i];
+            let weight_root_path = &prev_weight[0..i];
 
-                    if let Some((values, spur_path, _)) = dijkstra_internal(
-                        spur_node,
-                        &filtered_successor,
-                        &path_value,
-                        &success,
-                        max_iters,
-                    ) {
-                        let nodes: Vec<N> = root_path.iter().cloned().chain(spur_path).collect();
-                        let weights: Vec<E> =
-                            weight_root_path.iter().cloned().chain(values).collect();
-                        // If we have found the same path before, we will not add it.
-                        if !visited.contains(&nodes) {
-                            // Since we don't know the root_path cost, we need to
-                            let cost = make_cost(&nodes, &successors);
-                            let path = Path { nodes, weights, cost }; // Mark as visited
-                            visited.insert(path.nodes.clone());
-                            // Build a min-heap
-                            return Some(Reverse(path))
-                        }
-                    }
-                    None
-                })
-                .collect::<Vec<_>>()
-        });
-        k_routes.extend(k_routes_vec);
+            let mut filtered_edges = HashSet::new();
+            for path in &routes {
+                if path.nodes.len() > i + 1
+                    && &path.nodes[0..i] == root_path
+                    && &path.nodes[i] == spur_node
+                {
+                    filtered_edges.insert((&path.nodes[i], &path.nodes[i + 1]));
+                }
+            }
+            let filtered_nodes: HashSet<&N> = HashSet::from_iter(root_path);
+            // We are creating a new successor function that will not return the
+            // filtered edges and nodes that routes already used.
+            let filtered_successor = |n: &N| {
+                successors(n)
+                    .into_iter()
+                    .filter(|(n2, _)| {
+                        !filtered_nodes.contains(&n2) && !filtered_edges.contains(&(n, n2))
+                    })
+                    .collect::<Vec<_>>()
+            };
+
+            // Let us find the spur path from the spur node to the sink using.
+            if let Some((values, spur_path, _)) =
+                dijkstra_internal(spur_node, &filtered_successor, &path_value, &success, max_iters)
+            {
+                let nodes: Vec<N> = root_path.iter().cloned().chain(spur_path).collect();
+                let weights: Vec<E> = weight_root_path.iter().cloned().chain(values).collect();
+                // If we have found the same path before, we will not add it.
+                if !visited.contains(&nodes) {
+                    // Since we don't know the root_path cost, we need torecalculate.
+                    let cost = make_cost(&nodes, &successors);
+                    let path = Path { nodes, weights, cost };
+                    // Mark as visited
+                    visited.insert(path.nodes.clone());
+                    // Build a min-heap
+                    k_routes.push(Reverse(path));
+                }
+            }
+        }
 
         if let Some(k_route) = k_routes.pop() {
             let route = k_route.0;
