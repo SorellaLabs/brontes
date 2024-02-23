@@ -64,15 +64,15 @@ impl DexQuotes {
     /// the price at all previous indexes in the block
     pub fn price_at_or_before(&self, pair: Pair, mut tx: usize) -> Option<DexPrices> {
         if pair.0 == pair.1 {
-            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE });
+            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
         }
 
         loop {
             if let Some(price) = self.get_price(pair, tx) {
-                return Some(price.clone());
+                return Some(price.clone())
             }
             if tx == 0 {
-                break;
+                break
             }
 
             tx -= 1;
@@ -102,7 +102,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
 #[redefined_attr(derive(
     Debug,
     Clone,

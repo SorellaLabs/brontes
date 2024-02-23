@@ -62,7 +62,7 @@ impl RunArgs {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
-        let clickhouse = static_object(load_clickhouse());
+        let clickhouse = static_object(load_clickhouse().await);
 
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 

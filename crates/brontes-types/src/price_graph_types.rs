@@ -10,13 +10,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, Protocol};
 
-#[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Redefined)]
+#[derive(Debug, Default, Clone, Serialize, PartialEq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
 
 implement_table_value_codecs_with_zc!(SubGraphsEntryRedefined);
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Redefined)]
+#[derive(Debug, Clone, Default, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SubGraphEdge {
     pub info:                   PoolPairInfoDirection,
@@ -46,7 +46,7 @@ impl SubGraphEdge {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash, Redefined)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Serialize, Deserialize, Hash, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
@@ -62,7 +62,7 @@ impl PoolPairInformation {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PoolPairInfoDirection {
     pub info:       PoolPairInformation,
