@@ -23,7 +23,6 @@ use petgraph::{
     prelude::*,
     visit::{VisitMap, Visitable},
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::error;
 
 use crate::{types::ProtocolState, AllPairGraph, Pair};
@@ -115,7 +114,7 @@ impl PairSubGraph {
 
         graph.extend_with_edges(
             connections
-                .into_par_iter()
+                .into_iter()
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
@@ -209,7 +208,7 @@ impl PairSubGraph {
 
         self.graph.extend_with_edges(
             connections
-                .into_par_iter()
+                .into_iter()
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
