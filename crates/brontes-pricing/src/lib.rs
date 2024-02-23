@@ -1025,7 +1025,7 @@ pub mod test {
     };
     use futures::future::join_all;
     use itertools::Itertools;
-    use malachite::{num::basic::traits::Zero, Rational};
+    use malachite::Rational;
 
     #[brontes_macros::test(threads = 11)]
     async fn test_pricing_variance() {

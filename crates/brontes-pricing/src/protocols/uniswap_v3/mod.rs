@@ -9,7 +9,7 @@ use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
 use bytes::BufMut;
-use malachite::{num::arithmetic::traits::RoundToMultiple, Rational};
+use malachite::Rational;
 use serde::{Deserialize, Serialize};
 
 use self::batch_request::get_v3_pool_data_batch_request;
