@@ -57,6 +57,10 @@ impl ClassifierTestUtils {
         Self { classifier, trace_loader, dex_pricing_receiver: rx }
     }
 
+    pub fn get_tracing_provider(&self) -> Arc<Box<dyn TracingProvider>> {
+        self.get_provider()
+    }
+
     pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
         self.libmdbx.try_fetch_token_info(address).unwrap()
     }
@@ -236,6 +240,7 @@ impl ClassifierTestUtils {
             let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
             classifier.close();
             ctr.store(true, SeqCst);
+            // triggers close
 
             if let Some((_p_block, pricing)) = pricer.next().await {
                 Some(pricing)
