@@ -12,11 +12,11 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
     // grab threads if specified
     let threads = Parser::parse2(MetaNameValue::parse, attr)
         .map(|name_val| {
-            if name_val.path.segments.last()?.ident.to_string() == "threads" {
+            if name_val.path.segments.last()?.ident == "threads" {
                 let Expr::Lit(ref a) = name_val.value else { return None };
                 match &a.lit {
                     syn::Lit::Int(i) => return Some(usize::from_str(i.base10_digits()).unwrap()),
-                    _ => return None,
+                    _ => None,
                 }
             } else {
                 None

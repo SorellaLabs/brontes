@@ -325,31 +325,31 @@ impl UpdatableProtocol for UniswapV3Pool {
     }
 
     fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
-        let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
+        let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)? as i64;
         let shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
-        let price = match shift.cmp(&0) {
-            Ordering::Less => 1.0001_f64.powi(tick) / 10_f64.powi(-shift as i32),
-            Ordering::Greater => 1.0001_f64.powi(tick) * 10_f64.powi(shift as i32),
-            Ordering::Equal => 1.0001_f64.powi(tick),
-        };
-
-        if base_token == self.token_a {
-            Ok(Rational::try_from(price).unwrap())
-        } else {
-            Ok(Rational::try_from(1.0 / price).unwrap())
-        }
-
         // let price = match shift.cmp(&0) {
-        //     Ordering::Less => PIP.pow(tick) / TEN.pow(-shift as i64),
-        //     Ordering::Greater => PIP.pow(tick) * TEN.pow(shift as i64),
-        //     Ordering::Equal => PIP.pow(tick),
+        //     Ordering::Less => 1.0001_f64.powi(tick) / 10_f64.powi(-shift as i32),
+        //     Ordering::Greater => 1.0001_f64.powi(tick) * 10_f64.powi(shift as i32),
+        //     Ordering::Equal => 1.0001_f64.powi(tick),
         // };
         //
         // if base_token == self.token_a {
-        //     Ok(price)
+        //     Ok(Rational::try_from(price).unwrap())
         // } else {
-        //     Ok(Rational::ONE / price)
+        //     Ok(Rational::try_from(1.0 / price).unwrap())
         // }
+
+        let price = match shift.cmp(&0) {
+            Ordering::Less => PIP.pow(tick) / TEN.pow(-shift as i64),
+            Ordering::Greater => PIP.pow(tick) * TEN.pow(shift as i64),
+            Ordering::Equal => PIP.pow(tick),
+        };
+
+        if base_token == self.token_a {
+            Ok(price)
+        } else {
+            Ok(Rational::ONE / price)
+        }
     }
 
     // NOTE: This function will not populate the tick_bitmap and ticks, if you want

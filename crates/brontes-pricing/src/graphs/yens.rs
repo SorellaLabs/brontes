@@ -108,9 +108,9 @@ where
 
 pub fn yen<N, C, E, FN, IN, FS, PV>(
     start: &N,
-    mut successors: FN,
-    mut success: FS,
-    mut path_value: PV,
+    successors: FN,
+    success: FS,
+    path_value: PV,
     k: usize,
     max_iters: usize,
 ) -> Vec<(Vec<E>, C)>
@@ -129,8 +129,7 @@ where
         .build()
         .unwrap();
 
-    let Some((e, n, c)) =
-        dijkstra_internal(start, &mut successors, &mut path_value, &mut success, 20_000)
+    let Some((e, n, c)) = dijkstra_internal(start, &successors, &path_value, &success, 20_000)
     else {
         return vec![];
     };
