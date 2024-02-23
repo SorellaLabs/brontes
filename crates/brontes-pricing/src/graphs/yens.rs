@@ -4,6 +4,7 @@ use std::{
     cmp::{Ordering, Reverse},
     collections::{BinaryHeap, HashSet},
     hash::Hash,
+    time::{Duration, SystemTime},
 };
 
 use dashmap::DashSet;
@@ -111,8 +112,9 @@ pub fn yen<N, C, E, FN, IN, FS, PV>(
     successors: FN,
     success: FS,
     path_value: PV,
-    k: usize,
+    k: Option<usize>,
     max_iters: usize,
+    extra_path_timeout: Duration,
 ) -> Vec<(Vec<E>, C)>
 where
     N: Eq + Hash + Clone + Send + Sync,
@@ -123,6 +125,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: Fn(&N) -> bool + Send + Sync,
 {
+    let k = k.unwrap_or(usize::MAX);
     let tp = rayon::ThreadPoolBuilder::default()
         .num_threads(4)
         .thread_name(|i| format!("yen thread {i}"))
@@ -139,9 +142,15 @@ where
     let mut routes = vec![Path { nodes: n, weights: e, cost: c }];
     // A min-heap to store our lowest-cost route candidate
     let mut k_routes = BinaryHeap::new();
+    let start = SystemTime::now();
     for ki in 0..(k - 1) {
         if routes.len() <= ki || routes.len() == k {
             // We have no more routes to explore, or we have found enough.
+            break
+        }
+
+        if SystemTime::now().duration_since(start.clone()).unwrap() > extra_path_timeout {
+            tracing::debug!("timeout for extra routes hit");
             break
         }
         // Take the most recent route to explore new spurs.

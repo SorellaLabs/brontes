@@ -4,7 +4,10 @@ mod registry;
 mod state_tracker;
 mod subgraph;
 mod yens;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
@@ -97,14 +100,15 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         pair: Pair,
         ignore: HashSet<Pair>,
         connectivity_wight: usize,
-        connections: usize,
+        connections: Option<usize>,
+        timeout: Duration,
     ) -> Vec<SubGraphEdge> {
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
             return edges
         }
 
         self.all_pair_graph
-            .get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections)
+            .get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections, timeout)
             .into_iter()
             .flatten()
             .flatten()
@@ -119,45 +123,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     ) -> Vec<PoolPairInfoDirection> {
         self.subgraph_verifier
             .create_new_subgraph(pair, block, edges, &self.graph_state)
-    }
-
-    /// creates a subpool for the pair returning all pools that need to be
-    /// loaded
-    pub fn create_subgraph_mut(
-        &mut self,
-        block: u64,
-        pair: Pair,
-        connectivity_wight: usize,
-        connections: usize,
-    ) -> Vec<PoolPairInfoDirection> {
-        #[cfg(not(feature = "tests"))]
-        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
-            return self
-                .subgraph_verifier
-                .create_new_subgraph(pair, block, edges, &self.graph_state)
-        }
-
-        let paths = self
-            .all_pair_graph
-            // We want to use the unordered pair as we always
-            // want to run the search from the unkown token to the quote.
-            // We want this beacuse our algorithm favors heavily connected
-            // nodes which most times our base token is not. This small
-            // change speeds up yens algo by a good amount.
-            .get_paths(pair, block, connectivity_wight, connections)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .collect_vec();
-
-        // search failed
-        if paths.is_empty() {
-            info!(?pair, "empty search path");
-            return vec![]
-        }
-
-        self.subgraph_verifier
-            .create_new_subgraph(pair, block, paths, &self.graph_state)
     }
 
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {

@@ -2,7 +2,7 @@ use std::{
     cmp::max,
     collections::{HashMap, HashSet},
     ops::{Deref, DerefMut},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 use alloy_primitives::Address;
@@ -200,7 +200,8 @@ impl AllPairGraph {
         ignore: &HashSet<Pair>,
         block: u64,
         connectivity_wight: usize,
-        connections: usize,
+        connections: Option<usize>,
+        timeout: Duration,
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
@@ -246,6 +247,7 @@ impl AllPairGraph {
             |node0, node1| (*node0, *node1),
             connections,
             10_000,
+            timeout,
         )
         .into_iter()
         .map(|(nodes, _)| {

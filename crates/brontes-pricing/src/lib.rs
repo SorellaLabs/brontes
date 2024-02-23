@@ -32,6 +32,7 @@ use std::{
         Arc,
     },
     task::{Context, Poll},
+    time::Duration,
 };
 
 use alloy_primitives::Address;
@@ -914,7 +915,18 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .into_par_iter()
         .map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 5)])
+                return (
+                    pair,
+                    block,
+                    vec![graph.create_subgraph(
+                        block,
+                        pair,
+                        ignore,
+                        100,
+                        None,
+                        Duration::from_millis(100),
+                    )],
+                )
             }
             (
                 pair,
@@ -925,7 +937,14 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     .collect_vec()
                     .into_par_iter()
                     .map(|(end, start)| {
-                        graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0, 12)
+                        graph.create_subgraph(
+                            block,
+                            Pair(start, end),
+                            ignore.clone(),
+                            0,
+                            None,
+                            Duration::from_millis(250),
+                        )
                     })
                     .collect::<Vec<_>>(),
             )
@@ -996,7 +1015,14 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100, 7);
+        let subgraph = graph.create_subgraph(
+            block,
+            pair,
+            HashSet::new(),
+            100,
+            None,
+            Duration::from_millis(100),
+        );
         (subgraph, pair, trigger_update.block)
     }))
 }
