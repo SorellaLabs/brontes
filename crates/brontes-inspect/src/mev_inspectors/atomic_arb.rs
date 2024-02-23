@@ -7,9 +7,9 @@ use brontes_types::{
     mev::{AtomicArb, Bundle, MevType},
     normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     tree::BlockTree,
-    ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::{Either, Itertools};
+use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
@@ -64,22 +64,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         searcher_actions: Vec<Actions>,
     ) -> Option<Bundle> {
         let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = searcher_actions
-            .iter()
-            .flat_map(|action| match action {
-                Actions::Swap(s) => vec![Either::Left(s.clone())],
-                Actions::Transfer(t) => vec![Either::Right(t.clone())],
-                Actions::FlashLoan(f) => f
-                    .child_actions
-                    .iter()
-                    .flat_map(|a| match a {
-                        Actions::Swap(s) => vec![Either::Left(s.clone())],
-                        Actions::Transfer(t) => vec![Either::Right(t.clone())],
-                        _ => vec![],
-                    })
-                    .collect(),
-                _ => vec![],
-            })
-            .partition_map(|either| either);
+            .clone()
+            .into_iter()
+            .action_unzip((Actions::split_swap, Actions::split_transfer));
 
         let possible_arb_type = self.is_possible_arb(&swaps, &transfers)?;
 
@@ -218,7 +205,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let collect = searcher_actions.iter().flatten().any(|a| a.is_collect());
         if collect {
-            return None;
+            return None
         }
 
         let swaps = searcher_actions
@@ -234,7 +221,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         // if we have a collect and no swaps then return
         if swaps == 0 || transfers < 3 {
-            return None;
+            return None
         }
 
         let gas_used = tx_info.gas_details.gas_paid();
@@ -284,14 +271,14 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> AtomicArbType {
     let end_token = swaps.last().unwrap().token_out.address;
 
     if start_token != end_token {
-        return AtomicArbType::LongTail;
+        return AtomicArbType::LongTail
     }
 
     let mut last_out = swaps.first().unwrap().token_out.address;
 
     for (index, swap) in swaps.iter().skip(1).enumerate() {
         if swap.token_in.address != last_out {
-            return AtomicArbType::CrossPair(index + 1);
+            return AtomicArbType::CrossPair(index + 1)
         }
         last_out = swap.token_out.address;
     }
@@ -341,7 +328,7 @@ fn flatten_token_deltas(deltas: TokenDeltasCalc, actions: &[Vec<Actions>]) -> Op
     // is the proper pool.
     if deltas.iter().any(|(_, v)| v.len() == 1) {
         deltas.retain(|_, v| v.len() == 1);
-        return Some(deltas);
+        return Some(deltas)
     }
 
     let transfers = actions

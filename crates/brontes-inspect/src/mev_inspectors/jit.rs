@@ -10,7 +10,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
 use clickhouse::{fixed_string::FixedString, row::*};
@@ -141,21 +141,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect): JitUnzip = searcher_actions
+        let (mints, burns, fee_collect): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
-            .filter_map(|action| match action {
-                Actions::Burn(b) => Some((None, Some(b), None)),
-                Actions::Mint(m) => Some((Some(m), None, None)),
-                Actions::Collect(c) => Some((None, None, Some(c))),
-                _ => None,
-            })
-            .multiunzip();
-
-        let mints = mints.into_iter().flatten().collect::<Vec<_>>();
-        let burns = burns.into_iter().flatten().collect::<Vec<_>>();
-        let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
+            .action_unzip((Actions::split_mint, Actions::split_burn, Actions::split_collect));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");

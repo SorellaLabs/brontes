@@ -10,7 +10,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ToFloatNearest, TreeSearchBuilder,
+    ActionIter, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -145,22 +145,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
         let all_actions = searcher_actions.clone();
-        let back_run_swaps = searcher_actions
+        let back_run_swaps: Vec<_> = searcher_actions
             .pop()?
-            .iter()
-            .filter(|s| s.is_swap())
-            .map(|s| s.clone().force_swap())
-            .collect_vec();
+            .into_iter()
+            .action_unzip((Actions::split_swap,))
+            .0;
 
         let front_run_swaps = searcher_actions
-            .iter()
-            .map(|actions| {
-                actions
-                    .iter()
-                    .filter(|s| s.is_swap())
-                    .map(|s| s.clone().force_swap())
-                    .collect_vec()
-            })
+            .clone()
+            .into_iter()
+            .map(|action| action.into_iter().action_unzip((Actions::split_swap,)).0)
             .collect_vec();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
@@ -204,10 +198,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .flatten()
             .map(|tx_actions| {
                 tx_actions
-                    .iter()
-                    .filter(|action| action.is_swap())
-                    .map(|f| f.clone().force_swap())
-                    .collect::<Vec<_>>()
+                    .clone()
+                    .into_iter()
+                    .action_unzip((Actions::split_swap,))
+                    .0
             })
             .collect::<Vec<_>>();
 

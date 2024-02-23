@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
-    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
+    ActionIter, ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
 };
 use hyper::header;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -57,28 +57,13 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        let swaps = actions
-            .iter()
-            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let liqs = actions
-            .iter()
-            .filter_map(
-                |action| {
-                    if let Actions::Liquidation(liq) = action {
-                        Some(liq)
-                    } else {
-                        None
-                    }
-                },
-            )
-            .cloned()
-            .collect::<Vec<_>>();
+        let (swaps, liqs): (Vec<_>, Vec<_>) = actions
+            .clone()
+            .into_iter()
+            .action_unzip((Actions::split_swap, Actions::split_liquidation));
 
         if liqs.is_empty() {
-            return None;
+            return None
         }
 
         let liq_profit = liqs
