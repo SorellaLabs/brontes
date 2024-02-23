@@ -9,7 +9,6 @@ use alloy_primitives::Address;
 use brontes_types::pair::Pair;
 use itertools::Itertools;
 use petgraph::prelude::*;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, info};
 
 use super::yens::yen;

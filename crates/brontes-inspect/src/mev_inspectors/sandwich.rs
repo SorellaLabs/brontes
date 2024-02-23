@@ -546,7 +546,7 @@ mod tests {
             .run_inspector(
                 config,
                 Some(Box::new(|b| {
-                    let BundleData::Sandwich(ref s) = b.data else { unreachable!( )};
+                    let BundleData::Sandwich(ref s) = b.data else { unreachable!() };
                     assert!(
                         s.frontrun_swaps[0].len() == 6,
                         "incorrect amount of frontrun swaps {:#?}",
