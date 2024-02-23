@@ -77,7 +77,7 @@ brontes-inspect = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 tracing-subscriber.workspace = true
 reth-db.workspace = true
-brontes-types.workspace = true
+brontes-types = { workspace = true, features = ["tests"] }
 brontes-database.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
