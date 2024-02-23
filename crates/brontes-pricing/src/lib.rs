@@ -1027,7 +1027,7 @@ pub mod test {
     };
     use futures::future::join_all;
     use itertools::Itertools;
-    use malachite::Rational;
+    use malachite::{num::basic::traits::Zero, Rational};
     // given that the only thing that
     #[brontes_macros::test]
     async fn test_pricing_variance() {
@@ -1110,12 +1110,8 @@ pub mod test {
 
                     let diff = (pre_max - pre_min) / pre_max * Rational::from(100);
 
-                    if diff > Rational::from_signeds(5, 10) {
-                        panic!(
-                            "{:?} pre state had a max diff that was more than 0.5% got: {}",
-                            pair,
-                            diff.to_float()
-                        );
+                    if diff != Rational::ZERO {
+                        panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
                     }
 
                     let post_min = pre_prices.iter().min().unwrap();
@@ -1123,12 +1119,8 @@ pub mod test {
 
                     let diff = (post_max - post_min) / post_max * Rational::from(100);
 
-                    if diff > Rational::from_signeds(5, 10) {
-                        panic!(
-                            "{:?} post state had a max diff that was more than 0.5% got: {}",
-                            pair,
-                            diff.to_float()
-                        );
+                    if diff != Rational::ZERO {
+                        panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
                     }
                 }
             })
