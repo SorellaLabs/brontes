@@ -1713,7 +1713,6 @@ dependencies = [
  "derive_more",
  "dotenv",
  "erased-serde",
- "ethers",
  "eyre",
  "futures",
  "indexmap 2.2.2",

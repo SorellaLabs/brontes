@@ -9,7 +9,6 @@ use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
 use bytes::BufMut;
-use ethers::{abi::ethabi::Bytes, prelude::AbiError};
 use malachite::{
     num::{arithmetic::traits::Pow, basic::traits::One},
     Rational,
@@ -485,8 +484,8 @@ impl UniswapV3Pool {
         .await?)
     }
 
-    pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let burn_event = IUniswapV3Pool::Burn::decode_log_data(&log, false).unwrap();
+    pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AmmError> {
+        let burn_event = IUniswapV3Pool::Burn::decode_log_data(&log, false)?;
         self.reserve_0 -= burn_event.amount0;
         self.reserve_1 -= burn_event.amount1;
 
@@ -500,8 +499,8 @@ impl UniswapV3Pool {
         Ok(())
     }
 
-    pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let mint_event = IUniswapV3Pool::Mint::decode_log_data(&log, false).unwrap();
+    pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AmmError> {
+        let mint_event = IUniswapV3Pool::Mint::decode_log_data(&log, false)?;
 
         self.reserve_0 += mint_event.amount0;
         self.reserve_1 += mint_event.amount1;
@@ -607,8 +606,8 @@ impl UniswapV3Pool {
         }
     }
 
-    pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let swap_event = IUniswapV3Pool::Swap::decode_log_data(&log, false).unwrap();
+    pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AmmError> {
+        let swap_event = IUniswapV3Pool::Swap::decode_log_data(&log, false)?;
 
         if swap_event.amount0.is_negative() {
             self.reserve_0 -= swap_event.amount0.unsigned_abs();
@@ -637,24 +636,6 @@ impl UniswapV3Pool {
                 self.reserve_0.to_scaled_rational(self.token_a_decimals),
             )
         }
-    }
-
-    pub fn swap_calldata(
-        &self,
-        recipient: Address,
-        zero_for_one: bool,
-        amount_specified: I256,
-        sqrt_price_limit_x_96: U256,
-        calldata: Vec<u8>,
-    ) -> Result<Bytes, ethers::abi::Error> {
-        Ok(IUniswapV3Pool::swapCall::new((
-            recipient,
-            zero_for_one,
-            amount_specified,
-            sqrt_price_limit_x_96,
-            calldata,
-        ))
-        .abi_encode())
     }
 }
 
