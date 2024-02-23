@@ -1,5 +1,6 @@
 use std::fmt::{self, Debug, Display};
 
+use alloy_dyn_abi::abi::token;
 use alloy_primitives::Address;
 use clickhouse::{DbRow, Row};
 use colored::Colorize;
@@ -57,6 +58,7 @@ pub struct TransactionAccounting {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AddressBalanceDeltas {
     pub address:      Address,
+    pub name:         Option<String>,
     pub token_deltas: Vec<TokenBalanceDelta>,
 }
 
@@ -69,13 +71,13 @@ pub struct TokenBalanceDelta {
     pub usd_value: f64,
 }
 
-impl BalanceDeltas {
-    pub fn compose(&mut self, to_compose: &BalanceDeltas) {
-        for profit in &to_compose.transaction_deltas {
+impl AddressBalanceDeltas {
+    pub fn compose(&mut self, to_compose: &AddressBalanceDeltas) {
+        for profit in &to_compose.token_deltas {
             if let Some(existing_profit) = self
-                .transaction_deltas
+                .token_deltas
                 .iter_mut()
-                .find(|p| p.profit_collector == profit.profit_collector && p.token == profit.token)
+                .find(|p| p.token == profit.token)
             {
                 if existing_profit.amount < profit.amount {
                     existing_profit.amount = profit.amount;
@@ -83,68 +85,52 @@ impl BalanceDeltas {
             }
         }
     }
-
-    pub fn print_with_labels(
-        &self,
-        f: &mut fmt::Formatter,
-        mev_contract_address: Option<Address>,
-        eoa_address: Address,
-    ) -> fmt::Result {
-        writeln!(f, "\n{}", "Token Deltas:\n".bold().bright_white().underline())?;
-
-        for profit in &self.transaction_deltas {
-            let collector_label = match profit.profit_collector {
-                _ if Some(profit.profit_collector) == mev_contract_address => "MEV Contract",
-                _ if profit.profit_collector == eoa_address => "EOA",
-                _ => "Other",
-            };
-
-            let amount_display = if profit.amount >= 0.0 {
-                format!("{:.7}", profit.amount).green()
-            } else {
-                format!("{:.7}", profit.amount.abs()).red()
-            };
-
-            writeln!(
-                f,
-                " - {}: {} {}: {} (worth ${:.2})",
-                collector_label.bright_white(),
-                if profit.amount >= 0.0 { "Gained" } else { "Lost" },
-                profit.token.inner.symbol.bold(),
-                amount_display,
-                profit.usd_value.abs()
-            )?;
-        }
-
-        Ok(())
-    }
 }
 
-impl Display for BalanceDeltas {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.print_with_labels(f, None, Address::default())?;
-
-        Ok(())
-    }
-}
-
-impl Display for BalanceDelta {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (profit_or_loss, amount_str, usd_value_str) = if self.amount < 0.0 {
-            ("lost", self.amount.to_string().red(), format!("$ {}", self.usd_value).red())
+impl Display for AddressBalanceDeltas {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let header = if let Some(name) = &self.name {
+            format!("Address Balance Changes for {}: {}", name.bold(), self.address)
         } else {
-            ("gained", self.amount.to_string().green(), format!("$ {}", self.usd_value).green())
+            format!("Address Balance Changes {}", self.address)
         };
 
-        writeln!(
-            f,
-            "Address: {} {} {} {} worth {}",
-            self.transaction_deltas,
-            profit_or_loss,
-            amount_str,
-            self.token.symbol.bold(),
-            usd_value_str
-        )
+        writeln!(f, "\n{}\n", header)?;
+
+        let (gains, losses): (Vec<_>, Vec<_>) =
+            self.token_deltas.iter().partition(|d| d.amount >= 0.0);
+        let total_gain: f64 = gains.iter().map(|d| d.usd_value).sum();
+        let total_loss: f64 = losses.iter().map(|d| d.usd_value).sum();
+
+        if !gains.is_empty() {
+            writeln!(f, "{}", "Gains:".bold().green())?;
+            for gain in gains {
+                writeln!(
+                    f,
+                    " - {}: +{:.2} tokens (${:.2})",
+                    gain.token.inner.symbol.bold(),
+                    gain.amount,
+                    gain.usd_value
+                )?;
+            }
+        }
+
+        if !losses.is_empty() {
+            writeln!(f, "{}", "\nLosses:".bold().red())?;
+            for loss in losses {
+                writeln!(
+                    f,
+                    " - {}: -{:.2} tokens (${:.2})",
+                    loss.token.inner.symbol.bold(),
+                    loss.amount.abs(),
+                    loss.usd_value.abs()
+                )?;
+            }
+        }
+
+        writeln!(f, "\n{}: Net gain of ${:.2}", "Summary".bold(), total_gain - total_loss.abs())?;
+
+        Ok(())
     }
 }
 
@@ -164,7 +150,7 @@ impl Serialize for BundleHeader {
         ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
 
         let profit_collector = self
-            .token_profits
+            .balance_deltas
             .profits
             .iter()
             .map(|tp| format!("{:?}", tp.profit_collector))
