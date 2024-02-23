@@ -3,7 +3,7 @@ mod discovery_classifier;
 mod libmdbx_test;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, Attribute, ItemFn};
+use syn::{parse_macro_input, ItemFn};
 
 use crate::action_classifier::{ActionDispatch, ActionMacro};
 

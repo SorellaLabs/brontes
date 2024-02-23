@@ -1028,7 +1028,7 @@ pub mod test {
     use futures::future::join_all;
     use itertools::Itertools;
     use malachite::{num::basic::traits::Zero, Rational};
-    // given that the only thing that
+
     #[brontes_macros::test(threads = 11)]
     async fn test_pricing_variance() {
         let utils = Arc::new(ClassifierTestUtils::new().await);
