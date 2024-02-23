@@ -3,10 +3,9 @@ name = "brontes-pricing"
 version = "0.1.0"
 edition = "2021"
 
-# [[bench]]
-# name = "graph"
-# harness = false
-# required-features = ["benchmarking"]
+[[bench]]
+name = "it"
+harness = false
 
 [dependencies]
 #brontes 
