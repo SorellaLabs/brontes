@@ -27,7 +27,7 @@ pub mod protocols;
 pub mod types;
 use std::sync::atomic::Ordering::SeqCst;
 
-#[cfg(feature = "testing")]
+#[cfg(test)]
 pub mod test_utils;
 
 use std::{
