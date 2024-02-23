@@ -4,11 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [[bench]]
-name = "it"
-harness = false
-
-[[bench]]
-name = "state"
+name = "bench"
 harness = false
 
 [dependencies]

@@ -8,6 +8,3 @@ pub fn bench_block_pricing(c: &mut Criterion) {
         .bench_pricing_block("block 18500018", 18500018, c)
         .unwrap();
 }
-
-criterion_group!(it_runs, bench_block_pricing);
-criterion_main!(it_runs);

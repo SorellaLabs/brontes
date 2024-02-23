@@ -61,7 +61,3 @@ pub fn bench_v2_state_loads(c: &mut Criterion) {
         )
         .unwrap();
 }
-
-criterion_group!(v3, bench_v3_price_requests, bench_v3_state_loads);
-criterion_group!(v2, bench_v2_price_requests, bench_v2_state_loads);
-criterion_main!(v3, v2);
