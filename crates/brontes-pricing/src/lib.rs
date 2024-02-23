@@ -943,7 +943,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                             ignore.clone(),
                             0,
                             None,
-                            Duration::from_millis(250),
+                            Duration::from_millis(300),
                         )
                     })
                     .collect::<Vec<_>>(),

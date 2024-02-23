@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
-    normalized_actions::{NormalizedCollect},
+    normalized_actions::NormalizedCollect,
     ActionIter, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]

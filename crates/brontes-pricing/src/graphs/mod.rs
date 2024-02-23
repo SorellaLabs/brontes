@@ -19,7 +19,6 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::Rational;
 pub use subgraph_verifier::VerificationResults;
-use tracing::info;
 
 use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,

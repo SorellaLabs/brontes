@@ -149,7 +149,7 @@ where
             break
         }
 
-        if SystemTime::now().duration_since(start.clone()).unwrap() > extra_path_timeout {
+        if SystemTime::now().duration_since(start).unwrap() > extra_path_timeout {
             tracing::debug!("timeout for extra routes hit");
             break
         }
