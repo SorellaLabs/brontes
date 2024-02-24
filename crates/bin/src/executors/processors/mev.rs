@@ -21,7 +21,7 @@ pub struct MevProcessor;
 impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
-    async fn process_results_inner<DB: DBWriter + LibmdbxReader>(
+    async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &DB,
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
         tree: Arc<BlockTree<Actions>>,
@@ -34,7 +34,7 @@ impl Processor for MevProcessor {
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
         {
-            panic!("{e} failed to insert dex pricing and state into db");
+            tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
         }
 
         insert_mev_results(db, block_details, mev_details).await;
