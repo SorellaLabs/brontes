@@ -143,6 +143,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
+        tracing::info!(?possible_front_runs_info, ?backrun_info, "looking at sando");
         let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
@@ -488,6 +489,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_mev_tx_hashes(vec![
+                hex!("056343cdc08500ea8c994b887aee346b7187ec6291d034512378f73743a700bc").into(),
                 hex!("849c3cb1f299fa181e12b0506166e4aa221fce4384a710ac0d2e064c9b4e1c42").into(),
                 hex!("055f8dd4eb02c15c1c1faa9b65da5521eaaff54f332e0fa311bc6ce6a4149d18").into(),
                 hex!("ab765f128ae604fdf245c78c8d0539a85f0cf5dc7f83a2756890dea670138506").into(),
