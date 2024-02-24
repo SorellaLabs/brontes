@@ -8,7 +8,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_types::pair::Pair;
 use itertools::Itertools;
-use petgraph::prelude::*;
+use petgraph::{data::Build, prelude::*};
 use tracing::{error, info};
 
 use super::yens::yen;
@@ -78,10 +78,7 @@ pub struct AllPairGraph {
 impl AllPairGraph {
     pub fn init_from_hashmap(all_pool_data: HashMap<(Address, Protocol), Pair>) -> Self {
         let mut graph = UnGraph::<(), Vec<EdgeWithInsertBlock>, usize>::default();
-
         let mut token_to_index = HashMap::new();
-        let mut connections: HashMap<(usize, usize), Vec<EdgeWithInsertBlock>> = HashMap::new();
-
         let t0 = SystemTime::now();
 
         all_pool_data
@@ -107,29 +104,25 @@ impl AllPairGraph {
                     .or_insert_with(|| graph.add_node(()).index());
 
                 let info = EdgeWithInsertBlock::new(pool_addr, dex, pair.0, pair.1, 0);
-                connections.entry((addr0, addr1)).or_default().push(info);
+
+                if let Some(edge) = graph.find_edge(addr0.into(), addr1.into()) {
+                    let weight = graph.edge_weight_mut(edge).unwrap();
+                    if !weight.contains(&info) {
+                        weight.push(info);
+                    }
+                } else {
+                    graph.add_edge(addr0.into(), addr1.into(), vec![info]);
+                }
             });
 
         let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
-        info!("linked all graph edges in {}us", delta);
-        let t0 = SystemTime::now();
-
-        graph.extend_with_edges(
-            connections
-                .into_iter()
-                .map(|((n0, n1), v)| (n0, n1, v))
-                .collect::<Vec<_>>(),
-        );
-
-        let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_micros();
+        let delta = t1.duration_since(t0).unwrap().as_millis();
 
         info!(
             nodes=%graph.node_count(),
             edges=%graph.edge_count(),
             tokens=%token_to_index.len(),
-            "built graph in {}us", delta
+            "built graph in {}ms", delta
         );
 
         Self { graph, token_to_index }
