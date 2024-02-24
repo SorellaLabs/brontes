@@ -262,13 +262,13 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
         let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
-        let backrun_tx_hash_repeated = [&self.backrun_tx_hash]
+        let backrun_tx_hash_repeated_swaps = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()
             .map(|tx| format!("{:?}", &tx))
             .collect::<Vec<_>>();
 
-        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated)?;
+        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated_swaps)?;
         ser_struct.serialize_field("backrun_swaps.trace_idx", &backrun_swaps.trace_index)?;
         ser_struct.serialize_field("backrun_swaps.from", &backrun_swaps.from)?;
         ser_struct.serialize_field("backrun_swaps.recipient", &backrun_swaps.recipient)?;
@@ -280,7 +280,13 @@ impl Serialize for JitLiquiditySandwich {
 
         let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
 
-        ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_tx_hash_repeated)?;
+        let backrun_tx_hash_repeated_burns = [&self.backrun_tx_hash]
+            .repeat(backrun_burns.pool.len())
+            .into_iter()
+            .map(|tx| format!("{:?}", &tx))
+            .collect::<Vec<_>>();
+
+        ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_tx_hash_repeated_burns)?;
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;
         ser_struct.serialize_field("backrun_burns.pool", &backrun_burns.pool)?;

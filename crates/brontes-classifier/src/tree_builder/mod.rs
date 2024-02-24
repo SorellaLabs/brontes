@@ -27,10 +27,7 @@ use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
 use self::transfer::try_decode_transfer;
-use crate::{
-    classifiers::{DiscoveryProtocols, *},
-    ActionCollection, FactoryDiscoveryDispatch,
-};
+use crate::{classifiers::*, ActionCollection, FactoryDiscoveryDispatch};
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
@@ -59,10 +56,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         // send out all updates
         let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
+        account_for_tax_tokens(&mut tree);
 
-        Self::prune_tree(&mut tree);
         self.finish_classification(&mut tree, further_classification_requests);
-
         tree.finalize_tree();
 
         tree
@@ -84,14 +80,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 root_data.further_classification_requests
             })
             .collect_vec()
-    }
-
-    pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
-        // tax token accounting should always be first.
-        account_for_tax_tokens(tree);
-        // remove_swap_transfers(tree);
-        // remove_mint_transfers(tree);
-        // remove_collect_transfers(tree);
     }
 
     pub(crate) async fn build_all_tx_trees(

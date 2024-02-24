@@ -65,22 +65,22 @@ impl UpdatableProtocol for UniswapV2Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
+    fn sync_from_action(&mut self, _action: Actions) -> Result<(), AmmError> {
         todo!("syncing from actions is currently not supported for v2")
     }
 
-    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
+    fn sync_from_log(&mut self, log: Log) -> Result<(), AmmError> {
         let event_signature = log.topics()[0];
 
         if event_signature == SYNC_EVENT_SIGNATURE {
-            let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false).unwrap();
+            let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false)?;
 
             self.reserve_0 = sync_event.reserve0;
             self.reserve_1 = sync_event.reserve1;
 
             Ok(())
         } else {
-            Err(EventLogError::InvalidEventSignature)
+            Err(AmmError::EventLogError(EventLogError::InvalidEventSignature))
         }
     }
 
@@ -146,7 +146,7 @@ impl UniswapV2Pool {
         pool.populate_data(Some(block), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::NoStateError(pair_addr));
+            return Err(AmmError::NoStateError(pair_addr))
         }
 
         Ok(pool)
@@ -173,7 +173,7 @@ impl UniswapV2Pool {
         pool.populate_data(None, middleware.clone()).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::PoolDataError);
+            return Err(AmmError::PoolDataError)
         }
 
         Ok(pool)
