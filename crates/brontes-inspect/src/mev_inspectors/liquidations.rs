@@ -3,10 +3,11 @@ use std::sync::Arc;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, Liquidation, MevType},
-    normalized_actions::Actions,
-    tree::BlockTree,
-    ToFloatNearest, TreeSearchBuilder, TxInfo,
+    mev::{Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
+    normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
+    pair::Pair,
+    tree::{BlockTree, GasDetails, Node, Root},
+    ActionIter, ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
 };
 use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -56,22 +57,13 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        let liqs = actions
-            .iter()
-            .filter_map(
-                |action| {
-                    if let Actions::Liquidation(liq) = action {
-                        Some(liq)
-                    } else {
-                        None
-                    }
-                },
-            )
-            .cloned()
-            .collect::<Vec<_>>();
+        let (swaps, liqs): (Vec<_>, Vec<_>) = actions
+            .clone()
+            .into_iter()
+            .action_unzip((Actions::split_swap, Actions::split_liquidation));
 
         if liqs.is_empty() {
-            return None;
+            return None
         }
 
         let swaps = actions

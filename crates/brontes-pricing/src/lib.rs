@@ -25,15 +25,14 @@ use brontes_types::normalized_actions::pool::NormalizedPoolConfigUpdate;
 mod graphs;
 pub mod protocols;
 pub mod types;
-use std::sync::atomic::Ordering::SeqCst;
-
-#[cfg(test)]
-pub mod test_utils;
-
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering::SeqCst},
+        Arc,
+    },
     task::{Context, Poll},
+    time::Duration,
 };
 
 use alloy_primitives::Address;
@@ -916,7 +915,18 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .into_par_iter()
         .map(|(pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
-                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)])
+                return (
+                    pair,
+                    block,
+                    vec![graph.create_subgraph(
+                        block,
+                        pair,
+                        ignore,
+                        100,
+                        None,
+                        Duration::from_millis(100),
+                    )],
+                )
             }
             (
                 pair,
@@ -927,7 +937,14 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     .collect_vec()
                     .into_par_iter()
                     .map(|(end, start)| {
-                        graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0, 12)
+                        graph.create_subgraph(
+                            block,
+                            Pair(start, end),
+                            ignore.clone(),
+                            0,
+                            None,
+                            Duration::from_millis(300),
+                        )
                     })
                     .collect::<Vec<_>>(),
             )
@@ -998,12 +1015,19 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100, 5);
+        let subgraph = graph.create_subgraph(
+            block,
+            pair,
+            HashSet::new(),
+            100,
+            None,
+            Duration::from_millis(100),
+        );
         (subgraph, pair, trigger_update.block)
     }))
 }
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "tests")]
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn get_lazy_loader(&mut self) -> &mut LazyExchangeLoader<T> {
         &mut self.lazy_loader
@@ -1016,9 +1040,113 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
 #[cfg(test)]
 pub mod test {
+    use std::{collections::HashMap, sync::Arc};
 
-    use alloy_primitives::{hex, Address, FixedBytes};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        constants::USDC_ADDRESS,
+        db::dex::{DexPrices, DexQuotes},
+        pair::Pair,
+        ToFloatNearest,
+    };
+    use futures::future::join_all;
+    use itertools::Itertools;
+    use malachite::Rational;
 
-    pub const USDC_ADDRESS: Address =
-        Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
+    #[brontes_macros::test(threads = 11)]
+    async fn test_pricing_variance() {
+        let utils = Arc::new(ClassifierTestUtils::new().await);
+        let bad_block = 18500018;
+        let mut dex_quotes: Vec<DexQuotes> = join_all((0..10).map(|_| {
+            let c = utils.clone();
+            tokio::spawn(async move {
+                c.build_block_tree_with_pricing(bad_block, USDC_ADDRESS, vec![])
+                    .await
+                    .unwrap()
+                    .1
+                    .unwrap()
+            })
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+        // generate a bitmap of all locations that are valid
+        let last = dex_quotes.pop().unwrap();
+        let mut expected = vec![0u8; last.0.len()];
+
+        last.0.iter().enumerate().for_each(|(i, p_entry)| {
+            if p_entry.is_some() {
+                expected[i / 8] |= 1 << (i % 8);
+            }
+        });
+
+        // verify all align
+        dex_quotes.iter().for_each(|quotes| {
+            quotes.0.iter().enumerate().for_each(|(i, p_entry)| {
+                if p_entry.is_some() {
+                    assert!(
+                        expected[i / 8] & 1 << (i % 8) != 0,
+                        "have a entry where another generation doesn't: tx {i}"
+                    )
+                } else {
+                    assert!(
+                        expected[i / 8] & 1 << (i % 8) == 0,
+                        "missing a entry where another generation has one: tx {i}"
+                    )
+                }
+            });
+        });
+
+        let pair_to_batch_to_dex_price = dex_quotes
+            .iter()
+            .chain([last].iter())
+            .map(|i| &i.0)
+            .flat_map(|quotes: &Vec<Option<HashMap<Pair, DexPrices>>>| {
+                quotes
+                    .iter()
+                    .filter_map(|a| a.as_ref())
+                    .flat_map(|a| a.iter().map(|(p, b)| (*p, b.clone())))
+                    .into_group_map()
+                    .into_iter()
+            })
+            .into_group_map();
+
+        // check to make sure all prices are within 1% of each other over the batches
+        pair_to_batch_to_dex_price
+            .into_iter()
+            .for_each(|(pair, prices)| {
+                // with prices, its
+                // [batch [ position in batch ]]
+                // calcuate the average for each index of prices
+                let inner_len = prices[0].len();
+                for i in 0..inner_len {
+                    let mut pre_prices = vec![];
+                    let mut post_prices = vec![];
+                    for price in &prices {
+                        pre_prices.push(price[i].pre_state.clone());
+                        post_prices.push(price[i].post_state.clone());
+                    }
+                    // // check min max diff is below th
+                    let pre_min = pre_prices.iter().min().unwrap();
+                    let pre_max = pre_prices.iter().max().unwrap();
+
+                    let diff = (pre_max - pre_min) / pre_max * Rational::from(100);
+
+                    if diff > Rational::const_from_unsigneds(1, 10000) {
+                        panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
+                    }
+
+                    let post_min = pre_prices.iter().min().unwrap();
+                    let post_max = pre_prices.iter().max().unwrap();
+
+                    let diff = (post_max - post_min) / post_max * Rational::from(100);
+
+                    if diff > Rational::const_from_unsigneds(1, 10000) {
+                        panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
+                    }
+                }
+            })
+    }
 }

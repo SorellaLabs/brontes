@@ -9,8 +9,8 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
-    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
-    GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    normalized_actions::NormalizedCollect,
+    ActionIter, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
 use clickhouse::{fixed_string::FixedString, row::*};
@@ -76,7 +76,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     if searcher_actions.is_empty() {
                         tracing::debug!("no searcher actions found");
-                        return None;
+                        return None
                     }
 
                     let info = [
@@ -91,7 +91,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .any(|d| mev_executor_contract == d.get_to_address())
                     {
                         tracing::debug!("victim address is same as mev executor contract");
-                        return None;
+                        return None
                     }
 
                     let victim_actions = victims
@@ -106,7 +106,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
                         tracing::debug!("no victim actions found");
-                        return None;
+                        return None
                     }
 
                     let victim_info = victims
@@ -127,8 +127,6 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
-type JitUnzip =
-    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
@@ -143,25 +141,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect): JitUnzip = searcher_actions
+        let (mints, burns, fee_collect): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
-            .filter_map(|action| match action {
-                Actions::Burn(b) => Some((None, Some(b), None)),
-                Actions::Mint(m) => Some((Some(m), None, None)),
-                Actions::Collect(c) => Some((None, None, Some(c))),
-                _ => None,
-            })
-            .multiunzip();
-
-        let mints = mints.into_iter().flatten().collect::<Vec<_>>();
-        let burns = burns.into_iter().flatten().collect::<Vec<_>>();
-        let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
+            .action_unzip((Actions::split_mint, Actions::split_burn, Actions::split_collect));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");
-            return None;
+            return None
         }
 
         let jit_fee =
@@ -235,7 +223,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let iter = tree.tx_roots.iter();
 
         if iter.len() < 3 {
-            return vec![];
+            return vec![]
         }
 
         let mut set: HashSet<PossibleJit> = HashSet::new();
@@ -246,7 +234,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         for root in iter {
             if root.get_root_action().is_revert() {
-                continue;
+                continue
             }
 
             match duplicate_mev_contracts.entry(root.get_to_address()) {
@@ -389,6 +377,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
+    use brontes_types::constants::WETH_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
@@ -420,7 +409,7 @@ mod tests {
             .with_dex_prices()
             .needs_tokens(vec![
                 hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into(),
-                hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
+                WETH_ADDRESS,
             ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)

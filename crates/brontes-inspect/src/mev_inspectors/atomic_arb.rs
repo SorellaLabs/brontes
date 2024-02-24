@@ -5,10 +5,13 @@ use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{
+        flashloan, Actions, NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
+    },
     tree::BlockTree,
-    ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
+use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
@@ -57,11 +60,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         swaps: Vec<Actions>,
     ) -> Option<Bundle> {
-        let swaps = swaps
-            .iter()
-            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
-            .cloned()
-            .collect::<Vec<_>>();
+        let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = searcher_actions
+            .clone()
+            .into_iter()
+            .flatten_specified(Actions::split_flash_loan, |flash: NormalizedFlashLoan| {
+                flash.child_actions
+            })
+            .action_unzip((Actions::split_swap, Actions::split_transfer));
 
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
@@ -116,11 +121,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 } else if is_triangle
                     && is_stable_pair(&swaps[0].token_out.symbol, &swaps[1].token_in.symbol)
                 {
-                    return Some(AtomicArbType::StablecoinArb);
+                    return Some(AtomicArbType::StablecoinArb)
                 } else if is_triangle {
                     return Some(AtomicArbType::CrossPair(1))
                 } else if is_stable_pair(&swaps[0].token_in.symbol, &swaps[1].token_out.symbol) {
-                    return Some(AtomicArbType::StablecoinArb);
+                    return Some(AtomicArbType::StablecoinArb)
                 }
                 return Some(AtomicArbType::LongTail)
             }
@@ -233,7 +238,7 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
 
     if start_address != end_address {
         if is_stable_pair(start_token, end_token) {
-            return Some(AtomicArbType::StablecoinArb);
+            return Some(AtomicArbType::StablecoinArb)
         } else {
             return Some(AtomicArbType::LongTail)
         }
@@ -243,7 +248,7 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
 
     for (index, swap) in swaps.iter().skip(1).enumerate() {
         if swap.token_in.address != last_out {
-            return Some(AtomicArbType::CrossPair(index + 1));
+            return Some(AtomicArbType::CrossPair(index + 1))
         }
         last_out = swap.token_out.address;
     }

@@ -10,6 +10,8 @@ use tracing::{error, span, Level};
 
 use crate::db::traits::LibmdbxReader;
 pub mod node;
+pub mod utils;
+pub use utils::*;
 pub mod root;
 pub mod tx_info;
 pub use node::*;
@@ -116,7 +118,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.tx_roots.iter().map(|r| r.tx_hash).collect()
     }
 
-    /// Collects all subsets of actions that match the action criteria specified
+    /// Collects subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
     pub fn collect_spans(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
@@ -126,6 +128,20 @@ impl<V: NormalizedAction> BlockTree<V> {
             } else {
                 vec![]
             }
+        })
+    }
+
+    /// Collects all subsets of actions that match the action criteria specified
+    /// by the closure. This is useful for collecting the subtrees of a
+    /// transaction that contain the wanted actions.
+    pub fn collect_spans_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<Vec<V>>> {
+        self.run_in_span_ref(|this| {
+            this.tp.install(|| {
+                this.tx_roots
+                    .par_iter()
+                    .map(|r| (r.tx_hash, r.collect_spans(&call)))
+                    .collect()
+            })
         })
     }
 
@@ -189,6 +205,22 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
+    pub fn collect_txes(
+        &self,
+        txes: Vec<B256>,
+        call: TreeSearchBuilder<V>,
+    ) -> HashMap<B256, Vec<V>> {
+        self.run_in_span_ref(|this| {
+            this.tp.install(|| {
+                this.tx_roots
+                    .par_iter()
+                    .filter(|r| txes.contains(&r.tx_hash))
+                    .map(|r| (r.tx_hash, r.collect(&call)))
+                    .collect()
+            })
+        })
+    }
+
     /// Takes Vec<(TransactionIndex, Vec<ActionIndex>)>
     /// for every action index of a transaction index, This function grabs all
     /// child nodes of the action index if and only if they are specified in
@@ -209,20 +241,6 @@ impl<V: NormalizedAction> BlockTree<V> {
                         root.collect_child_traces_and_classify(subtraces);
                     });
             });
-        })
-    }
-
-    /// Collects all subsets of actions that match the action criteria specified
-    /// by the closure. This is useful for collecting the subtrees of a
-    /// transaction that contain the wanted actions.
-    pub fn collect_spans_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<Vec<V>>> {
-        self.run_in_span_ref(|this| {
-            this.tp.install(|| {
-                this.tx_roots
-                    .par_iter()
-                    .map(|r| (r.tx_hash, r.collect_spans(&call)))
-                    .collect()
-            })
         })
     }
 

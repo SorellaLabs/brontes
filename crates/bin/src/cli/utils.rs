@@ -46,6 +46,23 @@ pub fn load_clickhouse() -> ClickhouseHttpClient {
     ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
 }
 
+#[cfg(not(feature = "local-reth"))]
+pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
+    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+    let db_port = env::var("RETH_PORT").expect("No DB port.env");
+    let url = format!("{db_endpoint}:{db_port}");
+    LocalProvider::new(url)
+}
+
+#[cfg(feature = "local-reth")]
+pub fn get_tracing_provider(
+    db_path: &Path,
+    tracing_tasks: u64,
+    executor: BrontesTaskExecutor,
+) -> TracingClient {
+    TracingClient::new(db_path, tracing_tasks, executor.clone())
+}
+
 pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
     match max_tasks {
         Some(max_tasks) => max_tasks,
@@ -88,21 +105,4 @@ pub fn get_env_vars() -> eyre::Result<String> {
     info!("Found DB Path");
 
     Ok(db_path)
-}
-
-#[cfg(not(feature = "local-reth"))]
-pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
-    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
-    let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let url = format!("{db_endpoint}:{db_port}");
-    LocalProvider::new(url)
-}
-
-#[cfg(feature = "local-reth")]
-pub fn get_tracing_provider(
-    db_path: &Path,
-    tracing_tasks: u64,
-    executor: BrontesTaskExecutor,
-) -> TracingClient {
-    TracingClient::new(db_path, tracing_tasks, executor.clone())
 }

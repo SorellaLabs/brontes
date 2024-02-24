@@ -5,7 +5,7 @@ use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Serialize};
+use serde::Serialize;
 use serde_with::serde_as;
 
 use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};

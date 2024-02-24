@@ -25,13 +25,14 @@ use malachite::{
 };
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::Serialize;
+use serde::{ser::SerializeSeq, Serialize};
 
 use crate::{
     constants::*,
     db::redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    utils::ToFloatNearest,
 };
 
 /// Centralized exchange price map organized by exchange.
@@ -49,10 +50,12 @@ use crate::{
 /// This provides us with the actual token0 when the map is queried so we can
 /// interpret the price in the correct direction & reciprocate the price (which
 /// is a rational) if need be.
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, CexQuote>>);
 
-#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
+#[derive(
+    Debug, PartialEq, Clone, serde::Serialize, rSerialize, rDeserialize, Archive, Redefined,
+)]
 #[redefined(CexPriceMap)]
 #[redefined_attr(
     to_source = "CexPriceMap(self.map.into_iter().collect::<HashMap<_,_>>().to_source())",
@@ -108,7 +111,7 @@ impl CexPriceMap {
     ///   price is reciprocated to match the requested pair ordering.
     pub fn get_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
         }
 
         self.0
@@ -133,7 +136,7 @@ impl CexPriceMap {
     /// exchanges.
     pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
         }
 
         let ordered_pair = pair.ordered();
@@ -210,6 +213,34 @@ impl CexPriceMap {
 
 type CexPriceMapDeser = Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)>;
 
+impl Serialize for CexPriceMap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        for (ex, v) in &self.0 {
+            let inner_vec = v
+                .iter()
+                .map(|(a, b)| {
+                    let ordered = a.ordered();
+                    (
+                        (format!("{}", ordered.0), format!("{}", ordered.1)),
+                        (
+                            b.timestamp,
+                            (b.price.0.clone().to_float(), b.price.1.clone().to_float()),
+                            format!("{:?}", b.token0),
+                        ),
+                    )
+                })
+                .collect::<Vec<_>>();
+            seq.serialize_element(&(ex.to_string(), inner_vec))?;
+        }
+
+        seq.end()
+    }
+}
+//TODO: Joe remove the extra string for token_0 it should just be
 // base_token_addr
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
