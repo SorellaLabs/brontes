@@ -124,6 +124,7 @@ impl Protocol {
             Protocol::CurvecrvUSDPlainPoolImpl => ("Curve.fi", "crvUSD Plain Impl"),
             Protocol::CurveCryptoSwapPool => ("Curve.fi", "CryptoSwap"),
             Protocol::CurveTriCryptoPool => ("Curve.fi", "TriCrypto"),
+            Protocol::CompoundV2 => ("Compound", "V2"),
             Protocol::MakerPSM => ("Maker", "PSM"),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }

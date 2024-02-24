@@ -267,6 +267,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
+            if results.1.is_new_pool() {
+                let Actions::NewPool(p) = &results.1 else { unreachable!() };
+                self.insert_new_pool(block, p).await;
+            }
+
             (vec![results.0], results.1)
         } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
             return transfer
@@ -402,15 +407,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
         if self
             .libmdbx
-            .insert_pool(
-                block,
-                pool.pool_address,
-                [
-                    pool.tokens.get(0).copied().unwrap_or_default(),
-                    pool.tokens.get(1).copied().unwrap_or_default(),
-                ],
-                pool.protocol,
-            )
+            .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)
             .await
             .is_err()
         {
