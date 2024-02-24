@@ -150,7 +150,7 @@ where
         }
 
         if SystemTime::now().duration_since(start).unwrap() > extra_path_timeout
-            && !(k <= Some(routes.len()))
+            && k > Some(routes.len())
         {
             tracing::debug!("timeout for extra routes hit");
             break

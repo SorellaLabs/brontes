@@ -29,7 +29,7 @@ pub use transfer::*;
 use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
-    InTupleFnOutVec, TreeSearchBuilder,
+     TreeSearchBuilder,
 };
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {

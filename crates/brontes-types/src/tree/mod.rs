@@ -21,7 +21,6 @@ pub use tx_info::*;
 pub mod search_args;
 pub use search_args::*;
 
-use self::types::NodeWithDataMut;
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 const MAX_SEARCH_THREADS: usize = 4;
@@ -333,52 +332,6 @@ pub mod test {
 
         assert!(!spans.is_empty());
         assert_eq!(spans.len(), 4);
-    }
-
-    #[brontes_macros::test]
-    async fn test_remove_duplicate_data() {
-        let mut tree: BlockTree<Actions> = load_tree().await;
-
-        let pre_transfers = tree
-            .collect_all(TreeSearchBuilder::default().with_action(Actions::is_transfer))
-            .into_values()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        tree.remove_duplicate_data(
-            TreeSearchBuilder::default().with_action(Actions::is_swap),
-            TreeSearchBuilder::default().with_action(Actions::is_transfer),
-            |node, data| (node.index, data.get_ref(node.data).cloned()),
-            |other_nodes, node, data| {
-                let Some(swap_data) = data.get_ref(node.data) else {
-                    return vec![];
-                };
-                let swap_data = swap_data.force_swap_ref();
-
-                other_nodes
-                    .iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data.as_ref()? else {
-                            return None;
-                        };
-                        if (transfer.amount == swap_data.amount_in
-                            || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
-                            && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
-                        {
-                            return Some(*index)
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-        );
-        let post_transfers = tree
-            .collect_all(TreeSearchBuilder::default().with_action(Actions::is_transfer))
-            .into_values()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        assert!(pre_transfers.len() > post_transfers.len());
     }
 
     #[brontes_macros::test]

@@ -33,7 +33,7 @@ impl<
 
         self.iter
             .next()
-            .map(|item| {
+            .and_then(|item| {
                 if let Some(wanted) = (self.wanted)(&item) {
                     let mut ret = (self.transform)(wanted.clone());
                     let now = ret.pop();
@@ -43,7 +43,6 @@ impl<
                     Some(item)
                 }
             })
-            .flatten()
     }
 }
 
