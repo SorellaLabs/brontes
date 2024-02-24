@@ -262,7 +262,7 @@ impl ClassifierTestUtils {
             trees.push(tree);
         }
 
-        (start_block..=end_block).into_iter().for_each(|block| {
+        (start_block..=end_block).for_each(|block| {
             needs_tokens
                 .iter()
                 .zip(vec![quote_asset].into_iter().cycle())
