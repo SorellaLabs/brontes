@@ -10,8 +10,9 @@ use tracing::{error, span, Level};
 
 use crate::db::traits::LibmdbxReader;
 pub mod node;
-pub mod utils;
-pub use utils::*;
+mod types;
+pub mod util;
+pub use util::*;
 pub mod root;
 pub mod tx_info;
 pub use node::*;
@@ -205,18 +206,12 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    pub fn collect_txes(
-        &self,
-        txes: Vec<B256>,
-        call: TreeSearchBuilder<V>,
-    ) -> HashMap<B256, Vec<V>> {
+    pub fn collect_txes(&self, txes: Vec<B256>, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
-                this.tx_roots
-                    .par_iter()
-                    .filter(|r| txes.contains(&r.tx_hash))
-                    .map(|r| (r.tx_hash, r.collect(&call)))
-                    .collect()
+                txes.par_iter()
+                    .map(|tx| this.collect(*tx, call.clone()))
+                    .collect::<Vec<_>>()
             })
         })
     }
@@ -256,31 +251,6 @@ impl<V: NormalizedAction> BlockTree<V> {
                 this.tx_roots
                     .par_iter_mut()
                     .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
-            })
-        })
-    }
-
-    /// Uses search args to collect two types of nodes. Nodes that could be a
-    /// parent to a child node that we want to remove. and child nodes we
-    /// want to remove. These are both collected and passed to the classifiy
-    /// removal index function. This function will allow the user to look at
-    /// all of the parent nodes and possible removal nodes and return the
-    /// index of nodes that will be removed from the tree.
-    pub fn remove_duplicate_data<ClassifyRemovalIndex, WantedData, R>(
-        &mut self,
-        find: TreeSearchBuilder<V>,
-        find_removal: TreeSearchBuilder<V>,
-        info: WantedData,
-        classify: ClassifyRemovalIndex,
-    ) where
-        WantedData: Fn(&Node, &NodeData<V>) -> R + Sync,
-        ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
-    {
-        self.run_in_span_mut(|this| {
-            this.tp.install(|| {
-                this.tx_roots.par_iter_mut().for_each(|root| {
-                    root.remove_duplicate_data(&find, &classify, &info, &find_removal)
-                });
             })
         })
     }
@@ -376,52 +346,6 @@ pub mod test {
 
         assert!(!spans.is_empty());
         assert_eq!(spans.len(), 4);
-    }
-
-    #[brontes_macros::test]
-    async fn test_remove_duplicate_data() {
-        let mut tree: BlockTree<Actions> = load_tree().await;
-
-        let pre_transfers = tree
-            .collect_all(TreeSearchBuilder::default().with_action(Actions::is_transfer))
-            .into_values()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        tree.remove_duplicate_data(
-            TreeSearchBuilder::default().with_action(Actions::is_swap),
-            TreeSearchBuilder::default().with_action(Actions::is_transfer),
-            |node, data| (node.index, data.get_ref(node.data).cloned()),
-            |other_nodes, node, data| {
-                let Some(swap_data) = data.get_ref(node.data) else {
-                    return vec![];
-                };
-                let swap_data = swap_data.force_swap_ref();
-
-                other_nodes
-                    .iter()
-                    .filter_map(|(index, data)| {
-                        let Actions::Transfer(transfer) = data.as_ref()? else {
-                            return None;
-                        };
-                        if (transfer.amount == swap_data.amount_in
-                            || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
-                            && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
-                        {
-                            return Some(*index)
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>()
-            },
-        );
-        let post_transfers = tree
-            .collect_all(TreeSearchBuilder::default().with_action(Actions::is_transfer))
-            .into_values()
-            .flatten()
-            .collect::<Vec<_>>();
-
-        assert!(pre_transfers.len() > post_transfers.len());
     }
 
     #[brontes_macros::test]

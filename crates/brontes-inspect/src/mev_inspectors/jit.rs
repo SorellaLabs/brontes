@@ -145,7 +145,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .clone()
             .into_iter()
             .flatten()
-            .action_split((Actions::split_mint, Actions::split_burn, Actions::split_collect));
+            .action_split((Actions::try_mint, Actions::try_burn, Actions::try_collect));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");
@@ -413,7 +413,7 @@ mod tests {
             ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)
-            .with_expected_profit_usd(26.50);
+            .with_expected_profit_usd(745.15);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }

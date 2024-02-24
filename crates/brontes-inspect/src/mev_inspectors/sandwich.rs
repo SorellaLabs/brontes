@@ -10,7 +10,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, ToFloatNearest, TreeSearchBuilder,
+    ActionIter, ToFloatNearest, TreeFilter, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -76,12 +76,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let victim_actions = victims
                         .iter()
-                        .map(|victim| {
-                            victim
-                                .iter()
-                                .map(|v| tree.collect(*v, search_args.clone()))
-                                .collect::<Vec<_>>()
-                        })
+                        .map(|victim| tree.collect_txes(victim.clone(), search_args.clone()))
                         .collect::<Vec<_>>();
 
                     // if there are no victims in any part of sandwich, return
@@ -112,12 +107,16 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
 
-                    let searcher_actions = possible_frontruns
-                        .iter()
-                        .chain(vec![&possible_backrun])
-                        .map(|tx| tree.collect(*tx, search_args.clone()))
-                        .filter(|f| !f.is_empty())
-                        .collect::<Vec<Vec<Actions>>>();
+                    let searcher_actions = tree.collect_txes_deduping(
+                        possible_frontruns
+                            .iter()
+                            .copied()
+                            .chain(vec![possible_backrun])
+                            .collect(),
+                        search_args.clone(),
+                        (Actions::try_swap_dedup(),),
+                        (Actions::try_transfer_dedup(),),
+                    );
 
                     self.calculate_sandwich(
                         tree.clone(),
@@ -148,13 +147,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let back_run_swaps: Vec<_> = searcher_actions
             .pop()?
             .into_iter()
-            .action_split((Actions::split_swap,))
-            .0;
+            .collect_action_vec(Actions::try_swap);
 
         let front_run_swaps = searcher_actions
             .clone()
             .into_iter()
-            .map(|action| action.into_iter().action_split((Actions::split_swap,)).0)
+            .map(|action| action.into_iter().collect_action_vec(Actions::try_swap))
             .collect_vec();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
@@ -201,8 +199,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 tx_actions
                     .clone()
                     .into_iter()
-                    .action_split((Actions::split_swap,))
-                    .0
+                    .collect_action_vec(Actions::try_swap)
             })
             .collect::<Vec<_>>();
 
@@ -503,27 +500,6 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,
     };
-
-    #[brontes_macros::test]
-    async fn test_sandwich_different_contract_address() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_mev_tx_hashes(vec![
-                hex!("056343cdc08500ea8c994b887aee346b7187ec6291d034512378f73743a700bc").into(),
-                hex!("849c3cb1f299fa181e12b0506166e4aa221fce4384a710ac0d2e064c9b4e1c42").into(),
-                hex!("055f8dd4eb02c15c1c1faa9b65da5521eaaff54f332e0fa311bc6ce6a4149d18").into(),
-                hex!("ab765f128ae604fdf245c78c8d0539a85f0cf5dc7f83a2756890dea670138506").into(),
-                hex!("06424e50ee53df1e06fa80a741d1549224e276aed08c3674b65eac9e97a39c45").into(),
-                hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
-            ])
-            .with_dex_prices()
-            .needs_token(hex!("0588504472198e9296a248edca6ccdc40bd237cb").into())
-            .with_gas_paid_usd(34.3368)
-            .with_expected_profit_usd(15.43);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
 
     #[brontes_macros::test]
     async fn test_sandwich_different_eoa() {

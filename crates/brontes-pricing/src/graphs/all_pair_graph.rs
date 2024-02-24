@@ -14,7 +14,7 @@ use tracing::{error, info};
 use super::yens::yen;
 use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EdgeWithInsertBlock {
     pub inner:        PoolPairInformation,
     pub insert_block: u64,
@@ -118,6 +118,7 @@ impl AllPairGraph {
         graph.extend_with_edges(
             connections
                 .into_iter()
+                .sorted()
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
