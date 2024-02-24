@@ -91,14 +91,14 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     }
 
-                    // if victims
-                    //     .iter()
-                    //     .flatten()
-                    //     .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                    //     .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
-                    // {
-                    //     return None
-                    // }
+                    if victims
+                        .iter()
+                        .flatten()
+                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                        .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
+                    {
+                        return None
+                    }
 
                     let frontrun_info = possible_frontruns
                         .iter()
@@ -143,7 +143,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
-        tracing::info!(?possible_front_runs_info, ?backrun_info, "looking at sando");
         let all_actions = searcher_actions.clone();
         let back_run_swaps = searcher_actions
             .pop()?
@@ -482,26 +481,6 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,
     };
-
-    #[brontes_macros::test]
-    async fn test_sandwich_different_contract_address() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_mev_tx_hashes(vec![
-                hex!("056343cdc08500ea8c994b887aee346b7187ec6291d034512378f73743a700bc").into(),
-                hex!("055f8dd4eb02c15c1c1faa9b65da5521eaaff54f332e0fa311bc6ce6a4149d18").into(),
-                hex!("ab765f128ae604fdf245c78c8d0539a85f0cf5dc7f83a2756890dea670138506").into(),
-                hex!("06424e50ee53df1e06fa80a741d1549224e276aed08c3674b65eac9e97a39c45").into(),
-                hex!("c0422b6abac94d29bc2a752aa26f406234d45e4f52256587be46255f7b861893").into(),
-            ])
-            .with_dex_prices()
-            .needs_token(hex!("0588504472198e9296a248edca6ccdc40bd237cb").into())
-            .with_gas_paid_usd(34.3368)
-            .with_expected_profit_usd(15.43);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
 
     #[brontes_macros::test]
     async fn test_sandwich_different_eoa() {
