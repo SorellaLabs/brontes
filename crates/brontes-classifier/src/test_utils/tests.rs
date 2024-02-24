@@ -262,31 +262,16 @@ impl ClassifierTestUtils {
             trees.push(tree);
         }
 
-        let mut possible_price = Vec::new();
-        let mut failed = false;
-
-        for block_num in start_block..=end_block {
-            match self.libmdbx.fetch_dex_quotes(block_num) {
-                Ok(dex_quotes) => {
-                    possible_price.push((block_num, dex_quotes));
-                }
-                Err(_) => {
-                    failed = true;
-                    break
-                }
-            }
-        }
-
-        possible_price.iter().for_each(|(block, price)| {
+        (start_block..=end_block).into_iter().for_each(|block| {
             needs_tokens
                 .iter()
                 .zip(vec![quote_asset].into_iter().cycle())
                 .map(|(token, quote)| Pair(*token, quote))
                 .for_each(|pair| {
                     let update = DexPriceMsg::Update(PoolUpdate {
-                        block:  *block,
+                        block,
                         tx_idx: 0,
-                        logs:   vec![],
+                        logs: vec![],
                         action: make_fake_swap(pair),
                     });
                     tx.send(update).unwrap();
