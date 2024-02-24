@@ -118,7 +118,7 @@ impl Display for AddressBalanceDeltas {
         Ok(())
     }
 }
-/*
+
 impl Serialize for BundleHeader {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -133,50 +133,68 @@ impl Serialize for BundleHeader {
         ser_struct
             .serialize_field("mev_contract", &self.mev_contract.map(|a| format!("{:?}", a)))?;
         ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
-
-        let profit_collector = self
-            .balance_deltas
-            .profits
-            .iter()
-            .map(|tp| format!("{:?}", tp.profit_collector))
-            .collect_vec();
-        let token = self
-            .token_profits
-            .profits
-            .iter()
-            .map(|tp| {
-                (
-                    format!("{:?}", tp.token.address),
-                    tp.token.decimals,
-                    tp.token.inner.symbol.clone(),
-                )
-            })
-            .collect_vec();
-        let amount = self
-            .token_profits
-            .profits
-            .iter()
-            .map(|tp| tp.amount)
-            .collect_vec();
-        let usd_value = self
-            .token_profits
-            .profits
-            .iter()
-            .map(|tp| tp.usd_value)
-            .collect_vec();
-
-        ser_struct.serialize_field("token_profits.profit_collector", &profit_collector)?;
-        ser_struct.serialize_field("token_profits.token", &token)?;
-        ser_struct.serialize_field("token_profits.amount", &amount)?;
-        ser_struct.serialize_field("token_profits.usd_value", &usd_value)?;
-
         ser_struct.serialize_field("bribe_usd", &self.bribe_usd)?;
         ser_struct.serialize_field("mev_type", &self.mev_type)?;
+
+        let balance_deltas_tx_hashes = self
+            .balance_deltas
+            .iter()
+            .flat_map(|b| {
+                vec![b.tx_hash]
+                    .repeat(b.address_deltas.len())
+                    .into_iter()
+                    .map(|val| format!("{:?}", val))
+            })
+            .collect_vec();
+        ser_struct.serialize_field("balance_deltas.tx_hash", &balance_deltas_tx_hashes)?;
+
+        let balance_deltas_addresses = self
+            .balance_deltas
+            .iter()
+            .flat_map(|b| {
+                b.address_deltas
+                    .iter()
+                    .map(|delta| format!("{:?}", delta.address))
+            })
+            .collect_vec();
+        ser_struct.serialize_field("balance_deltas.address", &balance_deltas_addresses)?;
+
+        let balance_deltas_names = self
+            .balance_deltas
+            .iter()
+            .flat_map(|b| b.address_deltas.iter().map(|delta| delta.name.clone()))
+            .collect_vec();
+        ser_struct.serialize_field("balance_deltas.name", &balance_deltas_names)?;
+
+        let balance_deltas_token_deltas = self
+            .balance_deltas
+            .iter()
+            .flat_map(|b| {
+                b.address_deltas.iter().map(|delta| {
+                    delta
+                        .token_deltas
+                        .iter()
+                        .map(|token_delta| {
+                            (
+                                (
+                                    format!("{:?}", token_delta.token.address),
+                                    token_delta.token.inner.decimals,
+                                    token_delta.token.inner.symbol.clone(),
+                                ),
+                                token_delta.amount,
+                                token_delta.usd_value,
+                            )
+                        })
+                        .collect_vec()
+                })
+            })
+            .collect_vec();
+        ser_struct.serialize_field("balance_deltas.token_deltas", &balance_deltas_token_deltas)?;
 
         ser_struct.end()
     }
 }
-*/
+
 impl DbRow for BundleHeader {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "block_number",
@@ -185,11 +203,11 @@ impl DbRow for BundleHeader {
         "eoa",
         "mev_contract",
         "profit_usd",
-        "token_profits.profit_collector",
-        "token_profits.token",
-        "token_profits.amount",
-        "token_profits.usd_value",
         "bribe_usd",
         "mev_type",
+        "balance_deltas.address",
+        "balance_deltas.tx_hash",
+        "balance_deltas.name",
+        "balance_deltas.token_deltas",
     ];
 }

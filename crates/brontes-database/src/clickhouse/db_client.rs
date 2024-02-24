@@ -289,7 +289,6 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -575,5 +574,3 @@ mod tests {
             .unwrap();
     }
 }
-
-*/
