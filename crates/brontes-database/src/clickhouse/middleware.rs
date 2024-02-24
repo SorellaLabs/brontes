@@ -23,6 +23,7 @@ use super::Clickhouse;
 use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
+    #[allow(dead_code)] // on tests feature
     client: Clickhouse,
     inner:  I,
 }
