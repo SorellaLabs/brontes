@@ -471,7 +471,7 @@ impl ClassifierTestUtils {
         protocol: Protocol,
         address: Address,
         token0: Address,
-        token1: Address,
+        token1: Option<Address>,
         token2: Option<Address>,
         token3: Option<Address>,
         token4: Option<Address>,
@@ -486,7 +486,7 @@ impl ClassifierTestUtils {
                     value: ProtocolInfo {
                         protocol,
                         token0,
-                        token1,
+                        token1: token1.unwrap_or_default(),
                         token2,
                         token3,
                         token4,
