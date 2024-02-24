@@ -87,8 +87,8 @@ mod tests {
 
         let eq_action = Actions::Liquidation(NormalizedLiquidation {
             protocol:              Protocol::CompoundV2,
-            liquidated_collateral: Rational::from_signeds(6140057900131_i64, 1000000),
-            covered_debt:          Rational::from_signeds(48779241727_i64, 100000000),
+            liquidated_collateral: Rational::from_signeds(6140057900131i64, 100000000),
+            covered_debt:          Rational::from_signeds(48779241727i64, 100000000),
             debtor:                Address::from(hex!("De74395831F3Ba9EdC7cBEE1fcB441cf24c0AF4d")),
             debt_asset:            classifier_utils
                 .get_token_info(Address::from(hex!("39aa39c021dfbae8fac545936693ac917d5e7563"))),
