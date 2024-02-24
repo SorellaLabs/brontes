@@ -9,7 +9,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
-    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{
+        Actions, NormalizedBatch, NormalizedFlashLoan, NormalizedLiquidation, NormalizedSwap,
+        NormalizedTransfer,
+    },
     pair::Pair,
     utils::ToFloatNearest,
     BlockTree, GasDetails, TreeSearchBuilder, TxInfo,
@@ -329,6 +332,84 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
 pub trait TokenAccounting {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas);
+}
+
+impl TokenAccounting for Actions {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        match self {
+            Actions::Swap(swap) => swap.apply_token_deltas(delta_map),
+            Actions::Transfer(transfer) => transfer.apply_token_deltas(delta_map),
+            Actions::FlashLoan(flash_loan) => flash_loan.apply_token_deltas(delta_map),
+            Actions::Liquidation(liquidation) => liquidation.apply_token_deltas(delta_map),
+            Actions::Batch(batch) => {
+                for action in &batch.child_actions {
+                    action.apply_token_deltas(delta_map);
+                }
+            }
+            Actions::Burn(burn) => burn.apply_token_deltas(delta_map),
+            Actions::Mint(mint) => mint.apply_token_deltas(delta_map),
+            Actions::SwapWithFee(swap_with_fee) => swap_with_fee.swap.apply_token_deltas(delta_map),
+            Actions::Collect(collect) => collect.apply_token_deltas(delta_map),
+            Actions::Unclassified(_) => (), /* Potentially no token deltas to apply, adjust as */
+            // necessary
+            Actions::SelfDestruct(self_destruct) => self_destruct.apply_token_deltas(delta_map),
+            Actions::EthTransfer(eth_transfer) => eth_transfer.apply_token_deltas(delta_map),
+            Actions::NewPool(new_pool) => new_pool.apply_token_deltas(delta_map),
+            Actions::PoolConfigUpdate(pool_update) => pool_update.apply_token_deltas(delta_map),
+            Actions::Revert => (), // No token deltas to apply for a revert
+        }
+    }
+}
+
+impl TokenAccounting for NormalizedFlashLoan {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.child_actions
+            .iter()
+            .for_each(|action| action.apply_token_deltas(delta_map))
+    }
+}
+
+impl TokenAccounting for NormalizedLiquidation {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let debt_covered = self.covered_debt.clone();
+        // Liquidator sends debt_asset to the pool, effectively swapping the debt asset
+        // for the liquidatee's collateral
+        apply_delta(self.pool, self.debt_asset.address, debt_covered.clone(), delta_map);
+        apply_delta(self.liquidator, self.debt_asset.address, -debt_covered, delta_map);
+
+        // Pool sends collateral to the liquidator
+        apply_delta(
+            self.pool,
+            self.collateral_asset.address,
+            -self.liquidated_collateral.clone(),
+            delta_map,
+        );
+
+        // Liquidator gains collateral asset
+        apply_delta(
+            self.liquidator,
+            self.collateral_asset.address,
+            self.liquidated_collateral.clone(),
+            delta_map,
+        )
+    }
+}
+
+impl TokenAccounting for NormalizedBatch {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.user_swaps.iter().for_each(|swap| {
+            apply_delta(self.solver, swap.token_in.address, swap.amount_in.clone(), delta_map);
+            apply_delta(self.solver, swap.token_out.address, -swap.amount_out.clone(), delta_map);
+
+            swap.apply_token_deltas(delta_map);
+        });
+
+        if let Some(swaps) = &self.solver_swaps {
+            swaps
+                .iter()
+                .for_each(|swap| swap.apply_token_deltas(delta_map));
+        }
+    }
 }
 
 impl TokenAccounting for NormalizedSwap {

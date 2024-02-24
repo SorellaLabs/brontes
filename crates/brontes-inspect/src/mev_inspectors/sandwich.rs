@@ -230,7 +230,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let searcher_transfers = searcher_actions
             .into_iter()
             .flatten()
-            .collect_action_vec(Actions::split_transfer);
+            .collect_action_vec(Actions::try_transfer);
 
         let rev_usd = self.utils.get_transfers_deltas_usd(
             backrun_info.tx_index,
