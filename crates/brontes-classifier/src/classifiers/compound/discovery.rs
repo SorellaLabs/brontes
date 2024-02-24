@@ -38,11 +38,10 @@ action_impl!(
 
 #[cfg(test)]
 mod tests {
-    use alloy_primitives::{hex, Address, B256};
+    use alloy_primitives::{hex, B256};
     use brontes_types::{
         normalized_actions::{pool::NormalizedNewPool, Actions},
-        tree::root::NodeData,
-        Node, Protocol, TreeSearchBuilder,
+        Protocol, TreeSearchBuilder,
     };
 
     use crate::test_utils::ClassifierTestUtils;
@@ -54,7 +53,7 @@ mod tests {
             B256::from(hex!("090ce7d33359e5d288ce169f41bb3d2cb55ac17b026a10cf80b3fc4f0c85c827"));
 
         let eq_action = Actions::NewPool(NormalizedNewPool {
-            trace_index:  2,
+            trace_index:  1,
             protocol:     Protocol::CompoundV2,
             pool_address: hex!("5d3a536e4d6dbd6114cc1ead35777bab948e3643").into(),
             tokens:       vec![hex!("5d3a536e4d6dbd6114cc1ead35777bab948e3643").into()],
