@@ -101,7 +101,7 @@ impl<V: NormalizedAction> BlockTree<V> {
 
             for tx in &mut this.tx_roots {
                 let priority_fee = (tx.gas_details.effective_gas_price
-                    - this.header.base_fee_per_gas.unwrap() as u128)
+                    - this.header.base_fee_per_gas.unwrap_or_default() as u128)
                     as f64;
                 priority_fees.push(priority_fee);
                 total_priority_fee += priority_fee;

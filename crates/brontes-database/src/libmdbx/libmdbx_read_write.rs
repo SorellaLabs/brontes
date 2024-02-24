@@ -193,12 +193,12 @@ impl LibmdbxInit for LibmdbxReadWriter {
             if needs_dex_price {
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ));
+                ))
             }
 
             tracing::info!("entire range missing");
 
-            return Ok(vec![start_block..=end_block]);
+            return Ok(vec![start_block..=end_block])
         }
 
         let mut result = Vec::new();
@@ -218,10 +218,10 @@ impl LibmdbxInit for LibmdbxReadWriter {
                         return Err(eyre::eyre!(
                             "Block is missing dex pricing, please run with flag \
                              `--run-dex-pricing`"
-                        ));
+                        ))
                     }
 
-                    continue;
+                    continue
                 }
 
                 block_tracking += 1;
@@ -229,7 +229,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                     tracing::error!("block is missing dex pricing");
                     return Err(eyre::eyre!(
                         "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                    ));
+                    ))
                 }
 
                 if !state.is_init() {
@@ -247,7 +247,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 tracing::error!("block is missing dex pricing");
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ));
+                ))
             }
 
             result.push(block_tracking - 1..=end_block);
@@ -429,14 +429,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 "no pricing for block. cannot verify most recent subgraph is valid"
             );
 
-            return Err(eyre::eyre!("subgraph not inited at this block range"));
+            return Err(eyre::eyre!("subgraph not inited at this block range"))
         }
 
         let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
 
         for (cur_block, update) in subgraphs.0 {
             if cur_block > block {
-                break;
+                break
             }
             last = Some((pair, update))
         }
@@ -632,6 +632,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         // add to default table
         let mut tokens = tokens.iter();
+        let default = Address::ZERO;
         self.0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData::new(
@@ -639,8 +640,8 @@ impl DBWriter for LibmdbxReadWriter {
                     ProtocolInfo {
                         protocol: classifier_name,
                         init_block: block,
-                        token0: *tokens.next().unwrap(),
-                        token1: *tokens.next().unwrap(),
+                        token0: *tokens.next().unwrap_or(&default),
+                        token1: *tokens.next().unwrap_or(&default),
                         token2: tokens.next().cloned(),
                         token3: tokens.next().cloned(),
                         token4: tokens.next().cloned(),

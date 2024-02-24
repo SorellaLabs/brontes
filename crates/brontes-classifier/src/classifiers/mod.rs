@@ -19,6 +19,9 @@ pub use aave::*;
 pub mod pancakeswap;
 pub use pancakeswap::*;
 
+pub mod compound;
+pub use compound::*;
+
 pub mod maker;
 pub use maker::*;
 
@@ -128,5 +131,8 @@ action_dispatch!(
     AaveV3flashLoanCall,
     AaveV3flashLoanSimpleCall,
     BalancerV1swapExactAmountInCall,
-    BalancerV1swapExactAmountOutCall
+    BalancerV1swapExactAmountOutCall,
+    CompoundV2liquidateBorrowCall,
+    CompoundV2initialize_0Call,
+    CompoundV2initialize_1Call
 );
