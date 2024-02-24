@@ -261,7 +261,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                 let usd_value = if pricing {
                                     self.get_token_value_cex(token, amount.clone(), &metadata)
                                         .unwrap_or(Rational::ZERO)
-                                        * amount.clone()
                                 } else {
                                     // Calculate USD value using DEX pricing
                                     self.get_token_value_dex(
@@ -272,7 +271,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                         &metadata,
                                     )
                                     .unwrap_or(Rational::ZERO)
-                                        * amount.clone()
                                 };
 
                                 TokenBalanceDelta {
