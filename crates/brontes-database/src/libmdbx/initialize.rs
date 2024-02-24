@@ -405,8 +405,35 @@ mod tests {
             .unwrap();
 
         // TxTraces
-        // TxTraces::test_initialized_data(clickhouse, libmdbx,
-        // Some(block_range))     .await
-        //     .unwrap();
+        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_intialize_clickhouse_table_single() {
+        init_tracing();
+        let block_range = (17000000, 17000100);
+
+        let clickhouse = Box::leak(Box::new(load_clickhouse()));
+        let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
+        let (tx, _rx) = unbounded_channel();
+        let tracing_client =
+            init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;
+
+        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
+
+        //let tables = Tables::ALL;
+        let tables = [Tables::AddressMeta];
+
+        intializer
+            .initialize(&tables, false, Some(block_range))
+            .await
+            .unwrap();
+
+        // AddressMeta
+        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
     }
 }
