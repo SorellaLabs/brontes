@@ -8,7 +8,7 @@ action_impl!(
     NewPool,
     [],
     call_data:true,
-    |info: CallInfo, call_data: initialize_0Call, _| {
+    |info: CallInfo, _call_data: initialize_0Call, _| {
 
         Ok(NormalizedNewPool {
             trace_index: info.trace_idx,
@@ -25,7 +25,7 @@ action_impl!(
     NewPool,
     [],
     call_data: true,
-    |info: CallInfo, call_data: initialize_1Call, _| {
+    |info: CallInfo, _call_data: initialize_1Call, _| {
         Ok(NormalizedNewPool {
             trace_index: info.trace_idx,
             protocol: Protocol::CompoundV2,
