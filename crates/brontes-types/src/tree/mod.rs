@@ -10,8 +10,9 @@ use tracing::{error, span, Level};
 
 use crate::db::traits::LibmdbxReader;
 pub mod node;
-pub mod utils;
-pub use utils::*;
+mod types;
+pub mod util;
+pub use util::*;
 pub mod root;
 pub mod tx_info;
 pub use node::*;
@@ -20,6 +21,7 @@ pub use tx_info::*;
 pub mod search_args;
 pub use search_args::*;
 
+use self::types::NodeWithDataMut;
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 const MAX_SEARCH_THREADS: usize = 4;
@@ -236,31 +238,6 @@ impl<V: NormalizedAction> BlockTree<V> {
                 this.tx_roots
                     .par_iter_mut()
                     .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
-            })
-        })
-    }
-
-    /// Uses search args to collect two types of nodes. Nodes that could be a
-    /// parent to a child node that we want to remove. and child nodes we
-    /// want to remove. These are both collected and passed to the classifiy
-    /// removal index function. This function will allow the user to look at
-    /// all of the parent nodes and possible removal nodes and return the
-    /// index of nodes that will be removed from the tree.
-    pub fn remove_duplicate_data<ClassifyRemovalIndex, WantedData, R>(
-        &mut self,
-        find: TreeSearchBuilder<V>,
-        find_removal: TreeSearchBuilder<V>,
-        info: WantedData,
-        classify: ClassifyRemovalIndex,
-    ) where
-        WantedData: Fn(&Node, &NodeData<V>) -> R + Sync,
-        ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
-    {
-        self.run_in_span_mut(|this| {
-            this.tp.install(|| {
-                this.tx_roots.par_iter_mut().for_each(|root| {
-                    root.remove_duplicate_data(&find, &classify, &info, &find_removal)
-                });
             })
         })
     }

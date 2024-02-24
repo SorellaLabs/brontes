@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
-    ActionIter, ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TreeUtils, TxInfo,
+    ActionIter, ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
 };
 use hyper::header;
 use malachite::{num::basic::traits::Zero, Rational};
