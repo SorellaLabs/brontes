@@ -8,13 +8,13 @@ use std::{
 use alloy_primitives::Address;
 use brontes_types::pair::Pair;
 use itertools::Itertools;
-use petgraph::{data::Build, prelude::*};
+use petgraph::prelude::*;
 use tracing::{error, info};
 
 use super::yens::yen;
 use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EdgeWithInsertBlock {
     pub inner:        PoolPairInformation,
     pub insert_block: u64,
@@ -78,12 +78,14 @@ pub struct AllPairGraph {
 impl AllPairGraph {
     pub fn init_from_hashmap(all_pool_data: HashMap<(Address, Protocol), Pair>) -> Self {
         let mut graph = UnGraph::<(), Vec<EdgeWithInsertBlock>, usize>::default();
+
         let mut token_to_index = HashMap::new();
+        let mut connections: HashMap<(usize, usize), Vec<EdgeWithInsertBlock>> = HashMap::new();
+
         let t0 = SystemTime::now();
 
         all_pool_data
             .into_iter()
-            .sorted()
             .for_each(|((pool_addr, dex), pair)| {
                 if !dex.has_state_updater() {
                     return
@@ -104,25 +106,30 @@ impl AllPairGraph {
                     .or_insert_with(|| graph.add_node(()).index());
 
                 let info = EdgeWithInsertBlock::new(pool_addr, dex, pair.0, pair.1, 0);
-
-                if let Some(edge) = graph.find_edge(addr0.into(), addr1.into()) {
-                    let weight = graph.edge_weight_mut(edge).unwrap();
-                    if !weight.contains(&info) {
-                        weight.push(info);
-                    }
-                } else {
-                    graph.add_edge(addr0.into(), addr1.into(), vec![info]);
-                }
+                connections.entry((addr0, addr1)).or_default().push(info);
             });
 
         let t1 = SystemTime::now();
-        let delta = t1.duration_since(t0).unwrap().as_millis();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
+        info!("linked all graph edges in {}us", delta);
+        let t0 = SystemTime::now();
+
+        graph.extend_with_edges(
+            connections
+                .into_iter()
+                .sorted()
+                .map(|((n0, n1), v)| (n0, n1, v))
+                .collect::<Vec<_>>(),
+        );
+
+        let t1 = SystemTime::now();
+        let delta = t1.duration_since(t0).unwrap().as_micros();
 
         info!(
             nodes=%graph.node_count(),
             edges=%graph.edge_count(),
             tokens=%token_to_index.len(),
-            "built graph in {}ms", delta
+            "built graph in {}us", delta
         );
 
         Self { graph, token_to_index }
