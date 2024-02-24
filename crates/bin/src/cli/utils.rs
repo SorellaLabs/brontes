@@ -14,9 +14,9 @@ use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{
     db::{cex::CexExchange, traits::LibmdbxReader},
     mev::Bundle,
+    BrontesTaskExecutor,
 };
 use itertools::Itertools;
-use reth_tasks::TaskExecutor;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
@@ -44,6 +44,23 @@ pub fn load_clickhouse() -> ClickhouseHttpClient {
     let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
     ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
+}
+
+#[cfg(not(feature = "local-reth"))]
+pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
+    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
+    let db_port = env::var("RETH_PORT").expect("No DB port.env");
+    let url = format!("{db_endpoint}:{db_port}");
+    LocalProvider::new(url)
+}
+
+#[cfg(feature = "local-reth")]
+pub fn get_tracing_provider(
+    db_path: &Path,
+    tracing_tasks: u64,
+    executor: BrontesTaskExecutor,
+) -> TracingClient {
+    TracingClient::new(db_path, tracing_tasks, executor.clone())
 }
 
 pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
@@ -88,21 +105,4 @@ pub fn get_env_vars() -> eyre::Result<String> {
     info!("Found DB Path");
 
     Ok(db_path)
-}
-
-#[cfg(not(feature = "local-reth"))]
-pub fn get_tracing_provider(_: &Path, _: u64, _: TaskExecutor) -> LocalProvider {
-    let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
-    let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let url = format!("{db_endpoint}:{db_port}");
-    LocalProvider::new(url)
-}
-
-#[cfg(feature = "local-reth")]
-pub fn get_tracing_provider(
-    db_path: &Path,
-    tracing_tasks: u64,
-    executor: TaskExecutor,
-) -> TracingClient {
-    TracingClient::new(db_path, tracing_tasks, executor.clone())
 }

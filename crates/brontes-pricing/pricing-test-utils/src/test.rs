@@ -6,29 +6,22 @@ use std::{
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
-use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{
-    db::traits::LibmdbxReader, normalized_actions::Actions, traits::TracingProvider,
-    tree::BlockTree,
-};
+use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 type PricingResult<T> = Result<T, PricingTestError>;
 
 pub struct PricingTestUtils {
-    tracer: TraceLoader,
+    tracer:        TraceLoader,
     quote_address: Address,
 }
 
 impl PricingTestUtils {
     pub async fn new(quote_address: Address) -> Self {
         let tracer = TraceLoader::new().await;
-        Self {
-            tracer,
-            quote_address,
-        }
+        Self { tracer, quote_address }
     }
 
     async fn init_dex_pricer(
@@ -99,12 +92,8 @@ impl PricingTestUtils {
         tx_hash: TxHash,
     ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>, PricingTestError>
     {
-        let TxTracesWithHeaderAnd {
-            trace,
-            header,
-            block,
-            ..
-        } = self.tracer.get_tx_trace_with_header(tx_hash).await?;
+        let TxTracesWithHeaderAnd { trace, header, block, .. } =
+            self.tracer.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());

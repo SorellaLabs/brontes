@@ -23,7 +23,7 @@ pub struct RangeExecutorWithPricing<
     CH: ClickhouseHandle,
     P: Processor,
 > {
-    collector: StateCollector<T, DB, CH>,
+    collector:      StateCollector<T, DB, CH>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     current_block: u64,
     end_block: u64,

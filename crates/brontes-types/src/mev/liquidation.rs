@@ -11,10 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::{
-    db::redefined_types::primitives::*,
-    normalized_actions::{ClickhouseVecNormalizedLiquidation, ClickhouseVecNormalizedSwap},
-};
+use crate::db::redefined_types::primitives::*;
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
@@ -23,11 +20,11 @@ use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails}
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Liquidation {
     pub liquidation_tx_hash: B256,
-    pub trigger: B256,
-    pub liquidation_swaps: Vec<NormalizedSwap>,
-    pub liquidations: Vec<NormalizedLiquidation>,
+    pub trigger:             B256,
+    pub liquidation_swaps:   Vec<NormalizedSwap>,
+    pub liquidations:        Vec<NormalizedLiquidation>,
     #[redefined(same_fields)]
-    pub gas_details: GasDetails,
+    pub gas_details:         GasDetails,
 }
 
 impl Mev for Liquidation {
@@ -60,27 +57,21 @@ impl Serialize for Liquidation {
         let mut ser_struct = serializer.serialize_struct("Liquidation", 34)?;
 
         // frontrun
-        ser_struct.serialize_field(
-            "liquidation_tx_hash",
-            &FixedString::from(format!("{:?}", self.liquidation_tx_hash)),
-        )?;
+        ser_struct
+            .serialize_field("liquidation_tx_hash", &format!("{:?}", self.liquidation_tx_hash))?;
 
         let liquidation_swaps: ClickhouseVecNormalizedSwap = self.liquidation_swaps.clone().into();
 
-        ser_struct.serialize_field(
-            "liquidation_swaps.trace_idx",
-            &liquidation_swaps.trace_index,
-        )?;
+        ser_struct
+            .serialize_field("liquidation_swaps.trace_idx", &liquidation_swaps.trace_index)?;
         ser_struct.serialize_field("liquidation_swaps.from", &liquidation_swaps.from)?;
         ser_struct.serialize_field("liquidation_swaps.recipient", &liquidation_swaps.recipient)?;
         ser_struct.serialize_field("liquidation_swaps.pool", &liquidation_swaps.pool)?;
         ser_struct.serialize_field("liquidation_swaps.token_in", &liquidation_swaps.token_in)?;
         ser_struct.serialize_field("liquidation_swaps.token_out", &liquidation_swaps.token_out)?;
         ser_struct.serialize_field("liquidation_swaps.amount_in", &liquidation_swaps.amount_in)?;
-        ser_struct.serialize_field(
-            "liquidation_swaps.amount_out",
-            &liquidation_swaps.amount_out,
-        )?;
+        ser_struct
+            .serialize_field("liquidation_swaps.amount_out", &liquidation_swaps.amount_out)?;
 
         // victims
         let liquidations: ClickhouseVecNormalizedLiquidation = self.liquidations.clone().into();
@@ -89,10 +80,8 @@ impl Serialize for Liquidation {
         ser_struct.serialize_field("liquidations.pool", &liquidations.pool)?;
         ser_struct.serialize_field("liquidations.liquidator", &liquidations.liquidator)?;
         ser_struct.serialize_field("liquidations.debtor", &liquidations.debtor)?;
-        ser_struct.serialize_field(
-            "liquidations.collateral_asset",
-            &liquidations.collateral_asset,
-        )?;
+        ser_struct
+            .serialize_field("liquidations.collateral_asset", &liquidations.collateral_asset)?;
         ser_struct.serialize_field("liquidations.debt_asset", &liquidations.debt_asset)?;
         ser_struct.serialize_field("liquidations.covered_debt", &liquidations.covered_debt)?;
         ser_struct.serialize_field(

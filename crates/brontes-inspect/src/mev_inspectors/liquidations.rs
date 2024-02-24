@@ -7,7 +7,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails, Node, Root},
-    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
+    ActionIter, ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
 };
 use hyper::header;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -22,9 +22,7 @@ pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self {
-            inner: SharedInspectorUtils::new(quote, db),
-        }
+        Self { inner: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -59,32 +57,13 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        let swaps = actions
-            .iter()
-            .filter_map(|action| {
-                if let Actions::Swap(swap) = action {
-                    Some(swap)
-                } else {
-                    None
-                }
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let liqs = actions
-            .iter()
-            .filter_map(|action| {
-                if let Actions::Liquidation(liq) = action {
-                    Some(liq)
-                } else {
-                    None
-                }
-            })
-            .cloned()
-            .collect::<Vec<_>>();
+        let (swaps, liqs): (Vec<_>, Vec<_>) = actions
+            .clone()
+            .into_iter()
+            .action_split((Actions::try_swap, Actions::try_liquidation));
 
         if liqs.is_empty() {
-            return None;
+            return None
         }
 
         let liq_profit = liqs
@@ -131,16 +110,13 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let new_liquidation = Liquidation {
             liquidation_tx_hash: info.tx_hash,
-            trigger: b256!(),
-            liquidation_swaps: swaps,
-            liquidations: liqs,
-            gas_details: info.gas_details,
+            trigger:             b256!(),
+            liquidation_swaps:   swaps,
+            liquidations:        liqs,
+            gas_details:         info.gas_details,
         };
 
-        Some(Bundle {
-            header,
-            data: BundleData::Liquidation(new_liquidation),
-        })
+        Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
 }
 

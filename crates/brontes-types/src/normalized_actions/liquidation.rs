@@ -1,7 +1,7 @@
 use std::fmt::{self, Debug};
 
 use alloy_primitives::U256;
-use clickhouse::{fixed_string::FixedString, Row};
+use clickhouse::Row;
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
@@ -15,23 +15,23 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    Protocol,
+    rational_to_clickhouse_tuple, Protocol,
 };
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
+#[derive(Default, Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedLiquidation {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
-    pub trace_index: u64,
-    pub pool: Address,
-    pub liquidator: Address,
-    pub debtor: Address,
-    pub collateral_asset: TokenInfoWithAddress,
-    pub debt_asset: TokenInfoWithAddress,
-    pub covered_debt: Rational,
+    pub protocol:              Protocol,
+    pub trace_index:           u64,
+    pub pool:                  Address,
+    pub liquidator:            Address,
+    pub debtor:                Address,
+    pub collateral_asset:      TokenInfoWithAddress,
+    pub debt_asset:            TokenInfoWithAddress,
+    pub covered_debt:          Rational,
     pub liquidated_collateral: Rational,
-    pub msg_value: U256,
+    pub msg_value:             U256,
 }
 
 impl fmt::Display for NormalizedLiquidation {
@@ -140,50 +140,46 @@ impl NormalizedLiquidation {
 }
 
 pub struct ClickhouseVecNormalizedLiquidation {
-    pub trace_index: Vec<u64>,
-    pub pool: Vec<FixedString>,
-    pub liquidator: Vec<FixedString>,
-    pub debtor: Vec<FixedString>,
-    pub collateral_asset: Vec<FixedString>,
-    pub debt_asset: Vec<FixedString>,
-    pub covered_debt: Vec<[u8; 32]>,
-    pub liquidated_collateral: Vec<[u8; 32]>,
+    pub trace_index:           Vec<u64>,
+    pub pool:                  Vec<String>,
+    pub liquidator:            Vec<String>,
+    pub debtor:                Vec<String>,
+    pub collateral_asset:      Vec<String>,
+    pub debt_asset:            Vec<String>,
+    pub covered_debt:          Vec<([u8; 32], [u8; 32])>,
+    pub liquidated_collateral: Vec<([u8; 32], [u8; 32])>,
 }
 
 impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
-    fn from(_value: Vec<NormalizedLiquidation>) -> Self {
-        todo!("todo");
-        // ClickhouseVecNormalizedLiquidation {
-        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
-        //     pool:        value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.pool).into())
-        //         .collect(),
-        //     liquidator:  value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.liquidator).into())
-        //         .collect(),
-        //     debtor:      value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.debtor).into())
-        //         .collect(),
-        //
-        //     collateral_asset:      value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.collateral_asset).into())
-        //         .collect(),
-        //     debt_asset:            value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.debt_asset).into())
-        //         .collect(),
-        //     covered_debt:          value
-        //         .iter()
-        //         .map(|val| val.covered_debt.to_le_bytes())
-        //         .collect(),
-        //     liquidated_collateral: value
-        //         .iter()
-        //         .map(|val| val.liquidated_collateral.to_le_bytes())
-        //         .collect(),
-        // }
+    fn from(value: Vec<NormalizedLiquidation>) -> Self {
+        ClickhouseVecNormalizedLiquidation {
+            trace_index: value.iter().map(|val| val.trace_index).collect(),
+            pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
+            liquidator:  value
+                .iter()
+                .map(|val| format!("{:?}", val.liquidator))
+                .collect(),
+            debtor:      value
+                .iter()
+                .map(|val| format!("{:?}", val.debtor))
+                .collect(),
+
+            collateral_asset:      value
+                .iter()
+                .map(|val| format!("{:?}", val.collateral_asset))
+                .collect(),
+            debt_asset:            value
+                .iter()
+                .map(|val| format!("{:?}", val.debt_asset))
+                .collect(),
+            covered_debt:          value
+                .iter()
+                .map(|val| rational_to_clickhouse_tuple(&val.covered_debt))
+                .collect(),
+            liquidated_collateral: value
+                .iter()
+                .map(|val| rational_to_clickhouse_tuple(&val.liquidated_collateral))
+                .collect(),
+        }
     }
 }

@@ -4,7 +4,10 @@ mod registry;
 mod state_tracker;
 mod subgraph;
 mod yens;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
@@ -16,7 +19,6 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::Rational;
 pub use subgraph_verifier::VerificationResults;
-use tracing::info;
 
 use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
@@ -51,15 +53,16 @@ use crate::{types::PoolState, Protocol};
 /// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
 ///   state for the generated subgraphs.
 pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
-    all_pair_graph: AllPairGraph,
+    all_pair_graph:     AllPairGraph,
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
     /// deals with the verification process of our subgraphs
-    subgraph_verifier: SubgraphVerifier,
+    subgraph_verifier:  SubgraphVerifier,
     /// tracks all state needed for our subgraphs
-    graph_state: StateTracker,
+    graph_state:        StateTracker,
+    #[allow(dead_code)] // we don't db on tests which causes dead code
     /// allows us to save a load subgraphs.
-    db: &'static DB,
+    db:                 &'static DB,
 }
 
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
@@ -97,14 +100,16 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         pair: Pair,
         ignore: HashSet<Pair>,
         connectivity_wight: usize,
-        connections: usize,
+        connections: Option<usize>,
+        timeout: Duration,
     ) -> Vec<SubGraphEdge> {
+        #[cfg(not(feature = "tests"))]
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
-            return edges;
+            return edges
         }
 
         self.all_pair_graph
-            .get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections)
+            .get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections, timeout)
             .into_iter()
             .flatten()
             .flatten()
@@ -121,53 +126,12 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .create_new_subgraph(pair, block, edges, &self.graph_state)
     }
 
-    /// creates a subpool for the pair returning all pools that need to be
-    /// loaded
-    pub fn create_subgraph_mut(
-        &mut self,
-        block: u64,
-        pair: Pair,
-        connectivity_wight: usize,
-        connections: usize,
-    ) -> Vec<PoolPairInfoDirection> {
-        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
-            return self.subgraph_verifier.create_new_subgraph(
-                pair,
-                block,
-                edges,
-                &self.graph_state,
-            );
-        }
-
-        let paths = self
-            .all_pair_graph
-            // We want to use the unordered pair as we always
-            // want to run the search from the unkown token to the quote.
-            // We want this beacuse our algorithm favors heavily connected
-            // nodes which most times our base token is not. This small
-            // change speeds up yens algo by a good amount.
-            .get_paths(pair, block, connectivity_wight, connections)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .collect_vec();
-
-        // search failed
-        if paths.is_empty() {
-            info!(?pair, "empty search path");
-            return vec![];
-        }
-
-        self.subgraph_verifier
-            .create_new_subgraph(pair, block, paths, &self.graph_state)
-    }
-
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
-        if let Err(e) = self.db.save_pair_at(
-            block,
-            pair,
-            subgraph.get_all_pools().flatten().cloned().collect(),
-        ) {
+        #[cfg(not(feature = "tests"))]
+        if let Err(e) =
+            self.db
+                .save_pair_at(block, pair, subgraph.get_all_pools().flatten().cloned().collect())
+        {
             tracing::error!(error=%e, "failed to save new subgraph pair");
         }
         self.sub_graph_registry.add_verified_subgraph(

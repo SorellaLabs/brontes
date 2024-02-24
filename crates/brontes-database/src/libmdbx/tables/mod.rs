@@ -257,7 +257,7 @@ macro_rules! compressed_table {
             ) -> eyre::Result<()> {
                 paste::paste!{
                     crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
-                        ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
+                    ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
                 }
             }
         }
@@ -706,8 +706,3 @@ compressed_table!(
         }
     }
 );
-
-#[test]
-fn t() {
-    assert_eq!("MevBlocks", MevBlocks::NAME);
-}

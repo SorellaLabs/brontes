@@ -11,7 +11,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use tracing::{error, info};
+use tracing::info;
 
 use crate::Processor;
 
@@ -62,7 +62,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .await
     {
-        error!("Failed to insert classified data into libmdbx: {:?}", e);
+        panic!("Failed to insert classified data into libmdbx: {:?}", e);
     }
 }
 
@@ -101,7 +101,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             )
             .await
         {
-            error!("Failed to update searcher info in the database: {:?}", e);
+            panic!("Failed to update searcher info in the database: {:?}", e);
         }
     }
 }

@@ -33,27 +33,15 @@ sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveBase2, "./classifier-abis/CurveBase2.json");
 sol!(CurveBase3, "./classifier-abis/CurveBase3.json");
 sol!(CurveBase4, "./classifier-abis/CurveBase4.json");
-sol!(
-    CurveV1MetapoolImpl,
-    "./classifier-abis/CurveV1MetapoolImpl.json"
-);
-sol!(
-    CurveV2MetapoolImpl,
-    "./classifier-abis/CurveV2MetapoolImpl.json"
-);
+sol!(CurveV1MetapoolImpl, "./classifier-abis/CurveV1MetapoolImpl.json");
+sol!(CurveV2MetapoolImpl, "./classifier-abis/CurveV2MetapoolImpl.json");
 sol!(CurveV2PlainImpl, "./classifier-abis/CurveV2PlainImpl.json");
-sol!(
-    CurvecrvUSDPlainImpl,
-    "./classifier-abis/CurvecrvUSDPlainImpl.json"
-);
+sol!(CurvecrvUSDPlainImpl, "./classifier-abis/CurvecrvUSDPlainImpl.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
-sol!(
-    UniswapX,
-    "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json"
-);
+sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
 sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 

@@ -46,12 +46,7 @@ use crate::clickhouse::{
 use crate::libmdbx::CompressedTable;
 use crate::{
     clickhouse::ClickhouseHandle,
-    libmdbx::{
-        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, *},
-        types::LibmdbxData,
-        Libmdbx, LibmdbxInitializer,
-    },
-    AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
+    libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
 };
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
@@ -488,6 +483,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
 impl DBWriter for LibmdbxReadWriter {
     type Inner = Self;
+
     fn inner(&self) -> &Self::Inner {
         unreachable!()
     }
@@ -569,7 +565,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .map(|(idx, value)| {
                     let index = DexQuoteWithIndex {
                         tx_idx: idx as u16,
-                        quote: value.into_iter().collect_vec(),
+                        quote:  value.into_iter().collect_vec(),
                     };
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
@@ -630,10 +626,12 @@ impl DBWriter for LibmdbxReadWriter {
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
         // add to default table
+        let mut tokens = tokens.iter();
         self.0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData::new(
@@ -641,12 +639,12 @@ impl DBWriter for LibmdbxReadWriter {
                     ProtocolInfo {
                         protocol: classifier_name,
                         init_block: block,
-                        token0: tokens[0],
-                        token1: tokens[1],
-                        token2: None,
-                        token3: None,
-                        token4: None,
-                        curve_lp_token: None,
+                        token0: *tokens.next().unwrap(),
+                        token1: *tokens.next().unwrap(),
+                        token2: tokens.next().cloned(),
+                        token3: tokens.next().cloned(),
+                        token4: tokens.next().cloned(),
+                        curve_lp_token,
                     },
                 ),
             ])?;
@@ -668,12 +666,7 @@ impl DBWriter for LibmdbxReadWriter {
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        let table = TxTracesData::new(
-            block,
-            TxTracesInner {
-                traces: Some(traces),
-            },
-        );
+        let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
         self.0.write_table(&vec![table])?;
 
         self.init_state_updating(block, TRACE_FLAG)
@@ -723,12 +716,9 @@ impl LibmdbxReadWriter {
 
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
-        let res = tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
-            eyre!(
-                "Failed to fetch Metadata's block info for block {}",
-                block_num
-            )
-        });
+        let res = tx
+            .get::<BlockInfo>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num));
 
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;
