@@ -31,18 +31,16 @@ impl<
             return Some(extra)
         }
 
-        self.iter
-            .next()
-            .and_then(|item| {
-                if let Some(wanted) = (self.wanted)(&item) {
-                    let mut ret = (self.transform)(wanted.clone());
-                    let now = ret.pop();
-                    self.extra.extend(ret);
-                    now
-                } else {
-                    Some(item)
-                }
-            })
+        self.iter.next().and_then(|item| {
+            if let Some(wanted) = (self.wanted)(&item) {
+                let mut ret = (self.transform)(wanted.clone());
+                let now = ret.pop();
+                self.extra.extend(ret);
+                now
+            } else {
+                Some(item)
+            }
+        })
     }
 }
 

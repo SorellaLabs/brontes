@@ -60,6 +60,7 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
     subgraph_verifier:  SubgraphVerifier,
     /// tracks all state needed for our subgraphs
     graph_state:        StateTracker,
+    #[allow(dead_code)] // we don't db on tests which causes dead code
     /// allows us to save a load subgraphs.
     db:                 &'static DB,
 }

@@ -1,7 +1,6 @@
 use std::{collections::HashMap, panic::AssertUnwindSafe};
 
 use rayon::{
-    iter::IntoParallelIterator,
     prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
     ThreadPool, ThreadPoolBuilder,
 };
