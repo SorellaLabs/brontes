@@ -31,12 +31,11 @@ use brontes_types::{
     TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use thiserror::Error;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 use crate::{
     ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
@@ -163,52 +162,6 @@ impl ClassifierTestUtils {
                 }),
         )
         .await)
-    }
-
-    /// returns true if we need to query dex tokens
-    fn need_dex_quotes(
-        &self,
-        block: u64,
-        quote_token: Address,
-        quotes: Option<&DexQuotes>,
-        needs_tokens: &[Address],
-        tx: UnboundedSender<DexPriceMsg>,
-    ) -> bool {
-        if let Some(quote) = quotes {
-            if !quote.0.is_empty() {
-                return needs_tokens
-                    .iter()
-                    .zip(vec![quote_token].into_iter().cycle())
-                    .map(|(token, quote)| Pair(*token, quote))
-                    .filter(|pair| !quote.has_quote(pair, 0))
-                    .map(|pair| {
-                        let update = DexPriceMsg::Update(PoolUpdate {
-                            block,
-                            tx_idx: 0,
-                            logs: vec![],
-                            action: make_fake_swap(pair),
-                        });
-                        tx.send(update).unwrap();
-                    })
-                    .count()
-                    != 0
-            }
-        }
-
-        needs_tokens
-            .iter()
-            .zip(vec![quote_token].into_iter().cycle())
-            .map(|(token, quote)| Pair(*token, quote))
-            .for_each(|pair| {
-                let update = DexPriceMsg::Update(PoolUpdate {
-                    block,
-                    tx_idx: 0,
-                    logs: vec![],
-                    action: make_fake_swap(pair),
-                });
-                tx.send(update).unwrap();
-            });
-        true
     }
 
     pub async fn build_tree_tx(
@@ -382,8 +335,6 @@ impl ClassifierTestUtils {
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(traces, header).await;
-
-        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
 
         needs_tokens
             .iter()
