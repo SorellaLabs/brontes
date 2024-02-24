@@ -8,14 +8,16 @@ use crate::{
     ActionIter, BlockTree,
 };
 
+impl TreeUtils<Actions> for BlockTree<Actions> {}
+
 pub trait TreeUtils<V: NormalizedAction> {
     fn collect_all_action_filter<Ret>(
         &self,
         call: TreeSearchBuilder<V>,
         collector: fn(Actions) -> Option<Ret>,
-    ) -> HashMap<B256, Ret>
+    ) -> HashMap<B256, Vec<Ret>>
     where
-        Self: TreeUtilsCast<(Ret,), (fn(Actions) -> Option<Ret>,), V>,
+        Self: TreeUtilsCast<(Vec<Ret>,), (fn(Actions) -> Option<Ret>,), V>,
     {
         TreeUtilsCast::collect_all_actions_filter(self, call, (collector,))
             .into_iter()
@@ -28,9 +30,9 @@ pub trait TreeUtils<V: NormalizedAction> {
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
         collector: fn(Actions) -> Option<Ret>,
-    ) -> HashMap<B256, Ret>
+    ) -> HashMap<B256, Vec<Ret>>
     where
-        Self: TreeUtilsCast<(Ret,), (fn(Actions) -> Option<Ret>,), V>,
+        Self: TreeUtilsCast<(Vec<Ret>,), (fn(Actions) -> Option<Ret>,), V>,
     {
         TreeUtilsCast::collect_actions_range_filter(self, range, call, (collector,))
             .into_iter()
@@ -43,9 +45,9 @@ pub trait TreeUtils<V: NormalizedAction> {
         hash: B256,
         call: TreeSearchBuilder<V>,
         collector: fn(Actions) -> Option<Ret>,
-    ) -> Ret
+    ) -> Vec<Ret>
     where
-        Self: TreeUtilsCast<(Ret,), (fn(Actions) -> Option<Ret>,), V>,
+        Self: TreeUtilsCast<(Vec<Ret>,), (fn(Actions) -> Option<Ret>,), V>,
     {
         TreeUtilsCast::collect_actions_filter(self, hash, call, (collector,)).0
     }
