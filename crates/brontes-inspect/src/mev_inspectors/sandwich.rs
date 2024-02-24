@@ -91,14 +91,14 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     }
 
-                    if victims
-                        .iter()
-                        .flatten()
-                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                        .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
-                    {
-                        return None
-                    }
+                    // if victims
+                    //     .iter()
+                    //     .flatten()
+                    //     .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                    //     .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
+                    // {
+                    //     return None
+                    // }
 
                     let frontrun_info = possible_frontruns
                         .iter()
