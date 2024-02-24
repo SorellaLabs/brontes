@@ -2,12 +2,14 @@ use crate::normalized_actions::Actions;
 
 impl<T: Sized> ActionIter for T where T: Iterator<Item = Actions> {}
 
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct FlattenSpecified<I: Iterator<Item = Actions>, W, T> {
     iter:      I,
     wanted:    W,
     transform: T,
     extra:     Vec<Actions>,
 }
+
 impl<I: Iterator<Item = Actions>, W, T> FlattenSpecified<I, W, T> {
     pub(crate) fn new(iter: I, wanted: W, transform: T) -> Self {
         Self { iter, wanted, transform, extra: vec![] }
@@ -55,18 +57,42 @@ pub trait ActionIter: Iterator<Item = Actions> {
         FlattenSpecified::new(self, wanted, transform)
     }
 
+    fn count_action(self, action: impl Fn(&Actions) -> bool) -> usize
+    where
+        Self: Sized,
+    {
+        let mut i = 0;
+        self.into_iter().fold((), |_, x| {
+            i += action(&x) as usize;
+        });
+
+        i
+    }
+
+    fn count_actions<const N: usize>(self, action: [fn(&Actions) -> bool; N]) -> usize
+    where
+        Self: Sized,
+    {
+        let mut i = 0;
+        self.into_iter().fold((), |_, x| {
+            i += action.iter().any(|ptr| ptr(&x)) as usize;
+        });
+
+        i
+    }
+
     fn action_split<FromI, Fns>(self, filters: Fns) -> FromI
     where
         Self: Sized + ActionSplit<FromI, Fns>,
     {
-        ActionSplit::action_split(self, filters)
+        ActionSplit::action_split(self.into_iter(), filters)
     }
 
     fn action_split_ref<FromI, Fns>(self, filters: &Fns) -> FromI
     where
         Self: Sized + ActionSplit<FromI, Fns>,
     {
-        ActionSplit::action_split_ref(self, filters)
+        ActionSplit::action_split_ref(self.into_iter(), filters)
     }
 
     fn collect_action_vec<R>(self, filter: fn(Actions) -> Option<R>) -> Vec<R>
@@ -74,19 +100,20 @@ pub trait ActionIter: Iterator<Item = Actions> {
         Self: Sized,
     {
         let (low, _) = self.size_hint();
-        self.fold(Vec::with_capacity(low), |mut acc, x| {
-            if let Some(valid) = filter(x) {
-                acc.push(valid)
-            }
-            acc
-        })
+        self.into_iter()
+            .fold(Vec::with_capacity(low), |mut acc, x| {
+                if let Some(valid) = filter(x) {
+                    acc.push(valid)
+                }
+                acc
+            })
     }
 
     fn collect_action<R, I: Default + Extend<R>>(self, filter: impl Fn(Actions) -> Option<R>) -> I
     where
         Self: Sized,
     {
-        self.fold(I::default(), |mut acc, x| {
+        self.into_iter().fold(I::default(), |mut acc, x| {
             if let Some(valid) = filter(x) {
                 acc.extend(std::iter::once(valid))
             }
@@ -104,9 +131,9 @@ pub trait ActionSplit<FromI, Fns>: Iterator<Item = Actions> {
 // cloning
 macro_rules! action_split {
     ($(($fns:ident, $ret:ident, $from:ident)),*) => {
-        #[allow(non_snake_case)]
-        impl <IT: Iterator<Item = Actions>,$($ret,)* $($fns: Fn(Actions) -> Option<$ret>),*
-            , $($from: Default + Extend<$ret>),* >
+        #[allow(non_snake_case, unused_variables)]
+        impl <IT: Iterator<Item = Actions>,$($ret,)* $($fns: Fn(Actions) -> Option<$ret>,)*
+             $($from: Default + Extend<$ret>),* >
             ActionSplit<($($from,)*), ($($fns,)*)> for IT {
             fn action_split(mut self, mut filters: ($($fns,)*)) -> ($($from,)*) {
                 let mut res = ($($from::default(),)*);
@@ -149,6 +176,7 @@ macro_rules! action_split {
     };
 }
 
+action_split!();
 action_split!((A, RETA, FA));
 action_split!((A, RETA, FA), (B, RETB, FB));
 action_split!((A, RETA, FA), (B, RETB, FB), (C, RETC, FC));

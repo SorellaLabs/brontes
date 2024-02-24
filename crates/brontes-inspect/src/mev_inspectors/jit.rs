@@ -143,7 +143,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .clone()
             .into_iter()
             .flatten()
-            .action_unzip((Actions::split_mint, Actions::split_burn, Actions::split_collect));
+            .action_split((Actions::split_mint, Actions::split_burn, Actions::split_collect));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");

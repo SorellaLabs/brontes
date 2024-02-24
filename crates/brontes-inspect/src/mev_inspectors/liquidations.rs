@@ -60,7 +60,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let (swaps, liqs): (Vec<_>, Vec<_>) = actions
             .clone()
             .into_iter()
-            .action_unzip((Actions::split_swap, Actions::split_liquidation));
+            .action_split((Actions::split_swap, Actions::split_liquidation));
 
         if liqs.is_empty() {
             return None
