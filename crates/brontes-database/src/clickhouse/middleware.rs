@@ -59,7 +59,7 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        #[cfg(not(features = "tests"))]
+        #[cfg(not(feature = "tests"))]
         self.client
             .write_token_info(address, decimals, symbol.clone())
             .await?;
