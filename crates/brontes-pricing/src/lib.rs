@@ -923,8 +923,8 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                         pair,
                         ignore,
                         100,
-                        None,
-                        Duration::from_millis(100),
+                        Some(5),
+                        Duration::from_millis(69),
                     )],
                 )
             }
@@ -943,7 +943,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                             ignore.clone(),
                             0,
                             None,
-                            Duration::from_millis(300),
+                            Duration::from_millis(325),
                         )
                     })
                     .collect::<Vec<_>>(),
@@ -1020,8 +1020,8 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             pair,
             HashSet::new(),
             100,
-            None,
-            Duration::from_millis(100),
+            Some(5),
+            Duration::from_millis(69),
         );
         (subgraph, pair, trigger_update.block)
     }))

@@ -125,7 +125,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: Fn(&N) -> bool + Send + Sync,
 {
-    let k = k.unwrap_or(usize::MAX);
+    let iter_k = k.unwrap_or(usize::MAX);
     let tp = rayon::ThreadPoolBuilder::default()
         .num_threads(4)
         .thread_name(|i| format!("yen thread {i}"))
@@ -143,13 +143,15 @@ where
     // A min-heap to store our lowest-cost route candidate
     let mut k_routes = BinaryHeap::new();
     let start = SystemTime::now();
-    for ki in 0..(k - 1) {
-        if routes.len() <= ki || routes.len() == k {
+    for ki in 0..(iter_k - 1) {
+        if routes.len() <= ki || routes.len() == iter_k {
             // We have no more routes to explore, or we have found enough.
             break
         }
 
-        if SystemTime::now().duration_since(start).unwrap() > extra_path_timeout {
+        if SystemTime::now().duration_since(start).unwrap() > extra_path_timeout
+            && !(k <= Some(routes.len()))
+        {
             tracing::debug!("timeout for extra routes hit");
             break
         }
@@ -221,7 +223,7 @@ where
             routes.push(route);
             // If we have other potential best routes with the same cost, we can insert
             // them in the found routes since we will not find a better alternative.
-            while routes.len() < k {
+            while routes.len() < iter_k {
                 let Some(k_route) = k_routes.peek() else {
                     break;
                 };
