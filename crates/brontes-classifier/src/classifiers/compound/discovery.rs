@@ -11,7 +11,7 @@ action_impl!(
     |info: CallInfo, call_data: initialize_0Call, _| {
 
         Ok(NormalizedNewPool {
-            trace_index: info.trace_index,
+            trace_index: info.trace_idx,
             protocol: Protocol::CompoundV2,
             pool_address: info.from_address,
             tokens: vec![info.from_address]
@@ -27,7 +27,7 @@ action_impl!(
     call_data: true,
     |info: CallInfo, call_data: initialize_1Call, _| {
         Ok(NormalizedNewPool {
-            trace_index: info.trace_index,
+            trace_index: info.trace_idx,
             protocol: Protocol::CompoundV2,
             pool_address: info.from_address,
             tokens: vec![info.from_address]
