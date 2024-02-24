@@ -10,8 +10,8 @@ use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
     normalized_actions::{
-        Actions, NormalizedBatch, NormalizedFlashLoan, NormalizedLiquidation, NormalizedSwap,
-        NormalizedTransfer,
+        Actions, NormalizedBatch, NormalizedBurn, NormalizedCollect, NormalizedFlashLoan,
+        NormalizedLiquidation, NormalizedMint, NormalizedSwap, NormalizedTransfer,
     },
     pair::Pair,
     utils::ToFloatNearest,
@@ -341,21 +341,17 @@ impl TokenAccounting for Actions {
             Actions::Transfer(transfer) => transfer.apply_token_deltas(delta_map),
             Actions::FlashLoan(flash_loan) => flash_loan.apply_token_deltas(delta_map),
             Actions::Liquidation(liquidation) => liquidation.apply_token_deltas(delta_map),
-            Actions::Batch(batch) => {
-                for action in &batch.child_actions {
-                    action.apply_token_deltas(delta_map);
-                }
-            }
+            Actions::Batch(batch) => batch.apply_token_deltas(delta_map),
             Actions::Burn(burn) => burn.apply_token_deltas(delta_map),
             Actions::Mint(mint) => mint.apply_token_deltas(delta_map),
             Actions::SwapWithFee(swap_with_fee) => swap_with_fee.swap.apply_token_deltas(delta_map),
             Actions::Collect(collect) => collect.apply_token_deltas(delta_map),
             Actions::Unclassified(_) => (), /* Potentially no token deltas to apply, adjust as */
             // necessary
-            Actions::SelfDestruct(self_destruct) => self_destruct.apply_token_deltas(delta_map),
-            Actions::EthTransfer(eth_transfer) => eth_transfer.apply_token_deltas(delta_map),
-            Actions::NewPool(new_pool) => new_pool.apply_token_deltas(delta_map),
-            Actions::PoolConfigUpdate(pool_update) => pool_update.apply_token_deltas(delta_map),
+            Actions::SelfDestruct(_self_destruct) => (),
+            Actions::EthTransfer(_eth_transfer) => (),
+            Actions::NewPool(_new_pool) => (),
+            Actions::PoolConfigUpdate(_pool_update) => (),
             Actions::Revert => (), // No token deltas to apply for a revert
         }
     }
@@ -432,6 +428,35 @@ impl TokenAccounting for NormalizedTransfer {
         apply_delta(self.from, self.token.address, -amount_sent.clone(), delta_map);
 
         apply_delta(self.to, self.token.address, self.amount.clone(), delta_map);
+    }
+}
+impl TokenAccounting for NormalizedBurn {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_burned = -amount.clone();
+            apply_delta(self.pool, self.token[index].address, amount_burned, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
+}
+
+impl TokenAccounting for NormalizedMint {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_minted = -amount.clone();
+            apply_delta(self.from, self.token[index].address, amount_minted, delta_map);
+            apply_delta(self.pool, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
+}
+
+impl TokenAccounting for NormalizedCollect {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_collected = -amount.clone();
+            apply_delta(self.pool, self.token[index].address, amount_collected, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
+        });
     }
 }
 
