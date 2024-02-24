@@ -7,4 +7,4 @@ SELECT
     contract_info,
     ens,
     socials
-FROM brontes.address_meta
+FROM brontes_api.address_meta

@@ -1,5 +1,5 @@
 SELECT DISTINCT 
     address, 
     tokens
-FROM brontes.address_to_protocol
+FROM brontes_api.address_to_protocol
 
