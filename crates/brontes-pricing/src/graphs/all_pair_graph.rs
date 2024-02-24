@@ -86,6 +86,7 @@ impl AllPairGraph {
 
         all_pool_data
             .into_iter()
+            .sorted()
             .for_each(|((pool_addr, dex), pair)| {
                 if !dex.has_state_updater() {
                     return
