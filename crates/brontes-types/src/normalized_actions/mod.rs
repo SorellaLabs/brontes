@@ -399,5 +399,6 @@ split!(
     (Burn, NormalizedBurn),
     (Transfer, NormalizedTransfer),
     (Swap, NormalizedSwap),
-    (Liquidation, NormalizedLiquidation)
+    (Liquidation, NormalizedLiquidation),
+    (FlashLoan, NormalizedFlashLoan)
 );

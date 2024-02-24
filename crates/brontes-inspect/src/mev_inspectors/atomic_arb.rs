@@ -5,7 +5,9 @@ use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, Bundle, MevType},
-    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{
+        flashloan, Actions, NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
+    },
     tree::BlockTree,
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
@@ -66,6 +68,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = searcher_actions
             .clone()
             .into_iter()
+            .flatten_specified(Actions::split_flash_loan, |flash: NormalizedFlashLoan| {
+                flash.child_actions
+            })
             .action_unzip((Actions::split_swap, Actions::split_transfer));
 
         let possible_arb_type = self.is_possible_arb(&swaps, &transfers)?;

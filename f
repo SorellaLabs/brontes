@@ -8,11 +8,7 @@ pub struct FlattenSpecified<I: Iterator<Item = Actions>, W, T> {
     transform: T,
     extra:     Vec<Actions>,
 }
-impl<I: Iterator<Item = Actions>, W, T> FlattenSpecified<I, W, T> {
-    pub(crate) fn new(iter: I, wanted: W, transform: T) -> Self {
-        Self { iter, wanted, transform, extra: vec![] }
-    }
-}
+impl 
 
 impl<
         R: Clone,
@@ -45,16 +41,12 @@ impl<
 }
 
 pub trait ActionIter: Iterator<Item = Actions> {
-    fn flatten_specified<R, W, T>(self, wanted: W, transform: T) -> FlattenSpecified<Self, W, T>
-    where
-        Self: Sized,
-        R: Clone,
-        W: Fn(&Actions) -> Option<&R>,
-        T: Fn(R) -> Vec<Actions>,
-    {
-        FlattenSpecified::new(self, wanted, transform)
+    fn flatten_specified<R,  W,T>(
+        self,
+        wanted: impl Fn(&Actions) -> Option<&R>,
+        transform: impl Fn(R) -> Vec<Actions>,
+    ) ->FlattenSpecified<Self, W,T> where Self:Sized{
     }
-
     fn action_split<FromI, Fns>(self, filters: Fns) -> FromI
     where
         Self: Sized + ActionSplit<FromI, Fns>,
