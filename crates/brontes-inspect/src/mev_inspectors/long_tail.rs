@@ -34,106 +34,108 @@ impl<DB: LibmdbxReader> Inspector for LongTailInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        let interesting_state = tree.collect_all(TreeSearchBuilder::default().with_actions([
-            Actions::is_transfer,
-            Actions::is_flash_loan,
-            Actions::is_swap,
-        ]));
+        todo!() /*
+                        let interesting_state = tree.collect_all(TreeSearchBuilder::default().with_actions([
+                            Actions::is_transfer,
+                            Actions::is_flash_loan,
+                            Actions::is_swap,
+                        ]));
 
-        interesting_state
-            .into_par_iter()
-            .filter_map(|(tx, actions)| {
-                let info = tree.get_tx_info(tx, self.utils.db)?;
+                        interesting_state
+                            .into_par_iter()
+                            .filter_map(|(tx, actions)| {
+                                let info = tree.get_tx_info(tx, self.utils.db)?;
 
-                self.process_tx(info, meta_data.clone(), actions)
-            })
-            .collect::<Vec<_>>()
-    }
-}
+                                self.process_tx(info, meta_data.clone(), actions)
+                            })
+                            .collect::<Vec<_>>()
+                    }
+                }
 
-impl<DB: LibmdbxReader> LongTailInspector<'_, DB> {
-    fn process_tx(
-        &self,
-        info: TxInfo,
-        meta_data: Arc<Metadata>,
-        actions: Vec<Actions>,
-    ) -> Option<Bundle> {
-        todo!()
-    }
+                impl<DB: LibmdbxReader> LongTailInspector<'_, DB> {
+                    fn process_tx(
+                        &self,
+                        info: TxInfo,
+                        meta_data: Arc<Metadata>,
+                        actions: Vec<Actions>,
+                    ) -> Option<Bundle> {
+                        todo!()
+                    }
 
-    fn process_long_tail(
-        &self,
-        tx_info: &TxInfo,
-        metadata: Arc<Metadata>,
-        searcher_actions: &[Vec<Actions>],
-    ) -> Option<Rational> {
-        // check the following:
-        // no liquidity collects,
-        // more than 2 transfers or more than 1 swap
+                    fn process_long_tail(
+                        &self,
+                        tx_info: &TxInfo,
+                        metadata: Arc<Metadata>,
+                        searcher_actions: &[Vec<Actions>],
+                    ) -> Option<Rational> {
+                        // check the following:
+                        // no liquidity collects,
+                        // more than 2 transfers or more than 1 swap
 
-        let collect = searcher_actions.iter().flatten().any(|a| a.is_collect());
+                        let collect = searcher_actions.iter().flatten().any(|a| a.is_collect());
 
-        // if we have a collect and no swaps then return
-        if collect {
-            return None;
-        }
+                        // if we have a collect and no swaps then return
+                        if collect {
+                            return None;
+                        }
 
-        let swaps = searcher_actions
-            .iter()
-            .flatten()
-            .map(|a| if a.is_swap() { 1 } else { 0 })
-            .sum::<u64>();
-        let transfers = searcher_actions
-            .iter()
-            .flatten()
-            .map(|a| if a.is_transfer() { 1 } else { 0 })
-            .sum::<u64>();
+                        let swaps = searcher_actions
+                            .iter()
+                            .flatten()
+                            .map(|a| if a.is_swap() { 1 } else { 0 })
+                            .sum::<u64>();
+                        let transfers = searcher_actions
+                            .iter()
+                            .flatten()
+                            .map(|a| if a.is_transfer() { 1 } else { 0 })
+                            .sum::<u64>();
 
-        if swaps == 0 || transfers < 3 {
-            return None;
-        }
+                        if swaps == 0 || transfers < 3 {
+                            return None;
+                        }
 
-        let gas_used = tx_info.gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+                        let gas_used = tx_info.gas_details.gas_paid();
+                        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
 
-        let rev_usd = self.get_dex_revenue_usd_with_transfers(
-            tx_info.tx_index,
-            PriceAt::Lowest,
-            searcher_actions,
-            metadata.clone(),
-        )?;
+                        let rev_usd = self.get_dex_revenue_usd_with_transfers(
+                            tx_info.tx_index,
+                            PriceAt::Lowest,
+                            searcher_actions,
+                            metadata.clone(),
+                        )?;
 
-        let profit = &rev_usd - &gas_used_usd;
+                        let profit = &rev_usd - &gas_used_usd;
 
-        let is_profitable = profit > Rational::ZERO;
+                        let is_profitable = profit > Rational::ZERO;
 
-        is_profitable.then_some(profit)
-    }
+                        is_profitable.then_some(profit)
+                    }
 
-    fn get_dex_revenue_usd_with_transfers(
-        &self,
-        idx: u64,
-        at: PriceAt,
-        actions: &[Vec<Actions>],
-        metadata: Arc<Metadata>,
-    ) -> Option<Rational> {
-        /*let mut deltas = HashMap::new();
-        actions
-            .iter()
-            .flatten()
-            .for_each(|action| action.apply_token_deltas(&mut deltas));
+                    fn get_dex_revenue_usd_with_transfers(
+                        &self,
+                        idx: u64,
+                        at: PriceAt,
+                        actions: &[Vec<Actions>],
+                        metadata: Arc<Metadata>,
+                    ) -> Option<Rational> {
+                        /*let mut deltas = HashMap::new();
+                        actions
+                            .iter()
+                            .flatten()
+                            .for_each(|action| action.apply_token_deltas(&mut deltas));
 
-        let deltas = flatten_token_deltas(deltas, actions)?;
-        let addr_usd_deltas =
-            self.utils
-                .usd_delta_by_address(idx as usize, at, &deltas, metadata.clone(), false)?;
+                        let deltas = flatten_token_deltas(deltas, actions)?;
+                        let addr_usd_deltas =
+                            self.utils
+                                .usd_delta_by_address(idx as usize, at, &deltas, metadata.clone(), false)?;
 
-        Some(
-            addr_usd_deltas
-                .values()
-                .fold(Rational::ZERO, |acc, delta| acc + delta),
-        )*/
-        todo!()
+                        Some(
+                            addr_usd_deltas
+                                .values()
+                                .fold(Rational::ZERO, |acc, delta| acc + delta),
+                        )*/
+                        todo!()
+                     */
     }
 }
 

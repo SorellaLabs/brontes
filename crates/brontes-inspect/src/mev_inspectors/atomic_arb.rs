@@ -5,13 +5,10 @@ use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
-    normalized_actions::{
-        flashloan, Actions, NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
-    },
+    normalized_actions::{Actions, NormalizedFlashLoan, NormalizedSwap},
     tree::BlockTree,
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
@@ -58,17 +55,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        swaps: Vec<Actions>,
+        searcher_actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = searcher_actions
+        let (swaps, flashloans): (Vec<NormalizedSwap>, Vec<NormalizedFlashLoan>) = searcher_actions
             .clone()
             .into_iter()
-            .flatten_specified(Actions::split_flash_loan, |flash: NormalizedFlashLoan| {
-                flash.child_actions
-            })
-            .action_unzip((Actions::split_swap, Actions::split_transfer));
+            .action_split((Actions::split_swap, Actions::split_flash_loan));
 
-        let possible_arb_type = self.is_possible_arb(&swaps)?;
+        let possible_arb_type = self.is_possible_arb(&swaps, &flashloans)?;
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => self.process_triangle_arb(&info, metadata.clone(), &swaps),
@@ -106,7 +100,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
 
-    fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
+    fn is_possible_arb(
+        &self,
+        swaps: &[NormalizedSwap],
+        _flashloans: &[NormalizedFlashLoan],
+    ) -> Option<AtomicArbType> {
+        /*if !flashloans.is_empty()
+        /* && flashloans.contains more than 2 swaps */
+        {
+            return Some(AtomicArbType::FlashloanArb)
+        } */
+
         match swaps.len() {
             0 | 1 => None,
             2 => {
@@ -227,6 +231,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             None
         }
     }
+
+    /* fn process_flashloan(&self, tx_info: &TxInfo, metadata: Arc<Metadata>,
+    searcher_swaps: &[NormalizedSwap], flashloans: &[FlashLoans]) -> {} */
 }
 
 fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {

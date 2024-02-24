@@ -108,8 +108,8 @@ impl DexQuotes {
             .unwrap_or(false)
     }
 
-    fn get_price(&self, pair: Pair, tx: u64) -> Option<&DexPrices> {
-        self.0.get(tx as usize)?.as_ref()?.get(&pair)
+    fn get_price(&self, pair: Pair, tx: usize) -> Option<&DexPrices> {
+        self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
 

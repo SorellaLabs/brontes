@@ -52,6 +52,7 @@ pub enum AtomicArbType {
     StablecoinArb,
     LongTail,
 }
+//TODO: Ludwig, add flashloan arb support
 
 self_convert_redefined!(AtomicArbType);
 

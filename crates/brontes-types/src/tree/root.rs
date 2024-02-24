@@ -55,6 +55,7 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
+    //TODO: Add field for reinit bool flag
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,

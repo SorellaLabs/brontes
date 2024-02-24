@@ -145,17 +145,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
-        let all_actions = searcher_actions.clone();
         let back_run_swaps: Vec<_> = searcher_actions
             .pop()?
             .into_iter()
-            .action_unzip((Actions::split_swap,))
+            .action_split((Actions::split_swap,))
             .0;
 
         let front_run_swaps = searcher_actions
             .clone()
             .into_iter()
-            .map(|action| action.into_iter().action_unzip((Actions::split_swap,)).0)
+            .map(|action| action.into_iter().action_split((Actions::split_swap,)).0)
             .collect_vec();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
@@ -202,7 +201,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 tx_actions
                     .clone()
                     .into_iter()
-                    .action_unzip((Actions::split_swap,))
+                    .action_split((Actions::split_swap,))
                     .0
             })
             .collect::<Vec<_>>();
@@ -230,6 +229,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
+
+        let searcher_transfers = searcher_actions
+            .into_iter()
+            .flatten()
+            .collect_action_vec(Actions::split_transfer);
 
         let rev_usd = self.utils.get_transfers_deltas_usd(
             backrun_info.tx_index,
@@ -485,6 +489,8 @@ fn get_possible_sandwich_duplicate_contracts(
 
     possible_sandwiches.values().cloned().collect()
 }
+
+//TODO: Add support for this type of flashloan sandwich
 
 #[cfg(test)]
 mod tests {
