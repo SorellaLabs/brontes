@@ -194,6 +194,7 @@ impl ClassifierTestUtils {
                     != 0
             }
         }
+
         needs_tokens
             .iter()
             .zip(vec![quote_token].into_iter().cycle())
@@ -232,23 +233,28 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header).await;
 
-        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
+        // triggers close
 
-        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx)
-            || price.as_ref().map(|v| v.0.is_empty()) == Some(true)
-        {
-            let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
-            classifier.close();
-            ctr.store(true, SeqCst);
-            // triggers close
-
-            if let Some((_p_block, pricing)) = pricer.next().await {
-                Some(pricing)
-            } else {
-                return Err(ClassifierTestUtilsError::DexPricingError)
-            }
+        let price = if let Some((_p_block, pricing)) = pricer.next().await {
+            Some(pricing)
         } else {
-            price
+            return Err(ClassifierTestUtilsError::DexPricingError)
         };
 
         Ok((tree, price))
@@ -318,33 +324,33 @@ impl ClassifierTestUtils {
             }
         }
 
-        let prices = if possible_price
-            .iter()
-            .map(|(block, price)| {
-                if price.0.is_empty() {
-                    return true
-                };
+        possible_price.iter().for_each(|(block, price)| {
+            needs_tokens
+                .iter()
+                .zip(vec![quote_asset].into_iter().cycle())
+                .map(|(token, quote)| Pair(*token, quote))
+                .for_each(|pair| {
+                    let update = DexPriceMsg::Update(PoolUpdate {
+                        block:  *block,
+                        tx_idx: 0,
+                        logs:   vec![],
+                        action: make_fake_swap(pair),
+                    });
+                    tx.send(update).unwrap();
+                });
+        });
 
-                self.need_dex_quotes(*block, quote_asset, Some(price), &needs_tokens, tx.clone())
-            })
-            .any(|f| f)
-            || failed
-        {
-            let (ctr, mut pricer) = self
-                .init_dex_pricer(start_block, None, quote_asset, rx)
-                .await?;
-            classifier.close();
-            ctr.store(true, SeqCst);
+        let (ctr, mut pricer) = self
+            .init_dex_pricer(start_block, None, quote_asset, rx)
+            .await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
 
-            let mut prices = Vec::new();
+        let mut prices = Vec::new();
 
-            while let Some((_p_block, quotes)) = pricer.next().await {
-                prices.push(quotes);
-            }
-            prices
-        } else {
-            possible_price.into_iter().map(|(_, q)| q).collect_vec()
-        };
+        while let Some((_p_block, quotes)) = pricer.next().await {
+            prices.push(quotes);
+        }
 
         Ok(trees.into_iter().zip(prices.into_iter()).collect())
     }
@@ -379,20 +385,28 @@ impl ClassifierTestUtils {
 
         let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
 
-        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx)
-            || price.as_ref().map(|v| v.0.is_empty()) == Some(true)
-        {
-            let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
-            classifier.close();
-            ctr.store(true, SeqCst);
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
 
-            if let Some((_p_block, pricing)) = pricer.next().await {
-                Some(pricing)
-            } else {
-                return Err(ClassifierTestUtilsError::DexPricingError)
-            }
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
+
+        let price = if let Some((_p_block, pricing)) = pricer.next().await {
+            Some(pricing)
         } else {
-            price
+            return Err(ClassifierTestUtilsError::DexPricingError)
         };
 
         Ok((tree, price))
