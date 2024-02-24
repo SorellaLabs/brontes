@@ -47,12 +47,12 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt},
     mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails, StatArbPnl},
-    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
     ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::{Either, Itertools};
+
 use malachite::{
     num::basic::traits::{Two, Zero},
     Rational,
@@ -111,29 +111,21 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let swap_txes = tree.collect_all(
-            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_transfer]),
-        );
+        let swap_txes =
+            tree.collect_all(TreeSearchBuilder::default().with_action(Actions::is_swap));
 
         swap_txes
             .into_par_iter()
             .filter(|(_, swaps)| !swaps.is_empty())
-            .filter_map(|(tx, actions)| {
-                let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = actions
-                    .iter()
-                    .flat_map(|action| match action {
-                        Actions::Swap(s) => vec![Either::Left(s.clone())],
-                        Actions::Transfer(t) => vec![Either::Right(t.clone())],
-                        _ => vec![],
-                    })
-                    .partition_map(|either| either);
-
+            .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
 
                 // For each swap in the transaction, detect potential CEX-DEX
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
                     .into_iter()
-                    .filter_map(|swap| {
+                    .filter_map(|action| {
+                        let swap = action.force_swap();
+
                         let possible_cex_dex =
                             self.detect_cex_dex_opportunity(&swap, metadata.as_ref())?;
 
@@ -151,10 +143,11 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
                 let header = self.utils.build_bundle_header(
+                    tree.clone(),
+                    vec![tx_info.tx_hash],
                     &tx_info,
                     possible_cex_dex.pnl.taker_profit.clone().to_float(),
                     PriceAt::After,
-                    &transfers,
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,

@@ -120,6 +120,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .collect::<Vec<Vec<Actions>>>();
 
                     self.calculate_sandwich(
+                        tree.clone(),
                         metadata.clone(),
                         frontrun_info,
                         back_run_info,
@@ -136,11 +137,11 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn calculate_sandwich(
         &self,
+        tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
         mut possible_front_runs_info: Vec<TxInfo>,
         backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,
-        // victims
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
@@ -193,6 +194,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 }
 
                 return self.calculate_sandwich(
+                    tree.clone(),
                     metadata.clone(),
                     possible_front_runs_info,
                     back_run_info,
@@ -256,11 +258,22 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|info| info.gas_details)
             .collect();
 
+        let mut bundle_hashes = Vec::new();
+
+        for (index, frontrun_hash) in frontrun_tx_hash.iter().enumerate() {
+            bundle_hashes.push(*frontrun_hash);
+            if let Some(victim_hashes) = victim_swaps_tx_hashes.get(index) {
+                bundle_hashes.extend_from_slice(victim_hashes);
+            }
+        }
+        bundle_hashes.push(backrun_info.tx_hash);
+
         let header = self.utils.build_bundle_header(
-            &possible_front_runs_info[0],
+            tree,
+            bundle_hashes,
+            &backrun_info,
             profit_usd,
             PriceAt::After,
-            &searcher_transfers,
             &gas_details,
             metadata,
             MevType::Sandwich,

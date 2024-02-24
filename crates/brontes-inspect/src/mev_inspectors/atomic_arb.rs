@@ -5,11 +5,10 @@ use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
-    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedSwap},
     tree::BlockTree,
     ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::{Either, Itertools};
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
@@ -44,7 +43,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
             .filter_map(|(tx, actions)| {
                 let info = tree.get_tx_info(tx, self.utils.db)?;
 
-                self.process_swaps(info, meta_data.clone(), actions)
+                self.process_swaps(tree.clone(), info, meta_data.clone(), actions)
             })
             .collect::<Vec<_>>()
     }
@@ -53,38 +52,23 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
 impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     fn process_swaps(
         &self,
+        tree: Arc<BlockTree<Actions>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        searcher_actions: Vec<Actions>,
+        swaps: Vec<Actions>,
     ) -> Option<Bundle> {
-        let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = searcher_actions
+        let swaps = swaps
             .iter()
-            .flat_map(|action| match action {
-                Actions::Swap(s) => vec![Either::Left(s.clone())],
-                Actions::Transfer(t) => vec![Either::Right(t.clone())],
-                Actions::FlashLoan(f) => f
-                    .child_actions
-                    .iter()
-                    .flat_map(|a| match a {
-                        Actions::Swap(s) => vec![Either::Left(s.clone())],
-                        Actions::Transfer(t) => vec![Either::Right(t.clone())],
-                        _ => vec![],
-                    })
-                    .collect(),
-                _ => vec![],
-            })
-            .partition_map(|either| either);
+            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
+            .cloned()
+            .collect::<Vec<_>>();
 
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
-        let actions = searcher_actions.clone();
-
         let profit = match possible_arb_type {
-            AtomicArbType::Triangle => {
-                self.process_triangle_arb(&info, metadata.clone(), &[actions], &swaps)
-            }
+            AtomicArbType::Triangle => self.process_triangle_arb(&info, metadata.clone(), &swaps),
             AtomicArbType::CrossPair(jump_index) => {
-                self.process_cross_pair_arb(&info, metadata.clone(), &swaps, &[actions], jump_index)
+                self.process_cross_pair_arb(&info, metadata.clone(), &swaps, jump_index)
             }
             AtomicArbType::StablecoinArb => {
                 todo!()
@@ -92,10 +76,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }?;
 
         let header = self.utils.build_bundle_header(
+            tree,
+            vec![info.tx_hash],
             &info,
             profit.to_float(),
             PriceAt::Average,
-            &transfers,
             &[info.gas_details],
             metadata,
             MevType::AtomicArb,
@@ -107,7 +92,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             swaps,
             arb_type: possible_arb_type,
         };
-        let backrun = AtomicArb { tx_hash: info.tx_hash, gas_details: info.gas_details, swaps };
 
         Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
@@ -142,7 +126,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
-        _searcher_actions: &[Vec<Actions>],
         swaps: &[NormalizedSwap],
     ) -> Option<Rational> {
         let rev_usd = self.utils.get_swap_deltas_usd(
@@ -172,7 +155,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
         swaps: &[NormalizedSwap],
-        _searcher_actions: &[Vec<Actions>],
         jump_index: usize,
     ) -> Option<Rational> {
         let is_stable_arb = is_stable_arb(swaps, jump_index);

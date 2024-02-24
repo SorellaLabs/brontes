@@ -33,18 +33,16 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(TreeSearchBuilder::default().with_actions([
-            Actions::is_swap,
-            Actions::is_liquidation,
-            Actions::is_transfer,
-        ]));
+        let liq_txs = tree.collect_all(
+            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_liquidation]),
+        );
 
         liq_txs
             .into_par_iter()
             .filter_map(|(tx_hash, liq)| {
                 let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
-                self.calculate_liquidation(info, metadata.clone(), liq)
+                self.calculate_liquidation(tree.clone(), info, metadata.clone(), liq)
             })
             .collect::<Vec<_>>()
     }
@@ -53,6 +51,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
 impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     fn calculate_liquidation(
         &self,
+        tree: Arc<BlockTree<Actions>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
@@ -78,12 +77,6 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let swaps = actions
             .iter()
             .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let transfers = actions
-            .iter()
-            .filter_map(|action| if let Actions::Transfer(t) = action { Some(t) } else { None })
             .cloned()
             .collect::<Vec<_>>();
 
@@ -120,10 +113,11 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let profit_usd = (rev_usd - &gas_finalized).to_float();
 
         let header = self.utils.build_bundle_header(
+            tree,
+            vec![info.tx_hash],
             &info,
             profit_usd,
             PriceAt::After,
-            &transfers,
             &[info.gas_details],
             metadata,
             MevType::Liquidation,

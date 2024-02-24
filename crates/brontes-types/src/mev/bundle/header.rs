@@ -118,12 +118,16 @@ impl Display for AddressBalanceDeltas {
         Ok(())
     }
 }
-/*
+
 impl Serialize for BundleHeader {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
+        todo!();
+    }
+}
+/*
         let mut ser_struct = serializer.serialize_struct("BundleHeader", 10)?;
 
         ser_struct.serialize_field("block_number", &self.block_number)?;

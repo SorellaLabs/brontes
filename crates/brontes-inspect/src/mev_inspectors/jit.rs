@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
-    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedTransfer},
+    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint},
     GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
@@ -68,7 +68,6 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                     Actions::is_mint,
                                     Actions::is_burn,
                                     Actions::is_collect,
-                                    Actions::is_transfer,
                                 ]),
                             )
                         })
@@ -116,6 +115,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .collect_vec();
 
                     self.calculate_jit(
+                        tree.clone(),
                         info,
                         metadata.clone(),
                         searcher_actions,
@@ -127,17 +127,14 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
-type JitUnzip = (
-    Vec<Option<NormalizedMint>>,
-    Vec<Option<NormalizedBurn>>,
-    Vec<Option<NormalizedCollect>>,
-    Vec<Option<NormalizedTransfer>>,
-);
+type JitUnzip =
+    (Vec<Option<NormalizedMint>>, Vec<Option<NormalizedBurn>>, Vec<Option<NormalizedCollect>>);
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
+        tree: Arc<BlockTree<Actions>>,
         info: [TxInfo; 2],
         metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
@@ -146,15 +143,14 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect, transfers): JitUnzip = searcher_actions
+        let (mints, burns, collect): JitUnzip = searcher_actions
             .clone()
             .into_iter()
             .flatten()
             .filter_map(|action| match action {
-                Actions::Burn(b) => Some((None, Some(b), None, None)),
-                Actions::Mint(m) => Some((Some(m), None, None, None)),
-                Actions::Collect(c) => Some((None, None, Some(c), None)),
-                Actions::Transfer(t) => Some((None, None, None, Some(t))),
+                Actions::Burn(b) => Some((None, Some(b), None)),
+                Actions::Mint(m) => Some((Some(m), None, None)),
+                Actions::Collect(c) => Some((None, None, Some(c))),
                 _ => None,
             })
             .multiunzip();
@@ -162,7 +158,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let mints = mints.into_iter().flatten().collect::<Vec<_>>();
         let burns = burns.into_iter().flatten().collect::<Vec<_>>();
         let fee_collect = collect.into_iter().flatten().collect::<Vec<_>>();
-        let transfers = transfers.into_iter().flatten().collect::<Vec<_>>();
 
         if mints.is_empty() || burns.is_empty() {
             tracing::debug!("missing mints & burns");
@@ -193,11 +188,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let bribe = self.get_bribes(metadata.clone(), &gas_details);
         let profit = jit_fee - mint - &bribe;
 
+        let mut bundle_hashes = Vec::new();
+        bundle_hashes.push(hashes[0]);
+        bundle_hashes.extend(victim_hashes.clone());
+        bundle_hashes.push(hashes[1]);
+
         let header = self.utils.build_bundle_header(
+            tree,
+            bundle_hashes,
             &info[1],
             profit.to_float(),
             PriceAt::After,
-            &transfers,
             &gas_details,
             metadata,
             MevType::Jit,
