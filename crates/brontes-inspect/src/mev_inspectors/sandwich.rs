@@ -10,7 +10,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, ToFloatNearest, TreeSearchBuilder,
+    ActionIter, ToFloatNearest, TreeFilter, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -77,10 +77,9 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            victim
-                                .iter()
-                                .map(|v| tree.collect(*v, search_args.clone()))
-                                .collect::<Vec<_>>()
+                            tree.collect_txes(victim.clone(), search_args.clone())
+                                .into_values()
+                                .collect_vec()
                         })
                         .collect::<Vec<_>>();
 
@@ -112,12 +111,19 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let back_run_info = tree.get_tx_info(possible_backrun, self.inner.db)?;
 
-                    let searcher_actions = possible_frontruns
-                        .iter()
-                        .chain(vec![&possible_backrun])
-                        .map(|tx| tree.collect(*tx, search_args.clone()))
-                        .filter(|f| !f.is_empty())
-                        .collect::<Vec<Vec<Actions>>>();
+                    let searcher_actions = tree
+                        .collect_txes_deduping(
+                            possible_frontruns
+                                .iter()
+                                .copied()
+                                .chain(vec![possible_backrun])
+                                .collect(),
+                            search_args.clone(),
+                            (Actions::try_swap,),
+                            (Actions::try_transfer,),
+                        )
+                        .into_values()
+                        .collect_vec();
 
                     self.calculate_sandwich(
                         metadata.clone(),
@@ -145,16 +151,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
         let all_actions = searcher_actions.clone();
-        let back_run_swaps: Vec<_> = searcher_actions
+        let back_run_swaps = searcher_actions
             .pop()?
             .into_iter()
-            .action_split((Actions::split_swap,))
-            .0;
+            .collect_action_vec(Actions::try_swap);
 
         let front_run_swaps = searcher_actions
             .clone()
             .into_iter()
-            .map(|action| action.into_iter().action_split((Actions::split_swap,)).0)
+            .map(|action| action.into_iter().collect_action_vec(Actions::try_swap))
             .collect_vec();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
@@ -200,8 +205,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 tx_actions
                     .clone()
                     .into_iter()
-                    .action_split((Actions::split_swap,))
-                    .0
+                    .collect_action_vec(Actions::try_swap)
             })
             .collect::<Vec<_>>();
 

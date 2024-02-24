@@ -8,6 +8,7 @@ pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
+pub mod utils;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
@@ -31,7 +32,7 @@ use crate::{
     TreeSearchBuilder,
 };
 
-pub trait NormalizedAction: Debug + Send + Sync + Clone {
+pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn is_classified(&self) -> bool;
     fn emitted_logs(&self) -> bool;
     fn get_action(&self) -> &Actions;
@@ -358,12 +359,13 @@ impl Actions {
     }
 }
 
-macro_rules! split {
+macro_rules! extra_impls {
     ($(($action_name:ident, $ret:ident)),*) => {
         paste::paste!(
+
             impl Actions {
                 $(
-                    pub fn [<split _$action_name:snake _ref>](&self) -> Option<&$ret> {
+                    pub fn [<try _$action_name:snake _ref>](&self) -> Option<&$ret> {
                         if let Actions::$action_name(action) = self {
                             Some(action)
                         } else {
@@ -371,7 +373,7 @@ macro_rules! split {
                         }
                     }
 
-                    pub fn [<split _$action_name:snake _mut>](&mut self) -> Option<&mut $ret> {
+                    pub fn [<try _$action_name:snake _mut>](&mut self) -> Option<&mut $ret> {
                         if let Actions::$action_name(action) = self {
                             Some(action)
                         } else {
@@ -379,7 +381,7 @@ macro_rules! split {
                         }
                     }
 
-                    pub fn [<split _$action_name:snake>](self) -> Option<$ret> {
+                    pub fn [<try _$action_name:snake>](self) -> Option<$ret> {
                         if let Actions::$action_name(action) = self {
                             Some(action)
                         } else {
@@ -388,12 +390,20 @@ macro_rules! split {
                     }
                 )*
             }
+
+            $(
+                impl From<$ret> for Actions {
+                    fn from(value: $ret) -> Actions {
+                        Actions::$action_name(value)
+                    }
+                }
+            )*
         );
 
     };
 }
 
-split!(
+extra_impls!(
     (Collect, NormalizedCollect),
     (Mint, NormalizedMint),
     (Burn, NormalizedBurn),
@@ -402,3 +412,4 @@ split!(
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan)
 );
+

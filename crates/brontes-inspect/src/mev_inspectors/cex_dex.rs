@@ -50,7 +50,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    ToFloatNearest, TreeSearchBuilder, TreeUtils, TxInfo,
+    ToFloatNearest, TreeCollect, TreeSearchBuilder, TxInfo,
 };
 use malachite::{
     num::basic::traits::{Two, Zero},

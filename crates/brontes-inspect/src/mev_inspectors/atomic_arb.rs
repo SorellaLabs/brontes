@@ -1,4 +1,4 @@
-use std::{collections::HashMap, iter::Iterator, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{

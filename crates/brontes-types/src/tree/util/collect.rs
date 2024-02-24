@@ -2,24 +2,20 @@ use std::collections::HashMap;
 
 use alloy_primitives::B256;
 
-use super::TreeSearchBuilder;
-use crate::{
-    normalized_actions::{Actions, NormalizedAction},
-    ActionIter, BlockTree,
-};
+use crate::{normalized_actions::NormalizedAction, ActionIter, BlockTree, TreeSearchBuilder};
 
-impl TreeUtils<Actions> for BlockTree<Actions> {}
+impl<V: NormalizedAction> TreeCollect<V> for BlockTree<V> {}
 
-pub trait TreeUtils<V: NormalizedAction> {
+pub trait TreeCollect<V: NormalizedAction> {
     fn collect_all_action_filter<Ret>(
         &self,
         call: TreeSearchBuilder<V>,
-        collector: fn(Actions) -> Option<Ret>,
+        collector: fn(V) -> Option<Ret>,
     ) -> HashMap<B256, Vec<Ret>>
     where
-        Self: TreeUtilsCast<(Vec<Ret>,), (fn(Actions) -> Option<Ret>,), V>,
+        Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
-        TreeUtilsCast::collect_all_actions_filter(self, call, (collector,))
+        TreeCollectCast::collect_all_actions_filter(self, call, (collector,))
             .into_iter()
             .map(|(k, v)| (k, v.0))
             .collect()
@@ -29,12 +25,12 @@ pub trait TreeUtils<V: NormalizedAction> {
         &self,
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
-        collector: fn(Actions) -> Option<Ret>,
+        collector: fn(V) -> Option<Ret>,
     ) -> HashMap<B256, Vec<Ret>>
     where
-        Self: TreeUtilsCast<(Vec<Ret>,), (fn(Actions) -> Option<Ret>,), V>,
+        Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
-        TreeUtilsCast::collect_actions_range_filter(self, range, call, (collector,))
+        TreeCollectCast::collect_actions_range_filter(self, range, call, (collector,))
             .into_iter()
             .map(|(k, v)| (k, v.0))
             .collect()
@@ -44,12 +40,12 @@ pub trait TreeUtils<V: NormalizedAction> {
         &self,
         hash: B256,
         call: TreeSearchBuilder<V>,
-        collector: fn(Actions) -> Option<Ret>,
+        collector: fn(V) -> Option<Ret>,
     ) -> Vec<Ret>
     where
-        Self: TreeUtilsCast<(Vec<Ret>,), (fn(Actions) -> Option<Ret>,), V>,
+        Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
-        TreeUtilsCast::collect_actions_filter(self, hash, call, (collector,)).0
+        TreeCollectCast::collect_actions_filter(self, hash, call, (collector,)).0
     }
 
     fn collect_all_actions_filter<FromI, Fns>(
@@ -58,9 +54,9 @@ pub trait TreeUtils<V: NormalizedAction> {
         collector: Fns,
     ) -> HashMap<B256, FromI>
     where
-        Self: TreeUtilsCast<FromI, Fns, V>,
+        Self: TreeCollectCast<FromI, Fns, V>,
     {
-        TreeUtilsCast::collect_all_actions_filter(self, call, collector)
+        TreeCollectCast::collect_all_actions_filter(self, call, collector)
     }
 
     fn collect_actions_range_filter<FromI, Fns>(
@@ -70,9 +66,9 @@ pub trait TreeUtils<V: NormalizedAction> {
         collector: Fns,
     ) -> HashMap<B256, FromI>
     where
-        Self: TreeUtilsCast<FromI, Fns, V>,
+        Self: TreeCollectCast<FromI, Fns, V>,
     {
-        TreeUtilsCast::collect_actions_range_filter(self, range, call, collector)
+        TreeCollectCast::collect_actions_range_filter(self, range, call, collector)
     }
 
     fn collect_actions_filter<FromI, Fns>(
@@ -82,13 +78,13 @@ pub trait TreeUtils<V: NormalizedAction> {
         collector: Fns,
     ) -> FromI
     where
-        Self: TreeUtilsCast<FromI, Fns, V>,
+        Self: TreeCollectCast<FromI, Fns, V>,
     {
-        TreeUtilsCast::collect_actions_filter(self, hash, call, collector)
+        TreeCollectCast::collect_actions_filter(self, hash, call, collector)
     }
 }
 
-pub trait TreeUtilsCast<FromI, Fns, V: NormalizedAction> {
+pub trait TreeCollectCast<FromI, Fns, V: NormalizedAction> {
     fn collect_all_actions_filter(
         &self,
         call: TreeSearchBuilder<V>,
@@ -113,11 +109,12 @@ pub trait TreeUtilsCast<FromI, Fns, V: NormalizedAction> {
 macro_rules! tree_cast {
     ($(($fns:ident, $ret:ident, $from:ident)),*) => {
         #[allow(non_snake_case)]
-        impl<$($ret,)* $($fns: Fn(Actions) -> Option<$ret>),*, $($from: Default + Extend<$ret>),*>
-            TreeUtilsCast<($($from,)*), ($($fns,)*), Actions> for BlockTree<Actions> {
+        impl<V: NormalizedAction, $($ret,)* $($fns: Fn(V) -> Option<$ret>),*,
+        $($from: Default + Extend<$ret>),*>
+            TreeCollectCast<($($from,)*), ($($fns,)*), V> for BlockTree<V> {
                 fn collect_all_actions_filter(
                     &self,
-                    call: TreeSearchBuilder<Actions>,
+                    call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
                 ) -> HashMap<B256, ($($from,)*)> {
                     self.collect_all(call).into_iter().map(|(k,v)| {
@@ -131,7 +128,7 @@ macro_rules! tree_cast {
                 fn collect_actions_range_filter(
                     &self,
                     range: Vec<B256>,
-                    call: TreeSearchBuilder<Actions>,
+                    call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
                 ) -> HashMap<B256, ($($from,)*)> {
                     self.collect_txes(range, call).into_iter().map(|(k,v)| {
@@ -145,7 +142,7 @@ macro_rules! tree_cast {
                 fn collect_actions_filter(
                     &self,
                     hash: B256,
-                    call: TreeSearchBuilder<Actions>,
+                    call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
                 ) -> ($($from,)*){
                     ActionIter::action_split::<($($from,)*), ($($fns,)*)>
