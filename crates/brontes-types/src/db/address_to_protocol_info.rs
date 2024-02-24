@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use clickhouse::{fixed_string::FixedString, Row};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,

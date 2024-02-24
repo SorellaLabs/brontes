@@ -57,6 +57,8 @@ utils!(
         rSerialize,
         rDeserialize,
         Archive,
+        PartialOrd,
+        Ord,
         strum::Display,
         strum::EnumString,
     )]
