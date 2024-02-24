@@ -4,4 +4,3 @@ SELECT DISTINCT
 FROM ethereum.pools p
 INNER JOIN brontes.protocol_details d ON p.address = d.address
 WHERE classifier_name IS NOT NULL
-

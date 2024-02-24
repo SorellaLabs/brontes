@@ -8,6 +8,7 @@ pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
+pub mod utils;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
@@ -31,7 +32,7 @@ use crate::{
     TreeSearchBuilder,
 };
 
-pub trait NormalizedAction: Debug + Send + Sync + Clone {
+pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn is_classified(&self) -> bool;
     fn emitted_logs(&self) -> bool;
     fn get_action(&self) -> &Actions;
@@ -245,7 +246,7 @@ impl Actions {
     pub fn get_calldata(&self) -> Option<Bytes> {
         if let Actions::Unclassified(u) = &self {
             if let Action::Call(call) = &u.trace.action {
-                return Some(call.input.clone());
+                return Some(call.input.clone())
             }
         }
 
@@ -352,8 +353,69 @@ impl Actions {
 
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
-            return u.is_static_call();
+            return u.is_static_call()
         }
         false
     }
 }
+
+macro_rules! extra_impls {
+    ($(($action_name:ident, $ret:ident)),*) => {
+        paste::paste!(
+
+            impl Actions {
+                $(
+                    pub fn [<try _$action_name:snake _ref>](&self) -> Option<&$ret> {
+                        if let Actions::$action_name(action) = self {
+                            Some(action)
+                        } else {
+                            None
+                        }
+                    }
+
+                    pub fn [<try _$action_name:snake _mut>](&mut self) -> Option<&mut $ret> {
+                        if let Actions::$action_name(action) = self {
+                            Some(action)
+                        } else {
+                            None
+                        }
+                    }
+
+                    pub fn [<try _$action_name:snake>](self) -> Option<$ret> {
+                        if let Actions::$action_name(action) = self {
+                            Some(action)
+                        } else {
+                            None
+                        }
+                    }
+
+                    pub fn [<try _$action_name:snake _dedup>]()
+                        -> Box<dyn Fn(Actions) -> Option<$ret>> {
+                        Box::new(Actions::[<try _$action_name:snake>])
+                                as Box<dyn Fn(Actions) -> Option<$ret>>
+                    }
+
+                )*
+            }
+
+            $(
+                impl From<$ret> for Actions {
+                    fn from(value: $ret) -> Actions {
+                        Actions::$action_name(value)
+                    }
+                }
+            )*
+        );
+
+    };
+}
+
+extra_impls!(
+    (Collect, NormalizedCollect),
+    (Mint, NormalizedMint),
+    (Burn, NormalizedBurn),
+    (Transfer, NormalizedTransfer),
+    (Swap, NormalizedSwap),
+    (Liquidation, NormalizedLiquidation),
+    (FlashLoan, NormalizedFlashLoan)
+);
