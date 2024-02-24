@@ -186,9 +186,9 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemFn);
-    libmdbx_test::parse(item)
+    libmdbx_test::parse(item, attr.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

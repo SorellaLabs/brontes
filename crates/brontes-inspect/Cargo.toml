@@ -74,28 +74,17 @@ serial_test.workspace = true
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-inspect = { workspace = true, features = ["tests"] }
+brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 tracing-subscriber.workspace = true
 reth-db.workspace = true
-brontes-types.workspace = true
+brontes-types = { workspace = true, features = ["tests"] }
 brontes-database.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5" }
 rand = "0.8.5"
 statrs = "0.16"
-
-[build-dependencies]
-rayon.workspace = true
-walkdir = "2.4.0"
-convert_case = "0.6.0"
-quote = "1.0.35"
-dotenv.workspace = true
-brontes-database.workspace = true
-serde.workspace = true
-toml = "0.8.9"
-brontes-types.workspace = true
-alloy-primitives.workspace = true
 
 
 [features]
@@ -104,7 +93,7 @@ sorella-server = ["local-reth", "local-clickhouse"]
 tests = [
   "brontes-classifier/tests",
   "brontes-core/tests",
-  "brontes-pricing",
+  "brontes-pricing/tests",
   "criterion",
 ]
 

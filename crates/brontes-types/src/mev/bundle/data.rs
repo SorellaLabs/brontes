@@ -7,7 +7,6 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize, Serializer};
 use strum::{Display, EnumIter};
 
-use super::Mev;
 use crate::mev::*;
 #[allow(unused_imports)]
 use crate::{

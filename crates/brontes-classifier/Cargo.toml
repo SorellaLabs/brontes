@@ -68,6 +68,7 @@ dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
 thiserror.workspace = true
+brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
@@ -75,26 +76,15 @@ reth-tracing-ext.workspace = true
 criterion = "0.5"
 brontes-macros.workspace = true
 
-
-[build-dependencies]
-tokio.workspace = true
-hyper.workspace = true
-hyper-tls.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-phf_codegen.workspace = true
-rayon.workspace = true
-alloy-json-abi = { workspace = true, features = ["serde_json"] }
-reth-rpc-types.workspace = true
-reth-primitives.workspace = true
-futures.workspace = true
-itertools.workspace = true
-dotenv.workspace = true
-reth-tracing-ext.workspace = true
-
 [features]
 default = []
-tests = ["reth-tracing-ext", "brontes-core/tests", "thiserror", "criterion"]
+tests = [
+  "reth-tracing-ext",
+  "brontes-core/tests",
+  "thiserror",
+  "criterion",
+  "brontes-pricing/tests",
+]
 local-reth = [
   "brontes-core/local-reth",
   "reth-tracing-ext/local-reth",
