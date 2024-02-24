@@ -170,7 +170,7 @@ impl<V: NormalizedAction> BlockTree<V> {
                     this.tx_roots
                         .iter()
                         .find(|r| r.tx_hash == *hash)
-                        .map(|root| (hash.clone(), root.collect(&call)))
+                        .map(|root| (*hash, root.collect(&call)))
                 })
                 .collect()
         })

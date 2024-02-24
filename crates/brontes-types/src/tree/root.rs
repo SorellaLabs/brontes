@@ -85,6 +85,8 @@ impl<V: NormalizedAction> Root<V> {
             .unwrap()
             .get_action()
             .emitted_logs();
+
+        // TODO: get rid of this once searcher db is working & tested
         let is_cex_dex_call = matches!(
             self.data_store.get_ref(self.head.data).unwrap().get_action(),
             Actions::Unclassified(data) if data.is_cex_dex_call()

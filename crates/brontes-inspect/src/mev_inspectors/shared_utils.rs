@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{Address};
+use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
@@ -200,7 +200,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
     }
 
-    pub fn get_swap_deltas_usd(
+    pub fn get_dex_swaps_rev_usd(
         &self,
         tx_index: u64,
         at: PriceAt,

@@ -52,7 +52,6 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-
 use malachite::{
     num::basic::traits::{Two, Zero},
     Rational,
@@ -398,7 +397,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         let profit = self
             .utils
-            .get_swap_deltas_usd(
+            .get_dex_swaps_rev_usd(
                 tx_info.tx_index,
                 PriceAt::Average,
                 &possible_cex_dex.swaps,

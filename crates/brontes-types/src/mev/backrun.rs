@@ -50,6 +50,7 @@ pub enum AtomicArbType {
     Triangle,
     CrossPair(usize),
     StablecoinArb,
+    LongTail,
 }
 
 self_convert_redefined!(AtomicArbType);

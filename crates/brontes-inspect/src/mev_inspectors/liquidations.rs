@@ -101,7 +101,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             })
             .sum::<Rational>();
 
-        let rev_usd = self.utils.get_swap_deltas_usd(
+        let rev_usd = self.utils.get_dex_swaps_rev_usd(
             info.tx_index,
             PriceAt::After,
             &swaps,

@@ -67,12 +67,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => self.process_triangle_arb(&info, metadata.clone(), &swaps),
-            AtomicArbType::CrossPair(jump_index) => {
-                self.process_cross_pair_arb(&info, metadata.clone(), &swaps, jump_index)
-            }
+            AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_or_stable_arb(
+                &info,
+                metadata.clone(),
+                &swaps,
+                Some(jump_index),
+                false,
+            ),
             AtomicArbType::StablecoinArb => {
-                todo!()
+                self.process_cross_pair_or_stable_arb(&info, metadata.clone(), &swaps, None, true)
             }
+            AtomicArbType::LongTail => self.process_long_tail(&info, metadata.clone(), &swaps),
         }?;
 
         let header = self.utils.build_bundle_header(
@@ -100,7 +105,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         match swaps.len() {
             0 | 1 => None,
             2 => {
-                // TODO account for stable arbs here
                 let start = swaps[0].token_in.address;
                 let end = swaps[1].token_out.address;
                 let is_triangle = start == end;
@@ -108,12 +112,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 let is_continuous = swaps[0].token_out.address == swaps[1].token_in.address;
 
                 if is_triangle && is_continuous {
-                    Some(AtomicArbType::Triangle)
+                    return Some(AtomicArbType::Triangle)
+                } else if is_triangle
+                    && is_stable_pair(&swaps[0].token_out.symbol, &swaps[1].token_in.symbol)
+                {
+                    return Some(AtomicArbType::StablecoinArb);
                 } else if is_triangle {
-                    Some(AtomicArbType::CrossPair(1))
-                } else {
-                    None
+                    return Some(AtomicArbType::CrossPair(1))
+                } else if is_stable_pair(&swaps[0].token_in.symbol, &swaps[1].token_out.symbol) {
+                    return Some(AtomicArbType::StablecoinArb);
                 }
+                return Some(AtomicArbType::LongTail)
             }
             _ => identify_arb_sequence(swaps),
         }
@@ -128,7 +137,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         swaps: &[NormalizedSwap],
     ) -> Option<Rational> {
-        let rev_usd = self.utils.get_swap_deltas_usd(
+        let rev_usd = self.utils.get_dex_swaps_rev_usd(
             tx_info.tx_index,
             PriceAt::Average,
             swaps,
@@ -150,21 +159,22 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .then_some(profit)
     }
 
-    fn process_cross_pair_arb(
+    fn process_cross_pair_or_stable_arb(
         &self,
         tx_info: &TxInfo,
         metadata: Arc<Metadata>,
         swaps: &[NormalizedSwap],
-        jump_index: usize,
+        jump_index: Option<usize>,
+        stable_arb: bool,
     ) -> Option<Rational> {
-        let is_stable_arb = is_stable_arb(swaps, jump_index);
-
-        let rev_usd = self.utils.get_swap_deltas_usd(
+        let rev_usd = self.utils.get_dex_swaps_rev_usd(
             tx_info.tx_index,
-            PriceAt::After,
+            PriceAt::Average,
             swaps,
             metadata.clone(),
         )?;
+
+        let stable_arb = jump_index.map_or(stable_arb, |index| is_stable_arb(swaps, index));
 
         let gas_used = tx_info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
@@ -173,7 +183,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let is_profitable = profit > Rational::ZERO;
 
-        if is_profitable || is_stable_arb {
+        if is_profitable || stable_arb {
             Some(rev_usd - gas_used_usd)
         } else {
             // If the arb is not profitable, check if this is a know searcher or if the tx
@@ -182,6 +192,34 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 || tx_info.is_private
                 || tx_info.gas_details.coinbase_transfer.is_some())
             .then_some(profit)
+        }
+    }
+
+    fn process_long_tail(
+        &self,
+        tx_info: &TxInfo,
+        metadata: Arc<Metadata>,
+        searcher_swaps: &[NormalizedSwap],
+    ) -> Option<Rational> {
+        let gas_used = tx_info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+        let rev_usd = self.utils.get_dex_swaps_rev_usd(
+            tx_info.tx_index,
+            PriceAt::Average,
+            searcher_swaps,
+            metadata.clone(),
+        )?;
+        let profit = &rev_usd - &gas_used_usd;
+        let is_profitable = profit > Rational::ZERO;
+
+        if is_profitable
+            && (tx_info.is_searcher_of_type(MevType::AtomicArb)
+                || tx_info.is_private && tx_info.gas_details.coinbase_transfer.is_some()
+                || tx_info.mev_contract.is_some())
+        {
+            Some(profit)
+        } else {
+            None
         }
     }
 }
@@ -197,7 +235,7 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
         if is_stable_pair(start_token, end_token) {
             return Some(AtomicArbType::StablecoinArb);
         } else {
-            return None;
+            return Some(AtomicArbType::LongTail)
         }
     }
 

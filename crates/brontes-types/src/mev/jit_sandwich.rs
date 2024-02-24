@@ -106,7 +106,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
 
     let sandwich = sandwich.expect("Expected Sandwich MEV data");
     let jit = jit.expect("Expected JIT MEV data");
-    let mut classified_sandwich =
+    let classified_sandwich =
         classified_sandwich.expect("Expected Classified MEV data for Sandwich");
     let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 

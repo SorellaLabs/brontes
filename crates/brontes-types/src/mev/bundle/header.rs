@@ -1,6 +1,5 @@
 use std::fmt::{self, Debug, Display};
 
-use alloy_dyn_abi::abi::token;
 use alloy_primitives::Address;
 use clickhouse::{DbRow, Row};
 use colored::Colorize;
@@ -52,6 +51,18 @@ pub struct BundleHeader {
 pub struct TransactionAccounting {
     pub tx_hash:        B256,
     pub address_deltas: Vec<AddressBalanceDeltas>,
+}
+
+impl Display for TransactionAccounting {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{} {}", "Token Deltas for tx:".bold(), self.tx_hash)?;
+
+        self.address_deltas.iter().for_each(|address_deltas| {
+            writeln!(f, "{}", address_deltas).expect("Failed to write AddressBalanceDeltas");
+        });
+
+        Ok(())
+    }
 }
 
 #[serde_as]
@@ -124,10 +135,6 @@ impl Serialize for BundleHeader {
     where
         S: serde::Serializer,
     {
-        todo!();
-    }
-}
-/*
         let mut ser_struct = serializer.serialize_struct("BundleHeader", 10)?;
 
         ser_struct.serialize_field("block_number", &self.block_number)?;
@@ -144,7 +151,7 @@ impl Serialize for BundleHeader {
             .balance_deltas
             .iter()
             .flat_map(|b| {
-                vec![b.tx_hash]
+                [b.tx_hash]
                     .repeat(b.address_deltas.len())
                     .into_iter()
                     .map(|val| format!("{:?}", val))
