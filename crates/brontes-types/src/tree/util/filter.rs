@@ -26,7 +26,7 @@ pub trait TreeFilter<V: NormalizedAction> {
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> HashMap<B256, Vec<V>>
+    ) -> Vec<Vec<V>>
     where
         Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
         KS: InTupleFnOutVec<V>,
@@ -80,7 +80,7 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> HashMap<B256, Vec<V>>
+    ) -> Vec<Vec<V>>
     where
         Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
         KS: InTupleFnOutVec<V>,
@@ -89,14 +89,14 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
     {
         self.collect_txes(txes, call)
             .into_iter()
-            .map(|(k, v)| {
+            .map(|v| {
                 let (good, mut rem) = v.clone().into_iter().action_split_out_ref(&k_split);
                 let bad = v.into_iter().action_split_ref(&r_split);
 
                 rem.extend(Self::dedup_action_vec(good, bad));
                 rem.sort_by_key(|k| k.get_trace_index());
 
-                (k, rem)
+                rem
             })
             .collect()
     }

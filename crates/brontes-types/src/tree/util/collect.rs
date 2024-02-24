@@ -26,13 +26,13 @@ pub trait TreeCollect<V: NormalizedAction> {
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
         collector: fn(V) -> Option<Ret>,
-    ) -> HashMap<B256, Vec<Ret>>
+    ) -> Vec<Vec<Ret>>
     where
         Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
         TreeCollectCast::collect_actions_range_filter(self, range, call, (collector,))
             .into_iter()
-            .map(|(k, v)| (k, v.0))
+            .map(|v| v.0)
             .collect()
     }
 
@@ -64,7 +64,7 @@ pub trait TreeCollect<V: NormalizedAction> {
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>
+    ) -> Vec<FromI>
     where
         Self: TreeCollectCast<FromI, Fns, V>,
     {
@@ -96,7 +96,7 @@ pub trait TreeCollectCast<FromI, Fns, V: NormalizedAction> {
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>;
+    ) -> Vec<FromI>;
 
     fn collect_actions_filter(
         &self,
@@ -130,13 +130,11 @@ macro_rules! tree_cast {
                     range: Vec<B256>,
                     call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
-                ) -> HashMap<B256, ($($from,)*)> {
-                    self.collect_txes(range, call).into_iter().map(|(k,v)| {
-                        (k,
+                ) -> Vec<($($from,)*)> {
+                    self.collect_txes(range, call).into_iter().map(|v| {
                          ActionIter::action_split_ref::<($($from,)*), ($($fns,)*)>
-                            (v.into_iter(), &collector),
-                         )
-                    }).collect::<HashMap<_,_>>()
+                            (v.into_iter(), &collector)
+                    }).collect::<Vec<_>>()
                 }
 
                 fn collect_actions_filter(

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, panic::AssertUnwindSafe};
 
 use rayon::{
+    iter::IntoParallelIterator,
     prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
     ThreadPool, ThreadPoolBuilder,
 };
@@ -186,18 +187,12 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    pub fn collect_txes(
-        &self,
-        txes: Vec<B256>,
-        call: TreeSearchBuilder<V>,
-    ) -> HashMap<B256, Vec<V>> {
+    pub fn collect_txes(&self, txes: Vec<B256>, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
-                this.tx_roots
-                    .par_iter()
-                    .filter(|r| txes.contains(&r.tx_hash))
-                    .map(|r| (r.tx_hash, r.collect(&call)))
-                    .collect()
+                txes.par_iter()
+                    .map(|tx| this.collect(*tx, call.clone()))
+                    .collect::<Vec<_>>()
             })
         })
     }

@@ -76,11 +76,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let victim_actions = victims
                         .iter()
-                        .map(|victim| {
-                            tree.collect_txes(victim.clone(), search_args.clone())
-                                .into_values()
-                                .collect_vec()
-                        })
+                        .map(|victim| tree.collect_txes(victim.clone(), search_args.clone()))
                         .collect::<Vec<_>>();
 
                     // if there are no victims in any part of sandwich, return
@@ -111,19 +107,16 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let back_run_info = tree.get_tx_info(possible_backrun, self.inner.db)?;
 
-                    let searcher_actions = tree
-                        .collect_txes_deduping(
-                            possible_frontruns
-                                .iter()
-                                .copied()
-                                .chain(vec![possible_backrun])
-                                .collect(),
-                            search_args.clone(),
-                            (Actions::try_swap_dedup(),),
-                            (Actions::try_transfer_dedup(),),
-                        )
-                        .into_values()
-                        .collect_vec();
+                    let searcher_actions = tree.collect_txes_deduping(
+                        possible_frontruns
+                            .iter()
+                            .copied()
+                            .chain(vec![possible_backrun])
+                            .collect(),
+                        search_args.clone(),
+                        (Actions::try_swap_dedup(),),
+                        (Actions::try_transfer_dedup(),),
+                    );
 
                     self.calculate_sandwich(
                         metadata.clone(),
