@@ -66,10 +66,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let (swaps, transfers): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = searcher_actions
             .clone()
             .into_iter()
-            .flatten_specified(Actions::split_flash_loan_ref, |flash: NormalizedFlashLoan| {
+            .flatten_specified(Actions::try_flash_loan_ref, |flash: NormalizedFlashLoan| {
                 flash.child_actions
             })
-            .action_split((Actions::split_swap, Actions::split_transfer));
+            .action_split((Actions::try_swap, Actions::try_transfer));
 
         let possible_arb_type = self.is_possible_arb(&swaps, &transfers)?;
 

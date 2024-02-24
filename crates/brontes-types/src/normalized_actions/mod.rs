@@ -29,7 +29,7 @@ pub use transfer::*;
 use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
-    TreeSearchBuilder,
+    InTupleFnOutVec, TreeSearchBuilder,
 };
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
@@ -388,6 +388,13 @@ macro_rules! extra_impls {
                             None
                         }
                     }
+
+                    pub fn [<try _$action_name:snake _dedup>]()
+                        -> Box<dyn Fn(Actions) -> Option<$ret>> {
+                        Box::new(Actions::[<try _$action_name:snake>])
+                                as Box<dyn Fn(Actions) -> Option<$ret>>
+                    }
+
                 )*
             }
 
@@ -412,4 +419,3 @@ extra_impls!(
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan)
 );
-

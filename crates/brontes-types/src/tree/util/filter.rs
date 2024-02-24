@@ -7,23 +7,18 @@ use crate::{
     ActionIter, ActionSplit, BlockTree, TreeSearchBuilder,
 };
 
-pub trait InTupleFnOutVec {
-    type Out;
-}
-impl<T, V: NormalizedAction> InTupleFnOutVec for (fn(V) -> Option<T>,) {
-    type Out = (Vec<T>,);
-}
-
 pub trait TreeFilter<V: NormalizedAction> {
-    fn collect_all_deduping<KRet, RRet, KS, RS, KF, RF>(
+    fn collect_all_deduping<KS, RS, KF, RF>(
         &self,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
     ) -> HashMap<B256, Vec<V>>
     where
-        Self: TreeDedup<V, KRet, RRet, KF, RF>,
-        std::vec::IntoIter<V>: ActionSplit<KRet, KS, V> + ActionSplit<RRet, RS, V>;
+        Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
+        KS: InTupleFnOutVec<V>,
+        RS: InTupleFnOutVec<V>,
+        std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>;
 
     fn collect_txes_deduping<KS, RS, KF, RF>(
         &self,
@@ -34,11 +29,11 @@ pub trait TreeFilter<V: NormalizedAction> {
     ) -> HashMap<B256, Vec<V>>
     where
         Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
-        KS: InTupleFnOutVec,
-        RS: InTupleFnOutVec,
+        KS: InTupleFnOutVec<V>,
+        RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>;
 
-    fn collect_tx_deduping<KRet, RRet, KS, RS, KF, RF>(
+    fn collect_tx_deduping<KS, RS, KF, RF>(
         &self,
         tx: B256,
         call: TreeSearchBuilder<V>,
@@ -46,20 +41,24 @@ pub trait TreeFilter<V: NormalizedAction> {
         r_split: RS,
     ) -> Vec<V>
     where
-        Self: TreeDedup<V, KRet, RRet, KF, RF>,
-        std::vec::IntoIter<V>: ActionSplit<KRet, KS, V> + ActionSplit<RRet, RS, V>;
+        Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
+        KS: InTupleFnOutVec<V>,
+        RS: InTupleFnOutVec<V>,
+        std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>;
 }
 
 impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
-    fn collect_all_deduping<KRet, RRet, KS, RS, KF, RF>(
+    fn collect_all_deduping<KS, RS, KF, RF>(
         &self,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
     ) -> HashMap<B256, Vec<V>>
     where
-        Self: TreeDedup<V, KRet, RRet, KF, RF>,
-        std::vec::IntoIter<V>: ActionSplit<KRet, KS, V> + ActionSplit<RRet, RS, V>,
+        Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
+        KS: InTupleFnOutVec<V>,
+        RS: InTupleFnOutVec<V>,
+        std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
     {
         self.collect_all(call)
             .into_iter()
@@ -84,8 +83,8 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
     ) -> HashMap<B256, Vec<V>>
     where
         Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
-        KS: InTupleFnOutVec,
-        RS: InTupleFnOutVec,
+        KS: InTupleFnOutVec<V>,
+        RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
     {
         self.collect_txes(txes, call)
@@ -102,7 +101,7 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
             .collect()
     }
 
-    fn collect_tx_deduping<KRet, RRet, KS, RS, KF, RF>(
+    fn collect_tx_deduping<KS, RS, KF, RF>(
         &self,
         tx: B256,
         call: TreeSearchBuilder<V>,
@@ -110,8 +109,10 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
         r_split: RS,
     ) -> Vec<V>
     where
-        Self: TreeDedup<V, KRet, RRet, KF, RF>,
-        std::vec::IntoIter<V>: ActionSplit<KRet, KS, V> + ActionSplit<RRet, RS, V>,
+        Self: TreeDedup<V, KS::Out, RS::Out, KF, RF>,
+        KS: InTupleFnOutVec<V>,
+        RS: InTupleFnOutVec<V>,
+        std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
     {
         let v = self.collect(tx, call);
 
@@ -216,3 +217,23 @@ tree_dedup!(
     (KI3, [RI3, RT3], KT3),
     (KI4, [RI4, RT4], KT4)
 );
+
+pub trait InTupleFnOutVec<V: NormalizedAction> {
+    type Out;
+}
+macro_rules! in_tuple_out_vec {
+    ($($out:ident),*) => {
+        impl<V: NormalizedAction, $($out,)*> InTupleFnOutVec<V>
+            for ($( Box<dyn Fn(V) -> Option<$out>>,)*) {
+            type Out = ($( Vec<$out>,)*);
+        }
+    };
+}
+
+in_tuple_out_vec!(T0);
+in_tuple_out_vec!(T0, T1);
+in_tuple_out_vec!(T0, T1, T2);
+in_tuple_out_vec!(T0, T1, T2, T3);
+in_tuple_out_vec!(T0, T1, T2, T3, T4);
+in_tuple_out_vec!(T0, T1, T2, T3, T4, T5);
+in_tuple_out_vec!(T0, T1, T2, T3, T4, T5, T6);

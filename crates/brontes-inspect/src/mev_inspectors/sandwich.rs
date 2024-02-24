@@ -119,8 +119,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 .chain(vec![possible_backrun])
                                 .collect(),
                             search_args.clone(),
-                            (Actions::try_swap,),
-                            (Actions::try_transfer,),
+                            (Actions::try_swap_dedup(),),
+                            (Actions::try_transfer_dedup(),),
                         )
                         .into_values()
                         .collect_vec();
