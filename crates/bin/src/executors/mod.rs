@@ -36,18 +36,18 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
-    pub start_block: u64,
-    pub end_block: Option<u64>,
-    pub max_tasks: u64,
-    pub min_batch_size: u64,
-    pub quote_asset: Address,
+    pub start_block:      u64,
+    pub end_block:        Option<u64>,
+    pub max_tasks:        u64,
+    pub min_batch_size:   u64,
+    pub quote_asset:      Address,
     pub with_dex_pricing: bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
-    pub parser: &'static Parser<'static, T, DB>,
-    pub libmdbx: &'static DB,
-    _p: PhantomData<P>,
+    pub parser:     &'static Parser<'static, T, DB>,
+    pub libmdbx:    &'static DB,
+    _p:             PhantomData<P>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
@@ -143,13 +143,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let state_collector = self
             .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
-        TipInspector::new(
-            start_block,
-            state_collector,
-            self.parser,
-            self.libmdbx,
-            self.inspectors,
-        )
+        TipInspector::new(start_block, state_collector, self.parser, self.libmdbx, self.inspectors)
     }
 
     fn state_collector_no_dex_price(&self) -> StateCollector<T, DB, CH> {

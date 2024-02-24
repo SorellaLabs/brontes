@@ -48,34 +48,13 @@ sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
-sol!(
-    CurveV1MetapoolFactory,
-    "./classifier-abis/CurveMetapoolFactoryV1.json"
-);
-sol!(
-    CurveV2MetapoolFactory,
-    "./classifier-abis/CurveMetapoolFactoryV2.json"
-);
-sol!(
-    CurvecrvUSDFactory,
-    "./classifier-abis/CurveCRVUSDFactory.json"
-);
-sol!(
-    CurveCryptoSwapFactory,
-    "./classifier-abis/CurveCryptoSwapFactory.json"
-);
-sol!(
-    CurveTriCryptoFactory,
-    "./classifier-abis/CurveTriCryptoFactory.json"
-);
-sol!(
-    PancakeSwapV3PoolDeployer,
-    "./classifier-abis/PancakeSwapV3PoolDeployer.json"
-);
-sol!(
-    CompoundV2Comptroller,
-    "./classifier-abis/CompoundV2Comptroller.json"
-);
+sol!(CurveV1MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV1.json");
+sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
+sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
+sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
+sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
+sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
+sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
 sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);

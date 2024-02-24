@@ -27,11 +27,8 @@ impl Processor for MevProcessor {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) {
-        let ComposerResults {
-            block_details,
-            mev_details,
-            possible_mev_txes: _,
-        } = compose_mev_results(inspectors, tree, metadata.clone()).await;
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
+            compose_mev_results(inspectors, tree, metadata.clone()).await;
 
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
