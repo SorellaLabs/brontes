@@ -1857,9 +1857,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.15.3"
+version = "3.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea184aa71bb362a1157c896979544cc23974e08fd265f29ea96b59f0b4a555b"
+checksum = "c764d619ca78fccbf3069b37bd7af92577f044bb15236036662d79b6559f25b7"
 
 [[package]]
 name = "byte-slice-cast"
@@ -2019,7 +2019,7 @@ dependencies = [
  "num-traits",
  "serde",
  "wasm-bindgen",
- "windows-targets 0.52.3",
+ "windows-targets 0.52.0",
 ]
 
 [[package]]
@@ -2597,12 +2597,12 @@ dependencies = [
 
 [[package]]
 name = "darling"
-version = "0.20.8"
+version = "0.20.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54e36fcd13ed84ffdfda6f5be89b31287cbb80c439841fe69e04841435464391"
+checksum = "c376d08ea6aa96aafe61237c7200d1241cb177b7d3a542d791f2d118e9cbb955"
 dependencies = [
- "darling_core 0.20.8",
- "darling_macro 0.20.8",
+ "darling_core 0.20.6",
+ "darling_macro 0.20.6",
 ]
 
 [[package]]
@@ -2621,9 +2621,9 @@ dependencies = [
 
 [[package]]
 name = "darling_core"
-version = "0.20.8"
+version = "0.20.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c2cf1c23a687a1feeb728783b993c4e1ad83d99f351801977dd809b48d0a70f"
+checksum = "33043dcd19068b8192064c704b3f83eb464f91f1ff527b44a4e2b08d9cdb8855"
 dependencies = [
  "fnv",
  "ident_case",
@@ -2646,11 +2646,11 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.20.8"
+version = "0.20.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a668eda54683121533a393014d8692171709ff57a7d61f187b6e782719f8933f"
+checksum = "c5a91391accf613803c2a9bf9abccdbaa07c54b4244a5b64883f9c3c137c86be"
 dependencies = [
- "darling_core 0.20.8",
+ "darling_core 0.20.6",
  "quote",
  "syn 2.0.50",
 ]
@@ -3703,9 +3703,9 @@ checksum = "38d84fa142264698cdce1a9f9172cf383a0c82de1bddcf3092901442c4097004"
 
 [[package]]
 name = "futures-timer"
-version = "3.0.3"
+version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f288b0a4f20f9a56b5d1da57e2227c661b7b16168e2f72365f57b63326e29b24"
+checksum = "e64b03909df88034c26dc1547e8970b91f98bdb65165d6a4e9110d94263dbb2c"
 dependencies = [
  "gloo-timers",
  "send_wrapper 0.4.0",
@@ -4087,7 +4087,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.5.6",
+ "socket2 0.5.5",
  "tokio",
  "tower-service",
  "tracing",
@@ -4469,7 +4469,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b58db92f96b720de98181bbbe63c831e87005ab460c1bf306eb2622b4707997f"
 dependencies = [
- "socket2 0.5.6",
+ "socket2 0.5.5",
  "widestring",
  "windows-sys 0.48.0",
  "winreg",
@@ -5622,9 +5622,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.101"
+version = "0.9.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dda2b0f344e78efc2facf7d195d098df0dd72151b26ab98da807afc26c198dff"
+checksum = "ae94056a791d0e1217d18b6cbdccb02c61e3054fc69893607f4067e3bb0b1fd1"
 dependencies = [
  "cc",
  "libc",
@@ -6736,7 +6736,7 @@ dependencies = [
  "reth-revm 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-tasks",
  "reth-transaction-pool",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio",
  "tracing",
 ]
@@ -7171,7 +7171,7 @@ dependencies = [
  "reth-provider 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-revm 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-transaction-pool",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing",
 ]
 
@@ -7515,9 +7515,9 @@ name = "reth-node-api"
 version = "0.1.0-alpha.19"
 source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
 dependencies = [
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "revm-primitives 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reth-primitives",
+ "reth-rpc-types",
+ "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror",
 ]
@@ -7658,7 +7658,7 @@ dependencies = [
  "reth-rpc-types-compat",
  "reth-tasks",
  "reth-transaction-pool",
- "revm-primitives 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "sha2",
  "thiserror",
@@ -7702,50 +7702,11 @@ dependencies = [
  "proptest",
  "proptest-derive",
  "rayon",
- "reth-codecs 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-ethereum-forks 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "revm-primitives 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "secp256k1 0.27.0",
- "serde",
- "serde_json",
- "sha2",
- "strum 0.26.1",
- "sucds 0.6.0",
- "tempfile",
- "thiserror",
- "tracing",
- "zstd 0.12.4",
-]
-
-[[package]]
-name = "reth-primitives"
-version = "0.1.0-alpha.19"
-source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
-dependencies = [
- "alloy-chains",
- "alloy-eips",
- "alloy-genesis",
- "alloy-primitives",
- "alloy-rlp",
- "alloy-trie",
- "byteorder",
- "bytes",
- "c-kzg",
- "cfg-if",
- "derive_more",
- "itertools 0.12.1",
- "modular-bitfield",
- "num_enum 0.7.2",
- "nybbles",
- "once_cell",
- "rayon",
- "reth-codecs 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-ethereum-forks 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "revm-primitives 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reth-codecs",
+ "reth-ethereum-forks",
+ "reth-rpc-types",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1 0.27.0",
  "serde",
  "serde_json",
@@ -7771,40 +7732,14 @@ dependencies = [
  "parking_lot 0.12.1",
  "pin-project",
  "rayon",
- "reth-db 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-metrics 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-nippy-jar 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-node-api 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-trie 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "strum 0.26.1",
- "tokio",
- "tokio-stream",
- "tracing",
-]
-
-[[package]]
-name = "reth-provider"
-version = "0.1.0-alpha.19"
-source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
-dependencies = [
- "auto_impl",
- "dashmap",
- "itertools 0.12.1",
- "metrics",
- "parking_lot 0.12.1",
- "pin-project",
- "rayon",
- "reth-db 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-metrics 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-nippy-jar 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-node-api 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-trie 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reth-db",
+ "reth-interfaces",
+ "reth-metrics",
+ "reth-nippy-jar",
+ "reth-node-api",
+ "reth-primitives",
+ "reth-trie",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.26.1",
  "tokio",
  "tokio-stream",
@@ -7853,12 +7788,12 @@ name = "reth-revm"
 version = "0.1.0-alpha.19"
 source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
 dependencies = [
- "reth-consensus-common 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-node-api 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-provider 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reth-consensus-common",
+ "reth-interfaces",
+ "reth-node-api",
+ "reth-primitives",
+ "reth-provider",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "revm-inspectors",
  "tracing",
 ]
@@ -7901,9 +7836,9 @@ dependencies = [
  "reth-rpc-types-compat",
  "reth-tasks",
  "reth-transaction-pool",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "revm-inspectors",
- "revm-primitives 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "schnellru",
  "secp256k1 0.27.0",
  "serde",
@@ -8074,8 +8009,8 @@ dependencies = [
  "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-provider 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-tokio-util",
- "reth-trie 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reth-trie",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror",
  "tokio",
@@ -8147,6 +8082,7 @@ dependencies = [
  "brontes-core",
  "brontes-macros",
  "brontes-types",
+ "dotenv",
  "eyre",
  "futures",
  "num_cpus",
@@ -8165,8 +8101,8 @@ dependencies = [
  "reth-tasks",
  "reth-tracing-ext",
  "reth-transaction-pool",
- "revm 6.1.0 (git+https://github.com/bluealloy/revm?branch=main)",
- "revm-primitives 2.1.0 (git+https://github.com/bluealloy/revm?branch=main)",
+ "revm 6.0.0 (git+https://github.com/bluealloy/revm?branch=main)",
+ "revm-primitives 2.0.1 (git+https://github.com/bluealloy/revm?branch=main)",
  "tokio",
  "tracing",
 ]
@@ -8193,7 +8129,7 @@ dependencies = [
  "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-provider 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-tasks",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "schnellru",
  "serde",
  "thiserror",
@@ -8228,37 +8164,37 @@ dependencies = [
  "alloy-rlp",
  "auto_impl",
  "derive_more",
- "reth-db 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reth-db",
+ "reth-interfaces",
+ "reth-primitives",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "tracing",
 ]
 
 [[package]]
 name = "revm"
-version = "6.1.0"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d35316fc02d99e42831356c71e882f5d385c77b78f64a44ae82f2f9a4b8b72f"
+checksum = "8154cec6f8c4f543a379cf00a839cf47c67f405e8a92361a7791c55196c9b7e2"
 dependencies = [
  "auto_impl",
  "cfg-if",
- "revm-interpreter 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "revm-precompile 4.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm-interpreter 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm-precompile 4.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "revm"
-version = "6.1.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#141178419d9ff8ffe5a0d6ac20523d5dcd320066"
+version = "6.0.0"
+source = "git+https://github.com/bluealloy/revm?branch=main#0083b998e1fa31b830f118baeef5cfd72fa94d04"
 dependencies = [
  "auto_impl",
  "cfg-if",
- "revm-interpreter 3.1.0 (git+https://github.com/bluealloy/revm?branch=main)",
- "revm-precompile 4.1.0 (git+https://github.com/bluealloy/revm?branch=main)",
+ "revm-interpreter 3.0.0 (git+https://github.com/bluealloy/revm?branch=main)",
+ "revm-precompile 4.0.1 (git+https://github.com/bluealloy/revm?branch=main)",
  "serde",
  "serde_json",
 ]
@@ -8276,7 +8212,7 @@ dependencies = [
  "boa_engine",
  "boa_gc",
  "colorchoice",
- "revm 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_json",
  "thiserror",
@@ -8284,34 +8220,35 @@ dependencies = [
 
 [[package]]
 name = "revm-interpreter"
-version = "3.1.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fa10c2dc1e8f4934bdc763a2c09371bcec29e50c22e55e3eb325ee0cba09064"
+checksum = "dff72cc825a9c44b28749a6181e21fa85ba45ac8d4b5732a7ded165a770ecbd9"
 dependencies = [
- "revm-primitives 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
 ]
 
 [[package]]
 name = "revm-interpreter"
-version = "3.1.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#141178419d9ff8ffe5a0d6ac20523d5dcd320066"
+version = "3.0.0"
+source = "git+https://github.com/bluealloy/revm?branch=main#0083b998e1fa31b830f118baeef5cfd72fa94d04"
 dependencies = [
- "revm-primitives 2.1.0 (git+https://github.com/bluealloy/revm?branch=main)",
+ "revm-primitives 2.0.1 (git+https://github.com/bluealloy/revm?branch=main)",
  "serde",
 ]
 
 [[package]]
 name = "revm-precompile"
-version = "4.1.0"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db828d49d329560a70809d9d1fa0c74695edb49f50c5332db3eb24483076deac"
+checksum = "186373108c0a46e47368752372cc721d4b0ab4886d6786d180ef9dbf4dd71865"
 dependencies = [
  "aurora-engine-modexp",
+ "blst",
  "c-kzg",
  "k256",
  "once_cell",
- "revm-primitives 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ripemd",
  "secp256k1 0.28.2",
  "sha2",
@@ -8320,14 +8257,14 @@ dependencies = [
 
 [[package]]
 name = "revm-precompile"
-version = "4.1.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#141178419d9ff8ffe5a0d6ac20523d5dcd320066"
+version = "4.0.1"
+source = "git+https://github.com/bluealloy/revm?branch=main#0083b998e1fa31b830f118baeef5cfd72fa94d04"
 dependencies = [
  "aurora-engine-modexp",
  "c-kzg",
  "k256",
  "once_cell",
- "revm-primitives 2.1.0 (git+https://github.com/bluealloy/revm?branch=main)",
+ "revm-primitives 2.0.1 (git+https://github.com/bluealloy/revm?branch=main)",
  "ripemd",
  "secp256k1 0.28.2",
  "sha2",
@@ -8336,14 +8273,15 @@ dependencies = [
 
 [[package]]
 name = "revm-primitives"
-version = "2.1.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fecd125aad58e135e2ca5771ed6e4e7b1f05fa3a64e0dfb9cc643b7a800a8435"
+checksum = "093dc5df253eececaf03ffe0c12d3fd7ce5dea3342bc9de109d1aac2647ffa81"
 dependencies = [
  "alloy-primitives",
  "auto_impl",
  "bitflags 2.4.2",
  "bitvec",
+ "blst",
  "c-kzg",
  "cfg-if",
  "derive_more",
@@ -8356,8 +8294,8 @@ dependencies = [
 
 [[package]]
 name = "revm-primitives"
-version = "2.1.0"
-source = "git+https://github.com/bluealloy/revm?branch=main#141178419d9ff8ffe5a0d6ac20523d5dcd320066"
+version = "2.0.1"
+source = "git+https://github.com/bluealloy/revm?branch=main#0083b998e1fa31b830f118baeef5cfd72fa94d04"
 dependencies = [
  "alloy-primitives",
  "auto_impl",
@@ -8990,7 +8928,7 @@ version = "3.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "865f9743393e638991566a8b7a479043c2c8da94a33e0a31f18214c9cae0a64d"
 dependencies = [
- "darling 0.20.8",
+ "darling 0.20.6",
  "proc-macro2",
  "quote",
  "syn 2.0.50",
@@ -9210,12 +9148,12 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.5.6"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05ffd9c0a93b7543e062e759284fcf5f5e3b098501104bfbdde4d404db792871"
+checksum = "7b5fac59a5cb5dd637972e5fca70daf0523c9067fcdc4842f053dae04a18f8e9"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -9652,7 +9590,7 @@ version = "4.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4da89cfe93508da3676114d5a15aa26e29aa88d5230e22bc5ea5f3c1f08ef5f6"
 dependencies = [
- "darling 0.20.8",
+ "darling 0.20.6",
  "if_chain",
  "itertools 0.12.1",
  "once_cell",
@@ -9823,7 +9761,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "pin-project-lite",
  "signal-hook-registry",
- "socket2 0.5.6",
+ "socket2 0.5.5",
  "tokio-macros",
  "tracing",
  "windows-sys 0.48.0",
@@ -10675,7 +10613,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e48a53791691ab099e5e2ad123536d0fff50652600abaf43bbf952894110d0be"
 dependencies = [
  "windows-core",
- "windows-targets 0.52.3",
+ "windows-targets 0.52.0",
 ]
 
 [[package]]
@@ -10684,7 +10622,7 @@ version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33ab640c8d7e35bf8ba19b884ba838ceb4fba93a4e8c65a9059d08afcfc683d9"
 dependencies = [
- "windows-targets 0.52.3",
+ "windows-targets 0.52.0",
 ]
 
 [[package]]
@@ -10702,7 +10640,7 @@ version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
 dependencies = [
- "windows-targets 0.52.3",
+ "windows-targets 0.52.0",
 ]
 
 [[package]]
@@ -10722,17 +10660,17 @@ dependencies = [
 
 [[package]]
 name = "windows-targets"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d380ba1dc7187569a8a9e91ed34b8ccfc33123bbacb8c0aed2d1ad7f3ef2dc5f"
+checksum = "8a18201040b24831fbb9e4eb208f8892e1f50a37feb53cc7ff887feb8f50e7cd"
 dependencies = [
- "windows_aarch64_gnullvm 0.52.3",
- "windows_aarch64_msvc 0.52.3",
- "windows_i686_gnu 0.52.3",
- "windows_i686_msvc 0.52.3",
- "windows_x86_64_gnu 0.52.3",
- "windows_x86_64_gnullvm 0.52.3",
- "windows_x86_64_msvc 0.52.3",
+ "windows_aarch64_gnullvm 0.52.0",
+ "windows_aarch64_msvc 0.52.0",
+ "windows_i686_gnu 0.52.0",
+ "windows_i686_msvc 0.52.0",
+ "windows_x86_64_gnu 0.52.0",
+ "windows_x86_64_gnullvm 0.52.0",
+ "windows_x86_64_msvc 0.52.0",
 ]
 
 [[package]]
@@ -10743,9 +10681,9 @@ checksum = "2b38e32f0abccf9987a4e3079dfb67dcd799fb61361e53e2882c3cbaf0d905d8"
 
 [[package]]
 name = "windows_aarch64_gnullvm"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68e5dcfb9413f53afd9c8f86e56a7b4d86d9a2fa26090ea2dc9e40fba56c6ec6"
+checksum = "cb7764e35d4db8a7921e09562a0304bf2f93e0a51bfccee0bd0bb0b666b015ea"
 
 [[package]]
 name = "windows_aarch64_msvc"
@@ -10755,9 +10693,9 @@ checksum = "dc35310971f3b2dbbf3f0690a219f40e2d9afcf64f9ab7cc1be722937c26b4bc"
 
 [[package]]
 name = "windows_aarch64_msvc"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dab469ebbc45798319e69eebf92308e541ce46760b49b18c6b3fe5e8965b30f"
+checksum = "bbaa0368d4f1d2aaefc55b6fcfee13f41544ddf36801e793edbbfd7d7df075ef"
 
 [[package]]
 name = "windows_i686_gnu"
@@ -10767,9 +10705,9 @@ checksum = "a75915e7def60c94dcef72200b9a8e58e5091744960da64ec734a6c6e9b3743e"
 
 [[package]]
 name = "windows_i686_gnu"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a4e9b6a7cac734a8b4138a4e1044eac3404d8326b6c0f939276560687a033fb"
+checksum = "a28637cb1fa3560a16915793afb20081aba2c92ee8af57b4d5f28e4b3e7df313"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -10779,9 +10717,9 @@ checksum = "8f55c233f70c4b27f66c523580f78f1004e8b5a8b659e05a4eb49d4166cca406"
 
 [[package]]
 name = "windows_i686_msvc"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28b0ec9c422ca95ff34a78755cfa6ad4a51371da2a5ace67500cf7ca5f232c58"
+checksum = "ffe5e8e31046ce6230cc7215707b816e339ff4d4d67c65dffa206fd0f7aa7b9a"
 
 [[package]]
 name = "windows_x86_64_gnu"
@@ -10791,9 +10729,9 @@ checksum = "53d40abd2583d23e4718fddf1ebec84dbff8381c07cae67ff7768bbf19c6718e"
 
 [[package]]
 name = "windows_x86_64_gnu"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "704131571ba93e89d7cd43482277d6632589b18ecf4468f591fbae0a8b101614"
+checksum = "3d6fa32db2bc4a2f5abeacf2b69f7992cd09dca97498da74a151a3132c26befd"
 
 [[package]]
 name = "windows_x86_64_gnullvm"
@@ -10803,9 +10741,9 @@ checksum = "0b7b52767868a23d5bab768e390dc5f5c55825b6d30b86c844ff2dc7414044cc"
 
 [[package]]
 name = "windows_x86_64_gnullvm"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42079295511643151e98d61c38c0acc444e52dd42ab456f7ccfd5152e8ecf21c"
+checksum = "1a657e1e9d3f514745a572a6846d3c7aa7dbe1658c056ed9c3344c4109a6949e"
 
 [[package]]
 name = "windows_x86_64_msvc"
@@ -10815,9 +10753,9 @@ checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
 
 [[package]]
 name = "windows_x86_64_msvc"
-version = "0.52.3"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0770833d60a970638e989b3fa9fd2bb1aaadcf88963d1659fd7d9990196ed2d6"
+checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winnow"

@@ -50,7 +50,9 @@ impl RunArgs {
         banner::print_banner();
         // Fetch required environment variables.
         let db_path = get_env_vars()?;
+        tracing::info!(target: "brontes", "got env vars");
         let quote_asset = self.quote_asset.parse()?;
+        tracing::info!(target: "brontes", "parsed quote asset");
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
@@ -61,8 +63,11 @@ impl RunArgs {
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
+        tracing::info!(target: "brontes", "starting database initialization");
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
-        let clickhouse = static_object(load_clickhouse());
+        tracing::info!(target: "brontes", "libmdbx init");
+        let clickhouse = static_object(load_clickhouse().await?);
+        tracing::info!(target: "brontes", "databases initialized");
 
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 
