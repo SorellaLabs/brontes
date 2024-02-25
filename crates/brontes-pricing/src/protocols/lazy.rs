@@ -43,7 +43,14 @@ pub struct LazyResult {
     pub load_result: LoadResult,
 }
 
+pub struct PairStateLoadingProgress {
+    pub block:         u64,
+    pub id:            Option<u64>,
+    pub pending_pools: HashSet<Address>,
+}
+
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
+type BlockNumber = u64;
 
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
@@ -52,17 +59,17 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_load_futures: MultiBlockPoolFutures,
     /// addresses currently being processed. to the blocks of the address we are
     /// fetching state for
-    pool_buf: HashMap<Address, Vec<u64>>,
+    pool_buf: HashMap<Address, Vec<BlockNumber>>,
     /// requests we are processing for a given block.
-    req_per_block: HashMap<u64, u64>,
+    req_per_block: HashMap<BlockNumber, u64>,
     /// all current parent pairs with all the state that is required for there
     /// subgraph to be loaded
-    parent_pair_state_loading: HashMap<Pair, (u64, Option<u64>, HashSet<Address>)>,
+    parent_pair_state_loading: HashMap<Pair, PairStateLoadingProgress>,
     /// All current request addresses to subgraph pair that requested the
     /// loading. in the case that a pool fails to load, we need all subgraph
     /// pairs that are dependent on the node in order to remove it from the
     /// subgraph and possibly reconstruct it.
-    protocol_address_to_parent_pairs: HashMap<Address, Vec<(u64, Pair)>>,
+    protocol_address_to_parent_pairs: HashMap<Address, Vec<(BlockNumber, Pair)>>,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
@@ -95,14 +102,15 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
     pub fn pairs_to_verify(&mut self) -> Vec<(u64, Option<u64>, Pair)> {
         let mut res = Vec::new();
-        self.parent_pair_state_loading
-            .retain(|pair, (block, id, deps)| {
-                if deps.is_empty() {
+        self.parent_pair_state_loading.retain(
+            |pair, PairStateLoadingProgress { block, id, pending_pools }| {
+                if pending_pools.is_empty() {
                     res.push((*block, *id, *pair));
                     return false
                 }
                 true
-            });
+            },
+        );
 
         res
     }
@@ -122,7 +130,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
     pub fn add_protocol_parent(
         &mut self,
-        block: u64,
+        parent_block: u64,
         id: Option<u64>,
         address: Address,
         parent_pair: Pair,
@@ -130,17 +138,17 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.protocol_address_to_parent_pairs
             .entry(address)
             .or_default()
-            .push((block, parent_pair));
+            .push((parent_block, parent_pair));
 
         match self.parent_pair_state_loading.entry(parent_pair) {
             Entry::Vacant(v) => {
                 let mut set = HashSet::new();
                 set.insert(address);
-                v.insert((block, id, set));
+                v.insert(PairStateLoadingProgress { block: parent_block, id, pending_pools: set });
             }
             Entry::Occupied(mut o) => {
-                let (cur_block, _id, entry) = o.get_mut();
-                if *cur_block != block {
+                let PairStateLoadingProgress { block, pending_pools, .. } = o.get_mut();
+                if *block != parent_block {
                     tracing::error!(
                         %block,
                         ?address,
@@ -148,8 +156,8 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                         "cur block != block when adding parent"
                     );
                 }
-                *cur_block = block;
-                entry.insert(address);
+                *block = parent_block;
+                pending_pools.insert(address);
             }
         }
     }
@@ -200,8 +208,8 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         removed.iter().for_each(|pair| {
             if let Entry::Occupied(mut o) = self.parent_pair_state_loading.entry(*pair) {
-                let (_, _, entry) = o.get_mut();
-                entry.remove(address);
+                let PairStateLoadingProgress { pending_pools, .. } = o.get_mut();
+                pending_pools.remove(address);
             }
         });
 
