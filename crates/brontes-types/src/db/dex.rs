@@ -132,7 +132,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
 #[redefined_attr(derive(
     Debug,
     Clone,

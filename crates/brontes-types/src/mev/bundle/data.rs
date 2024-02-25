@@ -20,8 +20,17 @@ pub struct BundleDataWithRevenue {
     pub data:    BundleData,
 }
 
-#[derive(Debug, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+#[derive(Debug, Default, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]
+#[redefined_attr(derive(
+    Debug,
+    Default,
+    PartialEq,
+    Clone,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive
+))]
 pub enum BundleData {
     Sandwich(Sandwich),
     AtomicArb(AtomicArb),
@@ -29,6 +38,7 @@ pub enum BundleData {
     Jit(JitLiquidity),
     CexDex(CexDex),
     Liquidation(Liquidation),
+    #[default]
     Unknown,
 }
 
