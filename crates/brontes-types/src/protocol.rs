@@ -145,7 +145,7 @@ impl Protocol {
             "curve.fiv2 plain" => Protocol::CurveV2PlainPool,
             "curve.ficrvUSD metapool" => Protocol::CurvecrvUSDMetaPool,
             "curve.ficrvUSD plain" => Protocol::CurvecrvUSDPlainPool,
-            "curve.ficryptoSwap" => Protocol::CurveCryptoSwapPool,
+            "curve.ficryptoswap" => Protocol::CurveCryptoSwapPool,
             "curve.fitricrypto" => Protocol::CurveTriCryptoPool,
             _ => Protocol::Unknown,
         }
