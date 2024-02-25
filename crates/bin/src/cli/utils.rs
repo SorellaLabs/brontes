@@ -7,7 +7,7 @@ use brontes_core::local_provider::LocalProvider;
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
 use brontes_database::clickhouse::ClickhouseHttpClient;
-#[cfg(feature = "local-clickhouse")]
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_database::clickhouse::ClickhouseMiddleware;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
@@ -22,12 +22,14 @@ use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
 use tracing::info;
 
-#[cfg(not(feature = "local-clickhouse"))]
+#[cfg(any(not(feature = "local-clickhouse"), feature = "local-no-inserts"))]
 pub fn load_database(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
     LibmdbxReadWriter::init_db(db_endpoint, None)
 }
 
-#[cfg(feature = "local-clickhouse")]
+// This version is used when `local-clickhouse` is enabled but
+// `local-no-inserts` is not.
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
     let clickhouse = Clickhouse::default();

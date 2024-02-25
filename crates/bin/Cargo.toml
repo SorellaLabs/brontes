@@ -89,6 +89,8 @@ default = [
   "brontes-inspect/default",
 ]
 
+local-no-inserts = []
+
 sorella-server = ["local-reth", "local-clickhouse"]
 
 tests = [
