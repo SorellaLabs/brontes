@@ -55,14 +55,14 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     output_mev_and_update_searcher_info(database, &mev_details).await;
 
     // Attempt to save the MEV block details
+    /*
     if let Err(e) = database
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .await
     {
         panic!("Failed to insert classified data into libmdbx: {:?}", e);
-    }
+    }*/
 }
-
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
     mev_details: &Vec<Bundle>,
