@@ -63,7 +63,7 @@ impl RunArgs {
 
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
         let clickhouse = static_object(load_clickhouse().await);
-        tracing::info!("databases initialized");
+        tracing::info!(target: "brontes", "databases initialized");
 
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 
