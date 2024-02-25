@@ -304,14 +304,22 @@ mod tests {
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
         },
+        normalized_actions::{
+            NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+        },
         pair::Pair,
+        traits::TracingProvider,
+        GasDetails,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::{
-        ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
-        ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
+    use crate::{
+        clickhouse::dbms::{
+            ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
+            ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
+        },
+        TxTracesData,
     };
 
     fn spawn_clickhouse() -> Clickhouse {
@@ -354,7 +362,7 @@ mod tests {
         let query = "SELECT * FROM brontes.searcher_info";
         let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
 
-        assert_eq!(queried, case0)
+        assert_eq!(queried, case0);
     }
 
     #[tokio::test]
@@ -468,7 +476,16 @@ mod tests {
     async fn jit() {
         let db = spawn_clickhouse();
 
-        let case0 = JitLiquidity::default();
+        let mut case0 = JitLiquidity::default();
+        let swap = NormalizedSwap::default();
+        let mint = NormalizedMint::default();
+        let burn = NormalizedBurn::default();
+        let gas_details = GasDetails::default();
+
+        case0.frontrun_mints = vec![mint];
+        case0.backrun_burns = vec![burn];
+        case0.victim_swaps = vec![vec![swap]];
+        case0.victim_swaps_gas_details = vec![gas_details];
 
         db.inner()
             .insert_one::<ClickhouseJit>(&case0)
@@ -480,7 +497,16 @@ mod tests {
     async fn jit_sandwich() {
         let db = spawn_clickhouse();
 
-        let case0 = JitLiquiditySandwich::default();
+        let mut case0 = JitLiquiditySandwich::default();
+        let swap = NormalizedSwap::default();
+        let mint = NormalizedMint::default();
+        let burn = NormalizedBurn::default();
+        let gas_details = GasDetails::default();
+
+        case0.frontrun_mints = vec![Some(vec![mint])];
+        case0.backrun_burns = vec![burn];
+        case0.victim_swaps = vec![vec![swap]];
+        case0.victim_swaps_gas_details = vec![gas_details];
 
         db.inner()
             .insert_one::<ClickhouseJitSandwich>(&case0)
@@ -492,7 +518,14 @@ mod tests {
     async fn liquidations() {
         let db = spawn_clickhouse();
 
-        let case0 = Liquidation::default();
+        let mut case0 = Liquidation::default();
+        let swap = NormalizedSwap::default();
+        let liquidation = NormalizedLiquidation::default();
+        let gas_details = GasDetails::default();
+
+        case0.liquidation_swaps = vec![swap];
+        case0.liquidations = vec![liquidation];
+        case0.gas_details = gas_details;
 
         db.inner()
             .insert_one::<ClickhouseLiquidations>(&case0)
@@ -516,7 +549,16 @@ mod tests {
     async fn sandwich() {
         let db = spawn_clickhouse();
 
-        let case0 = Sandwich::default();
+        let mut case0 = Sandwich::default();
+        let swap0 = NormalizedSwap::default();
+        let swap1 = NormalizedSwap::default();
+        let swap2 = NormalizedSwap::default();
+        let gas_details = GasDetails::default();
+
+        case0.frontrun_swaps = vec![vec![swap0]];
+        case0.victim_swaps = vec![vec![swap1]];
+        case0.victim_swaps_gas_details = vec![gas_details];
+        case0.backrun_swaps = vec![swap2];
 
         db.inner()
             .insert_one::<ClickhouseSandwiches>(&case0)
@@ -528,7 +570,12 @@ mod tests {
     async fn atomic_arb() {
         let db = spawn_clickhouse();
 
-        let case0 = AtomicArb::default();
+        let mut case0 = AtomicArb::default();
+        let swap = NormalizedSwap::default();
+        let gas_details = GasDetails::default();
+
+        case0.swaps = vec![swap];
+        case0.gas_details = gas_details;
 
         db.inner()
             .insert_one::<ClickhouseAtomicArbs>(&case0)
@@ -574,6 +621,81 @@ mod tests {
             .await
             .unwrap();
     }
-}
 
+    const queryy: &str = "SELECT
+    block_number,
+    groupArray(
+        (
+            block_number,
+            arrayZip(
+                trace_meta.trace_idx,
+                trace_meta.msg_sender,
+                trace_meta.error,
+                trace_meta.subtraces,
+                trace_meta.trace_address
+            ),
+            arrayZip(
+                trace_decoded_data.trace_idx,
+                trace_decoded_data.function_name,
+                trace_decoded_data.call_data,
+                trace_decoded_data.return_data
+            ),
+            arrayZip(
+                trace_logs.trace_idx,
+                trace_logs.log_idx,
+                trace_logs.address,
+                trace_logs.topics,
+                trace_logs.data
+            ),
+            arrayZip(
+                trace_create_actions.trace_idx,
+                trace_create_actions.from,
+                trace_create_actions.gas,
+                trace_create_actions.init,
+                trace_create_actions.value
+            ),
+            arrayZip(
+                trace_call_actions.trace_idx,
+                trace_call_actions.from,
+                trace_call_actions.call_type,
+                trace_call_actions.gas,
+                trace_call_actions.input,
+                trace_call_actions.to,
+                trace_call_actions.value
+            ),
+            arrayZip(
+                trace_self_destruct_actions.trace_idx,
+                trace_self_destruct_actions.address,
+                trace_self_destruct_actions.balance,
+                trace_self_destruct_actions.refund_address
+            ),
+            arrayZip(
+                trace_reward_actions.trace_idx,
+                trace_reward_actions.author,
+                trace_reward_actions.reward_type,
+                trace_reward_actions.value
+            ),
+            arrayZip(
+                trace_call_outputs.trace_idx,
+                trace_call_outputs.gas_used,
+                trace_call_outputs.output
+            ),
+            arrayZip(
+                trace_create_outputs.trace_idx,
+                trace_create_outputs.address,
+                trace_create_outputs.code,
+                trace_create_outputs.gas_used
+            ),
+
+        tx_hash,
+        gas_used,
+        effective_price,
+        tx_index,
+        is_success
+    ))
+FROM brontes.tx_traces
+WHERE block_number = 15697312
+GROUP BY block_number
+";
+}
 */

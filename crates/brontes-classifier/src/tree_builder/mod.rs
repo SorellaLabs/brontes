@@ -27,10 +27,7 @@ use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
 use self::transfer::try_decode_transfer;
-use crate::{
-    classifiers::{DiscoveryProtocols, *},
-    ActionCollection, FactoryDiscoveryDispatch,
-};
+use crate::{classifiers::*, ActionCollection, FactoryDiscoveryDispatch};
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
@@ -59,10 +56,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         // send out all updates
         let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
+        account_for_tax_tokens(&mut tree);
 
-        Self::prune_tree(&mut tree);
         self.finish_classification(&mut tree, further_classification_requests);
-
         tree.finalize_tree();
 
         tree
@@ -84,14 +80,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 root_data.further_classification_requests
             })
             .collect_vec()
-    }
-
-    pub(crate) fn prune_tree(tree: &mut BlockTree<Actions>) {
-        // tax token accounting should always be first.
-        account_for_tax_tokens(tree);
-        // remove_swap_transfers(tree);
-        // remove_mint_transfers(tree);
-        // remove_collect_transfers(tree);
     }
 
     pub(crate) async fn build_all_tx_trees(
@@ -140,7 +128,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             gas_used:            trace.gas_used,
                             effective_gas_price: trace.effective_price,
                             priority_fee:        trace.effective_price
-                                - (header.base_fee_per_gas.unwrap() as u128),
+                                - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store:  NodeData(vec![Some(classification)]),
                     };
@@ -279,6 +267,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
+            if results.1.is_new_pool() {
+                let Actions::NewPool(p) = &results.1 else { unreachable!() };
+                self.insert_new_pool(block, p).await;
+            }
+
             (vec![results.0], results.1)
         } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
             return transfer
@@ -421,11 +414,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
         } else {
             info!(
-                "Discovered new {} pool: 
-                            \nAddress:{} 
-                            \nToken 0: {}
-                            \nToken 1: {}",
-                pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+                "Discovered new {} pool:
+                            \nAddress:{}
+                            ",
+                pool.protocol, pool.pool_address
             );
         }
     }

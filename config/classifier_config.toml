@@ -141,3 +141,6 @@ init_block = 18163376
 
 [CurvecrvUSDPlainPoolImpl."0x7ca46a636b02d4abc66883d7ff164bde506dc66a"]
 init_block = 18163373
+
+[CompoundV2."0x99ee778B9A6205657DD03B2B91415C8646d521ec"]
+init_block = 8983559

@@ -6,12 +6,8 @@ use std::{
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
-use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{
-    db::traits::LibmdbxReader, normalized_actions::Actions, traits::TracingProvider,
-    tree::BlockTree,
-};
+use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 

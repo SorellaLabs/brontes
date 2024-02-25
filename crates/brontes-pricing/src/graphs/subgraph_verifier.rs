@@ -61,6 +61,11 @@ impl SubgraphVerifier {
         self.pending_subgraphs.contains_key(pair)
     }
 
+    pub fn pool_dep_failure(&mut self, pair: Pair) {
+        self.subgraph_verification_state.remove(&pair);
+        self.pending_subgraphs.remove(&pair);
+    }
+
     // creates a new subgraph returning
     pub fn create_new_subgraph(
         &mut self,
@@ -73,7 +78,7 @@ impl SubgraphVerifier {
 
         let subgraph = PairSubGraph::init(pair, path);
         if self.pending_subgraphs.contains_key(&pair) {
-            return vec![];
+            return vec![]
         };
 
         self.pending_subgraphs.insert(
@@ -188,7 +193,7 @@ impl SubgraphVerifier {
                         prune_state: removals,
                         ignore_state: ignores,
                         frayed_ends: result.frayed_ends,
-                    });
+                    })
                 }
 
                 self.passed_verification(pair, block, subgraph, removals, state_tracker)
