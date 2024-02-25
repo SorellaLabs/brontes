@@ -602,33 +602,6 @@ pub mod pools_libmdbx {
     }
 }
 
-pub mod option_contract_info {
-
-    use std::str::FromStr;
-
-    use alloy_primitives::Address;
-    use serde::de::{Deserialize, Deserializer};
-
-    use crate::db::address_metadata::ContractInfo;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let (verified_contract, contract_creator_opt, reputation): (
-            Option<bool>,
-            Option<String>,
-            Option<u8>,
-        ) = Deserialize::deserialize(deserializer)?;
-
-        Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
-            verified_contract,
-            contract_creator: Address::from_str(&contract_creator).ok(),
-            reputation,
-        }))
-    }
-}
-
 pub mod socials {
 
     use serde::de::{Deserialize, Deserializer};

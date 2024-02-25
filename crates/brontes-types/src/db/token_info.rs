@@ -124,14 +124,3 @@ impl TokenInfo {
 self_convert_redefined!(TokenInfo);
 implement_table_value_codecs_with_zc!(TokenInfo);
 
-// impl<'de> serde::Deserialize<'de> for TokenInfo {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where
-//         D: serde::Deserializer<'de>,
-//     {
-//         let val: (u8, String) =
-// serde::Deserialize::deserialize(deserializer)?;
-//
-//         Ok(Self { decimals: val.0, symbol: val.1 })
-//     }
-// }
