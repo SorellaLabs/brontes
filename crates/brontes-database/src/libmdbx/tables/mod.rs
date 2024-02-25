@@ -418,7 +418,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "token-decimals"
         },
         CLI {
             can_insert: False
@@ -439,7 +439,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "protocol-info"
         },
         CLI {
             can_insert: False
@@ -457,7 +457,7 @@ compressed_table!(
         Init {
             init_size: Some(10_000),
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "cex-price"
         },
         CLI {
             can_insert: False
@@ -477,7 +477,7 @@ compressed_table!(
         Init {
             init_size: Some(50_000),
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "block-info"
         },
         CLI {
             can_insert: False
@@ -514,7 +514,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "pool-creation-blocks"
         },
         CLI {
             can_insert: False
@@ -568,7 +568,7 @@ compressed_table!(
         Init {
             init_size: Some(10_000),
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "tx-traces"
         },
         CLI {
             can_insert: False
@@ -588,7 +588,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "builder"
         },
         CLI {
             can_insert: False
@@ -625,7 +625,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: "address-meta"
         },
         CLI {
             can_insert: False
