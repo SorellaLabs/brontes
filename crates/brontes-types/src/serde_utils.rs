@@ -18,10 +18,7 @@ pub mod address_string {
     {
         let address: String = Deserialize::deserialize(deserializer)?;
 
-        Address::from_str(&address).map_err(|e| {
-            tracing::error!("address string failed: {}", address);
-            serde::de::Error::custom(e)
-        })
+        Address::from_str(&address).map_err(serde::de::Error::custom)
     }
 }
 
@@ -587,7 +584,6 @@ pub mod pools_libmdbx {
                 .into_iter()
                 .map(|addr| format!("{:?}", addr.clone()))
                 .collect::<Vec<_>>();
-
         st.serialize(serializer)
     }
 
@@ -603,6 +599,33 @@ pub mod pools_libmdbx {
                 .collect::<Result<Vec<_>, <Address as FromStr>::Err>>()
                 .map_err(serde::de::Error::custom)?,
         ))
+    }
+}
+
+pub mod option_contract_info {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::db::address_metadata::ContractInfo;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (verified_contract, contract_creator_opt, reputation): (
+            Option<bool>,
+            Option<String>,
+            Option<u8>,
+        ) = Deserialize::deserialize(deserializer)?;
+
+        Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
+            verified_contract,
+            contract_creator: Address::from_str(&contract_creator).ok(),
+            reputation,
+        }))
     }
 }
 
