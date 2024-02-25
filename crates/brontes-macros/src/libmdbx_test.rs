@@ -42,6 +42,7 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
         #sig
         {
             dotenv::dotenv().expect("failed to load env");
+            ::brontes_core::test_utils::init_tracing();
             std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()

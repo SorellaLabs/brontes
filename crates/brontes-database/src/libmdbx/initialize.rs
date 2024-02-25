@@ -329,7 +329,7 @@ struct BSConfig {
 
 #[cfg(test)]
 mod tests {
-    use brontes_core::test_utils::{get_db_handle, init_trace_parser, init_tracing};
+    use brontes_core::test_utils::{get_db_handle, init_trace_parser};
     #[cfg(feature = "local-clickhouse")]
     use brontes_database::clickhouse::Clickhouse;
     use brontes_database::libmdbx::{
@@ -339,7 +339,6 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
-        init_tracing();
         let block_range = (17000000, 17000100);
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
