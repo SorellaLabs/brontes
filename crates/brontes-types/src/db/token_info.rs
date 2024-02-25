@@ -97,7 +97,18 @@ impl DbRow for TokenInfoWithAddress {
 }
 
 #[derive(
-    Debug, Clone, Default, Row, Deserialize, Serialize, rSerialize, rDeserialize, Archive, PartialEq, Eq, Hash,
+    Debug,
+    Clone,
+    Default,
+    Row,
+    Deserialize,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive,
+    PartialEq,
+    Eq,
+    Hash,
 )]
 pub struct TokenInfo {
     pub decimals: u8,
@@ -118,7 +129,8 @@ implement_table_value_codecs_with_zc!(TokenInfo);
 //     where
 //         D: serde::Deserializer<'de>,
 //     {
-//         let val: (u8, String) = serde::Deserialize::deserialize(deserializer)?;
+//         let val: (u8, String) =
+// serde::Deserialize::deserialize(deserializer)?;
 //
 //         Ok(Self { decimals: val.0, symbol: val.1 })
 //     }
