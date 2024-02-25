@@ -49,10 +49,10 @@ impl RunArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         banner::print_banner();
         // Fetch required environment variables.
-        tracing::info!(target: "brontes", "loading env vars");
         let db_path = get_env_vars()?;
         tracing::info!(target: "brontes", "got env vars");
         let quote_asset = self.quote_asset.parse()?;
+        tracing::info!(target: "brontes", "parsed quote asset");
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
