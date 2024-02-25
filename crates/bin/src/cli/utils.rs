@@ -35,15 +35,15 @@ pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<L
 }
 
 #[cfg(feature = "local-clickhouse")]
-pub async fn load_clickhouse() -> Clickhouse {
-    Clickhouse::default()
+pub async fn load_clickhouse() -> eyre::Result<Clickhouse> {
+    Ok(Clickhouse::default())
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub async fn load_clickhouse() -> ClickhouseHttpClient {
-    let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
+pub async fn load_clickhouse() -> eyre::Result<ClickhouseHttpClient> {
+    let clickhouse_api = env::var("CLICKHOUSE_API")?;
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
-    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await
+    Ok(ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await)
 }
 
 #[cfg(not(feature = "local-reth"))]
