@@ -15,6 +15,7 @@ use crate::{
 pub struct AddressMetadata {
     pub entity_name:     Option<String>,
     pub nametag:         Option<String>,
+    #[serde(default)]
     pub labels:          Vec<String>,
     #[serde(rename = "type")]
     pub address_type:    Option<String>,
