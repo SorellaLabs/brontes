@@ -147,3 +147,16 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .map_err(Into::into)
     }
 }
+
+#[cfg(test)]
+pub mod test {
+
+    use crate::{clickhouse::ClickhouseHandle, libmdbx::test_utils::load_clickhouse};
+
+    #[brontes_macros::test]
+    async fn test_metadata_query() {
+        let click_house = load_clickhouse().await;
+        let res = click_house.get_metadata(18500000).await;
+        assert!(res.is_ok());
+    }
+}
