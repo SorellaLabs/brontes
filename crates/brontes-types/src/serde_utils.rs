@@ -215,8 +215,11 @@ pub mod u256 {
     where
         D: Deserializer<'de>,
     {
-        let data: String = Deserialize::deserialize(deserializer)?;
+        let mut data: String = Deserialize::deserialize(deserializer)?;
 
+        if data.ends_with("_U256") {
+            data = data[..data.len() - 5].to_string()
+        }
         Ok(U256::from_str(&data)
             .map_err(serde::de::Error::custom)?
             .into())
