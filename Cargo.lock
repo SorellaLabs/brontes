@@ -7738,6 +7738,7 @@ dependencies = [
  "brontes-core",
  "brontes-macros",
  "brontes-types",
+ "dotenv",
  "eyre",
  "futures",
  "num_cpus",
