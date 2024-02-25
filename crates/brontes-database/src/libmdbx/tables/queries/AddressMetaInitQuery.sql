@@ -1,5 +1,5 @@
 SELECT
-    address,
+    toString(address),
     entity_name,
     nametag,
     labels,
