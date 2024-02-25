@@ -27,3 +27,5 @@ SELECT
     groupArray((exchange, metadata)) AS data
 FROM all 
 GROUP BY block_number
+
+
