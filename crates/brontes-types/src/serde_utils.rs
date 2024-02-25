@@ -584,6 +584,7 @@ pub mod pools_libmdbx {
                 .into_iter()
                 .map(|addr| format!("{:?}", addr.clone()))
                 .collect::<Vec<_>>();
+        
         st.serialize(serializer)
     }
 
