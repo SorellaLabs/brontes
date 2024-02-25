@@ -19,7 +19,7 @@ pub mod address_string {
         let address: String = Deserialize::deserialize(deserializer)?;
 
         Address::from_str(&address).map_err(|e| {
-            tracing::error!("address string failed");
+            tracing::error!("address string failed: {}", address);
             serde::de::Error::custom(e)
         })
     }
