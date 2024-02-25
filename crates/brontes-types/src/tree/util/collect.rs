@@ -23,7 +23,7 @@ pub trait TreeCollect<V: NormalizedAction> {
 
     fn collect_action_range_filter<Ret>(
         &self,
-        range: Vec<B256>,
+        range: &[B256],
         call: TreeSearchBuilder<V>,
         collector: fn(V) -> Option<Ret>,
     ) -> Vec<Vec<Ret>>
@@ -38,7 +38,7 @@ pub trait TreeCollect<V: NormalizedAction> {
 
     fn collect_action_filter<Ret>(
         &self,
-        hash: B256,
+        hash: &B256,
         call: TreeSearchBuilder<V>,
         collector: fn(V) -> Option<Ret>,
     ) -> Vec<Ret>
@@ -61,7 +61,7 @@ pub trait TreeCollect<V: NormalizedAction> {
 
     fn collect_actions_range_filter<FromI, Fns>(
         &self,
-        range: Vec<B256>,
+        range: &[B256],
         call: TreeSearchBuilder<V>,
         collector: Fns,
     ) -> Vec<FromI>
@@ -73,7 +73,7 @@ pub trait TreeCollect<V: NormalizedAction> {
 
     fn collect_actions_filter<FromI, Fns>(
         &self,
-        hash: B256,
+        hash: &B256,
         call: TreeSearchBuilder<V>,
         collector: Fns,
     ) -> FromI
@@ -93,14 +93,14 @@ pub trait TreeCollectCast<FromI, Fns, V: NormalizedAction> {
 
     fn collect_actions_range_filter(
         &self,
-        range: Vec<B256>,
+        range: &[B256],
         call: TreeSearchBuilder<V>,
         collector: Fns,
     ) -> Vec<FromI>;
 
     fn collect_actions_filter(
         &self,
-        hash: B256,
+        hash: &B256,
         call: TreeSearchBuilder<V>,
         collector: Fns,
     ) -> FromI;
@@ -127,7 +127,7 @@ macro_rules! tree_cast {
 
                 fn collect_actions_range_filter(
                     &self,
-                    range: Vec<B256>,
+                    range: &[B256],
                     call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
                 ) -> Vec<($($from,)*)> {
@@ -139,7 +139,7 @@ macro_rules! tree_cast {
 
                 fn collect_actions_filter(
                     &self,
-                    hash: B256,
+                    hash: &B256,
                     call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
                 ) -> ($($from,)*){

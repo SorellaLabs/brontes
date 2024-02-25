@@ -101,7 +101,7 @@ impl<V: NormalizedAction> BlockTree<V> {
 
             for tx in &mut this.tx_roots {
                 let priority_fee = (tx.gas_details.effective_gas_price
-                    - this.header.base_fee_per_gas.unwrap() as u128)
+                    - this.header.base_fee_per_gas.unwrap_or_default() as u128)
                     as f64;
                 priority_fees.push(priority_fee);
                 total_priority_fee += priority_fee;
@@ -163,9 +163,9 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     /// For the given tx hash, goes through the tree and collects all actions
     /// specified by the tree search builder.
-    pub fn collect(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<V> {
+    pub fn collect(&self, hash: &B256, call: TreeSearchBuilder<V>) -> Vec<V> {
         self.run_in_span_ref(|this| {
-            if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == hash) {
+            if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == *hash) {
                 root.collect(&call)
             } else {
                 vec![]
@@ -206,11 +206,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    pub fn collect_txes(&self, txes: Vec<B256>, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
+    pub fn collect_txes(&self, txes: &[B256], call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 txes.par_iter()
-                    .map(|tx| this.collect(*tx, call.clone()))
+                    .map(|tx| this.collect(tx, call.clone()))
                     .collect::<Vec<_>>()
             })
         })

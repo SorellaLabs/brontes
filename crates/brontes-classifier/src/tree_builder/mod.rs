@@ -128,7 +128,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             gas_used:            trace.gas_used,
                             effective_gas_price: trace.effective_price,
                             priority_fee:        trace.effective_price
-                                - (header.base_fee_per_gas.unwrap() as u128),
+                                - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store:  NodeData(vec![Some(classification)]),
                     };
@@ -267,6 +267,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
+            if results.1.is_new_pool() {
+                let Actions::NewPool(p) = &results.1 else { unreachable!() };
+                self.insert_new_pool(block, p).await;
+            }
+
             (vec![results.0], results.1)
         } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
             return transfer
@@ -409,11 +414,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
         } else {
             info!(
-                "Discovered new {} pool: 
-                            \nAddress:{} 
-                            \nToken 0: {}
-                            \nToken 1: {}",
-                pool.protocol, pool.pool_address, pool.tokens[0], pool.tokens[1]
+                "Discovered new {} pool:
+                            \nAddress:{}
+                            ",
+                pool.protocol, pool.pool_address
             );
         }
     }

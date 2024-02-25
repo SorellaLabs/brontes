@@ -26,7 +26,7 @@ mod tests {
             Protocol::CurveBasePool3,
             Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714")),
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
-            Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
+            Some(Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"))),
             Some(Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"))),
             None,
             None,

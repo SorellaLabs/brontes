@@ -59,8 +59,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-                    let searcher_actions = vec![frontrun_tx, backrun_tx]
-                        .into_iter()
+                    let searcher_actions = [frontrun_tx, backrun_tx]
+                        .iter()
                         .map(|tx| {
                             tree.collect(
                                 tx,
@@ -98,7 +98,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .iter()
                         .map(|victim| {
                             tree.collect(
-                                *victim,
+                                victim,
                                 TreeSearchBuilder::default().with_action(Actions::is_swap),
                             )
                         })

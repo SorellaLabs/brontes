@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
@@ -15,14 +15,14 @@ use brontes_types::{
     },
     pair::Pair,
     utils::ToFloatNearest,
-    BlockTree, GasDetails, TreeSearchBuilder, TxInfo,
+    BlockTree, GasDetails, TreeCollect, TreeSearchBuilder, TxInfo,
 };
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{TxHash, B256};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use reth_primitives::TxHash;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
@@ -162,23 +162,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
-        let transfer_to_tx_map: HashMap<B256, Vec<NormalizedTransfer>> = tree
-            .collect_for_txes(
-                bundle_txes,
-                TreeSearchBuilder::default().with_action(Actions::is_transfer),
-            )
-            .into_iter()
-            .map(|(tx_hash, actions)| {
-                let transfers = actions
-                    .into_iter()
-                    .map(|action| action.force_transfer())
-                    .collect::<Vec<_>>();
-                (tx_hash, transfers)
-            })
-            .collect();
+        let bundle_transfers = tree.collect_action_range_filter(
+            &bundle_txes,
+            TreeSearchBuilder::default().with_action(Actions::is_transfer),
+            Actions::try_transfer,
+        );
 
         let balance_deltas = self.get_bundle_accounting(
-            transfer_to_tx_map,
+            bundle_txes,
+            bundle_transfers,
             info.tx_index,
             at,
             metadata.clone(),
@@ -241,16 +233,18 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     pub fn get_bundle_accounting(
         &self,
-        tx_transfers_map: HashMap<B256, Vec<NormalizedTransfer>>,
+        bundle_txes: Vec<FixedBytes<32>>,
+        bundle_transfers: Vec<Vec<NormalizedTransfer>>,
         tx_index_for_pricing: u64,
         at: PriceAt,
         metadata: Arc<Metadata>,
         pricing: bool,
     ) -> Vec<TransactionAccounting> {
-        tx_transfers_map
+        bundle_txes
             .into_par_iter()
-            .map(|(tx_hash, tx_transfers_for_tx)| {
-                let deltas = self.calculate_transfer_deltas(&tx_transfers_for_tx);
+            .zip(bundle_transfers.into_par_iter())
+            .map(|(tx_hash, tx_transfers)| {
+                let deltas = self.calculate_transfer_deltas(&tx_transfers);
 
                 let address_deltas: Vec<AddressBalanceDeltas> = deltas
                     .into_iter()
@@ -262,7 +256,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                     self.get_token_value_cex(token, amount.clone(), &metadata)
                                         .unwrap_or(Rational::ZERO)
                                 } else {
-                                    // Calculate USD value using DEX pricing
                                     self.get_token_value_dex(
                                         tx_index_for_pricing as usize,
                                         at,

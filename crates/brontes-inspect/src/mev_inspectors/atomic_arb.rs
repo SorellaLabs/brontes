@@ -131,7 +131,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 } else if is_stable_pair(&swaps[0].token_in.symbol, &swaps[1].token_out.symbol) {
                     return Some(AtomicArbType::StablecoinArb)
                 }
-                return Some(AtomicArbType::LongTail)
+                Some(AtomicArbType::LongTail)
             }
             _ => identify_arb_sequence(swaps),
         }

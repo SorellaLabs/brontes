@@ -1,6 +1,5 @@
 mod processors;
 mod range;
-use brontes_types::BrontesTaskExecutor;
 pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
@@ -20,6 +19,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
+use brontes_types::BrontesTaskExecutor;
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;

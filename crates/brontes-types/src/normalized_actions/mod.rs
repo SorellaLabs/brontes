@@ -20,13 +20,13 @@ pub use flashloan::*;
 pub use lending::*;
 pub use liquidation::*;
 pub use liquidity::*;
+pub use pool::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
 use serde::{Deserialize, Serialize};
 pub use swaps::*;
 pub use transfer::*;
 
-use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
     TreeSearchBuilder,
@@ -341,6 +341,10 @@ impl Actions {
 
     pub const fn is_self_destruct(&self) -> bool {
         matches!(self, Actions::SelfDestruct(_))
+    }
+
+    pub const fn is_new_pool(&self) -> bool {
+        matches!(self, Actions::NewPool(_))
     }
 
     pub const fn is_unclassified(&self) -> bool {

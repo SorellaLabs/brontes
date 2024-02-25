@@ -58,7 +58,7 @@ impl Display for TransactionAccounting {
         writeln!(f, "{} {}", "Token Deltas for tx:".bold(), self.tx_hash)?;
 
         self.address_deltas.iter().for_each(|address_deltas| {
-            writeln!(f, "{}", address_deltas).expect("Failed to write AddressBalanceDeltas");
+            writeln!(f, "{}", address_deltas).expect("Failed to output AddressBalanceDeltas");
         });
 
         Ok(())
@@ -88,43 +88,26 @@ impl Display for AddressBalanceDeltas {
         let header = if let Some(name) = &self.name {
             format!("Address Balance Changes for {}: {}", name.bold(), self.address)
         } else {
-            format!("Address Balance Changes {}", self.address)
+            format!("Address Balance Changes for {}", self.address)
         };
 
-        writeln!(f, "\n{}\n", header)?;
+        writeln!(f, "{}", header)?;
 
-        let (gains, losses): (Vec<_>, Vec<_>) =
-            self.token_deltas.iter().partition(|d| d.amount >= 0.0);
-        let total_gain: f64 = gains.iter().map(|d| d.usd_value).sum();
-        let total_loss: f64 = losses.iter().map(|d| d.usd_value).sum();
+        for delta in &self.token_deltas {
+            let amount_display = if delta.amount >= 0.0 {
+                format!("{:+.7}", delta.amount).green()
+            } else {
+                format!("{:+.7}", delta.amount).red()
+            };
 
-        if !gains.is_empty() {
-            writeln!(f, "{}", "Gains:".bold().green())?;
-            for gain in gains {
-                writeln!(
-                    f,
-                    " - {}: +{:.2} tokens (${:.2})",
-                    gain.token.inner.symbol.bold(),
-                    gain.amount,
-                    gain.usd_value
-                )?;
-            }
+            writeln!(
+                f,
+                "  - {}: {} (USD Value: ${:.2})",
+                delta.token.inner.symbol.bold(),
+                amount_display,
+                delta.usd_value
+            )?;
         }
-
-        if !losses.is_empty() {
-            writeln!(f, "{}", "\nLosses:".bold().red())?;
-            for loss in losses {
-                writeln!(
-                    f,
-                    " - {}: -{:.2} tokens (${:.2})",
-                    loss.token.inner.symbol.bold(),
-                    loss.amount.abs(),
-                    loss.usd_value.abs()
-                )?;
-            }
-        }
-
-        writeln!(f, "\n{}: Net gain of ${:.2}", "Summary".bold(), total_gain - total_loss.abs())?;
 
         Ok(())
     }
