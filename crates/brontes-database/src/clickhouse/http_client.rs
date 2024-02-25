@@ -8,6 +8,9 @@ use brontes_types::{
     pair::Pair,
 };
 use clickhouse::DbRow;
+use hyper::StatusCode;
+use itertools::Itertools;
+use redefined::RedefinedConvert;
 use serde::Deserialize;
 
 use crate::{
@@ -28,14 +31,17 @@ impl ClickhouseHttpClient {
         let api_key = if let Some(key) = api_key {
             key
         } else {
-            client
+            let resp = client
                 .get(format!("{}/register", url))
                 .send()
                 .await
-                .unwrap()
-                .text()
-                .await
-                .unwrap()
+                .unwrap();
+            if resp.status() == StatusCode::OK {
+                resp.text().await.unwrap()
+            } else {
+                let text = resp.text().await.unwrap();
+                text.split("key: ").collect_vec()[1].to_string()
+            }
         };
         Self { url, api_key, client }
     }
