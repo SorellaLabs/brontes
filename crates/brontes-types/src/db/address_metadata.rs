@@ -89,11 +89,11 @@ impl Serialize for Socials {
     {
         serde::Serialize::serialize(
             &(
-                self.twitter,
-                self.twitter_followers,
-                self.website_url,
-                self.crunchbase,
-                self.linkedin,
+                &self.twitter,
+                &self.twitter_followers,
+                &self.website_url,
+                &self.crunchbase,
+                &self.linkedin,
             ),
             serializer,
         )
