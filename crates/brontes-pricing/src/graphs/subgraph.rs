@@ -315,13 +315,6 @@ impl PairSubGraph {
         _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
         tracing::debug!(?self.pair, "verification starting");
-        if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
-            .is_none()
-        {
-            tracing::error!("invalid subgraph was given");
-        }
-        tracing::debug!(?self.pair, "confirmed graph is currently connected");
-
         let result = self.run_bfs_with_liquidity_params(start, &state);
 
         tracing::debug!(?self.pair, "completed bfs with liq");
