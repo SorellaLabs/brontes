@@ -180,7 +180,6 @@ pub mod test {
     async fn test_metadata_query() {
         let click_house = load_clickhouse().await;
         let res = click_house.get_metadata(18500000).await;
-        tracing::info!(?res);
 
         assert!(res.is_ok());
     }
