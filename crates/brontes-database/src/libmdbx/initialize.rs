@@ -332,28 +332,17 @@ mod tests {
     use brontes_core::test_utils::{get_db_handle, init_trace_parser, init_tracing};
     #[cfg(feature = "local-clickhouse")]
     use brontes_database::clickhouse::Clickhouse;
-    use brontes_database::libmdbx::{initialize::LibmdbxInitializer, tables::*};
+    use brontes_database::libmdbx::{
+        initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
+    };
     use tokio::sync::mpsc::unbounded_channel;
-
-    #[cfg(feature = "local-clickhouse")]
-    pub fn load_clickhouse() -> Clickhouse {
-        Clickhouse::default()
-    }
-
-    #[cfg(not(feature = "local-clickhouse"))]
-    pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
-        let clickhouse_api = std::env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
-        let clickhouse_api_key =
-            std::env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
-        brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
-    }
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
         init_tracing();
         let block_range = (17000000, 17000100);
 
-        let clickhouse = Box::leak(Box::new(load_clickhouse()));
+        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
         let (tx, _rx) = unbounded_channel();
         let tracing_client =
