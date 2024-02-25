@@ -16,7 +16,7 @@ use pathfinding::num_traits::Zero;
 use rustc_hash::FxHasher;
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
-const MAX_LEN: usize = 3;
+const MAX_LEN: usize = 4;
 
 /// Compute a shortest path using the [Dijkstra search
 /// algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
