@@ -18,7 +18,10 @@ pub mod address_string {
     {
         let address: String = Deserialize::deserialize(deserializer)?;
 
-        Address::from_str(&address).map_err(serde::de::Error::custom)
+        Address::from_str(&address).map_err(|e| {
+            tracing::error!("address string failed");
+            serde::de::Error::custom(e)
+        })
     }
 }
 
@@ -584,7 +587,7 @@ pub mod pools_libmdbx {
                 .into_iter()
                 .map(|addr| format!("{:?}", addr.clone()))
                 .collect::<Vec<_>>();
-        
+
         st.serialize(serializer)
     }
 
