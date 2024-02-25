@@ -333,7 +333,7 @@ pub mod static_bindings {
     {
         let address: Option<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(Protocol::from_str(&address.unwrap()).unwrap())
+        Ok(Protocol::from_db_string(&address.unwrap()))
     }
 }
 

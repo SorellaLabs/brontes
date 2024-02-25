@@ -125,6 +125,26 @@ impl Protocol {
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
+
+    pub fn from_db_string(s: &str) -> Self {
+        match s {
+            "UniswapV2" => Protocol::UniswapV2,
+            "SushiSwapV2" => Protocol::SushiSwapV2,
+            "UniswapV3" => Protocol::UniswapV3,
+            "SushiSwapV3" => Protocol::SushiSwapV3,
+            "Curve.fiBase2" => Protocol::CurveBasePool2,
+            "Curve.fiBase3" => Protocol::CurveBasePool3,
+            "Curve.fiBase4" => Protocol::CurveBasePool4,
+            "Curve.fiV1 Metapool" => Protocol::CurveV1MetaPool,
+            "Curve.fiV2 Metapool" => Protocol::CurveV2MetaPool,
+            "Curve.fiV2 Plain" => Protocol::CurveV2PlainPool,
+            "Curve.ficrvUSD Metapool" => Protocol::CurvecrvUSDMetaPool,
+            "Curve.ficrvUSD Plain" => Protocol::CurvecrvUSDPlainPool,
+            "Curve.fiCryptoSwap" => Protocol::CurveCryptoSwapPool,
+            "Curve.fiTriCrypto" => Protocol::CurveTriCryptoPool,
+            _ => Protocol::Unknown,
+        }
+    }
 }
 
 self_convert_redefined!(Protocol);
