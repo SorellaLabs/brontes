@@ -384,9 +384,9 @@ mod tests {
         //     .unwrap();
 
         // Metadata
-        // BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-        //     .await
-        //     .unwrap();
+        BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
 
         // PoolCreationBlocks
         PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
