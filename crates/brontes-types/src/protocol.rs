@@ -142,6 +142,7 @@ impl Protocol {
             "Curve.fiV1 Metapool" => Protocol::CurveV1MetaPool,
             "Curve.fiV2 Metapool" => Protocol::CurveV2MetaPool,
             "Curve.fiV2 Plain" => Protocol::CurveV2PlainPool,
+            "Curve.fiv2 plain" => Protocol::CurveV2PlainPool,
             "Curve.ficrvUSD Metapool" => Protocol::CurvecrvUSDMetaPool,
             "Curve.ficrvUSD Plain" => Protocol::CurvecrvUSDPlainPool,
             "Curve.fiCryptoSwap" => Protocol::CurveCryptoSwapPool,
