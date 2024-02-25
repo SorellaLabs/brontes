@@ -83,7 +83,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         // pull directly from libmdbx
         if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
             let Ok(mut meta) = libmdbx.get_metadata(block) else {
-                tracing::error!(?block, "failed to load metadata from libmdbx");
+                tracing::error!(?block, "failed to load full metadata from libmdbx");
                 return;
             };
             meta.builder_info = libmdbx
@@ -98,7 +98,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 let mut meta = clickhouse
                     .get_metadata(block)
                     .await
-                    .expect("missing metadata for clickhouse.get_metadat request");
+                    .expect("missing metadata for clickhouse.get_metadata request");
                 meta.builder_info = libmdbx
                     .try_fetch_builder_info(tree.header.beneficiary)
                     .expect("failed to fetch builder info table in libmdbx");
@@ -108,7 +108,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         // don't need to pull from clickhouse, means we are running pricing
         } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
             let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block) else {
-                tracing::error!(?block, "failed to load metadata from libmdbx");
+                tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;
             };
             meta.builder_info = libmdbx
@@ -134,7 +134,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         self.clear_no_price_channel();
 
         if let Some(res) = self.result_buf.pop_front() {
-            return Poll::Ready(Some(res));
+            return Poll::Ready(Some(res))
         }
         if let Some(mut pricer) = self.dex_pricer_stream.take() {
             while let Poll::Ready(Some((block, tree, meta))) =
@@ -146,7 +146,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             let res = pricer.poll_next_unpin(cx);
             self.dex_pricer_stream = Some(pricer);
 
-            return res;
+            return res
         }
 
         std::task::Poll::Pending
