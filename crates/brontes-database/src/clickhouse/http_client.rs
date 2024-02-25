@@ -121,7 +121,13 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .header("start-block", start_block)
             .header("end-block", end_block)
             .send()
-            .await?
+            .await
+            .map_err(|e| {
+                if let Some(status_code) = e.status() {
+                    tracing::error!(%status_code, "clickhouse http query")
+                }
+                e
+            })?
             .json()
             .await
             .map_err(Into::into)
