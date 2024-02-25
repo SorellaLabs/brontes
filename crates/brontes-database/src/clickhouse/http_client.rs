@@ -111,12 +111,15 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
+        let endpoint = format!(
+            "{}/{}",
+            self.url,
+            T::HTTP_ENDPOINT.expect("tried to init remote when no http endpoint was set")
+        );
+        tracing::debug!(%endpoint, "querying endpoint");
+
         self.client
-            .get(format!(
-                "{}/{}",
-                self.url,
-                T::HTTP_ENDPOINT.expect("tried to init remote when no http endpoint was set")
-            ))
+            .get(endpoint)
             .header("api-key", &self.api_key)
             .header("start-block", start_block)
             .header("end-block", end_block)
