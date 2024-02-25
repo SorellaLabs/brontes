@@ -27,6 +27,8 @@ pub enum LoadResult {
         protocol:     Protocol,
         pool_address: Address,
         pool_pair:    Pair,
+        deps:         Vec<Pair>,
+        block:        u64,
     },
 }
 impl LoadResult {
@@ -152,6 +154,14 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         }
     }
 
+    pub fn on_state_fail(&mut self, block: u64, pair: &Pair) {
+        self.parent_pair_state_loading.remove(pair);
+        self.protocol_address_to_parent_pairs.retain(|_, v| {
+            v.retain(|(b, p)| !(*b == block && p == pair));
+            !v.is_empty()
+        });
+    }
+
     // removes state trackers return a list of pairs that is dependent on the state
     pub fn remove_state_trackers(&mut self, block: u64, address: &Address) -> Vec<Pair> {
         if let Entry::Occupied(mut o) = self.pool_buf.entry(*address) {
@@ -234,12 +244,21 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                 Err((pool_address, dex, block, pool_pair, err)) => {
                     error!(%block, %err, ?pool_address,"lazy load failed");
 
-                    let _dependent_pairs = self.remove_state_trackers(block, &pool_address);
+                    let dependent_pairs = self.remove_state_trackers(block, &pool_address);
+                    dependent_pairs.iter().for_each(|pair| {
+                        self.on_state_fail(block, pair);
+                    });
 
                     let res = LazyResult {
                         state: None,
                         block,
-                        load_result: LoadResult::Err { pool_pair, pool_address, protocol: dex },
+                        load_result: LoadResult::Err {
+                            pool_pair,
+                            pool_address,
+                            block,
+                            protocol: dex,
+                            deps: dependent_pairs,
+                        },
                     };
                     Poll::Ready(Some(res))
                 }

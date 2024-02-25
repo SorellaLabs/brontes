@@ -363,9 +363,21 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else if let LoadResult::Err { pool_address, pool_pair, protocol } = load_result {
+        } else if let LoadResult::Err { block, pool_address, pool_pair, protocol, deps } =
+            load_result
+        {
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
+
+            let failed_queries = deps
+                .into_iter()
+                .map(|v| {
+                    self.graph_manager.pool_dep_failure(v);
+                    (v, block, Default::default(), Default::default())
+                })
+                .collect_vec();
+
+            self.requery_bad_state_par(failed_queries)
         }
     }
 

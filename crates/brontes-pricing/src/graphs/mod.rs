@@ -92,6 +92,10 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.subgraph_verifier.all_pairs()
     }
 
+    pub fn pool_dep_failure(&mut self, pair: Pair) {
+        self.subgraph_verifier.pool_dep_failure(pair);
+    }
+
     /// creates a subgraph returning the edges and the state to load.
     /// this is done so that this isn't mut and be ran in parallel
     pub fn create_subgraph(
