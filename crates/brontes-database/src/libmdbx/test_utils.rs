@@ -23,7 +23,7 @@ pub fn load_clickhouse() -> Clickhouse {
 #[cfg(not(feature = "local-clickhouse"))]
 pub fn load_clickhouse() -> crate::clickhouse::ClickhouseHttpClient {
     let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
-    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
+    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY");
     crate::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
 }
 
