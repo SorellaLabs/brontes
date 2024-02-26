@@ -1402,6 +1402,7 @@ dependencies = [
  "colored",
  "dotenv",
  "eyre",
+ "fdlimit",
  "futures",
  "hyper",
  "indoc",
@@ -7178,27 +7179,6 @@ dependencies = [
 [[package]]
 name = "reth-interfaces"
 version = "0.1.0-alpha.19"
-source = "git+https://github.com/paradigmxyz/reth?rev=0192934#0192934a856199e4b2a846a36dbcd93e49866364"
-dependencies = [
- "auto_impl",
- "clap",
- "futures",
- "parking_lot 0.12.1",
- "rand 0.8.5",
- "reth-eth-wire 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-network-api 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-nippy-jar 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "secp256k1 0.27.0",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "reth-interfaces"
-version = "0.1.0-alpha.19"
 source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
 dependencies = [
  "auto_impl",
@@ -7515,8 +7495,8 @@ name = "reth-node-api"
 version = "0.1.0-alpha.19"
 source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
 dependencies = [
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
+ "reth-primitives",
+ "reth-rpc-types",
  "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror",
@@ -7702,48 +7682,9 @@ dependencies = [
  "proptest",
  "proptest-derive",
  "rayon",
- "reth-codecs 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-ethereum-forks 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "secp256k1 0.27.0",
- "serde",
- "serde_json",
- "sha2",
- "strum 0.26.1",
- "sucds 0.6.0",
- "tempfile",
- "thiserror",
- "tracing",
- "zstd 0.12.4",
-]
-
-[[package]]
-name = "reth-primitives"
-version = "0.1.0-alpha.19"
-source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
-dependencies = [
- "alloy-chains",
- "alloy-eips",
- "alloy-genesis",
- "alloy-primitives",
- "alloy-rlp",
- "alloy-trie",
- "byteorder",
- "bytes",
- "c-kzg",
- "cfg-if",
- "derive_more",
- "itertools 0.12.1",
- "modular-bitfield",
- "num_enum 0.7.2",
- "nybbles",
- "once_cell",
- "rayon",
- "reth-codecs 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-ethereum-forks 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
+ "reth-codecs",
+ "reth-ethereum-forks",
+ "reth-rpc-types",
  "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "revm-primitives 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1 0.27.0",
@@ -7771,39 +7712,13 @@ dependencies = [
  "parking_lot 0.12.1",
  "pin-project",
  "rayon",
- "reth-db 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-metrics 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-nippy-jar 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-node-api 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "reth-trie 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
- "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "strum 0.26.1",
- "tokio",
- "tokio-stream",
- "tracing",
-]
-
-[[package]]
-name = "reth-provider"
-version = "0.1.0-alpha.19"
-source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
-dependencies = [
- "auto_impl",
- "dashmap",
- "itertools 0.12.1",
- "metrics",
- "parking_lot 0.12.1",
- "pin-project",
- "rayon",
- "reth-db 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-metrics 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-nippy-jar 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-node-api 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-trie 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
+ "reth-db",
+ "reth-interfaces",
+ "reth-metrics",
+ "reth-nippy-jar",
+ "reth-node-api",
+ "reth-primitives",
+ "reth-trie",
  "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.26.1",
  "tokio",
@@ -7853,11 +7768,11 @@ name = "reth-revm"
 version = "0.1.0-alpha.19"
 source = "git+https://github.com/paradigmxyz/reth?rev=99d1d8d#99d1d8dafc3e5473358c7917c37ec3ae0d522874"
 dependencies = [
- "reth-consensus-common 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-node-api 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-provider 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
+ "reth-consensus-common",
+ "reth-interfaces",
+ "reth-node-api",
+ "reth-primitives",
+ "reth-provider",
  "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "revm-inspectors",
  "tracing",
@@ -8074,7 +7989,7 @@ dependencies = [
  "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-provider 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
  "reth-tokio-util",
- "reth-trie 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=0192934)",
+ "reth-trie",
  "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror",
@@ -8229,9 +8144,9 @@ dependencies = [
  "alloy-rlp",
  "auto_impl",
  "derive_more",
- "reth-db 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-interfaces 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
- "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
+ "reth-db",
+ "reth-interfaces",
+ "reth-primitives",
  "revm 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "tracing",

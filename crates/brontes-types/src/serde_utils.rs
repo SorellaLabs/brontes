@@ -302,6 +302,7 @@ pub mod address {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
+
     #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
     where
@@ -605,7 +606,10 @@ pub mod option_contract_info {
     use std::str::FromStr;
 
     use alloy_primitives::Address;
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
 
     use crate::db::address_metadata::ContractInfo;
 
@@ -625,11 +629,18 @@ pub mod option_contract_info {
             reputation,
         }))
     }
+
+    pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
+        (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
+    }
 }
 
 pub mod socials {
 
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
 
     use crate::db::address_metadata::Socials;
     type SocalDecode =
@@ -643,6 +654,11 @@ pub mod socials {
             Deserialize::deserialize(deserializer)?;
 
         Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
+    }
+
+    pub fn serialize<S: Serializer>(u: &Socials, serializer: S) -> Result<S::Ok, S::Error> {
+        (&u.twitter, &u.twitter_followers, &u.website_url, &u.crunchbase, &u.linkedin)
+            .serialize(serializer)
     }
 }
 

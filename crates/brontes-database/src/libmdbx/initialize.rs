@@ -330,8 +330,6 @@ struct BSConfig {
 #[cfg(test)]
 mod tests {
     use brontes_core::test_utils::{get_db_handle, init_trace_parser};
-    #[cfg(feature = "local-clickhouse")]
-    use brontes_database::clickhouse::Clickhouse;
     use brontes_database::libmdbx::{
         initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
     };

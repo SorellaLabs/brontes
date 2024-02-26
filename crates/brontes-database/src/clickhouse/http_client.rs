@@ -121,7 +121,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .get(format!(
                 "{}/{}",
                 self.url,
-                T::HTTP_ENDPOINT.expect(&format!(
+                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!(
                     "tried to init remote when no http endpoint was set {}",
                     T::NAME
                 ))
@@ -157,7 +157,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .get(format!(
                 "{}/{}",
                 self.url,
-                T::HTTP_ENDPOINT.expect(&format!(
+                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!(
                     "tried to init remote when no http endpoint was set {}",
                     T::NAME
                 ))

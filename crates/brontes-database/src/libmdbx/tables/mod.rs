@@ -357,7 +357,8 @@ macro_rules! compressed_table {
         } $($tail)*);
     };
     ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
-     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Other, http_endpoint: $http_endpoint:expr  },
+     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Other,
+     http_endpoint: $http_endpoint:expr  },
      $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
             $($acc)*
@@ -667,7 +668,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: None 
+            http_endpoint: None
         },
         CLI {
             can_insert: False

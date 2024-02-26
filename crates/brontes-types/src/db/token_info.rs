@@ -123,4 +123,3 @@ impl TokenInfo {
 
 self_convert_redefined!(TokenInfo);
 implement_table_value_codecs_with_zc!(TokenInfo);
-
