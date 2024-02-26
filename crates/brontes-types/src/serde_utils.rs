@@ -315,7 +315,7 @@ pub mod address {
 
 pub mod static_bindings {
 
-    use std::str::FromStr;
+    
 
     use serde::{
         de::{Deserialize, Deserializer},
