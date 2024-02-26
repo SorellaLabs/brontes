@@ -121,7 +121,6 @@ alloy-primitives.workspace = true
 
 [features]
 default = []
-
 tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
@@ -129,4 +128,4 @@ local-reth = [
   "brontes-types/local-reth",
 ]
 
-local-clickhouse = ["sorella-db-databases", "sorella-db-types"]
+local-clickhouse = ["sorella-db-databases", "sorella-db-types", "brontes-core/local-clickhouse"]
