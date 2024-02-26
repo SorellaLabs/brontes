@@ -23,14 +23,14 @@ use crate::clickhouse::ClickhouseClient;
 clickhouse_dbms!(
     BrontesClickhouseTables,
     [
-        ClickhouseBundleHeader,
-        ClickhouseMevBlocks,
-        ClickhouseCexDex,
-        ClickhouseJit,
-        ClickhouseJitSandwich,
-        ClickhouseSandwiches,
-        ClickhouseAtomicArbs,
-        ClickhouseLiquidations,
+        ClickhouseBundleHeader, //
+        ClickhouseMevBlocks,    //
+        ClickhouseCexDex,       //
+        ClickhouseJit,          //
+        ClickhouseJitSandwich,  //
+        ClickhouseSandwiches,   //
+        ClickhouseAtomicArbs,   // YES
+        ClickhouseLiquidations, //
         ClickhouseSearcherInfo,
         ClickhouseDexPriceMapping,
         ClickhouseTxTraces,
