@@ -43,7 +43,7 @@ action_impl!(
     Protocol::Cowswap,
     crate::CowswapGPv2Settlement::settleCall,
     Batch,
-    [Trade*],
+    [..Trade*],
     call_data: true,
     logs: true,
     |info: CallInfo, _call_data: settleCall, log_data: CowswapsettleCallLogs, db_tx: &DB| {
@@ -69,7 +69,7 @@ action_impl!(
     Protocol::Cowswap,
     crate::CowswapGPv2Settlement::swapCall,
     Batch,
-    [Trade],
+    [..Trade],
     call_data: true,
     logs: true,
     |info: CallInfo, _call_data: swapCall, log_data: CowswapswapCallLogs, db_tx: &DB| {
