@@ -11,29 +11,27 @@ pub trait TreeCollect<V: NormalizedAction> {
         &self,
         call: TreeSearchBuilder<V>,
         collector: fn(V) -> Option<Ret>,
-    ) -> HashMap<B256, Vec<Ret>>
+    ) -> impl Iterator<Item = (B256, Vec<Ret>)>
     where
         Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
         TreeCollectCast::collect_all_actions_filter(self, call, (collector,))
             .into_iter()
             .map(|(k, v)| (k, v.0))
-            .collect()
     }
 
     fn collect_action_range_filter<Ret>(
         &self,
-        range: Vec<B256>,
+        range: &[B256],
         call: TreeSearchBuilder<V>,
         collector: fn(V) -> Option<Ret>,
-    ) -> Vec<Vec<Ret>>
+    ) -> impl Iterator<Item = Vec<Ret>>
     where
         Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
         TreeCollectCast::collect_actions_range_filter(self, range, call, (collector,))
             .into_iter()
             .map(|v| v.0)
-            .collect()
     }
 
     fn collect_action_filter<Ret>(
@@ -41,18 +39,20 @@ pub trait TreeCollect<V: NormalizedAction> {
         hash: B256,
         call: TreeSearchBuilder<V>,
         collector: fn(V) -> Option<Ret>,
-    ) -> Vec<Ret>
+    ) -> impl Iterator<Item = Ret>
     where
         Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
-        TreeCollectCast::collect_actions_filter(self, hash, call, (collector,)).0
+        TreeCollectCast::collect_actions_filter(self, hash, call, (collector,))
+            .0
+            .into_iter()
     }
 
     fn collect_all_actions_filter<FromI, Fns>(
         &self,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>
+    ) -> impl Iterator<Item = (B256, FromI)>
     where
         Self: TreeCollectCast<FromI, Fns, V>,
     {
@@ -61,10 +61,10 @@ pub trait TreeCollect<V: NormalizedAction> {
 
     fn collect_actions_range_filter<FromI, Fns>(
         &self,
-        range: Vec<B256>,
+        range: &[B256],
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> Vec<FromI>
+    ) -> impl Iterator<Item = FromI>
     where
         Self: TreeCollectCast<FromI, Fns, V>,
     {
@@ -89,14 +89,14 @@ pub trait TreeCollectCast<FromI, Fns, V: NormalizedAction> {
         &self,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>;
+    ) -> impl Iterator<Item = (B256, FromI)>;
 
     fn collect_actions_range_filter(
         &self,
-        range: Vec<B256>,
+        range: &[B256],
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> Vec<FromI>;
+    ) -> impl Iterator<Item = FromI>;
 
     fn collect_actions_filter(
         &self,
@@ -127,7 +127,7 @@ macro_rules! tree_cast {
 
                 fn collect_actions_range_filter(
                     &self,
-                    range: Vec<B256>,
+                    range: &[B256],
                     call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
                 ) -> Vec<($($from,)*)> {

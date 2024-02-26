@@ -186,7 +186,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    pub fn collect_txes(&self, txes: Vec<B256>, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
+    pub fn collect_txes(&self, txes: &[B256], call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 txes.par_iter()

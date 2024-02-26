@@ -22,7 +22,7 @@ pub trait TreeFilter<V: NormalizedAction> {
 
     fn collect_txes_deduping<KS, RS, KF, RF>(
         &self,
-        txes: Vec<B256>,
+        txes: &[B256],
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
@@ -76,7 +76,7 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
 
     fn collect_txes_deduping<KS, RS, KF, RF>(
         &self,
-        txes: Vec<B256>,
+        txes: &[B256],
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
