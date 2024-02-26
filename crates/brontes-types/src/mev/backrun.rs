@@ -12,7 +12,6 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use strum::Display;
 
 use super::{Mev, MevType};
 use crate::{
