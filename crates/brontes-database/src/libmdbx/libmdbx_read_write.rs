@@ -5,7 +5,7 @@ use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync:
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
@@ -325,6 +325,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let tx = self.0.ro_tx()?;
+
+        let address = (address == ETH_ADDRESS)
+            .then_some(WETH_ADDRESS)
+            .unwrap_or(address);
+
         tx.get::<TokenDecimals>(address)?
             .map(|inner| TokenInfoWithAddress { inner, address })
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
