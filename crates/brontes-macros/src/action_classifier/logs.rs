@@ -111,7 +111,7 @@ impl<'a> LogData<'a> {
 
                 quote!(#field : {
                     if self.#field.is_none() {
-                        ::tracing::error("{}", #message);
+                        ::tracing::error!("{}", #message);
                     }
                     self.#field
                 }.expect(&#message))
