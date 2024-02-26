@@ -71,7 +71,7 @@ mod tests {
             },
         };
 
-        let colateral = TokenInfoWithAddress {
+        let collateral = TokenInfoWithAddress {
             address: hex!("70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4").into(),
             inner:   brontes_types::db::token_info::TokenInfo {
                 decimals: 8,
@@ -80,7 +80,7 @@ mod tests {
         };
 
         classifier_utils.ensure_token(debt);
-        classifier_utils.ensure_token(colateral);
+        classifier_utils.ensure_token(collateral);
 
         let compound_v2_liquidation =
             B256::from(hex!("3a3ba6b0a6b69a8e316e1c20f97b9ce2de790b2f3bf90aaef5b29b06aafa5fda"));
