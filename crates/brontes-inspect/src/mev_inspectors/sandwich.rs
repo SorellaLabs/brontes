@@ -241,13 +241,29 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        let rev_usd = self.utils.get_transfers_deltas_usd(
+        let transfer_rev_usd = self.utils.get_transfers_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
             mev_addresses,
             &searcher_transfers,
             metadata.clone(),
         )?;
+
+        let searcher_swaps = front_run_swaps
+            .iter()
+            .flatten()
+            .chain(back_run_swaps.iter())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let swap_rev_usd = self.utils.get_dex_swaps_rev_usd(
+            backrun_info.tx_index,
+            PriceAt::After,
+            &searcher_swaps,
+            metadata.clone(),
+        )?;
+
+        let rev_usd = transfer_rev_usd + swap_rev_usd;
 
         let profit_usd = (rev_usd - &gas_used).to_float();
 
