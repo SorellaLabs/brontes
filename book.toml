@@ -1,0 +1,7 @@
+[book]
+authors = ["brontes core contributors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Brontes Book"
+description = "A book on all things brontes & mev"
