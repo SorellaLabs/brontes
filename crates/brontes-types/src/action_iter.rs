@@ -1,5 +1,4 @@
 use crate::normalized_actions::NormalizedAction;
-use std::fmt::Debug;
 
 impl<T: Sized, V: NormalizedAction> ActionIter<V> for T where T: Iterator<Item = V> {}
 
@@ -162,7 +161,7 @@ macro_rules! action_split {
                         tracing::info!(?item, "processing item");
                     $(
                         if let Some(item) = ($fns)(item.clone()) {
-                            tracing::info!(?item, "found match");
+                            tracing::info!("found match");
                             $from.extend(std::iter::once(item));
                             return
                         }
