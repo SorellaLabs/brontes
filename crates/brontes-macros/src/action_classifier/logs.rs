@@ -109,7 +109,12 @@ impl<'a> LogData<'a> {
                     name.to_string()
                 );
 
-                quote!(#field : self.#field.expect(&#message))
+                quote!(#field : {
+                    if self.#field.is_none() {
+                        ::tracing::error("{}", #message);
+                    }
+                    self.#field
+                }.expect(&#message))
             })
             .collect_vec();
 
