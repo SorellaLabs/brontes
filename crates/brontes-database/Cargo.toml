@@ -120,7 +120,7 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-default = ["local-clickhouse"]
+default = []
 tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
