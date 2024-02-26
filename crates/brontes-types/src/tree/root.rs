@@ -278,7 +278,7 @@ impl GasDetails {
             (
                 "Coinbase Transfer",
                 self.coinbase_transfer
-                    .map(|amount| format!("{} ETH", amount))
+                    .map(|amount| format!("{:.18} ETH", amount as f64 / 1e18))
                     .unwrap_or_else(|| "None".to_string()),
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
