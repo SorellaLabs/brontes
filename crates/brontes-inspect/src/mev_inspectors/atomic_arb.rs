@@ -286,7 +286,6 @@ fn is_stable_pair(token_in: &str, token_out: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
-    use brontes_types::constants::WETH_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},

@@ -106,7 +106,7 @@ impl<'a> LogData<'a> {
                 let message = format!(
                     "logs are not setup properly for this macro as the requested log {} was not \
                      found",
-                    name.to_string()
+                    name
                 );
 
                 quote!(#field : {
