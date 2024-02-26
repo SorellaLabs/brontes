@@ -116,8 +116,8 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
     {
         let v = self.collect(tx, call);
 
-        let (good, mut rem) = v.clone().into_iter().action_split_out_ref(&k_split);
-        let bad = v.into_iter().action_split_ref(&r_split);
+        let (good, rem) = v.into_iter().action_split_out_ref(&k_split);
+        let (bad, mut rem) = rem.into_iter().action_split_out_ref(&r_split);
 
         rem.extend(Self::dedup_action_vec(good, bad));
         rem.sort_by_key(|k| k.get_trace_index());
