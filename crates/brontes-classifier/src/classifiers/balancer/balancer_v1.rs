@@ -178,7 +178,7 @@ mod tests {
         classifier_utils
             .contains_action(
                 bind_tx_hash,
-                1,
+                0,
                 expected_action,
                 TreeSearchBuilder::default().with_action(Actions::is_new_pool),
             )
