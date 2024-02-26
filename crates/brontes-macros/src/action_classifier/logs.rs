@@ -154,7 +154,8 @@ impl<'a> LogData<'a> {
                         }
                     }
 
-                    fn build(self) -> #log_return_struct_name {
+                    fn build(self, call_info: &::brontes_types::structured_trace::CallFrameInfo<'_>)
+                        -> #log_return_struct_name {
                         #log_return_struct_name {
                             #(
                                 #return_struct_build_fields
@@ -339,10 +340,9 @@ impl ToTokens for LogData<'_> {
 
             #parsed_paths
 
-            let log_data = log_res.build();
+            let log_data = log_res.build(&call_info);
         );
 
         tokens.extend(log_result)
     }
 }
-// s
