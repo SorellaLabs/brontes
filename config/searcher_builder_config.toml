@@ -317,7 +317,8 @@ mev = ["CexDex"]
 [searcher_contracts."0xe6ae75be7c9317af842b8f2c2cd6dc7f49f17184"]
 mev = ["CexDex"]
 
-
+[searcher_contracts."0x1Fc4B4BDf5162Aa5E357041945C9333b2818ADAD"]
+mev = ["CexDex"]
 
 # Bugged out sandwich bot, need to add names to searcher & searcher_contracts
 [searcher_contracts."0x000000000dFDe7deaF24138722987c9a6991e2D4"]

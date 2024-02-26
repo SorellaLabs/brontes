@@ -94,10 +94,13 @@ impl<V: NormalizedAction> Root<V> {
 
         let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
 
+        let searcher_contract_info =
+            database.try_fetch_searcher_contract_info(self.get_to_address())?;
+
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if is_verified_contract || is_classified || emits_logs {
+        if is_verified_contract || is_classified || emits_logs && searcher_contract_info.is_none() {
             return Ok(TxInfo::new(
                 block_number,
                 self.position as u64,
@@ -113,9 +116,6 @@ impl<V: NormalizedAction> Root<V> {
                 None,
             ))
         }
-
-        let searcher_contract_info =
-            database.try_fetch_searcher_contract_info(self.get_to_address())?;
 
         Ok(TxInfo::new(
             block_number,
