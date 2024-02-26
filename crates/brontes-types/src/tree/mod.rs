@@ -324,7 +324,7 @@ pub mod test {
 
     #[brontes_macros::test]
     async fn test_collect() {
-        let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
+        let tx = &hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
         let tree: BlockTree<Actions> = load_tree().await;
 
         let burns = tree.collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn));
@@ -354,7 +354,7 @@ pub mod test {
         let tx = hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d").into();
         let tree = classifier_utils.build_tree_tx(tx).await.unwrap();
         let mut actions =
-            tree.collect(tx, TreeSearchBuilder::default().with_action(Actions::is_batch));
+            tree.collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch));
         assert!(!actions.is_empty());
         let action = actions.remove(0);
 
