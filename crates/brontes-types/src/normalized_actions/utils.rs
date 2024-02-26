@@ -51,12 +51,15 @@ pub mod test {
         TreeSearchBuilder,
     };
 
+    use crate::normalized_actions::Actions;
+
     #[brontes_macros::test]
     async fn test_swap_transfer_dedup() {
         let utils = ClassifierTestUtils::new().await;
         let tx = hex!("c6b9e1c5e5478defaae7b2cdb8aeaf22cc16bec599cb5fdad470429919dd8f70").into();
         let tree: BlockTree<Actions> = utils.build_tree_tx(tx).await.unwrap();
-        let call = TreeSearchBuilder::default().with_action(Actions::is_transfer);
+        let call =
+            TreeSearchBuilder::default().with_actions([Actions::is_transfer, Actions::is_swap]);
 
         let transfers = tree.collect_action_filter(&tx, call.clone(), Actions::try_transfer);
 
