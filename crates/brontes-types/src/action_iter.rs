@@ -230,8 +230,6 @@ macro_rules! action_split {
                 });
 
                 (res, rest)
-
-                (res, rest)
             }
         }
     };
