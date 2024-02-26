@@ -350,8 +350,16 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     let tx_url = format!("https://etherscan.io/tx/{:?}", bundle.header.tx_hash).underline();
     writeln!(f, "   - Etherscan: {}", tx_url)?;
 
-    // Backrun Section
-    writeln!(f, "\n{}", "Atomic Backrun\n".bright_yellow().underline())?;
+    // Arb Section
+    writeln!(
+        f,
+        "\n{}\n",
+        atomic_backrun_data
+            .arb_type
+            .to_string()
+            .bright_yellow()
+            .underline()
+    )?;
     writeln!(f, " - {}", "Swaps:".bright_blue())?;
     for (i, swap) in atomic_backrun_data.swaps.iter().enumerate() {
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;

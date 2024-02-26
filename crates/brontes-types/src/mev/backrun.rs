@@ -1,4 +1,7 @@
-use std::fmt::Debug;
+use std::{
+    fmt,
+    fmt::{Debug, Display},
+};
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
@@ -9,6 +12,7 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use strum::Display;
 
 use super::{Mev, MevType};
 use crate::{
@@ -52,6 +56,17 @@ pub enum AtomicArbType {
     StablecoinArb,
     LongTail,
 }
+impl Display for AtomicArbType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AtomicArbType::Triangle => writeln!(f, "Triangular Arbitrage"),
+            AtomicArbType::CrossPair(_) => writeln!(f, "Cross Pair Arbitrage"),
+            AtomicArbType::StablecoinArb => writeln!(f, "Stablecoin Arbitrage"),
+            AtomicArbType::LongTail => writeln!(f, "LongTail Arbitrage"),
+        }
+    }
+}
+
 //TODO: Ludwig, add flashloan arb support
 
 self_convert_redefined!(AtomicArbType);
