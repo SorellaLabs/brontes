@@ -155,7 +155,7 @@ mod tests {
 
         classifier_utils.ensure_protocol(
             Protocol::BalancerV1,
-            Address::default(),
+            Address::from(hex!("FfBF733D74E7B6DB32f04EE7867AE7fa75797F80")),
             Address::default(),
             None,
             None,
