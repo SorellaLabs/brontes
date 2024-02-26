@@ -220,3 +220,19 @@ fn flatten_token_deltas(deltas: TokenDeltasCalc, actions: &[Vec<Actions>]) -> Op
 
 // nonce based filtering
 * */
+
+//Test to be moved to long tail classifier
+/*#[brontes_macros::test]
+async fn test_triangle_unclassified_pool() {
+    let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+    let tx = hex!("707624db0b01bab966c82058d71190031c2bd69098d8efd9c668a89e5acc49ca").into();
+
+    let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+        .with_mev_tx_hashes(vec![tx])
+        .needs_token(WETH_ADDRESS)
+        .with_dex_prices()
+        .with_expected_profit_usd(2.62)
+        .with_gas_paid_usd(10.92);
+
+    inspector_util.run_inspector(config, None).await.unwrap();
+}*/

@@ -1,6 +1,6 @@
 use core::hash::Hash;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     sync::Arc,
 };
 
@@ -38,6 +38,18 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
 }
 type TokenDeltas = HashMap<Address, Rational>;
 type AddressDeltas = HashMap<Address, TokenDeltas>;
+
+/* TODO: Ludwig
+pub struct AddressWithContext {
+    pub address:      Address,
+    pub address_type: AddressType,
+}
+
+pub enum AddressType {
+    Pool,
+    MEV,
+
+} */
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the token balance deltas by address for a given set of swaps
@@ -217,6 +229,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         tx_index: u64,
         at: PriceAt,
+        mev_addresses: HashSet<Address>,
         transfers: &[NormalizedTransfer],
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
@@ -224,11 +237,21 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
-        Some(
-            addr_usd_deltas
-                .values()
-                .fold(Rational::ZERO, |acc, delta| acc + delta),
-        )
+
+        let sum = addr_usd_deltas
+            .iter()
+            .filter_map(
+                |(address, delta)| {
+                    if mev_addresses.contains(address) {
+                        Some(delta)
+                    } else {
+                        None
+                    }
+                },
+            )
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
+
+        Some(sum)
     }
 
     pub fn get_bundle_accounting(

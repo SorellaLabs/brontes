@@ -1,6 +1,7 @@
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     hash::Hash,
+    iter,
     sync::Arc,
 };
 
@@ -233,9 +234,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .flatten()
             .collect_action_vec(Actions::try_transfer);
 
+        let mev_addresses: HashSet<Address> = possible_front_runs_info
+            .iter()
+            .chain(iter::once(&backrun_info))
+            .flat_map(|tx_info| iter::once(&tx_info.eoa).chain(tx_info.mev_contract.as_ref()))
+            .cloned()
+            .collect();
+
         let rev_usd = self.utils.get_transfers_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
+            mev_addresses,
             &searcher_transfers,
             metadata.clone(),
         )?;
