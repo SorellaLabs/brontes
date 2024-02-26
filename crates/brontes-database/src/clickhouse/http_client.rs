@@ -121,8 +121,10 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .get(format!(
                 "{}/{}",
                 self.url,
-                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!("tried to init remote when no http endpoint was set {}",
-                    T::NAME))
+                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!(
+                    "tried to init remote when no http endpoint was set {}",
+                    T::NAME
+                ))
             ))
             .header("api-key", &self.api_key)
             .header("start-block", start_block)
@@ -155,8 +157,10 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .get(format!(
                 "{}/{}",
                 self.url,
-                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!("tried to init remote when no http endpoint was set {}",
-                    T::NAME))
+                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!(
+                    "tried to init remote when no http endpoint was set {}",
+                    T::NAME
+                ))
             ))
             .header("api-key", &self.api_key)
             .send()

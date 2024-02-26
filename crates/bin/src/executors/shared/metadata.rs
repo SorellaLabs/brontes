@@ -82,7 +82,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         self.clear_no_price_channel();
         // pull directly from libmdbx
         if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
-            let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {tracing::error!(%err); err}) else {
+            let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {
+                tracing::error!(%err);
+                err
+            }) else {
                 tracing::error!(?block, "failed to load full metadata from libmdbx");
                 return;
             };
@@ -107,7 +110,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             self.clickhouse_futures.push_back(future);
         // don't need to pull from clickhouse, means we are running pricing
         } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
-            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {tracing::error!(%err); err}) else {
+            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
+                tracing::error!(%err);
+                err
+            }) else {
                 tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;
             };

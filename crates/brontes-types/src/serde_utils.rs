@@ -315,8 +315,6 @@ pub mod address {
 
 pub mod static_bindings {
 
-    
-
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
