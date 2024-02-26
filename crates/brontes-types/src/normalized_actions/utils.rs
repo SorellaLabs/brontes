@@ -46,10 +46,9 @@ impl ActionCmp<NormalizedTransfer> for NormalizedCollect {
 pub mod test {
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
-
     use brontes_types::{
-        normalized_actions::Actions, ActionIter, BlockTree, TreeCollect, TreeCollectCast,
-        TreeFilter, TreeSearchBuilder,
+        normalized_actions::Actions, ActionIter, BlockTree, TreeCollect, TreeFilter,
+        TreeSearchBuilder,
     };
 
     #[brontes_macros::test]
