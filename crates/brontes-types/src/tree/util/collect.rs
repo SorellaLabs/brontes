@@ -1,6 +1,9 @@
 use alloy_primitives::B256;
 
-use crate::{normalized_actions::NormalizedAction, ActionIter, BlockTree, TreeSearchBuilder};
+use crate::{
+    normalized_actions::NormalizedAction, ActionIter, BlockTree, IntoSplitIterator,
+    TreeSearchBuilder,
+};
 
 impl<V: NormalizedAction> TreeCollect<V> for BlockTree<V> {}
 
@@ -56,7 +59,7 @@ pub trait TreeCollect<V: NormalizedAction> {
     where
         Self: TreeCollectCast<FromI, Fns, V>,
         Fns: 'a,
-        FromI: 'a,
+        FromI: IntoSplitIterator + 'a,
         V: 'a,
     {
         TreeCollectCast::collect_all_actions_filter(self, call, collector)
@@ -71,7 +74,7 @@ pub trait TreeCollect<V: NormalizedAction> {
     where
         Self: TreeCollectCast<FromI, Fns, V>,
         Fns: 'a,
-        FromI: 'a,
+        FromI: IntoSplitIterator + 'a,
         V: 'a,
     {
         TreeCollectCast::collect_actions_range_filter(self, range, call, collector)
@@ -86,7 +89,7 @@ pub trait TreeCollect<V: NormalizedAction> {
     where
         Self: TreeCollectCast<FromI, Fns, V>,
         Fns: 'a,
-        FromI: 'a,
+        FromI: IntoSplitIterator + 'a,
         V: 'a,
     {
         TreeCollectCast::collect_actions_filter(self, hash, call, collector)
@@ -101,7 +104,7 @@ pub trait TreeCollectCast<FromI, Fns, V: NormalizedAction> {
     ) -> impl Iterator<Item = (B256, FromI)> + 'a
     where
         Fns: 'a,
-        FromI: 'a,
+        FromI: IntoSplitIterator + 'a,
         V: 'a;
 
     fn collect_actions_range_filter<'a>(
@@ -112,7 +115,7 @@ pub trait TreeCollectCast<FromI, Fns, V: NormalizedAction> {
     ) -> impl Iterator<Item = FromI> + 'a
     where
         Fns: 'a,
-        FromI: 'a,
+        FromI: IntoSplitIterator + 'a,
         V: 'a;
 
     fn collect_actions_filter<'a>(
@@ -123,7 +126,7 @@ pub trait TreeCollectCast<FromI, Fns, V: NormalizedAction> {
     ) -> FromI
     where
         Fns: 'a,
-        FromI: 'a,
+        FromI: IntoSplitIterator + 'a,
         V: 'a;
 }
 

@@ -1,14 +1,5 @@
 use std::marker::PhantomData;
 
-fn test_beast(items: Vec<(u8, String)>) {
-    let a = items
-        .into_iter()
-        .map_multisplit()
-        .map_item_1(|a| a as u32)
-        .map_item_2(|b| b)
-        .map(|b| b);
-}
-
 pub trait IntoSplitIterator {
     type Item;
     type Iter: Iterator<Item = Self::Item>;
@@ -16,33 +7,17 @@ pub trait IntoSplitIterator {
     fn into_split_iter(self) -> Self::Iter;
 }
 
-pub struct IntoSplitIterTwo<A, B> {
-    iters: (A, B),
-}
-
-impl<A, B> IntoSplitIterator for IntoSplitIterTwo<A, B>
-where
-    A: IntoIterator,
-    B: IntoIterator,
-{
-    type Item = (Option<A::Item>, Option<B::Item>);
-    type Iter = ZipPadded<A::IntoIter, B::IntoIter>;
-
-    fn into_split_iter(self) -> Self::Iter {
-        let (a, b) = self.iters;
-        a.into_iter().zip_padded(b)
-    }
-}
-
 pub trait SplitIter<Item, K>: Iterator<Item = Item> {
-    fn map_multisplit(self) -> K;
+    fn multisplit_builder(self) -> K;
 }
+
+pub trait SplitBuilder {}
 
 impl<I, A, B, F1, F2> SplitIter<(A, B), SplitIterTwo<A, B, I, false, false, F1, F2>> for I
 where
     I: Iterator<Item = (A, B)>,
 {
-    fn map_multisplit(self) -> SplitIterTwo<A, B, I, false, false, F1, F2> {
+    fn multisplit_builder(self) -> SplitIterTwo<A, B, I, false, false, F1, F2> {
         SplitIterTwo::<A, B, I, false, false, F1, F2>::new(self)
     }
 }
@@ -95,36 +70,74 @@ where
     }
 }
 
-impl<T: Iterator> ZipPad for T {}
+macro_rules! into_split_iter {
+    ($am:tt, $($iter_val:ident),*) => {
+        paste::paste!(
 
-pub trait ZipPad: Iterator {
-    fn zip_padded<O>(self, other: O) -> ZipPadded<Self, O::IntoIter>
-    where
-        Self: Sized,
-        O: IntoIterator,
-    {
-        ZipPadded { iter1: self, iter2: other.into_iter() }
-    }
+            impl<$($iter_val),*> IntoSplitIterator for ($($iter_val,)*)
+            where
+                $(
+                    $iter_val: IntoIterator,
+                )*
+            {
+                type Item = ($(Option<$iter_val::Item>,)*);
+                type Iter = [<ZipPadded $am>]<$($iter_val::IntoIter),*>;
+
+                fn into_split_iter(self) -> Self::Iter {
+                    let ($([<$iter_val:lower>],)*) = self;
+
+                    [<ZipPadded $am>] {
+                        $(
+                            [<$iter_val:lower>]: [<$iter_val:lower>].into_iter(),
+                        )*
+                    }
+                }
+            }
+
+            #[derive(Clone)]
+            pub struct [<ZipPadded $am>]<$($iter_val),*> {
+                $(
+                    [<$iter_val:lower>]: $iter_val,
+                )*
+            }
+
+            impl<$($iter_val),*> Iterator for [<ZipPadded $am>]<$($iter_val),*>
+            where
+                $(
+                    $iter_val: Iterator,
+                )* {
+                    type Item = ($(Option<$iter_val::Item>,)*);
+
+                    fn next(&mut self) -> Option<Self::Item> {
+                        let mut all_none = true;
+                        $(
+                            let mut [<$iter_val:lower>] = None::<$iter_val::Item>;
+                        )*
+
+                        $(
+                            if let Some(val) = self.[<$iter_val:lower>].next() {
+                                all_none = false;
+                                [<$iter_val:lower>] = Some(val);
+                            }
+                        )*
+
+                        if all_none {
+                            return None
+                        }
+
+                        Some(($([<$iter_val:lower>],)*))
+                    }
+                }
+            );
+
+    };
 }
 
-pub struct ZipPadded<I1, I2> {
-    iter1: I1,
-    iter2: I2,
-}
-
-impl<I1, I2> Iterator for ZipPadded<I1, I2>
-where
-    I1: Iterator,
-    I2: Iterator,
-{
-    type Item = (Option<I1::Item>, Option<I2::Item>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match (self.iter1.next(), self.iter2.next()) {
-            (Some(a), Some(b)) => Some((Some(a), Some(b))),
-            (Some(a), None) => Some((Some(a), None)),
-            (None, Some(b)) => Some((None, Some(b))),
-            (None, None) => None,
-        }
-    }
-}
+into_split_iter!(1, A);
+into_split_iter!(2, A, B);
+into_split_iter!(3, A, B, C);
+into_split_iter!(4, A, B, C, D);
+into_split_iter!(5, A, B, C, D, E);
+into_split_iter!(6, A, B, C, D, E, F);
+into_split_iter!(7, A, B, C, D, E, F, G);
+into_split_iter!(8, A, B, C, D, E, F, G, H);

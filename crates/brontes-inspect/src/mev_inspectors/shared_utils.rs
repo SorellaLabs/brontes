@@ -17,6 +17,7 @@ use brontes_types::{
     utils::ToFloatNearest,
     BlockTree, GasDetails, TreeCollect, TreeSearchBuilder, TxInfo,
 };
+use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
@@ -174,11 +175,13 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
-        let bundle_transfers = tree.collect_action_range_filter(
-            &bundle_txes,
-            TreeSearchBuilder::default().with_action(Actions::is_transfer),
-            Actions::try_transfer,
-        );
+        let bundle_transfers = tree
+            .collect_action_range_filter(
+                &bundle_txes,
+                TreeSearchBuilder::default().with_action(Actions::is_transfer),
+                Actions::try_transfer,
+            )
+            .collect_vec();
 
         let balance_deltas = self.get_bundle_accounting(
             bundle_txes,
