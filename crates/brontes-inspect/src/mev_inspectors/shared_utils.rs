@@ -238,6 +238,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
 
+        #[allow(clippy::if_same_then_else)]
+        #[allow(clippy::unnecessary_filter_map)]
+        //Temporary, waiting on deduplication fix for proper accounting
         let sum = addr_usd_deltas
             .iter()
             .filter_map(
