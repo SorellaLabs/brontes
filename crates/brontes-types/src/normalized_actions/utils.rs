@@ -8,7 +8,7 @@ pub trait ActionCmp<O> {
 
 impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
-        tracing::info!("swap sup action");
+        tracing::info!(target: "brontes","swap sup action");
         (&transfer.amount + &transfer.fee == self.amount_in
             && transfer.to == self.pool
             && self.from == transfer.from)
@@ -47,8 +47,8 @@ pub mod test {
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        normalized_actions::{transfer, Actions},
-        ActionIter, BlockTree, TreeCollect, TreeFilter, TreeSearchBuilder,
+        normalized_actions::Actions, ActionIter, BlockTree, TreeCollect, TreeFilter,
+        TreeSearchBuilder,
     };
 
     #[brontes_macros::test]
