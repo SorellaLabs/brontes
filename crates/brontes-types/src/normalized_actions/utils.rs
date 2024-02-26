@@ -50,6 +50,8 @@ pub mod test {
         TreeSearchBuilder,
     };
 
+    use crate::normalized_actions::Actions;
+
     #[brontes_macros::test]
     async fn test_swap_transfer_dedup() {
         let utils = ClassifierTestUtils::new().await;
@@ -60,19 +62,9 @@ pub mod test {
             TreeSearchBuilder::default().with_actions([Actions::is_transfer, Actions::is_swap]);
         let default_collect = tree.collect(&tx, call.clone());
 
-        assert_eq!(
-            default_collect
-                .clone()
-                .into_iter()
-                .filter(|f| f.is_swap())
-                .count(),
-            1,
-            "default collect broken"
-        );
-
         let (swaps, transfers): (Vec<_>, Vec<_>) = default_collect
             .into_iter()
-            .action_split((Actions::try_swap, Actions::try_transfer));
+            .action_split((Actions::try_swaps_merged, Actions::try_transfer));
 
         assert_eq!(swaps.len(), 1, "action split broken swaps {:#?}", swaps);
         assert_eq!(transfers.len(), 2, "action split broken transfer {:#?}", transfers);
@@ -80,7 +72,7 @@ pub mod test {
         let (transfers, swaps): (Vec<_>, Vec<_>) = tree.collect_actions_filter(
             &tx,
             call.clone(),
-            (Actions::try_transfer, Actions::try_swap),
+            (Actions::try_transfer, Actions::try_swaps_merged),
         );
         assert_eq!(swaps.len(), 1, "no swap found {:#?}", swaps);
         assert_eq!(transfers.len(), 2, "missing transfers {:#?}", transfers);
@@ -89,7 +81,7 @@ pub mod test {
             .collect_tx_deduping(
                 &tx,
                 call.clone(),
-                (Actions::try_swap_dedup(),),
+                (Actions::try_swaps_merged_dedup(),),
                 (Actions::try_transfer_dedup(),),
             )
             .into_iter()

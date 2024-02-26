@@ -418,14 +418,17 @@ extra_impls!(
     (Collect, NormalizedCollect),
     (Mint, NormalizedMint),
     (Burn, NormalizedBurn),
+    (Swap, NormalizedSwap),
     (SwapWithFee, NormalizedSwapWithFee),
     (Transfer, NormalizedTransfer),
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan)
 );
 
+/// Custom impl for itering over swaps and swap with fee
 impl Actions {
-    pub fn try_swap_ref(&self) -> Option<&NormalizedSwap> {
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_ref(&self) -> Option<&NormalizedSwap> {
         match self {
             Actions::Swap(action) => Some(action),
             Actions::SwapWithFee(f) => Some(f),
@@ -433,7 +436,8 @@ impl Actions {
         }
     }
 
-    pub fn try_swap_mut(&mut self) -> Option<&mut NormalizedSwap> {
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_mut(&mut self) -> Option<&mut NormalizedSwap> {
         match self {
             Actions::Swap(action) => Some(action),
             Actions::SwapWithFee(f) => Some(f),
@@ -441,7 +445,8 @@ impl Actions {
         }
     }
 
-    pub fn try_swap(self) -> Option<NormalizedSwap> {
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged(self) -> Option<NormalizedSwap> {
         match self {
             Actions::Swap(action) => Some(action),
             Actions::SwapWithFee(f) => Some(f.swap),
@@ -449,7 +454,8 @@ impl Actions {
         }
     }
 
-    pub fn try_swap_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
-        Box::new(Actions::try_swap) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
+        Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
     }
 }
