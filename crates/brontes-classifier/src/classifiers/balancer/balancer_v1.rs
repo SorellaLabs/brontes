@@ -113,7 +113,7 @@ mod tests {
         classifier_utils
             .contains_action(
                 swap,
-                0,
+                1,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Actions::is_swap),
             )
