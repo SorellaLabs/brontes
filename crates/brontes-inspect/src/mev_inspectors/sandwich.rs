@@ -120,7 +120,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                             .collect::<Vec<_>>()
                             .as_slice(),
                         search_args.clone(),
-                        (Actions::try_swap_dedup(),),
+                        (Actions::try_swaps_merged_dedup(),),
                         (Actions::try_transfer_dedup(),),
                     );
 
@@ -150,15 +150,19 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<Actions>>>,
     ) -> Option<Bundle> {
-        let back_run_swaps: Vec<_> = searcher_actions
+        let back_run_swaps = searcher_actions
             .pop()?
             .into_iter()
-            .collect_action_vec(Actions::try_swap);
+            .collect_action_vec(Actions::try_swaps_merged);
 
         let front_run_swaps = searcher_actions
             .clone()
             .into_iter()
-            .map(|action| action.into_iter().collect_action_vec(Actions::try_swap))
+            .map(|action| {
+                action
+                    .into_iter()
+                    .collect_action_vec(Actions::try_swaps_merged)
+            })
             .collect_vec();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
@@ -205,7 +209,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 tx_actions
                     .clone()
                     .into_iter()
-                    .collect_action_vec(Actions::try_swap)
+                    .collect_action_vec(Actions::try_swaps_merged)
             })
             .collect::<Vec<_>>();
 
