@@ -119,7 +119,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(amount.clone());
+            return Some(amount.clone())
         }
         let price = self.get_token_price_on_dex(tx_index, at, token_address, metadata)?;
         Some(price * amount)
@@ -133,7 +133,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(Rational::ONE);
+            return Some(Rational::ONE)
         }
 
         let pair = Pair(token_address, self.quote);
@@ -440,7 +440,6 @@ impl TokenAccounting for NormalizedTransfer {
         let amount_sent = &self.amount + &self.fee;
 
         apply_delta(self.from, self.token.address, -amount_sent.clone(), delta_map);
-
         apply_delta(self.to, self.token.address, self.amount.clone(), delta_map);
     }
 }
