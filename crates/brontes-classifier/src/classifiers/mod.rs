@@ -133,6 +133,7 @@ action_dispatch!(
     AaveV3flashLoanSimpleCall,
     BalancerV1swapExactAmountInCall,
     BalancerV1swapExactAmountOutCall,
+    BalancerV1bindCall,
     CompoundV2liquidateBorrowCall,
     CompoundV2initialize_0Call,
     CompoundV2initialize_1Call

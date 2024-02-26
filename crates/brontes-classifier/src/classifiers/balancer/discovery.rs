@@ -25,7 +25,7 @@ discovery_impl!(
     |deployed_address: Address, trace_index: u64, _call_data: newCrpCall, _| async move {
         vec![NormalizedNewPool {
             trace_index,
-            protocol: Protocol::BalancerV1,
+            protocol: Protocol::BalancerV1CRP,
             pool_address: deployed_address,
             tokens: vec![],
         }]
@@ -38,29 +38,35 @@ discovery_impl!(
 #[cfg(test)]
 mod tests {
     use alloy_primitives::{hex, Address, B256};
-    use brontes_types::{
-        normalized_actions::{pool::NormalizedNewPool, Actions},
-        Protocol, TreeSearchBuilder,
-    };
+    use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 
     use crate::test_utils::ClassifierTestUtils;
 
     #[brontes_macros::test]
     async fn test_balancer_v1_discovery() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let balancer_v1_discovery_hash =
-            B256::from(hex!("f5b9b2c23fa3ddf58c31a9377d37439740913f526910cca947c0a3e4bb9bb1d7"));
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!("f5b9b2c23fa3ddf58c31a9377d37439740913f526910cca947c0a3e4bb9bb1d7"));
 
-        let eq_action = Actions::NewPool(NormalizedNewPool {
+        let eq_create = NormalizedNewPool {
             trace_index:  1,
             protocol:     Protocol::BalancerV1,
-            pool_address: Address::from(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
+            pool_address: Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
             tokens:       vec![],
-        });
-        let search = TreeSearchBuilder::default().with_action(Actions::is_new_pool);
+        };
 
-        classifier_utils
-            .contains_action(balancer_v1_discovery_hash, 0, eq_action, search)
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
             .await
             .unwrap();
     }

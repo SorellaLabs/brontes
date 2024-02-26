@@ -170,7 +170,7 @@ mod tests {
 
         let expected_action = Actions::NewPool(NormalizedNewPool {
             protocol:     Protocol::BalancerV1,
-            trace_index:  2,
+            trace_index:  0,
             pool_address: Address::new(hex!("FfBF733D74E7B6DB32f04EE7867AE7fa75797F80")),
             tokens:       vec![Address::new(hex!("A0B701a24842A29072DC3Dc75FC6a9666289e82f"))],
         });
