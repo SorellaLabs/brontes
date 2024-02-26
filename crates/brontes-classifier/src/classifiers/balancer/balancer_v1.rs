@@ -84,7 +84,7 @@ action_impl!(
     call_data: bindCall,
     db_tx: &DB| {
 
-        let pool = db_tx.get_protocol_details(info.target_address)?;
+        let pool = db_tx.get_protocol_details(info.target_address).unwrap_or_default();
 
         let mut tokens = pool.get_tokens();
         tokens.push(call_data.token);
