@@ -31,12 +31,12 @@ struct PossibleJit {
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
-    inner: SharedInspectorUtils<'db, DB>,
+    utils: SharedInspectorUtils<'db, DB>,
 }
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+        Self { utils: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -59,8 +59,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-                    let searcher_actions = vec![frontrun_tx, backrun_tx]
-                        .into_iter()
+                    let searcher_actions = [frontrun_tx, backrun_tx]
+                        .iter()
                         .map(|tx| {
                             tree.collect(
                                 tx,
@@ -80,8 +80,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     }
 
                     let info = [
-                        tree.get_tx_info(frontrun_tx, self.inner.db)?,
-                        tree.get_tx_info(backrun_tx, self.inner.db)?,
+                        tree.get_tx_info(frontrun_tx, self.utils.db)?,
+                        tree.get_tx_info(backrun_tx, self.utils.db)?,
                     ];
 
                     if victims
@@ -98,7 +98,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .iter()
                         .map(|victim| {
                             tree.collect(
-                                *victim,
+                                victim,
                                 TreeSearchBuilder::default().with_action(Actions::is_swap),
                             )
                         })
@@ -111,10 +111,11 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 
                     let victim_info = victims
                         .into_iter()
-                        .map(|v| tree.get_tx_info(v, self.inner.db).unwrap())
+                        .map(|v| tree.get_tx_info(v, self.utils.db).unwrap())
                         .collect_vec();
 
                     self.calculate_jit(
+                        tree.clone(),
                         info,
                         metadata.clone(),
                         searcher_actions,
@@ -131,6 +132,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
+        tree: Arc<BlockTree<Actions>>,
         info: [TxInfo; 2],
         metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
@@ -174,11 +176,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let bribe = self.get_bribes(metadata.clone(), &gas_details);
         let profit = jit_fee - mint - &bribe;
 
-        let header = self.inner.build_bundle_header(
+        let mut bundle_hashes = Vec::new();
+        bundle_hashes.push(hashes[0]);
+        bundle_hashes.extend(victim_hashes.clone());
+        bundle_hashes.push(hashes[1]);
+
+        let header = self.utils.build_bundle_header(
+            tree,
+            bundle_hashes,
             &info[1],
             profit.to_float(),
             PriceAt::After,
-            &searcher_actions,
             &gas_details,
             metadata,
             MevType::Jit,
@@ -353,8 +361,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .zip(amount)
             .filter_map(|(token, amount)| {
                 Some(
-                    self.inner
-                        .get_dex_usd_price(idx, PriceAt::After, token, metadata.clone())
+                    self.utils
+                        .get_token_price_on_dex(idx, PriceAt::After, token, &metadata)
                         .or_else(|| {
                             tracing::debug!(?token, "failed to get price for token");
                             None

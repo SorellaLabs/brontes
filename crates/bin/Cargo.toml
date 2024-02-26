@@ -90,6 +90,8 @@ default = [
   "brontes-inspect/default",
 ]
 
+local-no-inserts = []
+
 api = ["brontes-types/api"]
 sorella-server = ["local-reth", "local-clickhouse"]
 
