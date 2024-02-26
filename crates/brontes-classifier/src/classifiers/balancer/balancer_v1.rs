@@ -155,7 +155,7 @@ mod tests {
 
         classifier_utils.ensure_protocol(
             Protocol::BalancerV1,
-            Address::from(hex!("FfBF733D74E7B6DB32f04EE7867AE7fa75797F80")),
+            Address::from(hex!("9A2181cf0bC57FC0177517dB21d457BDd1b2b32e")),
             Address::default(),
             None,
             None,
@@ -171,7 +171,7 @@ mod tests {
         let expected_action = Actions::NewPool(NormalizedNewPool {
             protocol:     Protocol::BalancerV1,
             trace_index:  0,
-            pool_address: Address::new(hex!("FfBF733D74E7B6DB32f04EE7867AE7fa75797F80")),
+            pool_address: Address::new(hex!("9A2181cf0bC57FC0177517dB21d457BDd1b2b32e")),
             tokens:       vec![Address::new(hex!("A0B701a24842A29072DC3Dc75FC6a9666289e82f"))],
         });
 
