@@ -79,6 +79,7 @@ cfg-if = "1.0.0"
 # prometheus
 metrics-process.workspace = true
 itertools.workspace = true
+fdlimit = "0.3.0"
 
 
 [features]
@@ -89,6 +90,7 @@ default = [
   "brontes-inspect/default",
 ]
 
+api = ["brontes-types/api"]
 sorella-server = ["local-reth", "local-clickhouse"]
 
 tests = [
