@@ -235,10 +235,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     ) -> Option<Rational> {
         let deltas = self.calculate_transfer_deltas(transfers);
 
-        transfers.iter().for_each(|transfer| {
-            println!("{:#?}", transfer);
-        });
-
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
 
