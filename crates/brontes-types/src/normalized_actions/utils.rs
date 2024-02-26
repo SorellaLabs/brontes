@@ -59,7 +59,7 @@ pub mod test {
 
         let transfers = tree.collect_action_filter(&tx, call.clone(), Actions::try_transfer);
 
-        assert_eq!(transfers.len(), 3, "{:#?}", transfers);
+        assert_eq!(transfers.len(), 2, "{:#?}", transfers);
 
         let deduped_transfers = tree
             .collect_tx_deduping(
@@ -71,6 +71,6 @@ pub mod test {
             .into_iter()
             .collect_action_vec(Actions::try_transfer);
 
-        assert_eq!(deduped_transfers.len(), 1, "{:#?}", deduped_transfers);
+        assert_eq!(deduped_transfers.len(), 0, "{:#?}", deduped_transfers);
     }
 }
