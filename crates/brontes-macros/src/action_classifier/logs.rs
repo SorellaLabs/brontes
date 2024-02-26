@@ -103,7 +103,8 @@ impl<'a> LogData<'a> {
             .iter()
             .map(|name| {
                 let field = Ident::new(&(name.to_string() + "_field"), Span::call_site());
-                quote!(#field : self.#field.unwrap())
+                quote!(#field : self.#field.expect(&format!("logs are not setup properly for this macro 
+                                                            as the requested log {} was not found", name.to_string())))
             })
             .collect_vec();
 
