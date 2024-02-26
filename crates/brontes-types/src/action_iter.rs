@@ -151,11 +151,11 @@ macro_rules! action_split {
             ActionSplit<($($from,)*), ($($fns,)*), V> for IT
             {
 
-            fn action_split_impl(self, mut filters: ($($fns,)*)) -> ($($from,)*) {
+            fn action_split_impl(self, filters: ($($fns,)*)) -> ($($from,)*) {
                 let mut res = ($($from::default(),)*);
 
                 let ($($from,)*) = &mut res;
-                let ($($fns,)*) = &mut filters;
+                let ($($fns,)*) = filters;
 
                 self.fold((), |(), item| {
                         tracing::info!(?item, "processing item");

@@ -418,8 +418,38 @@ extra_impls!(
     (Collect, NormalizedCollect),
     (Mint, NormalizedMint),
     (Burn, NormalizedBurn),
+    (SwapWithFee, NormalizedSwapWithFee),
     (Transfer, NormalizedTransfer),
-    (Swap, NormalizedSwap),
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan)
 );
+
+impl Actions {
+    pub fn try_swap_ref(&self) -> Option<&NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn try_swap_mut(&mut self) -> Option<&mut NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn try_swap(self) -> Option<NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f.swap),
+            _ => None,
+        }
+    }
+
+    pub fn try_swap_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
+        Box::new(Actions::try_swap) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
+    }
+}
