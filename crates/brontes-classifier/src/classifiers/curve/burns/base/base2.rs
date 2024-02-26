@@ -8,7 +8,7 @@ action_impl!(
     Protocol::CurveBasePool2,
     crate::CurveBase2::remove_liquidityCall,
     Burn,
-    [..RemoveLiquidity],
+    [RemoveLiquidity],
     logs: true,
     |
     info: CallInfo,
@@ -48,7 +48,7 @@ action_impl!(
     Protocol::CurveBasePool2,
     crate::CurveBase2::remove_liquidity_imbalanceCall,
     Burn,
-    [..RemoveLiquidityImbalance],
+    [RemoveLiquidityImbalance],
     logs: true,
     |
     info: CallInfo,
@@ -86,7 +86,7 @@ action_impl!(
     Protocol::CurveBasePool2,
     crate::CurveBase2::remove_liquidity_one_coinCall,
     Burn,
-    [..RemoveLiquidityOne],
+    [RemoveLiquidityOne],
     logs: true,
     call_data: true,
     |

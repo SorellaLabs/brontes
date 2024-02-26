@@ -12,10 +12,10 @@ use crate::{
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
-         _____                 _          _      _     
-        /  ___|               | |        (_)    | |    
-        \ `--.  __ _ _ __   __| |_      ___  ___| |__  
-         `--. \/ _` | '_ \ / _` \ \ /\ / / |/ __| '_ \ 
+         _____                 _          _      _
+        /  ___|               | |        (_)    | |
+        \ `--.  __ _ _ __   __| |_      ___  ___| |__
+         `--. \/ _` | '_ \ / _` \ \ /\ / / |/ __| '_ \
         /\__/ / (_| | | | | (_| |\ V  V /| | (__| | | |
         \____/ \__,_|_| |_|\__,_| \_/\_/ |_|\___|_| |_|
 
@@ -145,24 +145,24 @@ pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result 
             .bright_red()
     )?;
 
-    bundle.header.token_profits.print_with_labels(
-        f,
-        bundle.header.mev_contract,
-        bundle.header.eoa,
-    )?;
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
 
     Ok(())
 }
 
 pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
-           ___ _ _          _____                 _          _      _     
-          |_  (_) |        /  ___|               | |        (_)    | |    
-            | |_| |_ ______\ `--.  __ _ _ __   __| |_      ___  ___| |__  
-            | | | __|______|`--. \/ _` | '_ \ / _` \ \ /\ / / |/ __| '_ \ 
+           ___ _ _          _____                 _          _      _
+          |_  (_) |        /  ___|               | |        (_)    | |
+            | |_| |_ ______\ `--.  __ _ _ __   __| |_      ___  ___| |__
+            | | | __|______|`--. \/ _` | '_ \ / _` \ \ /\ / / |/ __| '_ \
         /\__/ / | |_       /\__/ / (_| | | | | (_| |\ V  V /| | (__| | | |
-        \____/|_|\__|      \____/ \__,_|_| |_|\__,_| \_/\_/ |_|\___|_| |_|    
-                                                                                         
+        \____/|_|\__|      \____/ \__,_|_| |_|\__,_| \_/\_/ |_|\___|_| |_|
+
     "#};
 
     for line in ascii_header.lines() {
@@ -304,23 +304,23 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
             .bright_red()
     )?;
 
-    bundle.header.token_profits.print_with_labels(
-        f,
-        bundle.header.mev_contract,
-        bundle.header.eoa,
-    )?;
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
 
     Ok(())
 }
 
 pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
-          ___  _                  _         ___       _     
-         / _ \| |                (_)       / _ \     | |    
-        / /_\ \ |_ ___  _ __ ___  _  ___  / /_\ \_ __| |__  
-        |  _  | __/ _ \| '_ ` _ \| |/ __| |  _  | '__| '_ \ 
+          ___  _                  _         ___       _
+         / _ \| |                (_)       / _ \     | |
+        / /_\ \ |_ ___  _ __ ___  _  ___  / /_\ \_ __| |__
+        |  _  | __/ _ \| '_ ` _ \| |/ __| |  _  | '__| '_ \
         | | | | || (_) | | | | | | | (__  | | | | |  | |_) |
-        \_| |_/\__\___/|_| |_| |_|_|\___| \_| |_/_|  |_.__/ 
+        \_| |_/\__\___/|_| |_| |_|_|\___| \_| |_/_|  |_.__/
 
     "#};
 
@@ -350,8 +350,16 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     let tx_url = format!("https://etherscan.io/tx/{:?}", bundle.header.tx_hash).underline();
     writeln!(f, "   - Etherscan: {}", tx_url)?;
 
-    // Backrun Section
-    writeln!(f, "\n{}", "Atomic Backrun\n".bright_yellow().underline())?;
+    // Arb Section
+    writeln!(
+        f,
+        "\n{}\n",
+        atomic_backrun_data
+            .arb_type
+            .to_string()
+            .bright_yellow()
+            .underline()
+    )?;
     writeln!(f, " - {}", "Swaps:".bright_blue())?;
     for (i, swap) in atomic_backrun_data.swaps.iter().enumerate() {
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
@@ -381,11 +389,11 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
             .bright_red()
     )?;
 
-    bundle.header.token_profits.print_with_labels(
-        f,
-        bundle.header.mev_contract,
-        bundle.header.eoa,
-    )?;
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
 
     Ok(())
 }
@@ -393,14 +401,14 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
 pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
-         _     _             _     _       _   _             
-        | |   (_)           (_)   | |     | | (_)            
-        | |    _  __ _ _   _ _  __| | __ _| |_ _  ___  _ __  
-        | |   | |/ _` | | | | |/ _` |/ _` | __| |/ _ \| '_ \ 
+         _     _             _     _       _   _
+        | |   (_)           (_)   | |     | | (_)
+        | |    _  __ _ _   _ _  __| | __ _| |_ _  ___  _ __
+        | |   | |/ _` | | | | |/ _` |/ _` | __| |/ _ \| '_ \
         | |___| | (_| | |_| | | (_| | (_| | |_| | (_) | | | |
         \_____/_|\__, |\__,_|_|\__,_|\__,_|\__|_|\___/|_| |_|
-                    | |                                      
-                    |_|                                      
+                    | |
+                    |_|
 
     "#};
 
@@ -479,26 +487,25 @@ pub fn display_liquidation(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
             .bright_red()
     )?;
 
-    bundle.header.token_profits.print_with_labels(
-        f,
-        bundle.header.mev_contract,
-        bundle.header.eoa,
-    )?;
-
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
     Ok(())
 }
 
 pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
-           ___ _ _          _     _             _     _ _ _         
-          |_  (_) |        | |   (_)           (_)   | (_) |        
-            | |_| |_ ______| |    _  __ _ _   _ _  __| |_| |_ _   _ 
+           ___ _ _          _     _             _     _ _ _
+          |_  (_) |        | |   (_)           (_)   | (_) |
+            | |_| |_ ______| |    _  __ _ _   _ _  __| |_| |_ _   _
             | | | __|______| |   | |/ _` | | | | |/ _` | | __| | | |
         /\__/ / | |_       | |___| | (_| | |_| | | (_| | | |_| |_| |
         \____/|_|\__|      \_____/_|\__, |\__,_|_|\__,_|_|\__|\__, |
                                        | |                     __/ |
-                                       |_|                    |___/ 
+                                       |_|                    |___/
 
     "#};
 
@@ -600,26 +607,26 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
             .bright_red()
     )?;
 
-    bundle.header.token_profits.print_with_labels(
-        f,
-        bundle.header.mev_contract,
-        bundle.header.eoa,
-    )?;
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
 
     Ok(())
 }
 
 pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
-    
-             _____ _        _           ___       _     
-            /  ___| |      | |         / _ \     | |    
-            \ `--.| |_ __ _| |_ ______/ /_\ \_ __| |__  
-             `--. \ __/ _` | __|______|  _  | '__| '_ \ 
-            /\__/ / || (_| | |_       | | | | |  | |_) |
-            \____/ \__\__,_|\__|      \_| |_/_|  |_.__/ 
 
-                                                        
+             _____ _        _           ___       _
+            /  ___| |      | |         / _ \     | |
+            \ `--.| |_ __ _| |_ ______/ /_\ \_ __| |__
+             `--. \ __/ _` | __|______|  _  | '__| '_ \
+            /\__/ / || (_| | |_       | | | | |  | |_) |
+            \____/ \__\__,_|\__|      \_| |_/_|  |_.__/
+
+
         "#};
 
     for line in ascii_header.lines() {
@@ -703,11 +710,11 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
         }
     }
 
-    bundle.header.token_profits.print_with_labels(
-        f,
-        bundle.header.mev_contract,
-        bundle.header.eoa,
-    )?;
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
 
     Ok(())
 }

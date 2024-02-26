@@ -1,4 +1,4 @@
-use std::{collections::HashMap, iter::Iterator};
+use std::collections::HashMap;
 
 use alloy_primitives::B256;
 
@@ -22,7 +22,7 @@ pub trait TreeFilter<V: NormalizedAction> {
 
     fn collect_txes_deduping<KS, RS, KF, RF>(
         &self,
-        txes: Vec<B256>,
+        txes: &[B256],
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
@@ -35,7 +35,7 @@ pub trait TreeFilter<V: NormalizedAction> {
 
     fn collect_tx_deduping<KS, RS, KF, RF>(
         &self,
-        tx: B256,
+        tx: &B256,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
@@ -76,7 +76,7 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
 
     fn collect_txes_deduping<KS, RS, KF, RF>(
         &self,
-        txes: Vec<B256>,
+        txes: &[B256],
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
@@ -103,7 +103,7 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
 
     fn collect_tx_deduping<KS, RS, KF, RF>(
         &self,
-        tx: B256,
+        tx: &B256,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
