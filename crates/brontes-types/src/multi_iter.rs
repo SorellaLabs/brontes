@@ -9,12 +9,29 @@ fn test_beast(items: Vec<(u8, String)>) {
         .map(|b| b);
 }
 
-pub trait IntoSplitIter {
+pub trait IntoSplitIterator {
     type Item;
-    type Out;
-    type SplitIter: SplitIter<Self::Item, Self::Out>;
+    type Iter: Iterator<Item = Self::Item>;
 
-    fn into_split_iter(self) -> Self::SplitIter;
+    fn into_split_iter(self) -> Self::Iter;
+}
+
+pub struct IntoSplitIterTwo<A, B> {
+    iters: (A, B),
+}
+
+impl<A, B> IntoSplitIterator for IntoSplitIterTwo<A, B>
+where
+    A: IntoIterator,
+    B: IntoIterator,
+{
+    type Item = (Option<A::Item>, Option<B::Item>);
+    type Iter = ZipPadded<A::IntoIter, B::IntoIter>;
+
+    fn into_split_iter(self) -> Self::Iter {
+        let (a, b) = self.iters;
+        a.into_iter().zip_padded(b)
+    }
 }
 
 pub trait SplitIter<Item, K>: Iterator<Item = Item> {
@@ -75,5 +92,39 @@ where
             let f2 = self.fn2.as_ref().unwrap();
             ((f1)(a), (f2)(b))
         })
+    }
+}
+
+impl<T: Iterator> ZipPad for T {}
+
+pub trait ZipPad: Iterator {
+    fn zip_padded<O>(self, other: O) -> ZipPadded<Self, O::IntoIter>
+    where
+        Self: Sized,
+        O: IntoIterator,
+    {
+        ZipPadded { iter1: self, iter2: other.into_iter() }
+    }
+}
+
+pub struct ZipPadded<I1, I2> {
+    iter1: I1,
+    iter2: I2,
+}
+
+impl<I1, I2> Iterator for ZipPadded<I1, I2>
+where
+    I1: Iterator,
+    I2: Iterator,
+{
+    type Item = (Option<I1::Item>, Option<I2::Item>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.iter1.next(), self.iter2.next()) {
+            (Some(a), Some(b)) => Some((Some(a), Some(b))),
+            (Some(a), None) => Some((Some(a), None)),
+            (None, Some(b)) => Some((None, Some(b))),
+            (None, None) => None,
+        }
     }
 }
