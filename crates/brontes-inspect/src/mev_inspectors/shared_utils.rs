@@ -112,7 +112,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(amount.clone());
+            return Some(amount.clone())
         }
 
         let pair = Pair(token_address, self.quote);
@@ -134,7 +134,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(Rational::ONE);
+            return Some(Rational::ONE)
         }
 
         let pair = Pair(token_address, self.quote);
@@ -374,7 +374,63 @@ impl ActionRevenueCalculation for Actions {
     }
 }
 
+<<<<<<< Updated upstream
 fn apply_entry<K: PartialEq + Hash + Eq>(
+=======
+impl TokenAccounting for NormalizedSwap {
+    /// Note that we skip the pool deltas accounting to focus solely on the
+    /// swapper & recipients delta. We might want to change this in the
+    /// future.
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let amount_in = -self.amount_in.clone();
+        let amount_out = self.amount_out.clone();
+
+        apply_delta(self.from, self.token_in.address, amount_in, delta_map);
+        apply_delta(self.recipient, self.token_out.address, amount_out, delta_map);
+    }
+}
+
+impl TokenAccounting for NormalizedTransfer {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let amount_sent = &self.amount + &self.fee;
+
+        apply_delta(self.from, self.token.address, -amount_sent.clone(), delta_map);
+        apply_delta(self.to, self.token.address, self.amount.clone(), delta_map);
+    }
+}
+impl TokenAccounting for NormalizedBurn {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_burned = -amount.clone();
+            apply_delta(self.pool, self.token[index].address, amount_burned, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
+}
+
+impl TokenAccounting for NormalizedMint {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_minted = -amount.clone();
+            apply_delta(self.from, self.token[index].address, amount_minted, delta_map);
+            apply_delta(self.pool, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
+}
+
+impl TokenAccounting for NormalizedCollect {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_collected = -amount.clone();
+            apply_delta(self.pool, self.token[index].address, amount_collected, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
+}
+
+fn apply_delta<K: PartialEq + Hash + Eq>(
+    address: K,
+>>>>>>> Stashed changes
     token: K,
     otherside: K,
     amount: Rational,

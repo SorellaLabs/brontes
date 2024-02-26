@@ -34,9 +34,9 @@ impl<
         self.iter.next().and_then(|item| {
             if let Some(wanted) = (self.wanted)(&item) {
                 let mut ret = (self.transform)(wanted.clone());
-                let now = ret.pop();
+                let val = if ret.len() > 1 { Some(ret.remove(0)) } else { None };
                 self.extra.extend(ret);
-                now
+                val
             } else {
                 Some(item)
             }

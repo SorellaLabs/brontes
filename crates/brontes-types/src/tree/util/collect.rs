@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use alloy_primitives::B256;
 
-use crate::{normalized_actions::NormalizedAction, ActionIter, BlockTree, TreeSearchBuilder};
+use crate::{
+    normalized_actions::NormalizedAction, ActionIter, BlockTree, IntoSplitIter, TreeSearchBuilder,
+};
 
 impl<V: NormalizedAction> TreeCollect<V> for BlockTree<V> {}
 
@@ -15,9 +17,13 @@ pub trait TreeCollect<V: NormalizedAction> {
     where
         Self: TreeCollectCast<(Vec<Ret>,), (fn(V) -> Option<Ret>,), V>,
     {
+<<<<<<< Updated upstream
         TreeCollectCast::collect_all_actions_filter(self, call, (collector,))
             .into_iter()
             .map(|(k, v)| (k, v.0))
+=======
+        TreeCollectCast::collect_all_actions_filter(self, call, (collector,)).map(|(k, v)| (k, v.0))
+>>>>>>> Stashed changes
     }
 
     fn collect_action_range_filter<Ret>(
@@ -116,13 +122,13 @@ macro_rules! tree_cast {
                     &self,
                     call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
-                ) -> HashMap<B256, ($($from,)*)> {
+                ) -> impl Iterator<Item = (B256, ($($from,)*))> {
                     self.collect_all(call).into_iter().map(|(k,v)| {
                         (k,
                          ActionIter::action_split_ref::<($($from,)*), ($($fns,)*)>
                             (v.into_iter(), &collector),
                          )
-                    }).collect::<HashMap<_,_>>()
+                    })
                 }
 
                 fn collect_actions_range_filter(
@@ -130,11 +136,11 @@ macro_rules! tree_cast {
                     range: &[B256],
                     call: TreeSearchBuilder<V>,
                     collector: ($($fns,)*),
-                ) -> Vec<($($from,)*)> {
+                ) -> impl Iterator<Item = ($($from,)*)> {
                     self.collect_txes(range, call).into_iter().map(|v| {
                          ActionIter::action_split_ref::<($($from,)*), ($($fns,)*)>
                             (v.into_iter(), &collector)
-                    }).collect::<Vec<_>>()
+                    })
                 }
 
                 fn collect_actions_filter(
