@@ -93,7 +93,7 @@ impl fmt::Display for MevBlock {
         )?;
         writeln!(
             f,
-            "  - Builder MEV Profit: {:.6} ETH",
+            "  - Builder MEV Profit: {:.6} USD",
             format!("{:.6}", self.builder_mev_profit_usd).green()
         )?;
 

@@ -163,13 +163,33 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     /// For the given tx hash, goes through the tree and collects all actions
     /// specified by the tree search builder.
-    pub fn collect(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<V> {
+    pub fn collect(&self, hash: &B256, call: TreeSearchBuilder<V>) -> Vec<V> {
         self.run_in_span_ref(|this| {
-            if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == hash) {
+            if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == *hash) {
                 root.collect(&call)
             } else {
                 vec![]
             }
+        })
+    }
+
+    /// For all specified transactions, goes through the tree and collects all
+    /// actions specified by the tree search builder.
+    pub fn collect_for_txes(
+        &self,
+        tx_hashes: Vec<B256>,
+        call: TreeSearchBuilder<V>,
+    ) -> HashMap<B256, Vec<V>> {
+        self.run_in_span_ref(|this| {
+            tx_hashes
+                .par_iter()
+                .filter_map(|hash| {
+                    this.tx_roots
+                        .iter()
+                        .find(|r| r.tx_hash == *hash)
+                        .map(|root| (*hash, root.collect(&call)))
+                })
+                .collect()
         })
     }
 
@@ -190,7 +210,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 txes.par_iter()
-                    .map(|tx| this.collect(*tx, call.clone()))
+                    .map(|tx| this.collect(tx, call.clone()))
                     .collect::<Vec<_>>()
             })
         })
@@ -304,7 +324,7 @@ pub mod test {
 
     #[brontes_macros::test]
     async fn test_collect() {
-        let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
+        let tx = &hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
         let tree: BlockTree<Actions> = load_tree().await;
 
         let burns = tree.collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn));
@@ -334,7 +354,7 @@ pub mod test {
         let tx = hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d").into();
         let tree = classifier_utils.build_tree_tx(tx).await.unwrap();
         let mut actions =
-            tree.collect(tx, TreeSearchBuilder::default().with_action(Actions::is_batch));
+            tree.collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch));
         assert!(!actions.is_empty());
         let action = actions.remove(0);
 

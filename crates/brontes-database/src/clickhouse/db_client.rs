@@ -289,7 +289,6 @@ impl ClickhouseHandle for Clickhouse {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -308,18 +307,14 @@ mod tests {
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
         },
         pair::Pair,
-        traits::TracingProvider,
         GasDetails,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::{
-        clickhouse::dbms::{
-            ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
-            ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
-        },
-        TxTracesData,
+    use crate::clickhouse::dbms::{
+        ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
+        ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
     };
 
     fn spawn_clickhouse() -> Clickhouse {
@@ -445,13 +440,14 @@ mod tests {
 
         assert_eq!(queried, case0);
     }
-
+    #[allow(clippy::field_reassign_with_default)]
     #[tokio::test]
     async fn mev_block() {
         let db = spawn_clickhouse();
 
         let case0_possible = PossibleMev::default();
         let mut case0 = MevBlock::default();
+
         case0.possible_mev = PossibleMevCollection(vec![case0_possible]);
 
         db.inner()
@@ -621,7 +617,8 @@ mod tests {
             .await
             .unwrap();
     }
-
+    #[allow(dead_code)]
+    #[allow(non_upper_case_globals)]
     const queryy: &str = "SELECT
     block_number,
     groupArray(
@@ -698,4 +695,3 @@ WHERE block_number = 15697312
 GROUP BY block_number
 ";
 }
-*/
