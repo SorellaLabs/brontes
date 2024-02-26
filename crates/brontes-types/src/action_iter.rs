@@ -146,7 +146,7 @@ pub trait ActionSplit<FromI, Fns, V: NormalizedAction>: Iterator<Item = V> {
 macro_rules! action_split {
     ($(($fns:ident, $ret:ident, $from:ident)),*) => {
         #[allow(non_snake_case, unused_variables, trivial_bounds)]
-        impl <V:NormalizedAction, IT: Iterator<Item = V>,$($ret: Debug,)* $($fns: Fn(V) -> Option<$ret>,)*
+        impl <V:NormalizedAction, IT: Iterator<Item = V>,$($ret,)* $($fns: Fn(V) -> Option<$ret>,)*
              $($from: Default + Extend<$ret>),* >
             ActionSplit<($($from,)*), ($($fns,)*), V> for IT
             {
