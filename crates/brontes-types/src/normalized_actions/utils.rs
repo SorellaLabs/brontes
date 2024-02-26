@@ -11,7 +11,7 @@ impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
         (&transfer.amount + &transfer.fee == self.amount_in
             && transfer.to == self.pool
             && self.from == transfer.from)
-            || (&transfer.amount - &transfer.fee == self.amount_out
+            || (&transfer.amount == self.amount_out
                 && transfer.from == self.pool
                 && self.recipient == transfer.to)
     }
@@ -49,7 +49,6 @@ pub mod test {
         normalized_actions::Actions, ActionIter, BlockTree, TreeCollect, TreeFilter,
         TreeSearchBuilder,
     };
-
 
     #[brontes_macros::test]
     async fn test_swap_transfer_dedup() {

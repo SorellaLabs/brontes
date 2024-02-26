@@ -158,10 +158,8 @@ macro_rules! action_split {
                 let ($($fns,)*) = filters;
 
                 self.fold((), |(), item| {
-                        tracing::info!(?item, "processing item");
                     $(
                         if let Some(item) = ($fns)(item.clone()) {
-                            tracing::info!("found match");
                             $from.extend(std::iter::once(item));
                             return
                         }
