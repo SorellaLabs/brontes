@@ -101,7 +101,7 @@ use brontes_types::{
 use cex_dex::CexDexInspector;
 use jit::JitInspector;
 use liquidations::LiquidationInspector;
-use long_tail::LongTailInspector;
+//use long_tail::LongTailInspector;
 use sandwich::SandwichInspector;
 
 #[async_trait::async_trait]
@@ -123,7 +123,7 @@ pub enum Inspectors {
     CexDex,
     Jit,
     Liquidations,
-    LongTail,
+    //LongTail,
     Sandwich,
 }
 
@@ -141,9 +141,9 @@ impl Inspectors {
                 static_object(AtomicArbInspector::new(quote_token, db)) as DynMevInspector
             }
             Self::Jit => static_object(JitInspector::new(quote_token, db)) as DynMevInspector,
-            Self::LongTail => {
-                static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
-            }
+            //Self::LongTail => {
+            //  static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
+            //}
             Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
                 as DynMevInspector,
             Self::Sandwich => {

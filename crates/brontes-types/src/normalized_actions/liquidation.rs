@@ -18,7 +18,7 @@ use crate::{
     rational_to_clickhouse_tuple, Protocol,
 };
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
+#[derive(Default, Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedLiquidation {
     #[redefined(same_fields)]

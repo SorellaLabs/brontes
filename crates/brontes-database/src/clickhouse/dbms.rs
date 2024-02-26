@@ -11,7 +11,6 @@ use brontes_types::{
 };
 use sorella_db_databases::{
     clickhouse::{
-        dbms::ClickhouseDBMS,
         errors::ClickhouseError,
         tables::{ClickhouseTable, ClickhouseTableType},
     },

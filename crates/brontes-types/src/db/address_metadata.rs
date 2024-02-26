@@ -2,7 +2,7 @@ use alloy_primitives::Address;
 use clickhouse::Row;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
@@ -19,9 +19,11 @@ pub struct AddressMetadata {
     #[serde(rename = "type")]
     pub address_type:    Option<String>,
     #[serde(deserialize_with = "option_contract_info::deserialize")]
+    #[cfg_attr(api, serde(serialize_with = "option_contract_info::Serialize"))]
     pub contract_info:   Option<ContractInfo>,
     pub ens:             Option<String>,
     #[serde(deserialize_with = "socials::deserialize")]
+    #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
     #[redefined(same_fields)]
     pub social_metadata: Socials,
 }
@@ -31,6 +33,16 @@ impl AddressMetadata {
         self.contract_info
             .as_ref()
             .map_or(false, |c| c.verified_contract.unwrap_or(false))
+    }
+
+    pub fn describe(&self) -> Option<String> {
+        self.entity_name
+            .clone()
+            .or_else(|| self.nametag.clone())
+            .or_else(|| self.address_type.clone())
+            .or_else(|| self.ens.clone())
+            .or_else(|| self.social_metadata.twitter.clone())
+            .or_else(|| self.labels.first().cloned())
     }
 }
 

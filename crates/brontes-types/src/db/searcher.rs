@@ -1,8 +1,8 @@
 use alloy_primitives::Address;
-use clickhouse::{self, Row};
+use clickhouse::Row;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use strum::Display;
 
@@ -42,6 +42,29 @@ impl SearcherInfo {
             }
         }
         self.builder = other.builder.or(self.builder.take());
+    }
+
+    pub fn describe(&self) -> String {
+        let mut parts: Vec<String> = Vec::new();
+
+        if self.builder.is_some() {
+            parts.push("Vertically Integrated".into());
+        }
+
+        match self.fund {
+            Fund::None => (),
+            fund => parts.push(format!("{}", fund)),
+        }
+
+        if !self.mev.is_empty() {
+            let mev_types: Vec<String> = self.mev.iter().map(|mev| format!("{:?}", mev)).collect();
+            let mev_part = mev_types.join(" & ");
+            parts.push(mev_part + " MEV bot");
+        } else {
+            parts.push("MEV bot".into());
+        }
+
+        parts.join(" ")
     }
 }
 

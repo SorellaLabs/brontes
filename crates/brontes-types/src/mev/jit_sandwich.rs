@@ -106,7 +106,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
 
     let sandwich = sandwich.expect("Expected Sandwich MEV data");
     let jit = jit.expect("Expected JIT MEV data");
-    let mut classified_sandwich =
+    let classified_sandwich =
         classified_sandwich.expect("Expected Classified MEV data for Sandwich");
     let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 
@@ -154,21 +154,18 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
     let jit_liq_profit = sandwich_rev + jit_rev - classified_sandwich.bribe_usd;
 
     // Compose token profits
-    classified_sandwich
-        .token_profits
-        .compose(&jit_classified.token_profits);
 
     // Create new classified MEV data
     let new_classified = BundleHeader {
-        tx_index:      classified_sandwich.tx_index,
-        tx_hash:       *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
-        mev_type:      MevType::JitSandwich,
-        block_number:  classified_sandwich.block_number,
-        eoa:           jit_classified.eoa,
-        mev_contract:  classified_sandwich.mev_contract,
-        profit_usd:    jit_liq_profit,
-        token_profits: classified_sandwich.token_profits,
-        bribe_usd:     classified_sandwich.bribe_usd,
+        tx_index:       classified_sandwich.tx_index,
+        tx_hash:        *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
+        mev_type:       MevType::JitSandwich,
+        block_number:   classified_sandwich.block_number,
+        eoa:            jit_classified.eoa,
+        mev_contract:   classified_sandwich.mev_contract,
+        profit_usd:     jit_liq_profit,
+        balance_deltas: classified_sandwich.balance_deltas,
+        bribe_usd:      classified_sandwich.bribe_usd,
     };
 
     Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
@@ -262,13 +259,13 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
         let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
-        let backrun_tx_hash_repeated = [&self.backrun_tx_hash]
+        let backrun_tx_hash_repeated_swaps = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()
             .map(|tx| format!("{:?}", &tx))
             .collect::<Vec<_>>();
 
-        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated)?;
+        ser_struct.serialize_field("backrun_swaps.tx_hash", &backrun_tx_hash_repeated_swaps)?;
         ser_struct.serialize_field("backrun_swaps.trace_idx", &backrun_swaps.trace_index)?;
         ser_struct.serialize_field("backrun_swaps.from", &backrun_swaps.from)?;
         ser_struct.serialize_field("backrun_swaps.recipient", &backrun_swaps.recipient)?;
@@ -280,7 +277,13 @@ impl Serialize for JitLiquiditySandwich {
 
         let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
 
-        ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_tx_hash_repeated)?;
+        let backrun_tx_hash_repeated_burns = [&self.backrun_tx_hash]
+            .repeat(backrun_burns.pool.len())
+            .into_iter()
+            .map(|tx| format!("{:?}", &tx))
+            .collect::<Vec<_>>();
+
+        ser_struct.serialize_field("backrun_burns.tx_hash", &backrun_tx_hash_repeated_burns)?;
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;
         ser_struct.serialize_field("backrun_burns.pool", &backrun_burns.pool)?;

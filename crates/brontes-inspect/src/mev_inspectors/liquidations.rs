@@ -1,28 +1,26 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
-use brontes_database::libmdbx::{Libmdbx, LibmdbxReader};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, BundleHeader, Liquidation, MevType, TokenProfit, TokenProfits},
-    normalized_actions::{Actions, NormalizedLiquidation, NormalizedSwap},
-    pair::Pair,
-    tree::{BlockTree, GasDetails, Node, Root},
-    ToFloatNearest, TreeSearchArgs, TreeSearchBuilder, TxInfo,
+    mev::{Bundle, BundleData, Liquidation, MevType},
+    normalized_actions::Actions,
+    tree::BlockTree,
+    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use hyper::header;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use reth_primitives::{b256, Address, B256};
+use reth_primitives::{b256, Address};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
-    inner: SharedInspectorUtils<'db, DB>,
+    utils: SharedInspectorUtils<'db, DB>,
 }
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { inner: SharedInspectorUtils::new(quote, db) }
+        Self { utils: SharedInspectorUtils::new(quote, db) }
     }
 }
 
@@ -42,9 +40,9 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         liq_txs
             .into_par_iter()
             .filter_map(|(tx_hash, liq)| {
-                let info = tree.get_tx_info(tx_hash, self.inner.db)?;
+                let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
-                self.calculate_liquidation(info, metadata.clone(), liq)
+                self.calculate_liquidation(tree.clone(), info, metadata.clone(), liq)
             })
             .collect::<Vec<_>>()
     }
@@ -53,45 +51,31 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
 impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     fn calculate_liquidation(
         &self,
+        tree: Arc<BlockTree<Actions>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
     ) -> Option<Bundle> {
-        let swaps = actions
-            .iter()
-            .filter_map(|action| if let Actions::Swap(swap) = action { Some(swap) } else { None })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let liqs = actions
-            .iter()
-            .filter_map(
-                |action| {
-                    if let Actions::Liquidation(liq) = action {
-                        Some(liq)
-                    } else {
-                        None
-                    }
-                },
-            )
-            .cloned()
-            .collect::<Vec<_>>();
+        let (swaps, liqs): (Vec<_>, Vec<_>) = actions
+            .clone()
+            .into_iter()
+            .action_split((Actions::try_swap, Actions::try_liquidation));
 
         if liqs.is_empty() {
-            return None;
+            return None
         }
 
         let liq_profit = liqs
             .par_iter()
             .filter_map(|liq| {
-                let repaid_debt_usd = self.inner.calculate_dex_usd_amount(
+                let repaid_debt_usd = self.utils.get_token_value_dex(
                     info.tx_index as usize,
                     PriceAt::After,
                     liq.debt_asset.address,
                     &liq.covered_debt,
                     &metadata,
                 )?;
-                let collected_collateral = self.inner.calculate_dex_usd_amount(
+                let collected_collateral = self.utils.get_token_value_dex(
                     info.tx_index as usize,
                     PriceAt::After,
                     liq.collateral_asset.address,
@@ -102,10 +86,10 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             })
             .sum::<Rational>();
 
-        let rev_usd = self.inner.get_dex_revenue_usd(
+        let rev_usd = self.utils.get_dex_swaps_rev_usd(
             info.tx_index,
             PriceAt::After,
-            &[actions.clone()],
+            &swaps,
             metadata.clone(),
         )? + liq_profit;
 
@@ -113,11 +97,12 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let profit_usd = (rev_usd - &gas_finalized).to_float();
 
-        let header = self.inner.build_bundle_header(
+        let header = self.utils.build_bundle_header(
+            tree,
+            vec![info.tx_hash],
             &info,
             profit_usd,
             PriceAt::After,
-            &[actions],
             &[info.gas_details],
             metadata,
             MevType::Liquidation,
@@ -137,12 +122,9 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashSet, str::FromStr, time::SystemTime};
 
-    use alloy_primitives::{hex, U256};
-    use brontes_classifier::Classifier;
+    use alloy_primitives::hex;
 
-    use super::*;
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
         Inspectors,

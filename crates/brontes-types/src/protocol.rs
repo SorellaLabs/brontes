@@ -57,6 +57,8 @@ utils!(
         rSerialize,
         rDeserialize,
         Archive,
+        PartialOrd,
+        Ord,
         strum::Display,
         strum::EnumString,
     )]
@@ -88,6 +90,7 @@ utils!(
         CurvecrvUSDPlainPoolImpl,
         CurveCryptoSwapPool,
         CurveTriCryptoPool,
+        CompoundV2,
         MakerPSM,
         #[default]
         Unknown,
@@ -122,8 +125,30 @@ impl Protocol {
             Protocol::CurvecrvUSDPlainPoolImpl => ("Curve.fi", "crvUSD Plain Impl"),
             Protocol::CurveCryptoSwapPool => ("Curve.fi", "CryptoSwap"),
             Protocol::CurveTriCryptoPool => ("Curve.fi", "TriCrypto"),
+            Protocol::CompoundV2 => ("Compound", "V2"),
             Protocol::MakerPSM => ("Maker", "PSM"),
             Protocol::Unknown => ("Unknown", "Unknown"),
+        }
+    }
+
+    pub fn from_db_string(s: &str) -> Self {
+        match s {
+            "UniswapV2" => Protocol::UniswapV2,
+            "SushiSwapV2" => Protocol::SushiSwapV2,
+            "UniswapV3" => Protocol::UniswapV3,
+            "SushiSwapV3" => Protocol::SushiSwapV3,
+            "Curve.fiBase2" => Protocol::CurveBasePool2,
+            "Curve.fiBase3" => Protocol::CurveBasePool3,
+            "Curve.fiBase4" => Protocol::CurveBasePool4,
+            "Curve.fiV1 Metapool" => Protocol::CurveV1MetaPool,
+            "curve.fiV2 metapool" => Protocol::CurveV2MetaPool,
+            "Curve.fiV2 Plain" => Protocol::CurveV2PlainPool,
+            "curve.fiv2 plain" => Protocol::CurveV2PlainPool,
+            "curve.ficrvUSD metapool" => Protocol::CurvecrvUSDMetaPool,
+            "curve.ficrvUSD plain" => Protocol::CurvecrvUSDPlainPool,
+            "curve.ficryptoswap" => Protocol::CurveCryptoSwapPool,
+            "curve.fitricrypto" => Protocol::CurveTriCryptoPool,
+            _ => Protocol::Unknown,
         }
     }
 }

@@ -43,6 +43,7 @@ sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
+sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 
 sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
 
@@ -55,6 +56,8 @@ sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
 sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
 sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
 sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
+sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
+sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

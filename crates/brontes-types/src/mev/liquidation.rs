@@ -11,10 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::{
-    db::redefined_types::primitives::*,
-    normalized_actions::{ClickhouseVecNormalizedLiquidation, ClickhouseVecNormalizedSwap},
-};
+use crate::db::redefined_types::primitives::*;
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
@@ -60,10 +57,8 @@ impl Serialize for Liquidation {
         let mut ser_struct = serializer.serialize_struct("Liquidation", 34)?;
 
         // frontrun
-        ser_struct.serialize_field(
-            "liquidation_tx_hash",
-            &FixedString::from(format!("{:?}", self.liquidation_tx_hash)),
-        )?;
+        ser_struct
+            .serialize_field("liquidation_tx_hash", &format!("{:?}", self.liquidation_tx_hash))?;
 
         let liquidation_swaps: ClickhouseVecNormalizedSwap = self.liquidation_swaps.clone().into();
 

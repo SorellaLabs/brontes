@@ -2,7 +2,6 @@ use std::time::SystemTimeError;
 
 use alloy_primitives::{Address, U256};
 use alloy_sol_types::Error as AlloyError;
-use ethers::{prelude::AbiError, providers::ProviderError};
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -14,12 +13,6 @@ pub enum AmmError {
     CallError(#[from] eyre::Error),
     #[error("No state was found for address: {0:?}")]
     NoStateError(Address),
-    #[error("Provider error")]
-    ProviderError(#[from] ProviderError),
-    #[error("ABI Codec error")]
-    ABICodecError(#[from] AbiError),
-    #[error("Eth ABI error")]
-    EthABIError(#[from] ethers::abi::Error),
     #[error("Join error")]
     JoinError(#[from] JoinError),
     #[error("Serde json error")]
@@ -86,10 +79,6 @@ pub enum EventLogError {
     InvalidEventSignature,
     #[error("Log Block number not found")]
     LogBlockNumberNotFound,
-    #[error("Eth abi error")]
-    EthABIError(#[from] ethers::abi::Error),
-    #[error("ABI error")]
-    ABIError(#[from] AbiError),
 }
 
 #[derive(Error, Debug)]

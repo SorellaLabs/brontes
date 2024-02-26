@@ -16,15 +16,15 @@ use crate::{
     CompressedTable,
 };
 #[cfg(feature = "local-clickhouse")]
-pub fn load_clickhouse() -> Clickhouse {
+pub async fn load_clickhouse() -> Clickhouse {
     Clickhouse::default()
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub fn load_clickhouse() -> crate::clickhouse::ClickhouseHttpClient {
+pub async fn load_clickhouse() -> crate::clickhouse::ClickhouseHttpClient {
     let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
-    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
-    crate::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
+    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
+    crate::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await
 }
 
 pub async fn clickhouse_data<T, D, CH: ClickhouseHandle>(

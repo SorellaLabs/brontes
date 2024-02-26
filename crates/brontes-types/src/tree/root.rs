@@ -1,10 +1,9 @@
-use std::{collections::HashSet, fmt, fmt::Display};
+use std::{fmt, fmt::Display};
 
 use alloy_primitives::TxHash;
 use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use redefined::self_convert_redefined;
 use reth_primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
@@ -55,6 +54,7 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
+    //TODO: Add field for reinit bool flag
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,
@@ -85,6 +85,8 @@ impl<V: NormalizedAction> Root<V> {
             .unwrap()
             .get_action()
             .emitted_logs();
+
+        // TODO: get rid of this once searcher db is working & tested
         let is_cex_dex_call = matches!(
             self.data_store.get_ref(self.head.data).unwrap().get_action(),
             Actions::Unclassified(data) if data.is_cex_dex_call()
@@ -92,10 +94,13 @@ impl<V: NormalizedAction> Root<V> {
 
         let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
 
+        let searcher_contract_info =
+            database.try_fetch_searcher_contract_info(self.get_to_address())?;
+
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if is_verified_contract || is_classified || emits_logs {
+        if is_verified_contract || is_classified || emits_logs && searcher_contract_info.is_none() {
             return Ok(TxInfo::new(
                 block_number,
                 self.position as u64,
@@ -111,9 +116,6 @@ impl<V: NormalizedAction> Root<V> {
                 None,
             ))
         }
-
-        let searcher_contract_info =
-            database.try_fetch_searcher_contract_info(self.get_to_address())?;
 
         Ok(TxInfo::new(
             block_number,
@@ -175,12 +177,8 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn collect(&self, call: &TreeSearchBuilder<V>) -> Vec<V> {
         let mut result = Vec::new();
-        self.head.collect(
-            &mut result,
-            call,
-            &|data, info| info.get_ref(data.data).unwrap().clone(),
-            &self.data_store,
-        );
+        self.head
+            .collect(&mut result, call, &|data| data.data.clone(), &self.data_store);
 
         result.sort_by_key(|a| a.get_trace_index());
 
@@ -199,35 +197,6 @@ impl<V: NormalizedAction> Root<V> {
         heads.iter().for_each(|search_head| {
             self.head
                 .get_all_children_for_complex_classification(*search_head, &mut self.data_store)
-        });
-    }
-
-    pub fn remove_duplicate_data<C, T, R>(
-        &mut self,
-        find: &TreeSearchBuilder<V>,
-        classify: &C,
-        info: &T,
-        removal: &TreeSearchBuilder<V>,
-    ) where
-        T: Fn(&Node, &NodeData<V>) -> R + Sync,
-        C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
-    {
-        let mut find_res = Vec::new();
-        self.head
-            .collect(&mut find_res, find, &|data, _| data.clone(), &self.data_store);
-
-        let indexes = find_res
-            .into_par_iter()
-            .flat_map(|node| {
-                let mut bad_res = Vec::new();
-                node.collect(&mut bad_res, removal, info, &self.data_store);
-                classify(&bad_res, &node, &self.data_store)
-            })
-            .collect::<HashSet<_>>();
-
-        indexes.into_iter().for_each(|index| {
-            self.head
-                .remove_node_and_children(index, &mut self.data_store)
         });
     }
 
@@ -309,7 +278,7 @@ impl GasDetails {
             (
                 "Coinbase Transfer",
                 self.coinbase_transfer
-                    .map(|amount| format!("{} ETH", amount))
+                    .map(|amount| format!("{:.18} ETH", amount as f64 / 1e18))
                     .unwrap_or_else(|| "None".to_string()),
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
