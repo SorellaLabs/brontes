@@ -235,9 +235,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     ) -> Option<Rational> {
         let deltas = self.calculate_transfer_deltas(transfers);
 
-        transfers.iter().for_each(|transfer| {
-            println!("{:#?}", transfer);
-        });
+        // transfers.iter().for_each(|transfer| {
+        //     println!("{:#?}", transfer);
+        // });
 
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
@@ -444,7 +444,6 @@ impl TokenAccounting for NormalizedTransfer {
         let amount_sent = &self.amount + &self.fee;
 
         apply_delta(self.from, self.token.address, -amount_sent.clone(), delta_map);
-
         apply_delta(self.to, self.token.address, self.amount.clone(), delta_map);
     }
 }
