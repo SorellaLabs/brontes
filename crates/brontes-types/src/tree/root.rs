@@ -54,6 +54,7 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
+    //TODO: Add field for reinit bool flag
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,
@@ -84,6 +85,8 @@ impl<V: NormalizedAction> Root<V> {
             .unwrap()
             .get_action()
             .emitted_logs();
+
+        // TODO: get rid of this once searcher db is working & tested
         let is_cex_dex_call = matches!(
             self.data_store.get_ref(self.head.data).unwrap().get_action(),
             Actions::Unclassified(data) if data.is_cex_dex_call()
@@ -91,10 +94,13 @@ impl<V: NormalizedAction> Root<V> {
 
         let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
 
+        let searcher_contract_info =
+            database.try_fetch_searcher_contract_info(self.get_to_address())?;
+
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if is_verified_contract || is_classified || emits_logs {
+        if is_verified_contract || is_classified || emits_logs && searcher_contract_info.is_none() {
             return Ok(TxInfo::new(
                 block_number,
                 self.position as u64,
@@ -110,9 +116,6 @@ impl<V: NormalizedAction> Root<V> {
                 None,
             ))
         }
-
-        let searcher_contract_info =
-            database.try_fetch_searcher_contract_info(self.get_to_address())?;
 
         Ok(TxInfo::new(
             block_number,
@@ -275,7 +278,7 @@ impl GasDetails {
             (
                 "Coinbase Transfer",
                 self.coinbase_transfer
-                    .map(|amount| format!("{} ETH", amount))
+                    .map(|amount| format!("{:.18} ETH", amount as f64 / 1e18))
                     .unwrap_or_else(|| "None".to_string()),
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),

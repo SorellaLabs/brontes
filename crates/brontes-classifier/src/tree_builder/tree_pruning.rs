@@ -120,7 +120,7 @@ mod test {
             .unwrap();
 
         let swaps = tree.collect(
-            hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
+            &hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
             TreeSearchBuilder::default().with_action(Actions::is_swap),
         );
         assert!(swaps.len() == 6, "didn't filter tax token");

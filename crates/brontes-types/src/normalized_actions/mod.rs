@@ -81,7 +81,7 @@ impl NormalizedAction for Actions {
 
     fn continued_classification_types(&self) -> TreeSearchBuilder<Self> {
         match self {
-            Actions::FlashLoan(_) => TreeSearchBuilder::default().with_actions([
+            Self::FlashLoan(_) => TreeSearchBuilder::default().with_actions([
                 Self::is_batch,
                 Self::is_swap,
                 Self::is_liquidation,
@@ -90,12 +90,12 @@ impl NormalizedAction for Actions {
                 Self::is_transfer,
                 Self::is_collect,
             ]),
-            Actions::Batch(_) => TreeSearchBuilder::default().with_actions([
+            Self::Batch(_) => TreeSearchBuilder::default().with_actions([
                 Self::is_swap,
                 Self::is_transfer,
                 Self::is_eth_transfer,
             ]),
-            Actions::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
+            Self::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
             action => unreachable!("no continue_classification function for {action:?}"),
         }
     }
@@ -114,8 +114,8 @@ impl NormalizedAction for Actions {
             Self::SelfDestruct(c) => c.trace_index,
             Self::EthTransfer(e) => e.trace_index,
             Self::Unclassified(u) => u.trace_idx,
-            Actions::NewPool(p) => p.trace_index,
-            Actions::PoolConfigUpdate(p) => p.trace_index,
+            Self::NewPool(p) => p.trace_index,
+            Self::PoolConfigUpdate(p) => p.trace_index,
             Self::Revert => unreachable!("no trace index for revert"),
         }
     }
