@@ -61,7 +61,7 @@ pub mod test {
             TreeSearchBuilder::default().with_actions([Actions::is_transfer, Actions::is_swap]);
 
         let (transfers, swaps): (Vec<_>, Vec<_>) = tree.collect_actions_filter(
-            tx,
+            &tx,
             call.clone(),
             (Actions::try_transfer, Actions::try_swap),
         );
