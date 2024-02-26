@@ -166,13 +166,13 @@ mod tests {
 
         let classifier_utils = ClassifierTestUtils::new().await;
         let bind_tx_hash =
-            B256::from(hex!("99316789397e75ab98974f8915a20bac7401e1d30daec96f39f3dd726d653834"));
+            B256::from(hex!("400146b33d7e9c5ba7626c927a93ddc4dbd5e13161609011681450c19eaebfed"));
 
         let expected_action = Actions::NewPool(NormalizedNewPool {
             protocol:     Protocol::BalancerV1,
             trace_index:  0,
             pool_address: Address::new(hex!("9A2181cf0bC57FC0177517dB21d457BDd1b2b32e")),
-            tokens:       vec![Address::new(hex!("A0B701a24842A29072DC3Dc75FC6a9666289e82f"))],
+            tokens:       vec![Address::new(hex!("5eD9e47679422c2F78568af8728EC3C3C8591146"))],
         });
 
         classifier_utils
