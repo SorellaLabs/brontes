@@ -93,7 +93,7 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    BalancerV1,
-            trace_index: 2,
+            trace_index: 11,
             from:        Address::new(hex!("0eae044f00B0aF300500F090eA00027097d03000")),
             recipient:   Address::new(hex!("0eae044f00B0aF300500F090eA00027097d03000")),
             pool:        Address::new(hex!("92E7Eb99a38C8eB655B15467774C6d56Fb810BC9")),
