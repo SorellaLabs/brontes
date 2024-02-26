@@ -245,7 +245,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     if mev_addresses.contains(address) {
                         Some(delta)
                     } else {
-                        None
+                        Some(delta)
                     }
                 },
             )
