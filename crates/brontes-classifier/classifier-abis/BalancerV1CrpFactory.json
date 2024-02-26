@@ -1,0 +1,111 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "pool",
+        "type": "address"
+      }
+    ],
+    "name": "LogNewCrp",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "addr", "type": "address" }
+    ],
+    "name": "isCrp",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "factoryAddress",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "poolTokenSymbol",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "poolTokenName",
+            "type": "string"
+          },
+          {
+            "internalType": "address[]",
+            "name": "constituentTokens",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "tokenBalances",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "tokenWeights",
+            "type": "uint256[]"
+          },
+          { "internalType": "uint256", "name": "swapFee", "type": "uint256" }
+        ],
+        "internalType": "struct ConfigurableRightsPool.PoolParams",
+        "name": "poolParams",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "canPauseSwapping",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "canChangeSwapFee",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "canChangeWeights",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "canAddRemoveTokens",
+            "type": "bool"
+          },
+          { "internalType": "bool", "name": "canWhitelistLPs", "type": "bool" },
+          { "internalType": "bool", "name": "canChangeCap", "type": "bool" }
+        ],
+        "internalType": "struct RightsManager.Rights",
+        "name": "rights",
+        "type": "tuple"
+      }
+    ],
+    "name": "newCrp",
+    "outputs": [
+      {
+        "internalType": "contract ConfigurableRightsPool",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

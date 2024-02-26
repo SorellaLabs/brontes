@@ -45,7 +45,8 @@ discovery_dispatch!(
     CurvecrvUSDMetaDiscovery0,
     CurvecrvUSDMetaDiscovery1,
     CurveCryptoSwapDiscovery,
-    CurveTriCryptoDiscovery
+    CurveTriCryptoDiscovery,
+    BalancerV1CoreDiscovery
 );
 
 action_dispatch!(
