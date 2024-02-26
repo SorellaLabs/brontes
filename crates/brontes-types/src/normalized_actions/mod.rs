@@ -307,6 +307,14 @@ impl Actions {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }
 
+    pub const fn is_swap_no_fee(&self) -> bool {
+        matches!(self, Actions::Swap(_))
+    }
+
+    pub const fn is_swap_with_fee(&self) -> bool {
+        matches!(self, Actions::SwapWithFee(_))
+    }
+
     pub const fn is_flash_loan(&self) -> bool {
         matches!(self, Actions::FlashLoan(_))
     }
