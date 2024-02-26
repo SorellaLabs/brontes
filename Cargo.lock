@@ -1402,6 +1402,7 @@ dependencies = [
  "colored",
  "dotenv",
  "eyre",
+ "fdlimit",
  "futures",
  "hyper",
  "indoc",
