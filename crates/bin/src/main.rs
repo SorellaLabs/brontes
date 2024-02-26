@@ -12,6 +12,7 @@ use tracing_subscriber::filter::Directive;
 fn main() -> eyre::Result<()> {
     dotenv::dotenv().ok();
     init_tracing();
+    fdlimit::raise_fd_limit().unwrap();
 
     match run() {
         Ok(()) => {
