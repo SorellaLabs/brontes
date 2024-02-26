@@ -110,6 +110,7 @@ impl Protocol {
             Protocol::AaveV3 => ("Aave", "V3"),
             Protocol::BalancerV1 => ("Balancer", "V1"),
             Protocol::UniswapX => ("Uniswap", "X"),
+            Protocol::Cowswap => todo!(),
             Protocol::CurveBasePool2 => ("Curve.fi", "Base"),
             Protocol::CurveBasePool3 => ("Curve.fi", "Base"),
             Protocol::CurveBasePool4 => ("Curve.fi", "Base"),
