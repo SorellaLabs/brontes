@@ -46,6 +46,7 @@ impl ActionCmp<NormalizedTransfer> for NormalizedCollect {
 pub mod test {
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
+
     use brontes_types::{
         normalized_actions::Actions, ActionIter, BlockTree, TreeCollect, TreeFilter,
         TreeSearchBuilder,
@@ -62,10 +63,21 @@ pub mod test {
         let default_collect = tree.collect(&tx, call.clone());
 
         assert_eq!(
-            default_collect.into_iter().filter(|f| f.is_swap()).count(),
+            default_collect
+                .clone()
+                .into_iter()
+                .filter(|f| f.is_swap())
+                .count(),
             1,
             "default collect broken"
         );
+
+        let (transfers, swaps): (Vec<_>, Vec<_>) = default_collect
+            .into_iter()
+            .action_split((Actions::try_swap, Actions::try_transfer));
+
+        assert_eq!(swaps.len(), 1, "action split broken swaps {:#?}", swaps);
+        assert_eq!(transfers.len(), 2, "action split broken transfer {:#?}", transfers);
 
         let (transfers, swaps): (Vec<_>, Vec<_>) = tree.collect_actions_filter(
             &tx,
