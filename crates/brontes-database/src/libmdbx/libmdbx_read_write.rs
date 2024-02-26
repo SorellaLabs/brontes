@@ -326,9 +326,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let tx = self.0.ro_tx()?;
 
-        let address = (address == ETH_ADDRESS)
-            .then_some(WETH_ADDRESS)
-            .unwrap_or(address);
+        let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
         tx.get::<TokenDecimals>(address)?
             .map(|inner| TokenInfoWithAddress { inner, address })
