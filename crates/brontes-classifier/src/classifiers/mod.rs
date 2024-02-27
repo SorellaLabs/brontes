@@ -138,5 +138,8 @@ action_dispatch!(
     CompoundV2liquidateBorrowCall,
     CompoundV2initialize_0Call,
     CompoundV2initialize_1Call,
-    OneInchswapCall
+    OneInchswapCall,
+    OneInchclipperSwapCall,
+    OneInchclipperSwapToCall,
+    OneInchclipperSwapToWithPermitCall
 );
