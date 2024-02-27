@@ -34,11 +34,11 @@ clickhouse_dbms!(
         ClickhouseSearcherInfo,    // YES
         ClickhouseDexPriceMapping, // YES
         ClickhouseTxTraces,        // YES
-        ClickhouseTokenInfo,
-        ClickhouseSearcherStats, // YES
-        ClickhouseBuilderStats,  // YES
-        ClickhousePools,
-        ClickhouseBuilderInfo // YES
+        ClickhouseTokenInfo,       // YES
+        ClickhouseSearcherStats,   // YES
+        ClickhouseBuilderStats,    // YES
+        ClickhousePools,           // YES
+        ClickhouseBuilderInfo      // YES
     ]
 );
 

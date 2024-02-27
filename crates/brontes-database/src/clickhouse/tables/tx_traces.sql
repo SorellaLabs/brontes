@@ -1,4 +1,4 @@
-CREATE TABLE local_tables.brontes_tx_traces ON CLUSTER eth_cluster0 
+CREATE TABLE brontes.tx_traces ON CLUSTER eth_cluster0
 (
     `block_number` UInt64,
     `tx_hash` String,
