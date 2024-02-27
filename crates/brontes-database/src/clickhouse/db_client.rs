@@ -533,8 +533,8 @@ mod tests {
             .unwrap();
     }
 
-    /// runs all the tests
     async fn run_all(database: ClickhouseTestingClient<BrontesClickhouseTables>) {
+        tx_traces(&database).await;
         builder_info(&database).await;
         pools(&database).await;
         atomic_arb(&database).await;
@@ -552,8 +552,7 @@ mod tests {
         searcher_info(&database).await;
     }
 
-    #[tokio::test]
-    /// runs all the tests
+    #[brontes_macros::test]
     async fn test_all_inserts() {
         dotenv::dotenv().ok();
         let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
