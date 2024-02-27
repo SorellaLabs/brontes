@@ -4,7 +4,10 @@ use brontes_types::{
     normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
 
-use crate::BalancerV1::{swapExactAmountInReturn, swapExactAmountOutReturn};
+use crate::{
+    BalancerV1::{swapExactAmountInReturn, swapExactAmountOutReturn},
+    NormalizedNewPool,
+};
 
 action_impl!(
     Protocol::BalancerV1,
@@ -70,6 +73,31 @@ action_impl!(
     }
 );
 
+action_impl!(
+    Protocol::BalancerV1,
+    crate::BalancerV1::bindCall,
+    NewPool,
+    [],
+    call_data: true,
+    |
+    info: CallInfo,
+    call_data: bindCall,
+    db_tx: &DB| {
+
+        let pool = db_tx.get_protocol_details(info.target_address).unwrap_or_default();
+
+        let mut tokens = pool.get_tokens();
+        tokens.push(call_data.token);
+
+        Ok( NormalizedNewPool {
+            protocol: Protocol::BalancerV1,
+            trace_index: info.trace_idx,
+            pool_address: info.target_address,
+            tokens
+        })
+    }
+);
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -116,6 +144,43 @@ mod tests {
                 1,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_balancer_v1_bind() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+
+        classifier_utils.ensure_protocol(
+            Protocol::BalancerV1,
+            Address::from(hex!("9A2181cf0bC57FC0177517dB21d457BDd1b2b32e")),
+            Address::default(),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let bind_tx_hash =
+            B256::from(hex!("400146b33d7e9c5ba7626c927a93ddc4dbd5e13161609011681450c19eaebfed"));
+
+        let expected_action = Actions::NewPool(NormalizedNewPool {
+            protocol:     Protocol::BalancerV1,
+            trace_index:  0,
+            pool_address: Address::new(hex!("9A2181cf0bC57FC0177517dB21d457BDd1b2b32e")),
+            tokens:       vec![Address::new(hex!("5eD9e47679422c2F78568af8728EC3C3C8591146"))],
+        });
+
+        classifier_utils
+            .contains_action(
+                bind_tx_hash,
+                0,
+                expected_action,
+                TreeSearchBuilder::default().with_action(Actions::is_new_pool),
             )
             .await
             .unwrap();
