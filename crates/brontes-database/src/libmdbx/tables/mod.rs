@@ -188,6 +188,66 @@ impl Tables {
             Tables::InitializedState => Ok(()),
         }
     }
+
+    pub(crate) async fn initialize_table_arbitrary_state<
+        T: TracingProvider,
+        CH: ClickhouseHandle,
+    >(
+        &self,
+        initializer: &LibmdbxInitializer<T, CH>,
+        block_range: &'static [u64],
+    ) -> eyre::Result<()> {
+        match self {
+            Tables::TokenDecimals => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for token decimals"
+                );
+            }
+            Tables::AddressToProtocolInfo => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for AddressToProtocolInfo"
+                );
+            }
+            Tables::PoolCreationBlocks => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for PoolCreationBlocks"
+                );
+            }
+            Tables::CexPrice => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
+                        block_range,
+                    )
+                    .await
+            }
+            Tables::BlockInfo => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
+                        block_range,
+                    )
+                    .await
+            }
+            Tables::DexPrice => Ok(()),
+            Tables::MevBlocks => Ok(()),
+            Tables::SubGraphs => Ok(()),
+            Tables::TxTraces => {
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for TxTraces");
+            }
+            Tables::Builder => {
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for Builder");
+            }
+            Tables::AddressMeta => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for AddressMeta"
+                );
+            }
+            Tables::SearcherEOAs => Ok(()),
+            Tables::SearcherContracts => Ok(()),
+            Tables::SearcherStatistics => Ok(()),
+            Tables::BuilderStatistics => Ok(()),
+            Tables::InitializedState => Ok(()),
+        }
+    }
 }
 
 tables!(

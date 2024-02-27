@@ -60,6 +60,15 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
+    /// initializes all the tables with missing data ranges via the CLI
+    fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        block_range: Vec<u64>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
+
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
     fn init_full_range_tables<CH: ClickhouseHandle>(
@@ -133,6 +142,24 @@ impl LibmdbxInit for LibmdbxReadWriter {
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer
             .initialize(tables, clear_tables, block_range)
+            .await?;
+
+        Ok(())
+    }
+
+    /// initializes all the tables with missing data ranges via the CLI
+    async fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        block_range: Vec<u64>,
+    ) -> eyre::Result<()> {
+        let block_range = Box::leak(Box::new(block_range));
+
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize_arbitrary_state(tables, block_range)
             .await?;
 
         Ok(())

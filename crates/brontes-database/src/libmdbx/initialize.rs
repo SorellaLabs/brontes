@@ -67,6 +67,25 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         Ok(())
     }
 
+    pub async fn initialize_arbitrary_state(
+        &self,
+        tables: &[Tables],
+        block_range: &'static [u64],
+    ) -> eyre::Result<()> {
+        join_all(
+            tables
+                .iter()
+                .map(|table| table.initialize_table_arbitrary_state(self, block_range)),
+        )
+        .await
+        .into_iter()
+        .collect::<eyre::Result<_>>()?;
+
+        self.load_classifier_config_data().await;
+        self.load_searcher_builder_config_data().await;
+        Ok(())
+    }
+
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
         clear_table: bool,
@@ -163,6 +182,56 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(start..=end, flag)?;
                 }
+
+                Ok::<(), eyre::Report>(())
+            }
+        }))
+        .unordered_buffer_map(4, tokio::spawn)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(())
+    }
+
+    pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
+        &self,
+        block_range: &'static [u64],
+    ) -> eyre::Result<()>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(10000000));
+
+        let num_chunks = Arc::new(Mutex::new(ranges.len()));
+
+        info!(target: "brontes::init::missing_state", "{} -- Starting Initialization Missing State With {} Chunks", T::NAME, ranges.len());
+
+        iter(ranges.into_iter().map(|inner_range| {
+            let num_chunks = num_chunks.clone();
+            let clickhouse = self.clickhouse;
+            let libmdbx = self.libmdbx;
+
+            async move {
+                let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
+
+                match data {
+                    Ok(d) => libmdbx.0.write_table(&d)?,
+                    Err(e) => {
+                        info!(target: "brontes::init::missing_state", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                    }
+                }
+
+                let num = {
+                    let mut n = num_chunks.lock().unwrap();
+                    *n -= 1;
+                    *n + 1
+                };
+
+                info!(target: "brontes::init::missing_state", "{} -- Finished Chunk {}", T::NAME, num);
 
                 Ok::<(), eyre::Report>(())
             }

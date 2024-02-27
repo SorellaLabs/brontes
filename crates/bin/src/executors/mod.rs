@@ -228,31 +228,34 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
 
         tracing::info!(start_block=%self.start_block, %end_block, "Verifying db fetching state that is missing");
-        let state_to_init = self.libmdbx.state_to_initialize(
-            self.start_block,
-            end_block,
-            !self.with_dex_pricing,
-        )?;
-
-        futures::stream::iter(state_to_init)
-            .unordered_buffer_map(500, |range| async move {
-                let start = range.start();
-                let end = range.end();
-                tracing::info!(start, end, "Downloading missing range");
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice],
-                        false,
-                        Some((*start, *end)),
-                    )
-                    .await
-            })
-            .collect::<Vec<_>>()
-            .await
+        let state_to_init = self
+            .libmdbx
+            .state_to_initialize(self.start_block, end_block, !self.with_dex_pricing)?
             .into_iter()
-            .collect::<eyre::Result<_>>()?;
+            .flatten()
+            .collect_vec();
+
+        tracing::info!("Downloading missing {} ranges", state_to_init.len());
+
+        self.libmdbx
+            .initialize_tables_arbitrary(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice],
+                state_to_init,
+            )
+            .await?;
+
+        // futures::stream::iter(state_to_init)
+        //     .unordered_buffer_map(500, |range| async move {
+        //         let start = range.start();
+        //         let end = range.end();
+
+        //     })
+        //     .collect::<Vec<_>>()
+        //     .await
+        //     .into_iter()
+        //     .collect::<eyre::Result<_>>()?;
 
         Ok(())
     }
