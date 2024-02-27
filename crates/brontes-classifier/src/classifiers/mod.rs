@@ -25,6 +25,9 @@ pub use compound::*;
 pub mod maker;
 pub use maker::*;
 
+pub mod oneinch;
+pub use oneinch::*;
+
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,
@@ -134,5 +137,6 @@ action_dispatch!(
     BalancerV1swapExactAmountOutCall,
     CompoundV2liquidateBorrowCall,
     CompoundV2initialize_0Call,
-    CompoundV2initialize_1Call
+    CompoundV2initialize_1Call,
+    OneInchswapCall
 );
