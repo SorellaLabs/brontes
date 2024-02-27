@@ -284,11 +284,13 @@ impl ClickhouseHandle for Clickhouse {
 
         query = query.replace(
             "WHERE block_number >= ? AND block_number < ?",
-            "WHERE block_number IN (SELECT arrayJoin(?) AS block_number)",
+            &format!("WHERE block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
         );
 
+        println!("QUERY: {:?}", query);
+
         self.client
-            .query_many::<D>(&query, &(range))
+            .query_many::<D>(&query, &())
             .await
             .map_err(Into::into)
     }

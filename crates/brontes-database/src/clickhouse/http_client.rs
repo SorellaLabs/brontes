@@ -169,6 +169,15 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .await
             .map_err(Into::into)
     }
+
+    async fn query_many_arbitrary<T, D>(&self, _range: &'static [u64]) -> eyre::Result<Vec<D>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        self.query_many().await
+    }
 }
 
 #[cfg(test)]
