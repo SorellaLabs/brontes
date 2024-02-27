@@ -456,7 +456,7 @@ compressed_table!(
         compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(10_000),
+            init_size: Some(100_000),
             init_method: Clickhouse,
             http_endpoint: Some("cex-price")
         },
@@ -476,7 +476,7 @@ compressed_table!(
             compressed_value: BlockMetadataInnerRedefined
         },
         Init {
-            init_size: Some(50_000),
+            init_size: Some(500_000),
             init_method: Clickhouse,
             http_endpoint: Some("block-info")
         },
@@ -570,7 +570,7 @@ compressed_table!(
             compressed_value: TxTracesInnerRedefined
         },
         Init {
-            init_size: Some(10_000),
+            init_size: Some(100_000),
             init_method: Clickhouse,
             http_endpoint: Some("tx-traces")
         },
