@@ -546,6 +546,7 @@ mod tests {
     /// runs all the tests
     async fn run_all(database: ClickhouseTestingClient<BrontesClickhouseTables>) {
         atomic_arb(&database).await;
+        panic!("STOP")
     }
 
     #[tokio::test]
