@@ -548,7 +548,7 @@ mod tests {
         dotenv::dotenv().ok();
         let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
 
-        let tables = &BrontesClickhouseTables::iter().collect::<Vec<_>>();
+        let tables = &BrontesClickhouseTables::all_tables();
 
         test_db
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
