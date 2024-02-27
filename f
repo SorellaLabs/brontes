@@ -1,13 +1,14 @@
 use std::{iter::Map, sync::Arc};
 
-use super::{DedupOperation, Dedups, FlattenSpecified, InTupleFnOutVec, SplitIterZip, TreeMap};
-use crate::{
-    normalized_actions::NormalizedAction, BlockTree, MergeIter, ScopeIter, ScopedIteratorBase,
+use super::{
+    DedupOperation, Dedups, FlattenSpecified, InTupleFnOutVec, MergeInto, MergeIntoUnpadded,
+    SplitIterZip, TreeMap,
 };
+use crate::{normalized_actions::NormalizedAction, ActionSplit, BlockTree, UnzipPadded};
 
 impl<T: Sized + TreeIter<V>, V: NormalizedAction> TreeBase<V> for T {}
 
-pub trait TreeIter<V: NormalizedAction> {
+pub trait TreeIter<V: NormalizedAction>: Iterator {
     fn tree(&self) -> Arc<BlockTree<V>>;
 }
 
@@ -36,9 +37,9 @@ impl<I: Iterator, V: NormalizedAction> Iterator for TreeIterator<V, I> {
     }
 }
 
-/// Base functionality for TreeIter, These are almost all setup or internal
-/// tools used to deal with complexity.
-pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
+/// Base Actions for TreeIter, These are almost all setup or internal tools used
+/// to deal with complexity.
+pub trait TreeBase<V: NormalizedAction>: TreeIter<V> {
     fn dedup<KS, RS, FromI, Out>(
         self,
         parent_actions: KS,
@@ -75,29 +76,12 @@ pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
     ) -> TreeIterator<V, FlattenSpecified<V, Self, W, T>>
     where
         Self: Sized,
-        Self: ScopeIter<V>,
         R: Clone,
         W: Fn(&V) -> Option<&R>,
         T: Fn(R) -> Vec<V>,
     {
         let tree = self.tree();
         TreeIterator::new(tree, FlattenSpecified::new(self, wanted, transform))
-    }
-
-    /// Merges the iterator into type O.
-    fn merge_iter<O>(self) -> TreeIterator<V, Self::Out>
-    where
-        Self: Sized + MergeIter<O>,
-    {
-        let tree = self.tree();
-        TreeIterator::new(tree, MergeIter::merge_iter(self))
-    }
-
-    fn into_scoped_tree_iter(self) -> ScopedIteratorBase<V, Self>
-    where
-        Self: Sized + Iterator<Item = V>,
-    {
-        ScopedIteratorBase::new(self.tree(), self)
     }
 
     /// changes what items of the underlying selected actions are put through
@@ -109,21 +93,20 @@ pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
 
     fn map<B, F>(self, f: F) -> TreeIterator<V, Map<Self, F>>
     where
-        Self: Sized + ScopeIter<V>,
-
+        Self: Sized,
         F: FnMut(Self::Item) -> B,
     {
         let tree = self.tree();
         TreeIterator::new(tree, self.map(f))
     }
 
-    // fn map_with_tree<B, F>(self, f: F) -> TreeMap<V, Self, F>
-    // where
-    //     Self: Sized + ScopeIter<V>,
-    //     F: FnMut(Self::Item) -> B,
-    // {
-    //     TreeMap::new(self.tree(), self, f)
-    // }
+    fn map_with_tree<B, F>(self, f: F) -> TreeMap<V, Self, F>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> B,
+    {
+        TreeMap::new(self.tree(), self, f)
+    }
 
     fn count_action(self) {}
     fn count_actions(self) {}

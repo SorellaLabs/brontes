@@ -19,6 +19,12 @@ pub use merge::*;
 pub mod map;
 pub use map::*;
 
+pub mod scope;
+pub use scope::*;
+
+pub mod collectors;
+pub use collectors::*;
+
 use crate::tree::NormalizedAction;
 
 pub trait InTupleFnOutVec<V: NormalizedAction> {

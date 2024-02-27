@@ -407,6 +407,13 @@ macro_rules! extra_impls {
                                 as Box<dyn Fn(Actions) -> Option<$ret>>
                     }
 
+                    pub fn [<$action_name:snake key>]() -> ActionsKey<$ret>{
+                        ActionsKey {
+                            matches_ptr: Actions::[<is _$action_name>],
+                            into_ptr: Actions::[<try _$action_name:snake>]
+                        }
+                    }
+
                 )*
             }
 
@@ -466,4 +473,28 @@ impl Actions {
     pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
         Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
     }
+}
+
+pub struct ActionsKey<O> {
+    matches_ptr: fn(&Actions) -> bool,
+    into_ptr:    fn(Actions) -> Option<O>,
+}
+
+impl<O> NormalizedActionKey<Actions> for ActionsKey<O> {
+    type Out = O;
+
+    fn matches(&self, other: &Actions) -> bool {
+        self.matches_ptr(other)
+    }
+
+    fn into(&self, item: Actions) -> O {
+        self.into_ptr(item)
+            .expect("into ptr should never be none, this means the data wasn't checked against")
+    }
+}
+
+pub trait NormalizedActionKey<V: NormalizedAction> {
+    type Out;
+    fn matches(&self, other: &V) -> bool;
+    fn into(&self, item: V) -> Self::Out;
 }

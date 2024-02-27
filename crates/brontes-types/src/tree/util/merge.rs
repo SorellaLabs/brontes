@@ -1,3 +1,73 @@
+use std::collections::VecDeque;
+
+pub trait MergeIter<O>: Iterator {
+    type Out: Iterator<Item = O>;
+    fn merge_iter(self) -> Self::Out;
+}
+
+macro_rules! merge_iter {
+    ($i:tt, $($v:ident),*) => {
+        paste::paste!(
+            #[allow(unused_parens)]
+            pub struct [<MergeTo $i>]<I: Iterator<Item = ($($v),*)>, $($v),*, O>
+                where
+                $(
+                    O: From<$v>,
+                )*
+            {
+                iter: I,
+                buf: VecDeque<O>
+            }
+
+            #[allow(unused_parens)]
+            impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> MergeIter<O> for I
+                where 
+                $(
+                    O: From<$v>,
+                )*
+            {
+                type Out = [<MergeTo $i>]<I, $($v),*, O>;
+
+                fn merge_iter(self) -> Self::Out {
+                    [<MergeTo $i>] {
+                        iter: self,
+                        buf: VecDeque::default()
+                    }
+                }
+            }
+
+
+
+            #[allow(unused_parens)]
+            impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> Iterator for [<MergeTo $i>]<I, $($v),*, O>
+                where
+                $(
+                    O: From<$v>,
+                )*
+            {
+                type Item = O;
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    self.iter.next().and_then(|($($v),*)| {
+                        $(
+                            self.buf.push_back($v.into());
+                        )*
+                        self.buf.pop_font()
+                    })
+
+                }
+            }
+        );
+    }
+}
+
+merge_iter!(1, A);
+merge_iter!(2, A, B);
+merge_iter!(3, A, B, C);
+merge_iter!(4, A, B, C,D);
+merge_iter!(5, A, B, C,D,E);
+merge_iter!(6, A, B, C,D,E, F);
+
 pub trait MergeInto<Out, Ty, I>
 where
     Self: Sized,
