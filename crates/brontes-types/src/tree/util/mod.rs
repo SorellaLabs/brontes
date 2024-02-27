@@ -4,6 +4,12 @@ pub use base::*;
 pub mod filter;
 pub use filter::*;
 
+pub mod scope_collect;
+pub use scope_collect::*;
+
+pub mod change_scope;
+pub use change_scope::*;
+
 pub mod dedup;
 pub use dedup::*;
 

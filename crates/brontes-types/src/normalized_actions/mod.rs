@@ -418,6 +418,13 @@ macro_rules! extra_impls {
             }
 
             $(
+                impl NormalizedActionKey<Actions> for $ret {
+                    type Out = $ret;
+                    fn get_key(&self) -> ActionsKey<Self::Out> {
+                        Actions::[<$action_name:snake key>]()
+                    }
+                }
+
                 impl From<$ret> for Actions {
                     fn from(value: $ret) -> Actions {
                         Actions::$action_name(value)
@@ -475,26 +482,32 @@ impl Actions {
     }
 }
 
-pub struct ActionsKey<O> {
+#[derive(PartialEq, Eq)]
+pub struct ActionsKey<O: PartialEq + Eq> {
     matches_ptr: fn(&Actions) -> bool,
     into_ptr:    fn(Actions) -> Option<O>,
 }
 
-impl<O> NormalizedActionKey<Actions> for ActionsKey<O> {
-    type Out = O;
+impl NormalizedActionKey<Actions> for Actions {
+    type Out = ();
 
-    fn matches(&self, other: &Actions) -> bool {
-        self.matches_ptr(other)
+    fn get_key(&self) -> ActionsKey<Self::Out> {
+        match self {
+            _ => todo!(),
+        }
     }
 
-    fn into(&self, item: Actions) -> O {
-        self.into_ptr(item)
-            .expect("into ptr should never be none, this means the data wasn't checked against")
-    }
+    // fn matches(&self, other: &Actions) -> bool {
+    //     self.matches_ptr(other)
+    // }
+    //
+    // fn into_val(&self, item: Actions) -> O {
+    //     self.into_ptr(item)
+    //         .expect("into ptr should never be none, this means the data wasn't
+    // checked against") }
 }
 
-pub trait NormalizedActionKey<V: NormalizedAction> {
-    type Out;
-    fn matches(&self, other: &V) -> bool;
-    fn into(&self, item: V) -> Self::Out;
+pub trait NormalizedActionKey<V: NormalizedAction>: PartialEq + Eq {
+    type Out: PartialEq + Eq;
+    fn get_key(&self) -> ActionsKey<Self::Out>;
 }

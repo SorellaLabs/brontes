@@ -1,11 +1,12 @@
-use std::sync::Arc;
+use std::{iter::Iterator, sync::Arc};
 
 use super::{
-    DedupOperation, Dedups, FlattenSpecified, InTupleFnOutVec, Map, SplitIterZip, TreeMap,
+    DedupOperation, Dedups, FlattenSpecified, InTupleFnOutVec, Map, SplitIterZip,
+    TreeIteratorScope, TreeMap,
 };
 use crate::{
-    normalized_actions::NormalizedAction, BlockTree, Filter, FilterTree, MergeIter, ScopeIter,
-    ScopedIteratorBase,
+    normalized_actions::{NormalizedAction, NormalizedMint, NormalizedSwap},
+    BlockTree, Filter, FilterTree, MergeIter, ScopeIter, ScopedIteratorBase,
 };
 
 impl<T: Sized + TreeIter<V> + Iterator, V: NormalizedAction> TreeBase<V> for T {}
@@ -99,15 +100,15 @@ pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
 
     fn into_scoped_tree_iter(self) -> ScopedIteratorBase<V, Self>
     where
-        Self: Sized + Iterator<Item = V>,
+        Self: Sized + Iterator,
     {
         ScopedIteratorBase::new(self.tree(), self)
     }
+}
 
-    /// changes what items of the underlying selected actions are put through
-    /// the iter
-    fn change_iter_scope(self) {}
+impl<V: NormalizedAction, T: TreeIter<V> + ScopeIter<V>> TreeScoped<V> for T {}
 
+pub trait TreeScoped<V: NormalizedAction>: TreeIter<V> + ScopeIter<V> {
     fn filter_with_tree<Out, Keys, F>(self, keys: Keys, f: F) -> Out
     where
         Self: Sized + FilterTree<V, Out, Keys, F>,
@@ -116,10 +117,11 @@ pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
         FilterTree::filter(self, keys, f)
     }
 
-    fn filter<Out, Keys, F>(self, keys: Keys, f: F) -> TreeIterator<V, Out>
+    fn filter<Out, Keys, F>(self, keys: Keys, f: F) -> TreeIteratorScope<V, Out>
     where
         Self: Sized + Filter<V, Out, Keys, F>,
         Out: ScopeIter<V>,
+        F: FnMut(Keys) -> bool,
     {
         let tree = self.tree();
         TreeIterator::new(tree, Filter::filter(self, keys, f))
@@ -133,7 +135,7 @@ pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
         TreeMap::tree_map(self, keys, f)
     }
 
-    fn map<Out, Keys, F>(self, keys: Keys, f: F) -> TreeIterator<V, Out>
+    fn map<Out, Keys, F>(self, keys: Keys, f: F) -> TreeIteratorScope<V, Out>
     where
         Self: Sized + Map<V, Out, Keys, F>,
         Out: ScopeIter<V>,
@@ -141,7 +143,12 @@ pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
         let tree = self.tree();
         TreeIterator::new(tree, Map::map(self, keys, f))
     }
+}
 
-    fn count_action(self) {}
-    fn count_actions(self) {}
+fn test() {
+    use crate::normalized_actions::Actions;
+    let iter: Vec<(NormalizedSwap, NormalizedMint)> = vec![];
+    let tree: Arc<BlockTree<Actions>> = Arc::new(BlockTree::new(Default::default(), 69));
+    let tree_iter = TreeIterator::new(tree, iter.into_iter());
+    let a = tree_iter.into_scoped_tree_iter();
 }

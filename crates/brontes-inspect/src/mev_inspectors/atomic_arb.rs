@@ -34,18 +34,16 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        let interesting_state = tree.collect_all(
+        tree.collect_all(
             TreeSearchBuilder::default().with_actions([Actions::is_flash_loan, Actions::is_swap]),
-        );
+        )
+        .into_par_iter()
+        .filter_map(|(tx, actions)| {
+            let info = tree.get_tx_info(tx, self.utils.db)?;
 
-        interesting_state
-            .into_par_iter()
-            .filter_map(|(tx, actions)| {
-                let info = tree.get_tx_info(tx, self.utils.db)?;
-
-                self.process_swaps(tree.clone(), info, meta_data.clone(), actions)
-            })
-            .collect::<Vec<_>>()
+            self.process_swaps(tree.clone(), info, meta_data.clone(), actions)
+        })
+        .collect::<Vec<_>>()
     }
 }
 
