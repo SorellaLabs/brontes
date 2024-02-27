@@ -287,8 +287,6 @@ impl ClickhouseHandle for Clickhouse {
             &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
         );
 
-        println!("QUERY: {:?}", query);
-
         self.client
             .query_many::<D>(&query, &())
             .await
