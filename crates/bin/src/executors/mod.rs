@@ -234,8 +234,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             !self.with_dex_pricing,
         )?;
 
-        //panic!("LENGTH TO INIT: {}", state_to_init.len());
-
         futures::stream::iter(state_to_init)
             .unordered_buffer_map(100, |range| async move {
                 let start = range.start();
