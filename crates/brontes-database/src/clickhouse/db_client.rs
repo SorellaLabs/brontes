@@ -316,10 +316,6 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::{
-        ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
-        ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
-    };
 
     async fn tx_traces(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let libmdbx = get_db_handle(tokio::runtime::Handle::current()).await;
