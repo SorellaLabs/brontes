@@ -525,23 +525,23 @@ mod tests {
             .unwrap();
     }
 
-    async fn run_all(database: ClickhouseTestingClient<BrontesClickhouseTables>) {
-        tx_traces(&database).await;
-        builder_info(&database).await;
-        pools(&database).await;
-        atomic_arb(&database).await;
-        sandwich(&database).await;
-        bundle_header(&database).await;
-        liquidations(&database).await;
-        jit_sandwich(&database).await;
-        jit(&database).await;
-        cex_dex(&database).await;
-        mev_block(&database).await;
-        dex_price_mapping(&database).await;
-        builder_stats(&database).await;
-        searcher_stats(&database).await;
-        token_info(&database).await;
-        searcher_info(&database).await;
+    async fn run_all(database: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+        tx_traces(database).await;
+        builder_info(database).await;
+        pools(database).await;
+        atomic_arb(database).await;
+        sandwich(database).await;
+        bundle_header(database).await;
+        liquidations(database).await;
+        jit_sandwich(database).await;
+        jit(database).await;
+        cex_dex(database).await;
+        mev_block(database).await;
+        dex_price_mapping(database).await;
+        builder_stats(database).await;
+        searcher_stats(database).await;
+        token_info(database).await;
+        searcher_info(database).await;
     }
 
     #[brontes_macros::test]
