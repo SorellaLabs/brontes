@@ -224,7 +224,7 @@ pub fn calculate_builder_profit(
         .values()
         .flatten()
         .map(|action| match action {
-            Actions::EthTransfer(transfer) => transfer.value.to(),
+            Actions::EthTransfer(transfer) => if transfer.to == metadata.proposer_fee_recipient  transfer.value.to(),
             _ => 0,
         })
         .sum::<i128>();
