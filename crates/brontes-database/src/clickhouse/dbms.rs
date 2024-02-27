@@ -16,7 +16,6 @@ use sorella_db_databases::{
     },
     clickhouse_dbms, database_table, remote_clickhouse_table, Database, DatabaseTable,
 };
-use strum_macros::EnumIter;
 
 use crate::clickhouse::ClickhouseClient;
 
