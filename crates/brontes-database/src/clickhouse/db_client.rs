@@ -545,6 +545,8 @@ mod tests {
     async fn atomic_arb() {
         let db = spawn_clickhouse();
 
+        db.run_test_with_test_db();
+
         let mut case0 = AtomicArb::default();
         let swap = NormalizedSwap::default();
         let gas_details = GasDetails::default();
