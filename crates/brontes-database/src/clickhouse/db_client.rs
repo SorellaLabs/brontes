@@ -401,7 +401,7 @@ mod tests {
 
     async fn mev_block(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0_possible = PossibleMev::default();
-        let mut case0 = MevBlock {
+        let case0 = MevBlock {
             possible_mev: PossibleMevCollection(vec![case0_possible]),
             ..Default::default()
         };
