@@ -3,13 +3,13 @@ use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::NormalizedSwap, structured_trace::CallInfo, utils::ToScaledRational,
 };
-use crate::OneInchAggregationRouterV5::{swapReturn, clipperSwapReturn, clipperSwapToReturn, clipperSwapToWithPermitReturn};
+use crate::OneInchAggregationRouterV5::{swapReturn, clipperSwapReturn, clipperSwapToReturn, clipperSwapToWithPermitReturn, unoswapReturn};
 
 action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::swapCall,
     Swap,
-    [Swap],
+    [],
     call_data: true,
     return_data: true,
     |
@@ -44,7 +44,7 @@ action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::clipperSwapCall,
     Swap,
-    [Swap],
+    [],
     call_data: true,
     return_data: true,
     |
@@ -52,7 +52,6 @@ action_impl!(
     call_data: clipperSwapCall,
     return_data: clipperSwapReturn,
     db_tx: &DB | {
-        let dst_receiver = call_data.clipperExchange;
         let token_in_amount = call_data.inputAmount;
         let token_out_amount = return_data.returnAmount;
         let token_in = db_tx.try_fetch_token_info(call_data.srcToken)?;
@@ -63,7 +62,7 @@ action_impl!(
             protocol: Protocol::OneInch,
             trace_index: info.trace_idx,
             from: info.from_address,
-            recipient: dst_receiver,
+            recipient: info.msg_sender,
             pool: info.target_address,
             token_in,
             token_out,
@@ -78,7 +77,7 @@ action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::clipperSwapToCall,
     Swap,
-    [Swap],
+    [],
     call_data: true,
     return_data: true,
     |
@@ -112,7 +111,7 @@ action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::clipperSwapToWithPermitCall,
     Swap,
-    [Swap],
+    [],
     call_data: true,
     return_data: true,
     |
