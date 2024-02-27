@@ -235,7 +235,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         )?;
 
         futures::stream::iter(state_to_init)
-            .unordered_buffer_map(100, |range| async move {
+            .unordered_buffer_map(500, |range| async move {
                 let start = range.start();
                 let end = range.end();
                 tracing::info!(start, end, "Downloading missing range");
