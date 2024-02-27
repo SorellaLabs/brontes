@@ -283,8 +283,8 @@ impl ClickhouseHandle for Clickhouse {
             .to_string();
 
         query = query.replace(
-            "WHERE block_number >= ? AND block_number < ?",
-            &format!("WHERE block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
+            "block_number >= ? AND block_number < ?",
+            &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
         );
 
         println!("QUERY: {:?}", query);
