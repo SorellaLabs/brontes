@@ -233,7 +233,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 }
 
                 if !state.is_init() {
-                    tracing::info!(?state, "state isn't init");
+                    tracing::trace!(?state, "state isn't init");
                     result.push(block..=block);
                 }
             } else {
