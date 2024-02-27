@@ -242,24 +242,30 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .filter(|range| range.clone().collect_vec().len() >= 10000)
             .collect_vec();
 
-        join_all(state_to_init_continuous)
-            .map(|range| async move {
-                let start = range.start();
-                let end = range.end();
+        tracing::info!("Downloading {} missing continuous ranges", state_to_init_continuous.len());
 
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice],
-                        false,
-                        Some((*start, *end)),
-                    )
-                    .await
-            })
-            .await
-            .into_iter()
-            .collect::<eyre::Result<_>>()?;
+        join_all(state_to_init_continuous.iter().map(|range| async move {
+            let start = range.start();
+            let end = range.end();
+
+            self.libmdbx
+                .initialize_tables(
+                    self.clickhouse,
+                    self.parser.get_tracer(),
+                    &[Tables::BlockInfo, Tables::CexPrice],
+                    false,
+                    Some((*start, *end)),
+                )
+                .await
+        }))
+        .await
+        .into_iter()
+        .collect::<eyre::Result<_>>()?;
+
+        tracing::info!(
+            "Downloading {} missing discontinuous ranges",
+            state_to_init.len() - state_to_init_continuous.len()
+        );
 
         let state_to_init_disc = state_to_init
             .into_iter()
