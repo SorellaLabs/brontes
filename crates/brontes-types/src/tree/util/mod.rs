@@ -1,6 +1,9 @@
 pub mod base;
 pub use base::*;
 
+pub mod filter;
+pub use filter::*;
+
 pub mod dedup;
 pub use dedup::*;
 

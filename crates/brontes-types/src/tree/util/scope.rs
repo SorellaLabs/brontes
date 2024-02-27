@@ -7,11 +7,15 @@ use crate::{normalized_actions::NormalizedActionKey, tree::NormalizedAction, Blo
 /// tracks the scoped items such that if in the future,
 /// the scope changes, we can also pull from historical
 pub trait ScopeIter<V: NormalizedAction> {
-    /// fetches the next key value
-    fn next_scoped_key<K: NormalizedActionKey<V>>(&mut self, key: K) -> Option<K::Out>;
+    type Items;
+    type Acc;
 
-    /// returns the rest of the  keys that haven't been called yet.
-    fn drain(self) -> Vec<V>;
+    /// pulls the next item, this is used for default iter operations
+    fn next(&mut self) -> Option<Self::Items>;
+    /// fetches the next key value, allows us to scope based off of the key
+    fn next_scoped_key<K: NormalizedActionKey<V>>(&mut self, key: &K) -> Option<K::Out>;
+    /// all of the values that haven't been processed
+    fn drain(self) -> Vec<Self::Acc>;
 }
 
 /// The base of the scoped iterator must be unified to work
@@ -34,7 +38,18 @@ impl<V: NormalizedAction, I: Iterator<Item = V>> TreeIter<V> for ScopedIteratorB
 }
 
 impl<V: NormalizedAction, I: Iterator<Item = V>> ScopeIter<V> for ScopedIteratorBase<V, I> {
-    fn next_scoped_key<K: NormalizedActionKey<V>>(&mut self, key: K) -> Option<K::Out> {
+    type Acc = V;
+    type Items = V;
+
+    fn next(&mut self) -> Option<Self::Items> {
+        if let Some(a) = self.buf.pop_front() {
+            Some(a)
+        } else {
+            self.base_iterator.next()
+        }
+    }
+
+    fn next_scoped_key<K: NormalizedActionKey<V>>(&mut self, key: &K) -> Option<K::Out> {
         // check the buffer for the next key
         let mut buf_i = None;
         for (index, val) in self.buf.iter().enumerate() {
@@ -61,8 +76,7 @@ impl<V: NormalizedAction, I: Iterator<Item = V>> ScopeIter<V> for ScopedIterator
         None
     }
 
-    fn drain(self) -> Vec<V> {
+    fn drain(self) -> Vec<Self::Acc> {
         self.buffer.into_iter().extend(self.base_iterator)
     }
 }
-

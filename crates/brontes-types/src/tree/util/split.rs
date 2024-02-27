@@ -7,7 +7,6 @@ pub trait ActionSplit<FromI, Fns, V: NormalizedAction, In> {
     fn action_split_out_ref_impl(self, filters: &Fns) -> (FromI, Vec<V>);
 }
 
-
 //TODO: see if there's a good way to handle action reference variants for
 // cloning
 macro_rules! action_split {
