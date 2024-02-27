@@ -151,83 +151,83 @@ macro_rules! action_split {
             ActionSplit<($($from,)*), ($($fns,)*), V> for IT
             {
 
-            fn action_split_impl(mut self, mut filters: ($($fns,)*)) -> ($($from,)*) {
+            fn action_split_impl(self, filters: ($($fns,)*)) -> ($($from,)*) {
+                let mut res = ($($from::default(),)*);
+
+                let ($($from,)*) = &mut res;
+                let ($($fns,)*) = filters;
+
+                self.fold((), |(), item| {
+                    $(
+                        if let Some(item) = ($fns)(item.clone()) {
+                            $from.extend(std::iter::once(item));
+                            return
+                        }
+
+                    )*
+                });
+
+                res
+            }
+
+            fn action_split_ref_impl(self, mut filters: &($($fns,)*)) -> ($($from,)*) {
                 let mut res = ($($from::default(),)*);
 
                 let ($($from,)*) = &mut res;
                 let ($($fns,)*) = &mut filters;
 
-                while let Some(next) = self.next() {
+                self.fold((), |(), item| {
                     $(
-                        if let Some(item) = ($fns)(next.clone()) {
+                        if let Some(item) = ($fns)(item.clone()) {
                             $from.extend(std::iter::once(item));
-                            continue
+                            return
                         }
 
                     )*
-                }
+                });
 
                 res
             }
 
-            fn action_split_ref_impl(mut self, mut filters: &($($fns,)*)) -> ($($from,)*) {
-                let mut res = ($($from::default(),)*);
-
-                let ($($from,)*) = &mut res;
-                let ($($fns,)*) = &mut filters;
-
-                while let Some(next) = self.next() {
-                    $(
-                        if let Some(item) = ($fns)(next.clone()) {
-                            $from.extend(std::iter::once(item));
-                            continue
-                        }
-
-                    )*
-                }
-
-                res
-            }
-
-            fn action_split_out_impl(mut self, mut filters: ($($fns,)*)) -> (($($from,)*), Vec<V>) {
+            fn action_split_out_impl(self, mut filters: ($($fns,)*)) -> (($($from,)*), Vec<V>) {
                 let mut res = ($($from::default(),)*);
                 let mut rest = Vec::default();
 
                 let ($($from,)*) = &mut res;
                 let ($($fns,)*) = &mut filters;
 
-                while let Some(next) = self.next() {
-                    $(
-                        if let Some(item) = ($fns)(next.clone()) {
-                            $from.extend(std::iter::once(item));
-                            continue
-                        }
 
+                self.fold((), |(), item| {
+                    $(
+                        if let Some(item) = ($fns)(item.clone()) {
+                            $from.extend(std::iter::once(item));
+                            return
+                        }
                     )*
-                        rest.push(next);
-                }
+                    rest.push(item);
+                });
 
                 (res, rest)
             }
 
-            fn action_split_out_ref_impl(mut self, mut filters: &($($fns,)*))
+            fn action_split_out_ref_impl(self, mut filters: &($($fns,)*))
                 -> (($($from,)*), Vec<V>) {
                 let mut res = ($($from::default(),)*);
+
                 let mut rest = Vec::default();
 
                 let ($($from,)*) = &mut res;
                 let ($($fns,)*) = &mut filters;
 
-                while let Some(next) = self.next() {
+                self.fold((), |(), item| {
                     $(
-                        if let Some(item) = ($fns)(next.clone()) {
+                        if let Some(item) = ($fns)(item.clone()) {
                             $from.extend(std::iter::once(item));
-                            continue
+                            return
                         }
-
                     )*
-                        rest.push(next);
-                }
+                    rest.push(item);
+                });
 
                 (res, rest)
             }

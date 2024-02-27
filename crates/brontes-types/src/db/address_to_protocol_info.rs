@@ -43,6 +43,24 @@ pub struct ProtocolInfo {
     pub init_block:     u64,
 }
 
+impl ProtocolInfo {
+    pub fn get_tokens(&self) -> Vec<Address> {
+        let mut tokens = vec![self.token0, self.token1]
+            .into_iter()
+            .filter(|token| *token != Address::default())
+            .collect::<Vec<_>>();
+
+        tokens.extend(
+            [self.token2, self.token3, self.token4, self.curve_lp_token]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+        );
+
+        tokens
+    }
+}
+
 impl IntoIterator for ProtocolInfo {
     type IntoIter = std::vec::IntoIter<Self::Item>;
     type Item = Address;
