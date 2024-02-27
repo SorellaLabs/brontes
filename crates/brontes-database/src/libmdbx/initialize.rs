@@ -204,7 +204,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(10000000));
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 1000);
 
         let num_chunks = Arc::new(Mutex::new(ranges.len()));
 
