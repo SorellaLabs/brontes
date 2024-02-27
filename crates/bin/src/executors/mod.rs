@@ -242,8 +242,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .filter(|range| range.clone().collect_vec().len() >= 10000)
             .collect_vec();
 
-        futures::stream::iter(state_to_init_continuous)
-            .unordered_buffer_map(500, |range| async move {
+        join_all(state_to_init_continuous)
+            .map(|range| async move {
                 let start = range.start();
                 let end = range.end();
 
@@ -257,7 +257,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     )
                     .await
             })
-            .collect::<Vec<_>>()
             .await
             .into_iter()
             .collect::<eyre::Result<_>>()?;
