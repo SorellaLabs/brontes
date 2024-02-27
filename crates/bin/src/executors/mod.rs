@@ -239,7 +239,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let state_to_init_continuous = state_to_init
             .clone()
             .into_iter()
-            .filter(|range| range.clone().collect_vec().len() >= 10000)
+            .filter(|range| range.clone().collect_vec().len() >= 1000)
             .collect_vec();
 
         tracing::info!("Downloading {} missing continuous ranges", state_to_init_continuous.len());
@@ -269,7 +269,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         let state_to_init_disc = state_to_init
             .into_iter()
-            .filter(|range| range.clone().collect_vec().len() < 10000)
+            .filter(|range| range.clone().collect_vec().len() < 1000)
             .flatten()
             .collect_vec();
 
