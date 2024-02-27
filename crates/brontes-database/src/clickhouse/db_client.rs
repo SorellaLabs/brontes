@@ -309,7 +309,6 @@ mod tests {
     use sorella_db_databases::{
         clickhouse::test_utils::test_db::ClickhouseTestingClient, test_utils::TestDatabase,
     };
-    use strum::IntoEnumIterator;
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
