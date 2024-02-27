@@ -14,7 +14,7 @@ use sorella_db_databases::{
         errors::ClickhouseError,
         tables::{ClickhouseTable, ClickhouseTableType},
     },
-    clickhouse_dbms, database_table, remote_clickhouse_table, DatabaseTable,
+    clickhouse_dbms, database_table, remote_clickhouse_table, Database, DatabaseTable,
 };
 use strum_macros::EnumIter;
 
@@ -42,94 +42,80 @@ clickhouse_dbms!(
     ]
 );
 
-remote_clickhouse_table!(BrontesClickhouseTables, "brontes", ClickhouseTxTraces, TxTrace, NO_FILE);
+remote_clickhouse_table!(BrontesClickhouseTables, "brontes", ClickhouseTxTraces, TxTrace);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
     ClickhouseDexPriceMapping,
-    DexQuotesWithBlockNumber,
-    NO_FILE
+    DexQuotesWithBlockNumber
 );
 
-remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseMevBlocks, MevBlock, NO_FILE);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseMevBlocks, MevBlock);
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "mev",
-    ClickhouseBundleHeader,
-    BundleHeader,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseBundleHeader, BundleHeader);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
     ClickhouseSearcherInfo,
-    JoinedSearcherInfo,
-    NO_FILE
+    JoinedSearcherInfo
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
     ClickhouseSearcherStats,
-    SearcherStatsWithAddress,
-    NO_FILE
+    SearcherStatsWithAddress
 );
 
-remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseCexDex, CexDex, NO_FILE);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseCexDex, CexDex);
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "mev",
-    ClickhouseLiquidations,
-    Liquidation,
-    NO_FILE
-);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseLiquidations, Liquidation);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "mev",
     ClickhouseJitSandwich,
-    JitLiquiditySandwich,
-    NO_FILE
+    JitLiquiditySandwich
 );
 
-remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseJit, JitLiquidity, NO_FILE);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseJit, JitLiquidity);
 
-remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseSandwiches, Sandwich, NO_FILE);
+remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseSandwiches, Sandwich);
 
-remote_clickhouse_table!(BrontesClickhouseTables, "mev", ClickhouseAtomicArbs, AtomicArb, NO_FILE);
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "mev",
+    ClickhouseAtomicArbs,
+    AtomicArb,
+    "crates/brontes-database/src/clickhouse/tables/"
+);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
     ClickhouseTokenInfo,
-    TokenInfoWithAddress,
-    NO_FILE
+    TokenInfoWithAddress
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
     ClickhouseBuilderStats,
-    BuilderStatsWithAddress,
-    NO_FILE
+    BuilderStatsWithAddress
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "ethereum",
     ClickhousePools,
-    ProtocolInfoClickhouse,
-    NO_FILE
+    ProtocolInfoClickhouse
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
     ClickhouseBuilderInfo,
-    BuilderInfoWithAddress,
-    NO_FILE
+    BuilderInfoWithAddress
 );

@@ -309,6 +309,7 @@ mod tests {
         pair::Pair,
         GasDetails,
     };
+    use sorella_db_databases::clickhouse::test_utils::test_db::ClickhouseTestingClient;
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
@@ -317,10 +318,10 @@ mod tests {
         ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
     };
 
-    fn spawn_clickhouse() -> Clickhouse {
+    fn spawn_clickhouse() -> ClickhouseTestingClient<BrontesClickhouseTables> {
         dotenv::dotenv().ok();
 
-        Clickhouse::default()
+        ClickhouseTestingClient::default()
     }
 
     #[brontes_macros::test]
@@ -334,7 +335,7 @@ mod tests {
         let binding = tracer.execute_block(17000010).await.unwrap();
         let exec = binding.0.first().unwrap().clone();
 
-        let res = db.inner().insert_one::<ClickhouseTxTraces>(&exec).await;
+        let res = db.insert_one::<ClickhouseTxTraces>(&exec).await;
         assert!(res.is_ok());
     }
 
@@ -349,13 +350,12 @@ mod tests {
             eoa_or_contract: SearcherEoaContract::Contract,
         };
 
-        db.inner()
-            .insert_one::<ClickhouseSearcherInfo>(&case0)
+        db.insert_one::<ClickhouseSearcherInfo>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.searcher_info";
-        let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
+        let queried: JoinedSearcherInfo = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
@@ -365,21 +365,18 @@ mod tests {
         let db = spawn_clickhouse();
         let case0 = TokenInfoWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseTokenInfo>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseTokenInfo>(&case0).await.unwrap();
 
         //let query = "SELECT address, (decimals, symbol) FROM
         // brontes.token_info WHERE address =
         // '0x0000000000000000000000000000000000000000'"; let queried:
-        // TokenInfoWithAddress = db.inner().query_one(query,
+        // TokenInfoWithAddress = db.query_one(query,
         // &()).await.unwrap();
 
         //assert_eq!(queried, case0);
 
         //let query = "DELETE FROM brontes.token_info WHERE address =
-        // '0x0000000000000000000000000000000000000000'"; db.inner().
+        // '0x0000000000000000000000000000000000000000'"; db.
         // execute_remote(query, &()).await.unwrap();
     }
 
@@ -388,13 +385,12 @@ mod tests {
         let db = spawn_clickhouse();
         let case0 = SearcherStatsWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseSearcherStats>(&case0)
+        db.insert_one::<ClickhouseSearcherStats>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.searcher_stats";
-        let queried: SearcherStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+        let queried: SearcherStatsWithAddress = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
@@ -404,13 +400,12 @@ mod tests {
         let db = spawn_clickhouse();
         let case0 = BuilderStatsWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseBuilderStats>(&case0)
+        db.insert_one::<ClickhouseBuilderStats>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.builder_stats";
-        let queried: BuilderStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+        let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
@@ -430,13 +425,12 @@ mod tests {
             quote:        Some(case0_map),
         };
 
-        db.inner()
-            .insert_one::<ClickhouseDexPriceMapping>(&case0)
+        db.insert_one::<ClickhouseDexPriceMapping>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.dex_price_mapping";
-        let queried: DexQuotesWithBlockNumber = db.inner().query_one(query, &()).await.unwrap();
+        let queried: DexQuotesWithBlockNumber = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
@@ -450,10 +444,7 @@ mod tests {
 
         case0.possible_mev = PossibleMevCollection(vec![case0_possible]);
 
-        db.inner()
-            .insert_one::<ClickhouseMevBlocks>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseMevBlocks>(&case0).await.unwrap();
     }
 
     #[tokio::test]
@@ -462,10 +453,7 @@ mod tests {
 
         let case0 = CexDex::default();
 
-        db.inner()
-            .insert_one::<ClickhouseCexDex>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
     }
 
     #[tokio::test]
@@ -483,10 +471,7 @@ mod tests {
         case0.victim_swaps = vec![vec![swap]];
         case0.victim_swaps_gas_details = vec![gas_details];
 
-        db.inner()
-            .insert_one::<ClickhouseJit>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseJit>(&case0).await.unwrap();
     }
 
     #[tokio::test]
@@ -504,8 +489,7 @@ mod tests {
         case0.victim_swaps = vec![vec![swap]];
         case0.victim_swaps_gas_details = vec![gas_details];
 
-        db.inner()
-            .insert_one::<ClickhouseJitSandwich>(&case0)
+        db.insert_one::<ClickhouseJitSandwich>(&case0)
             .await
             .unwrap();
     }
@@ -523,8 +507,7 @@ mod tests {
         case0.liquidations = vec![liquidation];
         case0.gas_details = gas_details;
 
-        db.inner()
-            .insert_one::<ClickhouseLiquidations>(&case0)
+        db.insert_one::<ClickhouseLiquidations>(&case0)
             .await
             .unwrap();
     }
@@ -535,8 +518,7 @@ mod tests {
 
         let case0 = BundleHeader::default();
 
-        db.inner()
-            .insert_one::<ClickhouseBundleHeader>(&case0)
+        db.insert_one::<ClickhouseBundleHeader>(&case0)
             .await
             .unwrap();
     }
@@ -556,10 +538,7 @@ mod tests {
         case0.victim_swaps_gas_details = vec![gas_details];
         case0.backrun_swaps = vec![swap2];
 
-        db.inner()
-            .insert_one::<ClickhouseSandwiches>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseSandwiches>(&case0).await.unwrap();
     }
 
     #[tokio::test]
@@ -573,10 +552,7 @@ mod tests {
         case0.swaps = vec![swap];
         case0.gas_details = gas_details;
 
-        db.inner()
-            .insert_one::<ClickhouseAtomicArbs>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseAtomicArbs>(&case0).await.unwrap();
     }
 
     #[tokio::test]
@@ -600,10 +576,7 @@ mod tests {
             init_block:       0,
         };
 
-        db.inner()
-            .insert_one::<ClickhousePools>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhousePools>(&case0).await.unwrap();
     }
 
     #[tokio::test]
@@ -612,8 +585,7 @@ mod tests {
 
         let case0 = BuilderInfoWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseBuilderInfo>(&case0)
+        db.insert_one::<ClickhouseBuilderInfo>(&case0)
             .await
             .unwrap();
     }
