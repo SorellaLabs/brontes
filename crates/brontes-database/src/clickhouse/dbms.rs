@@ -22,22 +22,22 @@ use crate::clickhouse::ClickhouseClient;
 clickhouse_dbms!(
     BrontesClickhouseTables,
     [
-        ClickhouseBundleHeader,    // YES
-        ClickhouseMevBlocks,       // YES
-        ClickhouseCexDex,          // YES
-        ClickhouseJit,             // YES
-        ClickhouseJitSandwich,     // YES
-        ClickhouseSandwiches,      // YES
-        ClickhouseAtomicArbs,      // YES
-        ClickhouseLiquidations,    // YES
-        ClickhouseSearcherInfo,    // YES
-        ClickhouseDexPriceMapping, // YES
-        ClickhouseTxTraces,        // YES
-        ClickhouseTokenInfo,       // YES
-        ClickhouseSearcherStats,   // YES
-        ClickhouseBuilderStats,    // YES
-        ClickhousePools,           // YES
-        ClickhouseBuilderInfo      // YES
+        ClickhouseBundleHeader,
+        ClickhouseMevBlocks,
+        ClickhouseCexDex,
+        ClickhouseJit,
+        ClickhouseJitSandwich,
+        ClickhouseSandwiches,
+        ClickhouseAtomicArbs,
+        ClickhouseLiquidations,
+        ClickhouseSearcherInfo,
+        ClickhouseDexPriceMapping,
+        ClickhouseTxTraces,
+        ClickhouseTokenInfo,
+        ClickhouseSearcherStats,
+        ClickhouseBuilderStats,
+        ClickhousePools,
+        ClickhouseBuilderInfo
     ]
 );
 
