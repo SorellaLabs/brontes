@@ -108,7 +108,7 @@ mod tests {
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
         Protocol::BalancerV1,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;
