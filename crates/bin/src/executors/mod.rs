@@ -228,34 +228,54 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
 
         tracing::info!(start_block=%self.start_block, %end_block, "Verifying db fetching state that is missing");
-        let state_to_init = self
-            .libmdbx
-            .state_to_initialize(self.start_block, end_block, !self.with_dex_pricing)?
-            .into_iter()
-            .flatten()
-            .collect_vec();
+        let state_to_init = self.libmdbx.state_to_initialize(
+            self.start_block,
+            end_block,
+            !self.with_dex_pricing,
+        )?;
 
         tracing::info!("Downloading missing {} ranges", state_to_init.len());
+
+        let state_to_init_continuous = state_to_init
+            .clone()
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() >= 10000)
+            .collect_vec();
+
+        futures::stream::iter(state_to_init_continuous)
+            .unordered_buffer_map(500, |range| async move {
+                let start = range.start();
+                let end = range.end();
+
+                self.libmdbx
+                    .initialize_tables(
+                        self.clickhouse,
+                        self.parser.get_tracer(),
+                        &[Tables::BlockInfo, Tables::CexPrice],
+                        false,
+                        Some((*start, *end)),
+                    )
+                    .await
+            })
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect::<eyre::Result<_>>()?;
+
+        let state_to_init_disc = state_to_init
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() < 10000)
+            .flatten()
+            .collect_vec();
 
         self.libmdbx
             .initialize_tables_arbitrary(
                 self.clickhouse,
                 self.parser.get_tracer(),
                 &[Tables::BlockInfo, Tables::CexPrice],
-                state_to_init,
+                state_to_init_disc,
             )
             .await?;
-
-        // futures::stream::iter(state_to_init)
-        //     .unordered_buffer_map(500, |range| async move {
-        //         let start = range.start();
-        //         let end = range.end();
-
-        //     })
-        //     .collect::<Vec<_>>()
-        //     .await
-        //     .into_iter()
-        //     .collect::<eyre::Result<_>>()?;
 
         Ok(())
     }
