@@ -309,7 +309,9 @@ mod tests {
         pair::Pair,
         GasDetails,
     };
-    use sorella_db_databases::clickhouse::test_utils::test_db::ClickhouseTestingClient;
+    use sorella_db_databases::{
+        clickhouse::test_utils::test_db::ClickhouseTestingClient, test_utils::TestDatabase,
+    };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
@@ -541,11 +543,24 @@ mod tests {
         db.insert_one::<ClickhouseSandwiches>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn atomic_arb() {
-        let db = spawn_clickhouse();
+    /// runs all the tests
+    async fn run_all(database: ClickhouseTestingClient<BrontesClickhouseTables>) {
+        atomic_arb(&database).await;
+    }
 
-        db.run_test_with_test_db();
+    #[tokio::test]
+    /// runs all the tests
+    async fn test_all_inserts() {
+        let tables = &[BrontesClickhouseTables::ClickhouseAtomicArbs];
+
+        let test_db: ClickhouseTestingClient<BrontesClickhouseTables> = spawn_clickhouse();
+        test_db
+            .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
+            .await;
+    }
+
+    async fn atomic_arb(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+        //let tables = [BrontesClickhouseTables::ClickhouseAtomicArbs];
 
         let mut case0 = AtomicArb::default();
         let swap = NormalizedSwap::default();
