@@ -1,55 +1,13 @@
-use crate::normalized_actions::NormalizedAction;
+use crate::{
+    normalized_actions::NormalizedAction,
+    tree::{ActionSplit, FlattenSpecified},
+};
 
 impl<T: Sized, V: NormalizedAction> ActionIter<V> for T where T: Iterator<Item = V> {}
-
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct FlattenSpecified<V: NormalizedAction, I: Iterator<Item = V>, W, T> {
-    iter:      I,
-    wanted:    W,
-    transform: T,
-    extra:     Vec<V>,
-}
-
-impl<V: NormalizedAction, I: Iterator<Item = V>, W, T> FlattenSpecified<V, I, W, T> {
-    pub(crate) fn new(iter: I, wanted: W, transform: T) -> Self {
-        Self { iter, wanted, transform, extra: vec![] }
-    }
-}
-
-impl<
-        V: NormalizedAction,
-        R: Clone,
-        I: Iterator<Item = V>,
-        W: Fn(&V) -> Option<&R>,
-        T: Fn(R) -> Vec<V>,
-    > Iterator for FlattenSpecified<V, I, W, T>
-{
-    type Item = V;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(extra) = self.extra.pop() {
-            return Some(extra)
-        }
-
-        self.iter.next().and_then(|item| {
-            if let Some(wanted) = (self.wanted)(&item) {
-                let mut ret = (self.transform)(wanted.clone());
-                let val = if ret.len() > 1 { Some(ret.remove(0)) } else { None };
-                self.extra.extend(ret);
-                val
-            } else {
-                Some(item)
-            }
-        })
-    }
-}
-
 pub trait ActionIter<V: NormalizedAction>: Iterator<Item = V> {
     fn flatten_specified<R, W, T>(self, wanted: W, transform: T) -> FlattenSpecified<V, Self, W, T>
     where
         Self: Sized,
-        R: Clone,
-        W: Fn(&V) -> Option<&R>,
         T: Fn(R) -> Vec<V>,
     {
         FlattenSpecified::new(self, wanted, transform)
@@ -81,28 +39,28 @@ pub trait ActionIter<V: NormalizedAction>: Iterator<Item = V> {
 
     fn action_split<FromI, Fns>(self, filters: Fns) -> FromI
     where
-        Self: Sized + ActionSplit<FromI, Fns, V>,
+        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
     {
         ActionSplit::action_split_impl(self, filters)
     }
 
     fn action_split_ref<FromI, Fns>(self, filters: &Fns) -> FromI
     where
-        Self: Sized + ActionSplit<FromI, Fns, V>,
+        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
     {
         ActionSplit::action_split_ref_impl(self, filters)
     }
 
     fn action_split_out<FromI, Fns>(self, filters: Fns) -> (FromI, Vec<V>)
     where
-        Self: Sized + ActionSplit<FromI, Fns, V>,
+        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
     {
         ActionSplit::action_split_out_impl(self, filters)
     }
 
     fn action_split_out_ref<FromI, Fns>(self, filters: &Fns) -> (FromI, Vec<V>)
     where
-        Self: Sized + ActionSplit<FromI, Fns, V>,
+        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
     {
         ActionSplit::action_split_out_ref_impl(self, filters)
     }
@@ -133,128 +91,3 @@ pub trait ActionIter<V: NormalizedAction>: Iterator<Item = V> {
         })
     }
 }
-
-pub trait ActionSplit<FromI, Fns, V: NormalizedAction>: Iterator<Item = V> {
-    fn action_split_impl(self, filters: Fns) -> FromI;
-    fn action_split_ref_impl(self, filters: &Fns) -> FromI;
-    fn action_split_out_impl(self, filters: Fns) -> (FromI, Vec<V>);
-    fn action_split_out_ref_impl(self, filters: &Fns) -> (FromI, Vec<V>);
-}
-
-//TODO: see if there's a good way to handle action reference variants for
-// cloning
-macro_rules! action_split {
-    ($(($fns:ident, $ret:ident, $from:ident)),*) => {
-        #[allow(non_snake_case, unused_variables, trivial_bounds)]
-        impl <V:NormalizedAction, IT: Iterator<Item = V>,$($ret,)* $($fns: Fn(V) -> Option<$ret>,)*
-             $($from: Default + Extend<$ret>),* >
-            ActionSplit<($($from,)*), ($($fns,)*), V> for IT
-            {
-
-            fn action_split_impl(self, filters: ($($fns,)*)) -> ($($from,)*) {
-                let mut res = ($($from::default(),)*);
-
-                let ($($from,)*) = &mut res;
-                let ($($fns,)*) = filters;
-
-                self.fold((), |(), item| {
-                    $(
-                        if let Some(item) = ($fns)(item.clone()) {
-                            $from.extend(std::iter::once(item));
-                            return
-                        }
-
-                    )*
-                });
-
-                res
-            }
-
-            fn action_split_ref_impl(self, mut filters: &($($fns,)*)) -> ($($from,)*) {
-                let mut res = ($($from::default(),)*);
-
-                let ($($from,)*) = &mut res;
-                let ($($fns,)*) = &mut filters;
-
-                self.fold((), |(), item| {
-                    $(
-                        if let Some(item) = ($fns)(item.clone()) {
-                            $from.extend(std::iter::once(item));
-                            return
-                        }
-
-                    )*
-                });
-
-                res
-            }
-
-            fn action_split_out_impl(self, mut filters: ($($fns,)*)) -> (($($from,)*), Vec<V>) {
-                let mut res = ($($from::default(),)*);
-                let mut rest = Vec::default();
-
-                let ($($from,)*) = &mut res;
-                let ($($fns,)*) = &mut filters;
-
-
-                self.fold((), |(), item| {
-                    $(
-                        if let Some(item) = ($fns)(item.clone()) {
-                            $from.extend(std::iter::once(item));
-                            return
-                        }
-                    )*
-                    rest.push(item);
-                });
-
-                (res, rest)
-            }
-
-            fn action_split_out_ref_impl(self, mut filters: &($($fns,)*))
-                -> (($($from,)*), Vec<V>) {
-                let mut res = ($($from::default(),)*);
-
-                let mut rest = Vec::default();
-
-                let ($($from,)*) = &mut res;
-                let ($($fns,)*) = &mut filters;
-
-                self.fold((), |(), item| {
-                    $(
-                        if let Some(item) = ($fns)(item.clone()) {
-                            $from.extend(std::iter::once(item));
-                            return
-                        }
-                    )*
-                    rest.push(item);
-                });
-
-                (res, rest)
-            }
-        }
-    };
-}
-
-action_split!();
-action_split!((A, RETA, FA));
-action_split!((A, RETA, FA), (B, RETB, FB));
-action_split!((A, RETA, FA), (B, RETB, FB), (C, RETC, FC));
-action_split!((A, RETA, FA), (B, RETB, FB), (C, RETC, FC), (D, RETD, FD));
-action_split!((A, RETA, FA), (B, RETB, FB), (C, RETC, FC), (D, RETD, FD), (E, RETE, FE));
-action_split!(
-    (A, RETA, FA),
-    (B, RETB, FB),
-    (C, RETC, FC),
-    (D, RETD, FD),
-    (E, RETE, FE),
-    (F, RETF, FF)
-);
-action_split!(
-    (A, RETA, FA),
-    (B, RETB, FB),
-    (C, RETC, FC),
-    (D, RETD, FD),
-    (E, RETE, FE),
-    (F, RETF, FF),
-    (G, RETG, FG)
-);

@@ -1,9 +1,42 @@
-pub mod collect;
-pub mod filter;
+pub mod base;
+pub use base::*;
 
-pub use collect::*;
-pub use filter::*;
+pub mod dedup;
+pub use dedup::*;
 
-use crate::normalized_actions::NormalizedAction;
+pub mod split;
+pub use split::*;
 
-pub trait TreeOperation<V: NormalizedAction> {}
+pub mod flatten;
+pub use flatten::*;
+
+pub mod zip;
+pub use zip::*;
+
+pub mod merge;
+pub use merge::*;
+
+pub mod map;
+pub use map::*;
+
+use crate::tree::NormalizedAction;
+
+pub trait InTupleFnOutVec<V: NormalizedAction> {
+    type Out;
+}
+macro_rules! in_tuple_out_vec {
+    ($($out:ident),*) => {
+        impl<V: NormalizedAction, $($out,)*> InTupleFnOutVec<V>
+            for ($( Box<dyn Fn(V) -> Option<$out>>,)*) {
+            type Out = ($( Vec<$out>,)*);
+        }
+    };
+}
+
+in_tuple_out_vec!(T0);
+in_tuple_out_vec!(T0, T1);
+in_tuple_out_vec!(T0, T1, T2);
+in_tuple_out_vec!(T0, T1, T2, T3);
+in_tuple_out_vec!(T0, T1, T2, T3, T4);
+in_tuple_out_vec!(T0, T1, T2, T3, T4, T5);
+in_tuple_out_vec!(T0, T1, T2, T3, T4, T5, T6);

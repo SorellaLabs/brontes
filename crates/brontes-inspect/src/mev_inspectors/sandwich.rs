@@ -13,7 +13,7 @@ use brontes_types::{
     tree::{BlockTree, GasDetails, TxInfo},
     ActionIter, ToFloatNearest, TreeFilter, TreeSearchBuilder,
 };
-use itertools::{Itertools};
+use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};

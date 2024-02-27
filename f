@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use itertools::Itertools;
+
 pub trait IntoSplitIterator {
     type Item;
     type Iter: Iterator<Item = Self::Item>;
@@ -7,13 +9,136 @@ pub trait IntoSplitIterator {
     fn into_split_iter(self) -> Self::Iter;
 }
 
-pub trait SplitIterZip<NewI>: Iterator {
+impl<T: Sized> TreeIterExt for T where T: Iterator {}
+
+pub trait TreeIterExt: Iterator {
+    fn zip_with<O>(self, other: O) -> Self::Out
+    where
+        Self: SplitIterZip<O> + Sized,
+        O: Iterator,
+    {
+        SplitIterZip::<O>::zip_with_inner(self, other)
+    }
+
+    fn unzip_padded<FromZ>(self) -> FromZ
+    where
+        Self: UnzipPadded<FromZ> + Sized,
+    {
+        UnzipPadded::unzip_padded(self)
+    }
+
+    fn fold_using<I, Ty>(self) -> I
+    where
+        Self: Sized,
+        Self: MergeInto<I,Ty,<Self as Iterator>::Item>
+    {
+        MergeInto::<I, Ty, Self::Item>::merge_into(self)
+    }
+
+    // fn merge_into<I, Ty>(self) -> I
+    // where
+    //     // Self: MergeInto<I, Ty, Self::Item> + Sized,
+    // {
+    //     MergeInto::merge_into(self)
+    // }
+}
+
+pub trait MergeInto<Out, Ty, I>
+where
+    Self: Sized,
+{
+    fn merge_into(self) -> Out;
+}
+
+macro_rules! merge_into {
+    ($out:ident, $typ:ident, $($a:ident),*) => {
+        #[allow(non_snake_case, unused_variables, trivial_bounds)]
+        impl<T, $($a: Into<$typ>,)* $typ, $out: Default + Extend<$typ>> MergeInto<$out, $typ, ($($a,)*)> for T
+            where
+                T: Iterator<Item = ($($a,)*)> {
+
+            fn merge_into(self) -> $out {
+                let mut res = $out::default();
+                self.fold((), |(), ($($a,)*)| {
+                    $(
+                            res.extend(std::iter::once($a.into()));
+                    )*
+
+                });
+
+                res
+            }
+        }
+        // #[allow(non_snake_case, unused_variables, trivial_bounds)]
+        // impl<T, $($a: Into<$typ>,)* $typ, $out: Default + Extend<$typ>> MergeInto<$out, $typ, ($(Option<$a>,)*)> for T
+        //     where
+        //         T: Iterator<Item = ($(Option<$a>,)*)> {
+        //     fn merge_into(self) -> $out {
+        //         let mut res = $out::default();
+        //         self.fold((), |(), ($($a,)*)| {
+        //             $(
+        //                 if let Some(a) = $a {
+        //                     res.extend(std::iter::once(a.into()));
+        //                 }
+        //             )*
+        //
+        //         });
+        //
+        //         res
+        //     }
+        // }
+    }
+}
+
+merge_into!(A, B, C);
+merge_into!(A, B, C, D);
+merge_into!(A, B, C, D, E);
+merge_into!(A, B, C, D, E, F);
+merge_into!(A, B, C, D, E, F, G);
+merge_into!(A, B, C, D, E, F, G, H);
+merge_into!(A, B, C, D, E, F, G, H, I);
+
+pub trait SplitIterZip<NewI>: Iterator
+where
+    NewI: Iterator,
+{
     type Out: Iterator;
 
-    fn zip_with(self, other: NewI) -> Self::Out
-    where
-        NewI: Iterator;
+    fn zip_with_inner(self, other: NewI) -> Self::Out;
 }
+
+pub trait UnzipPadded<Out>: Iterator {
+    fn unzip_padded(self) -> Out;
+}
+
+macro_rules! unzip_padded {
+    ($(($a:ident, $b:ident)),*) => {
+        #[allow(non_snake_case, unused_variables, trivial_bounds)]
+        impl <T, $($a,)* $($b: Default + Extend<$a>,)*> UnzipPadded<($($b,)*)> for T
+            where
+                T: Iterator<Item = ($(Option<$a>,)*)> {
+
+            fn unzip_padded(self) -> ($($b,)*) {
+                let ($(mut $b,)*) = ($($b::default(),)*);
+                self.fold((), |(), ($($a,)*)| {
+                    $(
+                        if let Some(a) = $a {
+                            $b.extend(std::iter::once(a));
+                        }
+                    )*
+                });
+
+                ($($b,)*)
+            }
+        }
+    };
+}
+
+unzip_padded!((A, A1));
+unzip_padded!((A, A1), (B, B1));
+unzip_padded!((A, A1), (B, B1), (C, C1));
+unzip_padded!((A, A1), (B, B1), (C, C1), (D, D1));
+unzip_padded!((A, A1), (B, B1), (C, C1), (D, D1), (E, E1));
 
 pub trait SplitIter<Item, K>: Iterator<Item = Item> {
     fn multisplit_builder(self) -> K;
@@ -128,7 +253,7 @@ macro_rules! into_split_iter {
 
                 type Out = [<ZipPadded $am1>]<$($iter_val),*, I>;
 
-                fn zip_with(self, other: I) -> Self::Out
+                fn zip_with_inner(self, other: I) -> Self::Out
                 {
                     [<ZipPadded $am1>]::new($(self.[<$iter_val:lower>],)* other)
                 }

@@ -1,5 +1,6 @@
-use std::{collections::HashMap, panic::AssertUnwindSafe};
+use std::panic::AssertUnwindSafe;
 
+use itertools::Itertools;
 use rayon::{
     prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
     ThreadPool, ThreadPoolBuilder,
@@ -122,12 +123,16 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// Collects subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
-    pub fn collect_spans(&self, hash: B256, call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
+    pub fn collect_spans<'a>(
+        &'a self,
+        hash: B256,
+        call: TreeSearchBuilder<V>,
+    ) -> impl Iterator<Item = Vec<V>> + 'a {
         self.run_in_span_ref(|this| {
             if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == hash) {
-                root.collect_spans(&call)
+                root.collect_spans(&call).into_iter()
             } else {
-                vec![]
+                vec![].into_iter()
             }
         })
     }
@@ -135,13 +140,17 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// Collects all subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
-    pub fn collect_spans_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<Vec<V>>> {
+    pub fn collect_spans_all<'a>(
+        &'a self,
+        call: TreeSearchBuilder<V>,
+    ) -> impl Iterator<Item = (B256, Vec<Vec<V>>)> + 'a {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 this.tx_roots
                     .par_iter()
                     .map(|r| (r.tx_hash, r.collect_spans(&call)))
-                    .collect()
+                    .collect::<Vec<(_, _)>>()
+                    .into_iter()
             })
         })
     }
@@ -163,55 +172,44 @@ impl<V: NormalizedAction> BlockTree<V> {
 
     /// For the given tx hash, goes through the tree and collects all actions
     /// specified by the tree search builder.
-    pub fn collect(&self, hash: &B256, call: TreeSearchBuilder<V>) -> Vec<V> {
+    pub fn collect(&self, hash: &B256, call: TreeSearchBuilder<V>) -> impl Iterator<Item = V> + '_ {
         self.run_in_span_ref(|this| {
             if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == *hash) {
-                root.collect(&call)
+                root.collect(&call).into_iter()
             } else {
-                vec![]
+                vec![].into_iter()
             }
-        })
-    }
-
-    /// For all specified transactions, goes through the tree and collects all
-    /// actions specified by the tree search builder.
-    pub fn collect_for_txes(
-        &self,
-        tx_hashes: Vec<B256>,
-        call: TreeSearchBuilder<V>,
-    ) -> HashMap<B256, Vec<V>> {
-        self.run_in_span_ref(|this| {
-            tx_hashes
-                .par_iter()
-                .filter_map(|hash| {
-                    this.tx_roots
-                        .iter()
-                        .find(|r| r.tx_hash == *hash)
-                        .map(|root| (*hash, root.collect(&call)))
-                })
-                .collect()
         })
     }
 
     /// For all transactions, goes through the tree and collects all actions
     /// specified by the tree search builder.
-    pub fn collect_all(&self, call: TreeSearchBuilder<V>) -> HashMap<B256, Vec<V>> {
+    pub fn collect_all(
+        &self,
+        call: TreeSearchBuilder<V>,
+    ) -> impl Iterator<Item = (B256, Vec<V>)> + '_ {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 this.tx_roots
                     .par_iter()
                     .map(|r| (r.tx_hash, r.collect(&call)))
-                    .collect()
+                    .collect::<Vec<(_, _)>>()
+                    .into_iter()
             })
         })
     }
 
-    pub fn collect_txes(&self, txes: &[B256], call: TreeSearchBuilder<V>) -> Vec<Vec<V>> {
+    pub fn collect_txes<'a>(
+        &'a self,
+        txes: &'a [B256],
+        call: TreeSearchBuilder<V>,
+    ) -> impl Iterator<Item = Vec<V>> + 'a {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 txes.par_iter()
-                    .map(|tx| this.collect(tx, call.clone()))
+                    .map(|tx| this.collect(tx, call.clone()).collect_vec())
                     .collect::<Vec<_>>()
+                    .into_iter()
             })
         })
     }
@@ -286,7 +284,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         res
     }
 
-    fn run_in_span_ref<Ret: Send>(&self, action: impl Fn(&Self) -> Ret) -> Ret {
+    fn run_in_span_ref<'a, Ret: Send + 'a>(&'a self, action: impl Fn(&'a Self) -> Ret) -> Ret {
         let span = span!(Level::ERROR, "brontes-tree", block = self.header.number);
         let g = span.enter();
 
