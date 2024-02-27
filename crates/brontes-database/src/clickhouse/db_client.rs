@@ -295,10 +295,7 @@ mod tests {
 
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::{
-            dex::DexPrices,
-            searcher::{SearcherEoaContract, SearcherStatsWithAddress},
-        },
+        db::{dex::DexPrices, searcher::SearcherEoaContract},
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
@@ -404,9 +401,10 @@ mod tests {
 
     async fn mev_block(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0_possible = PossibleMev::default();
-        let mut case0 = MevBlock::default();
-
-        case0.possible_mev = PossibleMevCollection(vec![case0_possible]);
+        let mut case0 = MevBlock {
+            possible_mev: PossibleMevCollection(vec![case0_possible]),
+            ..Default::default()
+        };
 
         db.insert_one::<ClickhouseMevBlocks>(&case0).await.unwrap();
     }
