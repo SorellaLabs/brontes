@@ -46,11 +46,7 @@
   {
     "constant": false,
     "inputs": [
-      {
-        "internalType": "contract BPool",
-        "name": "pool",
-        "type": "address"
-      }
+      { "internalType": "contract BPool", "name": "pool", "type": "address" }
     ],
     "name": "collect",
     "outputs": [],
@@ -62,13 +58,7 @@
     "constant": true,
     "inputs": [],
     "name": "getBLabs",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
     "payable": false,
     "stateMutability": "view",
     "type": "function"
@@ -77,34 +67,16 @@
     "constant": true,
     "inputs": [],
     "name": "getColor",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
     "payable": false,
     "stateMutability": "view",
     "type": "function"
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "b",
-        "type": "address"
-      }
-    ],
+    "inputs": [{ "internalType": "address", "name": "b", "type": "address" }],
     "name": "isBPool",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "payable": false,
     "stateMutability": "view",
     "type": "function"
@@ -114,11 +86,7 @@
     "inputs": [],
     "name": "newBPool",
     "outputs": [
-      {
-        "internalType": "contract BPool",
-        "name": "",
-        "type": "address"
-      }
+      { "internalType": "contract BPool", "name": "", "type": "address" }
     ],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -126,13 +94,7 @@
   },
   {
     "constant": false,
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "b",
-        "type": "address"
-      }
-    ],
+    "inputs": [{ "internalType": "address", "name": "b", "type": "address" }],
     "name": "setBLabs",
     "outputs": [],
     "payable": false,

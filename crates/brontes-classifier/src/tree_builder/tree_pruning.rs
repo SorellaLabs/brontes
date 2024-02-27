@@ -36,6 +36,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 transfers.iter_mut().for_each(|(_, transfer)| {
                     let mut swap = node.clone().force_swap();
                     let transfer = transfer.force_transfer_mut();
+
                     if transfer.fee == Rational::ZERO {
                         return
                     }

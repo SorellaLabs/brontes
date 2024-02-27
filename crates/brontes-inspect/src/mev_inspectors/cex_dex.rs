@@ -112,7 +112,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     ) -> Self::Result {
         let swap_txes = tree.collect_all_action_filter(
             TreeSearchBuilder::default().with_action(Actions::is_swap),
-            Actions::try_swap,
+            Actions::try_swaps_merged,
         );
 
         swap_txes
