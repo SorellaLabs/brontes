@@ -307,7 +307,8 @@ mod tests {
         GasDetails,
     };
     use sorella_db_databases::{
-        clickhouse::test_utils::test_db::ClickhouseTestingClient, test_utils::TestDatabase,
+        clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
+        test_utils::TestDatabase,
     };
     use tokio::sync::mpsc::unbounded_channel;
 
