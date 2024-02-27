@@ -492,8 +492,6 @@ mod tests {
     }
 
     async fn atomic_arb(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        //let tables = [BrontesClickhouseTables::ClickhouseAtomicArbs];
-
         let mut case0 = AtomicArb::default();
         let swap = NormalizedSwap::default();
         let gas_details = GasDetails::default();

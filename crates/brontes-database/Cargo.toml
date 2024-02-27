@@ -46,8 +46,8 @@ zstd = "0.13"
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
-sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "94db428", optional = true, features = ["test-utils"] }
-sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "94db428", optional = true }
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "9528e63", optional = true, features = ["test-utils"] }
+sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "9528e63", optional = true }
 clickhouse.workspace = true
 
 # serde
@@ -120,7 +120,7 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-default = ["local-clickhouse", "local-reth"]
+default = []
 tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
