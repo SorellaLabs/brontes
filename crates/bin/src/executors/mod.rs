@@ -234,7 +234,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             !self.with_dex_pricing,
         )?;
 
-        println!("LENGTH TO INIT: {}", state_to_init.len());
+        panic!("LENGTH TO INIT: {}", state_to_init.len());
 
         join_all(state_to_init.into_iter().map(|range| async move {
             let start = range.start();
