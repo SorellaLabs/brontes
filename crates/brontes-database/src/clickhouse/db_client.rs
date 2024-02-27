@@ -295,10 +295,7 @@ mod tests {
 
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::{
-            dex::DexPrices,
-            searcher::{SearcherEoaContract, SearcherStatsWithAddress},
-        },
+        db::{dex::DexPrices, searcher::SearcherEoaContract},
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
@@ -309,24 +306,15 @@ mod tests {
         pair::Pair,
         GasDetails,
     };
+    use sorella_db_databases::{
+        clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
+        test_utils::TestDatabase,
+    };
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::clickhouse::dbms::{
-        ClickhouseBundleHeader, ClickhouseCexDex, ClickhouseJit, ClickhouseJitSandwich,
-        ClickhouseLiquidations, ClickhouseMevBlocks, ClickhouseSearcherStats,
-    };
 
-    fn spawn_clickhouse() -> Clickhouse {
-        dotenv::dotenv().ok();
-
-        Clickhouse::default()
-    }
-
-    #[brontes_macros::test]
-    async fn tx_traces() {
-        let db = spawn_clickhouse();
-
+    async fn tx_traces(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let libmdbx = get_db_handle(tokio::runtime::Handle::current()).await;
         let (a, _b) = unbounded_channel();
         let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
@@ -334,13 +322,11 @@ mod tests {
         let binding = tracer.execute_block(17000010).await.unwrap();
         let exec = binding.0.first().unwrap().clone();
 
-        let res = db.inner().insert_one::<ClickhouseTxTraces>(&exec).await;
+        let res = db.insert_one::<ClickhouseTxTraces>(&exec).await;
         assert!(res.is_ok());
     }
 
-    #[tokio::test]
-    async fn searcher_info() {
-        let db = spawn_clickhouse();
+    async fn searcher_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = JoinedSearcherInfo {
             address:         Default::default(),
             fund:            Default::default(),
@@ -349,76 +335,49 @@ mod tests {
             eoa_or_contract: SearcherEoaContract::Contract,
         };
 
-        db.inner()
-            .insert_one::<ClickhouseSearcherInfo>(&case0)
+        db.insert_one::<ClickhouseSearcherInfo>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.searcher_info";
-        let queried: JoinedSearcherInfo = db.inner().query_one(query, &()).await.unwrap();
+        let queried: JoinedSearcherInfo = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
 
-    #[tokio::test]
-    async fn token_info() {
-        let db = spawn_clickhouse();
+    async fn token_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = TokenInfoWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseTokenInfo>(&case0)
-            .await
-            .unwrap();
-
-        //let query = "SELECT address, (decimals, symbol) FROM
-        // brontes.token_info WHERE address =
-        // '0x0000000000000000000000000000000000000000'"; let queried:
-        // TokenInfoWithAddress = db.inner().query_one(query,
-        // &()).await.unwrap();
-
-        //assert_eq!(queried, case0);
-
-        //let query = "DELETE FROM brontes.token_info WHERE address =
-        // '0x0000000000000000000000000000000000000000'"; db.inner().
-        // execute_remote(query, &()).await.unwrap();
+        db.insert_one::<ClickhouseTokenInfo>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn searcher_stats() {
-        let db = spawn_clickhouse();
+    async fn searcher_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = SearcherStatsWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseSearcherStats>(&case0)
+        db.insert_one::<ClickhouseSearcherStats>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.searcher_stats";
-        let queried: SearcherStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+        let queried: SearcherStatsWithAddress = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
 
-    #[tokio::test]
-    async fn builder_stats() {
-        let db = spawn_clickhouse();
+    async fn builder_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = BuilderStatsWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseBuilderStats>(&case0)
+        db.insert_one::<ClickhouseBuilderStats>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.builder_stats";
-        let queried: BuilderStatsWithAddress = db.inner().query_one(query, &()).await.unwrap();
+        let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
 
-    #[tokio::test]
-    async fn dex_price_mapping() {
-        let db = spawn_clickhouse();
-
+    async fn dex_price_mapping(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0_pair = Pair::default();
         let case0_dex_prices = DexPrices::default();
         let mut case0_map = HashMap::new();
@@ -430,48 +389,33 @@ mod tests {
             quote:        Some(case0_map),
         };
 
-        db.inner()
-            .insert_one::<ClickhouseDexPriceMapping>(&case0)
+        db.insert_one::<ClickhouseDexPriceMapping>(&case0)
             .await
             .unwrap();
 
         let query = "SELECT * FROM brontes.dex_price_mapping";
-        let queried: DexQuotesWithBlockNumber = db.inner().query_one(query, &()).await.unwrap();
+        let queried: DexQuotesWithBlockNumber = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }
-    #[allow(clippy::field_reassign_with_default)]
-    #[tokio::test]
-    async fn mev_block() {
-        let db = spawn_clickhouse();
 
+    async fn mev_block(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0_possible = PossibleMev::default();
-        let mut case0 = MevBlock::default();
+        let case0 = MevBlock {
+            possible_mev: PossibleMevCollection(vec![case0_possible]),
+            ..Default::default()
+        };
 
-        case0.possible_mev = PossibleMevCollection(vec![case0_possible]);
-
-        db.inner()
-            .insert_one::<ClickhouseMevBlocks>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseMevBlocks>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn cex_dex() {
-        let db = spawn_clickhouse();
-
+    async fn cex_dex(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = CexDex::default();
 
-        db.inner()
-            .insert_one::<ClickhouseCexDex>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn jit() {
-        let db = spawn_clickhouse();
-
+    async fn jit(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let mut case0 = JitLiquidity::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
@@ -483,16 +427,10 @@ mod tests {
         case0.victim_swaps = vec![vec![swap]];
         case0.victim_swaps_gas_details = vec![gas_details];
 
-        db.inner()
-            .insert_one::<ClickhouseJit>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseJit>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn jit_sandwich() {
-        let db = spawn_clickhouse();
-
+    async fn jit_sandwich(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let mut case0 = JitLiquiditySandwich::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
@@ -504,16 +442,12 @@ mod tests {
         case0.victim_swaps = vec![vec![swap]];
         case0.victim_swaps_gas_details = vec![gas_details];
 
-        db.inner()
-            .insert_one::<ClickhouseJitSandwich>(&case0)
+        db.insert_one::<ClickhouseJitSandwich>(&case0)
             .await
             .unwrap();
     }
 
-    #[tokio::test]
-    async fn liquidations() {
-        let db = spawn_clickhouse();
-
+    async fn liquidations(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let mut case0 = Liquidation::default();
         let swap = NormalizedSwap::default();
         let liquidation = NormalizedLiquidation::default();
@@ -523,28 +457,20 @@ mod tests {
         case0.liquidations = vec![liquidation];
         case0.gas_details = gas_details;
 
-        db.inner()
-            .insert_one::<ClickhouseLiquidations>(&case0)
+        db.insert_one::<ClickhouseLiquidations>(&case0)
             .await
             .unwrap();
     }
 
-    #[tokio::test]
-    async fn bundle_header() {
-        let db = spawn_clickhouse();
-
+    async fn bundle_header(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = BundleHeader::default();
 
-        db.inner()
-            .insert_one::<ClickhouseBundleHeader>(&case0)
+        db.insert_one::<ClickhouseBundleHeader>(&case0)
             .await
             .unwrap();
     }
 
-    #[tokio::test]
-    async fn sandwich() {
-        let db = spawn_clickhouse();
-
+    async fn sandwich(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let mut case0 = Sandwich::default();
         let swap0 = NormalizedSwap::default();
         let swap1 = NormalizedSwap::default();
@@ -556,16 +482,10 @@ mod tests {
         case0.victim_swaps_gas_details = vec![gas_details];
         case0.backrun_swaps = vec![swap2];
 
-        db.inner()
-            .insert_one::<ClickhouseSandwiches>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseSandwiches>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn atomic_arb() {
-        let db = spawn_clickhouse();
-
+    async fn atomic_arb(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let mut case0 = AtomicArb::default();
         let swap = NormalizedSwap::default();
         let gas_details = GasDetails::default();
@@ -573,16 +493,10 @@ mod tests {
         case0.swaps = vec![swap];
         case0.gas_details = gas_details;
 
-        db.inner()
-            .insert_one::<ClickhouseAtomicArbs>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhouseAtomicArbs>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn pools() {
-        let db = spawn_clickhouse();
-
+    async fn pools(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = ProtocolInfoClickhouse {
             protocol:         "NONE".to_string(),
             protocol_subtype: "NONE".to_string(),
@@ -600,98 +514,49 @@ mod tests {
             init_block:       0,
         };
 
-        db.inner()
-            .insert_one::<ClickhousePools>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<ClickhousePools>(&case0).await.unwrap();
     }
 
-    #[tokio::test]
-    async fn builder_info() {
-        let db = spawn_clickhouse();
-
+    async fn builder_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = BuilderInfoWithAddress::default();
 
-        db.inner()
-            .insert_one::<ClickhouseBuilderInfo>(&case0)
+        db.insert_one::<ClickhouseBuilderInfo>(&case0)
             .await
             .unwrap();
     }
-    #[allow(dead_code)]
-    #[allow(non_upper_case_globals)]
-    const queryy: &str = "SELECT
-    block_number,
-    groupArray(
-        (
-            block_number,
-            arrayZip(
-                trace_meta.trace_idx,
-                trace_meta.msg_sender,
-                trace_meta.error,
-                trace_meta.subtraces,
-                trace_meta.trace_address
-            ),
-            arrayZip(
-                trace_decoded_data.trace_idx,
-                trace_decoded_data.function_name,
-                trace_decoded_data.call_data,
-                trace_decoded_data.return_data
-            ),
-            arrayZip(
-                trace_logs.trace_idx,
-                trace_logs.log_idx,
-                trace_logs.address,
-                trace_logs.topics,
-                trace_logs.data
-            ),
-            arrayZip(
-                trace_create_actions.trace_idx,
-                trace_create_actions.from,
-                trace_create_actions.gas,
-                trace_create_actions.init,
-                trace_create_actions.value
-            ),
-            arrayZip(
-                trace_call_actions.trace_idx,
-                trace_call_actions.from,
-                trace_call_actions.call_type,
-                trace_call_actions.gas,
-                trace_call_actions.input,
-                trace_call_actions.to,
-                trace_call_actions.value
-            ),
-            arrayZip(
-                trace_self_destruct_actions.trace_idx,
-                trace_self_destruct_actions.address,
-                trace_self_destruct_actions.balance,
-                trace_self_destruct_actions.refund_address
-            ),
-            arrayZip(
-                trace_reward_actions.trace_idx,
-                trace_reward_actions.author,
-                trace_reward_actions.reward_type,
-                trace_reward_actions.value
-            ),
-            arrayZip(
-                trace_call_outputs.trace_idx,
-                trace_call_outputs.gas_used,
-                trace_call_outputs.output
-            ),
-            arrayZip(
-                trace_create_outputs.trace_idx,
-                trace_create_outputs.address,
-                trace_create_outputs.code,
-                trace_create_outputs.gas_used
-            ),
 
-        tx_hash,
-        gas_used,
-        effective_price,
-        tx_index,
-        is_success
-    ))
-FROM brontes.tx_traces
-WHERE block_number = 15697312
-GROUP BY block_number
-";
+    async fn run_all(
+        database: &ClickhouseTestingClient<BrontesClickhouseTables>,
+    ) -> Result<(), ClickhouseError> {
+        tx_traces(database).await;
+        builder_info(database).await;
+        pools(database).await;
+        atomic_arb(database).await;
+        sandwich(database).await;
+        bundle_header(database).await;
+        liquidations(database).await;
+        jit_sandwich(database).await;
+        jit(database).await;
+        cex_dex(database).await;
+        mev_block(database).await;
+        dex_price_mapping(database).await;
+        builder_stats(database).await;
+        searcher_stats(database).await;
+        token_info(database).await;
+        searcher_info(database).await;
+
+        Ok(())
+    }
+
+    #[brontes_macros::test]
+    async fn test_all_inserts() {
+        dotenv::dotenv().ok();
+        let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
+
+        let tables = &BrontesClickhouseTables::all_tables();
+
+        test_db
+            .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
+            .await;
+    }
 }

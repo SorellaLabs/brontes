@@ -58,6 +58,6 @@ CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
     ),
     `last_updated` UInt64 DEFAULT now()
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/sandwich', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/sandwiches', '{replica}', `last_updated`)
 PRIMARY KEY (`frontrun_tx_hash`)
 ORDER BY (`frontrun_tx_hash`)
