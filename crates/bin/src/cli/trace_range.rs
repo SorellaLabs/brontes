@@ -52,8 +52,9 @@ impl TraceArgs {
                         (i - self.start_block) as f64 / amount * 100.0
                     );
                 }
-                async move { parser.execute(i).await.unwrap() }
+                parser.execute(i)
             })
+            .map(|_res| ())
             .collect::<Vec<_>>()
             .await;
 
