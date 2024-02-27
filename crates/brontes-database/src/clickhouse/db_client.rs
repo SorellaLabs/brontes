@@ -353,14 +353,12 @@ mod tests {
     }
 
     async fn token_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
         let case0 = TokenInfoWithAddress::default();
 
         db.insert_one::<ClickhouseTokenInfo>(&case0).await.unwrap();
     }
 
     async fn searcher_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
         let case0 = SearcherStatsWithAddress::default();
 
         db.insert_one::<ClickhouseSearcherStats>(&case0)
@@ -374,7 +372,6 @@ mod tests {
     }
 
     async fn builder_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
         let case0 = BuilderStatsWithAddress::default();
 
         db.insert_one::<ClickhouseBuilderStats>(&case0)
@@ -388,8 +385,6 @@ mod tests {
     }
 
     async fn dex_price_mapping(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let case0_pair = Pair::default();
         let case0_dex_prices = DexPrices::default();
         let mut case0_map = HashMap::new();
@@ -412,8 +407,6 @@ mod tests {
     }
 
     async fn mev_block(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let case0_possible = PossibleMev::default();
         let mut case0 = MevBlock::default();
 
@@ -423,16 +416,12 @@ mod tests {
     }
 
     async fn cex_dex(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let case0 = CexDex::default();
 
         db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
     }
 
     async fn jit(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let mut case0 = JitLiquidity::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
@@ -448,8 +437,6 @@ mod tests {
     }
 
     async fn jit_sandwich(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let mut case0 = JitLiquiditySandwich::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
@@ -467,8 +454,6 @@ mod tests {
     }
 
     async fn liquidations(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let mut case0 = Liquidation::default();
         let swap = NormalizedSwap::default();
         let liquidation = NormalizedLiquidation::default();
@@ -484,8 +469,6 @@ mod tests {
     }
 
     async fn bundle_header(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let case0 = BundleHeader::default();
 
         db.insert_one::<ClickhouseBundleHeader>(&case0)
@@ -494,8 +477,6 @@ mod tests {
     }
 
     async fn sandwich(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let mut case0 = Sandwich::default();
         let swap0 = NormalizedSwap::default();
         let swap1 = NormalizedSwap::default();
@@ -524,8 +505,6 @@ mod tests {
     }
 
     async fn pools(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let case0 = ProtocolInfoClickhouse {
             protocol:         "NONE".to_string(),
             protocol_subtype: "NONE".to_string(),
@@ -547,8 +526,6 @@ mod tests {
     }
 
     async fn builder_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let db = spawn_clickhouse();
-
         let case0 = BuilderInfoWithAddress::default();
 
         db.insert_one::<ClickhouseBuilderInfo>(&case0)
