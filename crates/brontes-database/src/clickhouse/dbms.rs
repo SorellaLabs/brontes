@@ -42,7 +42,13 @@ clickhouse_dbms!(
     ]
 );
 
-remote_clickhouse_table!(BrontesClickhouseTables, "brontes", ClickhouseTxTraces, TxTrace);
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "brontes",
+    ClickhouseTxTraces,
+    TxTrace,
+    "crates/brontes-database/src/clickhouse/tables/"
+);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
