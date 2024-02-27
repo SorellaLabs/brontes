@@ -1,3 +1,4 @@
+#![feature(trait_alias)]
 #![feature(trivial_bounds)]
 
 pub mod multi_iter;

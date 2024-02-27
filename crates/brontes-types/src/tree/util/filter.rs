@@ -1,133 +1,137 @@
 use alloy_primitives::B256;
 
 use crate::{
-    normalized_actions::{utils::ActionCmp, NormalizedAction, NormalizedSwap},
-    ActionIter, ActionSplit, BlockTree, IntoSplitIterator, TreeSearchBuilder,
+    normalized_actions::{utils::ActionCmp, NormalizedAction},
+    ActionIter, ActionSplit, BlockTree, IntoSplitIterator, SplitIterZip, TreeSearchBuilder,
 };
 
+type MergedRes<F, V> = <<F as IntoSplitIterator>::Iter as SplitIterZip<std::vec::IntoIter<V>>>::Out;
+
 pub trait TreeFilter<V: NormalizedAction> {
-    fn collect_all_deduping<'a, KS, RS, KF, RF, FromI>(
+    fn collect_all_deduping<'a, KS, RS, FromI>(
         &self,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> impl Iterator<Item = (B256, FromI)> + 'a
+    ) -> impl Iterator<Item = (B256, MergedRes<FromI, V>)> + 'a
     where
-        Self: Dedups<RS::Out, FromI>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
-        <KS as InTupleFnOutVec<V>>::Out: IntoSplitIterator,
-        <RS as InTupleFnOutVec<V>>::Out: IntoSplitIterator,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<RS::Out, FromI>,
+        <FromI as IntoSplitIterator>::Iter: SplitIterZip<std::vec::IntoIter<V>>,
         FromI: IntoSplitIterator,
         KS: 'a,
         RS: 'a,
         V: 'a;
 
-    fn collect_txes_deduping<'a, KS, RS, KF, RF>(
+    fn collect_txes_deduping<'a, KS, RS, FromI>(
         &'a self,
         txes: &'a [B256],
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> impl Iterator<Item = Vec<V>> + 'a
+    ) -> impl Iterator<Item = MergedRes<FromI, V>> + 'a
     where
-        Self: Dedups<RS::Out, FromI>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<RS::Out, FromI>,
+        <FromI as IntoSplitIterator>::Iter: SplitIterZip<std::vec::IntoIter<V>>,
+        FromI: IntoSplitIterator,
         KS: 'a,
         RS: 'a,
         V: 'a;
 
-    fn collect_tx_deduping<'a, KS, RS, KF, RF>(
+    fn collect_tx_deduping<'a, KS, RS, FromI>(
         &'a self,
         tx: &'a B256,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> impl Iterator<Item = V> + 'a
+    ) -> MergedRes<FromI, V>
     where
-        Self: Dedups<V, KS::Out, RS::Out, KF, RF>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<RS::Out, FromI>,
+        <FromI as IntoSplitIterator>::Iter: SplitIterZip<std::vec::IntoIter<V>>,
+        FromI: IntoSplitIterator,
         KS: 'a,
         RS: 'a,
         V: 'a;
 }
 
 impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
-    fn collect_all_deduping<'a, KS, RS, KF, RF, FromI>(
+    fn collect_all_deduping<'a, KS, RS, FromI>(
         &self,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> impl Iterator<Item = (B256, FromI)> + 'a
+    ) -> impl Iterator<Item = (B256, MergedRes<FromI, V>)> + 'a
     where
-        Self: Dedups<RS::Out, FromI>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
+        <FromI as IntoSplitIterator>::Iter: SplitIterZip<std::vec::IntoIter<V>>,
         FromI: IntoSplitIterator,
         KS: 'a,
-        <KS as InTupleFnOutVec<V>>::Out: IntoSplitIterator,
-        <RS as InTupleFnOutVec<V>>::Out: IntoSplitIterator,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<RS::Out, FromI>,
         RS: 'a,
         V: 'a,
     {
         self.collect_all(call).into_iter().map(move |(k, v)| {
-            let (good, mut rem) = v.clone().into_iter().action_split_out_ref(&k_split);
-            let bad = v.into_iter().action_split_ref(&r_split);
+            let (good, rem): (KS::Out, Vec<V>) = v.into_iter().action_split_out_ref(&k_split);
+            let (bad, rem): (RS::Out, Vec<V>) = rem.into_iter().action_split_out_ref(&r_split);
 
-            let a = good.merge_removing_duplicates(bad);
-            // rem.extend(Self::dedup_action_vec(good, bad));
-            // rem.sort_by_key(|k| k.get_trace_index());
+            let merged = good.merge_removing_duplicates(bad);
+            let res = merged.into_split_iter().zip_with(rem.into_iter());
 
-            (k, a)
+            (k, res)
         })
     }
 
-    fn collect_txes_deduping<'a, KS, RS, KF, RF>(
+    fn collect_txes_deduping<'a, KS, RS, FromI>(
         &'a self,
         txes: &'a [B256],
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> impl Iterator<Item = Vec<V>> + 'a
+    ) -> impl Iterator<Item = MergedRes<FromI, V>> + 'a
     where
-        Self: Dedups<V, KS::Out, RS::Out, KF, RF>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<RS::Out, FromI>,
+        <FromI as IntoSplitIterator>::Iter: SplitIterZip<std::vec::IntoIter<V>>,
+        FromI: IntoSplitIterator,
         KS: 'a,
         RS: 'a,
         V: 'a,
     {
         self.collect_txes(txes, call).into_iter().map(move |v| {
-            let (good, mut rem) = v.clone().into_iter().action_split_out_ref(&k_split);
-            let bad = v.into_iter().action_split_ref(&r_split);
+            let (good, rem) = v.into_iter().action_split_out_ref(&k_split);
+            let (bad, rem) = rem.into_iter().action_split_out_ref(&r_split);
 
-            rem.extend(Self::dedup_action_vec(good, bad));
-            rem.sort_by_key(|k| k.get_trace_index());
-
-            rem
+            let merged = good.merge_removing_duplicates(bad);
+            merged.into_split_iter().zip_with(rem.into_iter())
         })
     }
 
-    fn collect_tx_deduping<'a, KS, RS, KF, RF>(
+    fn collect_tx_deduping<'a, KS, RS, FromI>(
         &'a self,
         tx: &'a B256,
         call: TreeSearchBuilder<V>,
         k_split: KS,
         r_split: RS,
-    ) -> impl Iterator<Item = V> + 'a
+    ) -> MergedRes<FromI, V>
     where
-        Self: Dedups<V, KS::Out, RS::Out, KF, RF>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
-
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<RS::Out, FromI>,
+        <FromI as IntoSplitIterator>::Iter: SplitIterZip<std::vec::IntoIter<V>>,
+        FromI: IntoSplitIterator,
         KS: 'a,
         RS: 'a,
         V: 'a,
@@ -135,12 +139,11 @@ impl<V: NormalizedAction> TreeFilter<V> for BlockTree<V> {
         let v = self.collect(tx, call);
 
         let (good, rem) = v.into_iter().action_split_out_ref(&k_split);
-        let (bad, mut rem) = rem.into_iter().action_split_out_ref(&r_split);
+        let (bad, rem) = rem.into_iter().action_split_out_ref(&r_split);
 
-        rem.extend(Self::dedup_action_vec(good, bad));
-        rem.sort_by_key(|k| k.get_trace_index());
+        let merged = good.merge_removing_duplicates(bad);
 
-        rem.into_iter()
+        merged.into_split_iter().zip_with(rem.into_iter())
     }
 }
 
@@ -152,16 +155,8 @@ pub trait Dedups<RI, FromI>: IntoSplitIterator {
         FromI: IntoSplitIterator;
 }
 
-fn test() {
-    use crate::normalized_actions::Actions;
-    let v1: (Vec<NormalizedSwap>, Vec<NormalizedSwap>) = (vec![], vec![]);
-    let ve: Vec<Actions> = vec![];
-    // v1.merge_removing_duplicates(merge_dedup_iters)
-}
-
 macro_rules! tree_dedup {
     ($((
-                $keep_i:ident,
                 $([
                   $remove_i:ident,
                   $remove_type:ident,
@@ -172,7 +167,7 @@ macro_rules! tree_dedup {
     )),*) => {
         paste::paste!(
         impl <
-            $($keep_i: IntoIterator<Item = $keep_type>,)*
+            K,
             $($($remove_i: IntoIterator<Item = $remove_type> + Clone,)*)*
             $($($remove_type: PartialEq + Eq,)*)*
             $($keep_type: $(ActionCmp<$remove_type> + )*,)*
@@ -182,19 +177,18 @@ macro_rules! tree_dedup {
             Dedups
             <
             ($($($remove_i,)*)*),
-            // ($($keep_type,)*),
-            // ($($($remove_type,)*)*),
-            ($($($ret_r,)*)* $($ret_k,)*)
-            > for ($($keep_i,)*)
+            ($($ret_k,)* $($($ret_r,)*)*)
+            > for K
             where
-                ($($keep_i,)*): IntoSplitIterator<Item = ($(Option<$keep_type>,)*)>,
+                K: IntoSplitIterator<Item = ($(Option<$keep_type>,)*)>,
                 ($($($ret_r,)*)* $($ret_k,)*): IntoSplitIterator,
             {
                 #[allow(non_snake_case, unused_variables, unused_mut)]
                 fn merge_removing_duplicates(self, remove_i: ($($($remove_i,)*)*))
-                    -> ($($($ret_r,)*)* $($ret_k,)*) {
+                    -> ($($ret_k,)* $($($ret_r,)*)*) {
 
                     let ($($(mut $ret_r,)*)*) = ($($($ret_r::default(),)*)*);
+
                     let ($(mut $ret_k,)*) = ($($ret_k::default(),)*);
 
                     $($(
@@ -230,20 +224,16 @@ macro_rules! tree_dedup {
                         )*
                      )*
 
-                    ($($($ret_r,)*)* $($ret_k,)*)
+                    ($($ret_k,)* $($($ret_r,)*)*)
                 }
             }
         );
     };
 }
 
-tree_dedup!((KI0, [RI0, RT0, RR0], KT0, KK0));
-tree_dedup!((KI0, [RI0, RT0, RR0], KT0, KK0), (KI1, [RI1, RT1, RR1], KT1, KK1));
-tree_dedup!(
-    (KI0, [RI0, RT0, RR0], KT0, KK0),
-    (KI1, [RI1, RT1, RR1], KT1, KK1),
-    (KI2, [RI2, RT2, RR2], KT2, KK2)
-);
+tree_dedup!(([RI0, RT0, RR0], KT0, KK0));
+tree_dedup!(([RI0, RT0, RR0], KT0, KK0), ([RI1, RT1, RR1], KT1, KK1));
+tree_dedup!(([RI0, RT0, RR0], KT0, KK0), ([RI1, RT1, RR1], KT1, KK1), ([RI2, RT2, RR2], KT2, KK2));
 // tree_dedup!(
 //     (KI0, [RI0, RT0], KT0),
 //     (KI1, [RI1, RT1], KT1),
@@ -259,7 +249,7 @@ tree_dedup!(
 // );
 
 pub trait InTupleFnOutVec<V: NormalizedAction> {
-    type Out: ActionCmp;
+    type Out;
 }
 
 macro_rules! in_tuple_out_vec {

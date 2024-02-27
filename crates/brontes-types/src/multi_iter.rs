@@ -7,11 +7,17 @@ pub trait IntoSplitIterator {
     fn into_split_iter(self) -> Self::Iter;
 }
 
+pub trait SplitIterZip<NewI>: Iterator {
+    type Out: Iterator;
+
+    fn zip_with(self, other: NewI) -> Self::Out
+    where
+        NewI: Iterator;
+}
+
 pub trait SplitIter<Item, K>: Iterator<Item = Item> {
     fn multisplit_builder(self) -> K;
 }
-
-pub trait SplitBuilder {}
 
 impl<I, A, B, F1, F2> SplitIter<(A, B), SplitIterTwo<A, B, I, false, false, F1, F2>> for I
 where
@@ -71,6 +77,93 @@ where
 }
 
 macro_rules! into_split_iter {
+    ($am:tt $am1:tt, $($iter_val:ident),*) => {
+        paste::paste!(
+
+            impl<$($iter_val),*> IntoSplitIterator for ($($iter_val,)*)
+            where
+                $(
+                    $iter_val: IntoIterator,
+                )*
+            {
+                type Item = ($(Option<$iter_val::Item>,)*);
+                type Iter = [<ZipPadded $am>]<$($iter_val::IntoIter),*>;
+
+                fn into_split_iter(self) -> Self::Iter {
+                    let ($([<$iter_val:lower>],)*) = self;
+
+                    [<ZipPadded $am>] {
+                        $(
+                            [<$iter_val:lower>]: [<$iter_val:lower>].into_iter(),
+                        )*
+                    }
+                }
+            }
+
+            #[derive(Clone)]
+            pub struct [<ZipPadded $am>]<$($iter_val),*> {
+                $(
+                    [<$iter_val:lower>]: $iter_val,
+                )*
+            }
+            impl <$($iter_val),*> [<ZipPadded $am>]<$($iter_val),*> {
+                pub fn new(
+                $(
+                    [<$iter_val:lower>]: $iter_val,
+                )*) -> Self {
+                    Self {
+                        $([<$iter_val:lower>]),*
+                    }
+                }
+
+            }
+
+            impl<$($iter_val),*, I> SplitIterZip<I>
+                for [<ZipPadded $am>]<$($iter_val),*>
+                where
+                    I: Iterator,
+                $(
+                    $iter_val: Iterator,
+                )* {
+
+                type Out = [<ZipPadded $am1>]<$($iter_val),*, I>;
+
+                fn zip_with(self, other: I) -> Self::Out
+                {
+                    [<ZipPadded $am1>]::new($(self.[<$iter_val:lower>],)* other)
+                }
+            }
+
+            impl<$($iter_val),*> Iterator for [<ZipPadded $am>]<$($iter_val),*>
+            where
+                $(
+                    $iter_val: Iterator,
+                )* {
+                    type Item = ($(Option<$iter_val::Item>,)*);
+
+                    fn next(&mut self) -> Option<Self::Item> {
+                        let mut all_none = true;
+                        $(
+                            let mut [<$iter_val:lower>] = None::<$iter_val::Item>;
+                        )*
+
+                        $(
+                            if let Some(val) = self.[<$iter_val:lower>].next() {
+                                all_none = false;
+                                [<$iter_val:lower>] = Some(val);
+                            }
+                        )*
+
+                        if all_none {
+                            return None
+                        }
+
+                        Some(($([<$iter_val:lower>],)*))
+                    }
+                }
+            );
+
+    };
     ($am:tt, $($iter_val:ident),*) => {
         paste::paste!(
 
@@ -99,6 +192,18 @@ macro_rules! into_split_iter {
                 $(
                     [<$iter_val:lower>]: $iter_val,
                 )*
+            }
+
+            impl <$($iter_val),*> [<ZipPadded $am>]<$($iter_val),*> {
+                pub fn new(
+                $(
+                    [<$iter_val:lower>]: $iter_val,
+                )*) -> Self {
+                    Self {
+                        $([<$iter_val:lower>]),*
+                    }
+                }
+
             }
 
             impl<$($iter_val),*> Iterator for [<ZipPadded $am>]<$($iter_val),*>
@@ -133,11 +238,11 @@ macro_rules! into_split_iter {
     };
 }
 
-into_split_iter!(1, A);
-into_split_iter!(2, A, B);
-into_split_iter!(3, A, B, C);
-into_split_iter!(4, A, B, C, D);
-into_split_iter!(5, A, B, C, D, E);
-into_split_iter!(6, A, B, C, D, E, F);
-into_split_iter!(7, A, B, C, D, E, F, G);
+into_split_iter!(1 2, A);
+into_split_iter!(2 3, A, B);
+into_split_iter!(3 4, A, B, C);
+into_split_iter!(4 5, A, B, C, D);
+into_split_iter!(5 6, A, B, C, D, E);
+into_split_iter!(6 7, A, B, C, D, E, F);
+into_split_iter!(7 8, A, B, C, D, E, F, G);
 into_split_iter!(8, A, B, C, D, E, F, G, H);
