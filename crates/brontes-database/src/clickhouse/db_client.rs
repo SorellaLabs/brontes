@@ -3,6 +3,14 @@ use std::{cmp::max, fmt::Debug};
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
+    db::{
+        address_to_protocol_info::ProtocolInfoClickhouse,
+        builder::{BuilderInfo, BuilderInfoWithAddress, BuilderStats, BuilderStatsWithAddress},
+        dex::{DexQuotes, DexQuotesWithBlockNumber},
+        metadata::{BlockMetadata, Metadata},
+        searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
+        token_info::{TokenInfo, TokenInfoWithAddress},
+    },
     mev::{Bundle, BundleData, MevBlock},
     structured_trace::TxTrace,
     Protocol,
