@@ -121,6 +121,7 @@ alloy-primitives.workspace = true
 
 [features]
 default = []
+api = ["brontes-types/api"]
 tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
