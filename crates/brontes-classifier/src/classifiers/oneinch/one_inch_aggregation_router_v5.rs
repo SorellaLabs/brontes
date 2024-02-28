@@ -3,7 +3,11 @@ use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::NormalizedSwap, structured_trace::CallInfo, utils::ToScaledRational,
 };
-use crate::OneInchAggregationRouterV5::{swapReturn, clipperSwapReturn, clipperSwapToReturn, clipperSwapToWithPermitReturn, unoswapReturn, fillOrderToReturn};
+
+use crate::OneInchAggregationRouterV5::{
+    clipperSwapReturn, clipperSwapToReturn, clipperSwapToWithPermitReturn, fillOrderToReturn,
+    swapReturn,
+};
 
 action_impl!(
     Protocol::OneInch,
@@ -174,3 +178,50 @@ action_impl!(
         })
     }
 );
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, Address, B256, U256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::UniswapV3,
+        ToScaledRational, TreeSearchBuilder,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_one_inch_fusion_swap() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap =
+            B256::from(hex!("7db60001d536dc85fad0468c47c444762a0fefd9da12b223beed7825637005c2"));
+
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol:    UniswapV3,
+            trace_index: 2,
+            from:        Address::new(hex!("D14699b6B02e900A5C2338700d5181a674FDB9a2")),
+            recipient:   Address::new(hex!("2EDD03735AA433008C00F476b218FcfB8270b91d")),
+            pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")), //
+            token_in:    TokenInfoWithAddress::usdc(),
+            amount_in:   U256::from_str("178739988").unwrap().to_scaled_rational(6),
+            token_out:   TokenInfoWithAddress::weth(),
+            amount_out:  U256::from_str("0043520538757524383")
+                .unwrap()
+                .to_scaled_rational(18),
+
+            msg_value: U256::ZERO,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+}
