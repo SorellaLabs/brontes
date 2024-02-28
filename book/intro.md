@@ -20,19 +20,27 @@ At the heart of Brontes is the process of converting raw transaction traces from
 
 When Brontes builds these transaction trees, it performs a critical step of classifying raw traces into `NormalizedActions`. This classification is pivotal for transforming the complex and varied actions across DeFi protocols into a standardized, unified format. The purpose of this standardization goes beyond mere organization; it enables Brontes to effectively smooth out the idiosyncrasies between different DeFi protocol implementations. By generalizing core primitives—such as swaps, flash loans, mints, among others—into unified types, Brontes establishes a consistent analytical framework that applies across all protocols for each core action.
 
-**Enriched with Metadata for Deeper Insights:**
+**Contextualizing the Chain:**
 
-To augment the analytical power of the transaction tree, Brontes incorporates extensive off chain data, including:
+Brontes leverages a blend of off-chain data and on-chain metadata to enrich the transaction tree's analytical capabilities, featuring:
 
-- **Pricing Data:** On chain pricing with transaction level granularity. CEX trades and quotes.
+- **Pricing Data:**
+  - DEX pricing with transaction level granularity.
+  - CEX trades and quotes for all major crypto exchanges.
 - **Address Metadata:** Addresses labels for entities, funds, protocols, extensive contract metadata.
 - **P2P Data:** Timestamped Mempool and block propagation data, to label transactions as private & gain insight on transaction & block propagation.
 - **Searcher & Builder Metadata:** Insights into the activities and performances of Searcher EOAs and contracts, as well as comprehensive information on block builders.
 - **Relay Bid Data:** Block auction bid data from major relays since the Merge.
 
-**Empowering Analysis with Modular Inspectors:**
-Defined by a flexible traits
-At the heart of Brontes are its inspectors—modular components that analyze the BlockTree and metadata to identify MEV opportunities and analyze complex blockchain interactions. This flexible system allows developers and researchers to create custom inspectors tailored to specific analytical needs.
+**Inspector Framework: Complex Analysis Made Simple:**
+
+Let's face it, the grunt work of data classification, normalization, and more generally of data preprocessing is painful, especially when it comes to blockchain data.This arduous process only becomes more challenging as you descend to a lower level of data granularity, at the transaction trace level, one can easily become overwhelmed by the sheer volume of intractable data.
+
+Albeit masochists, no one purposefully signs up for this. The fun in data analysis has always lied in the analytical deep dives, the fine tuning of novel methodologies. This is the foundational motivation for our inspector framework & Brontes more generally. We want to lift the burden of these preliminary steps and grants data scientists, developers and researchers the freedom to leap directly into what they enjoy most and do best: crafting and refining their analyses.
+
+The Brontes Inspector framework is the embodiment of our hatred of preprocessing. At its simplest level, an inspector ingests the classified block and metadata. Developers can then focus 100% of their time on analysis and methodology, blissfully unaware of the preprocessing effort involved.
+
+While our initial work on inspectors has focussed on MEV detection, the inspector framework's design is widely applicable across a myriad of analytics scenarios. For those interested in harnessing this versatility, our detailed [Inspector's Guide](./build/inspectors.md) offers comprehensive instructions on crafting custom inspectors.
 
 ## Why Brontes?
 
