@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
-    serde_utils::{option_contract_info, socials},
+    serde_utils::{contract_info, socials},
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
@@ -18,9 +18,9 @@ pub struct AddressMetadata {
     pub labels:          Vec<String>,
     #[serde(rename = "type")]
     pub address_type:    Option<String>,
-    #[serde(deserialize_with = "option_contract_info::deserialize")]
-    #[cfg_attr(api, serde(serialize_with = "option_contract_info::Serialize"))]
-    pub contract_info:   Option<ContractInfo>,
+    #[serde(deserialize_with = "contract_info::deserialize")]
+    #[cfg_attr(api, serde(serialize_with = "contract_info::Serialize"))]
+    pub contract_info:   ContractInfo,
     pub ens:             Option<String>,
     #[serde(deserialize_with = "socials::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
@@ -30,9 +30,7 @@ pub struct AddressMetadata {
 
 impl AddressMetadata {
     pub fn is_verified(&self) -> bool {
-        self.contract_info
-            .as_ref()
-            .map_or(false, |c| c.verified_contract.unwrap_or(false))
+        self.contract_info.verified_contract.unwrap_or(false)
     }
 
     pub fn describe(&self) -> Option<String> {

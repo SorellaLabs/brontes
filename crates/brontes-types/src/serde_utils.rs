@@ -606,7 +606,7 @@ pub mod pools_libmdbx {
     }
 }
 
-pub mod option_contract_info {
+pub mod contract_info {
 
     use std::str::FromStr;
 
@@ -620,25 +620,27 @@ pub mod option_contract_info {
     use crate::db::address_metadata::ContractInfo;
 
     #[cfg(feature = "local_clickhouse")]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ContractInfo, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let (verified_contract, contract_creator_opt, reputation): (
+        let (verified_contract, contract_creator, reputation): (
             Option<bool>,
             Option<String>,
             Option<u8>,
         ) = Deserialize::deserialize(deserializer)?;
 
-        Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
+        Ok(ContractInfo {
             verified_contract,
-            contract_creator: Address::from_str(&contract_creator).ok(),
+            contract_creator: contract_creator
+                .map(|c| Address::from_str(&c).ok())
+                .flatten(),
             reputation,
-        }))
+        })
     }
 
     #[cfg(not(feature = "local_clickhouse"))]
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ContractInfo, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -654,19 +656,19 @@ pub mod option_contract_info {
         let verified_contract =
             get_val_from_map(&contract_info_map, "verified_contract").map_err(D::Error::custom)?;
 
-        let contract_creator_opt: Option<String> =
+        let contract_creator: Option<String> =
             get_val_from_map(&contract_info_map, "contract_creator").map_err(D::Error::custom)?;
 
         let reputation =
             get_val_from_map(&contract_info_map, "reputation").map_err(D::Error::custom)?;
 
-        let contract_info = contract_creator_opt.map(|contract_creator| ContractInfo {
+        Ok(ContractInfo {
             verified_contract,
-            contract_creator: Address::from_str(&contract_creator).ok(),
+            contract_creator: contract_creator
+                .map(|c| Address::from_str(&c).ok())
+                .flatten(),
             reputation,
-        });
-
-        Ok(contract_info)
+        })
     }
     pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
         (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
