@@ -619,7 +619,7 @@ pub mod option_contract_info {
 
     use crate::db::address_metadata::ContractInfo;
 
-    #[cfg(feature = "local_clickhouse")]
+    #[cfg(not(feature = "api"))]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
@@ -637,7 +637,7 @@ pub mod option_contract_info {
         }))
     }
 
-    #[cfg(not(feature = "local_clickhouse"))]
+    #[cfg(feature = "api")]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
@@ -681,11 +681,11 @@ pub mod socials {
     use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
-    #[cfg(feature = "local_clickhouse")]
+    #[cfg(not(feature = "api"))]
     type SocalDecode =
         (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
 
-    #[cfg(feature = "local_clickhouse")]
+    #[cfg(not(feature = "api"))]
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
@@ -696,7 +696,7 @@ pub mod socials {
         Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
     }
 
-    #[cfg(not(feature = "local_clickhouse"))]
+    #[cfg(feature = "api")]
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
