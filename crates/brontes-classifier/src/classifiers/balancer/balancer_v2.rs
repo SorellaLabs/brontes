@@ -95,3 +95,10 @@ action_impl!(
 fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
     Address::from_slice(&pool_id[0..20])
 }
+
+action_impl!(
+    Protocol::BalancerV2,
+    crate::BalancerV2Vault::JoinPool,
+    Mint,
+    [..Mint*]
+)
