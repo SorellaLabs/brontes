@@ -423,7 +423,7 @@ mod tests {
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = vec![Tables::BlockInfo];
+        let tables = vec![Tables::AddressMeta];
 
         intializer
             .initialize(&tables, false, Some(block_range))
