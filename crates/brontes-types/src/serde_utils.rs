@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+
+use serde::de::{DeserializeOwned, Error};
+use serde_json::{Error as SerdeJsonError, Value};
+
 pub mod address_string {
     use std::str::FromStr;
 
@@ -607,9 +612,9 @@ pub mod option_contract_info {
 
     use alloy_primitives::Address;
     use serde::{
-        de::Deserializer,
+        de::Deserialize,
         ser::{Serialize, Serializer},
-        Deserialize,
+        Deserializer,
     };
 
     use crate::db::address_metadata::ContractInfo;
@@ -633,29 +638,37 @@ pub mod option_contract_info {
     }
 
     #[cfg(not(feature = "local_clickhouse"))]
-    #[derive(Deserialize)]
-    struct ApiContactInfo {
-        verified_contract:    Option<bool>,
-        contract_creator_opt: Option<String>,
-        reputation:           Option<u8>,
-    }
-
-    #[cfg(not(feature = "local_clickhouse"))]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let contract_info: ApiContactInfo = Deserialize::deserialize(deserializer)?;
+        use std::collections::HashMap;
 
-        Ok(contract_info
-            .contract_creator_opt
-            .map(|contract_creator| ContractInfo {
-                verified_contract: contract_info.verified_contract,
-                contract_creator:  Address::from_str(&contract_creator).ok(),
-                reputation:        contract_info.reputation,
-            }))
+        use serde::de::Error;
+
+        use super::get_val_from_map;
+
+        let contract_info_map: HashMap<String, serde_json::Value> =
+            Deserialize::deserialize(deserializer)?;
+
+        let verified_contract =
+            get_val_from_map(&contract_info_map, "verified_contract").map_err(D::Error::custom)?;
+
+        let contract_creator_opt: Option<String> =
+            get_val_from_map(&contract_info_map, "contract_creator_opt")
+                .map_err(D::Error::custom)?;
+
+        let reputation =
+            get_val_from_map(&contract_info_map, "reputation").map_err(D::Error::custom)?;
+
+        let contract_info = contract_creator_opt.map(|contract_creator| ContractInfo {
+            verified_contract,
+            contract_creator: Address::from_str(&contract_creator).ok(),
+            reputation,
+        });
+
+        Ok(contract_info)
     }
-
     pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
         (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
     }
@@ -682,27 +695,30 @@ pub mod socials {
     }
 
     #[cfg(not(feature = "local_clickhouse"))]
-    #[derive(Deserialize)]
-    struct ApiSocials {
-        twitter:           Option<String>,
-        twitter_followers: Option<u64>,
-        website_url:       Option<String>,
-        crunchbase:        Option<String>,
-        linkedin:          Option<String>,
-    }
-    #[cfg(not(feature = "local_clickhouse"))]
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let socials: ApiSocials = Deserialize::deserialize(deserializer)?;
+        use std::collections::HashMap;
+
+        use serde::de::Error;
+
+        use super::get_val_from_map;
+
+        let socials_map: HashMap<String, serde_json::Value> =
+            Deserialize::deserialize(deserializer)?;
 
         Ok(Socials {
-            twitter:           socials.twitter,
-            twitter_followers: socials.twitter_followers,
-            website_url:       socials.website_url,
-            crunchbase:        socials.crunchbase,
-            linkedin:          socials.linkedin,
+            twitter:           get_val_from_map(&socials_map, "twitter")
+                .map_err(D::Error::custom)?,
+            twitter_followers: get_val_from_map(&socials_map, "twitter_followers")
+                .map_err(D::Error::custom)?,
+            website_url:       get_val_from_map(&socials_map, "website_url")
+                .map_err(D::Error::custom)?,
+            crunchbase:        get_val_from_map(&socials_map, "crunchbase")
+                .map_err(D::Error::custom)?,
+            linkedin:          get_val_from_map(&socials_map, "linkedin")
+                .map_err(D::Error::custom)?,
         }
         .into())
     }
@@ -726,4 +742,16 @@ pub mod option_fund {
 
         Ok(fund.map(Into::into))
     }
+}
+
+fn get_val_from_map<T>(map: &HashMap<String, Value>, key: &str) -> Result<T, SerdeJsonError>
+where
+    T: DeserializeOwned,
+{
+    let value = map
+        .get(key)
+        .ok_or_else(|| SerdeJsonError::custom(format!("Could not find value for key {key}")))
+        .and_then(|v| serde_json::from_value(v.clone()).map_err(SerdeJsonError::custom))?;
+
+    Ok(value)
 }
