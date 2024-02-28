@@ -7,4 +7,5 @@ SELECT
     contract_info,
     ens,
     socials
-FROM brontes_api.address_meta where address != ''
+FROM brontes_api.address_meta
+LIMIT 10

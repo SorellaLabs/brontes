@@ -198,7 +198,8 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 
         tracing::debug!(?request, "querying endpoint");
 
-        self.client
+        let test = self
+            .client
             .execute(request)
             .await
             .map_err(|e| {
@@ -207,9 +208,17 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 }
                 e
             })?
-            .json()
-            .await
-            .map_err(Into::into)
+            .text()
+            .await?;
+
+        let val = serde_json::from_str(&test);
+
+        if val.is_err() {
+            println!("TEXT: {:?}", test);
+        }
+
+        Ok(val?)
+        //.map_err(Into::into)
     }
 }
 
