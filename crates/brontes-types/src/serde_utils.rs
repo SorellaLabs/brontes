@@ -607,12 +607,14 @@ pub mod option_contract_info {
 
     use alloy_primitives::Address;
     use serde::{
-        de::{Deserialize, Deserializer},
+        de::Deserializer,
         ser::{Serialize, Serializer},
+        Deserialize,
     };
 
     use crate::db::address_metadata::ContractInfo;
 
+    #[cfg(feature = "local_clickhouse")]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
@@ -630,6 +632,30 @@ pub mod option_contract_info {
         }))
     }
 
+    #[cfg(not(feature = "local_clickhouse"))]
+    #[derive(Deserialize)]
+    struct ApiContactInfo {
+        verified_contract:    Option<bool>,
+        contract_creator_opt: Option<String>,
+        reputation:           Option<u8>,
+    }
+
+    #[cfg(not(feature = "local_clickhouse"))]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let contract_info: ApiContactInfo = Deserialize::deserialize(deserializer)?;
+
+        Ok(contract_info
+            .contract_creator_opt
+            .map(|contract_creator| ContractInfo {
+                verified_contract: contract_info.verified_contract,
+                contract_creator:  Address::from_str(&contract_creator).ok(),
+                reputation:        contract_info.reputation,
+            }))
+    }
+
     pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
         (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
     }
@@ -637,15 +663,14 @@ pub mod option_contract_info {
 
 pub mod socials {
 
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
+    use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
+    #[cfg(feature = "local_clickhouse")]
     type SocalDecode =
         (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
 
+    #[cfg(feature = "local_clickhouse")]
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
@@ -654,6 +679,32 @@ pub mod socials {
             Deserialize::deserialize(deserializer)?;
 
         Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
+    }
+
+    #[cfg(not(feature = "local_clickhouse"))]
+    #[derive(Deserialize)]
+    struct ApiSocials {
+        twitter:           Option<String>,
+        twitter_followers: Option<u64>,
+        website_url:       Option<String>,
+        crunchbase:        Option<String>,
+        linkedin:          Option<String>,
+    }
+    #[cfg(not(feature = "local_clickhouse"))]
+    pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let socials: ApiSocials = Deserialize::deserialize(deserializer)?;
+
+        Ok(Socials {
+            twitter:           socials.twitter,
+            twitter_followers: socials.twitter_followers,
+            website_url:       socials.website_url,
+            crunchbase:        socials.crunchbase,
+            linkedin:          socials.linkedin,
+        }
+        .into())
     }
 
     pub fn serialize<S: Serializer>(u: &Socials, serializer: S) -> Result<S::Ok, S::Error> {
