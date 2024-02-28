@@ -106,7 +106,7 @@ jobs:
           done
           tar \
             --dereference --hard-dereference \
-            --directory "target/doc" \
+            --directory "target/book" \
             -cvf "$RUNNER_TEMP/artifact.tar" \
             --exclude=.git \
             --exclude=.github \
