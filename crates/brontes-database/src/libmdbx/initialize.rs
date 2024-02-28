@@ -168,7 +168,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
                     Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                     }
                 }
 

@@ -1,5 +1,8 @@
-mod base2;
-pub use base2::*;
+pub(crate) mod base2;
+pub use base2::{CurveBasePool2remove_liquidityCall, CurveBasePool2remove_liquidity_imbalanceCall, CurveBasePool2remove_liquidity_one_coinCall as CurveBasePool2remove_liquidity_one_coinCallStandard};
+
+pub(crate) mod base2_lido;
+pub use base2_lido::CurveBasePool2remove_liquidity_one_coinCall as CurveBasePool2remove_liquidity_one_coinCallLido;
 
 mod base3;
 pub use base3::*;

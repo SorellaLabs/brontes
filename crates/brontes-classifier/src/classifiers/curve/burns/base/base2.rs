@@ -20,8 +20,9 @@ action_impl!(
         let details = db_tx.get_protocol_details(info.target_address)?;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
-.enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details
+            .into_iter()
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -60,8 +61,10 @@ action_impl!(
         let details = db_tx.get_protocol_details(info.target_address)?;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
-.enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details
+            .into_iter()
+            .enumerate()
+            .map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
