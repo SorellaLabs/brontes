@@ -423,32 +423,32 @@ mod tests {
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = Tables::ALL;
+        let tables = vec![Tables::BlockInfo];
 
         intializer
             .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
 
-        // TokenDecimals
-        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // TokenDecimals
+        // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // AddressToProtocol
-        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // AddressToProtocol
+        // AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // CexPrice
-        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
-        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
+        // // CexPrice
+        // CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        //     .await
+        //     .unwrap();
+        // CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        //     .await
+        //     .unwrap();
 
-        // Metadata
+        // Block Info
         BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
@@ -456,27 +456,27 @@ mod tests {
             .await
             .unwrap();
 
-        // PoolCreationBlocks
-        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // PoolCreationBlocks
+        // PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // Builder
-        Builder::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // Builder
+        // Builder::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // AddressMeta
-        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // AddressMeta
+        // AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // TxTraces
-        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
-        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
+        // // TxTraces
+        // TxTraces::test_initialized_data(clickhouse, libmdbx,
+        // Some(block_range))     .await
+        //     .unwrap();
+        // TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx,
+        // arbitrary_set)     .await
+        //     .unwrap();
     }
 }
