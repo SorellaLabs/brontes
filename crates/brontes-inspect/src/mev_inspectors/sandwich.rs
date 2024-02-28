@@ -9,10 +9,12 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{Actions, NormalizedAction, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{
+        Actions, NormalizedAction, NormalizedBurn, NormalizedSwap, NormalizedTransfer,
+    },
     tree::{BlockTree, GasDetails, TxInfo},
     ActionIter, IntoZip, IntoZipTree, ScopeIter, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
-    TreeIterator, TreeSearchBuilder,
+    TreeIterator, TreeMap, TreeMapAll, TreeSearchBuilder,
 };
 use reth_primitives::{Address, B256};
 
@@ -90,7 +92,17 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 .into_zip_tree(tree)
                                 .tree_zip_with(hashes.into_iter());
 
-                            // let b = b.into_scoped_tree_iter();
+                            let b = b.into_scoped_tree_iter();
+                            b.tree_map_all(|tree: Arc<BlockTree<Actions>>, hashes: Vec<B256>| {
+                                let a = hashes
+                                    .into_iter()
+                                    .map(|v| (*tree.clone()).get_root(v).unwrap().get_root_action())
+                                    .any(|d| {
+                                        d.is_revert() || mev_executor_contract == d.get_to_address()
+                                    });
+                                vec![a]
+                            });
+
                             // let b = TreeIterator::new(tree,
                             // b).into_scoped_tree_iter();
 
@@ -114,8 +126,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                     // if victims
                     //     .iter()
                     //     .flatten()
-                    //     .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                    //     .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
+                    // .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                    // .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
                     // {
                     //     return None
                     // }

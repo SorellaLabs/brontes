@@ -1,205 +1,262 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{collections::VecDeque, marker::PhantomData, sync::Arc};
 
-use crate::{normalized_actions::NormalizedAction, BlockTree, ScopeIter, TreeIter};
+use super::{ScopeIter, ScopeKey};
+use crate::{normalized_actions::NormalizedAction, BlockTree, SplitIterZip, TreeIter};
 
-// pub trait FilterTree<V: NormalizedAction, Out, Keys, F> {
-//     fn filter_tree(self, keys: Keys, f: F) -> Out;
-// }
-//
-// macro_rules! tree_filter_gen {
-//     ($i:tt, $($v:ident),*) => {
-//         paste::paste!(
-//             pub struct [<TreeFilter $i>]<V: NormalizedAction, I:
-// ScopeIter<V>, F, $($v,)*> {                 tree: Arc<BlockTree<V>>,
-//                 iter: I,
-//                 f: F,
-//                 keys: ($($v,)*),
-//             }
-//
-//             #[allow(unused_parens)]
-//             impl <V: NormalizedAction, I, F, $($v,)*>
-//             FilterTree<
-//             V,
-//             [<TreeFilter $i>]<V, I, F, $($v,)*>,
-//             ($($v,)*),
-//             F
-//             > for I where I: ScopeIter<V, Items = ($($v::Out,)*)> +
-//             > TreeIter<V>, $($v: NormalizedActionKey<V>,)* F:
-//             > FnMut(Arc<BlockTree<V>>, $(&Option<$v::Out>),*) -> bool
-//             {
-//                 fn filter_tree(self, keys: ($($v,)*), f: F) -> [<TreeFilter
-// $i>]<V, I, F, $($v,)*> {                     [<TreeFilter $i>] {
-//                         tree: self.tree(),
-//                         iter: self,
-//                         f,
-//                         keys
-//                     }
-//
-//                 }
-//             }
-//
-//             #[allow(unused_parens)]
-//             impl<V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*>
-// ScopeIter<V>                 for [<TreeFilter $i>]<V, I, F, $($v,)*>
-//                 where
-//
-//                 I: ScopeIter<V, Items = ($($v::Out,)*)> + TreeIter<V>,
-//                 $($v: NormalizedActionKey<V>,)*
-//                 F: FnMut(Arc<BlockTree<V>>, $(&Option<$v::Out>),*) -> bool
-//                 {
-//                     type Acc = I::Acc;
-//                     type Items = I::Items;
-//
-//                     fn next(&mut self) -> Option<Self::Items> {
-//                         let ($($v,)*) = &self.keys;
-//                         let ($($v,)*) = ($($v.clone(),)*);
-//
-//                         let mut all_good = true;
-//                         let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
-//                         // collect all keys
-//                         $(
-//                             if let Some(inner) = self.next_scoped_key(&$v) {
-//                                 [<key_ $v>] = Some(inner);
-//                             } else {
-//                                 all_good = false;
-//                             }
-//                         )*
-//
-//                         if all_good && (&mut self.f)(self.tree.clone(),
-// $(&[<key_ $v>]),*)  {                             return Some(($([<key_
-// $v>].unwrap(),)*))                         }
-//
-//                         None
-//                     }
-//
-//                     fn next_scoped_key<K: NormalizedActionKey<V>>(
-//                         &mut self,
-//                         key: &K,
-//                     ) -> Option<K::Out> {
-//                         // check if this iter has the key. if it does,
-//                         // then it means that it maps on it and there is no
-// keys left                         let ($($v,)*) = &self.keys;
-//                         $(
-//                             if key.get_key().id == $v.get_key().id {
-//                                 return None
-//                             }
-//                         )*
-//
-//                         self.iter.next_scoped_key(key)
-//                     }
-//
-//                     fn drain(self) -> Vec<Self::Acc> {
-//                         self.iter.drain()
-//                     }
-//             }
-//         );
-//     }
-// }
-//
-// tree_filter_gen!(1, A);
-// tree_filter_gen!(2, A, B);
-// tree_filter_gen!(3, A, B, C);
-// tree_filter_gen!(4, A, B, C, D);
-// tree_filter_gen!(5, A, B, C, D, E);
-//
-// pub trait Filter<V: NormalizedAction, Out, Keys, F>
-// where
-//     Out: ScopeIter<V>,
-// {
-//     fn filter(self, keys: Keys, f: F) -> Out;
-// }
-//
-// macro_rules! filter_gen {
-//     ($i:tt, $($v:ident),*) => {
-//         paste::paste!(
-//             pub struct [<Filter $i>]<V: NormalizedAction, I: ScopeIter<V>, F,
-// $($v,)*> {                 iter: I,
-//                 f: F,
-//                 keys: ($($v,)*),
-//                 _p: PhantomData<V>
-//             }
-//
-//             #[allow(unused_parens)]
-//             impl <V: NormalizedAction, I, F, $($v,)*>
-//             Filter<
-//             V,
-//             [<Filter $i>]<V, I, F, $($v,)*>,
-//             ($($v,)*),
-//             F
-//             > for I where I: ScopeIter<V, Items = ($($v::Out,)*)> +
-//             > TreeIter<V>, $($v: NormalizedActionKey<V>,)* F:
-//             > FnMut($(&Option<$v::Out>),*) -> bool
-//             {
-//                 fn filter(self, keys: ($($v,)*), f: F) -> [<Filter $i>]<V, I,
-// F, $($v,)*> {                     [<Filter $i>] {
-//                         iter: self,
-//                         f,
-//                         keys,
-//                         _p: PhantomData::default()
-//                     }
-//
-//                 }
-//             }
-//             #[allow(unused_parens)]
-//             impl<V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*>
-// ScopeIter<V>                 for [<Filter $i>]<V, I, F, $($v,)*>
-//                 where
-//
-//                 I: ScopeIter<V, Items = ($($v::Out,)*)> + TreeIter<V>,
-//                 $($v: NormalizedActionKey<V>,)*
-//                 F: FnMut($(&Option<$v::Out>),*) -> bool
-//                 {
-//                     type Acc = I::Acc;
-//                     type Items = I::Items;
-//
-//                     fn next(&mut self) -> Option<Self::Items> {
-//                         let ($($v,)*) = &self.keys;
-//                         let ($($v,)*) = ($($v.clone(),)*);
-//
-//                         let mut all_good = true;
-//                         let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
-//                         // collect all keys
-//                         $(
-//                             if let Some(inner) = self.next_scoped_key(&$v) {
-//                                 [<key_ $v>] = Some(inner);
-//                             } else {
-//                                 all_good = false;
-//                             }
-//                         )*
-//
-//                         if all_good && (&mut self.f)($(&[<key_ $v>]),*)  {
-//                             return Some(($([<key_ $v>].unwrap(),)*))
-//                         }
-//
-//                         None
-//                     }
-//
-//                     fn next_scoped_key<K: NormalizedActionKey<V>>(
-//                         &mut self,
-//                         key: &K,
-//                     ) -> Option<K::Out> {
-//                         // check if this iter has the key. if it does,
-//                         // then it means that it maps on it and there is no
-// keys left                         let ($($v,)*) = &self.keys;
-//                         $(
-//                             if key.get_key().id == $v.get_key().id {
-//                                 return None
-//                             }
-//                         )*
-//
-//                         self.iter.next_scoped_key(key)
-//                     }
-//
-//                     fn drain(self) -> Vec<Self::Acc> {
-//                         self.iter.drain()
-//                     }
-//             }
-//         );
-//     }
-// }
-//
-// filter_gen!(1, A);
-// filter_gen!(2, A, B);
-// filter_gen!(3, A, B, C);
-// filter_gen!(4, A, B, C, D);
-// filter_gen!(5, A, B, C, D, E);
+pub trait TreeFilter<V: NormalizedAction, Out, Keys, F> {
+    fn tree_filter(self, f: F) -> Out;
+}
+
+pub trait TreeFilterAll<V: NormalizedAction, Out, Keys, F> {
+    fn tree_filter_all(self, f: F) -> Out;
+}
+
+macro_rules! tree_map_gen_all {
+    ($i:tt, $b:ident, $($v:ident),*) => {
+        paste::paste!(
+            pub struct [<TreeFilterAll $i>]<$b, I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
+                tree: Arc<BlockTree<V>>,
+                iter: I,
+                f: F,
+                buf: VecDeque<$b>,
+                _p: PhantomData<(I0, I1,$($v,)*)>
+            }
+
+            impl <$b, I0, I1: Iterator,V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> TreeIter<V>
+                for [<TreeFilterAll $i>]<$b, I0, I1,V, I, F, $($v,)*> {
+
+                fn tree(&self) -> Arc<BlockTree<V>> {
+                    self.tree.clone()
+                }
+            }
+
+            #[allow(unused_parens)]
+            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* $b >
+            TreeFilterAll<
+            V,
+            [<TreeFilterAll $i>]<$b, I0, I1, V, I, F, $($v,)*>,
+            ($($v),*),
+            F,
+            > for I
+                where
+                    I: ScopeIter<I1> + TreeIter<V>,
+                    $($v: ScopeKey,)*
+                    F: FnMut(Arc<BlockTree<V>>, $(&[$v]),*) -> bool
+            {
+                fn tree_filter_all(self, f: F) -> [<TreeFilterAll $i>]<$b,
+                    I0,
+                    I1,
+                    V, I, F, $($v),*> {
+                    [<TreeFilterAll $i>] {
+                        tree: self.tree(),
+                        iter: self,
+                        buf: VecDeque::default(),
+                        f,
+                        _p: PhantomData::default()
+                    }
+
+                }
+            }
+
+            #[allow(unused_parens, non_snake_case)]
+            impl<
+                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>>,
+                V: NormalizedAction,
+                I,
+                FN,
+                $($v,)*
+                $b
+            > ScopeIter<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out>
+                for [<TreeFilterAll $i>]<$b, <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out, I0, V, I, FN, $($v,)*>
+                where
+                I: ScopeIter<I0>,
+                $($v: ScopeKey,)*
+                FN: FnMut(Arc<BlockTree<V>>, $(&[$v]),*) -> bool
+                {
+                    type Acc = I::Acc;
+                    type Items = I::Items;
+
+                    fn next(&mut self) -> Option<Self::Items> {
+                        let mut any_none = false;
+                        let ($(mut [<key_ $v>],)*) = ($(Vec::<$v>::new(),)*);
+                        // collect all keys
+                        $(
+                            if let Some(inner) = self.iter.next_scoped_key::<$v>() {
+                                [<key_ $v>].push(inner);
+                            } else {
+                                any_none =true;
+                            }
+
+                            while let Some(inner) = self.iter.next_scoped_key::<$v>() {
+                                [<key_ $v>].push(inner);
+                            }
+                        )*
+
+                        if any_none {
+                            return None
+                        }
+
+                        if (&mut self.f)(self.tree.clone(), $(&[<key_ $v>]),*) {
+                            return  Some(($([<key_ $v>]),*))
+                        }
+
+                        None
+                    }
+
+                    fn next_scoped_key<K: ScopeKey>(
+                        &mut self,
+                    ) -> Option<K> {
+                        // check if this iter has the key. if it does,
+                        // then it means that it maps on it and there is no keys left
+                        $(
+                            if K::ID == $v::ID {
+                                return None
+                            }
+                        )*
+
+                        self.iter.next_scoped_key()
+                    }
+
+                    fn drain(self) -> Vec<Self::Acc> {
+                        self.iter.drain()
+                    }
+
+                    fn fold(mut self) -> <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out {
+                        let mut i = Vec::new();
+                        while let Some(n) = self.next() {
+                            i.push(n);
+                        }
+                        let b = self.iter.fold();
+                        b.zip_with_inner(i.into_iter())
+                    }
+            }
+        );
+    }
+}
+tree_map_gen_all!(1, T0, T1);
+tree_map_gen_all!(2, T0, T1, T2);
+tree_map_gen_all!(3, T0, T1, T2, T3);
+tree_map_gen_all!(4, T0, T1, T2, T3, T4);
+
+macro_rules! tree_map_gen {
+    ($i:tt, $b:ident, $($v:ident),*) => {
+        paste::paste!(
+            pub struct [<TreeFilter $i>]<I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
+                tree: Arc<BlockTree<V>>,
+                iter: I,
+                f: F,
+                _p: PhantomData<(I0, I1,$($v,)*)>
+            }
+
+            impl <I0, I1: Iterator,V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> TreeIter<V>
+                for [<TreeFilter $i>]<I0, I1,V, I, F, $($v,)*> {
+
+                fn tree(&self) -> Arc<BlockTree<V>> {
+                    self.tree.clone()
+                }
+            }
+
+            #[allow(unused_parens)]
+            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* $b >
+            TreeFilter<
+            V,
+            [<TreeFilter $i>]<I0, I1, V, I, F, $($v,)*>,
+            ($($v),*),
+            F,
+            > for I
+                where
+                    I: ScopeIter< I1> + TreeIter<V>,
+                    $($v: ScopeKey,)*
+                    F: FnMut(Arc<BlockTree<V>>, $($v),*) -> bool
+            {
+                fn tree_filter(self, f: F) -> [<TreeFilter $i>]<
+                    I0,
+                    I1,
+                    V, I, F, $($v),*> {
+                    [<TreeFilter $i>] {
+                        tree: self.tree(),
+                        iter: self,
+                        f,
+                        _p: PhantomData::default()
+                    }
+                }
+            }
+
+            #[allow(unused_parens, non_snake_case)]
+            impl<
+                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>>,
+                V: NormalizedAction,
+                I,
+                FN,
+                $($v,)*
+                $b
+            > ScopeIter<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out>
+                for [<TreeFilter $i>]<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out, I0, V, I, FN, $($v,)*>
+                where
+                I: ScopeIter<I0>,
+                $($v: ScopeKey,)*
+                FN: FnMut(Arc<BlockTree<V>>, $($v),*) -> bool
+                {
+                    type Acc = I::Acc;
+                    type Items = I::Items;
+
+                    fn next(&mut self) -> Option<Self::Items> {
+
+                        let mut any_none = false;
+                        let ($(mut [<key_ $v>],)*) = ($(None::<$v>,)*);
+                        // collect all keys
+                        $(
+                            if let Some(inner) = self.iter.next_scoped_key::<$v>() {
+                                [<key_ $v>] = Some(inner);
+                            } else {
+                                any_none = true;
+                            }
+                        )*
+
+                        if any_none {
+                            return None
+                        }
+
+                        if (&mut self.f)(self.tree.clone(), $(&[<key_ $v>]),*) {
+                            return Some(($([<key_ $v>]),*))
+                        }
+
+                        None
+                    }
+
+                    fn next_scoped_key<K: ScopeKey>(
+                        &mut self,
+                    ) -> Option<K> {
+                        // check if this iter has the key. if it does,
+                        // then it means that it maps on it and there is no keys left
+                        $(
+
+                            if K::ID== $v::ID {
+                                return None
+                            }
+                        )*
+
+                        self.iter.next_scoped_key()
+                    }
+
+                    fn drain(self) -> Vec<Self::Acc> {
+                        self.iter.drain()
+                    }
+
+                    fn fold(mut self) -> <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out {
+                        let mut i = Vec::new();
+                        while let Some(n) = self.next() {
+                            i.push(n);
+                        }
+                        let b = self.iter.fold();
+                        b.zip_with_inner(i.into_iter())
+                    }
+            }
+        );
+    }
+}
+tree_map_gen!(1, T1);
+tree_map_gen!(2, T1, T2);
+tree_map_gen!(3, T1, T2, T3);
+tree_map_gen!(4, T1, T2, T3, T4);
+

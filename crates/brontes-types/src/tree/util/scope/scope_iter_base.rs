@@ -14,7 +14,7 @@ macro_rules! scope_iter_base {
             [<ScopeBase $i>]<V, IT, $($v,)*>> for IT
             where
                 IT: TreeIter<V>,
-                IT: Iterator<Item = ($($v),*)> {
+                IT: Iterator<Item = ($($v,)*)> {
                      fn scope_iter_base(self) -> [<ScopeBase $i>]<V, IT, $($v,)*> {
                         [<ScopeBase $i>] {
                             tree: self.tree(),
@@ -86,7 +86,7 @@ macro_rules! scope_iter_base {
                     }
 
                     fn fold(self) -> I {
-                        self.iter
+                        todo!("for when we forget");
                     }
             }
         );

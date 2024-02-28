@@ -1,14 +1,10 @@
 use std::{collections::VecDeque, marker::PhantomData, sync::Arc};
-use super::ScopeKey;
 
-use super::ScopeIter;
-use crate::{
-    normalized_actions::{NormalizedAction},
-    BlockTree, SplitIterZip, TreeIter,
-};
+use super::{ScopeIter, ScopeKey};
+use crate::{normalized_actions::NormalizedAction, BlockTree, SplitIterZip, TreeIter};
 
 pub trait TreeMap<V: NormalizedAction, Out, Keys, F> {
-    fn tree_map(self,  f: F) -> Out;
+    fn tree_map(self, f: F) -> Out;
 }
 
 pub trait TreeMapAll<V: NormalizedAction, Out, Keys, F> {

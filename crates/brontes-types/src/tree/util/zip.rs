@@ -1,6 +1,7 @@
-use crate::{normalized_actions::NormalizedAction, BlockTree};
 use std::sync::Arc;
+
 use super::TreeIter;
+use crate::{normalized_actions::NormalizedAction, BlockTree};
 
 pub trait SplitIterZip<NewI>: Iterator
 where
@@ -43,7 +44,7 @@ pub trait IntoZip<Out> {
 }
 
 pub trait IntoZipTree<V: NormalizedAction, Out> {
-    fn into_zip_tree(self, tree:Arc<BlockTree<V>>) -> Out;
+    fn into_zip_tree(self, tree: Arc<BlockTree<V>>) -> Out;
 }
 
 unzip_padded!((A, A1));
@@ -80,7 +81,7 @@ macro_rules! into_split_iter {
                     $iter_val: IntoIterator
                 ),*
             {
-                fn into_zip_tree(self, tree: Arc<BlockTree<V>>) 
+                fn into_zip_tree(self, tree: Arc<BlockTree<V>>)
                     -> [<ZipPaddedTree $am>]<V, $($iter_val::IntoIter),*> {
                     let ($([<$iter_val:lower>]),*) = self;
 
