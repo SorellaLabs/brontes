@@ -101,8 +101,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         let data = self.clickhouse.query_many::<T, D>().await;
 
-        println!("SIMPLE DATA: {:?}\n\n\n", data);
-
         match data {
             Ok(d) => self.libmdbx.0.write_table(&d)?,
             Err(e) => {
@@ -167,8 +165,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             async move {
                 let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
 
-                println!("RANGE DATA: {:?}\n\n\n", data);
-
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
                     Err(e) => {
@@ -221,8 +217,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
             async move {
                 let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
-
-                println!("SET DATA: {:?}\n\n\n", data);
 
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
@@ -423,60 +417,60 @@ mod tests {
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = vec![Tables::AddressMeta];
+        let tables = Tables::ALL;
 
         intializer
             .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
 
-        // // TokenDecimals
-        // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // TokenDecimals
+        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // AddressToProtocol
-        // AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx,
-        // None)     .await
-        //     .unwrap();
+        // AddressToProtocol
+        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // CexPrice
-        // CexPrice::test_initialized_data(clickhouse, libmdbx,
-        // Some(block_range))     .await
-        //     .unwrap();
-        // CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx,
-        // arbitrary_set)     .await
-        //     .unwrap();
+        // CexPrice
+        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
 
-        // Block Info
-        // BlockInfo::test_initialized_data(clickhouse, libmdbx,
-        // Some(block_range))     .await
-        //     .unwrap();
-        // BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx,
-        // arbitrary_set)     .await
-        //     .unwrap();
+        // Metadata
+        BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
 
-        // // PoolCreationBlocks
-        // PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // PoolCreationBlocks
+        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // Builder
-        // Builder::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // Builder
+        Builder::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
         // AddressMeta
         AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
 
-        // // TxTraces
-        // TxTraces::test_initialized_data(clickhouse, libmdbx,
-        // Some(block_range))     .await
-        //     .unwrap();
-        // TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx,
-        // arbitrary_set)     .await
-        //     .unwrap();
+        // TxTraces
+        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
     }
 }
