@@ -170,13 +170,46 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .map_err(Into::into)
     }
 
-    async fn query_many_arbitrary<T, D>(&self, _range: &'static [u64]) -> eyre::Result<Vec<D>>
+    async fn query_many_arbitrary<T, D>(&self, range: &'static [u64]) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-        self.query_many().await
+        let range_str = range
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+
+        let request = self
+            .client
+            .get(format!(
+                "{}/{}",
+                self.url,
+                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!(
+                    "tried to init remote when no http endpoint was set {}",
+                    T::NAME
+                ))
+            ))
+            .header("api-key", &self.api_key)
+            .header("block-set", range_str)
+            .build()?;
+
+        tracing::debug!(?request, "querying endpoint");
+
+        self.client
+            .execute(request)
+            .await
+            .map_err(|e| {
+                if let Some(status_code) = e.status() {
+                    tracing::error!(%status_code, "clickhouse http query")
+                }
+                e
+            })?
+            .json()
+            .await
+            .map_err(Into::into)
     }
 }
 
