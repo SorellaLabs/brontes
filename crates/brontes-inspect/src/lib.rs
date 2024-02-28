@@ -19,11 +19,13 @@
 //! ```ignore
 //! #[async_trait::async_trait]
 //! pub trait Inspector: Send + Sync {
+//!     type Result: Send + Sync;
+//!
 //!     async fn process_tree(
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
 //!         metadata: Arc<Metadata>,
-//!     ) -> Vec<Bundle>;
+//!     ) -> Self::Result;
 //! }
 //! ```
 //!
@@ -78,7 +80,6 @@
 //! analyzing MEV strategies in Ethereum transactions. Individual inspectors
 //! identify specific MEV strategies, while the `Composer` combines these
 //! results to identify more complex strategies.
-//TODO: Update composer section once finished
 
 pub mod composer;
 pub mod discovery;
