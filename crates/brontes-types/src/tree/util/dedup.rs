@@ -4,20 +4,21 @@ use super::InTupleFnOutVec;
 use crate::{
     action_iter::ActionIter,
     normalized_actions::{utils::ActionCmp, NormalizedAction},
-    ActionSplit, IntoZippedIter, SplitIterZip, TreeBase, TreeIter, TreeIterator,
+    ActionSplit, IntoZip, SplitIterZip, TreeIter,
 };
 
 pub trait DedupOperation<'a, FromI, Out, V: NormalizedAction, Item, ZIP> {
     fn dedup<KS, RS>(self, parent_actions: KS, possible_prune_actions: RS) -> Out
     where
+        Out: Iterator,
         V: NormalizedAction + 'a,
         KS: 'a,
         RS: 'a,
         Self: TreeIter<V>,
-        FromI: IntoZippedIter<IntoIter = ZIP>,
+        FromI: IntoZip<ZIP>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
-        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI, ZIP>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
         ZIP: SplitIterZip<std::vec::IntoIter<V>>;
 }
@@ -35,26 +36,25 @@ impl<I> Iterator for Deduped<'_, I> {
 }
 
 /// Collect All Impl
-impl<'a, T, FromI: IntoIterator, V: NormalizedAction, FUCK>
+impl<'a, T, FromI, V: NormalizedAction, ZIP>
     DedupOperation<
         'a,
         FromI,
-        Deduped<'a, (B256, <FUCK as SplitIterZip<std::vec::IntoIter<V>>>::Out)>,
+        Deduped<'a, (B256, <ZIP as SplitIterZip<std::vec::IntoIter<V>>>::Out)>,
         V,
         (B256, Vec<V>),
-        FUCK,
+        ZIP,
     > for T
 where
     T: 'a,
     T: Iterator<Item = (B256, Vec<V>)> + TreeIter<V>,
-    TreeIterator<V, <FromI as IntoIterator>::IntoIter>: SplitIterZip<std::vec::IntoIter<V>>,
-    FUCK: SplitIterZip<std::vec::IntoIter<V>> + TreeBase<V>,
+    ZIP: SplitIterZip<std::vec::IntoIter<V>>,
 {
     fn dedup<KS, RS>(
         self,
         parent_actions: KS,
         possible_prune_actions: RS,
-    ) -> Deduped<'a, (B256, <FUCK as SplitIterZip<std::vec::IntoIter<V>>>::Out)>
+    ) -> Deduped<'a, (B256, <ZIP as SplitIterZip<std::vec::IntoIter<V>>>::Out)>
     where
         V: NormalizedAction + 'a,
         KS: 'a,
@@ -62,10 +62,10 @@ where
         Self: Iterator<Item = (B256, Vec<V>)> + TreeIter<V>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
-        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI, ZIP>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
-        FUCK: SplitIterZip<std::vec::IntoIter<V>>,
-        FromI: IntoZippedIter<IntoIter = FUCK>,
+        ZIP: SplitIterZip<std::vec::IntoIter<V>>,
+        FromI: IntoZip<ZIP>,
     {
         Deduped {
             iterator: Box::new(self.map(move |(k, v)| {
@@ -78,8 +78,8 @@ where
 
                 let res = good
                     .merge_removing_duplicates(bad)
-                    .into_zipped_iter()
-                    .zip_with(rem.into_iter());
+                    .into_zip()
+                    .zip_with_inner(rem.into_iter());
 
                 (k, res)
             })),
@@ -170,12 +170,12 @@ where
 //     }
 // }
 
-pub trait Dedups<V: NormalizedAction, RI, FromI>: IntoIterator {
+pub trait Dedups<V: NormalizedAction, RI, FromI, ZIP> {
     /// Given the current iterator, or tuple of iterators, merges them and
     /// and then dedups the other iterators
     fn merge_removing_duplicates(self, merge_dedup_iters: RI) -> FromI
     where
-        FromI: IntoZippedIter;
+        FromI: IntoZip<ZIP>;
 }
 
 macro_rules! tree_dedup {
@@ -192,21 +192,23 @@ macro_rules! tree_dedup {
         impl <
             K,
             V: NormalizedAction,
+            ZIP,
             $($($remove_i: IntoIterator<Item = $remove_type> + Clone,)*)*
             $($($remove_type: PartialEq + Eq,)*)*
             $($keep_type: $(ActionCmp<$remove_type> + )*,)*
-            $($($ret_r: Default + Extend<$remove_type>,)*)*
-            $($ret_k: Default + Extend<$keep_type>,)*
+            $($($ret_r: Default + Extend<$remove_type>+ IntoIterator<Item = $remove_type>,)*)*
+            $($ret_k: Default + Extend<$keep_type> + IntoIterator<Item = $keep_type>,)*
             >
             Dedups
             <
             V,
             ($($($remove_i),*),*),
-            ($($ret_k),*, $($($ret_r),*),*)
+            ($($ret_k),*, $($($ret_r,)*)*),
+            ZIP
             > for K
             where
                 K: IntoIterator<Item = ($($keep_type),*)>,
-                ($($($ret_r),*),*, $($ret_k),*): IntoZippedIter,
+             ($($ret_k),*, $($($ret_r),*),*): IntoZip<ZIP>,
             {
                 #[allow(non_snake_case, unused_variables, unused_mut)]
                 fn merge_removing_duplicates(self, remove_i: ($($($remove_i),*),*))
@@ -247,7 +249,7 @@ macro_rules! tree_dedup {
                         )*
                      )*
 
-                    ($($ret_k),*,$($($ret_r),*),*)
+                    ($($ret_k),*,$($($ret_r),*),*,)
                 }
             }
         );

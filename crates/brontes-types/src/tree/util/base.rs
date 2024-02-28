@@ -48,15 +48,16 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         possible_prune_actions: RS,
     ) -> TreeIterator<V, Out>
     where
-        Out: Iterator,
         Self: Sized + DedupOperation<'a, FromI, Out, V, Self::Item, Zip> + 'a + TreeIter<V>,
+        Out: Iterator,
         V: NormalizedAction + 'a,
         KS: 'a,
         RS: 'a,
-        FromI: IntoZippedIter<IntoIter = Zip>,
+        Self: TreeIter<V>,
+        FromI: IntoZip<Zip>,
         KS: InTupleFnOutVec<V>,
         RS: InTupleFnOutVec<V>,
-        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI, Zip>,
         std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
         Zip: SplitIterZip<std::vec::IntoIter<V>>,
     {

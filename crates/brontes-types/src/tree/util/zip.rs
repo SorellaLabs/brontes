@@ -1,7 +1,3 @@
-use std::sync::Arc;
-use crate::TreeIter;
-use crate::{normalized_actions::NormalizedAction, BlockTree};
-
 pub trait IntoZippedIter {
     type Item;
     type IntoIter: Iterator<Item = Self::Item>;
