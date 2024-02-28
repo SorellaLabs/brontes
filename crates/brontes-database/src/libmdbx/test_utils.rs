@@ -85,6 +85,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
+    #[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
     let _clickhouse_data = clickhouse_data::<T, D, CH>(clickhouse, block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
@@ -106,6 +107,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
+    #[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
     let _clickhouse_data = clickhouse_arbitrary_data::<T, D, CH>(clickhouse, block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
