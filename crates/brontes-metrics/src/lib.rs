@@ -33,8 +33,8 @@ pub struct PoirotMetricsListener {
 }
 
 impl PoirotMetricsListener {
-    /// Creates a new [MetricsListener] with the provided receiver of
-    /// [MetricEvent].
+    /// Creates a new `MetricsListener` with the provided receiver of
+    /// MetricEvent.
     pub fn new(events_rx: UnboundedReceiver<PoirotMetricEvents>) -> Self {
         Self {
             events_rx,
