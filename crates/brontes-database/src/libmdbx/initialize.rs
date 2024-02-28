@@ -101,6 +101,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         let data = self.clickhouse.query_many::<T, D>().await;
 
+        println!("SIMPLE DATA: {:?}\n\n\n", data);
+
         match data {
             Ok(d) => self.libmdbx.0.write_table(&d)?,
             Err(e) => {
@@ -165,6 +167,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             async move {
                 let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
 
+                println!("RANGE DATA: {:?}\n\n\n", data);
+
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
                     Err(e) => {
@@ -218,7 +222,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             async move {
                 let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
 
-                println!("DATA: {:?}", data);
+                println!("SET DATA: {:?}\n\n\n", data);
 
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
