@@ -2,7 +2,9 @@
 
 _Documentation for Brontes users and developers._
 
-[![Telegram Chat][tg-badge]][tg-url]<img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/SorellaLabs?link=https%3A%2F%2Ftwitter.com%2FSorellaLabs">
+[![Telegram Chat][tg-badge]][tg-url]<a href="https://twitter.com/SorellaLabs">
+<img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/SorellaLabs?style=social">
+</a>
 
 **Brontes** is a blazingly fast and modular blockchain analytics pipeline, designed with a focus on systematically identifying **MEV**.
 
