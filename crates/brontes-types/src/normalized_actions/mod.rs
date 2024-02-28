@@ -23,7 +23,6 @@ pub use liquidity::*;
 pub use pool::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
-use serde::{Deserialize, Serialize};
 pub use swaps::*;
 pub use transfer::*;
 
@@ -131,7 +130,7 @@ impl NormalizedAction for Actions {
 }
 
 /// A normalized action that has been classified
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Deserialize, PartialEq, Eq)]
 pub enum Actions {
     Swap(NormalizedSwap),
     SwapWithFee(NormalizedSwapWithFee),
@@ -171,7 +170,7 @@ impl InsertRow for Actions {
     }
 }
 
-impl Serialize for Actions {
+impl serde::Serialize for Actions {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
