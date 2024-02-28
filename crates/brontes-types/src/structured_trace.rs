@@ -218,7 +218,7 @@ impl TransactionTraceWithLogs {
 
 #[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
-#[cfg_attr(api, derive(Serialize))]
+#[cfg_attr(feature = "api", derive(Serialize))]
 pub struct TxTrace {
     pub block_number:    u64,
     pub trace:           Vec<TransactionTraceWithLogs>,
