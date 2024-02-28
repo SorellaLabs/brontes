@@ -133,7 +133,8 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 
         tracing::debug!(?request, "querying endpoint");
 
-        self.client
+        let text = self
+            .client
             .execute(request)
             .await
             .map_err(|e| {
@@ -142,9 +143,17 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 }
                 e
             })?
-            .json()
-            .await
-            .map_err(Into::into)
+            .text()
+            .await?;
+
+        let val = serde_json::from_str(&text);
+
+        if val.is_err() {
+            println!("ERROR: {:?}", text);
+        }
+
+        Ok(val?)
+        //.map_err(Into::into)
     }
 
     async fn query_many<T, D>(&self) -> eyre::Result<Vec<D>>
@@ -153,8 +162,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-        let text = self
-            .client
+        self.client
             .get(format!(
                 "{}/{}",
                 self.url,
@@ -166,17 +174,9 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .header("api-key", &self.api_key)
             .send()
             .await?
-            .text()
-            .await?;
-        //.map_err(Into::into)
-
-        let val = serde_json::from_str(&text);
-
-        if val.is_err() {
-            println!("ERROR: {}", text);
-        }
-
-        Ok(val?)
+            .json()
+            .await
+            .map_err(Into::into)
     }
 
     async fn query_many_arbitrary<T, D>(&self, range: &'static [u64]) -> eyre::Result<Vec<D>>
