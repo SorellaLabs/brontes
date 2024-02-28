@@ -67,6 +67,25 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         Ok(())
     }
 
+    pub async fn initialize_arbitrary_state(
+        &self,
+        tables: &[Tables],
+        block_range: &'static [u64],
+    ) -> eyre::Result<()> {
+        join_all(
+            tables
+                .iter()
+                .map(|table| table.initialize_table_arbitrary_state(self, block_range)),
+        )
+        .await
+        .into_iter()
+        .collect::<eyre::Result<_>>()?;
+
+        self.load_classifier_config_data().await;
+        self.load_searcher_builder_config_data().await;
+        Ok(())
+    }
+
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
         clear_table: bool,
@@ -149,7 +168,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
                     Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                     }
                 }
 
@@ -163,6 +182,56 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(start..=end, flag)?;
                 }
+
+                Ok::<(), eyre::Report>(())
+            }
+        }))
+        .unordered_buffer_map(4, tokio::spawn)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(())
+    }
+
+    pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
+        &self,
+        block_range: &'static [u64],
+    ) -> eyre::Result<()>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    {
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
+
+        let num_chunks = Arc::new(Mutex::new(ranges.len()));
+
+        info!(target: "brontes::init::missing_state", "{} -- Starting Initialization Missing State With {} Chunks", T::NAME, ranges.len());
+
+        iter(ranges.into_iter().map(|inner_range| {
+            let num_chunks = num_chunks.clone();
+            let clickhouse = self.clickhouse;
+            let libmdbx = self.libmdbx;
+
+            async move {
+                let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
+
+                match data {
+                    Ok(d) => libmdbx.0.write_table(&d)?,
+                    Err(e) => {
+                        info!(target: "brontes::init::missing_state", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                    }
+                }
+
+                let num = {
+                    let mut n = num_chunks.lock().unwrap();
+                    *n -= 1;
+                    *n + 1
+                };
+
+                info!(target: "brontes::init::missing_state", "{} -- Finished Chunk {}", T::NAME, num);
 
                 Ok::<(), eyre::Report>(())
             }
@@ -337,7 +406,9 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
-        let block_range = (17000000, 17000100);
+        //let block_range = (17000000, 17000100);
+        let block_range = (17000000, 17000002);
+        let arbitrary_set = Box::leak(Box::new(vec![17000000, 17000010, 17000100]));
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
@@ -368,9 +439,15 @@ mod tests {
         CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
+        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
 
         // Metadata
         BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
             .await
             .unwrap();
 
@@ -391,6 +468,9 @@ mod tests {
 
         // TxTraces
         TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
             .await
             .unwrap();
     }

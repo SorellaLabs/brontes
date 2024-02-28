@@ -3,3 +3,4 @@ SELECT
     traces
 FROM brontes_api.tx_traces
 WHERE block_number >= ? AND block_number < ?
+LIMIT 1
