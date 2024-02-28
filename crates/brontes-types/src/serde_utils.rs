@@ -1,6 +1,9 @@
+#[cfg(all(feature = "api-des", not(feature = "api")))]
 use std::collections::HashMap;
 
+#[cfg(all(feature = "api-des", not(feature = "api")))]
 use serde::de::{DeserializeOwned, Error};
+#[cfg(all(feature = "api-des", not(feature = "api")))]
 use serde_json::{Error as SerdeJsonError, Value};
 
 pub mod address_string {
@@ -746,6 +749,7 @@ pub mod option_fund {
     }
 }
 
+#[cfg(all(feature = "api-des", not(feature = "api")))]
 fn get_val_from_map<T>(map: &HashMap<String, Value>, key: &str) -> Result<T, SerdeJsonError>
 where
     T: DeserializeOwned,
