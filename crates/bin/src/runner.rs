@@ -141,7 +141,7 @@ impl AsyncCliRunner {
     }
 }
 
-/// Additional context provided by the [CliRunner] when executing commands
+/// Additional context provided by the `CliRunner` when executing commands
 pub struct CliContext {
     /// Used to execute/spawn tasks
     pub task_executor: BrontesTaskExecutor,

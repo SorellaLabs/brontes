@@ -14,7 +14,7 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 /// action_impl!(ProtocolPath, PathToCall, CallType, [LogType / 's], [logs: bool , call_data: bool, return_data: bool])
 /// ```
 /// The generated structs name will be as the following:
-///  <LastIdentInProtocolPath> + <LastIdentInPathToCall>
+///  &lt;LastIdentInProtocolPath&gt; + &lt;LastIdentInPathToCall&gt;
 /// Example:
 /// a macro invoked with
 ///     Protocol::UniswapV2,
