@@ -87,12 +87,12 @@ default = [
   "brontes-core/default",
   "brontes-database/default",
   "brontes-classifier/default",
-  "brontes-inspect/default",
+  "brontes-inspect/default"
 ]
 
 local-no-inserts = []
 
-api = ["brontes-types/api", "brontes-database/api"]
+api = ["brontes-types/api"]
 sorella-server = ["local-reth", "local-clickhouse"]
 
 tests = [

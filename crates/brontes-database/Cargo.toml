@@ -120,8 +120,8 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-default = []
-api = ["brontes-types/api"]
+default = ["api-des"]
+api-des = []
 tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
