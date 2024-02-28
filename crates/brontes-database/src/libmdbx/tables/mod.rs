@@ -4,7 +4,7 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
-#[cfg(not(feature = "api"))]
+#[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
 use brontes_types::db::clickhouse_serde::tx_trace::tx_traces_inner;
 use brontes_types::{
     db::{

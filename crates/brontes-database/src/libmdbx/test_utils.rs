@@ -76,9 +76,9 @@ where
 }
 
 pub async fn compare_clickhouse_libmdbx_data<T, D, CH: ClickhouseHandle>(
-    clickhouse: &CH,
+    _clickhouse: &CH,
     libmdbx: &LibmdbxReadWriter,
-    block_range: Option<(u64, u64)>,
+    _block_range: Option<(u64, u64)>,
 ) -> eyre::Result<()>
 where
     T: CompressedTable,
@@ -86,7 +86,7 @@ where
     D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
     #[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
-    let _clickhouse_data = clickhouse_data::<T, D, CH>(clickhouse, block_range).await?;
+    let _clickhouse_data = clickhouse_data::<T, D, CH>(_clickhouse, _block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
     let _libmdbx_data = tx
@@ -98,9 +98,9 @@ where
 }
 
 pub async fn compare_clickhouse_libmdbx_arbitrary_data<T, D, CH: ClickhouseHandle>(
-    clickhouse: &CH,
+    _clickhouse: &CH,
     libmdbx: &LibmdbxReadWriter,
-    block_range: &'static [u64],
+    _block_range: &'static [u64],
 ) -> eyre::Result<()>
 where
     T: CompressedTable,
@@ -108,7 +108,7 @@ where
     D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
 {
     #[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
-    let _clickhouse_data = clickhouse_arbitrary_data::<T, D, CH>(clickhouse, block_range).await?;
+    let _clickhouse_data = clickhouse_arbitrary_data::<T, D, CH>(_clickhouse, _block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
     let _libmdbx_data = tx
