@@ -20,9 +20,12 @@ macro_rules! tree_map_gen {
                 tree: Arc<BlockTree<V>>,
                 iter: I,
                 f: F,
-                keys: ($($v,)*),
+                keys: ($($v),*),
             }
-            impl <V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*> TreeIter<V> for [<TreeMap $i>]<V, I, F, $($v,)*> {
+
+            impl <V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*> TreeIter<V>
+                for [<TreeMap $i>]<V, I, F, $($v,)*> {
+
                 fn tree(&self) -> Arc<BlockTree<V>> {
                     self.tree.clone()
                 }
@@ -35,15 +38,15 @@ macro_rules! tree_map_gen {
             TreeMap<
             V,
             [<TreeMap $i>]<V, I, F, $($v,)*>,
-            ($($v,)*),
+            ($($v),*),
             F
             > for I
                 where
-                    I: ScopeIter<V, Items = ($($v::Out),*)> + TreeIter<V>,
+                    I: ScopeIter<V> + TreeIter<V>,
                     $($v: NormalizedActionKey<V>,)*
                     F: FnMut(Arc<BlockTree<V>>, $($v::Out),*) -> $b
             {
-                fn tree_map(self, keys: ($($v,)*), f: F) -> [<TreeMap $i>]<V, I, F, $($v,)*> {
+                fn tree_map(self, keys: ($($v),*), f: F) -> [<TreeMap $i>]<V, I, F, $($v,)*> {
                     [<TreeMap $i>] {
                         tree: self.tree(),
                         iter: self,
@@ -63,9 +66,10 @@ macro_rules! tree_map_gen {
                 {
                     type Acc = I::Acc;
                     type Items = $b;
+
                     fn next(&mut self) -> Option<Self::Items> {
-                        let ($($v,)*) = &self.keys;
-                        let ($($v,)*) = ($($v.clone(),)*);
+                        let ($($v),*) = &self.keys;
+                        let ($($v),*) = ($($v.clone()),*);
 
                         let mut any_none = false;
                         let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
@@ -91,7 +95,7 @@ macro_rules! tree_map_gen {
                     ) -> Option<K::Out> {
                         // check if this iter has the key. if it does,
                         // then it means that it maps on it and there is no keys left
-                        let ($($v,)*) = &self.keys;
+                        let ($($v),*) = &self.keys;
                         $(
                             if key.get_key().id == $v.get_key().id {
                                 return None
@@ -128,7 +132,7 @@ macro_rules! map_gen {
             pub struct [<Map $i>]<V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*> {
                 iter: I,
                 f: F,
-                keys: ($($v,)*),
+                keys: ($($v),*),
                 _p: PhantomData<V>
             }
 
@@ -137,7 +141,7 @@ macro_rules! map_gen {
             Map<
             V,
             [<Map $i>]<V, I, F, $($v,)*>,
-            ($($v,)*),
+            ($($v),*),
             F
             > for I
                 where
@@ -145,7 +149,7 @@ macro_rules! map_gen {
                     $($v: NormalizedActionKey<V>,)*
                     F: FnMut($(Option<$v::Out>),*) -> $b
             {
-                fn map(self, keys: ($($v,)*), f: F) -> [<Map $i>]<V, I, F, $($v,)*> {
+                fn map(self, keys: ($($v),*), f: F) -> [<Map $i>]<V, I, F, $($v,)*> {
                     [<Map $i>] {
                         iter: self,
                         f,
@@ -165,17 +169,18 @@ macro_rules! map_gen {
                 {
                     type Acc = I::Acc;
                     type Items = $b;
+
                     fn next(&mut self) -> Option<Self::Items> {
-                        let ($($v,)*) = &self.keys;
-                        let ($($v,)*) = ($($v.clone(),)*);
+                        let ($($v),*) = &self.keys;
+                        let ($($v),*) = ($($v.clone()),*);
 
                         let mut all_none = true;
-                        let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
+                        let ($(mut [<key_ $v:lower>],)*) = ($(None::<$v::Out>,)*);
                         // collect all keys
                         $(
                             if let Some(inner) = self.next_scoped_key(&$v) {
                                 all_none = false;
-                                [<key_ $v>] = Some(inner);
+                                [<key_ $v:lower>] = Some(inner);
                             }
                         )*
 
@@ -184,7 +189,7 @@ macro_rules! map_gen {
                         }
 
                         // run map fn
-                        Some((&mut self.f)($([<key_ $v>]),*))
+                        Some((&mut self.f)($([<key_ $v:lower>]),*))
                     }
 
                     fn next_scoped_key<K: crate::normalized_actions::NormalizedActionKey<V>>(
@@ -193,7 +198,7 @@ macro_rules! map_gen {
                     ) -> Option<K::Out> {
                         // check if this iter has the key. if it does,
                         // then it means that it maps on it and there is no keys left
-                        let ($($v,)*) = &self.keys;
+                        let ($($v),*) = &self.keys;
                         $(
                             if key.get_key().id == $v.get_key().id {
                                 return None

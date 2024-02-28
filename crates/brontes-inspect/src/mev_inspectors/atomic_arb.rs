@@ -7,8 +7,8 @@ use brontes_types::{
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{Actions, NormalizedFlashLoan, NormalizedSwap},
     tree::BlockTree,
-    ActionIter, ScopeIter, ToFloatNearest, TreeBase, TreeIter, TreeIterator, TreeScoped,
-    TreeSearchBuilder, TxInfo,
+    ActionIter, ScopeCollect, ScopeIter, ToFloatNearest, TreeBase, TreeIter, TreeIterator,
+    TreeScoped, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -77,12 +77,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         data: I,
     ) -> Option<Bundle> {
-        data.tree_map((Actions::swapkey(),), |tree, swaps| {
-            let b = swaps;
-        })
-        .tree_map((Actions::transferkey(),), |tree, transfers| {
-            let t = transfers;
-        });
+        let (s, t): (Vec<_>, Vec<_>) = data
+            .tree_map(Actions::swap_key(), |tree, swaps| {
+                let b = swaps;
+                5u8
+            })
+            .tree_map(Actions::transfer_key(), |tree, transfers| {
+                let t = transfers;
+                5u8
+            });
 
         let swaps = swaps.collect_vec();
         let possible_arb_type = self.is_possible_arb(&swaps)?;

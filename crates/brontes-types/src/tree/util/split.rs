@@ -36,7 +36,7 @@ macro_rules! action_split {
                 res
             }
 
-            fn action_split_ref_impl(self, mut filters: &($($fns),*)) -> ($($from),*) {
+            fn action_split_ref_impl(self, filters: &($($fns),*)) -> ($($from),*) {
                 let mut res = ($($from::default()),*);
 
                 let ($($from),*) = &mut res;
@@ -55,7 +55,7 @@ macro_rules! action_split {
                 res
             }
 
-            fn action_split_out_impl(self, mut filters: ($($fns),*)) -> (($($from),*), Vec<V>) {
+            fn action_split_out_impl(self, filters: ($($fns),*)) -> (($($from),*), Vec<V>) {
                 let mut rest = Vec::default();
                 let mut res = ($($from::default()),*);
 
@@ -75,7 +75,7 @@ macro_rules! action_split {
                 (res, rest)
             }
 
-            fn action_split_out_ref_impl(self, mut filters: &($($fns),*))
+            fn action_split_out_ref_impl(self, filters: &($($fns),*))
                 -> (($($from),*), Vec<V>) {
                 let mut rest = Vec::default();
                 let mut res = ($($from::default()),*);

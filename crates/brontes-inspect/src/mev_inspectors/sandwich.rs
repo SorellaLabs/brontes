@@ -11,9 +11,8 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, ToFloatNearest, TreeSearchBuilder,
+    ActionIter, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder,
 };
-use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -111,6 +110,19 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .collect::<Vec<_>>();
 
                     let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
+
+                    let searcher_actions = tree
+                        .collect_txes(
+                            possible_frontruns
+                                .iter()
+                                .copied()
+                                .chain(std::iter::once(possible_backrun))
+                                .collect::<Vec<_>>()
+                                .as_slice(),
+                            search_args.clone(),
+                        )
+                        .dedup(Actions::try_swaps_merged_dedup(), Actions::try_transfer_dedup())
+                        .merge_into();
 
                     let searcher_actions: Vec<(Vec<_>, Vec<_>, Vec<_>)> = tree
                         .collect_txes_deduping(

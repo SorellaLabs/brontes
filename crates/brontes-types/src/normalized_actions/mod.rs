@@ -407,7 +407,7 @@ macro_rules! extra_impls {
                                 as Box<dyn Fn(Actions) -> Option<$ret>>
                     }
 
-                    pub fn [<$action_name:snake key>]() -> ActionsKey<Actions, $ret>{
+                    pub fn [<$action_name:snake _key>]() -> ActionsKey<Actions, $ret>{
                         ActionsKey {
                             id: $id,
                             matches_ptr: Actions::[<is _$action_name:snake>],

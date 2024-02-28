@@ -1,4 +1,15 @@
+pub mod collect;
+pub mod core;
+pub mod map;
+pub use core::*;
 use std::{collections::VecDeque, sync::Arc};
+
+pub mod filter;
+pub use filter::*;
+pub mod change_scope;
+pub use change_scope::*;
+pub use collect::*;
+pub use map::*;
 
 use super::TreeIter;
 use crate::{normalized_actions::NormalizedActionKey, tree::NormalizedAction, BlockTree};
@@ -9,6 +20,7 @@ use crate::{normalized_actions::NormalizedActionKey, tree::NormalizedAction, Blo
 pub trait ScopeIter<V: NormalizedAction> {
     type Items;
     type Acc;
+    type AccumRes;
 
     /// pulls the next item, this is used for default iter operations
     fn next(&mut self) -> Option<Self::Items>;
@@ -16,6 +28,8 @@ pub trait ScopeIter<V: NormalizedAction> {
     fn next_scoped_key<K: NormalizedActionKey<V>>(&mut self, key: &K) -> Option<K::Out>;
     /// all of the values that haven't been processed
     fn drain(self) -> Vec<Self::Acc>;
+    /// folds the iterator pulling all values
+    fn fold<F: Default + Extend<Self::AccumRes>>(self) -> F;
 }
 
 /// The base of the scoped iterator must be unified to work
@@ -39,6 +53,7 @@ impl<V: NormalizedAction, I: Iterator> TreeIter<V> for ScopedIteratorBase<V, I> 
 
 impl<V: NormalizedAction, I: Iterator<Item = V>> ScopeIter<V> for ScopedIteratorBase<V, I> {
     type Acc = I::Item;
+    type AccumRes = I::Item;
     type Items = I::Item;
 
     fn next(&mut self) -> Option<Self::Items> {
