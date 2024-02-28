@@ -153,7 +153,8 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
     {
-        self.client
+        let text = self
+            .client
             .get(format!(
                 "{}/{}",
                 self.url,
@@ -165,9 +166,17 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .header("api-key", &self.api_key)
             .send()
             .await?
-            .json()
-            .await
-            .map_err(Into::into)
+            .text()
+            .await?;
+        //.map_err(Into::into)
+
+        let val = serde_json::from_str(&text);
+
+        if val.is_err() {
+            println!("ERROR: {}", text);
+        }
+
+        Ok(val?)
     }
 
     async fn query_many_arbitrary<T, D>(&self, range: &'static [u64]) -> eyre::Result<Vec<D>>

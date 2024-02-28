@@ -8,3 +8,4 @@ SELECT
     ens,
     socials
 FROM brontes_api.address_meta
+LIMIT 1
