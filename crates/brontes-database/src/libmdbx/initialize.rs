@@ -466,10 +466,10 @@ mod tests {
         //     .await
         //     .unwrap();
 
-        // // AddressMeta
-        // AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // AddressMeta
+        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
         // // TxTraces
         // TxTraces::test_initialized_data(clickhouse, libmdbx,
