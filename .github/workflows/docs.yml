@@ -4,9 +4,9 @@ name: docs
 
 on:
   push:
-    branches: [main, ludwig/brontes-book]
+    branches: [main]
   pull_request:
-    branches: [main, ludwig/brontes-book]
+    branches: [main]
   merge_group:
 
 jobs:
