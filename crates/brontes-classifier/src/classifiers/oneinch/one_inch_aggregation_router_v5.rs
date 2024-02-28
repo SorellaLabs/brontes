@@ -3,7 +3,7 @@ use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::NormalizedSwap, structured_trace::CallInfo, utils::ToScaledRational,
 };
-use crate::OneInchAggregationRouterV5::{swapReturn, clipperSwapReturn, clipperSwapToReturn, clipperSwapToWithPermitReturn, unoswapReturn};
+use crate::OneInchAggregationRouterV5::{swapReturn, clipperSwapReturn, clipperSwapToReturn, clipperSwapToWithPermitReturn, unoswapReturn, fillOrderToReturn};
 
 action_impl!(
     Protocol::OneInch,
@@ -30,6 +30,40 @@ action_impl!(
             trace_index: info.trace_idx,
             from: src_receiver,
             recipient: dst_receiver,
+            pool: info.target_address,
+            token_in,
+            token_out,
+            amount_in,
+            amount_out,
+            msg_value: info.msg_value
+        })
+    }
+);
+
+action_impl!(
+    Protocol::OneInch,
+    crate::OneInchAggregationRouterV5::fillOrderToCall,
+    Swap,
+    [..OrderFilled],
+    call_data: true,
+    return_data: true,
+    |
+    info: CallInfo,
+    call_data: fillOrderToCall,
+    return_data: fillOrderToReturn,
+    db_tx: &DB | {
+        let recipient = call_data.order_.receiver;
+        let token_in_amount = return_data.actualMakingAmount;
+        let token_out_amount = return_data.actualTakingAmount;
+        let token_in = db_tx.try_fetch_token_info(call_data.order_.makerAsset)?;
+        let token_out = db_tx.try_fetch_token_info(call_data.order_.takerAsset)?;
+        let amount_in = token_in_amount.to_scaled_rational(token_in.decimals);
+        let amount_out = token_out_amount.to_scaled_rational(token_out.decimals);
+        return Ok(NormalizedSwap {
+            protocol: Protocol::OneInch,
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient,
             pool: info.target_address,
             token_in,
             token_out,
