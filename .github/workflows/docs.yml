@@ -100,7 +100,7 @@ jobs:
       - name: Archive artifact
         shell: sh
         run: |
-          chmod -c -R +rX "target/doc" |
+          chmod -c -R +rX "target/book" |
           while read line; do
              echo "::warning title=Invalid file permissions automatically fixed::$line"
           done
