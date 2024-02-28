@@ -169,6 +169,21 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
             .await
     }
 
+    async fn initialize_tables_arbitrary<
+        T: brontes_types::traits::TracingProvider,
+        CH: ClickhouseHandle,
+    >(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: std::sync::Arc<T>,
+        tables: &[crate::Tables],
+        block_range: Vec<u64>,
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range)
+            .await
+    }
+
     async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
         self.inner.init_full_range_tables(clickhouse).await
     }
