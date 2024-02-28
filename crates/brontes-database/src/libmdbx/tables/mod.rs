@@ -4,13 +4,14 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
+#[cfg(feature = "local_clickhouse")]
+use brontes_types::db::clickhouse_serde::tx_trace::tx_traces_inner;
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
-        clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},

@@ -416,7 +416,7 @@ mod tests {
         let tracing_client =
             init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;
 
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
+        let _intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         //let tables = Tables::ALL;
         // let tables = vec![Tables::AddressMeta];

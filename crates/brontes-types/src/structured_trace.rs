@@ -7,7 +7,9 @@ use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+#[cfg(not(feature = "api"))]
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{
