@@ -186,7 +186,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::UniswapV3,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::OneInch,
         ToScaledRational, TreeSearchBuilder,
     };
 
@@ -199,17 +199,52 @@ mod tests {
             B256::from(hex!("7db60001d536dc85fad0468c47c444762a0fefd9da12b223beed7825637005c2"));
 
         let eq_action = Actions::Swap(NormalizedSwap {
-            protocol:    UniswapV3,
+            protocol:    OneInch,
             trace_index: 2,
             from:        Address::new(hex!("D14699b6B02e900A5C2338700d5181a674FDB9a2")),
             recipient:   Address::new(hex!("2EDD03735AA433008C00F476b218FcfB8270b91d")),
-            pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")), //
+            pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")),
             token_in:    TokenInfoWithAddress::usdc(),
             amount_in:   U256::from_str("178739988").unwrap().to_scaled_rational(6),
             token_out:   TokenInfoWithAddress::weth(),
             amount_out:  U256::from_str("0043520538757524383")
                 .unwrap()
                 .to_scaled_rational(18),
+
+            msg_value: U256::ZERO,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_one_inch_aggregator_swap() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap =
+            B256::from(hex!("68603b7dce39738bc7aa9ce1cce39992965820ae39388a6d62db8d2db70132bb"));
+
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol:    OneInch,
+            trace_index: 2,
+            from:        Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
+            recipient:   Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
+            pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
+            token_in:    TokenInfoWithAddress::usdc(),
+            amount_in:   U256::from_str("126000000000")
+                .unwrap()
+                .to_scaled_rational(6),
+            token_out:   TokenInfoWithAddress::usdt(),
+            amount_out:  U256::from_str("125,475168379")
+                .unwrap()
+                .to_scaled_rational(6),
 
             msg_value: U256::ZERO,
         });
