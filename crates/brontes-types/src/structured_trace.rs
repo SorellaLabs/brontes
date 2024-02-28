@@ -7,10 +7,7 @@ use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{
-    ser::{Serialize, SerializeStruct},
-    Deserialize,
-};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{
@@ -217,7 +214,7 @@ impl TransactionTraceWithLogs {
 
 #[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
-#[cfg_attr(api, derive(Serialize))]
+#[cfg_attr(feature = "api", derive(Serialize))]
 pub struct TxTrace {
     pub block_number:    u64,
     pub trace:           Vec<TransactionTraceWithLogs>,
