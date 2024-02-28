@@ -320,6 +320,17 @@ macro_rules! compressed_table {
                     ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
                 }
             }
+
+            pub async fn test_initialized_arbitrary_data<CH: ClickhouseHandle>(
+                clickhouse: &CH,
+                libmdbx: &crate::libmdbx::LibmdbxReadWriter,
+                block_range: &'static [u64]
+            ) -> eyre::Result<()> {
+                paste::paste!{
+                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_arbitrary_data
+                    ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
+                }
+            }
         }
 
         $($acc)*
