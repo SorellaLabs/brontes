@@ -11,19 +11,18 @@ pub trait TreeFilterAll<V: NormalizedAction, Out, Keys, F> {
     fn tree_filter_all(self, f: F) -> Out;
 }
 
-macro_rules! tree_map_gen_all {
-    ($i:tt, $b:ident, $($v:ident),*) => {
+macro_rules! tree_filter_gen_all {
+    ($i:tt, $($v:ident),*) => {
         paste::paste!(
-            pub struct [<TreeFilterAll $i>]<$b, I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
+            pub struct [<TreeFilterAll $i>]<I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
                 tree: Arc<BlockTree<V>>,
                 iter: I,
                 f: F,
-                buf: VecDeque<$b>,
                 _p: PhantomData<(I0, I1,$($v,)*)>
             }
 
-            impl <$b, I0, I1: Iterator,V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> TreeIter<V>
-                for [<TreeFilterAll $i>]<$b, I0, I1,V, I, F, $($v,)*> {
+            impl <I0, I1: Iterator,V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> TreeIter<V>
+                for [<TreeFilterAll $i>]<I0, I1,V, I, F, $($v,)*> {
 
                 fn tree(&self) -> Arc<BlockTree<V>> {
                     self.tree.clone()
@@ -31,10 +30,10 @@ macro_rules! tree_map_gen_all {
             }
 
             #[allow(unused_parens)]
-            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* $b >
+            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* >
             TreeFilterAll<
             V,
-            [<TreeFilterAll $i>]<$b, I0, I1, V, I, F, $($v,)*>,
+            [<TreeFilterAll $i>]< I0, I1, V, I, F, $($v,)*>,
             ($($v),*),
             F,
             > for I
@@ -43,14 +42,13 @@ macro_rules! tree_map_gen_all {
                     $($v: ScopeKey,)*
                     F: FnMut(Arc<BlockTree<V>>, $(&[$v]),*) -> bool
             {
-                fn tree_filter_all(self, f: F) -> [<TreeFilterAll $i>]<$b,
+                fn tree_filter_all(self, f: F) -> [<TreeFilterAll $i>]<
                     I0,
                     I1,
                     V, I, F, $($v),*> {
                     [<TreeFilterAll $i>] {
                         tree: self.tree(),
                         iter: self,
-                        buf: VecDeque::default(),
                         f,
                         _p: PhantomData::default()
                     }
@@ -60,14 +58,13 @@ macro_rules! tree_map_gen_all {
 
             #[allow(unused_parens, non_snake_case)]
             impl<
-                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>>,
+                I0: Iterator + SplitIterZip<I>,
                 V: NormalizedAction,
                 I,
                 FN,
                 $($v,)*
-                $b
-            > ScopeIter<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out>
-                for [<TreeFilterAll $i>]<$b, <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out, I0, V, I, FN, $($v,)*>
+            > ScopeIter<I>
+                for [<TreeFilterAll $i>]<I0, I0, V, I, FN, $($v,)*>
                 where
                 I: ScopeIter<I0>,
                 $($v: ScopeKey,)*
@@ -121,25 +118,20 @@ macro_rules! tree_map_gen_all {
                         self.iter.drain()
                     }
 
-                    fn fold(mut self) -> <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out {
-                        let mut i = Vec::new();
-                        while let Some(n) = self.next() {
-                            i.push(n);
-                        }
-                        let b = self.iter.fold();
-                        b.zip_with_inner(i.into_iter())
+                    fn fold(mut self) -> I {
+                        self.iter
                     }
             }
         );
     }
 }
-tree_map_gen_all!(1, T0, T1);
-tree_map_gen_all!(2, T0, T1, T2);
-tree_map_gen_all!(3, T0, T1, T2, T3);
-tree_map_gen_all!(4, T0, T1, T2, T3, T4);
+tree_filter_gen_all!(1, T0, T1);
+tree_filter_gen_all!(2, T0, T1, T2);
+tree_filter_gen_all!(3, T0, T1, T2, T3);
+tree_filter_gen_all!(4, T0, T1, T2, T3, T4);
 
-macro_rules! tree_map_gen {
-    ($i:tt, $b:ident, $($v:ident),*) => {
+macro_rules! tree_filter_gen {
+    ($i:tt, $($v:ident),*) => {
         paste::paste!(
             pub struct [<TreeFilter $i>]<I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
                 tree: Arc<BlockTree<V>>,
@@ -157,7 +149,7 @@ macro_rules! tree_map_gen {
             }
 
             #[allow(unused_parens)]
-            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* $b >
+            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* >
             TreeFilter<
             V,
             [<TreeFilter $i>]<I0, I1, V, I, F, $($v,)*>,
@@ -189,9 +181,8 @@ macro_rules! tree_map_gen {
                 I,
                 FN,
                 $($v,)*
-                $b
-            > ScopeIter<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out>
-                for [<TreeFilter $i>]<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out, I0, V, I, FN, $($v,)*>
+            > ScopeIter<I>
+                for [<TreeFilter $i>]<I, I0, V, I, FN, $($v,)*>
                 where
                 I: ScopeIter<I0>,
                 $($v: ScopeKey,)*
@@ -243,20 +234,14 @@ macro_rules! tree_map_gen {
                         self.iter.drain()
                     }
 
-                    fn fold(mut self) -> <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out {
-                        let mut i = Vec::new();
-                        while let Some(n) = self.next() {
-                            i.push(n);
-                        }
-                        let b = self.iter.fold();
-                        b.zip_with_inner(i.into_iter())
+                    fn fold(mut self) -> I {
+                        self.iter
                     }
             }
         );
     }
 }
-tree_map_gen!(1, T1);
-tree_map_gen!(2, T1, T2);
-tree_map_gen!(3, T1, T2, T3);
-tree_map_gen!(4, T1, T2, T3, T4);
-
+tree_filter_gen!(1, T1);
+tree_filter_gen!(2, T1, T2);
+tree_filter_gen!(3, T1, T2, T3);
+tree_filter_gen!(4, T1, T2, T3, T4);
