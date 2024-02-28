@@ -87,6 +87,54 @@ where
     }
 }
 
+impl<'a, T, FromI, V: NormalizedAction, ZIP>
+    DedupOperation<
+        'a,
+        FromI,
+        Deduped<'a, <ZIP as SplitIterZip<std::vec::IntoIter<V>>>::Out>,
+        V,
+        Vec<V>,
+        ZIP,
+    > for T
+where
+    T: 'a,
+    T: Iterator<Item = Vec<V>> + TreeIter<V>,
+    ZIP: SplitIterZip<std::vec::IntoIter<V>>,
+{
+    fn dedup<KS, RS>(
+        self,
+        parent_actions: KS,
+        possible_prune_actions: RS,
+    ) -> Deduped<'a, <ZIP as SplitIterZip<std::vec::IntoIter<V>>>::Out>
+    where
+        V: NormalizedAction + 'a,
+        KS: 'a,
+        RS: 'a,
+        Self: Iterator<Item = Vec<V>> + TreeIter<V>,
+        KS: InTupleFnOutVec<V>,
+        RS: InTupleFnOutVec<V>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI, ZIP>,
+        std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
+        ZIP: SplitIterZip<std::vec::IntoIter<V>>,
+        FromI: IntoZip<ZIP>,
+    {
+        Deduped {
+            iterator: Box::new(self.map(move |v| {
+                let (good, rem): (KS::Out, Vec<V>) =
+                    v.into_iter().action_split_out_ref(&parent_actions);
+
+                let (bad, rem): (RS::Out, Vec<V>) = rem
+                    .into_iter()
+                    .action_split_out_ref(&possible_prune_actions);
+
+                good.merge_removing_duplicates(bad)
+                    .into_zip()
+                    .zip_with_inner(rem.into_iter())
+            })),
+        }
+    }
+}
+
 // collect Some impl
 // impl<T, FromI, V: NormalizedAction>
 //     DedupOperation<

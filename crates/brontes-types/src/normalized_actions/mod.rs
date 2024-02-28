@@ -9,7 +9,7 @@ pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
 pub mod utils;
-use std::fmt::Debug;
+use std::{any::TypeId, fmt::Debug};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::{Address, Bytes, Log};
@@ -372,7 +372,7 @@ impl Actions {
 }
 
 macro_rules! extra_impls {
-    ($(($action_name:ident, $ret:ident, $id:tt)),*) => {
+    ($(($action_name:ident, $ret:ident)),*) => {
         paste::paste!(
 
             impl Actions {
@@ -406,34 +406,10 @@ macro_rules! extra_impls {
                         Box::new(Actions::[<try _$action_name:snake>])
                                 as Box<dyn Fn(Actions) -> Option<$ret>>
                     }
-
-                    pub fn [<$action_name:snake _key>]() -> ActionsKey<Actions, $ret>{
-                        ActionsKey {
-                            id: $id,
-                            matches_ptr: Actions::[<is _$action_name:snake>],
-                            into_ptr: Actions::[<try _$action_name:snake>]
-                        }
-                    }
-
                 )*
             }
 
             $(
-                impl NormalizedActionKey<Actions> for ActionsKey<Actions, $ret> {
-                    type Out = $ret;
-                    fn get_key(&self) -> Self {
-                        Actions::[<$action_name:snake key>]()
-                    }
-
-                }
-
-                impl NormalizedActionKey<Actions> for $ret {
-                    type Out = $ret;
-                    fn get_key(&self) -> ActionsKey<Actions, Self::Out> {
-                        Actions::[<$action_name:snake key>]()
-                    }
-                }
-
                 impl From<$ret> for Actions {
                     fn from(value: $ret) -> Actions {
                         Actions::$action_name(value)
@@ -446,15 +422,15 @@ macro_rules! extra_impls {
 }
 
 extra_impls!(
-    (Collect, NormalizedCollect, 0),
-    (Mint, NormalizedMint, 1),
-    (Burn, NormalizedBurn, 2),
-    (Swap, NormalizedSwap, 3),
-    (SwapWithFee, NormalizedSwapWithFee, 4),
-    (Transfer, NormalizedTransfer, 5),
-    (Liquidation, NormalizedLiquidation, 6),
-    (FlashLoan, NormalizedFlashLoan, 7),
-    (Batch, NormalizedBatch, 8)
+    (Collect, NormalizedCollect),
+    (Mint, NormalizedMint),
+    (Burn, NormalizedBurn),
+    (Swap, NormalizedSwap),
+    (SwapWithFee, NormalizedSwapWithFee),
+    (Transfer, NormalizedTransfer),
+    (Liquidation, NormalizedLiquidation),
+    (FlashLoan, NormalizedFlashLoan),
+    (Batch, NormalizedBatch)
 );
 
 /// Custom impl for itering over swaps and swap with fee
@@ -490,16 +466,4 @@ impl Actions {
     pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
         Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
     }
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct ActionsKey<V, O: PartialEq + Eq> {
-    pub id:          u8,
-    pub matches_ptr: fn(&V) -> bool,
-    pub into_ptr:    fn(V) -> Option<O>,
-}
-
-pub trait NormalizedActionKey<V: NormalizedAction>: PartialEq + Eq + Clone {
-    type Out: PartialEq + Eq + Clone;
-    fn get_key(&self) -> ActionsKey<V, Self::Out>;
 }

@@ -1,51 +1,45 @@
-use std::{
-    iter::{Iterator, Once},
-    sync::Arc,
-};
-
-use super::{
-    DedupOperation, Dedups, InTupleFnOutVec, Map, SplitIterZip, TreeIteratorScope, TreeMap,
-};
 use crate::{
-    normalized_actions::NormalizedAction, ActionSplit, BlockTree, Filter, FilterMapTree,
-    FilterTree, IntoZip, IntoZippedIter, MergeIter, ScopeIter, ScopedIteratorBase,
+    normalized_actions::NormalizedAction, Map, ScopeIter, TreeIter, TreeIterator,
+    TreeIteratorScope, TreeMap, TreeMapAll,
 };
 
-impl<V: NormalizedAction, T: TreeIter<V> + ScopeIter<V>> TreeScoped<V> for T where T: Sized {}
+impl<V: NormalizedAction, U: Iterator, T: TreeIter<V> + ScopeIter<U>> TreeScoped<V, U> for T where
+    T: Sized
+{
+}
 
-pub trait TreeScoped<V: NormalizedAction>: TreeIter<V> + ScopeIter<V> {
-    fn filter_with_tree<Out, Keys, F>(self, keys: Keys, f: F) -> Out
+pub trait TreeScoped<V: NormalizedAction, U: Iterator>: TreeIter<V> + ScopeIter<U> {
+    fn tree_map_all<Keys, Out, F, O: Iterator>(self, f: F) -> Out
     where
-        Self: Sized + FilterTree<V, Out, Keys, F>,
-        Out: ScopeIter<V> + TreeIter<V>,
+        Self: Sized + TreeMapAll<V, Out, Keys, F>,
+        Out: ScopeIter<O> + TreeIter<V>,
     {
-        FilterTree::filter_tree(self, keys, f)
+        TreeMapAll::tree_map_all(self, f)
     }
 
-    fn filter<Out, Keys, F>(self, keys: Keys, f: F) -> TreeIteratorScope<V, Out>
-    where
-        Self: Sized + Filter<V, Out, Keys, F>,
-        Out: ScopeIter<V>,
-        F: FnMut(Keys) -> bool,
-    {
-        let tree = self.tree();
-        TreeIteratorScope::new(tree, Filter::filter(self, keys, f))
-    }
-
-    fn tree_map<Out, Keys, F>(self, keys: Keys, f: F) -> Out
+    fn tree_map<Keys, Out, F, O: Iterator>(self, f: F) -> Out
     where
         Self: Sized + TreeMap<V, Out, Keys, F>,
-        Out: ScopeIter<V> + TreeIter<V>,
+        Out: ScopeIter<O> + TreeIter<V>,
     {
-        TreeMap::tree_map(self, keys, f)
+        TreeMap::tree_map(self, f)
     }
 
-    fn map<Out, Keys, F>(self, keys: Keys, f: F) -> TreeIteratorScope<V, Out>
+    fn map<Keys, Out, F, O: Iterator>(self, f: F) -> TreeIteratorScope<U, O, V, Out>
     where
         Self: Sized + Map<V, Out, Keys, F>,
-        Out: ScopeIter<V>,
+        Out: ScopeIter<O>,
     {
         let tree = self.tree();
-        TreeIteratorScope::new(tree, Map::map(self, keys, f))
+        TreeIteratorScope::new(tree, Map::map(self, f))
+    }
+
+    /// folds the scoped iter and returns the base iter
+    fn into_base_iter(self) -> TreeIterator<V, U>
+    where
+        Self: Sized + ScopeIter<U>,
+    {
+        let tree = self.tree();
+        TreeIterator::new(tree, self.fold())
     }
 }

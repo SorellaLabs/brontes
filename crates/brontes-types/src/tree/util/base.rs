@@ -2,11 +2,11 @@ use std::{iter::Iterator, sync::Arc};
 
 use super::{DedupOperation, Dedups, InTupleFnOutVec, SplitIterZip};
 use crate::{
-    normalized_actions::NormalizedAction, ActionSplit, BlockTree, Filter, FilterMapTree, IntoZip,
-    MergeIter, ScopedIteratorBase,
+    normalized_actions::NormalizedAction, ActionSplit, BlockTree, FilterMapTree, IntoZip,
+    MergeIter, ScopeIter, ScopeIterBase, 
 };
 
-impl<T: Sized + TreeIter<V> + Iterator, V: NormalizedAction> TreeBase<V> for T {}
+impl<T: Sized + Iterator, V: NormalizedAction> TreeBase<V> for T {}
 
 pub trait TreeIter<V: NormalizedAction> {
     fn tree(&self) -> Arc<BlockTree<V>>;
@@ -40,7 +40,7 @@ impl<I: Iterator, V: NormalizedAction> Iterator for TreeIterator<V, I> {
 /// Base functionality for TreeIter, These are almost all setup or internal
 /// tools used to deal with complexity.
 pub trait TreeBase<V: NormalizedAction>: Iterator {
-    fn dedup<'a, KS, RS, FromI, Out, O, Zip>(
+    fn dedup<'a, KS, RS, FromI, Out, Zip>(
         self,
         parent_actions: KS,
         possible_prune_actions: RS,
@@ -72,6 +72,14 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         Iterator::map(std::iter::once((tree, self)), f)
             .next()
             .unwrap()
+    }
+
+    fn full_map<R, F>(self, f: F) -> R
+    where
+        Self: Sized + TreeIter<V>,
+        F: FnMut(Self) -> R,
+    {
+        Iterator::map(std::iter::once(self), f).next().unwrap()
     }
 
     fn t_full_filter_map<R, F>(self, f: F) -> Option<R>
@@ -128,14 +136,11 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         TreeIterator::new(tree, MergeIter::merge_iter(self))
     }
 
-    /// ensures merge
-    fn into_scoped_tree_iter<O, B>(self) -> ScopedIteratorBase<V, B>
+    fn into_scoped_tree_iter<Out, IT>(self) -> Out
     where
-        Self: Sized + Iterator + TreeIter<V>,
-        Self: Sized + MergeIter<O, B> + TreeIter<V>,
-        B: Iterator<Item = O>,
+        Self: Sized + Iterator + TreeIter<V> + ScopeIterBase<V, Out>,
+        Out: TreeIter<V> + ScopeIter<IT>,
     {
-        let this = TreeBase::merge_iter(self);
-        ScopedIteratorBase::new(this.tree(), this.iter)
+        ScopeIterBase::scope_iter_base(self)
     }
 }

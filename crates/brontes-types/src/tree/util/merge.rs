@@ -10,7 +10,7 @@ where
 macro_rules! merge_iter {
     ($i:tt, $($v:ident),*) => {
         paste::paste!(
-            #[allow(unused_parens)]
+            #[allow(non_snake_case,unused_parens)]
             pub struct [<MergeTo $i>]<I: Iterator<Item = ($($v),*)>, $($v),*, O>
                 where
                 $(
@@ -21,7 +21,7 @@ macro_rules! merge_iter {
                 buf: VecDeque<O>
             }
 
-            #[allow(unused_parens)]
+            #[allow(non_snake_case,unused_parens)]
             impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> MergeIter<O, [<MergeTo $i>]<I, $($v),*, O>> for I
                 where
                 $(
@@ -38,7 +38,7 @@ macro_rules! merge_iter {
 
 
 
-            #[allow(unused_parens)]
+            #[allow(non_snake_case,unused_parens)]
             impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> Iterator for [<MergeTo $i>]<I, $($v),*, O>
                 where
                 $(

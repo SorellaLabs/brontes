@@ -1,5 +1,6 @@
 #![feature(trait_alias)]
 #![feature(trivial_bounds)]
+#![feature(const_type_id)]
 
 pub mod action_iter;
 pub use action_iter::*;

@@ -9,9 +9,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{Actions, NormalizedAction, NormalizedSwap, NormalizedTransfer},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder,
+    ActionIter, IntoZip, ScopeIter, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
+    TreeIterator, TreeSearchBuilder,
 };
 use reth_primitives::{Address, B256};
 
@@ -41,7 +42,6 @@ pub struct PossibleSandwich {
 // Add support for this, where there is a frontrun & then backrun & in between
 // there is an unrelated tx that is not frontrun but is backrun. See the rari
 // trade here. https://libmev.com/blocks/18215838
-
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
@@ -76,33 +76,44 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 .map(|v| tree.get_tx_info(*v, self.utils.db).unwrap())
                                 .collect::<Vec<_>>()
                         })
-                        .collect_vec();
+                        .collect::<Vec<_>>();
 
                     let victim_actions = victims
-                        .iter()
-                        .map(|victim| tree.collect_txes(victim, search_args.clone()))
+                        .into_iter()
+                        .map(|victim| {
+                            (tree.clone().collect_txes(&victim, search_args.clone()), victim)
+                        })
+                        .map(|(victim_set, hashes)| {
+                            let b = 0;
+                            let tree = victim_set.tree();
+                            let b = victim_set.into_zip().zip_with(hashes.into_iter());
+                            let b = TreeIterator::new(tree, b).into_scoped_tree_iter();
+
+                            // .into_scoped_tree_iter();
+                        })
                         .collect::<Vec<_>>();
 
                     // if there are no victims in any part of sandwich, return
-                    if victim_actions
-                        .iter()
-                        .flatten()
-                        .flatten()
-                        .filter(|f| f.is_swap())
-                        .count()
-                        == 0
-                    {
-                        return None
-                    }
-
-                    if victims
-                        .iter()
-                        .flatten()
-                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                        .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
-                    {
-                        return None
-                    }
+                    // if victim_actions
+                    //     .iter()
+                    //     .map(|a| a.into_iter())
+                    //     .flatten()
+                    //     .flatten()
+                    //     .filter(|f| f.is_swap())
+                    //     .count()
+                    //     == 0
+                    // {
+                    //     return None
+                    // }
+                    //
+                    // if victims
+                    //     .iter()
+                    //     .flatten()
+                    //     .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                    //     .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
+                    // {
+                    //     return None
+                    // }
 
                     let frontrun_info = possible_frontruns
                         .iter()
@@ -111,7 +122,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
                     let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
 
-                    let searcher_actions = tree
+                    let searcher_actions: Vec<Vec<Actions>> = tree
+                        .clone()
                         .collect_txes(
                             possible_frontruns
                                 .iter()
@@ -121,33 +133,16 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 .as_slice(),
                             search_args.clone(),
                         )
-                        .dedup(Actions::try_swaps_merged_dedup(), Actions::try_transfer_dedup())
-                        .merge_into();
-
-                    let searcher_actions: Vec<(Vec<_>, Vec<_>, Vec<_>)> = tree
-                        .collect_txes_deduping(
-                            possible_frontruns
-                                .iter()
-                                .copied()
-                                .chain(std::iter::once(possible_backrun))
-                                .collect::<Vec<_>>()
-                                .as_slice(),
-                            search_args.clone(),
-                            (Actions::try_swaps_merged_dedup(),),
-                            (Actions::try_transfer_dedup(),),
+                        .dedup::<'_, _, _, (Vec<NormalizedSwap>, Vec<NormalizedTransfer>), _, _>(
+                            Actions::try_swaps_merged_dedup(),
+                            Actions::try_transfer_dedup(),
                         )
-                        .map(|a| a.multiunzip())
-                        .collect_vec();
-
-                    // self.calculate_sandwich(
-                    //     tree.clone(),
-                    //     metadata.clone(),
-                    //     frontrun_info,
-                    //     back_run_info,
-                    //     searcher_actions,
-                    //     victim_info,
-                    //     victim_actions,
-                    // )
+                        .map(|a| {
+                            TreeCollector::<Actions>::merge_into_unpadded::<Vec<Actions>, Actions>(
+                                a,
+                            )
+                        })
+                        .collect::<Vec<_>>();
                     None
                 },
             )

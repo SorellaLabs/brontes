@@ -15,7 +15,7 @@ use brontes_types::{
     },
     pair::Pair,
     utils::ToFloatNearest,
-    BlockTree, GasDetails, TreeCollect, TreeSearchBuilder, TxInfo,
+    GasDetails, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{
@@ -166,7 +166,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     pub fn build_bundle_header(
         &self,
-        tree: Arc<BlockTree<Actions>>,
+        bundle_transfers: Vec<Vec<NormalizedTransfer>>,
         bundle_txes: Vec<TxHash>,
         info: &TxInfo,
         profit_usd: f64,
@@ -175,14 +175,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         mev_type: MevType,
     ) -> BundleHeader {
-        let bundle_transfers = tree
-            .collect_action_range_filter(
-                &bundle_txes,
-                TreeSearchBuilder::default().with_action(Actions::is_transfer),
-                Actions::try_transfer,
-            )
-            .collect_vec();
-
         let balance_deltas = self.get_bundle_accounting(
             bundle_txes,
             bundle_transfers,
