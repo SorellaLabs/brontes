@@ -242,7 +242,7 @@ mod tests {
                 .unwrap()
                 .to_scaled_rational(6),
             token_out:   TokenInfoWithAddress::usdt(),
-            amount_out:  U256::from_str("125,475168379")
+            amount_out:  U256::from_str("125475168379")
                 .unwrap()
                 .to_scaled_rational(6),
 
