@@ -214,6 +214,7 @@ impl TransactionTraceWithLogs {
 
 #[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[cfg_attr(api, derive(Serialize))]
 pub struct TxTrace {
     pub block_number:    u64,
     pub trace:           Vec<TransactionTraceWithLogs>,
@@ -240,6 +241,7 @@ impl TxTrace {
     }
 }
 
+#[cfg(not(feature = "api"))]
 impl Serialize for TxTrace {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
