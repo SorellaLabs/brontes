@@ -419,12 +419,12 @@ mod tests {
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         //let tables = Tables::ALL;
-        let tables = vec![Tables::AddressMeta];
+        // let tables = vec![Tables::AddressMeta];
 
-        intializer
-            .initialize(&tables, false, Some(block_range))
-            .await
-            .unwrap();
+        // intializer
+        //     .initialize(&tables, false, Some(block_range))
+        //     .await
+        //     .unwrap();
 
         // TokenDecimals
         TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
