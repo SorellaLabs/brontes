@@ -467,12 +467,12 @@ mod tests {
             .await
             .unwrap();
 
-        // TxTraces
-        // TxTraces::test_initialized_data(clickhouse, libmdbx,
-        // Some(block_range))     .await
-        //     .unwrap();
-        // TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx,
-        // arbitrary_set)     .await
-        //     .unwrap();
+        TxTraces
+        TxTraces::test_initialized_data(clickhouse, libmdbx,
+        Some(block_range))     .await
+            .unwrap();
+        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx,
+        arbitrary_set)     .await
+            .unwrap();
     }
 }
