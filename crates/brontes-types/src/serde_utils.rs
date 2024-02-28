@@ -655,8 +655,7 @@ pub mod option_contract_info {
             get_val_from_map(&contract_info_map, "verified_contract").map_err(D::Error::custom)?;
 
         let contract_creator_opt: Option<String> =
-            get_val_from_map(&contract_info_map, "contract_creator_opt")
-                .map_err(D::Error::custom)?;
+            get_val_from_map(&contract_info_map, "contract_creator").map_err(D::Error::custom)?;
 
         let reputation =
             get_val_from_map(&contract_info_map, "reputation").map_err(D::Error::custom)?;
