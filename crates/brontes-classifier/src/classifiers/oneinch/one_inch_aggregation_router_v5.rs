@@ -32,7 +32,7 @@ action_impl!(
         return Ok(NormalizedSwap {
             protocol: Protocol::OneInch,
             trace_index: info.trace_idx,
-            from: src_receiver,
+            from: info.from_address,
             recipient: dst_receiver,
             pool: info.target_address,
             token_in,
@@ -200,7 +200,7 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    OneInch,
-            trace_index: 2,
+            trace_index: 0,
             from:        Address::new(hex!("D14699b6B02e900A5C2338700d5181a674FDB9a2")),
             recipient:   Address::new(hex!("2EDD03735AA433008C00F476b218FcfB8270b91d")),
             pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")),
@@ -233,10 +233,10 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    OneInch,
-            trace_index: 2,
+            trace_index: 0,
             from:        Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
             recipient:   Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
-            pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
+            pool:        Address::new(hex!("1111111254EEB25477B68fb85Ed929f73A960582")),
             token_in:    TokenInfoWithAddress::usdc(),
             amount_in:   U256::from_str("126000000000")
                 .unwrap()
