@@ -272,6 +272,27 @@ impl ClickhouseHandle for Clickhouse {
             .map_err(Into::into)
     }
 
+    async fn query_many_arbitrary<T, D>(&self, range: &'static [u64]) -> eyre::Result<Vec<D>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
+    {
+        let mut query = T::INIT_QUERY
+            .expect("no init query found for clickhouse query")
+            .to_string();
+
+        query = query.replace(
+            "block_number >= ? AND block_number < ?",
+            &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
+        );
+
+        self.client
+            .query_many::<D>(&query, &())
+            .await
+            .map_err(Into::into)
+    }
+
     async fn query_many<T, D>(&self) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
