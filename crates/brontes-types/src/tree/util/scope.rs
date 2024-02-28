@@ -37,7 +37,7 @@ impl<V: NormalizedAction, I: Iterator> TreeIter<V> for ScopedIteratorBase<V, I> 
     }
 }
 
-impl<V: NormalizedAction, I: Iterator> ScopeIter<V> for ScopedIteratorBase<V, I> {
+impl<V: NormalizedAction, I: Iterator<Item = V>> ScopeIter<V> for ScopedIteratorBase<V, I> {
     type Acc = I::Item;
     type Items = I::Item;
 
@@ -53,20 +53,20 @@ impl<V: NormalizedAction, I: Iterator> ScopeIter<V> for ScopedIteratorBase<V, I>
         // check the buffer for the next key
         let mut buf_i = None;
         for (index, val) in self.buf.iter().enumerate() {
-            if key.matches(val) {
+            if (key.get_key().matches_ptr)(val) {
                 buf_i = Some(index);
                 break
             }
         }
 
         if let Some(buf_index) = buf_i {
-            return Some(key.into_val(self.buf.remove(buf_index)))
+            return (key.get_key().into_ptr)(self.buf.remove(buf_index).unwrap())
         }
 
         // if the buffer doesn't have the key then check the iterator
         while let Some(i) = self.base_iterator.next() {
-            if key.matches(&i) {
-                return Some(key.into_val(i))
+            if (key.get_key().matches_ptr)(&i) {
+                return (key.get_key().into_ptr)(i)
             }
             // if doesn't match, add to buffer. this is so we can keep order while searching
             // through the whole list
@@ -76,8 +76,9 @@ impl<V: NormalizedAction, I: Iterator> ScopeIter<V> for ScopedIteratorBase<V, I>
         None
     }
 
-    fn drain(self) -> Vec<Self::Acc> {
-        self.buffer.into_iter().extend(self.base_iterator)
+    fn drain(mut self) -> Vec<Self::Acc> {
+        self.buf.extend(self.base_iterator);
+        self.buf.into_iter().collect::<Vec<_>>()
     }
 }
 
@@ -88,7 +89,7 @@ pub struct TreeIteratorScope<V: NormalizedAction, I: ScopeIter<V>> {
 }
 
 impl<I: ScopeIter<V>, V: NormalizedAction> TreeIteratorScope<V, I> {
-    fn new(tree: Arc<BlockTree<V>>, iter: I) -> Self {
+    pub fn new(tree: Arc<BlockTree<V>>, iter: I) -> Self {
         Self { tree, iter }
     }
 }

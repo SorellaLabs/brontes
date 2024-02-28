@@ -9,30 +9,29 @@ impl<T: Sized + TreeBase<V>, V: NormalizedAction> TreeCollector<V> for T {}
 pub trait TreeCollector<V: NormalizedAction>: TreeBase<V> {
     fn split_actions<FromI, Fns>(self, filters: Fns) -> FromI
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
     {
         ActionSplit::action_split_impl(self, filters)
     }
 
     fn split_actions_ref<FromI, Fns>(self, filters: &Fns) -> FromI
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
     {
-        let tree = self.tree();
         ActionSplit::action_split_ref_impl(self, filters)
     }
 
     fn split_return_rem<FromI, Fns>(self, filters: Fns) -> (FromI, Vec<V>)
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
         FromI: IntoIterator,
     {
         ActionSplit::action_split_out_impl(self, filters)
     }
 
-    fn split_return_ref_rem<FromI, Fns>(self, &filters: Fns) -> (FromI, Vec<V>)
+    fn split_return_ref_rem<FromI, Fns>(self, filters: &Fns) -> (FromI, Vec<V>)
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
         FromI: IntoIterator,
     {
         ActionSplit::action_split_out_ref_impl(self, filters)

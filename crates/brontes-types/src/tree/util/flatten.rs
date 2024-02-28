@@ -1,26 +1,29 @@
-use std::marker::PhantomData;
+use crate::normalized_actions::NormalizedAction;
 
-use crate::tree::NormalizedAction;
 
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct FlattenSpecified<V: NormalizedAction, I: Iterator, W, T> {
+pub struct FlattenSpecified<V: NormalizedAction, I: Iterator<Item = V>, W, T> {
     iter:      I,
     wanted:    W,
     transform: T,
-    extra:     Vec<I::Item>,
-    _p:        PhantomData<V>,
+    extra:     Vec<V>,
 }
 
-impl<V: NormalizedAction, I: Iterator, W, T> FlattenSpecified<V, I, W, T> {
+impl<V: NormalizedAction, I: Iterator<Item = V>, W, T> FlattenSpecified<V, I, W, T> {
     pub(crate) fn new(iter: I, wanted: W, transform: T) -> Self {
-        Self { iter, wanted, transform, extra: vec![], _p: PhantomData::default() }
+        Self { iter, wanted, transform, extra: vec![] }
     }
 }
 
-impl<V: NormalizedAction, R: Clone, I: Iterator, W: Fn(&V) -> Option<&R>, T: Fn(R) -> Vec<V>>
-    Iterator for FlattenSpecified<V, I, W, T>
+impl<
+        V: NormalizedAction,
+        R: Clone,
+        I: Iterator<Item = V>,
+        W: Fn(&V) -> Option<&R>,
+        T: Fn(R) -> Vec<V>,
+    > Iterator for FlattenSpecified<V, I, W, T>
 {
-    type Item = I::Item;
+    type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(extra) = self.extra.pop() {
@@ -30,9 +33,9 @@ impl<V: NormalizedAction, R: Clone, I: Iterator, W: Fn(&V) -> Option<&R>, T: Fn(
         self.iter.next().and_then(|item| {
             if let Some(wanted) = (self.wanted)(&item) {
                 let mut ret = (self.transform)(wanted.clone());
-                let val = if ret.len() > 1 { Some(ret.remove(0)) } else { None };
+                let now = ret.pop();
                 self.extra.extend(ret);
-                val
+                now
             } else {
                 Some(item)
             }

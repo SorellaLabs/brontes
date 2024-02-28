@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 use super::ScopeIter;
 use crate::{
@@ -6,7 +6,7 @@ use crate::{
     BlockTree, TreeIter,
 };
 
-pub trait TreeMap<V: NormalizedAction, Out, Keys, F>: ScopeIter<V> + TreeIter<V>
+pub trait TreeMap<V: NormalizedAction, Out, Keys, F>
 where
     Out: ScopeIter<V>,
 {
@@ -21,8 +21,6 @@ macro_rules! tree_map_gen {
                 iter: I,
                 f: F,
                 keys: ($($v,)*),
-                /// buffered events
-                buf: VecDeque<($(Option<$v>,)*)>
             }
 
             #[allow(unused_parens)]
@@ -44,7 +42,6 @@ macro_rules! tree_map_gen {
                         iter: self,
                         f,
                         keys,
-                        buf: VecDeque::default(),
                     }
 
                 }
@@ -57,15 +54,17 @@ macro_rules! tree_map_gen {
                 $($v: NormalizedActionKey<V>,)*
                 F: FnMut(Arc<BlockTree<V>>, $(Option<$v::Out>),*) -> $b
                 {
-                    type Acc = V;
+                    type Acc = I::Acc;
                     type Items = $b;
                     fn next(&mut self) -> Option<Self::Items> {
                         let ($($v,)*) = &self.keys;
+                        let ($($v,)*) = ($($v.clone(),)*);
+
                         let mut all_none = true;
-                        let ($([<key_ $v>],)*) = ($(None::<$v>,)*);
+                        let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
                         // collect all keys
                         $(
-                            if let Some(inner) = self.iter().next_scoped_key($v) {
+                            if let Some(inner) = self.iter.next_scoped_key(&$v) {
                                 all_none = false;
                                 [<key_ $v>] = Some(inner);
                             }
@@ -79,7 +78,7 @@ macro_rules! tree_map_gen {
                         Some((&mut self.f)(self.tree.clone(), $([<key_ $v>]),*))
                     }
 
-                    fn next_scoped_key<K: crate::normalized_actions::NormalizedActionKey<V>>(
+                    fn next_scoped_key<K: NormalizedActionKey<V>>(
                         &mut self,
                         key: &K,
                     ) -> Option<K::Out> {
@@ -87,15 +86,15 @@ macro_rules! tree_map_gen {
                         // then it means that it maps on it and there is no keys left
                         let ($($v,)*) = &self.keys;
                         $(
-                            if key == $v {
+                            if key.get_key().id == $v.get_key().id {
                                 return None
                             }
                         )*
-                        // check if we have a lower level with this key
+
                         self.iter.next_scoped_key(key)
                     }
 
-                    fn drain(self) -> Vec<V> {
+                    fn drain(self) -> Vec<Self::Acc> {
                         self.iter.drain()
                     }
             }
@@ -109,7 +108,7 @@ tree_map_gen!(4, A, B, C, D);
 tree_map_gen!(5, A, B, C, D, E);
 tree_map_gen!(6, A, B, C, D, E, G);
 
-pub trait Map<V: NormalizedAction, Out, Keys, F>: ScopeIter<V>
+pub trait Map<V: NormalizedAction, Out, Keys, F>
 where
     Out: ScopeIter<V>,
 {
@@ -127,7 +126,7 @@ macro_rules! map_gen {
             }
 
             #[allow(unused_parens)]
-            impl <V: NormalizedAction, I, F, $($v)* $b>
+            impl <V: NormalizedAction, I, F, $($v,)* $b>
             Map<
             V,
             [<Map $i>]<V, I, F, $($v,)*>,
@@ -157,15 +156,17 @@ macro_rules! map_gen {
                 $($v: NormalizedActionKey<V>,)*
                 F: FnMut($(Option<$v::Out>),*) -> $b,
                 {
-                    type Acc = V;
+                    type Acc = I::Acc;
                     type Items = $b;
                     fn next(&mut self) -> Option<Self::Items> {
                         let ($($v,)*) = &self.keys;
+                        let ($($v,)*) = ($($v.clone(),)*);
+
                         let mut all_none = true;
-                        let ($([<key_ $v>],)*) = ($(None::<$v>,)*);
+                        let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
                         // collect all keys
                         $(
-                            if let Some(inner) = self.next_scoped_key($v) {
+                            if let Some(inner) = self.next_scoped_key(&$v) {
                                 all_none = false;
                                 [<key_ $v>] = Some(inner);
                             }
@@ -183,10 +184,19 @@ macro_rules! map_gen {
                         &mut self,
                         key: &K,
                     ) -> Option<K::Out> {
-                         self.iter.next_scoped_key(key)
+                        // check if this iter has the key. if it does,
+                        // then it means that it maps on it and there is no keys left
+                        let ($($v,)*) = &self.keys;
+                        $(
+                            if key.get_key().id == $v.get_key().id {
+                                return None
+                            }
+                        )*
+
+                        self.iter.next_scoped_key(key)
                     }
 
-                    fn drain(self) -> Vec<V> {
+                    fn drain(self) -> Vec<Self::Acc> {
                         self.iter.drain()
                     }
             }

@@ -1,13 +1,13 @@
-use crate::{
-    normalized_actions::NormalizedAction,
-    tree::{ActionSplit, FlattenSpecified},
-};
+use crate::{normalized_actions::NormalizedAction, ActionSplit, FlattenSpecified};
 
 impl<T: Sized, V: NormalizedAction> ActionIter<V> for T where T: Iterator<Item = V> {}
+
 pub trait ActionIter<V: NormalizedAction>: Iterator<Item = V> {
     fn flatten_specified<R, W, T>(self, wanted: W, transform: T) -> FlattenSpecified<V, Self, W, T>
     where
         Self: Sized,
+        R: Clone,
+        W: Fn(&V) -> Option<&R>,
         T: Fn(R) -> Vec<V>,
     {
         FlattenSpecified::new(self, wanted, transform)
@@ -39,28 +39,28 @@ pub trait ActionIter<V: NormalizedAction>: Iterator<Item = V> {
 
     fn action_split<FromI, Fns>(self, filters: Fns) -> FromI
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
     {
         ActionSplit::action_split_impl(self, filters)
     }
 
     fn action_split_ref<FromI, Fns>(self, filters: &Fns) -> FromI
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
     {
         ActionSplit::action_split_ref_impl(self, filters)
     }
 
     fn action_split_out<FromI, Fns>(self, filters: Fns) -> (FromI, Vec<V>)
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
     {
         ActionSplit::action_split_out_impl(self, filters)
     }
 
     fn action_split_out_ref<FromI, Fns>(self, filters: &Fns) -> (FromI, Vec<V>)
     where
-        Self: Sized + ActionSplit<FromI, Fns, V, Self::Item>,
+        Self: Sized + ActionSplit<FromI, Fns, V>,
     {
         ActionSplit::action_split_out_ref_impl(self, filters)
     }

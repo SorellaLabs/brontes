@@ -12,6 +12,7 @@ use tracing::{error, span, Level};
 use crate::db::traits::LibmdbxReader;
 pub mod node;
 mod types;
+#[allow(unused_parens)]
 pub mod util;
 pub use util::*;
 pub mod root;
@@ -130,7 +131,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     ) -> TreeIterator<V, std::vec::IntoIter<Vec<V>>> {
         self.run_in_span_ref(|this| {
             if let Some(root) = this.tx_roots.iter().find(|r| r.tx_hash == hash) {
-                TreeIterator::new(this.clone(), this.root.collect_spans(&call).into_iter())
+                TreeIterator::new(this.clone(), root.collect_spans(&call).into_iter())
             } else {
                 TreeIterator::new(this.clone(), vec![].into_iter())
             }
@@ -147,7 +148,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 TreeIterator::new(
-                    self.clone(),
+                    this.clone(),
                     this.tx_roots
                         .par_iter()
                         .map(|r| (r.tx_hash, r.collect_spans(&call)))
@@ -215,11 +216,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         call: TreeSearchBuilder<V>,
     ) -> TreeIterator<V, std::vec::IntoIter<Vec<V>>> {
         self.run_in_span_ref(|this| {
-            this.tp.install(|| {
+            this.clone().tp.install(|| {
                 TreeIterator::new(
                     this.clone(),
                     txes.par_iter()
-                        .map(|tx| this.collect(tx, call.clone()).collect_vec())
+                        .map(|tx| this.clone().collect(tx, call.clone()).collect_vec())
                         .collect::<Vec<_>>()
                         .into_iter(),
                 )

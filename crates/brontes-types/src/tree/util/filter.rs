@@ -5,7 +5,7 @@ use crate::{
     BlockTree, ScopeIter, TreeIter,
 };
 
-pub trait FilterTree<V: NormalizedAction, Out, Keys, F>: ScopeIter<V> + TreeIter<V>
+pub trait FilterTree<V: NormalizedAction, Out, Keys, F>
 where
     Out: ScopeIter<V>,
 {
@@ -50,39 +50,53 @@ macro_rules! tree_filter_gen {
             impl<V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*> ScopeIter<V>
                 for [<TreeFilter $i>]<V, I, F, $($v,)*>
                 where
+
+                I: ScopeIter<V, Items = ($($v::Out,)*)> + TreeIter<V>,
                 $($v: NormalizedActionKey<V>,)*
                 F: FnMut(Arc<BlockTree<V>>, $(&Option<$v::Out>),*) -> bool
                 {
-                    type Acc = V;
-                    type Items = ($($v::Out,)*);
+                    type Acc = I::Acc;
+                    type Items = I::Items;
 
                     fn next(&mut self) -> Option<Self::Items> {
                         let ($($v,)*) = &self.keys;
-                        let mut all_none = true;
-                        let ($([<key_ $v>],)*) = ($(None::<$v>,)*);
+                        let ($($v,)*) = ($($v.clone(),)*);
+
+                        let mut all_good = true;
+                        let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
                         // collect all keys
                         $(
-                            if let Some(inner) = self.next_scoped_key($v) {
-                                all_none = false;
+                            if let Some(inner) = self.next_scoped_key(&$v) {
                                 [<key_ $v>] = Some(inner);
+                            } else {
+                                all_good = false;
                             }
                         )*
 
-                        if !all_none && (&mut self.f)(self.tree.clone(), $(&[<key_ $v>]),*)  {
-                            return Some(($([<key_ $v>]),*))
+                        if all_good && (&mut self.f)(self.tree.clone(), $(&[<key_ $v>]),*)  {
+                            return Some(($([<key_ $v>].unwrap(),)*))
                         }
 
                         None
                     }
 
-                    fn next_scoped_key<K: crate::normalized_actions::NormalizedActionKey<V>>(
+                    fn next_scoped_key<K: NormalizedActionKey<V>>(
                         &mut self,
                         key: &K,
                     ) -> Option<K::Out> {
-                         self.iter.next_scoped_key(key)
+                        // check if this iter has the key. if it does,
+                        // then it means that it maps on it and there is no keys left
+                        let ($($v,)*) = &self.keys;
+                        $(
+                            if key.get_key().id == $v.get_key().id {
+                                return None
+                            }
+                        )*
+
+                        self.iter.next_scoped_key(key)
                     }
 
-                    fn drain(self) -> Vec<V> {
+                    fn drain(self) -> Vec<Self::Acc> {
                         self.iter.drain()
                     }
             }
@@ -96,7 +110,7 @@ tree_filter_gen!(3, A, B, C);
 tree_filter_gen!(4, A, B, C, D);
 tree_filter_gen!(5, A, B, C, D, E);
 
-pub trait Filter<V: NormalizedAction, Out, Keys, F>: ScopeIter<V> + TreeIter<V>
+pub trait Filter<V: NormalizedAction, Out, Keys, F>
 where
     Out: ScopeIter<V>,
 {
@@ -136,44 +150,57 @@ macro_rules! filter_gen {
 
                 }
             }
-
             #[allow(unused_parens)]
             impl<V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*> ScopeIter<V>
                 for [<Filter $i>]<V, I, F, $($v,)*>
                 where
+
+                I: ScopeIter<V, Items = ($($v::Out,)*)> + TreeIter<V>,
                 $($v: NormalizedActionKey<V>,)*
                 F: FnMut($(&Option<$v::Out>),*) -> bool
                 {
-                    type Acc = V;
-                    type Items = ($($v::Out,)*);
+                    type Acc = I::Acc;
+                    type Items = I::Items;
 
                     fn next(&mut self) -> Option<Self::Items> {
                         let ($($v,)*) = &self.keys;
-                        let mut all_none = true;
-                        let ($([<key_ $v>],)*) = ($(None::<$v>,)*);
+                        let ($($v,)*) = ($($v.clone(),)*);
+
+                        let mut all_good = true;
+                        let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
                         // collect all keys
                         $(
-                            if let Some(inner) = self.next_scoped_key($v) {
-                                all_none = false;
+                            if let Some(inner) = self.next_scoped_key(&$v) {
                                 [<key_ $v>] = Some(inner);
+                            } else {
+                                all_good = false;
                             }
                         )*
 
-                        if !all_none && (&mut self.f)($(&[<key_ $v>]),*)  {
-                            return Some(($([<key_ $v>]),*))
+                        if all_good && (&mut self.f)($(&[<key_ $v>]),*)  {
+                            return Some(($([<key_ $v>].unwrap(),)*))
                         }
 
                         None
                     }
 
-                    fn next_scoped_key<K: crate::normalized_actions::NormalizedActionKey<V>>(
+                    fn next_scoped_key<K: NormalizedActionKey<V>>(
                         &mut self,
                         key: &K,
                     ) -> Option<K::Out> {
-                         self.iter.next_scoped_key(key)
+                        // check if this iter has the key. if it does,
+                        // then it means that it maps on it and there is no keys left
+                        let ($($v,)*) = &self.keys;
+                        $(
+                            if key.get_key().id == $v.get_key().id {
+                                return None
+                            }
+                        )*
+
+                        self.iter.next_scoped_key(key)
                     }
 
-                    fn drain(self) -> Vec<V> {
+                    fn drain(self) -> Vec<Self::Acc> {
                         self.iter.drain()
                     }
             }

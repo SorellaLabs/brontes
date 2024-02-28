@@ -1,3 +1,13 @@
+use std::sync::Arc;
+use crate::TreeIter;
+use crate::{normalized_actions::NormalizedAction, BlockTree};
+
+pub trait IntoZippedIter {
+    type Item;
+    type IntoIter: Iterator<Item = Self::Item>;
+    fn into_zipped_iter(self) -> Self::IntoIter;
+}
+
 pub trait SplitIterZip<NewI>: Iterator
 where
     NewI: Iterator,
@@ -10,6 +20,7 @@ where
 pub trait UnzipPadded<Out>: Iterator {
     fn unzip_padded(self) -> Out;
 }
+
 
 macro_rules! unzip_padded {
     ($(($a:ident, $b:ident)),*) => {
@@ -34,6 +45,10 @@ macro_rules! unzip_padded {
     };
 }
 
+pub trait IntoZip<Out> {
+    fn into_zip(self) -> Out;
+}
+
 unzip_padded!((A, A1));
 unzip_padded!((A, A1), (B, B1));
 unzip_padded!((A, A1), (B, B1), (C, C1));
@@ -43,8 +58,25 @@ unzip_padded!((A, A1), (B, B1), (C, C1), (D, D1), (E, E1));
 macro_rules! into_split_iter {
     ($am:tt $am1:tt, $($iter_val:ident),*) => {
         paste::paste!(
-
             into_split_iter!($am, $($iter_val),*);
+
+            impl<$($iter_val),*> IntoZip<[<ZipPadded $am>]<$($iter_val::IntoIter),*>> for ($($iter_val),*)
+            where
+                $(
+                    $iter_val: IntoIterator
+                ),*
+            {
+                fn into_zip(self) -> [<ZipPadded $am>]<$($iter_val::IntoIter),*> {
+                    let ($([<$iter_val:lower>]),*) = self;
+
+                    [<ZipPadded $am>] {
+                        $(
+                            [<$iter_val:lower>]: [<$iter_val:lower>].into_iter(),
+                        )*
+                    }
+                }
+            }
+
 
             impl<$($iter_val),*, I> SplitIterZip<I>
                 for [<ZipPadded $am>]<$($iter_val),*>
@@ -65,7 +97,7 @@ macro_rules! into_split_iter {
     };
     ($am:tt, $($iter_val:ident),*) => {
         paste::paste!(
-            impl<$($iter_val),*> IntoIterator for ($($iter_val,)*)
+            impl<$($iter_val),*> IntoZippedIter for ($($iter_val,)*)
             where
                 $(
                     $iter_val: IntoIterator,
@@ -74,7 +106,7 @@ macro_rules! into_split_iter {
                 type Item = ($(Option<$iter_val::Item>,)*);
                 type IntoIter = [<ZipPadded $am>]<$($iter_val::IntoIter),*>;
 
-                fn into_iter(self) -> Self::IntoIter{
+                fn into_zipped_iter(self) -> Self::IntoIter {
                     let ($([<$iter_val:lower>],)*) = self;
 
                     [<ZipPadded $am>] {
@@ -92,7 +124,7 @@ macro_rules! into_split_iter {
                 )*
             }
 
-            impl <$($iter_val),*> [<ZipPadded $am>]<$($iter_val),*> {
+            impl <$($iter_val),*> [<ZipPadded $am>]< $($iter_val),*> {
                 pub fn new(
                 $(
                     [<$iter_val:lower>]: $iter_val,

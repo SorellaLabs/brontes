@@ -372,7 +372,7 @@ impl Actions {
 }
 
 macro_rules! extra_impls {
-    ($(($action_name:ident, $ret:ident)),*) => {
+    ($(($action_name:ident, $ret:ident, $id:tt)),*) => {
         paste::paste!(
 
             impl Actions {
@@ -407,9 +407,10 @@ macro_rules! extra_impls {
                                 as Box<dyn Fn(Actions) -> Option<$ret>>
                     }
 
-                    pub fn [<$action_name:snake key>]() -> ActionsKey<$ret>{
+                    pub fn [<$action_name:snake key>]() -> ActionsKey<Actions, $ret>{
                         ActionsKey {
-                            matches_ptr: Actions::[<is _$action_name>],
+                            id: $id,
+                            matches_ptr: Actions::[<is _$action_name:snake>],
                             into_ptr: Actions::[<try _$action_name:snake>]
                         }
                     }
@@ -420,7 +421,7 @@ macro_rules! extra_impls {
             $(
                 impl NormalizedActionKey<Actions> for $ret {
                     type Out = $ret;
-                    fn get_key(&self) -> ActionsKey<Self::Out> {
+                    fn get_key(&self) -> ActionsKey<Actions, Self::Out> {
                         Actions::[<$action_name:snake key>]()
                     }
                 }
@@ -437,14 +438,15 @@ macro_rules! extra_impls {
 }
 
 extra_impls!(
-    (Collect, NormalizedCollect),
-    (Mint, NormalizedMint),
-    (Burn, NormalizedBurn),
-    (Swap, NormalizedSwap),
-    (SwapWithFee, NormalizedSwapWithFee),
-    (Transfer, NormalizedTransfer),
-    (Liquidation, NormalizedLiquidation),
-    (FlashLoan, NormalizedFlashLoan)
+    (Collect, NormalizedCollect, 0),
+    (Mint, NormalizedMint, 1),
+    (Burn, NormalizedBurn, 2),
+    (Swap, NormalizedSwap, 3),
+    (SwapWithFee, NormalizedSwapWithFee, 4),
+    (Transfer, NormalizedTransfer, 5),
+    (Liquidation, NormalizedLiquidation, 6),
+    (FlashLoan, NormalizedFlashLoan, 7),
+    (Batch, NormalizedBatch, 8)
 );
 
 /// Custom impl for itering over swaps and swap with fee
@@ -482,16 +484,17 @@ impl Actions {
     }
 }
 
-#[derive(PartialEq, Eq)]
-pub struct ActionsKey<O: PartialEq + Eq> {
-    matches_ptr: fn(&Actions) -> bool,
-    into_ptr:    fn(Actions) -> Option<O>,
+#[derive(Clone, PartialEq, Eq)]
+pub struct ActionsKey<V, O: PartialEq + Eq> {
+    pub id:          u8,
+    pub matches_ptr: fn(&V) -> bool,
+    pub into_ptr:    fn(V) -> Option<O>,
 }
 
 impl NormalizedActionKey<Actions> for Actions {
     type Out = ();
 
-    fn get_key(&self) -> ActionsKey<Self::Out> {
+    fn get_key(&self) -> ActionsKey<Actions, Self::Out> {
         match self {
             _ => todo!(),
         }
@@ -507,7 +510,7 @@ impl NormalizedActionKey<Actions> for Actions {
     // checked against") }
 }
 
-pub trait NormalizedActionKey<V: NormalizedAction>: PartialEq + Eq {
-    type Out: PartialEq + Eq;
-    fn get_key(&self) -> ActionsKey<Self::Out>;
+pub trait NormalizedActionKey<V: NormalizedAction>: PartialEq + Eq + Clone {
+    type Out: PartialEq + Eq + Clone;
+    fn get_key(&self) -> ActionsKey<V, Self::Out>;
 }

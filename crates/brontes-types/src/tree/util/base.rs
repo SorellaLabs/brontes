@@ -1,12 +1,11 @@
 use std::{iter::Iterator, sync::Arc};
 
 use super::{
-    DedupOperation, Dedups, FlattenSpecified, InTupleFnOutVec, Map, SplitIterZip,
-    TreeIteratorScope, TreeMap,
+    DedupOperation, Dedups, InTupleFnOutVec, Map, SplitIterZip, TreeIteratorScope, TreeMap,
 };
 use crate::{
-    normalized_actions::{NormalizedAction, NormalizedMint, NormalizedSwap},
-    BlockTree, Filter, FilterTree, MergeIter, ScopeIter, ScopedIteratorBase,
+    normalized_actions::NormalizedAction, ActionSplit, BlockTree, Filter, FilterTree, IntoZip,
+    IntoZippedIter, MergeIter, ScopeIter, ScopedIteratorBase,
 };
 
 impl<T: Sized + TreeIter<V> + Iterator, V: NormalizedAction> TreeBase<V> for T {}
@@ -21,7 +20,7 @@ pub struct TreeIterator<V: NormalizedAction, I: Iterator> {
 }
 
 impl<I: Iterator, V: NormalizedAction> TreeIterator<V, I> {
-    fn new(tree: Arc<BlockTree<V>>, iter: I) -> Self {
+    pub fn new(tree: Arc<BlockTree<V>>, iter: I) -> Self {
         Self { tree, iter }
     }
 }
@@ -42,56 +41,59 @@ impl<I: Iterator, V: NormalizedAction> Iterator for TreeIterator<V, I> {
 
 /// Base functionality for TreeIter, These are almost all setup or internal
 /// tools used to deal with complexity.
-pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
-    fn dedup<KS, RS, FromI, Out>(
+pub trait TreeBase<V: NormalizedAction>: Iterator {
+    fn dedup<'a, KS, RS, FromI, Out, O, Zip>(
         self,
         parent_actions: KS,
         possible_prune_actions: RS,
-    ) -> TreeIterator<V, Out::IntoIter>
+    ) -> TreeIterator<V, Out>
     where
-        Out: IntoIterator,
-        Self: Sized + DedupOperation<FromI, Out, V, Self::Item>,
-        FromI: IntoIterator,
+        Out: Iterator,
+        Self: Sized + DedupOperation<'a, FromI, Out, V, Self::Item, Zip> + 'a + TreeIter<V>,
+        V: NormalizedAction + 'a,
+        KS: 'a,
+        RS: 'a,
+        FromI: IntoZippedIter<IntoIter = Zip>,
         KS: InTupleFnOutVec<V>,
-        <KS as InTupleFnOutVec<V>>::Out: Dedups<RS::Out, FromI>,
         RS: InTupleFnOutVec<V>,
+        <KS as InTupleFnOutVec<V>>::Out: Dedups<V, RS::Out, FromI>,
+        std::vec::IntoIter<V>: ActionSplit<KS::Out, KS, V> + ActionSplit<RS::Out, RS, V>,
+        Zip: SplitIterZip<std::vec::IntoIter<V>>,
     {
         let tree = self.tree();
-        TreeIterator::new(
-            tree,
-            DedupOperation::dedup(self, parent_actions, possible_prune_actions).into_iter(),
-        )
+        TreeIterator::new(tree, DedupOperation::dedup(self, parent_actions, possible_prune_actions))
     }
 
-    fn zip_with<O>(self, other: O) -> TreeIterator<V, Self::Out>
+    fn t_map<R, F>(self, f: F) -> TreeIterator<V, std::iter::Map<Self, F>>
     where
-        Self: SplitIterZip<O> + Sized,
+        Self: Sized + TreeIter<V>,
+        F: FnMut(Self::Item) -> R,
+    {
+        let tree = self.tree();
+        TreeIterator::new(tree, Iterator::map(self, f))
+    }
+
+    fn tree_zip_with<O>(self, other: O) -> TreeIterator<V, Self::Out>
+    where
+        Self: SplitIterZip<O> + Sized + TreeIter<V>,
         O: Iterator,
     {
         let tree = self.tree();
         TreeIterator::new(tree, SplitIterZip::<O>::zip_with_inner(self, other))
     }
 
-    fn flatten_specific<R, W, T>(
-        self,
-        wanted: W,
-        transform: T,
-    ) -> TreeIterator<V, FlattenSpecified<V, Self, W, T>>
+    fn zip_with<O>(self, other: O) -> Self::Out
     where
-        Self: Sized,
-        Self: ScopeIter<V>,
-        R: Clone,
-        W: Fn(&V) -> Option<&R>,
-        T: Fn(R) -> Vec<V>,
+        Self: SplitIterZip<O> + Sized,
+        O: Iterator,
     {
-        let tree = self.tree();
-        TreeIterator::new(tree, FlattenSpecified::new(self, wanted, transform))
+        SplitIterZip::<O>::zip_with_inner(self, other)
     }
 
     /// Merges the iterator into type O.
     fn merge_iter<O, B>(self) -> TreeIterator<V, B>
     where
-        Self: Sized + MergeIter<O, B>,
+        Self: Sized + MergeIter<O, B> + TreeIter<V>,
         B: Iterator<Item = O>,
     {
         let tree = self.tree();
@@ -100,13 +102,13 @@ pub trait TreeBase<V: NormalizedAction>: TreeIter<V> + Iterator {
 
     fn into_scoped_tree_iter(self) -> ScopedIteratorBase<V, Self>
     where
-        Self: Sized + Iterator,
+        Self: Sized + Iterator + TreeIter<V>,
     {
         ScopedIteratorBase::new(self.tree(), self)
     }
 }
 
-impl<V: NormalizedAction, T: TreeIter<V> + ScopeIter<V>> TreeScoped<V> for T {}
+impl<V: NormalizedAction, T: TreeIter<V> + ScopeIter<V>> TreeScoped<V> for T where T: Sized {}
 
 pub trait TreeScoped<V: NormalizedAction>: TreeIter<V> + ScopeIter<V> {
     fn filter_with_tree<Out, Keys, F>(self, keys: Keys, f: F) -> Out
@@ -114,7 +116,7 @@ pub trait TreeScoped<V: NormalizedAction>: TreeIter<V> + ScopeIter<V> {
         Self: Sized + FilterTree<V, Out, Keys, F>,
         Out: ScopeIter<V> + TreeIter<V>,
     {
-        FilterTree::filter(self, keys, f)
+        FilterTree::filter_tree(self, keys, f)
     }
 
     fn filter<Out, Keys, F>(self, keys: Keys, f: F) -> TreeIteratorScope<V, Out>
@@ -124,7 +126,7 @@ pub trait TreeScoped<V: NormalizedAction>: TreeIter<V> + ScopeIter<V> {
         F: FnMut(Keys) -> bool,
     {
         let tree = self.tree();
-        TreeIterator::new(tree, Filter::filter(self, keys, f))
+        TreeIteratorScope::new(tree, Filter::filter(self, keys, f))
     }
 
     fn map_tree_map<Out, Keys, F>(self, keys: Keys, f: F) -> Out
@@ -141,14 +143,6 @@ pub trait TreeScoped<V: NormalizedAction>: TreeIter<V> + ScopeIter<V> {
         Out: ScopeIter<V>,
     {
         let tree = self.tree();
-        TreeIterator::new(tree, Map::map(self, keys, f))
+        TreeIteratorScope::new(tree, Map::map(self, keys, f))
     }
-}
-
-fn test() {
-    use crate::normalized_actions::Actions;
-    let iter: Vec<(NormalizedSwap, NormalizedMint)> = vec![];
-    let tree: Arc<BlockTree<Actions>> = Arc::new(BlockTree::new(Default::default(), 69));
-    let tree_iter = TreeIterator::new(tree, iter.into_iter());
-    let a = tree_iter.into_scoped_tree_iter();
 }

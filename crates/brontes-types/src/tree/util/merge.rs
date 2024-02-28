@@ -1,6 +1,9 @@
 use std::collections::VecDeque;
 
-pub trait MergeIter<O, Out>: Iterator where Out: Iterator<Item = O>{
+pub trait MergeIter<O, Out>: Iterator
+where
+    Out: Iterator<Item = O>,
+{
     fn merge_iter(self) -> Out;
 }
 
@@ -25,8 +28,6 @@ macro_rules! merge_iter {
                     O: From<$v>,
                 )*
             {
-                // type Out = [<MergeTo $i>]<I, $($v),*, O>;
-
                 fn merge_iter(self) -> [<MergeTo $i>]<I, $($v),*, O>{
                     [<MergeTo $i>] {
                         iter: self,
@@ -51,7 +52,7 @@ macro_rules! merge_iter {
                         $(
                             self.buf.push_back($v.into());
                         )*
-                        self.buf.pop_font()
+                        self.buf.pop_front()
                     })
 
                 }

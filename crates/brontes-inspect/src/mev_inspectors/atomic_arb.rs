@@ -5,9 +5,9 @@ use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
-    normalized_actions::{Actions, NormalizedFlashLoan, NormalizedSwap},
+    normalized_actions::{Actions, NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer},
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, IntoZip, ToFloatNearest, TreeBase, TreeMap, TreeSearchBuilder, TxInfo, ZipPadded2,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -34,16 +34,39 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        tree.collect_all(
-            TreeSearchBuilder::default().with_actions([Actions::is_flash_loan, Actions::is_swap]),
-        )
-        .into_par_iter()
-        .filter_map(|(tx, actions)| {
-            let info = tree.get_tx_info(tx, self.utils.db)?;
-
-            self.process_swaps(tree.clone(), info, meta_data.clone(), actions)
-        })
-        .collect::<Vec<_>>()
+        let b = tree
+            .clone()
+            .collect_all(TreeSearchBuilder::default().with_actions([
+                Actions::is_flash_loan,
+                Actions::is_swap,
+                Actions::is_transfer,
+                Actions::is_batch,
+            ]))
+            .t_map(|(k, v)| {
+                (
+                    k,
+                    ActionIter::flatten_specified(
+                        v.into_iter(),
+                        Actions::try_flash_loan_ref,
+                        |actions: NormalizedFlashLoan| {
+                            actions
+                                .child_actions
+                                .into_iter()
+                                .filter(|f| f.is_swap() || f.is_transfer())
+                                .collect::<Vec<_>>()
+                        },
+                    )
+                    .collect::<Vec<_>>(),
+                )
+            })
+            .dedup(Actions::try_swaps_merged_dedup(), Actions::try_transfer_dedup());
+        // .tree_map((Actions::swapkey(), Actions::transferkey()), |tree, (swap,
+        // transfer)| {}); .filter_map(|(tx, actions)| {
+        //     let info = tree.get_tx_info(tx, self.utils.db)?;
+        //
+        //     self.process_swaps(tree.clone(), info, meta_data.clone(),
+        // actions) })
+        // .collect::<Vec<_>>()
     }
 }
 

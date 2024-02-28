@@ -42,8 +42,8 @@ pub trait InTupleFnOutVec<V: NormalizedAction> {
 macro_rules! in_tuple_out_vec {
     ($($out:ident),*) => {
         impl<V: NormalizedAction, $($out,)*> InTupleFnOutVec<V>
-            for ($( Box<dyn Fn(V) -> Option<$out>>,)*) {
-            type Out = ($( Vec<$out>,)*);
+            for ($( Box<dyn Fn(V) -> Option<$out>>),*) {
+            type Out = ($( Vec<$out>),*);
         }
     };
 }
