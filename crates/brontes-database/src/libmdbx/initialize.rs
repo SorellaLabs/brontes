@@ -421,10 +421,10 @@ mod tests {
         //let tables = Tables::ALL;
         let tables = vec![Tables::AddressMeta];
 
-        // intializer
-        //     .initialize(&tables, false, Some(block_range))
-        //     .await
-        //     .unwrap();
+        intializer
+            .initialize(&tables, false, Some(block_range))
+            .await
+            .unwrap();
 
         // TokenDecimals
         // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
