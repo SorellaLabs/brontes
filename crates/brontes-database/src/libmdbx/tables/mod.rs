@@ -637,7 +637,7 @@ compressed_table!(
         #[serde_as]
         Data {
             key: u64,
-            #[cfg_attr(not(feature = "api"), serde(deserialize_with = "tx_traces_inner::deserialize"))]
+            #[cfg_attr(feature = "local_clickhouse", serde(deserialize_with = "tx_traces_inner::deserialize"))]
             value: TxTracesInner,
             compressed_value: TxTracesInnerRedefined
         },
