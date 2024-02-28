@@ -17,7 +17,6 @@ pub trait UnzipPadded<Out>: Iterator {
     fn unzip_padded(self) -> Out;
 }
 
-
 macro_rules! unzip_padded {
     ($(($a:ident, $b:ident)),*) => {
         #[allow(non_snake_case, unused_variables, trivial_bounds)]

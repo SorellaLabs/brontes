@@ -1,6 +1,8 @@
 pub mod base;
 pub use base::*;
 
+pub mod filter_map;
+pub use filter_map::*;
 pub mod filter;
 pub use filter::*;
 

@@ -22,6 +22,13 @@ macro_rules! tree_map_gen {
                 f: F,
                 keys: ($($v,)*),
             }
+            impl <V: NormalizedAction, I: ScopeIter<V>, F, $($v,)*> TreeIter<V> for [<TreeMap $i>]<V, I, F, $($v,)*> {
+                fn tree(&self) -> Arc<BlockTree<V>> {
+                    self.tree.clone()
+                }
+            }
+
+
 
             #[allow(unused_parens)]
             impl <V: NormalizedAction, I, F, $($v,)* $b>
@@ -32,9 +39,9 @@ macro_rules! tree_map_gen {
             F
             > for I
                 where
-                    I: ScopeIter<V, Items = ($($v::Out,)*)> + TreeIter<V>,
+                    I: ScopeIter<V, Items = ($($v::Out),*)> + TreeIter<V>,
                     $($v: NormalizedActionKey<V>,)*
-                    F: FnMut(Arc<BlockTree<V>>, $(Option<$v::Out>),*) -> $b
+                    F: FnMut(Arc<BlockTree<V>>, $($v::Out),*) -> $b
             {
                 fn tree_map(self, keys: ($($v,)*), f: F) -> [<TreeMap $i>]<V, I, F, $($v,)*> {
                     [<TreeMap $i>] {
@@ -52,7 +59,7 @@ macro_rules! tree_map_gen {
                 for [<TreeMap $i>]<V, I, F, $($v,)*>
                 where
                 $($v: NormalizedActionKey<V>,)*
-                F: FnMut(Arc<BlockTree<V>>, $(Option<$v::Out>),*) -> $b
+                F: FnMut(Arc<BlockTree<V>>, $($v::Out),*) -> $b
                 {
                     type Acc = I::Acc;
                     type Items = $b;
@@ -60,22 +67,22 @@ macro_rules! tree_map_gen {
                         let ($($v,)*) = &self.keys;
                         let ($($v,)*) = ($($v.clone(),)*);
 
-                        let mut all_none = true;
+                        let mut any_none = false;
                         let ($(mut [<key_ $v>],)*) = ($(None::<$v::Out>,)*);
                         // collect all keys
                         $(
                             if let Some(inner) = self.iter.next_scoped_key(&$v) {
-                                all_none = false;
+                                any_none = true;
                                 [<key_ $v>] = Some(inner);
                             }
                         )*
 
-                        if all_none {
+                        if any_none {
                             return None
                         }
 
-                        // run map fn
-                        Some((&mut self.f)(self.tree.clone(), $([<key_ $v>]),*))
+                        //
+                        Some((&mut self.f)(self.tree.clone(), $([<key_ $v>].unwrap()),*))
                     }
 
                     fn next_scoped_key<K: NormalizedActionKey<V>>(

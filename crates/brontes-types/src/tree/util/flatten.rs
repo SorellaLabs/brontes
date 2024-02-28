@@ -1,6 +1,5 @@
 use crate::normalized_actions::NormalizedAction;
 
-
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct FlattenSpecified<V: NormalizedAction, I: Iterator<Item = V>, W, T> {
     iter:      I,

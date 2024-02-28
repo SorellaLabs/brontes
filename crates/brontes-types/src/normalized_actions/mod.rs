@@ -419,6 +419,14 @@ macro_rules! extra_impls {
             }
 
             $(
+                impl NormalizedActionKey<Actions> for ActionsKey<Actions, $ret> {
+                    type Out = $ret;
+                    fn get_key(&self) -> Self {
+                        Actions::[<$action_name:snake key>]()
+                    }
+
+                }
+
                 impl NormalizedActionKey<Actions> for $ret {
                     type Out = $ret;
                     fn get_key(&self) -> ActionsKey<Actions, Self::Out> {
@@ -489,25 +497,6 @@ pub struct ActionsKey<V, O: PartialEq + Eq> {
     pub id:          u8,
     pub matches_ptr: fn(&V) -> bool,
     pub into_ptr:    fn(V) -> Option<O>,
-}
-
-impl NormalizedActionKey<Actions> for Actions {
-    type Out = ();
-
-    fn get_key(&self) -> ActionsKey<Actions, Self::Out> {
-        match self {
-            _ => todo!(),
-        }
-    }
-
-    // fn matches(&self, other: &Actions) -> bool {
-    //     self.matches_ptr(other)
-    // }
-    //
-    // fn into_val(&self, item: Actions) -> O {
-    //     self.into_ptr(item)
-    //         .expect("into ptr should never be none, this means the data wasn't
-    // checked against") }
 }
 
 pub trait NormalizedActionKey<V: NormalizedAction>: PartialEq + Eq + Clone {

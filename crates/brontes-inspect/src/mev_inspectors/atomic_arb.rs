@@ -5,12 +5,13 @@ use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
-    normalized_actions::{Actions, NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedFlashLoan, NormalizedSwap},
     tree::BlockTree,
-    ActionIter, IntoZip, ToFloatNearest, TreeBase, TreeMap, TreeSearchBuilder, TxInfo, ZipPadded2,
+    ActionIter, ScopeIter, ToFloatNearest, TreeBase, TreeIter, TreeIterator, TreeScoped,
+    TreeSearchBuilder, TxInfo,
 };
+use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, Metadata};
@@ -34,13 +35,11 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        let b = tree
-            .clone()
+        tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Actions::is_flash_loan,
                 Actions::is_swap,
                 Actions::is_transfer,
-                Actions::is_batch,
             ]))
             .t_map(|(k, v)| {
                 (
@@ -52,38 +51,41 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                             actions
                                 .child_actions
                                 .into_iter()
-                                .filter(|f| f.is_swap() || f.is_transfer())
+                                .filter(|f| f.is_swap())
                                 .collect::<Vec<_>>()
                         },
                     )
                     .collect::<Vec<_>>(),
                 )
             })
-            .dedup(Actions::try_swaps_merged_dedup(), Actions::try_transfer_dedup());
-        // .tree_map((Actions::swapkey(), Actions::transferkey()), |tree, (swap,
-        // transfer)| {}); .filter_map(|(tx, actions)| {
-        //     let info = tree.get_tx_info(tx, self.utils.db)?;
-        //
-        //     self.process_swaps(tree.clone(), info, meta_data.clone(),
-        // actions) })
-        // .collect::<Vec<_>>()
+            .t_filter_map(|tree, (tx, actions)| {
+                let info = tree.get_tx_info(tx, self.utils.db)?;
+                self.process_swaps(
+                    info,
+                    meta_data.clone(),
+                    TreeIterator::new(tree, actions.into_iter()).into_scoped_tree_iter(),
+                )
+            })
+            .collect_vec()
     }
 }
 
 impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
-    fn process_swaps(
+    fn process_swaps<I: TreeIter<Actions> + ScopeIter<Actions>>(
         &self,
-        tree: Arc<BlockTree<Actions>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        searcher_actions: Vec<Actions>,
+        data: I,
     ) -> Option<Bundle> {
-        let (swaps, flashloans): (Vec<NormalizedSwap>, Vec<NormalizedFlashLoan>) = searcher_actions
-            .clone()
-            .into_iter()
-            .action_split((Actions::try_swaps_merged, Actions::try_flash_loan));
+        data.tree_map((Actions::swapkey(),), |tree, swaps| {
+            let b = swaps;
+        })
+        .tree_map((Actions::transferkey(),), |tree, transfers| {
+            let t = transfers;
+        });
 
-        let possible_arb_type = self.is_possible_arb(&swaps, &flashloans)?;
+        let swaps = swaps.collect_vec();
+        let possible_arb_type = self.is_possible_arb(&swaps)?;
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => self.process_triangle_arb(&info, metadata.clone(), &swaps),
@@ -107,7 +109,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             profit.to_float(),
             PriceAt::Average,
             &[info.gas_details],
-            metadata,
+            metadata.clone(),
             MevType::AtomicArb,
         );
 
@@ -121,17 +123,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         Some(Bundle { header, data: BundleData::AtomicArb(backrun) })
     }
 
-    fn is_possible_arb(
-        &self,
-        swaps: &[NormalizedSwap],
-        _flashloans: &[NormalizedFlashLoan],
-    ) -> Option<AtomicArbType> {
-        /*if !flashloans.is_empty()
-        /* && flashloans.contains more than 2 swaps */
-        {
-            return Some(AtomicArbType::FlashloanArb)
-        } */
-
+    fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
         match swaps.len() {
             0 | 1 => None,
             2 => {
