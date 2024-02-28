@@ -2,7 +2,7 @@ use alloy_primitives::{Address, FixedBytes};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::{NormalizedSwap, NormalizedBatch}, structured_trace::CallInfo, ToScaledRational,
+    normalized_actions::{NormalizedBatch, NormalizedMint, NormalizedSwap, NormalizedBurn}, structured_trace::CallInfo, ToScaledRational,
 };
 use reth_primitives::U256;
 
@@ -98,7 +98,41 @@ fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
 
 action_impl!(
     Protocol::BalancerV2,
-    crate::BalancerV2Vault::JoinPool,
+    crate::BalancerV2Vault::joinPoolCall,
     Mint,
-    [..Mint*]
-)
+    [..PoolBalanceChanged],
+    call_data: true,
+    logs: true,
+    |info: CallInfo, call_data: joinPoolCall, log_data: BalancerV2joinPoolCallLogs, db: &DB| { 
+        Ok(NormalizedMint { 
+            protocol: Protocol::BalancerV2, 
+            trace_index: info.trace_idx, 
+            from: call_data.sender, 
+            recipient: call_data.recipient, 
+            pool: todo!(), 
+            token: todo!(), 
+            amount: todo!() 
+        })
+    }
+);
+
+action_impl!(
+    Protocol::BalancerV2,
+    crate::BalancerV2Vault::exitPoolCall,
+    Burn,
+    [..PoolBalanceChanged],
+    call_data: true,
+    logs: true,
+    |info: CallInfo, call_data: exitPoolCall, log_data: BalancerV2exitPoolCallLogs, db: &DB| { 
+        let pool = pool_id_to_address(call_data.poolId);
+        Ok(NormalizedBurn { 
+            protocol: Protocol::BalancerV2, 
+            trace_index: info.trace_idx, 
+            from: call_data.sender, 
+            recipient: call_data.recipient, 
+            pool, 
+            token: todo!(), 
+            amount: todo!() 
+        })
+    }
+);
