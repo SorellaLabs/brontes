@@ -21,7 +21,6 @@ action_impl!(
     call_data: swapCall,
     return_data: swapReturn,
     db_tx: &DB | {
-        let src_receiver = call_data.desc.srcReceiver;
         let dst_receiver = call_data.desc.dstReceiver;
         let token_in_amount = return_data.spentAmount;
         let token_out_amount = return_data.returnAmount;
