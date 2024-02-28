@@ -1,8 +1,6 @@
-pub trait IntoZippedIter {
-    type Item;
-    type IntoIter: Iterator<Item = Self::Item>;
-    fn into_zipped_iter(self) -> Self::IntoIter;
-}
+use crate::{normalized_actions::NormalizedAction, BlockTree};
+use std::sync::Arc;
+use super::TreeIter;
 
 pub trait SplitIterZip<NewI>: Iterator
 where
@@ -44,6 +42,10 @@ pub trait IntoZip<Out> {
     fn into_zip(self) -> Out;
 }
 
+pub trait IntoZipTree<V: NormalizedAction, Out> {
+    fn into_zip_tree(self, tree:Arc<BlockTree<V>>) -> Out;
+}
+
 unzip_padded!((A, A1));
 unzip_padded!((A, A1), (B, B1));
 unzip_padded!((A, A1), (B, B1), (C, C1));
@@ -72,6 +74,41 @@ macro_rules! into_split_iter {
                 }
             }
 
+            impl<V: NormalizedAction, $($iter_val),*> IntoZipTree<V,[<ZipPaddedTree $am>]<V,$($iter_val::IntoIter),*>> for ($($iter_val),*)
+            where
+                $(
+                    $iter_val: IntoIterator
+                ),*
+            {
+                fn into_zip_tree(self, tree: Arc<BlockTree<V>>) 
+                    -> [<ZipPaddedTree $am>]<V, $($iter_val::IntoIter),*> {
+                    let ($([<$iter_val:lower>]),*) = self;
+
+                    [<ZipPaddedTree $am>] {
+                        tree,
+                        $(
+                            [<$iter_val:lower>]: [<$iter_val:lower>].into_iter(),
+                        )*
+                    }
+                }
+            }
+
+            impl<V:NormalizedAction, $($iter_val),*, I> SplitIterZip<I>
+                for [<ZipPaddedTree $am>]<V,$($iter_val),*>
+                where
+                    I: Iterator,
+                $(
+                    $iter_val: Iterator,
+                )* {
+
+                type Out = [<ZipPaddedTree $am1>]<V,$($iter_val),*, I>;
+
+                fn zip_with_inner(self, other: I) -> Self::Out
+                {
+                    [<ZipPaddedTree $am1>]::new(self.tree, $(self.[<$iter_val:lower>],)* other)
+                }
+            }
+
 
             impl<$($iter_val),*, I> SplitIterZip<I>
                 for [<ZipPadded $am>]<$($iter_val),*>
@@ -92,25 +129,62 @@ macro_rules! into_split_iter {
     };
     ($am:tt, $($iter_val:ident),*) => {
         paste::paste!(
-            impl<$($iter_val),*> IntoZippedIter for ($($iter_val,)*)
-            where
+
+            #[derive(Clone)]
+            pub struct [<ZipPaddedTree $am>]<V: NormalizedAction, $($iter_val),*> {
+                tree: Arc<BlockTree<V>>,
                 $(
-                    $iter_val: IntoIterator,
+                    [<$iter_val:lower>]: $iter_val,
                 )*
-            {
-                type Item = ($(Option<$iter_val::Item>,)*);
-                type IntoIter = [<ZipPadded $am>]<$($iter_val::IntoIter),*>;
+            }
 
-                fn into_zipped_iter(self) -> Self::IntoIter {
-                    let ($([<$iter_val:lower>],)*) = self;
-
-                    [<ZipPadded $am>] {
-                        $(
-                            [<$iter_val:lower>]: [<$iter_val:lower>].into_iter(),
-                        )*
+            impl <V: NormalizedAction, $($iter_val),*> [<ZipPaddedTree $am>]<V,$($iter_val),*> {
+                pub fn new(
+                    tree: Arc<BlockTree<V>>,
+                $(
+                    [<$iter_val:lower>]: $iter_val,
+                )*) -> Self {
+                    Self {
+                        tree,
+                        $([<$iter_val:lower>]),*
                     }
                 }
             }
+
+            impl<V: NormalizedAction,$($iter_val),*> TreeIter<V> for [<ZipPaddedTree $am>]<V,$($iter_val),*> {
+                fn tree(&self) -> Arc<BlockTree<V>> {
+                    self.tree.clone()
+                }
+            }
+
+            impl<V: NormalizedAction, $($iter_val),*> Iterator for [<ZipPaddedTree $am>]<V,$($iter_val),*>
+            where
+                $(
+                    $iter_val: Iterator,
+                )* {
+                    type Item = ($(Option<$iter_val::Item>,)*);
+
+                    fn next(&mut self) -> Option<Self::Item> {
+                        let mut all_none = true;
+                        $(
+                            let mut [<$iter_val:lower>] = None::<$iter_val::Item>;
+                        )*
+
+                        $(
+                            if let Some(val) = self.[<$iter_val:lower>].next() {
+                                all_none = false;
+                                [<$iter_val:lower>] = Some(val);
+                            }
+                        )*
+
+                        if all_none {
+                            return None
+                        }
+
+                        Some(($([<$iter_val:lower>],)*))
+                    }
+                }
+
 
             #[derive(Clone)]
             pub struct [<ZipPadded $am>]<$($iter_val),*> {

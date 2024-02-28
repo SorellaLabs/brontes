@@ -11,7 +11,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedAction, NormalizedSwap, NormalizedTransfer},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, IntoZip, ScopeIter, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
+    ActionIter, IntoZip, IntoZipTree, ScopeIter, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
     TreeIterator, TreeSearchBuilder,
 };
 use reth_primitives::{Address, B256};
@@ -86,8 +86,13 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|(victim_set, hashes)| {
                             let b = 0;
                             let tree = victim_set.tree();
-                            let b = victim_set.into_zip().zip_with(hashes.into_iter());
-                            let b = TreeIterator::new(tree, b).into_scoped_tree_iter();
+                            let b = victim_set
+                                .into_zip_tree(tree)
+                                .tree_zip_with(hashes.into_iter());
+
+                            // let b = b.into_scoped_tree_iter();
+                            // let b = TreeIterator::new(tree,
+                            // b).into_scoped_tree_iter();
 
                             // .into_scoped_tree_iter();
                         })

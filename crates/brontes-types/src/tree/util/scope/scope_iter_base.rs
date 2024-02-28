@@ -43,7 +43,7 @@ macro_rules! scope_iter_base {
                 V: NormalizedAction,
                 I,
                 $($v,)*
-            > ScopeIter<ZipPadded1<std::vec::IntoIter<()>>>
+            > ScopeIter<I>
                 for [<ScopeBase $i>]<V, I, $($v,)*>
                 where
                 $($v: ScopeKey,)*
@@ -85,8 +85,8 @@ macro_rules! scope_iter_base {
                         self.iter.collect::<Vec<_>>()
                     }
 
-                    fn fold(self) ->ZipPadded1<std::vec::IntoIter<()>> {
-                        vec![].into_zip()
+                    fn fold(self) -> I {
+                        self.iter
                     }
             }
         );
