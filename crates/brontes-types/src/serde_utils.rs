@@ -1,9 +1,9 @@
-#[cfg(all(feature = "api-des", not(feature = "api")))]
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
 use std::collections::HashMap;
 
-#[cfg(all(feature = "api-des", not(feature = "api")))]
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
 use serde::de::{DeserializeOwned, Error};
-#[cfg(all(feature = "api-des", not(feature = "api")))]
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
 use serde_json::{Error as SerdeJsonError, Value};
 
 pub mod address_string {
@@ -622,7 +622,7 @@ pub mod option_contract_info {
 
     use crate::db::address_metadata::ContractInfo;
 
-    #[cfg(any(not(feature = "api-des"), feature = "api"))]
+    #[cfg(any(not(feature = "api-des"), feature = "api", feature = "local-clickhouse"))]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
@@ -640,7 +640,7 @@ pub mod option_contract_info {
         }))
     }
 
-    #[cfg(all(feature = "api-des", not(feature = "api")))]
+    #[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
@@ -684,11 +684,11 @@ pub mod socials {
     use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
-    #[cfg(any(not(feature = "api-des"), feature = "api"))]
+    #[cfg(any(not(feature = "api-des"), feature = "api", feature = "local-clickhouse"))]
     type SocalDecode =
         (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
 
-    #[cfg(any(not(feature = "api-des"), feature = "api"))]
+    #[cfg(any(not(feature = "api-des"), feature = "api", feature = "local-clickhouse"))]
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
@@ -699,7 +699,7 @@ pub mod socials {
         Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
     }
 
-    #[cfg(all(feature = "api-des", not(feature = "api")))]
+    #[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
@@ -749,7 +749,7 @@ pub mod option_fund {
     }
 }
 
-#[cfg(all(feature = "api-des", not(feature = "api")))]
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
 fn get_val_from_map<T>(map: &HashMap<String, Value>, key: &str) -> Result<T, SerdeJsonError>
 where
     T: DeserializeOwned,
