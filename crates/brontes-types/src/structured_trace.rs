@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use alloy_primitives::{Address, Log, U256};
 use clickhouse::DbRow;
+#[cfg(not(feature = "api"))]
 use itertools::Itertools;
 use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
@@ -12,9 +13,10 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
+#[cfg(not(feature = "api"))]
+use crate::db::clickhouse_serde::tx_trace::*;
 use crate::{
     constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
-    db::clickhouse_serde::tx_trace::*,
     serde_utils::u256,
 };
 pub trait TraceActions {

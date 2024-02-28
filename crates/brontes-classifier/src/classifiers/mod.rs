@@ -90,7 +90,7 @@ action_dispatch!(
     CurveBasePool4add_liquidityCall,
     CurveBasePool2remove_liquidityCall,
     CurveBasePool2remove_liquidity_imbalanceCall,
-    CurveBasePool2remove_liquidity_one_coinCall,
+    // CurveBasePool2remove_liquidity_one_coinCall,
     //CurveBasePool2remove_liquidity_one_coinCallLido,
     CurveBasePool3remove_liquidityCall,
     CurveBasePool3remove_liquidity_imbalanceCall,
