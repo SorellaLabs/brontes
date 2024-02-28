@@ -218,6 +218,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             async move {
                 let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
 
+                println!("DATA: {:?}", data);
+
                 match data {
                     Ok(d) => libmdbx.0.write_table(&d)?,
                     Err(e) => {
