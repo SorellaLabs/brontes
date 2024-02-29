@@ -1,17 +1,11 @@
-pub mod collect;
 pub mod core;
 pub mod map;
-pub use core::*;
-pub mod scope_iter_base;
+pub use core::TreeScoped;
 use std::{any::TypeId, marker::PhantomData, sync::Arc};
 
-pub use scope_iter_base::*;
 
 pub mod filter;
-pub use filter::*;
-pub mod change_scope;
-pub use change_scope::*;
-pub use collect::*;
+use filter::*;
 pub use map::*;
 
 use super::TreeIter;

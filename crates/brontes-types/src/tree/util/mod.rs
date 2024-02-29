@@ -1,5 +1,5 @@
 pub mod base;
-pub use base::*;
+pub use base::{TreeBase, TreeIter,TreeIterator};
 
 pub mod filter_map;
 pub use filter_map::*;

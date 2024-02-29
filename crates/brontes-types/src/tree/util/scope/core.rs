@@ -1,6 +1,7 @@
+use super::filter::{TreeFilter, TreeFilterAll};
 use crate::{
-    normalized_actions::NormalizedAction, Map, ScopeIter, TreeFilter, TreeFilterAll, TreeIter,
-    TreeIterator, TreeIteratorScope, TreeMap, TreeMapAll,
+    normalized_actions::NormalizedAction, Map, ScopeIter, TreeIter, TreeIterator,
+    TreeIteratorScope, TreeMap, TreeMapAll,
 };
 
 impl<V: NormalizedAction, U: Iterator, T: TreeIter<V> + ScopeIter<U>> TreeScoped<V, U> for T where

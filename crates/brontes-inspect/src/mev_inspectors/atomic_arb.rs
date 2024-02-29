@@ -7,8 +7,8 @@ use brontes_types::{
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{Actions, NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer},
     tree::BlockTree,
-    ActionIter, IntoZip, IntoZipTree, ScopeBase2, ScopeIter, ToFloatNearest, TreeBase,
-    TreeCollector, TreeIter, TreeIterator, TreeScoped, TreeSearchBuilder, TxInfo, ZipPaddedTree2,
+    ActionIter, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector, TreeScoped,
+    TreeSearchBuilder, TxInfo, ZipPaddedTree2,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;

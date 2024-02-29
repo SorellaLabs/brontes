@@ -68,50 +68,46 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     };
 
-                    let victim_info = victims
-                        .iter()
-                        .map(|victims| {
-                            victims
-                                .iter()
-                                .map(|v| tree.get_tx_info(*v, self.utils.db).unwrap())
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<_>>();
-
                     let victim_actions = victims
                         .into_iter()
                         .map(|victim| {
                             (tree.clone().collect_txes(&victim, search_args.clone()), victim)
                         })
-                        .map(|(victim_set, hashes)| {
+                        .fold(Some(vec![]), |acc, (victim_set, hashes)| {
                             let tree = victim_set.tree();
                             let b = victim_set
+                                .map(|s| {
+                                    s.into_iter().collect_action_vec(Actions::try_swaps_merged)
+                                })
                                 .into_zip_tree(tree)
                                 .tree_zip_with(hashes.into_iter())
-                                .into_scoped_tree_iter::<ScopeBase2<_,_,_,_>>()
-                            .tree_filter_all(
-                                |tree: Arc<BlockTree<Actions>>,
-                                 hashes: Vec<B256>,
-                                 actions: Vec<Vec<Actions>>| {
-                                    !(hashes
-                                        .into_iter()
-                                        .map(|v| {
-                                            (*tree.clone()).get_root(v).unwrap().get_root_action()
-                                        })
-                                        .any(|d| {
-                                            d.is_revert()
-                                                || mev_executor_contract == d.get_to_address()
-                                        }) ||
-                    actions
-                        .iter()
-                        .map(|a| a.into_iter())
-                        .flatten()
-                        .filter(|f| f.is_swap())
-                        .count()
-                        == 0
-                                        )
-                                },
-                            ).fold();
+                                .into_scoped_tree_iter::<ScopeBase2<_, _, _, _>>()
+                                .tree_filter_all(
+                                    |tree: Arc<BlockTree<Actions>>,
+                                     actions: &[Vec<NormalizedSwap>],
+                                     hashes: &[B256]| {
+                                        !(hashes
+                                            .into_iter()
+                                            .map(|v| {
+                                                (*tree.clone())
+                                                    .get_root(*v)
+                                                    .unwrap()
+                                                    .get_root_action()
+                                            })
+                                            .any(|d| {
+                                                d.is_revert()
+                                                    || mev_executor_contract == d.get_to_address()
+                                            })
+                                            || actions
+                                                .iter()
+                                                .map(|a| a.into_iter())
+                                                .flatten()
+                                                .filter(|f| f.is_swap())
+                                                .count()
+                                                == 0)
+                                    },
+                                );
+                            // .fold();
                         })
                         .collect::<Vec<_>>();
 
