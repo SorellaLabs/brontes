@@ -23,7 +23,6 @@ pub use liquidity::*;
 pub use pool::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
-use serde::{Deserialize, Serialize};
 pub use swaps::*;
 pub use transfer::*;
 
@@ -131,7 +130,7 @@ impl NormalizedAction for Actions {
 }
 
 /// A normalized action that has been classified
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Deserialize, PartialEq, Eq)]
 pub enum Actions {
     Swap(NormalizedSwap),
     SwapWithFee(NormalizedSwapWithFee),
@@ -171,7 +170,7 @@ impl InsertRow for Actions {
     }
 }
 
-impl Serialize for Actions {
+impl serde::Serialize for Actions {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -307,6 +306,14 @@ impl Actions {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }
 
+    pub const fn is_swap_no_fee(&self) -> bool {
+        matches!(self, Actions::Swap(_))
+    }
+
+    pub const fn is_swap_with_fee(&self) -> bool {
+        matches!(self, Actions::SwapWithFee(_))
+    }
+
     pub const fn is_flash_loan(&self) -> bool {
         matches!(self, Actions::FlashLoan(_))
     }
@@ -418,8 +425,44 @@ extra_impls!(
     (Collect, NormalizedCollect),
     (Mint, NormalizedMint),
     (Burn, NormalizedBurn),
-    (Transfer, NormalizedTransfer),
     (Swap, NormalizedSwap),
+    (SwapWithFee, NormalizedSwapWithFee),
+    (Transfer, NormalizedTransfer),
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan)
 );
+
+/// Custom impl for itering over swaps and swap with fee
+impl Actions {
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_ref(&self) -> Option<&NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_mut(&mut self) -> Option<&mut NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged(self) -> Option<NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f.swap),
+            _ => None,
+        }
+    }
+
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
+        Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
+    }
+}

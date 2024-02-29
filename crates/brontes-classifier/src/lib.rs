@@ -31,6 +31,7 @@ sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
 sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveBase2, "./classifier-abis/CurveBase2.json");
+//sol!(CurveLido2, "./classifier-abis/CurveBase2Lido.json");
 sol!(CurveBase3, "./classifier-abis/CurveBase3.json");
 sol!(CurveBase4, "./classifier-abis/CurveBase4.json");
 sol!(CurveV1MetapoolImpl, "./classifier-abis/CurveV1MetapoolImpl.json");
@@ -57,6 +58,9 @@ sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
 sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
 sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
 sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
+sol!(BalancerV1CorePoolFactory, "./classifier-abis/BalancerV1Factory.json");
+sol!(BalancerV1SmartPoolFactory, "./classifier-abis/BalancerV1CrpFactory.json");
+
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

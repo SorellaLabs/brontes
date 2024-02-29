@@ -28,6 +28,13 @@ pub use maker::*;
 pub mod oneinch;
 pub use oneinch::*;
 
+//use crate::base2::__action_sig_CurveBasePool2remove_liquidityCall;
+//use crate::base2::__action_sig_CurveBasePool2remove_liquidity_imbalanceCall;
+//use crate::base2::{__action_sig_CurveBasePool2remove_liquidity_one_coinCall
+// as __action_sig_CurveBasePool2remove_liquidity_one_coinCallStandard};
+// use crate::base2_lido::{__action_sig_CurveBasePool2remove_liquidity_one_coinCall as __action_sig_CurveBasePool2remove_liquidity_one_coinCallLido};
+
+
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,
@@ -48,7 +55,8 @@ discovery_dispatch!(
     CurvecrvUSDMetaDiscovery0,
     CurvecrvUSDMetaDiscovery1,
     CurveCryptoSwapDiscovery,
-    CurveTriCryptoDiscovery
+    CurveTriCryptoDiscovery,
+    BalancerV1CoreDiscovery
 );
 
 action_dispatch!(
@@ -86,7 +94,8 @@ action_dispatch!(
     CurveBasePool4add_liquidityCall,
     CurveBasePool2remove_liquidityCall,
     CurveBasePool2remove_liquidity_imbalanceCall,
-    CurveBasePool2remove_liquidity_one_coinCall,
+    // CurveBasePool2remove_liquidity_one_coinCall,
+    //CurveBasePool2remove_liquidity_one_coinCallLido,
     CurveBasePool3remove_liquidityCall,
     CurveBasePool3remove_liquidity_imbalanceCall,
     CurveBasePool3remove_liquidity_one_coinCall,
@@ -135,6 +144,7 @@ action_dispatch!(
     AaveV3flashLoanSimpleCall,
     BalancerV1swapExactAmountInCall,
     BalancerV1swapExactAmountOutCall,
+    BalancerV1bindCall,
     CompoundV2liquidateBorrowCall,
     CompoundV2initialize_0Call,
     CompoundV2initialize_1Call,
