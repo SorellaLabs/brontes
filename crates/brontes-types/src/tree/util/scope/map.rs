@@ -77,6 +77,9 @@ macro_rules! tree_map_gen_all {
                     type Items = $b;
 
                     fn next(&mut self) -> Option<Self::Items> {
+                        if let Some(next) = self.buf.pop_front() {
+                            return Some(next)
+                        }
                         let mut any_none = false;
                         let ($(mut [<key_ $v>],)*) = ($(Vec::<$v>::new(),)*);
                         // collect all keys
@@ -98,6 +101,7 @@ macro_rules! tree_map_gen_all {
 
                         let res = (&mut self.f)(self.tree.clone(), $([<key_ $v>]),*);
                         self.buf.extend(res);
+
                         self.buf.pop_front()
                     }
 
@@ -226,7 +230,6 @@ macro_rules! tree_map_gen {
                         // check if this iter has the key. if it does,
                         // then it means that it maps on it and there is no keys left
                         $(
-
                             if K::ID== $v::ID {
                                 return None
                             }

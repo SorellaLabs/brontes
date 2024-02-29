@@ -3,7 +3,7 @@ pub mod core;
 pub mod map;
 pub use core::*;
 pub mod scope_iter_base;
-use std::{any::TypeId, collections::VecDeque, marker::PhantomData, sync::Arc};
+use std::{any::TypeId, marker::PhantomData, sync::Arc};
 
 pub use scope_iter_base::*;
 
@@ -15,7 +15,7 @@ pub use collect::*;
 pub use map::*;
 
 use super::TreeIter;
-use crate::{tree::NormalizedAction, BlockTree, IntoZip, SplitIterZip, ZipPadded1};
+use crate::{tree::NormalizedAction, BlockTree, SplitIterZip, ZipPadded1};
 
 /// A key that allows for maping scoped data. this also allows for
 /// a key with some grouped data
@@ -29,7 +29,7 @@ impl<T: 'static> ScopeKey for T {
 
 /// given a iterator of items that can be scoped out,
 /// tracks the scoped items such that if in the future,
-/// the scope changes, we can also pull from historical
+/// the scope changes, we can also opperate on these items
 pub trait ScopeIter<IT> {
     type Items;
     type Acc;

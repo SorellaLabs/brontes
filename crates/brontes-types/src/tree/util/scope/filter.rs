@@ -18,6 +18,7 @@ macro_rules! tree_filter_gen_all {
                 tree: Arc<BlockTree<V>>,
                 iter: I,
                 f: F,
+                buf: VecDeque<I::Items>,
                 _p: PhantomData<(I0, I1,$($v,)*)>
             }
 
@@ -50,6 +51,7 @@ macro_rules! tree_filter_gen_all {
                         tree: self.tree(),
                         iter: self,
                         f,
+                        buf: VecDeque::default(),
                         _p: PhantomData::default()
                     }
 
@@ -66,7 +68,7 @@ macro_rules! tree_filter_gen_all {
             > ScopeIter<I>
                 for [<TreeFilterAll $i>]<I0, I0, V, I, FN, $($v,)*>
                 where
-                I: ScopeIter<I0>,
+                I: ScopeIter<I0, Items = ($($v),*)> + Clone + Iterator,
                 $($v: ScopeKey,)*
                 FN: FnMut(Arc<BlockTree<V>>, $(&[$v]),*) -> bool
                 {
@@ -74,37 +76,38 @@ macro_rules! tree_filter_gen_all {
                     type Items = I::Items;
 
                     fn next(&mut self) -> Option<Self::Items> {
-                        let mut any_none = false;
+                        if let Some(next) = self.buf.pop_front() {
+                            return Some(next)
+                        }
+
+                        let mut iter = self.iter.clone();
                         let ($(mut [<key_ $v>],)*) = ($(Vec::<$v>::new(),)*);
                         // collect all keys
+                        while let Some(inner) = ScopeIter::next(&mut iter) {
+                            let ($($v),*) = inner;
+                            $(
+                                [<key_ $v>].push($v);
+                            )*
+                        }
                         $(
-                            if let Some(inner) = self.iter.next_scoped_key::<$v>() {
-                                [<key_ $v>].push(inner);
-                            } else {
-                                any_none =true;
-                            }
-
-                            while let Some(inner) = self.iter.next_scoped_key::<$v>() {
-                                [<key_ $v>].push(inner);
-                            }
+                            if [<key_ $v>].is_empty() { return None }
                         )*
 
-                        if any_none {
-                            return None
-                        }
-
                         if (&mut self.f)(self.tree.clone(), $(&[<key_ $v>]),*) {
-                            return  Some(($([<key_ $v>]),*))
+                            while let Some(next) = ScopeIter::next(&mut self.iter) {
+                                self.buf.push_back(next);
+                            }
                         }
 
-                        None
+                        self.buf.pop_front()
                     }
 
                     fn next_scoped_key<K: ScopeKey>(
                         &mut self,
                     ) -> Option<K> {
                         // check if this iter has the key. if it does,
-                        // then it means that it maps on it and there is no keys left
+                        // then we will pull from here, otherwise, we will go to a lower level to
+                        // m
                         $(
                             if K::ID == $v::ID {
                                 return None
@@ -118,7 +121,7 @@ macro_rules! tree_filter_gen_all {
                         self.iter.drain()
                     }
 
-                    fn fold(mut self) -> I {
+                    fn fold(self) -> I {
                         self.iter
                     }
             }
@@ -176,7 +179,7 @@ macro_rules! tree_filter_gen {
 
             #[allow(unused_parens, non_snake_case)]
             impl<
-                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>>,
+                I0: Iterator + SplitIterZip<I>,
                 V: NormalizedAction,
                 I,
                 FN,
@@ -184,9 +187,9 @@ macro_rules! tree_filter_gen {
             > ScopeIter<I>
                 for [<TreeFilter $i>]<I, I0, V, I, FN, $($v,)*>
                 where
-                I: ScopeIter<I0>,
+                I: ScopeIter<I0> + Iterator,
                 $($v: ScopeKey,)*
-                FN: FnMut(Arc<BlockTree<V>>, $($v),*) -> bool
+                FN: FnMut(Arc<BlockTree<V>>, $(&$v),*) -> bool
                 {
                     type Acc = I::Acc;
                     type Items = I::Items;
@@ -208,8 +211,8 @@ macro_rules! tree_filter_gen {
                             return None
                         }
 
-                        if (&mut self.f)(self.tree.clone(), $(&[<key_ $v>]),*) {
-                            return Some(($([<key_ $v>]),*))
+                        if (&mut self.f)(self.tree.clone(), $([<key_ $v>].as_ref().unwrap()),*) {
+                            return ScopeIter::next(&mut self.iter)
                         }
 
                         None
@@ -234,7 +237,7 @@ macro_rules! tree_filter_gen {
                         self.iter.drain()
                     }
 
-                    fn fold(mut self) -> I {
+                    fn fold(self) -> I {
                         self.iter
                     }
             }
