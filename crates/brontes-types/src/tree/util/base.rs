@@ -3,7 +3,7 @@ use std::{iter::Iterator, sync::Arc};
 use super::{DedupOperation, Dedups, InTupleFnOutVec, SplitIterZip};
 use crate::{
     normalized_actions::NormalizedAction, ActionSplit, BlockTree, FilterMapTree, IntoZip,
-    MergeIter, ScopeIter, ScopeIterBase,
+    MergeIter, ScopeIter, ScopeIterBase, TreeScoped,
 };
 
 impl<T: Sized + Iterator, V: NormalizedAction> TreeBase<V> for T {}
@@ -136,11 +136,21 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         TreeIterator::new(tree, MergeIter::merge_iter(self))
     }
 
-    fn into_scoped_tree_iter<Out, IT>(self) -> Out
+    fn into_scoped_tree_iter<Out>(self) -> Out
     where
         Self: Sized + Iterator + TreeIter<V> + ScopeIterBase<V, Out>,
-        Out: TreeIter<V> + ScopeIter<Self>,
+        Out: TreeScoped<V, Self>,
     {
         ScopeIterBase::scope_iter_base(self)
+    }
+
+    fn split_into_actions<FromI, Fns, Out>(self, fns: Fns) -> TreeIterator<V, Out>
+    where
+        Self: Sized + Iterator + TreeIter<V> + ActionSplit<FromI, Fns, V>,
+        Out: Iterator,
+        FromI: IntoZip<Out>,
+    {
+        let tree = self.tree();
+        TreeIterator::new(tree, ActionSplit::action_split_impl(self, fns).into_zip())
     }
 }

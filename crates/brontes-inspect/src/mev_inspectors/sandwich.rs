@@ -9,12 +9,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{
-        Actions, NormalizedAction, NormalizedBurn, NormalizedSwap, NormalizedTransfer,
-    },
+    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, IntoZip, IntoZipTree, ScopeIter, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
-    TreeIterator, TreeMap, TreeMapAll, TreeSearchBuilder,
+    ActionIter, IntoZip, IntoZipTree, ScopeBase2, ScopeIter, ToFloatNearest, TreeBase,
+    TreeCollector, TreeIter, TreeIterator, TreeScoped, TreeSearchBuilder,
 };
 use reth_primitives::{Address, B256};
 
@@ -86,27 +84,34 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                             (tree.clone().collect_txes(&victim, search_args.clone()), victim)
                         })
                         .map(|(victim_set, hashes)| {
-                            let b = 0;
                             let tree = victim_set.tree();
                             let b = victim_set
                                 .into_zip_tree(tree)
-                                .tree_zip_with(hashes.into_iter());
-
-                            let b = b.into_scoped_tree_iter();
-                            b.tree_map_all(|tree: Arc<BlockTree<Actions>>, hashes: Vec<B256>| {
-                                let a = hashes
-                                    .into_iter()
-                                    .map(|v| (*tree.clone()).get_root(v).unwrap().get_root_action())
-                                    .any(|d| {
-                                        d.is_revert() || mev_executor_contract == d.get_to_address()
-                                    });
-                                vec![a]
-                            });
-
-                            // let b = TreeIterator::new(tree,
-                            // b).into_scoped_tree_iter();
-
-                            // .into_scoped_tree_iter();
+                                .tree_zip_with(hashes.into_iter())
+                                .into_scoped_tree_iter::<ScopeBase2<_,_,_,_>>()
+                            .tree_filter_all(
+                                |tree: Arc<BlockTree<Actions>>,
+                                 hashes: Vec<B256>,
+                                 actions: Vec<Vec<Actions>>| {
+                                    !(hashes
+                                        .into_iter()
+                                        .map(|v| {
+                                            (*tree.clone()).get_root(v).unwrap().get_root_action()
+                                        })
+                                        .any(|d| {
+                                            d.is_revert()
+                                                || mev_executor_contract == d.get_to_address()
+                                        }) ||
+                    actions
+                        .iter()
+                        .map(|a| a.into_iter())
+                        .flatten()
+                        .filter(|f| f.is_swap())
+                        .count()
+                        == 0
+                                        )
+                                },
+                            ).fold();
                         })
                         .collect::<Vec<_>>();
 
@@ -191,7 +196,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .into_iter()
                     .collect_action_vec(Actions::try_swaps_merged)
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
         // front run that is unrelated

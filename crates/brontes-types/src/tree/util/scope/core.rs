@@ -1,6 +1,6 @@
 use crate::{
-    normalized_actions::NormalizedAction, Map, ScopeIter, TreeIter, TreeIterator,
-    TreeIteratorScope, TreeMap, TreeMapAll,
+    normalized_actions::NormalizedAction, Map, ScopeIter, TreeFilter, TreeFilterAll, TreeIter,
+    TreeIterator, TreeIteratorScope, TreeMap, TreeMapAll,
 };
 
 impl<V: NormalizedAction, U: Iterator, T: TreeIter<V> + ScopeIter<U>> TreeScoped<V, U> for T where
@@ -9,7 +9,23 @@ impl<V: NormalizedAction, U: Iterator, T: TreeIter<V> + ScopeIter<U>> TreeScoped
 }
 
 pub trait TreeScoped<V: NormalizedAction, U: Iterator>: TreeIter<V> + ScopeIter<U> {
-    fn tree_map_all<Keys, Out, F, O: Iterator>(self, f: F) -> Out
+    fn tree_filter_all<Keys, Out, F, O>(self, f: F) -> Out
+    where
+        Self: Sized + TreeFilterAll<V, Out, Keys, F>,
+        Out: ScopeIter<O> + TreeIter<V>,
+    {
+        TreeFilterAll::tree_filter_all(self, f)
+    }
+
+    fn tree_filter<Keys, Out, F, O>(self, f: F) -> Out
+    where
+        Self: Sized + TreeFilter<V, Out, Keys, F>,
+        Out: ScopeIter<O> + TreeIter<V>,
+    {
+        TreeFilter::tree_filter(self, f)
+    }
+
+    fn tree_map_all<Keys, Out, F, O>(self, f: F) -> Out
     where
         Self: Sized + TreeMapAll<V, Out, Keys, F>,
         Out: ScopeIter<O> + TreeIter<V>,

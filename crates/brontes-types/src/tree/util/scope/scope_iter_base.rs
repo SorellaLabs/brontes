@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, sync::Arc};
 
-use super::{ScopeKey, ZipPadded1};
-use crate::{normalized_actions::NormalizedAction, BlockTree, IntoZip, ScopeIter, TreeIter};
+use super::ScopeKey;
+use crate::{normalized_actions::NormalizedAction, BlockTree, ScopeIter, TreeIter};
 
 pub trait ScopeIterBase<V: NormalizedAction, Out>: TreeIter<V> {
     fn scope_iter_base(self) -> Out;
@@ -14,7 +14,7 @@ macro_rules! scope_iter_base {
             [<ScopeBase $i>]<V, IT, $($v,)*>> for IT
             where
                 IT: TreeIter<V>,
-                IT: Iterator<Item = ($($v,)*)> {
+                IT: Iterator<Item = ($($v),*)> {
                      fn scope_iter_base(self) -> [<ScopeBase $i>]<V, IT, $($v,)*> {
                         [<ScopeBase $i>] {
                             tree: self.tree(),
