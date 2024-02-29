@@ -34,7 +34,6 @@ pub use oneinch::*;
 // as __action_sig_CurveBasePool2remove_liquidity_one_coinCallStandard};
 // use crate::base2_lido::{__action_sig_CurveBasePool2remove_liquidity_one_coinCall as __action_sig_CurveBasePool2remove_liquidity_one_coinCallLido};
 
-
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,
