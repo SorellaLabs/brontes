@@ -12,6 +12,7 @@ pub trait TreeIter<V: NormalizedAction> {
     fn tree(&self) -> Arc<BlockTree<V>>;
 }
 
+#[derive(Clone)]
 pub struct TreeIterator<V: NormalizedAction, I: Iterator> {
     tree: Arc<BlockTree<V>>,
     iter: I,

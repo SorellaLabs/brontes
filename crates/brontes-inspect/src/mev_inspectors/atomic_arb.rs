@@ -92,62 +92,58 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             Option<NormalizedTransfer>,
         >,
     ) -> Option<Bundle> {
-        let b = data
-            .tree_map_all(|_tree, swaps: Vec<NormalizedSwap>| {
-                let Some(possible_arb_type) = self.is_possible_arb(&swaps) else { return vec![] };
+        data.tree_map_all(|_tree, swaps: Vec<NormalizedSwap>| {
+            let Some(possible_arb_type) = self.is_possible_arb(&swaps) else { return vec![] };
 
-                let Some(profit) = (match possible_arb_type {
-                    AtomicArbType::Triangle => {
-                        self.process_triangle_arb(&info, metadata.clone(), &swaps)
-                    }
-                    AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_or_stable_arb(
-                        &info,
-                        metadata.clone(),
-                        &swaps,
-                        Some(jump_index),
-                        false,
-                    ),
-                    AtomicArbType::StablecoinArb => self.process_cross_pair_or_stable_arb(
-                        &info,
-                        metadata.clone(),
-                        &swaps,
-                        None,
-                        true,
-                    ),
-                    AtomicArbType::LongTail => {
-                        self.process_long_tail(&info, metadata.clone(), &swaps)
-                    }
-                }) else {
-                    return vec![]
-                };
+            let Some(profit) = (match possible_arb_type {
+                AtomicArbType::Triangle => {
+                    self.process_triangle_arb(&info, metadata.clone(), &swaps)
+                }
+                AtomicArbType::CrossPair(jump_index) => self.process_cross_pair_or_stable_arb(
+                    &info,
+                    metadata.clone(),
+                    &swaps,
+                    Some(jump_index),
+                    false,
+                ),
+                AtomicArbType::StablecoinArb => self.process_cross_pair_or_stable_arb(
+                    &info,
+                    metadata.clone(),
+                    &swaps,
+                    None,
+                    true,
+                ),
+                AtomicArbType::LongTail => self.process_long_tail(&info, metadata.clone(), &swaps),
+            }) else {
+                return vec![]
+            };
 
-                let backrun = AtomicArb {
-                    tx_hash: info.tx_hash,
-                    gas_details: info.gas_details,
-                    swaps,
-                    arb_type: possible_arb_type,
-                };
-                vec![(profit, BundleData::AtomicArb(backrun))]
+            let backrun = AtomicArb {
+                tx_hash: info.tx_hash,
+                gas_details: info.gas_details,
+                swaps,
+                arb_type: possible_arb_type,
+            };
+            vec![(profit, BundleData::AtomicArb(backrun))]
+        })
+        .into_base_iter()
+        .full_map(|res| {
+            let (_, transfers, mut arb): (Vec<_>, Vec<_>, Vec<_>) =
+                TreeCollector::<Actions>::unzip_padded(res);
+            arb.pop().map(|(profit, data)| {
+                let header = self.utils.build_bundle_header(
+                    vec![transfers],
+                    vec![info.tx_hash],
+                    &info,
+                    profit.to_float(),
+                    PriceAt::Average,
+                    &[info.gas_details],
+                    metadata.clone(),
+                    MevType::AtomicArb,
+                );
+                Bundle { header, data }
             })
-            .into_base_iter()
-            .full_map(|res| {
-                let (_, transfers, mut arb): (Vec<_>, Vec<_>, Vec<_>) =
-                    TreeCollector::<Actions>::unzip_padded(res);
-                arb.pop().map(|(profit, data)| {
-                    let header = self.utils.build_bundle_header(
-                        vec![transfers],
-                        vec![info.tx_hash],
-                        &info,
-                        profit.to_float(),
-                        PriceAt::Average,
-                        &[info.gas_details],
-                        metadata.clone(),
-                        MevType::AtomicArb,
-                    );
-                    Bundle { header, data }
-                })
-            });
-        b
+        })
     }
 
     fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {

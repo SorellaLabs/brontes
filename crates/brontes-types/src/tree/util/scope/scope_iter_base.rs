@@ -10,7 +10,7 @@ pub trait ScopeIterBase<V: NormalizedAction, Out>: TreeIter<V> {
 macro_rules! scope_iter_base {
     ($i:tt, $($v:ident),*) => {
         paste::paste!(
-            impl<IT, V: NormalizedAction, $($v,)*> ScopeIterBase<V,
+            impl<IT:Clone, V: NormalizedAction, $($v:Clone,)*> ScopeIterBase<V,
             [<ScopeBase $i>]<V, IT, $($v,)*>> for IT
             where
                 IT: TreeIter<V>,
@@ -24,13 +24,14 @@ macro_rules! scope_iter_base {
                      }
                 }
 
-            pub struct [<ScopeBase $i>]<V: NormalizedAction, I: Iterator, $($v,)*> {
+            #[derive(Clone)]
+            pub struct [<ScopeBase $i>]<V: NormalizedAction, I: Iterator + Clone, $($v: Clone,)*> {
                 tree: Arc<BlockTree<V>>,
                 iter: I,
                 buf: VecDeque<($(Option<$v>),*)>,
             }
 
-            impl < V: NormalizedAction, I: Iterator, $($v,)*> TreeIter<V>
+            impl < V: NormalizedAction, I: Iterator + Clone, $($v: Clone,)*> TreeIter<V>
                 for [<ScopeBase $i>]< V, I, $($v,)*> {
 
                 fn tree(&self) -> Arc<BlockTree<V>> {
@@ -46,8 +47,8 @@ macro_rules! scope_iter_base {
             > ScopeIter<I>
                 for [<ScopeBase $i>]<V, I, $($v,)*>
                 where
-                $($v: ScopeKey,)*
-                I: Iterator<Item = ($($v),*)>
+                $($v: ScopeKey + Clone,)*
+                I: Iterator<Item = ($($v),*)> + Clone
                 {
                     type Acc = I::Item;
                     type Items = ($($v),*);

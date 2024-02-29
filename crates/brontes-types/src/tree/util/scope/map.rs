@@ -14,7 +14,14 @@ pub trait TreeMapAll<V: NormalizedAction, Out, Keys, F> {
 macro_rules! tree_map_gen_all {
     ($i:tt, $b:ident, $($v:ident),*) => {
         paste::paste!(
-            pub struct [<TreeMapAll $i>]<$b, I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
+            #[derive(Clone)]
+            pub struct [<TreeMapAll $i>]<
+            $b: Clone,
+            I0:Clone,
+            I1: Iterator + Clone,
+            V: NormalizedAction,
+            I: ScopeIter<I1>,
+            F: Clone, $($v: Clone,)*> {
                 tree: Arc<BlockTree<V>>,
                 iter: I,
                 f: F,
@@ -22,7 +29,8 @@ macro_rules! tree_map_gen_all {
                 _p: PhantomData<(I0, I1,$($v,)*)>
             }
 
-            impl <$b, I0, I1: Iterator,V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> TreeIter<V>
+            impl <$b:Clone, I0:Clone, I1: Iterator + Clone,
+            V: NormalizedAction, I: ScopeIter<I1>, F: Clone, $($v:Clone,)*> TreeIter<V>
                 for [<TreeMapAll $i>]<$b, I0, I1,V, I, F, $($v,)*> {
 
                 fn tree(&self) -> Arc<BlockTree<V>> {
@@ -31,7 +39,7 @@ macro_rules! tree_map_gen_all {
             }
 
             #[allow(unused_parens)]
-            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* $b >
+            impl <I0: Clone, I1: Iterator + Clone, V: NormalizedAction, I:Clone, F:Clone, $($v:Clone,)* $b:Clone >
             TreeMapAll<
             V,
             [<TreeMapAll $i>]<$b, I0, I1, V, I, F, $($v,)*>,
@@ -60,18 +68,19 @@ macro_rules! tree_map_gen_all {
 
             #[allow(unused_parens, non_snake_case)]
             impl<
-                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>>,
+                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>> + Clone,
                 V: NormalizedAction,
-                I,
-                FN,
-                $($v,)*
-                $b
+                I: Clone,
+                FN:Clone,
+                $($v:Clone,)*
+                $b:Clone
             > ScopeIter<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out>
                 for [<TreeMapAll $i>]<$b, <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out, I0, V, I, FN, $($v,)*>
                 where
                 I: ScopeIter<I0>,
                 $($v: ScopeKey,)*
-                FN: FnMut(Arc<BlockTree<V>>, $(Vec<$v>),*) -> Vec<$b>
+                FN: FnMut(Arc<BlockTree<V>>, $(Vec<$v>),*) -> Vec<$b>,
+                <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out: Clone
                 {
                     type Acc = I::Acc;
                     type Items = $b;
@@ -143,14 +152,17 @@ tree_map_gen_all!(4, T0, T1, T2, T3, T4);
 macro_rules! tree_map_gen {
     ($i:tt, $b:ident, $($v:ident),*) => {
         paste::paste!(
-            pub struct [<TreeMap $i>]<I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
+            #[derive(Clone)]
+            pub struct [<TreeMap $i>]<I0: Clone, I1: Iterator +Clone, V: NormalizedAction
+            , I: ScopeIter<I1>, F: Clone, $($v: Clone,)*> {
                 tree: Arc<BlockTree<V>>,
                 iter: I,
                 f: F,
                 _p: PhantomData<(I0, I1,$($v,)*)>
             }
 
-            impl <I0, I1: Iterator,V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> TreeIter<V>
+            impl <I0: Clone, I1: Iterator + Clone,V: NormalizedAction, I: ScopeIter<I1>
+            , F: Clone, $($v: Clone,)*> TreeIter<V>
                 for [<TreeMap $i>]<I0, I1,V, I, F, $($v,)*> {
 
                 fn tree(&self) -> Arc<BlockTree<V>> {
@@ -159,7 +171,8 @@ macro_rules! tree_map_gen {
             }
 
             #[allow(unused_parens)]
-            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* $b >
+            impl <I0: Clone, I1: Iterator + Clone,
+                V: NormalizedAction, I: Clone, F: Clone, $($v: Clone,)* $b:Clone >
             TreeMap<
             V,
             [<TreeMap $i>]<I0, I1, V, I, F, $($v,)*>,
@@ -167,7 +180,7 @@ macro_rules! tree_map_gen {
             F,
             > for I
                 where
-                    I: ScopeIter< I1> + TreeIter<V>,
+                    I: ScopeIter<I1> + TreeIter<V>,
                     $($v: ScopeKey,)*
                     F: FnMut(Arc<BlockTree<V>>, $($v),*) -> $b
             {
@@ -187,15 +200,16 @@ macro_rules! tree_map_gen {
 
             #[allow(unused_parens, non_snake_case)]
             impl<
-                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>>,
+                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>> + Clone,
                 V: NormalizedAction,
-                I,
-                FN,
-                $($v,)*
-                $b
+                I: Clone,
+                FN: Clone,
+                $($v: Clone,)*
+                $b:Clone
             > ScopeIter<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out>
                 for [<TreeMap $i>]<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out, I0, V, I, FN, $($v,)*>
                 where
+                <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out: Clone,
                 I: ScopeIter<I0>,
                 $($v: ScopeKey,)*
                 FN: FnMut(Arc<BlockTree<V>>, $($v),*) -> $b
@@ -266,14 +280,16 @@ pub trait Map<V: NormalizedAction, Out, Keys, F> {
 macro_rules! map_gen {
     ($i:tt, $b:ident, $($v:ident),*) => {
         paste::paste!(
-            pub struct [<Map $i>]<I0, I1: Iterator, V: NormalizedAction, I: ScopeIter<I1>, F, $($v,)*> {
+            #[derive(Clone)]
+            pub struct [<Map $i>]<I0:Clone, I1: Iterator + Clone, V: NormalizedAction
+            , I: ScopeIter<I1>, F:Clone, $($v:Clone,)*> {
                 iter: I,
                 f: F,
                 _p: PhantomData<(V, I0, I1,$($v,)*)>
             }
 
             #[allow(unused_parens, non_snake_case)]
-            impl <I0, I1: Iterator, V: NormalizedAction, I, F, $($v,)* $b >
+            impl <I0:Clone, I1: Iterator +Clone, V: NormalizedAction, I:Clone, F:Clone, $($v:Clone,)* $b:Clone>
             Map<
             V,
             [<Map $i>]<I0, I1, V, I, F, $($v,)*>,
@@ -300,15 +316,16 @@ macro_rules! map_gen {
 
             #[allow(unused_parens, non_snake_case)]
             impl<
-                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>>,
-                I,
+                I0: Iterator + SplitIterZip<std::vec::IntoIter<$b>> + Clone,
+                I:Clone,
                 V: NormalizedAction,
-                FN,
-                $($v,)*
-                $b
+                FN: Clone,
+                $($v:Clone,)*
+                $b:Clone
             > ScopeIter<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out>
                 for [<Map $i>]<<I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out, I0, V, I, FN, $($v,)*>
                 where
+                <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out: Clone,
                 $($v: ScopeKey,)*
                 FN: FnMut($($v),*) -> $b,
                 I: ScopeIter<I0>,

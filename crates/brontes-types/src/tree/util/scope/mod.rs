@@ -1,11 +1,17 @@
+pub mod collect;
 pub mod core;
 pub mod map;
-pub use core::TreeScoped;
+pub use core::*;
+pub mod scope_iter_base;
 use std::{any::TypeId, marker::PhantomData, sync::Arc};
 
+pub use scope_iter_base::*;
 
 pub mod filter;
-use filter::*;
+pub use filter::*;
+pub mod change_scope;
+pub use change_scope::*;
+pub use collect::*;
 pub use map::*;
 
 use super::TreeIter;
@@ -24,7 +30,7 @@ impl<T: 'static> ScopeKey for T {
 /// given a iterator of items that can be scoped out,
 /// tracks the scoped items such that if in the future,
 /// the scope changes, we can also opperate on these items
-pub trait ScopeIter<IT> {
+pub trait ScopeIter<IT>: Clone {
     type Items;
     type Acc;
 
@@ -39,19 +45,20 @@ pub trait ScopeIter<IT> {
 }
 
 /// Tree wrapper for Scoped Iter
-pub struct TreeIteratorScope<K, U: Iterator, V: NormalizedAction, I: ScopeIter<U>> {
+#[derive(Clone)]
+pub struct TreeIteratorScope<K, U: Iterator + Clone, V: NormalizedAction, I: ScopeIter<U>> {
     tree: Arc<BlockTree<V>>,
     iter: I,
     _p:   PhantomData<(U, K)>,
 }
 
-impl<U: Iterator, I: ScopeIter<U>, V: NormalizedAction, K> TreeIteratorScope<K, U, V, I> {
+impl<U: Iterator + Clone, I: ScopeIter<U>, V: NormalizedAction, K> TreeIteratorScope<K, U, V, I> {
     pub fn new(tree: Arc<BlockTree<V>>, iter: I) -> Self {
         Self { tree, iter, _p: PhantomData::default() }
     }
 }
 
-impl<K, U: Iterator, I: ScopeIter<U>, V: NormalizedAction> TreeIter<V>
+impl<K, U: Iterator + Clone, I: ScopeIter<U>, V: NormalizedAction> TreeIter<V>
     for TreeIteratorScope<K, U, V, I>
 {
     fn tree(&self) -> Arc<BlockTree<V>> {
@@ -60,11 +67,13 @@ impl<K, U: Iterator, I: ScopeIter<U>, V: NormalizedAction> TreeIter<V>
 }
 
 impl<
-        IT: Iterator + SplitIterZip<std::vec::IntoIter<I::Items>>,
+        IT: Iterator + SplitIterZip<std::vec::IntoIter<I::Items>> + Clone,
         I: ScopeIter<IT>,
         V: NormalizedAction,
     > ScopeIter<<IT as SplitIterZip<std::vec::IntoIter<I::Items>>>::Out>
     for TreeIteratorScope<<IT as SplitIterZip<std::vec::IntoIter<I::Items>>>::Out, IT, V, I>
+where
+    <IT as SplitIterZip<std::vec::IntoIter<I::Items>>>::Out: Clone,
 {
     type Acc = I::Acc;
     type Items = I::Items;

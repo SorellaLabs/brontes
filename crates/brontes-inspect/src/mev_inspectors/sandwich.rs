@@ -11,8 +11,8 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, IntoZip, IntoZipTree, ScopeBase2, ScopeIter, ToFloatNearest, TreeBase,
-    TreeCollector, TreeIter, TreeIterator, TreeScoped, TreeSearchBuilder,
+    ActionIter, IntoZip, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector,
+    TreeIter, TreeScoped, TreeSearchBuilder,
 };
 use reth_primitives::{Address, B256};
 
@@ -68,14 +68,15 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     };
 
-                    let victim_actions = victims
-                        .into_iter()
-                        .map(|victim| {
-                            (tree.clone().collect_txes(&victim, search_args.clone()), victim)
-                        })
-                        .fold(Some(vec![]), |acc, (victim_set, hashes)| {
-                            let tree = victim_set.tree();
-                            let b = victim_set
+                    let (victim_swaps, victim_info): (Vec<_>, Vec<_>) =
+                        victims
+                            .into_iter()
+                            .map(|victim| {
+                                (tree.clone().collect_txes(&victim, search_args.clone()), victim)
+                            })
+                            .fold(Some(vec![]), |mut acc, (victim_set, hashes)| {
+                                let tree = victim_set.tree();
+                                let (actions, info): (Vec<_>,Vec<_>) = TreeCollector::<Actions>::unzip_padded(victim_set
                                 .map(|s| {
                                     s.into_iter().collect_action_vec(Actions::try_swaps_merged)
                                 })
@@ -84,60 +85,42 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 .into_scoped_tree_iter::<ScopeBase2<_, _, _, _>>()
                                 .tree_filter_all(
                                     |tree: Arc<BlockTree<Actions>>,
-                                     actions: &[Vec<NormalizedSwap>],
-                                     hashes: &[B256]| {
+                                     actions: &[Option<Vec<NormalizedSwap>>],
+                                     hashes: &[Option<B256>]| {
                                         !(hashes
                                             .into_iter()
                                             .map(|v| {
-                                                (*tree.clone())
-                                                    .get_root(*v)
+                                                let tree = &(*tree.clone());
+                                                let d = tree
+                                                    .get_root(*v.as_ref().unwrap())
                                                     .unwrap()
-                                                    .get_root_action()
-                                            })
-                                            .any(|d| {
+                                                    .get_root_action();
+
                                                 d.is_revert()
                                                     || mev_executor_contract == d.get_to_address()
                                             })
-                                            || actions
-                                                .iter()
-                                                .map(|a| a.into_iter())
-                                                .flatten()
-                                                .filter(|f| f.is_swap())
-                                                .count()
-                                                == 0)
+                                            .any(|d| d)
+                                            || actions.iter().flatten().count() == 0)
                                     },
-                                );
-                            // .fold();
-                        })
-                        .collect::<Vec<_>>();
-
-                    // if there are no victims in any part of sandwich, return
-                    // if victim_actions
-                    //     .iter()
-                    //     .map(|a| a.into_iter())
-                    //     .flatten()
-                    //     .flatten()
-                    //     .filter(|f| f.is_swap())
-                    //     .count()
-                    //     == 0
-                    // {
-                    //     return None
-                    // }
-                    //
-                    // if victims
-                    //     .iter()
-                    //     .flatten()
-                    // .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                    // .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
-                    // {
-                    //     return None
-                    // }
+                                ).into_base_iter());
+                                if let Some(mut acc) = acc.take() {
+                                    if actions.is_empty() {
+                                        None
+                                    } else {
+                                        acc.push((actions, info));
+                                        Some(acc)
+                                    }
+                                } else {
+                                    None
+                                }
+                            })?
+                            .into_iter()
+                            .unzip();
 
                     let frontrun_info = possible_frontruns
                         .iter()
                         .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
                         .collect::<Vec<_>>();
-
                     let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
 
                     let searcher_actions: Vec<Vec<Actions>> = tree
@@ -151,17 +134,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 .as_slice(),
                             search_args.clone(),
                         )
-                        .dedup::<'_, _, _, (Vec<NormalizedSwap>, Vec<NormalizedTransfer>), _, _>(
-                            Actions::try_swaps_merged_dedup(),
-                            Actions::try_transfer_dedup(),
-                        )
-                        .map(|a| {
-                            TreeCollector::<Actions>::merge_into_unpadded::<Vec<Actions>, Actions>(
-                                a,
-                            )
-                        })
                         .collect::<Vec<_>>();
-                    None
+                    self.calculate_sandwich(tree, metadata, possible_front_runs_info, backrun_info, searcher_actions, victim_info, victim_actions)
                 },
             )
             .collect::<Vec<_>>()

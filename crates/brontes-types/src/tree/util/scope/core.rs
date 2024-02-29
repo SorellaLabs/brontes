@@ -4,13 +4,13 @@ use crate::{
     TreeIteratorScope, TreeMap, TreeMapAll,
 };
 
-impl<V: NormalizedAction, U: Iterator, T: TreeIter<V> + ScopeIter<U>> TreeScoped<V, U> for T where
+impl<V: NormalizedAction, U: Iterator + Clone, T: TreeIter<V> + ScopeIter<U>> TreeScoped<V, U> for T where
     T: Sized
 {
 }
 
 pub trait TreeScoped<V: NormalizedAction, U: Iterator>: TreeIter<V> + ScopeIter<U> {
-    fn tree_filter_all<Keys, Out, F, O>(self, f: F) -> Out
+    fn tree_filter_all<Keys, Out, F, O: Clone>(self, f: F) -> Out
     where
         Self: Sized + TreeFilterAll<V, Out, Keys, F>,
         Out: ScopeIter<O> + TreeIter<V>,
@@ -18,7 +18,7 @@ pub trait TreeScoped<V: NormalizedAction, U: Iterator>: TreeIter<V> + ScopeIter<
         TreeFilterAll::tree_filter_all(self, f)
     }
 
-    fn tree_filter<Keys, Out, F, O>(self, f: F) -> Out
+    fn tree_filter<Keys, Out, F, O: Clone>(self, f: F) -> Out
     where
         Self: Sized + TreeFilter<V, Out, Keys, F>,
         Out: ScopeIter<O> + TreeIter<V>,
@@ -26,7 +26,7 @@ pub trait TreeScoped<V: NormalizedAction, U: Iterator>: TreeIter<V> + ScopeIter<
         TreeFilter::tree_filter(self, f)
     }
 
-    fn tree_map_all<Keys, Out, F, O>(self, f: F) -> Out
+    fn tree_map_all<Keys, Out, F, O: Clone>(self, f: F) -> Out
     where
         Self: Sized + TreeMapAll<V, Out, Keys, F>,
         Out: ScopeIter<O> + TreeIter<V>,
@@ -34,7 +34,7 @@ pub trait TreeScoped<V: NormalizedAction, U: Iterator>: TreeIter<V> + ScopeIter<
         TreeMapAll::tree_map_all(self, f)
     }
 
-    fn tree_map<Keys, Out, F, O: Iterator>(self, f: F) -> Out
+    fn tree_map<Keys, Out, F, O: Iterator + Clone>(self, f: F) -> Out
     where
         Self: Sized + TreeMap<V, Out, Keys, F>,
         Out: ScopeIter<O> + TreeIter<V>,
@@ -42,7 +42,7 @@ pub trait TreeScoped<V: NormalizedAction, U: Iterator>: TreeIter<V> + ScopeIter<
         TreeMap::tree_map(self, f)
     }
 
-    fn map<Keys, Out, F, O: Iterator>(self, f: F) -> TreeIteratorScope<U, O, V, Out>
+    fn map<Keys, Out, F, O: Iterator + Clone>(self, f: F) -> TreeIteratorScope<U, O, V, Out>
     where
         Self: Sized + Map<V, Out, Keys, F>,
         Out: ScopeIter<O>,
