@@ -44,6 +44,8 @@ eyre = "0.6.8"
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
 
+serde.workspace = true
+serde_json.workspace = true
 [dev-dependencies]
 brontes-core = { workspace = true, features = ["tests"] }
 reth-tracing-ext = { workspace = true, features = ["tests"] }
