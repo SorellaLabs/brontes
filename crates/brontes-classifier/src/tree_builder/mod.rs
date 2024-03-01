@@ -286,16 +286,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace: &TransactionTraceWithLogs,
         block: u64,
     ) -> Option<(Vec<DexPriceMsg>, Actions)> {
-        // Determine the appropriate address based on whether it's a delegate call
-        let token_address =
-            if trace.is_delegate_call() { trace.get_from_addr() } else { trace.get_to_address() };
+        if trace.is_delegate_call() {
+            return None
+        };
 
         // Attempt to decode the transfer
         match try_decode_transfer(
             trace_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
-            token_address,
+            trace.get_to_address(),
             self.libmdbx,
             &self.provider,
             block,
