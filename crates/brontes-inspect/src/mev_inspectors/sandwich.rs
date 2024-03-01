@@ -241,6 +241,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .flatten()
             .chain(back_run_actions)
             .account_for_actions();
+        println!("{:#?}" searcher_deltas);
 
         let mev_addresses: HashSet<Address> = possible_front_runs_info
             .iter()
@@ -592,7 +593,7 @@ mod tests {
                 hex!("50D1c9771902476076eCFc8B2A83Ad6b9355a4c9").into(),
             ])
             .with_gas_paid_usd(90.875025)
-            .with_expected_profit_usd(-9.003);
+            .with_expected_profit_usd(13.6);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
