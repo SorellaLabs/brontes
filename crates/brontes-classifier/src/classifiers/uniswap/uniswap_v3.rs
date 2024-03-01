@@ -66,11 +66,13 @@ action_impl!(
     Mint,
     [Mint],
     return_data: true,
+    logs: true,
     call_data: true,
      |
      info: CallInfo,
      call_data: mintCall,
-     return_data: mintReturn,  db_tx: &DB| {
+     return_data: mintReturn, logs: UniswapV3mintCallLogs,  db_tx: &DB| {
+        let owner = logs.Mint_field.owner;
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
