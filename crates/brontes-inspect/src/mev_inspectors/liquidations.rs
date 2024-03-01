@@ -35,10 +35,11 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     ) -> Self::Result {
         let liq_txs = tree
             .clone()
-            .collect_all(
-                TreeSearchBuilder::default()
-                    .with_actions([Actions::is_swap, Actions::is_liquidation]),
-            )
+            .collect_all(TreeSearchBuilder::default().with_actions([
+                Actions::is_swap,
+                Actions::is_liquidation,
+                Actions::is_transfer,
+            ]))
             .collect_vec();
 
         liq_txs

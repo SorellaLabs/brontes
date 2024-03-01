@@ -109,9 +109,9 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let swap_txes = tree
-            .clone()
-            .collect_all(TreeSearchBuilder::default().with_action(Actions::is_swap));
+        let swap_txes = tree.clone().collect_all(
+            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_transfer]),
+        );
 
         swap_txes
             .filter_map(|(tx, swaps)| {

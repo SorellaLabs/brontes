@@ -59,12 +59,13 @@ pub trait SubordinateAction<O> {
 
 impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
-        (&transfer.amount + &transfer.fee == self.amount_in
-            && transfer.to == self.pool
-            && self.from == transfer.from)
-            || (transfer.amount == self.amount_out
-                && transfer.from == self.pool
-                && self.recipient == transfer.to)
+        false
+        // (&transfer.amount + &transfer.fee == self.amount_in
+        //     && transfer.to == self.pool
+        //     && self.from == transfer.from)
+        //     || (transfer.amount == self.amount_out
+        //         && transfer.from == self.pool
+        //         && self.recipient == transfer.to)
     }
 }
 
