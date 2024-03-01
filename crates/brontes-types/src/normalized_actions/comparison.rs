@@ -59,7 +59,6 @@ pub trait SubordinateAction<O> {
 
 impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
-        tracing::info!("seeing if we need to dedup swap transfer");
         (&transfer.amount + &transfer.fee == self.amount_in
             && transfer.to == self.pool
             && self.from == transfer.from)
