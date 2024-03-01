@@ -10,8 +10,7 @@ use brontes_types::{
         NormalizedTransfer,
     },
     tree::BlockTree,
-    ActionIter, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector, TreeScoped,
-    TreeSearchBuilder, TxInfo, ZipPaddedTree2,
+    ActionIter, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
@@ -74,14 +73,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 self.process_swaps(
                     info,
                     meta_data.clone(),
-                    actions
-                        .into_iter()
-                        .split_actions::<(Vec<_>, Vec<_>), _>((
-                            Actions::try_swaps_merged,
-                            Actions::try_transfer,
-                        ))
-                        .into_zip_tree(tree)
-                        .into_scoped_tree_iter(),
+                    actions.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
+                        Actions::try_swaps_merged,
+                        Actions::try_transfer,
+                    )),
                 )
             })
             .collect::<Vec<_>>()
@@ -93,99 +88,76 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        data: ScopeBase2<
-            Actions,
-            ZipPaddedTree2<
-                Actions,
-                std::vec::IntoIter<NormalizedSwap>,
-                std::vec::IntoIter<NormalizedTransfer>,
-            >,
-            Option<NormalizedSwap>,
-            Option<NormalizedTransfer>,
-        >,
+        data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>),
     ) -> Option<Bundle> {
-        data.tree_map_all(
-            |_tree, swaps: Vec<NormalizedSwap>, transfers: Vec<NormalizedTransfer>| {
-                let Some(possible_arb_type) = self.is_possible_arb(&swaps) else { return vec![] };
-                let mev_addresses: HashSet<Address> = vec![info.eoa]
-                    .into_iter()
-                    .chain(
-                        info.mev_contract
-                            .as_ref()
-                            .map(|a| vec![*a])
-                            .unwrap_or_default(),
-                    )
-                    .collect::<HashSet<_>>();
+        let (swaps, transfers) = data;
+        let possible_arb_type = self.is_possible_arb(&swaps)?;
+        let mev_addresses: HashSet<Address> = vec![info.eoa]
+            .into_iter()
+            .chain(
+                info.mev_contract
+                    .as_ref()
+                    .map(|a| vec![*a])
+                    .unwrap_or_default(),
+            )
+            .collect::<HashSet<_>>();
 
-                let account_deltas = swaps
-                    .clone()
-                    .into_iter()
-                    .map(Actions::from)
-                    .chain(transfers.into_iter().map(Actions::from))
-                    .account_for_actions();
+        let account_deltas = swaps
+            .clone()
+            .into_iter()
+            .map(Actions::from)
+            .chain(transfers.into_iter().map(Actions::from))
+            .account_for_actions();
 
-                let Some(profit) = self.utils.get_deltas_usd(
-                    info.tx_index,
-                    PriceAt::Average,
-                    mev_addresses,
-                    &account_deltas,
-                    metadata.clone(),
-                ) else {
-                    return vec![]
-                };
+        let profit = self.utils.get_deltas_usd(
+            info.tx_index,
+            PriceAt::Average,
+            mev_addresses,
+            &account_deltas,
+            metadata.clone(),
+        )?;
+        let is_profitable = profit > Rational::ZERO;
 
-                let is_profitable = profit > Rational::ZERO;
+        let profit = match possible_arb_type {
+            AtomicArbType::Triangle => {
+                (is_profitable || self.process_triangle_arb(&info)).then_some(profit)
+            }
+            AtomicArbType::CrossPair(jump_index) => {
+                let stable_arb = is_stable_arb(&swaps, jump_index);
+                let cross_or = self.is_cross_pair_or_stable_arb(&info);
 
-                let Some(profit) = (match possible_arb_type {
-                    AtomicArbType::Triangle => {
-                        (is_profitable || self.process_triangle_arb(&info)).then_some(profit)
-                    }
-                    AtomicArbType::CrossPair(jump_index) => {
-                        let stable_arb = is_stable_arb(&swaps, jump_index);
-                        let cross_or = self.is_cross_pair_or_stable_arb(&info);
+                ((is_profitable || stable_arb) || cross_or).then_some(profit)
+            }
 
-                        ((is_profitable || stable_arb) || cross_or).then_some(profit)
-                    }
+            AtomicArbType::StablecoinArb => {
+                let cross_or = self.is_cross_pair_or_stable_arb(&info);
 
-                    AtomicArbType::StablecoinArb => {
-                        let cross_or = self.is_cross_pair_or_stable_arb(&info);
+                (is_profitable || cross_or).then_some(profit)
+            }
+            AtomicArbType::LongTail => {
+                (self.is_long_tail(&info) && is_profitable).then_some(profit)
+            }
+        }?;
 
-                        (is_profitable || cross_or).then_some(profit)
-                    }
-                    AtomicArbType::LongTail => {
-                        (self.is_long_tail(&info) && is_profitable).then_some(profit)
-                    }
-                }) else {
-                    return vec![]
-                };
+        let backrun = AtomicArb {
+            tx_hash: info.tx_hash,
+            gas_details: info.gas_details,
+            swaps,
+            arb_type: possible_arb_type,
+        };
+        let data = BundleData::AtomicArb(backrun);
+        let header = self.utils.build_bundle_header(
+            vec![account_deltas],
+            vec![info.tx_hash],
+            &info,
+            profit.to_float(),
+            PriceAt::Average,
+            &[info.gas_details],
+            metadata.clone(),
+            MevType::AtomicArb,
+        );
 
-                let backrun = AtomicArb {
-                    tx_hash: info.tx_hash,
-                    gas_details: info.gas_details,
-                    swaps,
-                    arb_type: possible_arb_type,
-                };
-                vec![(account_deltas, profit, BundleData::AtomicArb(backrun))]
-            },
-        )
-        .into_base_iter()
-        .full_map(|res| {
-            let (_, _, mut arb): (Vec<_>, Vec<_>, Vec<_>) =
-                TreeCollector::<Actions>::unzip_padded(res);
-            arb.pop().map(|(account_deltas, profit, data)| {
-                let header = self.utils.build_bundle_header(
-                    vec![account_deltas],
-                    vec![info.tx_hash],
-                    &info,
-                    profit.to_float(),
-                    PriceAt::Average,
-                    &[info.gas_details],
-                    metadata.clone(),
-                    MevType::AtomicArb,
-                );
-                Bundle { header, data }
-            })
-        })
+        Some(Bundle { header, data })
     }
 
     fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {

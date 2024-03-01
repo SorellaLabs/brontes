@@ -11,8 +11,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
-    TreeScoped, TreeSearchBuilder,
+    ActionIter, IntoZipTree, ToFloatNearest, TreeBase, TreeIter, TreeSearchBuilder, UnzipPadded,
 };
 use reth_primitives::{Address, B256};
 
@@ -73,7 +72,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|victim| {
                             (tree.clone().collect_txes(&victim, search_args.clone()), victim)
                         })
-                        .fold(Some(vec![]), |mut acc, (victim_set, hashes)| {
+                        .try_fold(vec![], |mut acc, (victim_set, hashes)| {
                             let tree = victim_set.tree();
                             let (actions, info) = victim_set
                                 .map(|s| {
@@ -81,51 +80,40 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 })
                                 .into_zip_tree(tree)
                                 .tree_zip_with(hashes.into_iter())
-                                .into_scoped_tree_iter::<ScopeBase2<_, _, _, _>>()
-                                .tree_filter_all(
-                                    |tree: Arc<BlockTree<Actions>>,
-                                     actions: &[Option<Vec<NormalizedSwap>>],
-                                     hashes: &[Option<B256>]| {
-                                        !(hashes
-                                            .iter()
-                                            .map(|v| {
-                                                let tree = &(*tree.clone());
-                                                let d = tree
-                                                    .get_root(*v.as_ref().unwrap())
-                                                    .unwrap()
-                                                    .get_root_action();
+                                .t_full_filter_map(|(tree, rest)| {
+                                    let (swap, hashes): (Vec<_>, Vec<_>) =
+                                        UnzipPadded::unzip_padded(rest);
+                                    if !(hashes
+                                        .iter()
+                                        .map(|v| {
+                                            let tree = &(*tree.clone());
+                                            let d = tree.get_root(*v).unwrap().get_root_action();
 
-                                                d.is_revert()
-                                                    || mev_executor_contract == d.get_to_address()
-                                            })
-                                            .any(|d| d)
-                                            || actions.iter().flatten().count() == 0)
-                                    },
-                                )
-                                .into_base_iter()
-                                .t_full_map(|(tree, a)| {
-                                    let (normalized_actions, tx_hashes): (Vec<_>, Vec<_>) =
-                                        TreeCollector::<Actions>::unzip_padded(a);
-                                    (
-                                        normalized_actions,
-                                        tx_hashes
-                                            .into_iter()
-                                            .map(|hash| {
-                                                tree.get_tx_info(hash, self.utils.db).unwrap()
-                                            })
-                                            .collect::<Vec<_>>(),
-                                    )
-                                });
+                                            d.is_revert()
+                                                || mev_executor_contract == d.get_to_address()
+                                        })
+                                        .any(|d| d)
+                                        || swap.iter().flatten().count() == 0)
+                                    {
+                                        Some((
+                                            swap,
+                                            hashes
+                                                .into_iter()
+                                                .map(|hash| {
+                                                    tree.get_tx_info(hash, self.utils.db).unwrap()
+                                                })
+                                                .collect::<Vec<_>>(),
+                                        ))
+                                    } else {
+                                        None
+                                    }
+                                })?;
 
-                            if let Some(mut acc) = acc.take() {
-                                if actions.is_empty() {
-                                    None
-                                } else {
-                                    acc.push((actions, info));
-                                    Some(acc)
-                                }
-                            } else {
+                            if actions.is_empty() {
                                 None
+                            } else {
+                                acc.push((actions, info));
+                                Some(acc)
                             }
                         })?
                         .into_iter()
