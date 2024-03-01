@@ -9,10 +9,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+    normalized_actions::{Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, IntoZip, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector,
-    TreeIter, TreeScoped, TreeSearchBuilder,
+    ActionIter, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
+    TreeScoped, TreeSearchBuilder,
 };
 use reth_primitives::{Address, B256};
 
@@ -68,15 +68,14 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     };
 
-                    let (victim_swaps, victim_info): (Vec<_>, Vec<_>) =
-                        victims
-                            .into_iter()
-                            .map(|victim| {
-                                (tree.clone().collect_txes(&victim, search_args.clone()), victim)
-                            })
-                            .fold(Some(vec![]), |mut acc, (victim_set, hashes)| {
-                                let tree = victim_set.tree();
-                                let (actions, info): (Vec<_>,Vec<_>) = TreeCollector::<Actions>::unzip_padded(victim_set
+                    let (victim_swaps, victim_info): (Vec<_>, Vec<_>) = victims
+                        .into_iter()
+                        .map(|victim| {
+                            (tree.clone().collect_txes(&victim, search_args.clone()), victim)
+                        })
+                        .fold(Some(vec![]), |mut acc, (victim_set, hashes)| {
+                            let tree = victim_set.tree();
+                            let (actions, info) = victim_set
                                 .map(|s| {
                                     s.into_iter().collect_action_vec(Actions::try_swaps_merged)
                                 })
@@ -102,20 +101,35 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                             .any(|d| d)
                                             || actions.iter().flatten().count() == 0)
                                     },
-                                ).into_base_iter());
-                                if let Some(mut acc) = acc.take() {
-                                    if actions.is_empty() {
-                                        None
-                                    } else {
-                                        acc.push((actions, info));
-                                        Some(acc)
-                                    }
-                                } else {
+                                )
+                                .into_base_iter()
+                                .t_full_map(|(tree, a)| {
+                                    let (normalized_actions, tx_hashes): (Vec<_>, Vec<_>) =
+                                        TreeCollector::<Actions>::unzip_padded(a);
+                                    (
+                                        normalized_actions,
+                                        tx_hashes
+                                            .into_iter()
+                                            .map(|hash| {
+                                                tree.get_tx_info(hash, self.utils.db).unwrap()
+                                            })
+                                            .collect::<Vec<_>>(),
+                                    )
+                                });
+
+                            if let Some(mut acc) = acc.take() {
+                                if actions.is_empty() {
                                     None
+                                } else {
+                                    acc.push((actions, info));
+                                    Some(acc)
                                 }
-                            })?
-                            .into_iter()
-                            .unzip();
+                            } else {
+                                None
+                            }
+                        })?
+                        .into_iter()
+                        .unzip();
 
                     let frontrun_info = possible_frontruns
                         .iter()
@@ -135,7 +149,16 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                             search_args.clone(),
                         )
                         .collect::<Vec<_>>();
-                    self.calculate_sandwich(tree, metadata, possible_front_runs_info, backrun_info, searcher_actions, victim_info, victim_actions)
+
+                    self.calculate_sandwich(
+                        tree.clone(),
+                        metadata.clone(),
+                        frontrun_info,
+                        back_run_info,
+                        searcher_actions,
+                        victim_info,
+                        victim_swaps,
+                    )
                 },
             )
             .collect::<Vec<_>>()
@@ -151,7 +174,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,
         mut victim_info: Vec<Vec<TxInfo>>,
-        mut victim_actions: Vec<Vec<Vec<Actions>>>,
+        mut victim_actions: Vec<Vec<Vec<NormalizedSwap>>>,
     ) -> Option<Bundle> {
         let back_run_swaps = searcher_actions
             .pop()?
@@ -180,14 +203,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
 
-                if victim_actions
-                    .iter()
-                    .flatten()
-                    .flatten()
-                    .filter(|f| f.is_swap())
-                    .count()
-                    == 0
-                {
+                if victim_actions.iter().flatten().flatten().count() == 0 {
                     return None
                 }
 
@@ -205,16 +221,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             return None
         }
 
-        let victim_swaps = victim_actions
-            .iter()
-            .flatten()
-            .map(|tx_actions| {
-                tx_actions
-                    .clone()
-                    .into_iter()
-                    .collect_action_vec(Actions::try_swaps_merged)
-            })
-            .collect::<Vec<_>>();
+        let victim_swaps = victim_actions.into_iter().flatten().collect::<Vec<_>>();
 
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
@@ -295,7 +302,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         bundle_hashes.push(backrun_info.tx_hash);
 
         let header = self.utils.build_bundle_header(
-            tree,
+            vec![searcher_transfers],
             bundle_hashes,
             &backrun_info,
             profit_usd,
@@ -323,7 +330,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn has_pool_overlap(
         front_run_swaps: &[Vec<NormalizedSwap>],
         back_run_swaps: &[NormalizedSwap],
-        victim_actions: &[Vec<Vec<Actions>>],
+        victim_actions: &[Vec<Vec<NormalizedSwap>>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
         let front_run_pools = front_run_swaps
@@ -341,12 +348,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // victim, a eoa needs to be a victim. this allows for more complex
         // detection such as having a approve and then a swap in different
         // transactions.
-        let grouped_victims = victim_info
-            .iter()
-            .zip(victim_actions)
-            .flat_map(|(info, actions)| info.iter().zip(actions))
-            .map(|(info, actions)| (info.eoa, actions))
-            .into_group_map();
+        let grouped_victims = itertools::Itertools::into_group_map(
+            victim_info
+                .iter()
+                .zip(victim_actions)
+                .flat_map(|(info, actions)| info.iter().zip(actions))
+                .map(|(info, actions)| (info.eoa, actions)),
+        );
 
         // for each victim eoa, ensure they are a victim of a frontrun and a backrun
         grouped_victims
@@ -355,14 +363,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 v.iter()
                     .cloned()
                     .flatten()
-                    .filter(|action| action.is_swap())
-                    .map(|f| f.force_swap_ref().pool)
-                    .any(|pool| front_run_pools.contains(&pool))
+                    .any(|pool| front_run_pools.contains(&pool.pool))
                     && v.into_iter()
                         .flatten()
-                        .filter(|action| action.is_swap())
-                        .map(|f| f.force_swap_ref().pool)
-                        .any(|pool| back_run_pools.contains(&pool))
+                        .any(|pool| back_run_pools.contains(&pool.pool))
             })
             .all(|was_victim| was_victim)
     }

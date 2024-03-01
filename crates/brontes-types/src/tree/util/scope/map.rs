@@ -80,7 +80,7 @@ macro_rules! tree_map_gen_all {
                 I: ScopeIter<I0>,
                 $($v: ScopeKey,)*
                 FN: FnMut(Arc<BlockTree<V>>, $(Vec<$v>),*) -> Vec<$b>,
-                <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out: Clone
+                <I0 as SplitIterZip<std::vec::IntoIter<$b>>>::Out: Clone + Iterator
                 {
                     type Acc = I::Acc;
                     type Items = $b;
@@ -153,12 +153,12 @@ macro_rules! tree_map_gen {
     ($i:tt, $b:ident, $($v:ident),*) => {
         paste::paste!(
             #[derive(Clone)]
-            pub struct [<TreeMap $i>]<I0: Clone, I1: Iterator +Clone, V: NormalizedAction
+            pub struct [<TreeMap $i>]<I0: Clone, I1: Iterator + Clone, V: NormalizedAction
             , I: ScopeIter<I1>, F: Clone, $($v: Clone,)*> {
                 tree: Arc<BlockTree<V>>,
                 iter: I,
                 f: F,
-                _p: PhantomData<(I0, I1,$($v,)*)>
+                _p: PhantomData<(I0, I1 ,$($v,)*)>
             }
 
             impl <I0: Clone, I1: Iterator + Clone,V: NormalizedAction, I: ScopeIter<I1>
