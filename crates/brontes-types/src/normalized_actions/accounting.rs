@@ -24,7 +24,7 @@ pub trait ActionAccounting {
     fn account_for_actions(self) -> AddressDeltas;
 }
 
-fn accounting_calc(accounting: &mut Accounting, next: Action) {
+fn accounting_calc(accounting: &mut Accounting, next: Actions) {
     if accounting
         .accounted_for_actions
         .iter()
