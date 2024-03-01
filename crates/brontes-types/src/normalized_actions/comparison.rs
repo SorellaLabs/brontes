@@ -7,8 +7,8 @@ impl<T: Sized + SubordinateAction<O>, O: ActionCmp<T>> ActionComparison<O> for T
 pub trait ActionComparison<O> {
     fn is_same_coverage(&self, other: &O) -> bool
     where
-        Self: Sized + ActionCmp<O>,
-        O: ActionCmp<Self>,
+        Self: Sized + ActionCmp<O> + Debug,
+        O: ActionCmp<Self> + Debug,
     {
         self.is_superior_action(other) || other.is_subordinate(self)
     }
