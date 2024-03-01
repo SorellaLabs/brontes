@@ -5,7 +5,7 @@ use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
-use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
+use super::accounting::{AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 

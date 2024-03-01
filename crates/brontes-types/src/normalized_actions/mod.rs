@@ -13,7 +13,7 @@ pub mod transfer;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
-use accounting::{apply_delta, AddressDeltas, TokenAccounting};
+use accounting::{AddressDeltas, TokenAccounting};
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 use clickhouse::InsertRow;

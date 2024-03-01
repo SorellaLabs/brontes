@@ -26,10 +26,10 @@ pub trait ActionAccounting {
 
 impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
     /// if the action has already been accounted for then we don't call apply.
-    fn account_for_actions(mut self) -> AddressDeltas {
+    fn account_for_actions(self) -> AddressDeltas {
         let mut accounting = Accounting::new();
         // gotta do it this way due to borrow checker
-        while let Some(next) = self.next() {
+        for next in self {
             if accounting
                 .accounted_for_actions
                 .iter()

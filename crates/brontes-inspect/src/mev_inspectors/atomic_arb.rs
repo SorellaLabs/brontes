@@ -62,7 +62,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                             batch
                                 .user_swaps
                                 .into_iter()
-                                .chain(batch.solver_swaps.unwrap_or(vec![]))
+                                .chain(batch.solver_swaps.unwrap_or_default())
                                 .map(Into::into)
                                 .collect::<Vec<_>>()
                         })
@@ -113,7 +113,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         info.mev_contract
                             .as_ref()
                             .map(|a| vec![*a])
-                            .unwrap_or(vec![]),
+                            .unwrap_or_default(),
                     )
                     .collect::<HashSet<_>>();
 

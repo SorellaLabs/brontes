@@ -74,7 +74,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                 info.mev_contract
                     .as_ref()
                     .map(|a| vec![*a])
-                    .unwrap_or(vec![]),
+                    .unwrap_or_default(),
             )
             .collect::<HashSet<_>>();
 

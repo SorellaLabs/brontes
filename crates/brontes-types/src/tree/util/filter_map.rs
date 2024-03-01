@@ -15,7 +15,7 @@ where
     type Item = B;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(next) = self.iter.next() {
+        for next in self.iter.by_ref() {
             if let Some(i) = (self.f)(self.tree.clone(), next) {
                 return Some(i)
             }

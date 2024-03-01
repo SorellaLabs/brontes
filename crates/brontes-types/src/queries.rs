@@ -30,10 +30,3 @@ alloy_sol_macro::sol!(
     function yeet(address babies) returns (bool is_dead);
 );
 
-async fn ex<T: TracingProvider>(a: Arc<T>) {
-    let data = yeetCall::new((Address::ZERO,));
-    let b = make_call_request(data, &a, Address::ZERO, None).await;
-    if let Ok(b) = b {
-        assert!(b.is_dead);
-    }
-}

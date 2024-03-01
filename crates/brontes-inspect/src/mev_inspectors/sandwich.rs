@@ -87,7 +87,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                      actions: &[Option<Vec<NormalizedSwap>>],
                                      hashes: &[Option<B256>]| {
                                         !(hashes
-                                            .into_iter()
+                                            .iter()
                                             .map(|v| {
                                                 let tree = &(*tree.clone());
                                                 let d = tree
