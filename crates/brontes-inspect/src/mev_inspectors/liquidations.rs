@@ -79,10 +79,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             )
             .collect::<HashSet<_>>();
 
-        let deltas = actions
-            .into_iter()
-            .filter(|a| a.is_transfer())
-            .account_for_actions();
+        let deltas = actions.into_iter().account_for_actions();
 
         let rev = self.utils.get_deltas_usd(
             info.tx_index,

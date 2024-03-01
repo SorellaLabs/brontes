@@ -107,13 +107,19 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .map(Actions::from)
             .account_for_actions();
 
-        let profit = self.utils.get_deltas_usd(
+        let rev_usd = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::Average,
             mev_addresses,
             &account_deltas,
             metadata.clone(),
         )?;
+
+        let gas_used = info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+
+        let profit = rev_usd - gas_used_usd;
+
         let is_profitable = profit > Rational::ZERO;
 
         let profit = match possible_arb_type {
