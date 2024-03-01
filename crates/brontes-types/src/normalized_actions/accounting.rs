@@ -35,7 +35,7 @@ impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
                 .iter()
                 .all(|i| !i.is_same_coverage(&next))
             {
-                tracing::info!(
+                tracing::trace!(
                     "accounted for {:#?}\n\n\n new non accounted for: {:#?}",
                     accounting.accounted_for_actions,
                     next

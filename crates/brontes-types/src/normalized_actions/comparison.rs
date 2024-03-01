@@ -29,7 +29,6 @@ impl ActionCmp<Actions> for Actions {
                 }
                 user
             }
-
             action => {
                 tracing::debug!(?action, ?other, "no action cmp impl for given action");
                 false
