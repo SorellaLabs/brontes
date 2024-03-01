@@ -10,8 +10,9 @@ use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
     normalized_actions::{
-        Actions, NormalizedBatch, NormalizedBurn, NormalizedCollect, NormalizedFlashLoan,
-        NormalizedLiquidation, NormalizedMint, NormalizedSwap, NormalizedTransfer,
+        accounting::TokenAccounting, Actions, NormalizedBatch, NormalizedBurn, NormalizedCollect,
+        NormalizedFlashLoan, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+        NormalizedTransfer,
     },
     pair::Pair,
     utils::ToFloatNearest,
@@ -342,10 +343,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     }
 }
 
-pub trait TokenAccounting {
-    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas);
-}
-
 impl TokenAccounting for Actions {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         match self {
@@ -420,8 +417,6 @@ impl TokenAccounting for NormalizedCollect {
     }
 }
 
-// fn apply_delta<K: PartialEq + Hash + Eq>(
-//     address: K,
 impl TokenAccounting for NormalizedFlashLoan {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         self.child_actions

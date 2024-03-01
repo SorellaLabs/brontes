@@ -1,5 +1,6 @@
 use std::fmt::{self, Debug};
 
+use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 use alloy_primitives::U256;
 use clickhouse::Row;
 use colored::Colorize;
@@ -32,6 +33,32 @@ pub struct NormalizedLiquidation {
     pub covered_debt:          Rational,
     pub liquidated_collateral: Rational,
     pub msg_value:             U256,
+}
+
+impl TokenAccounting for NormalizedLiquidation {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let debt_covered = self.covered_debt.clone();
+        // Liquidator sends debt_asset to the pool, effectively swapping the debt asset
+        // for the liquidatee's collateral
+        apply_delta(self.pool, self.debt_asset.address, debt_covered.clone(), delta_map);
+        apply_delta(self.liquidator, self.debt_asset.address, -debt_covered, delta_map);
+
+        // Pool sends collateral to the liquidator
+        apply_delta(
+            self.pool,
+            self.collateral_asset.address,
+            -self.liquidated_collateral.clone(),
+            delta_map,
+        );
+
+        // Liquidator gains collateral asset
+        apply_delta(
+            self.liquidator,
+            self.collateral_asset.address,
+            self.liquidated_collateral.clone(),
+            delta_map,
+        )
+    }
 }
 
 impl fmt::Display for NormalizedLiquidation {
@@ -73,7 +100,7 @@ impl NormalizedLiquidation {
                         // tbd tho
                         if transfer.to == self.liquidator {
                             self.liquidated_collateral = transfer.amount;
-                            return Some(index);
+                            return Some(index)
                         }
                     }
 
