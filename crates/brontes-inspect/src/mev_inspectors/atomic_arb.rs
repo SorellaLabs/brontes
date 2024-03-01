@@ -102,11 +102,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .collect::<HashSet<_>>();
 
-        let account_deltas = swaps
-            .clone()
+        let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
-            .chain(transfers.into_iter().map(Actions::from))
             .account_for_actions();
 
         let profit = self.utils.get_deltas_usd(
