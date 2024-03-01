@@ -324,37 +324,45 @@ impl<V: NormalizedAction> BlockTree<V> {
 
 #[cfg(test)]
 pub mod test {
+    use std::sync::Arc;
+
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{normalized_actions::Actions, BlockTree, TreeSearchBuilder};
 
-    async fn load_tree() -> BlockTree<Actions> {
+    async fn load_tree() -> Arc<BlockTree<Actions>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-        classifier_utils.build_tree_tx(tx).await.unwrap()
+        classifier_utils.build_tree_tx(tx).await.unwrap().into()
     }
 
     #[brontes_macros::test]
     async fn test_collect() {
         let tx = &hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-        let tree: BlockTree<Actions> = load_tree().await;
+        let tree = load_tree().await;
 
-        let burns = tree.collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn));
+        let burns = tree
+            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn))
+            .collect::<Vec<_>>();
         assert_eq!(burns.len(), 1);
-        let swaps = tree.collect(tx, TreeSearchBuilder::default().with_action(Actions::is_swap));
+        let swaps = tree
+            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_swap))
+            .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
     }
 
     #[brontes_macros::test]
     async fn test_collect_spans() {
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-        let tree: BlockTree<Actions> = load_tree().await;
-        let spans = tree.collect_spans(
-            tx,
-            TreeSearchBuilder::default()
-                .with_actions([])
-                .child_nodes_contain([Actions::is_transfer, Actions::is_swap]),
-        );
+        let tree = load_tree().await;
+        let spans = tree
+            .collect_spans(
+                tx,
+                TreeSearchBuilder::default()
+                    .with_actions([])
+                    .child_nodes_contain([Actions::is_transfer, Actions::is_swap]),
+            )
+            .collect::<Vec<_>>();
 
         assert!(!spans.is_empty());
         assert_eq!(spans.len(), 4);
@@ -365,8 +373,9 @@ pub mod test {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d").into();
         let tree = classifier_utils.build_tree_tx(tx).await.unwrap();
-        let mut actions =
-            tree.collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch));
+        let mut actions = tree
+            .collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch))
+            .collect::<Vec<_>>();
         assert!(!actions.is_empty());
         let action = actions.remove(0);
 

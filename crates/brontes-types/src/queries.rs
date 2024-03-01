@@ -29,4 +29,3 @@ pub async fn make_call_request<C: SolCall, T: TracingProvider>(
 alloy_sol_macro::sol!(
     function yeet(address babies) returns (bool is_dead);
 );
-
