@@ -117,7 +117,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
-
         let profit = rev_usd - gas_used_usd;
 
         let is_profitable = profit > Rational::ZERO;
@@ -194,28 +193,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     // Fix atomic arb to solely work based on swaps & move any transfer related
     // impls to long tail to deal with the scenario in which we have unclassified
     // pools
-    fn process_triangle_arb(
-        &self,
-        tx_info: &TxInfo,
-        // metadata: Arc<Metadata>,
-        // swaps: &[NormalizedSwap],
-    ) -> bool {
-        // let rev_usd = self.utils.get_dex_swaps_rev_usd(
-        //     tx_info.tx_index,
-        //     PriceAt::Average,
-        //     swaps,
-        //     metadata.clone(),
-        // )?;
-        //
-        // let gas_used = tx_info.gas_details.gas_paid();
-        // let gas_used_usd = metadata.get_gas_price_usd(gas_used);
-        //
-        // let profit = &rev_usd - &gas_used_usd;
-        //
-        // let is_profitable = profit > Rational::ZERO;
-
-        // If the arb is not profitable, check if this is a know searcher or if the tx
-        // is private or coinbase.transfers to the builder
+    fn process_triangle_arb(&self, tx_info: &TxInfo) -> bool {
         tx_info.is_searcher_of_type(MevType::AtomicArb)
             || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
     }
@@ -227,24 +205,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     }
 
     fn is_long_tail(&self, tx_info: &TxInfo) -> bool {
-        // let gas_used = tx_info.gas_details.gas_paid();
-        // let gas_used_usd = metadata.get_gas_price_usd(gas_used);
-        // let rev_usd = self.utils.get_dex_swaps_rev_usd(
-        //     tx_info.tx_index,
-        //     PriceAt::Average,
-        //     searcher_swaps,
-        //     metadata.clone(),
-        // )?;
-        // let profit = &rev_usd - &gas_used_usd;
-        // let is_profitable = profit > Rational::ZERO;
-
         tx_info.is_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private && tx_info.gas_details.coinbase_transfer.is_some()
             || tx_info.mev_contract.is_some()
     }
-
-    /* fn process_flashloan(&self, tx_info: &TxInfo, metadata: Arc<Metadata>,
-    searcher_swaps: &[NormalizedSwap], flashloans: &[FlashLoans]) -> {} */
 }
 
 fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
