@@ -239,7 +239,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let searcher_deltas = searcher_actions
             .into_iter()
             .flatten()
-            .filter(|f| f.is_swap())
             .chain(back_run_swaps.clone().into_iter().map(Actions::from))
             .account_for_actions();
 
