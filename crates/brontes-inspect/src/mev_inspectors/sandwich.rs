@@ -234,12 +234,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
+        println!("{:#?}\n\n\n\n\n\n{:#?}", searcher_actions, back_run_swaps);
 
         let searcher_deltas = searcher_actions
             .into_iter()
             .flatten()
             .chain(back_run_swaps.clone().into_iter().map(Actions::from))
             .account_for_actions();
+
         println!("{:#?}", searcher_deltas);
 
         let mev_addresses: HashSet<Address> = possible_front_runs_info
