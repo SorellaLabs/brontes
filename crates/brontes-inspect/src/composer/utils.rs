@@ -224,7 +224,14 @@ pub fn calculate_builder_profit(
         .values()
         .flatten()
         .map(|action| match action {
-            Actions::EthTransfer(transfer) => transfer.value.to(),
+            Actions::EthTransfer(transfer) => {
+                // So we don't double count when deducting proposer mev reward below
+                if Some(transfer.to) == metadata.proposer_fee_recipient {
+                    0
+                } else {
+                    transfer.value.to()
+                }
+            }
             _ => 0,
         })
         .sum::<i128>();
@@ -236,7 +243,7 @@ pub fn calculate_builder_profit(
             return (
                 builder_payments
                     - builder_sponsorship_amount
-                    - metadata.proposer_mev_reward.unwrap() as i128,
+                    - metadata.proposer_mev_reward.unwrap_or_default() as i128,
                 0.0,
             );
         }

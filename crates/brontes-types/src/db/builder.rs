@@ -5,7 +5,7 @@ use clickhouse::Row;
 use redefined::Redefined;
 use reth_rpc_types::beacon::BlsPublicKey;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{
@@ -75,6 +75,27 @@ impl BuilderInfo {
         self.ultrasound_relay_collateral_address = other
             .ultrasound_relay_collateral_address
             .or(self.ultrasound_relay_collateral_address.take());
+    }
+
+    pub fn describe(&self) -> String {
+        let mut description = String::new();
+
+        if let Some(name) = &self.name {
+            description.push_str(name);
+        } else {
+            // If no name is provided, use a placeholder or generic term
+            description.push_str("Unknown Block Builder");
+        }
+
+        // Add fund information if it exists and is not Fund::None
+        if let Some(fund) = &self.fund {
+            if *fund != Fund::None {
+                description.push_str(" operated by ");
+                description.push_str(&fund.to_string());
+            }
+        }
+
+        description
     }
 }
 

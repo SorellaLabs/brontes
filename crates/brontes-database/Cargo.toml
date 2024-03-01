@@ -46,8 +46,8 @@ zstd = "0.13"
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
-sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "a7d28e4", optional = true }
-sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "a7d28e4", optional = true }
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "9ebb143", optional = true, features = ["test-utils"] }
+sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "9ebb143", optional = true }
 clickhouse.workspace = true
 
 # serde
@@ -110,6 +110,7 @@ async-trait.workspace = true
 reth-tasks.workspace = true
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
+brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 
 [build-dependencies]
@@ -119,13 +120,13 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-default = []
-
-tests = ["reth-tasks"]
+default = ["api-des"]
+api-des = []
+tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
   "reth-tracing-ext/local-reth",
   "brontes-types/local-reth",
 ]
 
-local-clickhouse = ["sorella-db-databases", "sorella-db-types"]
+local-clickhouse = ["sorella-db-databases", "sorella-db-types", "brontes-core/local-clickhouse"]

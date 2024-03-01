@@ -5,7 +5,7 @@ use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync:
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 use brontes_types::{
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
@@ -46,12 +46,7 @@ use crate::clickhouse::{
 use crate::libmdbx::CompressedTable;
 use crate::{
     clickhouse::ClickhouseHandle,
-    libmdbx::{
-        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, *},
-        types::LibmdbxData,
-        Libmdbx, LibmdbxInitializer,
-    },
-    AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
+    libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
 };
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
@@ -63,6 +58,15 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
+
+    /// initializes all the tables with missing data ranges via the CLI
+    fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        block_range: Vec<u64>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// checks the min and max values of the clickhouse db and sees if the full
@@ -143,6 +147,24 @@ impl LibmdbxInit for LibmdbxReadWriter {
         Ok(())
     }
 
+    /// initializes all the tables with missing data ranges via the CLI
+    async fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        block_range: Vec<u64>,
+    ) -> eyre::Result<()> {
+        let block_range = Box::leak(Box::new(block_range));
+
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize_arbitrary_state(tables, block_range)
+            .await?;
+
+        Ok(())
+    }
+
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
     #[cfg(feature = "local-clickhouse")]
@@ -198,12 +220,12 @@ impl LibmdbxInit for LibmdbxReadWriter {
             if needs_dex_price {
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ));
+                ))
             }
 
             tracing::info!("entire range missing");
 
-            return Ok(vec![start_block..=end_block]);
+            return Ok(vec![start_block..=end_block])
         }
 
         let mut result = Vec::new();
@@ -223,10 +245,10 @@ impl LibmdbxInit for LibmdbxReadWriter {
                         return Err(eyre::eyre!(
                             "Block is missing dex pricing, please run with flag \
                              `--run-dex-pricing`"
-                        ));
+                        ))
                     }
 
-                    continue;
+                    continue
                 }
 
                 block_tracking += 1;
@@ -234,11 +256,11 @@ impl LibmdbxInit for LibmdbxReadWriter {
                     tracing::error!("block is missing dex pricing");
                     return Err(eyre::eyre!(
                         "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                    ));
+                    ))
                 }
 
                 if !state.is_init() {
-                    tracing::info!(?state, "state isn't init");
+                    tracing::trace!(?state, "state isn't init");
                     result.push(block..=block);
                 }
             } else {
@@ -252,7 +274,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 tracing::error!("block is missing dex pricing");
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ));
+                ))
             }
 
             result.push(block_tracking - 1..=end_block);
@@ -330,6 +352,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let tx = self.0.ro_tx()?;
+
+        let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
+
         tx.get::<TokenDecimals>(address)?
             .map(|inner| TokenInfoWithAddress { inner, address })
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
@@ -434,14 +459,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 "no pricing for block. cannot verify most recent subgraph is valid"
             );
 
-            return Err(eyre::eyre!("subgraph not inited at this block range"));
+            return Err(eyre::eyre!("subgraph not inited at this block range"))
         }
 
         let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
 
         for (cur_block, update) in subgraphs.0 {
             if cur_block > block {
-                break;
+                break
             }
             last = Some((pair, update))
         }
@@ -637,6 +662,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         // add to default table
         let mut tokens = tokens.iter();
+        let default = Address::ZERO;
         self.0
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
                 AddressToProtocolInfoData::new(
@@ -644,8 +670,8 @@ impl DBWriter for LibmdbxReadWriter {
                     ProtocolInfo {
                         protocol: classifier_name,
                         init_block: block,
-                        token0: *tokens.next().unwrap(),
-                        token1: *tokens.next().unwrap(),
+                        token0: *tokens.next().unwrap_or(&default),
+                        token1: *tokens.next().unwrap_or(&default),
                         token2: tokens.next().cloned(),
                         token3: tokens.next().cloned(),
                         token4: tokens.next().cloned(),

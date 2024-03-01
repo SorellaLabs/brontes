@@ -91,7 +91,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -103,7 +103,7 @@ mod tests {
             Protocol::CurveV1MetaPool,
             Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
-            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+            Some(Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F"))),
             Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
             Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,

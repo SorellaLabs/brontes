@@ -8,6 +8,7 @@ pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
+pub mod utils;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
@@ -19,19 +20,18 @@ pub use flashloan::*;
 pub use lending::*;
 pub use liquidation::*;
 pub use liquidity::*;
+pub use pool::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
-use serde::{Deserialize, Serialize};
 pub use swaps::*;
 pub use transfer::*;
 
-use self::pool::{NormalizedNewPool, NormalizedPoolConfigUpdate};
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
     TreeSearchBuilder,
 };
 
-pub trait NormalizedAction: Debug + Send + Sync + Clone {
+pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn is_classified(&self) -> bool;
     fn emitted_logs(&self) -> bool;
     fn get_action(&self) -> &Actions;
@@ -80,7 +80,7 @@ impl NormalizedAction for Actions {
 
     fn continued_classification_types(&self) -> TreeSearchBuilder<Self> {
         match self {
-            Actions::FlashLoan(_) => TreeSearchBuilder::default().with_actions([
+            Self::FlashLoan(_) => TreeSearchBuilder::default().with_actions([
                 Self::is_batch,
                 Self::is_swap,
                 Self::is_liquidation,
@@ -89,12 +89,12 @@ impl NormalizedAction for Actions {
                 Self::is_transfer,
                 Self::is_collect,
             ]),
-            Actions::Batch(_) => TreeSearchBuilder::default().with_actions([
+            Self::Batch(_) => TreeSearchBuilder::default().with_actions([
                 Self::is_swap,
                 Self::is_transfer,
                 Self::is_eth_transfer,
             ]),
-            Actions::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
+            Self::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
             action => unreachable!("no continue_classification function for {action:?}"),
         }
     }
@@ -113,8 +113,8 @@ impl NormalizedAction for Actions {
             Self::SelfDestruct(c) => c.trace_index,
             Self::EthTransfer(e) => e.trace_index,
             Self::Unclassified(u) => u.trace_idx,
-            Actions::NewPool(p) => p.trace_index,
-            Actions::PoolConfigUpdate(p) => p.trace_index,
+            Self::NewPool(p) => p.trace_index,
+            Self::PoolConfigUpdate(p) => p.trace_index,
             Self::Revert => unreachable!("no trace index for revert"),
         }
     }
@@ -130,7 +130,7 @@ impl NormalizedAction for Actions {
 }
 
 /// A normalized action that has been classified
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Deserialize, PartialEq, Eq)]
 pub enum Actions {
     Swap(NormalizedSwap),
     SwapWithFee(NormalizedSwapWithFee),
@@ -170,7 +170,7 @@ impl InsertRow for Actions {
     }
 }
 
-impl Serialize for Actions {
+impl serde::Serialize for Actions {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -245,7 +245,7 @@ impl Actions {
     pub fn get_calldata(&self) -> Option<Bytes> {
         if let Actions::Unclassified(u) = &self {
             if let Action::Call(call) = &u.trace.action {
-                return Some(call.input.clone());
+                return Some(call.input.clone())
             }
         }
 
@@ -306,6 +306,14 @@ impl Actions {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }
 
+    pub const fn is_swap_no_fee(&self) -> bool {
+        matches!(self, Actions::Swap(_))
+    }
+
+    pub const fn is_swap_with_fee(&self) -> bool {
+        matches!(self, Actions::SwapWithFee(_))
+    }
+
     pub const fn is_flash_loan(&self) -> bool {
         matches!(self, Actions::FlashLoan(_))
     }
@@ -342,6 +350,10 @@ impl Actions {
         matches!(self, Actions::SelfDestruct(_))
     }
 
+    pub const fn is_new_pool(&self) -> bool {
+        matches!(self, Actions::NewPool(_))
+    }
+
     pub const fn is_unclassified(&self) -> bool {
         matches!(self, Actions::Unclassified(_))
     }
@@ -352,8 +364,105 @@ impl Actions {
 
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
-            return u.is_static_call();
+            return u.is_static_call()
         }
         false
+    }
+}
+
+macro_rules! extra_impls {
+    ($(($action_name:ident, $ret:ident)),*) => {
+        paste::paste!(
+
+            impl Actions {
+                $(
+                    pub fn [<try _$action_name:snake _ref>](&self) -> Option<&$ret> {
+                        if let Actions::$action_name(action) = self {
+                            Some(action)
+                        } else {
+                            None
+                        }
+                    }
+
+                    pub fn [<try _$action_name:snake _mut>](&mut self) -> Option<&mut $ret> {
+                        if let Actions::$action_name(action) = self {
+                            Some(action)
+                        } else {
+                            None
+                        }
+                    }
+
+                    pub fn [<try _$action_name:snake>](self) -> Option<$ret> {
+                        if let Actions::$action_name(action) = self {
+                            Some(action)
+                        } else {
+                            None
+                        }
+                    }
+
+                    pub fn [<try _$action_name:snake _dedup>]()
+                        -> Box<dyn Fn(Actions) -> Option<$ret>> {
+                        Box::new(Actions::[<try _$action_name:snake>])
+                                as Box<dyn Fn(Actions) -> Option<$ret>>
+                    }
+
+                )*
+            }
+
+            $(
+                impl From<$ret> for Actions {
+                    fn from(value: $ret) -> Actions {
+                        Actions::$action_name(value)
+                    }
+                }
+            )*
+        );
+
+    };
+}
+
+extra_impls!(
+    (Collect, NormalizedCollect),
+    (Mint, NormalizedMint),
+    (Burn, NormalizedBurn),
+    (Swap, NormalizedSwap),
+    (SwapWithFee, NormalizedSwapWithFee),
+    (Transfer, NormalizedTransfer),
+    (Liquidation, NormalizedLiquidation),
+    (FlashLoan, NormalizedFlashLoan)
+);
+
+/// Custom impl for itering over swaps and swap with fee
+impl Actions {
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_ref(&self) -> Option<&NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_mut(&mut self) -> Option<&mut NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged(self) -> Option<NormalizedSwap> {
+        match self {
+            Actions::Swap(action) => Some(action),
+            Actions::SwapWithFee(f) => Some(f.swap),
+            _ => None,
+        }
+    }
+
+    /// Merges swap and swap with fee
+    pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
+        Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
     }
 }

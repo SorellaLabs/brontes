@@ -45,6 +45,15 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static;
 
+    fn query_many_arbitrary<T, D>(
+        &self,
+        range: &'static [u64],
+    ) -> impl Future<Output = eyre::Result<Vec<D>>> + Send
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static;
+
     fn query_many<T, D>(&self) -> impl Future<Output = eyre::Result<Vec<D>>> + Send
     where
         T: CompressedTable,

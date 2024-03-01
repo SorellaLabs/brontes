@@ -1,6 +1,5 @@
 mod processors;
 mod range;
-use brontes_types::BrontesTaskExecutor;
 pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
@@ -20,6 +19,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
+use brontes_types::BrontesTaskExecutor;
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
@@ -234,10 +234,20 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             !self.with_dex_pricing,
         )?;
 
-        join_all(state_to_init.into_iter().map(|range| async move {
+        tracing::info!("Downloading missing {} ranges", state_to_init.len());
+
+        let state_to_init_continuous = state_to_init
+            .clone()
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() >= 1000)
+            .collect_vec();
+
+        tracing::info!("Downloading {} missing continuous ranges", state_to_init_continuous.len());
+
+        join_all(state_to_init_continuous.iter().map(|range| async move {
             let start = range.start();
             let end = range.end();
-            tracing::info!(start, end, "Downloading missing range");
+
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,
@@ -251,6 +261,26 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
+
+        tracing::info!(
+            "Downloading {} missing discontinuous ranges",
+            state_to_init.len() - state_to_init_continuous.len()
+        );
+
+        let state_to_init_disc = state_to_init
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() < 1000)
+            .flatten()
+            .collect_vec();
+
+        self.libmdbx
+            .initialize_tables_arbitrary(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice],
+                state_to_init_disc,
+            )
+            .await?;
 
         Ok(())
     }

@@ -1,3 +1,11 @@
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
+use std::collections::HashMap;
+
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
+use serde::de::{DeserializeOwned, Error};
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
+use serde_json::{Error as SerdeJsonError, Value};
+
 pub mod address_string {
     use std::str::FromStr;
 
@@ -215,8 +223,11 @@ pub mod u256 {
     where
         D: Deserializer<'de>,
     {
-        let data: String = Deserialize::deserialize(deserializer)?;
+        let mut data: String = Deserialize::deserialize(deserializer)?;
 
+        if data.ends_with("_U256") {
+            data = data[..data.len() - 5].to_string()
+        }
         Ok(U256::from_str(&data)
             .map_err(serde::de::Error::custom)?
             .into())
@@ -299,6 +310,7 @@ pub mod address {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
+
     #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
     where
@@ -311,8 +323,6 @@ pub mod address {
 }
 
 pub mod static_bindings {
-
-    use std::str::FromStr;
 
     use serde::{
         de::{Deserialize, Deserializer},
@@ -333,7 +343,7 @@ pub mod static_bindings {
     {
         let address: Option<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(Protocol::from_str(&address.unwrap()).unwrap())
+        Ok(Protocol::from_db_string(&address.unwrap()))
     }
 }
 
@@ -604,10 +614,15 @@ pub mod option_contract_info {
     use std::str::FromStr;
 
     use alloy_primitives::Address;
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{
+        de::Deserialize,
+        ser::{Serialize, Serializer},
+        Deserializer,
+    };
 
     use crate::db::address_metadata::ContractInfo;
 
+    #[cfg(any(not(feature = "api-des"), feature = "api", feature = "local-clickhouse"))]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
@@ -624,16 +639,56 @@ pub mod option_contract_info {
             reputation,
         }))
     }
+
+    #[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use std::collections::HashMap;
+
+        use serde::de::Error;
+
+        use super::get_val_from_map;
+
+        let Some(contract_info_map): Option<HashMap<String, serde_json::Value>> =
+            Deserialize::deserialize(deserializer)?
+        else {
+            return Ok(None)
+        };
+
+        let verified_contract =
+            get_val_from_map(&contract_info_map, "verified_contract").map_err(D::Error::custom)?;
+
+        let contract_creator_opt: Option<String> =
+            get_val_from_map(&contract_info_map, "contract_creator").map_err(D::Error::custom)?;
+
+        let reputation =
+            get_val_from_map(&contract_info_map, "reputation").map_err(D::Error::custom)?;
+
+        let contract_info = contract_creator_opt.map(|contract_creator| ContractInfo {
+            verified_contract,
+            contract_creator: Address::from_str(&contract_creator).ok(),
+            reputation,
+        });
+
+        Ok(contract_info)
+    }
+    pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
+        (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
+    }
 }
 
 pub mod socials {
 
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
+    #[cfg(any(not(feature = "api-des"), feature = "api", feature = "local-clickhouse"))]
     type SocalDecode =
         (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
 
+    #[cfg(any(not(feature = "api-des"), feature = "api", feature = "local-clickhouse"))]
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
         D: Deserializer<'de>,
@@ -642,6 +697,40 @@ pub mod socials {
             Deserialize::deserialize(deserializer)?;
 
         Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
+    }
+
+    #[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
+    pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use std::collections::HashMap;
+
+        use serde::de::Error;
+
+        use super::get_val_from_map;
+
+        let socials_map: HashMap<String, serde_json::Value> =
+            Deserialize::deserialize(deserializer)?;
+
+        Ok(Socials {
+            twitter:           get_val_from_map(&socials_map, "twitter")
+                .map_err(D::Error::custom)?,
+            twitter_followers: get_val_from_map(&socials_map, "twitter_followers")
+                .map_err(D::Error::custom)?,
+            website_url:       get_val_from_map(&socials_map, "website_url")
+                .map_err(D::Error::custom)?,
+            crunchbase:        get_val_from_map(&socials_map, "crunchbase")
+                .map_err(D::Error::custom)?,
+            linkedin:          get_val_from_map(&socials_map, "linkedin")
+                .map_err(D::Error::custom)?,
+        }
+        .into())
+    }
+
+    pub fn serialize<S: Serializer>(u: &Socials, serializer: S) -> Result<S::Ok, S::Error> {
+        (&u.twitter, &u.twitter_followers, &u.website_url, &u.crunchbase, &u.linkedin)
+            .serialize(serializer)
     }
 }
 
@@ -658,4 +747,17 @@ pub mod option_fund {
 
         Ok(fund.map(Into::into))
     }
+}
+
+#[cfg(all(feature = "api-des", not(feature = "api"), not(feature = "local-clickhouse")))]
+fn get_val_from_map<T>(map: &HashMap<String, Value>, key: &str) -> Result<T, SerdeJsonError>
+where
+    T: DeserializeOwned,
+{
+    let value = map
+        .get(key)
+        .ok_or_else(|| SerdeJsonError::custom(format!("Could not find value for key {key}")))
+        .and_then(|v| serde_json::from_value(v.clone()).map_err(SerdeJsonError::custom))?;
+
+    Ok(value)
 }

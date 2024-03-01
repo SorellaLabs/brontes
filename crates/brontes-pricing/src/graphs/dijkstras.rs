@@ -16,6 +16,7 @@ use pathfinding::num_traits::Zero;
 use rustc_hash::FxHasher;
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
+const MAX_LEN: usize = 4;
 
 /// Compute a shortest path using the [Dijkstra search
 /// algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
@@ -122,19 +123,19 @@ type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
 pub(crate) fn dijkstra_internal<N, C, E, FN, IN, FS, PV>(
     start: &N,
-    successors: &mut FN,
-    path_value: &mut PV,
-    success: &mut FS,
+    successors: &FN,
+    path_value: &PV,
+    success: &FS,
     max_iter: usize,
 ) -> Option<(Vec<E>, Vec<N>, C)>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
     E: Clone + Default,
-    FN: FnMut(&N) -> IN,
-    PV: FnMut(&N, &N) -> E,
+    FN: Fn(&N) -> IN,
+    PV: Fn(&N, &N) -> E,
     IN: IntoIterator<Item = (N, C)>,
-    FS: FnMut(&N) -> bool,
+    FS: Fn(&N) -> bool,
 {
     let (parents, reached) = run_dijkstra(start, successors, path_value, success, max_iter);
     reached.map(|target| {
@@ -149,41 +150,45 @@ where
 type DijkstrasRes<N, C, E> = (FxIndexMap<N, (usize, C, E)>, Option<usize>);
 fn run_dijkstra<N, C, E, FN, IN, FS, PV>(
     start: &N,
-    successors: &mut FN,
-    path_value: &mut PV,
-    stop: &mut FS,
+    successors: &FN,
+    path_value: &PV,
+    stop: &FS,
     max_iter: usize,
 ) -> DijkstrasRes<N, C, E>
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
     E: Clone + Default,
-    FN: FnMut(&N) -> IN,
-    PV: FnMut(&N, &N) -> E,
+    FN: Fn(&N) -> IN,
+    PV: Fn(&N, &N) -> E,
     IN: IntoIterator<Item = (N, C)>,
-    FS: FnMut(&N) -> bool,
+    FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
     let mut visited = HashSet::new();
     let mut to_see = BinaryHeap::new();
-    to_see.push(SmallestHolder { cost: Zero::zero(), index: 0 });
+    to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
     parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
     let mut target_reached = None;
-    while let Some(SmallestHolder { cost, index }) = to_see.pop() {
+    while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
+        if hops >= MAX_LEN {
+            continue
+        }
+
         if i == max_iter {
             tracing::debug!("max iter on dijkstra hit");
-            break;
+            break
         }
 
         let (node, _) = parents.get_index(index).unwrap();
         if visited.contains(node) {
-            continue;
+            continue
         }
 
         if stop(node) {
             target_reached = Some(index);
-            break;
+            break
         }
         let successors = successors(node);
         let base_node = node.clone();
@@ -192,7 +197,7 @@ where
             i += 1;
 
             if visited.contains(&successor) {
-                continue;
+                continue
             }
 
             let new_cost = cost + move_cost;
@@ -208,12 +213,12 @@ where
                         n = e.index();
                         e.insert((index, new_cost, value));
                     } else {
-                        continue;
+                        continue
                     }
                 }
             }
 
-            to_see.push(SmallestHolder { cost: new_cost, index: n });
+            to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
         }
         visited.insert(base_node);
     }
@@ -270,6 +275,7 @@ where
 struct SmallestHolder<K> {
     cost:  K,
     index: usize,
+    hops:  usize,
 }
 
 impl<K: PartialEq> PartialEq for SmallestHolder<K> {

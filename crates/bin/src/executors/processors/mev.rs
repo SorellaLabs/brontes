@@ -21,7 +21,7 @@ pub struct MevProcessor;
 impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
-    async fn process_results_inner<DB: DBWriter + LibmdbxReader>(
+    async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &DB,
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
         tree: Arc<BlockTree<Actions>>,
@@ -34,7 +34,7 @@ impl Processor for MevProcessor {
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
         {
-            panic!("{e} failed to insert dex pricing and state into db");
+            tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
         }
 
         insert_mev_results(db, block_details, mev_details).await;
@@ -52,6 +52,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         block_details.to_string()
     );
 
+    let block_number = block_details.block_number;
     output_mev_and_update_searcher_info(database, &mev_details).await;
 
     // Attempt to save the MEV block details
@@ -59,10 +60,9 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .await
     {
-        panic!("Failed to insert classified data into libmdbx: {:?}", e);
+        panic!("Failed to insert classified data into libmdbx: {:?} at block: {}", e, block_number);
     }
 }
-
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
     mev_details: &Vec<Bundle>,

@@ -97,7 +97,7 @@ impl TraceLoader {
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
         tracing::info!(%block, "fetching missing metadata");
 
-        let clickhouse = Box::leak(Box::new(load_clickhouse()));
+        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -316,7 +316,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             ));
 
             let (tx, _rx) = unbounded_channel();
-            let clickhouse = Box::leak(Box::new(load_clickhouse()));
+            let clickhouse = Box::leak(Box::new(load_clickhouse().await));
             if this.init_full_range_tables(clickhouse).await {
                 let tracer = init_trace_parser(handle, tx, this, 5).await;
                 this.initialize_tables(
@@ -394,13 +394,13 @@ pub async fn init_trace_parser(
 }
 
 #[cfg(feature = "local-clickhouse")]
-pub fn load_clickhouse() -> Clickhouse {
+pub async fn load_clickhouse() -> Clickhouse {
     Clickhouse::default()
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub fn load_clickhouse() -> ClickhouseHttpClient {
+pub async fn load_clickhouse() -> ClickhouseHttpClient {
     let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
-    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
-    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
+    let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
+    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await
 }

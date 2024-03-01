@@ -49,7 +49,7 @@ pub struct BrontesTaskManager {
 }
 
 impl BrontesTaskManager {
-    /// Returns a a [TaskManager] over the currently running Runtime.
+    /// Returns a a `TaskManager` over the currently running Runtime.
     ///
     /// # Panics
     ///
@@ -99,7 +99,7 @@ impl BrontesTaskManager {
         this
     }
 
-    /// Returns a new [`TaskExecutor`] that can spawn new tasks onto the tokio
+    /// Returns a new `TaskExecutor` that can spawn new tasks onto the tokio
     /// runtime this type is connected to.
     pub fn executor(&self) -> BrontesTaskExecutor {
         BrontesTaskExecutor {
@@ -301,7 +301,7 @@ impl BrontesTaskExecutor {
     /// This spawns a critical blocking task onto the runtime.
     /// The given future resolves as soon as the [Shutdown] signal is received.
     ///
-    /// If this task panics, the [`TaskManager`] is notified.
+    /// If this task panics, the `TaskManager` is notified.
     pub fn spawn_critical_blocking<F>(&self, name: &'static str, fut: F) -> JoinHandle<()>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -312,7 +312,7 @@ impl BrontesTaskExecutor {
     /// This spawns a critical task onto the runtime.
     /// The given future resolves as soon as the [Shutdown] signal is received.
     ///
-    /// If this task panics, the [`TaskManager`] is notified.
+    /// If this task panics, the `TaskManager` is notified.
     pub fn spawn_critical<F>(&self, name: &'static str, fut: F) -> JoinHandle<()>
     where
         F: Future<Output = ()> + Send + 'static,
@@ -322,7 +322,7 @@ impl BrontesTaskExecutor {
 
     /// This spawns a critical task onto the runtime.
     ///
-    /// If this task panics, the [`TaskManager`] is notified.
+    /// If this task panics, the `TaskManager` is notified.
     pub fn spawn_critical_with_shutdown_signal<F>(
         &self,
         name: &'static str,
@@ -351,8 +351,8 @@ impl BrontesTaskExecutor {
 
     /// This spawns a critical task onto the runtime.
     ///
-    /// If this task panics, the [TaskManager] is notified.
-    /// The [TaskManager] will wait until the given future has completed before
+    /// If this task panics, the TaskManager is notified.
+    /// The TaskManager will wait until the given future has completed before
     /// shutting down.
     ///
     /// # Example
@@ -569,8 +569,6 @@ impl LocalGracefulShutdown {
     }
 }
 
-/// A guard that fires once dropped to signal the
-/// [TaskManager](crate::TaskManager) that the [GracefulShutdown] has completed.
 #[derive(Debug)]
 #[must_use = "if unused the task will not be gracefully shutdown"]
 #[allow(unused)]

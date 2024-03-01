@@ -79,6 +79,7 @@ cfg-if = "1.0.0"
 # prometheus
 metrics-process.workspace = true
 itertools.workspace = true
+fdlimit = "0.3.0"
 
 
 [features]
@@ -86,9 +87,12 @@ default = [
   "brontes-core/default",
   "brontes-database/default",
   "brontes-classifier/default",
-  "brontes-inspect/default",
+  "brontes-inspect/default"
 ]
 
+local-no-inserts = []
+
+api = ["brontes-types/api"]
 sorella-server = ["local-reth", "local-clickhouse"]
 
 tests = [
@@ -96,6 +100,7 @@ tests = [
   "brontes-database/tests",
   "brontes-classifier/tests",
   "brontes-inspect/tests",
+  "brontes-pricing/tests",
 ]
 
 local-reth = [
@@ -113,6 +118,8 @@ local-clickhouse = [
   "brontes-inspect/local-clickhouse",
   "brontes-classifier/local-clickhouse",
   "brontes-analytics/local-clickhouse",
+  "brontes-types/local-clickhouse",
 ]
+
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]

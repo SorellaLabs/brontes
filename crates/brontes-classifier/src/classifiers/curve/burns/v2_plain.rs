@@ -262,7 +262,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -274,7 +274,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
@@ -328,7 +328,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
@@ -382,7 +382,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,

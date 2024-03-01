@@ -49,6 +49,19 @@ symbol = "USDP"
 [UniswapX."0x6000da47483062a0d734ba3dc7576ce6a0b645c4"]
 init_block = 17777988
 
+[BalancerV1."0x92E7Eb99a38C8eB655B15467774C6d56Fb810BC9"]
+init_block = 10866521
+
+[[BalancerV1."0x92E7Eb99a38C8eB655B15467774C6d56Fb810BC9".token_info]]
+address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+decimals = 6
+symbol = "USDC"
+
+[[BalancerV1."0x92E7Eb99a38C8eB655B15467774C6d56Fb810BC9".token_info]]
+address = "0xf8C3527CC04340b208C854E985240c02F7B7793f"
+decimals = 18
+symbol = "FRONT"
+
 
 # Curve V1 Metapool Implementation Contracts
 
@@ -141,3 +154,6 @@ init_block = 18163376
 
 [CurvecrvUSDPlainPoolImpl."0x7ca46a636b02d4abc66883d7ff164bde506dc66a"]
 init_block = 18163373
+
+[CompoundV2."0x99ee778B9A6205657DD03B2B91415C8646d521ec"]
+init_block = 8983559

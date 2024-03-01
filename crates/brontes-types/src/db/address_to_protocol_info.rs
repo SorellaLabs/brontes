@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use clickhouse::{fixed_string::FixedString, Row};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
@@ -43,6 +43,24 @@ pub struct ProtocolInfo {
     pub init_block:     u64,
 }
 
+impl ProtocolInfo {
+    pub fn get_tokens(&self) -> Vec<Address> {
+        let mut tokens = vec![self.token0, self.token1]
+            .into_iter()
+            .filter(|token| *token != Address::default())
+            .collect::<Vec<_>>();
+
+        tokens.extend(
+            [self.token2, self.token3, self.token4, self.curve_lp_token]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+        );
+
+        tokens
+    }
+}
+
 impl IntoIterator for ProtocolInfo {
     type IntoIter = std::vec::IntoIter<Self::Item>;
     type Item = Address;
@@ -59,7 +77,7 @@ impl IntoIterator for ProtocolInfo {
 impl From<(Vec<String>, u64, String, Option<String>)> for ProtocolInfo {
     fn from(value: (Vec<String>, u64, String, Option<String>)) -> Self {
         let init_block = value.1;
-        let protocol = Protocol::parse_string(value.2);
+        let protocol = Protocol::from_db_string(&value.2);
         let curve_lp_token = value.3.map(|s| Address::from_str(&s).unwrap());
         let value = value.0;
         let mut iter = value.into_iter();

@@ -3,10 +3,9 @@ name = "brontes-pricing"
 version = "0.1.0"
 edition = "2021"
 
-# [[bench]]
-# name = "graph"
-# harness = false
-# required-features = ["benchmarking"]
+[[bench]]
+name = "bench"
+harness = false
 
 [dependencies]
 #brontes 
@@ -57,7 +56,6 @@ alloy-dyn-abi.workspace = true
 parking_lot.workspace = true
 petgraph = "0.6.4"
 derive_more.workspace = true
-ethers = "2.0.11"
 async-trait.workspace = true
 num-bigfloat = "1.7.0"
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
@@ -70,27 +68,43 @@ modular-bitfield = "0.11.2"
 bytes = "1.5"
 eyre.workspace = true
 rkyv.workspace = true
+dashmap = "5.5.3"
 
+criterion = { version = "0.5", features = [
+  "async",
+  "async_tokio",
+], optional = true }
 
 [dev-dependencies]
-serial_test.workspace = true
-brontes-pricing = { workspace = true, features = ["testing"] }
+pricing-test-utils = { path = "./pricing-test-utils" }
+brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
-brontes-inspect.workspace = true
-brontes-types.workspace = true
+brontes-types = { workspace = true, features = ["tests"] }
+reth-tracing-ext = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
-reth-tracing-ext.workspace = true
-criterion = { version = "0.5" }
 rand = "0.8.5"
 eyre.workspace = true
 
 [features]
 default = []
-testing = []
+tests = ["criterion"]
 uni-v3-ticks = []
-benchmarking = []
-local-reth = ["brontes-types/local-reth"]
+local-reth = [
+  "reth-tracing-ext/local-reth",
+  "pricing-test-utils/local-reth",
+  "brontes-types/local-reth",
+  "brontes-core/local-reth",
+  "brontes-classifier/local-reth",
+  "brontes-database/local-reth",
+]
+local-clickhouse = [
+  "pricing-test-utils/local-clickhouse",
+  "reth-tracing-ext/local-clickhouse",
+  "brontes-core/local-clickhouse",
+  "brontes-classifier/local-clickhouse",
+  "brontes-database/local-clickhouse",
+]
