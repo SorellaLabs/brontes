@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use super::{Actions, NormalizedCollect, NormalizedMint, NormalizedSwap, NormalizedTransfer};
 
 impl<T: Sized + SubordinateAction<O>, O: ActionCmp<T>> ActionComparison<O> for T {}
@@ -49,8 +51,8 @@ pub trait SubordinateAction<O> {
     /// checks to see if this action is subordinate to the other action.
     fn is_subordinate(&self, other: &O) -> bool
     where
-        Self: Sized,
-        O: ActionCmp<Self>,
+        Self: Sized + Debug,
+        O: ActionCmp<Self> + Debug,
     {
         tracing::debug!(?self, ?other, "other superior check");
         other.is_superior_action(self)
