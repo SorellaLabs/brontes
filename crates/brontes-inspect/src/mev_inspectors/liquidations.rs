@@ -8,6 +8,7 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
+use itertools::Itertools;
 use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth_primitives::{b256, Address};
@@ -33,9 +34,13 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let liq_txs = tree.collect_all(
-            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_liquidation]),
-        );
+        let liq_txs = tree
+            .clone()
+            .collect_all(
+                TreeSearchBuilder::default()
+                    .with_actions([Actions::is_swap, Actions::is_liquidation]),
+            )
+            .collect_vec();
 
         liq_txs
             .into_par_iter()

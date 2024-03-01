@@ -62,14 +62,16 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = [frontrun_tx, backrun_tx]
                         .iter()
                         .map(|tx| {
-                            tree.collect(
-                                tx,
-                                TreeSearchBuilder::default().with_actions([
-                                    Actions::is_mint,
-                                    Actions::is_burn,
-                                    Actions::is_collect,
-                                ]),
-                            )
+                            tree.clone()
+                                .collect(
+                                    tx,
+                                    TreeSearchBuilder::default().with_actions([
+                                        Actions::is_mint,
+                                        Actions::is_burn,
+                                        Actions::is_collect,
+                                    ]),
+                                )
+                                .collect::<Vec<_>>()
                         })
                         .collect::<Vec<Vec<Actions>>>();
                     tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
@@ -97,10 +99,12 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.collect(
-                                victim,
-                                TreeSearchBuilder::default().with_action(Actions::is_swap),
-                            )
+                            tree.clone()
+                                .collect(
+                                    victim,
+                                    TreeSearchBuilder::default().with_action(Actions::is_swap),
+                                )
+                                .collect_vec()
                         })
                         .collect_vec();
 
