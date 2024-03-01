@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
     ActionIter, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
     TreeScoped, TreeSearchBuilder,
@@ -247,10 +247,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
 
-        let searcher_transfers = searcher_actions
+        let searcher_deltas = searcher_actions
             .into_iter()
             .flatten()
-            .collect_action_vec(Actions::try_transfer);
+            .chain(back_run_swaps.clone().into_iter().map(Actions::from))
+            .account_for_actions();
 
         let mev_addresses: HashSet<Address> = possible_front_runs_info
             .iter()
@@ -259,29 +260,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        let transfer_rev_usd = self.utils.get_transfers_deltas_usd(
+        let rev_usd = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
             mev_addresses,
-            &searcher_transfers,
+            &searcher_deltas,
             metadata.clone(),
         )?;
-
-        let searcher_swaps = front_run_swaps
-            .iter()
-            .flatten()
-            .chain(back_run_swaps.iter())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let swap_rev_usd = self.utils.get_dex_swaps_rev_usd(
-            backrun_info.tx_index,
-            PriceAt::After,
-            &searcher_swaps,
-            metadata.clone(),
-        )?;
-
-        let rev_usd = transfer_rev_usd + swap_rev_usd;
 
         let profit_usd = (rev_usd - &gas_used).to_float();
 
@@ -302,7 +287,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         bundle_hashes.push(backrun_info.tx_hash);
 
         let header = self.utils.build_bundle_header(
-            vec![searcher_transfers],
+            vec![searcher_deltas],
             bundle_hashes,
             &backrun_info,
             profit_usd,

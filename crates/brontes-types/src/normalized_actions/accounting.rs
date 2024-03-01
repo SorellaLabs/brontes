@@ -8,35 +8,20 @@ use malachite::Rational;
 
 use super::{comparison::ActionComparison, Actions};
 
-/// Holds all accounting info.
-pub struct Accounting {
-    pub delta_map:             AddressDeltas,
-    pub accounted_for_actions: Vec<Actions>,
-}
-impl Default for Accounting {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Accounting {
-    pub fn new() -> Self {
-        Self { delta_map: HashMap::new(), accounted_for_actions: vec![] }
-    }
-}
-
 pub type TokenDeltas = HashMap<Address, Rational>;
 pub type AddressDeltas = HashMap<Address, TokenDeltas>;
-
-pub trait ActionAccounting {
-    /// for a given list of actions, this will dedup the actions and then apply
-    /// the token deltas for it
-    fn account_for_actions(self) -> AddressDeltas;
-}
 
 /// apply's the given actions token deltas to the map;
 pub trait TokenAccounting {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas);
+}
+
+/// For a given Vector of actions, will go through and apply the token deltas,
+/// de-duping them as it is doing the calculations
+pub trait ActionAccounting {
+    /// for a given list of actions, this will dedup the actions and then apply
+    /// the token deltas for it
+    fn account_for_actions(self) -> AddressDeltas;
 }
 
 impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
@@ -59,6 +44,23 @@ impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
     }
 }
 
+/// Holds all accounting info.
+pub struct Accounting {
+    pub delta_map:             AddressDeltas,
+    pub accounted_for_actions: Vec<Actions>,
+}
+impl Default for Accounting {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Accounting {
+    pub fn new() -> Self {
+        Self { delta_map: HashMap::new(), accounted_for_actions: vec![] }
+    }
+}
+
 pub fn apply_delta<K: PartialEq + Hash + Eq>(
     address: K,
     token: K,
@@ -73,4 +75,9 @@ pub fn apply_delta<K: PartialEq + Hash + Eq>(
             v.insert(amount);
         }
     }
+}
+
+#[cfg(test)]
+pub mod test {
+    // todo: add tests
 }

@@ -13,6 +13,7 @@ pub mod transfer;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
+use accounting::{apply_delta, AddressDeltas, TokenAccounting};
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 use clickhouse::InsertRow;
@@ -28,7 +29,6 @@ use serde::{Deserialize, Serialize};
 pub use swaps::*;
 pub use transfer::*;
 
-use accounting::{apply_delta, AddressDeltas, TokenAccounting};
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
     TreeSearchBuilder,

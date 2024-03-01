@@ -47,7 +47,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt},
     mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails, StatArbPnl},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
@@ -109,12 +109,14 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) -> Self::Result {
-        let swap_txes =
-            tree.collect_all(TreeSearchBuilder::default().with_action(Actions::is_swap));
+        let swap_txes = tree
+            .clone()
+            .collect_all(TreeSearchBuilder::default().with_action(Actions::is_swap));
 
         swap_txes
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+                let deltas = swaps.clone().into_iter().account_for_actions();
                 let swaps = swaps
                     .into_iter()
                     .collect_action_vec(Actions::try_swaps_merged);
@@ -140,7 +142,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
                 let header = self.utils.build_bundle_header(
-                    tree.clone(),
+                    vec![deltas],
                     vec![tx_info.tx_hash],
                     &tx_info,
                     possible_cex_dex.pnl.taker_profit.clone().to_float(),
@@ -392,16 +394,27 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         if original_token != final_token {
             return false
         }
+        let deltas = possible_cex_dex
+            .swaps
+            .clone()
+            .into_iter()
+            .map(Actions::from)
+            .account_for_actions();
 
-        let profit = self
+        let addr_usd_deltas = self
             .utils
-            .get_dex_swaps_rev_usd(
+            .usd_delta_by_address(
                 tx_info.tx_index,
                 PriceAt::Average,
-                &possible_cex_dex.swaps,
+                &deltas,
                 metadata.clone(),
+                false,
             )
             .unwrap_or_default();
+
+        let profit = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
 
         profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) > Rational::ZERO
     }

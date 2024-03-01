@@ -1,6 +1,5 @@
-use core::hash::Hash;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     sync::Arc,
 };
 
@@ -9,16 +8,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
-    normalized_actions::{
-        accounting::TokenAccounting, Actions, NormalizedBatch, NormalizedBurn, NormalizedCollect,
-        NormalizedFlashLoan, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
-        NormalizedTransfer,
-    },
     pair::Pair,
     utils::ToFloatNearest,
-    GasDetails, TreeSearchBuilder, TxInfo,
+    GasDetails, TxInfo,
 };
-use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
@@ -41,43 +34,7 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
 type TokenDeltas = HashMap<Address, Rational>;
 type AddressDeltas = HashMap<Address, TokenDeltas>;
 
-/* TODO: Ludwig
-pub struct AddressWithContext {
-    pub address:      Address,
-    pub address_type: AddressType,
-}
-
-pub enum AddressType {
-    Pool,
-    MEV,
-
-} */
-
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
-    /// Calculates the token balance deltas by address for a given set of swaps
-    /// Note this does not account for the pool delta's, only the swapper and
-    /// recipient delta's
-    pub(crate) fn calculate_swap_deltas(&self, swaps: &[NormalizedSwap]) -> AddressDeltas {
-        // Address and there token delta's
-        let mut deltas: AddressDeltas = HashMap::new();
-        swaps
-            .iter()
-            .for_each(|swap| swap.apply_token_deltas(&mut deltas));
-
-        deltas
-    }
-
-    /// Calculates the token balance deltas by address for a given set of
-    /// transfers
-    pub fn calculate_transfer_deltas(&self, transfers: &[NormalizedTransfer]) -> AddressDeltas {
-        let mut deltas: AddressDeltas = HashMap::new();
-        transfers
-            .iter()
-            .for_each(|transfer| transfer.apply_token_deltas(&mut deltas));
-
-        deltas
-    }
-
     /// Calculates the USD value of the token balance deltas by address
     pub fn usd_delta_by_address(
         &self,
@@ -167,7 +124,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     pub fn build_bundle_header(
         &self,
-        bundle_transfers: Vec<Vec<NormalizedTransfer>>,
+        bundle_deltas: Vec<AddressDeltas>,
         bundle_txes: Vec<TxHash>,
         info: &TxInfo,
         profit_usd: f64,
@@ -178,7 +135,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     ) -> BundleHeader {
         let balance_deltas = self.get_bundle_accounting(
             bundle_txes,
-            bundle_transfers,
+            bundle_deltas,
             info.tx_index,
             at,
             metadata.clone(),
@@ -203,51 +160,20 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
     }
 
-    pub fn get_dex_swaps_rev_usd(
-        &self,
-        tx_index: u64,
-        at: PriceAt,
-        swaps: &[NormalizedSwap],
-        metadata: Arc<Metadata>,
-    ) -> Option<Rational> {
-        let deltas = self.calculate_swap_deltas(swaps);
-
-        let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
-        Some(
-            addr_usd_deltas
-                .values()
-                .fold(Rational::ZERO, |acc, delta| acc + delta),
-        )
-    }
-
-    pub fn get_transfers_deltas_usd(
+    pub fn get_deltas_usd(
         &self,
         tx_index: u64,
         at: PriceAt,
         mev_addresses: HashSet<Address>,
-        transfers: &[NormalizedTransfer],
+        deltas: &AddressDeltas,
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {
-        let deltas = self.calculate_transfer_deltas(transfers);
-
         let addr_usd_deltas =
             self.usd_delta_by_address(tx_index, at, &deltas, metadata.clone(), false)?;
 
-        #[allow(clippy::if_same_then_else)]
-        #[allow(clippy::unnecessary_filter_map)]
-        //Temporary, waiting on deduplication fix for proper accounting
         let sum = addr_usd_deltas
             .iter()
-            .filter_map(
-                |(address, delta)| {
-                    if mev_addresses.contains(address) {
-                        Some(delta)
-                    } else {
-                        Some(delta)
-                    }
-                },
-            )
+            .filter_map(|(address, delta)| mev_addresses.contains(address).then_some(delta))
             .fold(Rational::ZERO, |acc, delta| acc + delta);
 
         Some(sum)
@@ -256,7 +182,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_bundle_accounting(
         &self,
         bundle_txes: Vec<FixedBytes<32>>,
-        bundle_transfers: Vec<Vec<NormalizedTransfer>>,
+        bundle_deltas: Vec<AddressDeltas>,
         tx_index_for_pricing: u64,
         at: PriceAt,
         metadata: Arc<Metadata>,
@@ -264,10 +190,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     ) -> Vec<TransactionAccounting> {
         bundle_txes
             .into_par_iter()
-            .zip(bundle_transfers.into_par_iter())
-            .map(|(tx_hash, tx_transfers)| {
-                let deltas = self.calculate_transfer_deltas(&tx_transfers);
-
+            .zip(bundle_deltas.into_par_iter())
+            .map(|(tx_hash, deltas)| {
                 let address_deltas: Vec<AddressBalanceDeltas> = deltas
                     .into_iter()
                     .map(|(address, token_deltas)| {

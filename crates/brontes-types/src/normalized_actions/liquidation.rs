@@ -1,6 +1,5 @@
 use std::fmt::{self, Debug};
 
-use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 use alloy_primitives::U256;
 use clickhouse::Row;
 use colored::Colorize;
@@ -10,6 +9,7 @@ use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
+use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap};
 use crate::{
     db::{
