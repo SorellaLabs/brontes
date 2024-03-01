@@ -27,6 +27,8 @@ use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 const MAX_SEARCH_THREADS: usize = 4;
 
+type SpansAll<V> = TreeIterator<V, std::vec::IntoIter<(B256, Vec<Vec<V>>)>>;
+
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
     pub tx_roots:             Vec<Root<V>>,
@@ -141,10 +143,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// Collects all subsets of actions that match the action criteria specified
     /// by the closure. This is useful for collecting the subtrees of a
     /// transaction that contain the wanted actions.
-    pub fn collect_spans_all(
-        self: Arc<Self>,
-        call: TreeSearchBuilder<V>,
-    ) -> TreeIterator<V, std::vec::IntoIter<(B256, Vec<Vec<V>>)>> {
+    pub fn collect_spans_all(self: Arc<Self>, call: TreeSearchBuilder<V>) -> SpansAll<V> {
         self.run_in_span_ref(|this| {
             this.tp.install(|| {
                 TreeIterator::new(
@@ -342,6 +341,7 @@ pub mod test {
         let tree = load_tree().await;
 
         let burns = tree
+            .clone()
             .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn))
             .collect::<Vec<_>>();
         assert_eq!(burns.len(), 1);
@@ -372,7 +372,7 @@ pub mod test {
     async fn test_collect_and_classify() {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d").into();
-        let tree = classifier_utils.build_tree_tx(tx).await.unwrap();
+        let tree = Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
         let mut actions = tree
             .collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch))
             .collect::<Vec<_>>();
