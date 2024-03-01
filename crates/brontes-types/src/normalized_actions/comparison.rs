@@ -10,7 +10,7 @@ pub trait ActionComparison<O> {
         Self: Sized + ActionCmp<O> + Debug,
         O: ActionCmp<Self> + Debug,
     {
-        self.is_superior_action(other) || other.is_subordinate(self)
+        self.is_superior_action(other) || self.is_subordinate(other)
     }
 }
 
