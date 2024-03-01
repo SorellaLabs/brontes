@@ -52,6 +52,7 @@ pub trait SubordinateAction<O> {
         Self: Sized,
         O: ActionCmp<Self>,
     {
+        tracing::debug!(?self, ?other, "other superior check");
         other.is_superior_action(self)
     }
 }
