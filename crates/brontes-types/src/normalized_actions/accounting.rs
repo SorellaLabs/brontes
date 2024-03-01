@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, VecDeque},
     hash::Hash,
 };
 
@@ -24,25 +24,40 @@ pub trait ActionAccounting {
     fn account_for_actions(self) -> AddressDeltas;
 }
 
+fn accounting_calc(accounting: &mut Accounting, next: Action) {
+    if accounting
+        .accounted_for_actions
+        .iter()
+        .all(|i| !i.is_same_coverage(&next))
+    {
+        tracing::trace!(
+            "accounted for {:#?}\n\n\n new non accounted for: {:#?}",
+            accounting.accounted_for_actions,
+            next
+        );
+
+        next.apply_token_deltas(&mut accounting.delta_map);
+        accounting.accounted_for_actions.push(next);
+    }
+}
+
 impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
     /// if the action has already been accounted for then we don't call apply.
     fn account_for_actions(self) -> AddressDeltas {
         let mut accounting = Accounting::new();
-        // gotta do it this way due to borrow checker
+        // non transfer swaps
+        let mut rem = vec![];
+
         for next in self {
-            if accounting
-                .accounted_for_actions
-                .iter()
-                .all(|i| !i.is_same_coverage(&next))
-            {
-                tracing::trace!(
-                    "accounted for {:#?}\n\n\n new non accounted for: {:#?}",
-                    accounting.accounted_for_actions,
-                    next
-                );
-                next.apply_token_deltas(&mut accounting.delta_map);
-                accounting.accounted_for_actions.push(next);
+            if !next.is_transfer() {
+                rem.push(next);
+                continue
             }
+            accounting_calc(&mut accounting, next);
+        }
+
+        for next in rem {
+            accounting_calc(&mut accounting, next);
         }
 
         accounting.delta_map
