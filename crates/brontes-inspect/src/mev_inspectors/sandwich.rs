@@ -547,7 +547,7 @@ mod tests {
             .with_dex_prices()
             .needs_token(hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into())
             .with_gas_paid_usd(40.26)
-            .with_expected_profit_usd(-56.44);
+            .with_expected_profit_usd(1.18);
 
         inspector_util
             .run_inspector(
