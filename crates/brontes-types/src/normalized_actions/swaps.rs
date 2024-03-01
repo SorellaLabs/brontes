@@ -103,11 +103,8 @@ impl TokenAccounting for NormalizedSwap {
         let amount_in = self.amount_in.clone();
         let amount_out = self.amount_out.clone();
 
-        // apply_delta(self.from, self.token_in.address, -amount_in.clone(), delta_map);
-        apply_delta(self.pool, self.token_in.address, amount_in, delta_map);
-        apply_delta(self.pool, self.token_out.address, -amount_out.clone(), delta_map);
-        // apply_delta(self.recipient, self.token_out.address, amount_out,
-        // delta_map);
+        apply_delta(self.from, self.token_in.address, -amount_in.clone(), delta_map);
+        apply_delta(self.recipient, self.token_out.address, amount_out, delta_map);
     }
 }
 
