@@ -164,8 +164,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<NormalizedSwap>>>,
     ) -> Option<Bundle> {
-        let back_run_swaps = searcher_actions
-            .pop()?
+        let back_run_actions = searcher_actions.pop()?;
+        let back_run_swaps = back_run_actions
+            .clone()
             .into_iter()
             .collect_action_vec(Actions::try_swaps_merged);
 
@@ -238,7 +239,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let searcher_deltas = searcher_actions
             .into_iter()
             .flatten()
-            .chain(back_run_swaps.clone().into_iter().map(Actions::from))
+            .chain(back_run_actions)
             .account_for_actions();
 
         let mev_addresses: HashSet<Address> = possible_front_runs_info
