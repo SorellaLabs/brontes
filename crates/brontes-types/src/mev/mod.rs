@@ -14,3 +14,5 @@ pub mod jit_sandwich;
 pub use jit_sandwich::*;
 pub mod block;
 pub use block::*;
+pub mod searcher_tx;
+pub use searcher_tx::*;
