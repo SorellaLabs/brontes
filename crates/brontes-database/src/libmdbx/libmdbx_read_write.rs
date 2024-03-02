@@ -525,11 +525,14 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
-        self.write_searcher_eoa_info(eoa_address, eoa_info).await?;
+        self.write_searcher_eoa_info(eoa_address, eoa_info)
+            .await
+            .expect("libmdbx write failure");
 
         if let Some(contract_address) = contract_address {
             self.write_searcher_contract_info(contract_address, contract_info.unwrap_or_default())
-                .await?;
+                .await
+                .expect("libmdbx write failure");
         }
         Ok(())
     }
@@ -541,7 +544,8 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
         self.0
-            .write_table::<SearcherEOAs, SearcherEOAsData>(&vec![data])?;
+            .write_table::<SearcherEOAs, SearcherEOAsData>(&vec![data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 
@@ -552,7 +556,8 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = SearcherContractsData::new(searcher_contract, searcher_info);
         self.0
-            .write_table::<SearcherContracts, SearcherContractsData>(&vec![data])?;
+            .write_table::<SearcherContracts, SearcherContractsData>(&vec![data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 
@@ -563,7 +568,8 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = SearcherStatisticsData::new(searcher_eoa, searcher_stats);
         self.0
-            .write_table::<SearcherStatistics, SearcherStatisticsData>(&vec![data])?;
+            .write_table::<SearcherStatistics, SearcherStatisticsData>(&vec![data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 
@@ -576,7 +582,8 @@ impl DBWriter for LibmdbxReadWriter {
         let data = MevBlocksData::new(block_number, MevBlockWithClassified { block, mev });
 
         self.0
-            .write_table::<MevBlocks, MevBlocksData>(&vec![data])?;
+            .write_table::<MevBlocks, MevBlocksData>(&vec![data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 
@@ -586,7 +593,8 @@ impl DBWriter for LibmdbxReadWriter {
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
-            self.init_state_updating(block_num, DEX_PRICE_FLAG)?;
+            self.init_state_updating(block_num, DEX_PRICE_FLAG)
+                .expect("libmdbx write failure");
             let data = quotes
                 .0
                 .into_iter()
@@ -601,17 +609,24 @@ impl DBWriter for LibmdbxReadWriter {
                 })
                 .collect::<Vec<_>>();
 
-            self.0.update_db(|tx| {
-                let mut cursor = tx.cursor_write::<DexPrice>()?;
+            self.0
+                .update_db(|tx| {
+                    let mut cursor = tx
+                        .cursor_write::<DexPrice>()
+                        .expect("libmdbx write failure");
 
-                data.into_iter()
-                    .map(|entry| {
-                        let entry = entry.into_key_val();
-                        cursor.upsert(entry.key, entry.value)?;
-                        Ok(())
-                    })
-                    .collect::<Result<Vec<_>, DatabaseError>>()
-            })??;
+                    data.into_iter()
+                        .map(|entry| {
+                            let entry = entry.into_key_val();
+                            cursor
+                                .upsert(entry.key, entry.value)
+                                .expect("libmdbx write failure");
+                            Ok(())
+                        })
+                        .collect::<Result<Vec<_>, DatabaseError>>()
+                })
+                .expect("libmdbx write failure")
+                .expect("libmdbx write failure");
         }
 
         Ok(())
@@ -623,30 +638,33 @@ impl DBWriter for LibmdbxReadWriter {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        Ok(self
-            .0
+        self.0
             .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData::new(
                 address,
                 TokenInfo::new(decimals, symbol),
-            )])?)
+            )])
+            .expect("libmdbx write failure");
+        Ok(())
     }
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
 
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair).expect("libmdbx write failure") {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
             let data = SubGraphsData::new(pair, entry);
             self.0
-                .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+                .write_table::<SubGraphs, SubGraphsData>(&vec![data])
+                .expect("libmdbx write failure");
         } else {
             let mut map = HashMap::new();
             map.insert(block, edges);
             let subgraph_entry = SubGraphsEntry(map);
             let data = SubGraphsData::new(pair, subgraph_entry);
             self.0
-                .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+                .write_table::<SubGraphs, SubGraphsData>(&vec![data])
+                .expect("libmdbx write failure");
         }
 
         Ok(())
@@ -678,27 +696,32 @@ impl DBWriter for LibmdbxReadWriter {
                         curve_lp_token,
                     },
                 ),
-            ])?;
+            ])
+            .expect("libmdbx write failure");
 
         // add to pool creation block
-        let tx = self.0.ro_tx()?;
+        let tx = self.0.ro_tx().expect("libmdbx write failure");
         let mut addrs = tx
-            .get::<PoolCreationBlocks>(block)?
+            .get::<PoolCreationBlocks>(block)
+            .expect("libmdbx write failure")
             .map(|i| i.0)
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
 
         addrs.push(address);
         self.0
             .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
                 PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
-            ])?;
+            ])
+            .expect("libmdbx write failure");
 
         Ok(())
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
-        self.0.write_table(&vec![table])?;
+        self.0
+            .write_table(&vec![table])
+            .expect("libmdbx write failure");
 
         self.init_state_updating(block, TRACE_FLAG)
     }
@@ -709,7 +732,9 @@ impl DBWriter for LibmdbxReadWriter {
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
         let data = BuilderData::new(builder_address, builder_info);
-        self.0.write_table::<Builder, BuilderData>(&vec![data])?;
+        self.0
+            .write_table::<Builder, BuilderData>(&vec![data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 
@@ -720,7 +745,8 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = BuilderStatisticsData::new(builder_address, builder_stats);
         self.0
-            .write_table::<BuilderStatistics, BuilderStatisticsData>(&vec![data])?;
+            .write_table::<BuilderStatistics, BuilderStatisticsData>(&vec![data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 }
