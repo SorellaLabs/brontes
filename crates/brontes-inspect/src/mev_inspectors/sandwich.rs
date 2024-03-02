@@ -242,8 +242,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .chain(back_run_actions)
             .account_for_actions();
 
-        println!("{:#?}", searcher_deltas);
-
         let mev_addresses: HashSet<Address> = possible_front_runs_info
             .iter()
             .chain(iter::once(&backrun_info))

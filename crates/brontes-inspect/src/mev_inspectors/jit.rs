@@ -167,8 +167,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter(|a| if has_collect { !a.is_burn() } else { true })
             .account_for_actions();
 
-        println!("{:#?}", deltas);
-
         let rev = self.utils.get_deltas_usd(
             info[1].tx_index,
             PriceAt::After,
