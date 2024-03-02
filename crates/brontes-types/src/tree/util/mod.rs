@@ -19,8 +19,12 @@ pub use zip::*;
 pub mod merge;
 pub use merge::*;
 
-pub mod scope;
-pub use scope::*;
+pub mod filter;
+pub use filter::*;
+
+// To exotic for now
+// pub mod scope;
+// pub use scope::*;
 
 pub mod collectors;
 pub use collectors::*;

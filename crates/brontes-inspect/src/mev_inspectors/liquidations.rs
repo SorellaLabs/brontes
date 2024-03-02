@@ -1,16 +1,15 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
-    normalized_actions::Actions,
+    normalized_actions::{accounting::ActionAccounting, Actions},
     tree::BlockTree,
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
-use malachite::Rational;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{b256, Address};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -47,7 +46,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
             .filter_map(|(tx_hash, liq)| {
                 let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
-                self.calculate_liquidation(tree.clone(), info, metadata.clone(), liq)
+                self.calculate_liquidation(info, metadata.clone(), liq)
             })
             .collect::<Vec<_>>()
     }
@@ -56,7 +55,6 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
 impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
     fn calculate_liquidation(
         &self,
-        tree: Arc<BlockTree<Actions>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
         actions: Vec<Actions>,
@@ -70,40 +68,31 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
-        let liq_profit = liqs
-            .par_iter()
-            .filter_map(|liq| {
-                let repaid_debt_usd = self.utils.get_token_value_dex(
-                    info.tx_index as usize,
-                    PriceAt::After,
-                    liq.debt_asset.address,
-                    &liq.covered_debt,
-                    &metadata,
-                )?;
-                let collected_collateral = self.utils.get_token_value_dex(
-                    info.tx_index as usize,
-                    PriceAt::After,
-                    liq.collateral_asset.address,
-                    &liq.liquidated_collateral,
-                    &metadata,
-                )?;
-                Some(collected_collateral - repaid_debt_usd)
-            })
-            .sum::<Rational>();
+        let mev_addresses: HashSet<Address> = vec![info.eoa]
+            .into_iter()
+            .chain(
+                info.mev_contract
+                    .as_ref()
+                    .map(|a| vec![*a])
+                    .unwrap_or_default(),
+            )
+            .collect::<HashSet<_>>();
 
-        let rev_usd = self.utils.get_dex_swaps_rev_usd(
+        let deltas = actions.into_iter().account_for_actions();
+
+        let rev = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::After,
-            &swaps,
+            mev_addresses,
+            &deltas,
             metadata.clone(),
-        )? + liq_profit;
+        )?;
 
         let gas_finalized = metadata.get_gas_price_usd(info.gas_details.gas_paid());
-
-        let profit_usd = (rev_usd - &gas_finalized).to_float();
+        let profit_usd = (rev - &gas_finalized).to_float();
 
         let header = self.utils.build_bundle_header(
-            tree,
+            vec![deltas],
             vec![info.tx_hash],
             &info,
             profit_usd,

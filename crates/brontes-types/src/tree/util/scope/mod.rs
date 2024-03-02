@@ -10,12 +10,12 @@ pub use scope_iter_base::*;
 pub mod filter;
 pub use filter::*;
 pub mod change_scope;
-pub use change_scope::*;
-pub use collect::*;
+
+
 pub use map::*;
 
 use super::TreeIter;
-use crate::{tree::NormalizedAction, BlockTree, SplitIterZip, ZipPadded1};
+use crate::{tree::NormalizedAction, BlockTree, SplitIterZip};
 
 /// A key that allows for maping scoped data. this also allows for
 /// a key with some grouped data
@@ -54,7 +54,7 @@ pub struct TreeIteratorScope<K, U: Iterator + Clone, V: NormalizedAction, I: Sco
 
 impl<U: Iterator + Clone, I: ScopeIter<U>, V: NormalizedAction, K> TreeIteratorScope<K, U, V, I> {
     pub fn new(tree: Arc<BlockTree<V>>, iter: I) -> Self {
-        Self { tree, iter, _p: PhantomData::default() }
+        Self { tree, iter, _p: PhantomData }
     }
 }
 

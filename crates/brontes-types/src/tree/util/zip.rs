@@ -58,7 +58,8 @@ macro_rules! into_split_iter {
         paste::paste!(
             into_split_iter!($am, $($iter_val),*);
 
-            impl<$($iter_val),*> IntoZip<[<ZipPadded $am>]<$($iter_val::IntoIter),*>> for ($($iter_val),*)
+            impl<$($iter_val),*> IntoZip<[<ZipPadded $am>]<$($iter_val::IntoIter),*>>
+            for ($($iter_val),*)
             where
                 $(
                     $iter_val: IntoIterator
@@ -75,7 +76,9 @@ macro_rules! into_split_iter {
                 }
             }
 
-            impl<V: NormalizedAction, $($iter_val),*> IntoZipTree<V,[<ZipPaddedTree $am>]<V,$($iter_val::IntoIter),*>> for ($($iter_val),*)
+            impl<V: NormalizedAction, $($iter_val),*>
+                IntoZipTree<V,[<ZipPaddedTree $am>]<V,$($iter_val::IntoIter),*>>
+                    for ($($iter_val),*)
             where
                 $(
                     $iter_val: IntoIterator
@@ -152,13 +155,15 @@ macro_rules! into_split_iter {
                 }
             }
 
-            impl<V: NormalizedAction,$($iter_val),*> TreeIter<V> for [<ZipPaddedTree $am>]<V,$($iter_val),*> {
+            impl<V: NormalizedAction,$($iter_val),*> TreeIter<V>
+                for [<ZipPaddedTree $am>]<V,$($iter_val),*> {
                 fn tree(&self) -> Arc<BlockTree<V>> {
                     self.tree.clone()
                 }
             }
 
-            impl<V: NormalizedAction, $($iter_val),*> Iterator for [<ZipPaddedTree $am>]<V,$($iter_val),*>
+            impl<V: NormalizedAction, $($iter_val),*> Iterator
+                for [<ZipPaddedTree $am>]<V,$($iter_val),*>
             where
                 $(
                     $iter_val: Iterator,

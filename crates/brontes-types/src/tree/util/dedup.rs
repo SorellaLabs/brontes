@@ -3,7 +3,7 @@ use alloy_primitives::B256;
 use super::InTupleFnOutVec;
 use crate::{
     action_iter::ActionIter,
-    normalized_actions::{utils::ActionCmp, NormalizedAction},
+    normalized_actions::{comparison::ActionCmp, NormalizedAction},
     ActionSplit, IntoZip, SplitIterZip, TreeIter,
 };
 

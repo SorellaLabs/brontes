@@ -22,7 +22,8 @@ macro_rules! merge_iter {
             }
 
             #[allow(non_snake_case,unused_parens)]
-            impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> MergeIter<O, [<MergeTo $i>]<I, $($v),*, O>> for I
+            impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> MergeIter<O,
+            [<MergeTo $i>]<I, $($v),*, O>> for I
                 where
                 $(
                     O: From<$v>,
@@ -39,7 +40,8 @@ macro_rules! merge_iter {
 
 
             #[allow(non_snake_case,unused_parens)]
-            impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> Iterator for [<MergeTo $i>]<I, $($v),*, O>
+            impl<I: Iterator<Item = ($($v),*)>, $($v),*, O> Iterator
+                for [<MergeTo $i>]<I, $($v),*, O>
                 where
                 $(
                     O: From<$v>,

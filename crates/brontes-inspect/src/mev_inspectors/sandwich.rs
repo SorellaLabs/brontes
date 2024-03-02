@@ -9,10 +9,9 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, IntoZipTree, ScopeBase2, ToFloatNearest, TreeBase, TreeCollector, TreeIter,
-    TreeScoped, TreeSearchBuilder,
+    ActionIter, IntoZipTree, ToFloatNearest, TreeBase, TreeIter, TreeSearchBuilder, UnzipPadded,
 };
 use reth_primitives::{Address, B256};
 
@@ -73,7 +72,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .map(|victim| {
                             (tree.clone().collect_txes(&victim, search_args.clone()), victim)
                         })
-                        .fold(Some(vec![]), |mut acc, (victim_set, hashes)| {
+                        .try_fold(vec![], |mut acc, (victim_set, hashes)| {
                             let tree = victim_set.tree();
                             let (actions, info) = victim_set
                                 .map(|s| {
@@ -81,51 +80,40 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 })
                                 .into_zip_tree(tree)
                                 .tree_zip_with(hashes.into_iter())
-                                .into_scoped_tree_iter::<ScopeBase2<_, _, _, _>>()
-                                .tree_filter_all(
-                                    |tree: Arc<BlockTree<Actions>>,
-                                     actions: &[Option<Vec<NormalizedSwap>>],
-                                     hashes: &[Option<B256>]| {
-                                        !(hashes
-                                            .into_iter()
-                                            .map(|v| {
-                                                let tree = &(*tree.clone());
-                                                let d = tree
-                                                    .get_root(*v.as_ref().unwrap())
-                                                    .unwrap()
-                                                    .get_root_action();
+                                .t_full_filter_map(|(tree, rest)| {
+                                    let (swap, hashes): (Vec<_>, Vec<_>) =
+                                        UnzipPadded::unzip_padded(rest);
+                                    if !(hashes
+                                        .iter()
+                                        .map(|v| {
+                                            let tree = &(*tree.clone());
+                                            let d = tree.get_root(*v).unwrap().get_root_action();
 
-                                                d.is_revert()
-                                                    || mev_executor_contract == d.get_to_address()
-                                            })
-                                            .any(|d| d)
-                                            || actions.iter().flatten().count() == 0)
-                                    },
-                                )
-                                .into_base_iter()
-                                .t_full_map(|(tree, a)| {
-                                    let (normalized_actions, tx_hashes): (Vec<_>, Vec<_>) =
-                                        TreeCollector::<Actions>::unzip_padded(a);
-                                    (
-                                        normalized_actions,
-                                        tx_hashes
-                                            .into_iter()
-                                            .map(|hash| {
-                                                tree.get_tx_info(hash, self.utils.db).unwrap()
-                                            })
-                                            .collect::<Vec<_>>(),
-                                    )
-                                });
+                                            d.is_revert()
+                                                || mev_executor_contract == d.get_to_address()
+                                        })
+                                        .any(|d| d)
+                                        || swap.iter().flatten().count() == 0)
+                                    {
+                                        Some((
+                                            swap,
+                                            hashes
+                                                .into_iter()
+                                                .map(|hash| {
+                                                    tree.get_tx_info(hash, self.utils.db).unwrap()
+                                                })
+                                                .collect::<Vec<_>>(),
+                                        ))
+                                    } else {
+                                        None
+                                    }
+                                })?;
 
-                            if let Some(mut acc) = acc.take() {
-                                if actions.is_empty() {
-                                    None
-                                } else {
-                                    acc.push((actions, info));
-                                    Some(acc)
-                                }
-                            } else {
+                            if actions.is_empty() {
                                 None
+                            } else {
+                                acc.push((actions, info));
+                                Some(acc)
                             }
                         })?
                         .into_iter()
@@ -176,8 +164,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<Vec<NormalizedSwap>>>,
     ) -> Option<Bundle> {
-        let back_run_swaps = searcher_actions
-            .pop()?
+        let back_run_actions = searcher_actions.pop()?;
+        let back_run_swaps = back_run_actions
+            .clone()
             .into_iter()
             .collect_action_vec(Actions::try_swaps_merged);
 
@@ -247,10 +236,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
 
-        let searcher_transfers = searcher_actions
+        let searcher_deltas = searcher_actions
             .into_iter()
             .flatten()
-            .collect_action_vec(Actions::try_transfer);
+            .chain(back_run_actions)
+            .account_for_actions();
 
         let mev_addresses: HashSet<Address> = possible_front_runs_info
             .iter()
@@ -259,29 +249,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        let transfer_rev_usd = self.utils.get_transfers_deltas_usd(
+        let rev_usd = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
             mev_addresses,
-            &searcher_transfers,
+            &searcher_deltas,
             metadata.clone(),
         )?;
-
-        let searcher_swaps = front_run_swaps
-            .iter()
-            .flatten()
-            .chain(back_run_swaps.iter())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let swap_rev_usd = self.utils.get_dex_swaps_rev_usd(
-            backrun_info.tx_index,
-            PriceAt::After,
-            &searcher_swaps,
-            metadata.clone(),
-        )?;
-
-        let rev_usd = transfer_rev_usd + swap_rev_usd;
 
         let profit_usd = (rev_usd - &gas_used).to_float();
 
@@ -302,7 +276,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         bundle_hashes.push(backrun_info.tx_hash);
 
         let header = self.utils.build_bundle_header(
-            vec![searcher_transfers],
+            vec![searcher_deltas],
             bundle_hashes,
             &backrun_info,
             profit_usd,
@@ -570,7 +544,7 @@ mod tests {
             .with_dex_prices()
             .needs_token(hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into())
             .with_gas_paid_usd(40.26)
-            .with_expected_profit_usd(-56.44);
+            .with_expected_profit_usd(1.18);
 
         inspector_util
             .run_inspector(
@@ -618,7 +592,7 @@ mod tests {
                 hex!("50D1c9771902476076eCFc8B2A83Ad6b9355a4c9").into(),
             ])
             .with_gas_paid_usd(90.875025)
-            .with_expected_profit_usd(-9.003);
+            .with_expected_profit_usd(13.6);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

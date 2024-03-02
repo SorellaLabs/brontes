@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
-    normalized_actions::NormalizedCollect,
+    normalized_actions::accounting::ActionAccounting,
     ActionIter, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
@@ -119,7 +119,6 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .collect_vec();
 
                     self.calculate_jit(
-                        tree.clone(),
                         info,
                         metadata.clone(),
                         searcher_actions,
@@ -136,7 +135,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
-        tree: Arc<BlockTree<Actions>>,
         info: [TxInfo; 2],
         metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Actions>>,
@@ -145,7 +143,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, fee_collect): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
+        let (mints, burns, collect): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
@@ -156,16 +154,26 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        let jit_fee =
-            self.get_collect_amount(info[1].tx_index as usize, fee_collect, metadata.clone());
+        let mev_addresses: HashSet<Address> = info
+            .iter()
+            .map(|i| i.eoa)
+            .chain(info.iter().filter_map(|i| i.mev_contract))
+            .collect::<HashSet<_>>();
 
-        let mint = self.get_total_pricing(
-            info[1].tx_index as usize,
-            mints
-                .iter()
-                .map(|mint| (mint.token.iter().map(|t| t.address), mint.amount.iter())),
+        let has_collect = !collect.is_empty();
+        let deltas = searcher_actions
+            .into_iter()
+            .flatten()
+            .filter(|a| if has_collect { !a.is_burn() } else { true })
+            .account_for_actions();
+
+        let rev = self.utils.get_deltas_usd(
+            info[1].tx_index,
+            PriceAt::After,
+            mev_addresses,
+            &deltas,
             metadata.clone(),
-        );
+        )?;
 
         let (hashes, gas_details): (Vec<_>, Vec<_>) = info
             .iter()
@@ -178,7 +186,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .unzip();
 
         let bribe = self.get_bribes(metadata.clone(), &gas_details);
-        let profit = jit_fee - mint - &bribe;
+        let profit = rev - &bribe;
 
         let mut bundle_hashes = Vec::new();
         bundle_hashes.push(hashes[0]);
@@ -186,7 +194,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         bundle_hashes.push(hashes[1]);
 
         let header = self.utils.build_bundle_header(
-            tree,
+            vec![deltas],
             bundle_hashes,
             &info[1],
             profit.to_float(),
@@ -318,63 +326,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe)
-    }
-
-    fn get_collect_amount(
-        &self,
-        idx: usize,
-        collect: Vec<NormalizedCollect>,
-        metadata: Arc<Metadata>,
-    ) -> Rational {
-        let (tokens, amount): (Vec<_>, Vec<_>) = collect
-            .into_iter()
-            .map(|t| (t.token.iter().map(|t| t.address).collect_vec(), t.amount))
-            .unzip();
-
-        self.get_liquidity_price(
-            idx,
-            metadata.clone(),
-            tokens.into_iter().flatten(),
-            amount.iter().flatten(),
-        )
-    }
-
-    fn get_total_pricing<'a>(
-        &self,
-        idx: usize,
-        iter: impl Iterator<
-            Item = (
-                (impl Iterator<Item = Address> + 'a),
-                (impl Iterator<Item = &'a Rational> + 'a),
-            ),
-        >,
-        metadata: Arc<Metadata>,
-    ) -> Rational {
-        iter.map(|(token, amount)| self.get_liquidity_price(idx, metadata.clone(), token, amount))
-            .sum()
-    }
-
-    fn get_liquidity_price<'a>(
-        &self,
-        idx: usize,
-        metadata: Arc<Metadata>,
-        token: impl Iterator<Item = Address>,
-        amount: impl Iterator<Item = &'a Rational>,
-    ) -> Rational {
-        token
-            .zip(amount)
-            .filter_map(|(token, amount)| {
-                Some(
-                    self.utils
-                        .get_token_price_on_dex(idx, PriceAt::After, token, &metadata)
-                        .or_else(|| {
-                            tracing::debug!(?token, "failed to get price for token");
-                            None
-                        })?
-                        * amount,
-                )
-            })
-            .sum::<Rational>()
     }
 }
 
