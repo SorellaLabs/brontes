@@ -18,10 +18,13 @@ pub struct Args {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    /// Run brontes
     #[command(name = "run")]
     Run(run::RunArgs),
+    /// Brontes database commands
     #[command(name = "db")]
     Database(db::Database),
+    /// Brontes Analytics commands
     #[command(name = "analytics")]
     Analytics(analytics::Analytics),
 }

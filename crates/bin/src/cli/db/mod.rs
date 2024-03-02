@@ -14,14 +14,18 @@ pub struct Database {
 
 #[derive(Debug, Subcommand)]
 pub enum DatabaseCommands {
-    /// Identifies vertically integrated searchers & maps them to their builders
-    /// in the database
+    /// Allows for inserting items into libmdbx
     #[command(name = "db-insert")]
     DbInserts(db_insert::AddToDb),
+    /// Query data from any libmdbx table and pretty print it in stdout
     #[command(name = "db-query")]
     DbQuery(db_query::DatabaseQuery),
+    /// Generates traces and will store them in libmdbx (also clickhouse if
+    /// --feature local-clickhouse)
     #[command(name = "generate-traces")]
     TraceRange(trace_range::TraceArgs),
+    /// For a given range, will fetch all data from the api and insert it into
+    /// libmdbx.
     #[command(name = "init")]
     Init(init::Init),
 }
