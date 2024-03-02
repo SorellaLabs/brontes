@@ -9,11 +9,10 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, ToFloatNearest, TreeFilter, TreeSearchBuilder,
+    ActionIter, IntoZipTree, ToFloatNearest, TreeBase, TreeIter, TreeSearchBuilder, UnzipPadded,
 };
-use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -42,7 +41,6 @@ pub struct PossibleSandwich {
 // Add support for this, where there is a frontrun & then backrun & in between
 // there is an unrelated tx that is not frontrun but is backrun. See the rari
 // trade here. https://libmev.com/blocks/18215838
-
 #[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
@@ -69,60 +67,76 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     };
 
-                    let victim_info = victims
-                        .iter()
-                        .map(|victims| {
-                            victims
-                                .iter()
-                                .map(|v| tree.get_tx_info(*v, self.utils.db).unwrap())
-                                .collect::<Vec<_>>()
+                    let (victim_swaps, victim_info): (Vec<_>, Vec<_>) = victims
+                        .into_iter()
+                        .map(|victim| {
+                            (tree.clone().collect_txes(&victim, search_args.clone()), victim)
                         })
-                        .collect_vec();
+                        .try_fold(vec![], |mut acc, (victim_set, hashes)| {
+                            let tree = victim_set.tree();
+                            let (actions, info) = victim_set
+                                .map(|s| {
+                                    s.into_iter().collect_action_vec(Actions::try_swaps_merged)
+                                })
+                                .into_zip_tree(tree)
+                                .tree_zip_with(hashes.into_iter())
+                                .t_full_filter_map(|(tree, rest)| {
+                                    let (swap, hashes): (Vec<_>, Vec<_>) =
+                                        UnzipPadded::unzip_padded(rest);
+                                    if !(hashes
+                                        .iter()
+                                        .map(|v| {
+                                            let tree = &(*tree.clone());
+                                            let d = tree.get_root(*v).unwrap().get_root_action();
 
-                    let victim_actions = victims
-                        .iter()
-                        .map(|victim| tree.collect_txes(victim, search_args.clone()))
-                        .collect::<Vec<_>>();
+                                            d.is_revert()
+                                                || mev_executor_contract == d.get_to_address()
+                                        })
+                                        .any(|d| d)
+                                        || swap.iter().flatten().count() == 0)
+                                    {
+                                        Some((
+                                            swap,
+                                            hashes
+                                                .into_iter()
+                                                .map(|hash| {
+                                                    tree.get_tx_info(hash, self.utils.db).unwrap()
+                                                })
+                                                .collect::<Vec<_>>(),
+                                        ))
+                                    } else {
+                                        None
+                                    }
+                                })?;
 
-                    // if there are no victims in any part of sandwich, return
-                    if victim_actions
-                        .iter()
-                        .flatten()
-                        .flatten()
-                        .filter(|f| f.is_swap())
-                        .count()
-                        == 0
-                    {
-                        return None
-                    }
-
-                    if victims
-                        .iter()
-                        .flatten()
-                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                        .any(|d| d.is_revert() || mev_executor_contract == d.get_to_address())
-                    {
-                        return None
-                    }
+                            if actions.is_empty() {
+                                None
+                            } else {
+                                acc.push((actions, info));
+                                Some(acc)
+                            }
+                        })?
+                        .into_iter()
+                        .unzip();
 
                     let frontrun_info = possible_frontruns
                         .iter()
                         .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
                         .collect::<Vec<_>>();
-
                     let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
 
-                    let searcher_actions = tree.collect_txes_deduping(
-                        possible_frontruns
-                            .iter()
-                            .copied()
-                            .chain(std::iter::once(possible_backrun))
-                            .collect::<Vec<_>>()
-                            .as_slice(),
-                        search_args.clone(),
-                        (Actions::try_swaps_merged_dedup(),),
-                        (Actions::try_transfer_dedup(),),
-                    );
+                    let searcher_actions: Vec<Vec<Actions>> = tree
+                        .clone()
+                        .collect_txes(
+                            possible_frontruns
+                                .iter()
+                                .copied()
+                                .chain(std::iter::once(possible_backrun))
+                                .collect::<Vec<_>>()
+                                .as_slice(),
+                            search_args.clone(),
+                        )
+                        .collect::<Vec<_>>();
 
                     self.calculate_sandwich(
                         tree.clone(),
@@ -131,7 +145,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         back_run_info,
                         searcher_actions,
                         victim_info,
-                        victim_actions,
+                        victim_swaps,
                     )
                 },
             )
@@ -148,10 +162,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,
         mut victim_info: Vec<Vec<TxInfo>>,
-        mut victim_actions: Vec<Vec<Vec<Actions>>>,
+        mut victim_actions: Vec<Vec<Vec<NormalizedSwap>>>,
     ) -> Option<Bundle> {
-        let back_run_swaps = searcher_actions
-            .pop()?
+        let back_run_actions = searcher_actions.pop()?;
+        let back_run_swaps = back_run_actions
+            .clone()
             .into_iter()
             .collect_action_vec(Actions::try_swaps_merged);
 
@@ -163,7 +178,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .into_iter()
                     .collect_action_vec(Actions::try_swaps_merged)
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
         // front run that is unrelated
@@ -177,14 +192,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
 
-                if victim_actions
-                    .iter()
-                    .flatten()
-                    .flatten()
-                    .filter(|f| f.is_swap())
-                    .count()
-                    == 0
-                {
+                if victim_actions.iter().flatten().flatten().count() == 0 {
                     return None
                 }
 
@@ -202,16 +210,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             return None
         }
 
-        let victim_swaps = victim_actions
-            .iter()
-            .flatten()
-            .map(|tx_actions| {
-                tx_actions
-                    .clone()
-                    .into_iter()
-                    .collect_action_vec(Actions::try_swaps_merged)
-            })
-            .collect::<Vec<_>>();
+        let victim_swaps = victim_actions.into_iter().flatten().collect::<Vec<_>>();
 
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
@@ -237,10 +236,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let gas_used = metadata.get_gas_price_usd(gas_used);
 
-        let searcher_transfers = searcher_actions
+        let searcher_deltas = searcher_actions
             .into_iter()
             .flatten()
-            .collect_action_vec(Actions::try_transfer);
+            .chain(back_run_actions)
+            .account_for_actions();
 
         let mev_addresses: HashSet<Address> = possible_front_runs_info
             .iter()
@@ -249,29 +249,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        let transfer_rev_usd = self.utils.get_transfers_deltas_usd(
+        let rev_usd = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
             mev_addresses,
-            &searcher_transfers,
+            &searcher_deltas,
             metadata.clone(),
         )?;
-
-        let searcher_swaps = front_run_swaps
-            .iter()
-            .flatten()
-            .chain(back_run_swaps.iter())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let swap_rev_usd = self.utils.get_dex_swaps_rev_usd(
-            backrun_info.tx_index,
-            PriceAt::After,
-            &searcher_swaps,
-            metadata.clone(),
-        )?;
-
-        let rev_usd = transfer_rev_usd + swap_rev_usd;
 
         let profit_usd = (rev_usd - &gas_used).to_float();
 
@@ -292,7 +276,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         bundle_hashes.push(backrun_info.tx_hash);
 
         let header = self.utils.build_bundle_header(
-            tree,
+            vec![searcher_deltas],
             bundle_hashes,
             &backrun_info,
             profit_usd,
@@ -320,7 +304,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn has_pool_overlap(
         front_run_swaps: &[Vec<NormalizedSwap>],
         back_run_swaps: &[NormalizedSwap],
-        victim_actions: &[Vec<Vec<Actions>>],
+        victim_actions: &[Vec<Vec<NormalizedSwap>>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
         let front_run_pools = front_run_swaps
@@ -338,12 +322,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // victim, a eoa needs to be a victim. this allows for more complex
         // detection such as having a approve and then a swap in different
         // transactions.
-        let grouped_victims = victim_info
-            .iter()
-            .zip(victim_actions)
-            .flat_map(|(info, actions)| info.iter().zip(actions))
-            .map(|(info, actions)| (info.eoa, actions))
-            .into_group_map();
+        let grouped_victims = itertools::Itertools::into_group_map(
+            victim_info
+                .iter()
+                .zip(victim_actions)
+                .flat_map(|(info, actions)| info.iter().zip(actions))
+                .map(|(info, actions)| (info.eoa, actions)),
+        );
 
         // for each victim eoa, ensure they are a victim of a frontrun and a backrun
         grouped_victims
@@ -352,14 +337,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 v.iter()
                     .cloned()
                     .flatten()
-                    .filter(|action| action.is_swap())
-                    .map(|f| f.force_swap_ref().pool)
-                    .any(|pool| front_run_pools.contains(&pool))
+                    .any(|pool| front_run_pools.contains(&pool.pool))
                     && v.into_iter()
                         .flatten()
-                        .filter(|action| action.is_swap())
-                        .map(|f| f.force_swap_ref().pool)
-                        .any(|pool| back_run_pools.contains(&pool))
+                        .any(|pool| back_run_pools.contains(&pool.pool))
             })
             .all(|was_victim| was_victim)
     }
@@ -563,7 +544,7 @@ mod tests {
             .with_dex_prices()
             .needs_token(hex!("8642a849d0dcb7a15a974794668adcfbe4794b56").into())
             .with_gas_paid_usd(40.26)
-            .with_expected_profit_usd(-56.44);
+            .with_expected_profit_usd(1.18);
 
         inspector_util
             .run_inspector(
@@ -611,7 +592,7 @@ mod tests {
                 hex!("50D1c9771902476076eCFc8B2A83Ad6b9355a4c9").into(),
             ])
             .with_gas_paid_usd(90.875025)
-            .with_expected_profit_usd(-9.003);
+            .with_expected_profit_usd(13.6);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

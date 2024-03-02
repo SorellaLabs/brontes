@@ -1,4 +1,6 @@
+pub mod accounting;
 pub mod batch;
+pub mod comparison;
 pub mod eth_transfer;
 pub mod flashloan;
 pub mod lending;
@@ -8,10 +10,10 @@ pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
-pub mod utils;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
+use accounting::{AddressDeltas, TokenAccounting};
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 use clickhouse::InsertRow;
@@ -23,7 +25,6 @@ pub use liquidity::*;
 pub use pool::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
-use serde::{Deserialize, Serialize};
 pub use swaps::*;
 pub use transfer::*;
 
@@ -131,7 +132,7 @@ impl NormalizedAction for Actions {
 }
 
 /// A normalized action that has been classified
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Deserialize, PartialEq, Eq)]
 pub enum Actions {
     Swap(NormalizedSwap),
     SwapWithFee(NormalizedSwapWithFee),
@@ -171,7 +172,7 @@ impl InsertRow for Actions {
     }
 }
 
-impl Serialize for Actions {
+impl serde::Serialize for Actions {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -406,7 +407,6 @@ macro_rules! extra_impls {
                         Box::new(Actions::[<try _$action_name:snake>])
                                 as Box<dyn Fn(Actions) -> Option<$ret>>
                     }
-
                 )*
             }
 
@@ -430,7 +430,8 @@ extra_impls!(
     (SwapWithFee, NormalizedSwapWithFee),
     (Transfer, NormalizedTransfer),
     (Liquidation, NormalizedLiquidation),
-    (FlashLoan, NormalizedFlashLoan)
+    (FlashLoan, NormalizedFlashLoan),
+    (Batch, NormalizedBatch)
 );
 
 /// Custom impl for itering over swaps and swap with fee
@@ -465,5 +466,28 @@ impl Actions {
     /// Merges swap and swap with fee
     pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
         Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
+    }
+}
+
+impl TokenAccounting for Actions {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        match self {
+            Actions::Swap(swap) => swap.apply_token_deltas(delta_map),
+            Actions::Transfer(transfer) => transfer.apply_token_deltas(delta_map),
+            Actions::FlashLoan(flash_loan) => flash_loan.apply_token_deltas(delta_map),
+            Actions::Liquidation(liquidation) => liquidation.apply_token_deltas(delta_map),
+            Actions::Batch(batch) => batch.apply_token_deltas(delta_map),
+            Actions::Burn(burn) => burn.apply_token_deltas(delta_map),
+            Actions::Mint(mint) => mint.apply_token_deltas(delta_map),
+            Actions::SwapWithFee(swap_with_fee) => swap_with_fee.swap.apply_token_deltas(delta_map),
+            Actions::Collect(collect) => collect.apply_token_deltas(delta_map),
+            Actions::Unclassified(_) => (), /* Potentially no token deltas to apply, adjust as */
+            // necessary
+            Actions::SelfDestruct(_self_destruct) => (),
+            Actions::EthTransfer(_eth_transfer) => (),
+            Actions::NewPool(_new_pool) => (),
+            Actions::PoolConfigUpdate(_pool_update) => (),
+            Actions::Revert => (), // No token deltas to apply for a revert
+        }
     }
 }
