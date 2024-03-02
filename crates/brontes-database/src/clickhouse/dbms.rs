@@ -3,6 +3,7 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         builder::{BuilderInfoWithAddress, BuilderStatsWithAddress},
         dex::DexQuotesWithBlockNumber,
+        searcher,
         searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
         token_info::TokenInfoWithAddress,
     },
@@ -25,6 +26,7 @@ clickhouse_dbms!(
         ClickhouseBundleHeader,
         ClickhouseMevBlocks,
         ClickhouseCexDex,
+        ClickhouseSearcherTx,
         ClickhouseJit,
         ClickhouseJitSandwich,
         ClickhouseSandwiches,
@@ -70,6 +72,14 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseBundleHeader,
     BundleHeader,
+    "crates/brontes-database/src/clickhouse/tables/"
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "mev",
+    ClickhouseSearcherTx,
+    SearcherTx,
     "crates/brontes-database/src/clickhouse/tables/"
 );
 

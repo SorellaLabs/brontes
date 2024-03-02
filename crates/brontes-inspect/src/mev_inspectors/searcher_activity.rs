@@ -77,7 +77,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                         data: BundleData::Unknown(SearcherTx {
                             tx_hash,
                             gas_details: info.gas_details,
-                            searcher_transfers: transfers
+                            transfers: transfers
                                 .into_iter()
                                 .collect_action_vec(Actions::try_transfer),
                         }),

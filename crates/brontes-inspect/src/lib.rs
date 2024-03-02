@@ -84,6 +84,7 @@
 pub mod composer;
 pub mod discovery;
 pub mod mev_inspectors;
+use mev_inspectors::searcher_activity::SearcherActivity;
 pub use mev_inspectors::*;
 
 #[cfg(feature = "tests")]
@@ -124,8 +125,9 @@ pub enum Inspectors {
     CexDex,
     Jit,
     Liquidations,
-    //LongTail,
     Sandwich,
+    SearcherActivity,
+    //LongTail,
 }
 
 type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
@@ -142,9 +144,6 @@ impl Inspectors {
                 static_object(AtomicArbInspector::new(quote_token, db)) as DynMevInspector
             }
             Self::Jit => static_object(JitInspector::new(quote_token, db)) as DynMevInspector,
-            //Self::LongTail => {
-            //  static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
-            //}
             Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
                 as DynMevInspector,
             Self::Sandwich => {
@@ -153,6 +152,12 @@ impl Inspectors {
             Self::Liquidations => {
                 static_object(LiquidationInspector::new(quote_token, db)) as DynMevInspector
             }
+            Self::SearcherActivity => {
+                static_object(SearcherActivity::new(quote_token, db)) as DynMevInspector
+            }
+            //Self::LongTail => {
+            //  static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
+            //}
         }
     }
 }

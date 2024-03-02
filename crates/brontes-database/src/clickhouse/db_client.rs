@@ -154,7 +154,9 @@ impl Clickhouse {
                 BundleData::Liquidation(l) => {
                     self.client.insert_one::<ClickhouseLiquidations>(&l).await?
                 }
-                BundleData::Unknown => (),
+                BundleData::Unknown(u) => {
+                    self.client.insert_one::<ClickhouseSearcherTx>(&u).await?
+                }
             };
 
             Ok(())
