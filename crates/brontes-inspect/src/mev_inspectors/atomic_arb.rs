@@ -115,11 +115,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             metadata.clone(),
         )?;
 
-        tracing::info!(?rev_usd);
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used);
         let profit = rev_usd - gas_used_usd;
-        tracing::info!(?profit);
 
         let is_profitable = profit > Rational::ZERO;
 
