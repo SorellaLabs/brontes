@@ -91,10 +91,13 @@ impl fmt::Display for MevBlock {
             "  - Builder ETH Profit: {:.6} ETH",
             format!("{:.6}", self.builder_eth_profit).color(builder_profit_color)
         )?;
+
+        let builder_mev_profit_color =
+            if self.builder_mev_profit_usd < 0.0 { "red" } else { "green" };
         writeln!(
             f,
             "  - Builder MEV Profit: {:.6} USD",
-            format!("{:.6}", self.builder_mev_profit_usd).green()
+            format!("{:.6}", self.builder_mev_profit_usd).color(builder_mev_profit_color)
         )?;
 
         // Proposer section
