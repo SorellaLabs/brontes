@@ -23,7 +23,7 @@ action_impl!(
     |
     info: CallInfo,
     call_data: buyGemCall,
-    log_data: MakerPSMbuyGemCallLogs,
+    log_data: MakerPSMBuyGemCallLogs,
     db_tx: &DB| {
 
         // For the PSM, the token0 should always be set to DAI and token1 is the gem (USDC or USDP)
@@ -37,7 +37,7 @@ action_impl!(
         let amount_out = call_data.gemAmt.to_scaled_rational(t1_info.decimals);
 
         // The fee in DAI decimals
-        let fee = log_data.BuyGem_field.fee;
+        let fee = log_data.buy_gem_field?.fee;
         let fee_amount = fee.to_scaled_rational(t0_info.decimals);
 
         // The amount of DAI being spent, amount out + fee
@@ -71,7 +71,7 @@ action_impl!(
     |
     info: CallInfo,
     call_data: sellGemCall,
-    log_data: MakerPSMsellGemCallLogs,
+    log_data: MakerPSMSellGemCallLogs,
     db_tx: &DB| {
         // For the PSM, the token0 is DAI and token1 is the gem (USDC or USDP)
         let details = db_tx.get_protocol_details(info.target_address)?;
@@ -86,7 +86,7 @@ action_impl!(
 
 
         // The fee in DAI decimals
-        let fee = log_data.SellGem_field.fee;
+        let fee = log_data.sell_gem_field?.fee;
         let fee_amount = fee.to_scaled_rational(t0_info.decimals);
 
         // The amount of DAI being received, amount in - fee

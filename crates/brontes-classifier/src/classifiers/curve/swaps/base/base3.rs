@@ -12,10 +12,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool3exchangeCallLogs,
+    log: CurveBasePool3ExchangeCallLogs,
     db_tx: &DB
     |{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
