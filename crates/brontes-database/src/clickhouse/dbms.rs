@@ -3,7 +3,6 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         builder::{BuilderInfoWithAddress, BuilderStatsWithAddress},
         dex::DexQuotesWithBlockNumber,
-        searcher,
         searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
         token_info::TokenInfoWithAddress,
     },
