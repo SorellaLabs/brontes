@@ -2,13 +2,19 @@ use std::fmt::Debug;
 
 use clickhouse::Row;
 use malachite::Rational;
+use redefined::Redefined;
 use reth_primitives::Address;
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
-use crate::db::token_info::TokenInfoWithAddress;
+use crate::db::{
+    redefined_types::{malachite::*, primitives::*},
+    token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
+};
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedTransfer {
     pub trace_index: u64,
     pub from:        Address,

@@ -47,7 +47,7 @@ impl Mev for BundleData {
             BundleData::Jit(m) => m.mev_type(),
             BundleData::CexDex(m) => m.mev_type(),
             BundleData::Liquidation(m) => m.mev_type(),
-            BundleData::Unknown(tx) => MevType::Unknown,
+            BundleData::Unknown(_) => MevType::Unknown,
         }
     }
 

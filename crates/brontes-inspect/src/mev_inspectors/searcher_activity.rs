@@ -3,14 +3,14 @@ use std::{collections::HashSet, sync::Arc};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, Liquidation, MevType},
+    mev::{Bundle, BundleData, MevType, SearcherTx},
     normalized_actions::{accounting::ActionAccounting, Actions},
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reth_primitives::{b256, Address};
+use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
@@ -42,8 +42,8 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
             .filter_map(|(tx_hash, transfers)| {
                 let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
-                if info.searcher_eoa_info.is_some() || info.mev_contract.is_some() {
-                    let deltas = transfers.into_iter().account_for_actions();
+                (info.searcher_eoa_info.is_some() || info.mev_contract.is_some()).then(|| {
+                    let deltas = transfers.clone().into_iter().account_for_actions();
 
                     let mut searcher_address: HashSet<Address> = HashSet::new();
                     searcher_address.insert(info.eoa);
@@ -54,19 +54,35 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                     let rev_usd = self.utils.get_deltas_usd(
                         info.tx_index,
                         PriceAt::After,
-                        &searcher_address,
+                        searcher_address,
                         &deltas,
                         metadata.clone(),
                     )?;
+                    let gas_paid = metadata.get_gas_price_usd(info.gas_details.gas_paid());
+                    let profit = rev_usd - gas_paid;
 
-                    Some(SearcherTx {
-                        tx_hash,
-                        searcher_addresses: searcher_address,
-                        revenue_usd: rev_usd,
+                    let header = self.utils.build_bundle_header(
+                        vec![deltas],
+                        vec![tx_hash],
+                        &info,
+                        profit.to_float(),
+                        PriceAt::Average,
+                        &[info.gas_details],
+                        metadata.clone(),
+                        MevType::Unknown,
+                    );
+
+                    Some(Bundle {
+                        header,
+                        data: BundleData::Unknown(SearcherTx {
+                            tx_hash,
+                            gas_details: info.gas_details,
+                            searcher_transfers: transfers
+                                .into_iter()
+                                .collect_action_vec(Actions::try_transfer),
+                        }),
                     })
-                } else {
-                    None
-                }
+                })?
             })
             .collect::<Vec<_>>()
     }

@@ -1,8 +1,9 @@
 use std::fmt::Debug;
 
-use ::serde::ser::{SerializeStruct, Serializer};
+use ::serde::ser::Serializer;
 #[allow(unused)]
 use clickhouse::row::*;
+use clickhouse::Row;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -13,13 +14,12 @@ use crate::{
     db::redefined_types::primitives::*,
     mev::{Mev, MevType},
     normalized_actions::*,
-    tree::ClickhouseVecGasDetails,
 };
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::NormalizedTransfer, GasDetails};
 
 #[serde_as]
-#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
+#[derive(Debug, Row, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherTx {
     pub tx_hash:            B256,
