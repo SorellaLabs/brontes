@@ -60,7 +60,11 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .await
     {
-        panic!("Failed to insert classified data into libmdbx: {:?} at block: {}", e, block_number);
+        tracing::error!(
+            "Failed to insert classified data into libmdbx: {:?} at block: {}",
+            e,
+            block_number
+        );
     }
 }
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
@@ -98,7 +102,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             )
             .await
         {
-            panic!("Failed to update searcher info in the database: {:?}", e);
+            tracing::error!("Failed to update searcher info in the database: {:?}", e);
         }
     }
 }
