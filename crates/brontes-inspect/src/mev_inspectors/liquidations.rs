@@ -35,11 +35,10 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     ) -> Self::Result {
         let liq_txs = tree
             .clone()
-            .collect_all(TreeSearchBuilder::default().with_actions([
-                Actions::is_swap,
-                Actions::is_liquidation,
-                Actions::is_transfer,
-            ]))
+            .collect_all(
+                TreeSearchBuilder::default()
+                    .with_actions([Actions::is_swap, Actions::is_liquidation]),
+            )
             .collect_vec();
 
         liq_txs
@@ -79,10 +78,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             )
             .collect::<HashSet<_>>();
 
-        let deltas = actions
-            .into_iter()
-            .filter(|a| !a.is_transfer())
-            .account_for_actions();
+        let deltas = actions.into_iter().account_for_actions();
 
         let rev = self.utils.get_deltas_usd(
             info.tx_index,
