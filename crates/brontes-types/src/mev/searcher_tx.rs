@@ -51,7 +51,7 @@ impl Mev for SearcherTx {
 }
 
 impl Serialize for SearcherTx {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
