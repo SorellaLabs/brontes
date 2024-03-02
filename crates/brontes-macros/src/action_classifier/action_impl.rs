@@ -136,11 +136,17 @@ impl Parse for ActionMacro {
         let (logs, return_data, call_data) = parse_config(&mut input)?;
         let call_function = parse_closure(&mut input)?;
 
+        let uppercase_path_to_call = uppercase_first_char(
+            &path_to_call.segments[path_to_call.segments.len() - 1]
+                .ident
+                .to_string(),
+        );
+
         let exchange_name_w_call = Ident::new(
             &format!(
                 "{}{}",
                 protocol_path.segments[protocol_path.segments.len() - 1].ident,
-                path_to_call.segments[path_to_call.segments.len() - 1].ident
+                uppercase_path_to_call
             ),
             Span::call_site(),
         );
@@ -286,7 +292,9 @@ fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<LogConfig>
         };
 
         let mut fallback = Vec::new();
+
         while buf.peek(Token![|]) {
+            let _ = buf.parse::<Token![|]>()?;
             let Ok(log_type) = buf.parse::<Ident>() else {
                 break;
             };
@@ -311,4 +319,12 @@ fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<LogConfig>
     }
 
     Ok(log_types)
+}
+
+fn uppercase_first_char(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
 }

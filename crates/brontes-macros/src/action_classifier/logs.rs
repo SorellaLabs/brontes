@@ -109,7 +109,7 @@ impl<'a> LogData<'a> {
                             quote!(#mod_path::#name)
                         };
 
-                        quote!(#field : ::eyre::Result<#data_type>)
+                        quote!([<#field:snake>]: ::eyre::Result<#data_type>)
                     })
                     .collect_vec()
             })
@@ -128,7 +128,7 @@ impl<'a> LogData<'a> {
                             name
                         );
 
-                        quote!(#field : self.#field.ok_or_else(|| {
+                        quote!([<#field:snake>]: self.[<#field:snake>].ok_or_else(|| {
                                 ::tracing::warn!(?call_info, "{}", #message);
                                 ::eyre::eyre!("call_info: {:?}, {}",call_info, #message)
                         }))
@@ -158,39 +158,94 @@ impl<'a> LogData<'a> {
 
         (
             quote!(
-                #[allow(non_camel_case_types)]
-                struct #log_return_builder_struct_name {
-                    #(
-                        #log_field: Option<#log_field_ty>
-                    ),*
-                }
-
-                #[allow(non_camel_case_types)]
-                struct #log_return_struct_name {
-                    #(#res_struct_fields),*
-                }
-
-                impl #log_return_builder_struct_name {
-                    fn new() -> Self {
-                        Self {
-                            #(
-                                #log_field: None
-                            ),*
-                        }
+                ::paste::paste!(
+                    #[allow(non_camel_case_types)]
+                    struct [<#log_return_builder_struct_name:camel>] {
+                        #(
+                            [<#log_field:snake>]: Option<#log_field_ty>
+                        ),*
                     }
 
-                    fn build(self, call_info: &::brontes_types::structured_trace::CallFrameInfo<'_>)
-                        -> #log_return_struct_name {
-                        #log_return_struct_name {
-                            #(
-                                #return_struct_build_fields
-                            ),*
+                    #[allow(non_camel_case_types)]
+                    struct #log_return_struct_name {
+                        #(#res_struct_fields),*
+                    }
+
+                    impl [<#log_return_builder_struct_name:camel>] {
+                        fn new() -> Self {
+                            Self {
+                                #(
+                                    [<#log_field:snake>]: None
+                                ),*
+                            }
+                        }
+
+                        fn build(self, call_info: &::brontes_types::structured_trace::CallFrameInfo<'_>)
+                            -> #log_return_struct_name {
+                                #log_return_struct_name {
+                                #(
+                                    #return_struct_build_fields
+                                ),*
+                            }
                         }
                     }
-                }
+                );
             ),
             log_return_builder_struct_name,
         )
+    }
+
+
+    fn parse_different_paths(&self, config: &ParsedLogConfig) -> TokenStream {
+        let ParsedLogConfig {
+            check_indexes,
+            log_field_names,
+            log_names,
+            is_repeatings,
+            ignore_befores,
+            ..
+        } = config;
+
+        let mut stream = TokenStream::new();
+
+        for (enum_i, (indexes, log_field_name, log_name, repeating, ignore_before)) in
+            multizip((check_indexes, log_field_names, log_names, is_repeatings, ignore_befores))
+                .enumerate()
+        {
+            let res = match (*repeating, *ignore_before) {
+                (true, true) => self.parse_repeating_and_ignore_before(
+                    enum_i,
+                    log_names,
+                    log_name,
+                    log_field_name,
+                    indexes,
+                ),
+                (true, false) => self.parse_repeating(log_name, log_field_name, indexes),
+                (false, true) => {
+                    let next_log = log_names.get(enum_i + 1);
+                    self.parse_ignore_before(
+                        next_log,
+                        log_name,
+                        indexes,
+                        log_field_name
+                            .into_iter()
+                            .map(|field| {
+                                quote!(
+                                    ::paste::paste!(
+                                        log_res.[<#field:snake>] = Some(decoded_result);
+                                    );
+                                )
+                            })
+                            .collect_vec(),
+                    )
+                }
+                (false, false) => self.parse_default(log_name, log_field_name, indexes),
+            };
+
+            stream.extend(res);
+        }
+
+        stream
     }
 
     fn parse_ignore_before(
@@ -243,56 +298,6 @@ impl<'a> LogData<'a> {
         )
     }
 
-    fn parse_different_paths(&self, config: &ParsedLogConfig) -> TokenStream {
-        let ParsedLogConfig {
-            check_indexes,
-            log_field_names,
-            log_names,
-            is_repeatings,
-            ignore_befores,
-            ..
-        } = config;
-
-        let mut stream = TokenStream::new();
-
-        for (enum_i, (indexes, log_field_name, log_name, repeating, ignore_before)) in
-            multizip((check_indexes, log_field_names, log_names, is_repeatings, ignore_befores))
-                .enumerate()
-        {
-            let res = match (*repeating, *ignore_before) {
-                (true, true) => self.parse_repeating_and_ignore_before(
-                    enum_i,
-                    log_names,
-                    log_name,
-                    log_field_name,
-                    indexes,
-                ),
-                (true, false) => self.parse_repeating(log_name, log_field_name, indexes),
-                (false, true) => {
-                    let next_log = log_names.get(enum_i + 1);
-                    self.parse_ignore_before(
-                        next_log,
-                        log_name,
-                        indexes,
-                        log_field_name
-                            .into_iter()
-                            .map(|field| {
-                                quote!(
-                                    log_res.#field = Some(decoded_result);
-                                )
-                            })
-                            .collect_vec(),
-                    )
-                }
-                (false, false) => self.parse_default(log_name, log_field_name, indexes),
-            };
-
-            stream.extend(res);
-        }
-
-        stream
-    }
-
     fn parse_repeating_and_ignore_before(
         &self,
         enum_i: usize,
@@ -327,7 +332,7 @@ impl<'a> LogData<'a> {
             #parse
             #(
                 ::paste::paste!(
-                    log_res.#log_field_name = Some([<#log_field_name:snake _res>]);
+                    log_res.[<#log_field_name:snake>] = Some([<#log_field_name:snake _res>]);
                 );
             )*
         )
@@ -382,7 +387,7 @@ impl<'a> LogData<'a> {
                 #(
                     ::paste::paste!(
                         repeating_modifier + = [<#log_field_name:snake _res>].len();
-                        log_res.#log_field_name = Some([<#log_field_name:snake _res>]);
+                        log_res.[<#log_field_name:snake>] = Some([<#log_field_name:snake _res>]);
                     );
                 )*
         )
@@ -398,14 +403,16 @@ impl<'a> LogData<'a> {
         quote!(
         'possible: {
                 if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier) {
+                    ::paste::paste!(
                     #(
                         if let Ok(decoded) = <#mod_path::#log_name
                             as ::alloy_sol_types::SolEvent>
                             ::decode_log_data(&log.data, false) {
-                                log_res.#log_field_name = Some(decoded);
+                                log_res.[<#log_field_name:snake>] = Some(decoded);
                                 break 'possible
                         }
                     )*
+                    );
 
                     ::tracing::error!(?call_info,
                                       ?self,
@@ -435,7 +442,9 @@ impl ToTokens for LogData<'_> {
             }
             #struct_parsing
 
-            let mut log_res = #log_builder_struct::new();
+            paste::paste!(
+                let mut log_res = [<#log_builder_struct:camel>]::new();
+            );
             let mut repeating_modifier = 0usize;
 
             #parsed_paths

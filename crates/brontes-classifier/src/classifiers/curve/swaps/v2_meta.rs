@@ -12,9 +12,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2MetapoolImplexchange_0CallLogs,
+    log: CurveV2MetapoolImplExchange_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -59,9 +59,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2MetapoolImplexchange_1CallLogs,
+    log: CurveV2MetapoolImplExchange_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -106,9 +106,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2MetapoolImplexchange_underlying_0CallLogs,
+    log: CurveV2MetapoolImplExchange_underlying_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
+        let log = log.token_exchange_underlying_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -160,9 +160,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2MetapoolImplexchange_underlying_1CallLogs,
+    log: CurveV2MetapoolImplExchange_underlying_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
+        let log = log.token_exchange_underlying_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
