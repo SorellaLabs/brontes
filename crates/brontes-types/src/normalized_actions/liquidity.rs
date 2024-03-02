@@ -10,6 +10,7 @@ use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
+use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 use crate::{
     db::{
         redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
@@ -30,6 +31,16 @@ pub struct NormalizedMint {
     pub amount:      Vec<Rational>,
 }
 
+impl TokenAccounting for NormalizedMint {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_minted = -amount.clone();
+            apply_delta(self.from, self.token[index].address, amount_minted, delta_map);
+            apply_delta(self.pool, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
+}
+
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedBurn {
@@ -43,6 +54,16 @@ pub struct NormalizedBurn {
     pub amount:      Vec<Rational>,
 }
 
+impl TokenAccounting for NormalizedBurn {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_burned = -amount.clone();
+            apply_delta(self.pool, self.token[index].address, amount_burned, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
+}
+
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedCollect {
@@ -54,6 +75,16 @@ pub struct NormalizedCollect {
     pub pool:        Address,
     pub token:       Vec<TokenInfoWithAddress>,
     pub amount:      Vec<Rational>,
+}
+
+impl TokenAccounting for NormalizedCollect {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.amount.iter().enumerate().for_each(|(index, amount)| {
+            let amount_collected = -amount.clone();
+            apply_delta(self.pool, self.token[index].address, amount_collected, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
+        });
+    }
 }
 
 #[derive(Default)]
