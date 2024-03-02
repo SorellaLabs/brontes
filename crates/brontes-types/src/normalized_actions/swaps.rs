@@ -14,7 +14,10 @@ use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use super::Actions;
+use super::{
+    accounting::{apply_delta, AddressDeltas, TokenAccounting},
+    Actions,
+};
 use crate::{
     db::{
         redefined_types::{malachite::*, primitives::*},
@@ -66,7 +69,7 @@ impl NormalizedSwap {
     /// Calculates the exchange rate for a given DEX swap
     pub fn swap_rate(&self) -> Rational {
         if self.amount_out == Rational::ZERO {
-            return Rational::ZERO;
+            return Rational::ZERO
         }
 
         &self.amount_in / &self.amount_out
@@ -89,6 +92,19 @@ impl Display for NormalizedSwap {
             "Swap {} {} to {} {} via {}",
             amount_in, token_in_symbol, amount_out, token_out_symbol, protocol
         )
+    }
+}
+
+impl TokenAccounting for NormalizedSwap {
+    /// Note that we skip the pool deltas accounting to focus solely on the
+    /// swapper & recipients delta. We might want to change this in the
+    /// future.
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let amount_in = self.amount_in.clone();
+        let amount_out = self.amount_out.clone();
+
+        apply_delta(self.from, self.token_in.address, -amount_in.clone(), delta_map);
+        apply_delta(self.recipient, self.token_out.address, amount_out, delta_map);
     }
 }
 
