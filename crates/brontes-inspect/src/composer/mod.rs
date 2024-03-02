@@ -276,7 +276,7 @@ pub mod tests {
 
     use super::*;
     use crate::{
-        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS, USDT_ADDRESS},
+        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS},
         Inspectors,
     };
 
