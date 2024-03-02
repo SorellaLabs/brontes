@@ -9,7 +9,6 @@ use alloy_primitives::Address;
 use brontes_types::{pair::Pair, traits::TracingProvider, unzip_either::IterExt};
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
-use tracing::error;
 
 use crate::{errors::AmmError, protocols::LoadState, types::PoolState, Protocol};
 
@@ -249,9 +248,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult { block, state: Some(state), load_result: load };
                     Poll::Ready(Some(res))
                 }
-                Err((pool_address, dex, block, pool_pair, err)) => {
-                    error!(%block, %err, ?pool_address,"lazy load failed");
-
+                Err((pool_address, dex, block, pool_pair, _)) => {
                     let dependent_pairs = self.remove_state_trackers(block, &pool_address);
                     dependent_pairs.iter().for_each(|pair| {
                         self.on_state_fail(block, pair);
