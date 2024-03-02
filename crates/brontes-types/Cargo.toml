@@ -83,9 +83,10 @@ reth-tracing-ext.workspace = true
 
 
 [features]
-default = []
+default = ["api-des"]
 tests = []
 api = []
+api-des = []
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",
