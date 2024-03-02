@@ -98,7 +98,7 @@ action_impl!(
     log: CurveBasePool2Remove_liquidity_one_coinCallLogs,
     db_tx: &DB
     |{
-        let log = log.remove_liquidity_one_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 

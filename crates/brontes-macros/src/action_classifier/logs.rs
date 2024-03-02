@@ -99,7 +99,7 @@ impl<'a> LogData<'a> {
             .zip(log_repeating.iter())
             .flat_map(|(names, repeating)| {
                 names
-                    .into_iter()
+                    .iter()
                     .map(|name| {
                         let field = Ident::new(&(name.to_string() + "_field"), Span::call_site());
 
@@ -119,7 +119,7 @@ impl<'a> LogData<'a> {
             .iter()
             .flat_map(|names| {
                 names
-                    .into_iter()
+                    .iter()
                     .map(|name| {
                         let field = Ident::new(&(name.to_string() + "_field"), Span::call_site());
                         let message = format!(
@@ -142,7 +142,7 @@ impl<'a> LogData<'a> {
             .zip(log_ident.iter())
             .flat_map(|(repeating, names)| {
                 names
-                    .into_iter()
+                    .iter()
                     .map(|name| {
                         if *repeating {
                             quote!(Vec<#mod_path::#name>)
@@ -154,7 +154,7 @@ impl<'a> LogData<'a> {
             })
             .collect_vec();
 
-        let log_field = log_field.into_iter().flatten().collect_vec();
+        let log_field = log_field.iter().flatten().collect_vec();
 
         (
             quote!(
@@ -228,7 +228,7 @@ impl<'a> LogData<'a> {
                         log_name,
                         indexes,
                         log_field_name
-                            .into_iter()
+                            .iter()
                             .map(|field| {
                                 quote!(
                                     ::paste::paste!(
@@ -312,7 +312,7 @@ impl<'a> LogData<'a> {
             log_name,
             indexes,
             log_field_name
-                .into_iter()
+                .iter()
                 .map(|field| {
                     quote!(
                         ::paste::paste!(
