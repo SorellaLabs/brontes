@@ -249,9 +249,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult { block, state: Some(state), load_result: load };
                     Poll::Ready(Some(res))
                 }
-                Err((pool_address, dex, block, pool_pair, err)) => {
-                    error!(%block, %err, ?pool_address,"lazy load failed");
-
+                Err((pool_address, dex, block, pool_pair, _)) => {
                     let dependent_pairs = self.remove_state_trackers(block, &pool_address);
                     dependent_pairs.iter().for_each(|pair| {
                         self.on_state_fail(block, pair);

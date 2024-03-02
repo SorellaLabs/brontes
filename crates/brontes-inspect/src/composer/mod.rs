@@ -262,7 +262,7 @@ fn try_compose_mev(
     for (mev_type, indices) in removal_indices {
         if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
             for &index in indices.iter().rev() {
-                if mev_list.len() > *index {
+                if mev_list.len() > index {
                     mev_list.remove(index);
                 }
             }

@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
 pub use brontes_types::{queries::make_call_request, Protocol};
 use malachite::Rational;
-use tracing::error;
+use tracing::{error, Instrument};
 
 use crate::{
     lazy::{PoolFetchError, PoolFetchSuccess},
@@ -64,6 +64,7 @@ impl LoadState for Protocol {
                         UniswapV2Pool::new_load_on_block(address, provider, block_number)
                             .await
                             .map_err(|e| {
+                                error!(protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
                                 (address, Protocol::UniswapV2, block_number, pool_pair, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
@@ -88,6 +89,7 @@ impl LoadState for Protocol {
                         UniswapV3Pool::new_from_address(address, block_number, provider)
                             .await
                             .map_err(|e| {
+                                error!(protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
                                 (address, Protocol::UniswapV3, block_number, pool_pair, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
