@@ -9,7 +9,6 @@ use alloy_primitives::Address;
 use brontes_types::{pair::Pair, traits::TracingProvider, unzip_either::IterExt};
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
-use tracing::error;
 
 use crate::{errors::AmmError, protocols::LoadState, types::PoolState, Protocol};
 

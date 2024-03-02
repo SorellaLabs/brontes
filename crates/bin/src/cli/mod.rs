@@ -1,8 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod analytics;
-mod db_insert;
-mod db_query;
+mod db;
 mod run;
 mod trace_range;
 mod utils;
@@ -20,15 +19,10 @@ pub struct Args {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Runs brontes
     #[command(name = "run")]
     Run(run::RunArgs),
     #[command(name = "db")]
-    QueryDb(db_query::DatabaseQuery),
-    #[command(name = "add-to-db")]
-    AddToDb(db_insert::AddToDb),
-    #[command(name = "trace-range")]
-    TraceRange(trace_range::TraceArgs),
+    Database(db::Database),
     #[command(name = "analytics")]
     Analytics(analytics::Analytics),
 }
