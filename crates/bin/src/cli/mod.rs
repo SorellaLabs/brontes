@@ -3,7 +3,6 @@ use clap::{Parser, Subcommand};
 mod analytics;
 mod db;
 mod run;
-mod trace_range;
 mod utils;
 
 pub use utils::*;
