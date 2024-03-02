@@ -12,11 +12,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool3remove_liquidityCallLogs,
+    log: CurveBasePool3Remove_liquidityCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
-
+        let log = log.remove_liquidity_field?;
         let details = db_tx.get_protocol_details(info.target_address)?;
 
         let amounts = log.token_amounts;
@@ -52,10 +51,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool3remove_liquidity_imbalanceCallLogs,
+    log: CurveBasePool3Remove_liquidity_imbalanceCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
@@ -92,10 +91,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coinCall,
-    log: CurveBasePool3remove_liquidity_one_coinCallLogs,
+    log: CurveBasePool3Remove_liquidity_one_coinCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
