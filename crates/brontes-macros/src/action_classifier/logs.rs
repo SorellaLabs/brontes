@@ -180,7 +180,10 @@ impl<'a> LogData<'a> {
                             }
                         }
 
-                        fn build(self, call_info: &::brontes_types::structured_trace::CallFrameInfo<'_>)
+                        fn build(
+                            self,
+                            call_info: &::brontes_types::structured_trace::CallFrameInfo<'_>
+                            )
                             -> #log_return_struct_name {
                                 #log_return_struct_name {
                                 #(
@@ -194,7 +197,6 @@ impl<'a> LogData<'a> {
             log_return_builder_struct_name,
         )
     }
-
 
     fn parse_different_paths(&self, config: &ParsedLogConfig) -> TokenStream {
         let ParsedLogConfig {
