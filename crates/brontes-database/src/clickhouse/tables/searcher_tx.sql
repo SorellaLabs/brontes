@@ -18,6 +18,6 @@ CREATE TABLE mev.searcher_tx ON CLUSTER eth_cluster0
     ),
     `last_updated` UInt64 DEFAULT now()
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/searcher_info', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/searcher_tx', '{replica}', `last_updated`)
 PRIMARY KEY (`tx_hash`)
 ORDER BY (`tx_hash`)
