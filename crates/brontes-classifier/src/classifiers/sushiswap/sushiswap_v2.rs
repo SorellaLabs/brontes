@@ -19,7 +19,7 @@ action_impl!(
     call_data: swapCall,
     logs: SushiSwapV2swapCallLogs,
     db_tx: &DB| {
-        let logs = logs.Swap_field;
+        let logs = logs.Swap_field?;
 
         let recipient = call_data.to;
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
@@ -76,7 +76,7 @@ action_impl!(
      call_data: mintCall,
      log_data: SushiSwapV2mintCallLogs,
      db_tx: &DB| {
-        let log_data = log_data.Mint_field;
+        let log_data = log_data.Mint_field?;
 
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
@@ -111,7 +111,7 @@ action_impl!(
      call_data: burnCall,
      log_data: SushiSwapV2burnCallLogs,
      db_tx: &DB| {
-        let log_data = log_data.Burn_field;
+        let log_data = log_data.Burn_field?;
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 

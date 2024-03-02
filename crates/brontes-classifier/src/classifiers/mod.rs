@@ -25,12 +25,6 @@ pub use compound::*;
 pub mod maker;
 pub use maker::*;
 
-//use crate::base2::__action_sig_CurveBasePool2remove_liquidityCall;
-//use crate::base2::__action_sig_CurveBasePool2remove_liquidity_imbalanceCall;
-//use crate::base2::{__action_sig_CurveBasePool2remove_liquidity_one_coinCall
-// as __action_sig_CurveBasePool2remove_liquidity_one_coinCallStandard};
-// use crate::base2_lido::{__action_sig_CurveBasePool2remove_liquidity_one_coinCall as __action_sig_CurveBasePool2remove_liquidity_one_coinCallLido};
-
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,

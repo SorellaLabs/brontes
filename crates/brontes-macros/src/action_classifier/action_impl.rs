@@ -1,8 +1,11 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    bracketed, parse::Parse, spanned::Spanned, token::Star, Error, ExprClosure, Ident, LitBool,
-    Path, Token,
+    bracketed, parenthesized,
+    parse::Parse,
+    spanned::Spanned,
+    token::{Paren, Star},
+    Error, ExprClosure, Ident, LitBool, Path, Token,
 };
 
 use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME};
@@ -52,24 +55,23 @@ impl ActionMacro {
         let call_fn_name =
             Ident::new(&format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call), Span::call_site());
 
-        let dex_price_return = if action_type.to_string().to_lowercase().as_str()
-            == "poolconfigupdate"
-        {
-            quote!(
-                if db_tx.insert_pool(block,
-                    pool.pool_address,
-                    [pool.tokens[0], pool.tokens[1]],
-                    pool.protocol).is_err() {
-                ::tracing::error!(
-                    pool=?pool.pool_address,
-                                  block,
-                                  "failed to update pool config");
-            }
+        let dex_price_return =
+            if action_type.to_string().to_lowercase().as_str() == "poolconfigupdate" {
+                quote!(
+                    if db_tx.insert_pool(block,
+                        pool.pool_address,
+                        pool.tokens,
+                        pool.protocol).is_err() {
+                    ::tracing::error!(
+                        pool=?pool.pool_address,
+                                      block,
+                                      "failed to update pool config");
+                }
 
-            Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
-            )
-        } else {
-            quote!(
+                Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
+                )
+            } else {
+                quote!(
                 Ok(::brontes_pricing::types::DexPriceMsg::Update(
                     ::brontes_pricing::types::PoolUpdate {
                         block,
@@ -79,7 +81,7 @@ impl ActionMacro {
                     },
                 ))
             )
-        };
+            };
 
         Ok(quote! {
             #[allow(unused_imports)]
@@ -160,25 +162,25 @@ impl Parse for ActionMacro {
 fn parse_closure(input: &mut syn::parse::ParseStream) -> syn::Result<ExprClosure> {
     let call_function: ExprClosure = input.parse()?;
     if call_function.asyncness.is_some() {
-        return Err(syn::Error::new(input.span(), "closure cannot be async"));
+        return Err(syn::Error::new(input.span(), "closure cannot be async"))
     }
 
     if !input.is_empty() {
         return Err(syn::Error::new(
             input.span(),
             "There should be no values after the call function",
-        ));
+        ))
     }
 
     if call_function.asyncness.is_some() {
-        return Err(syn::Error::new(input.span(), "closure cannot be async"));
+        return Err(syn::Error::new(input.span(), "closure cannot be async"))
     }
 
     if !input.is_empty() {
         return Err(syn::Error::new(
             input.span(),
             "There should be no values after the call function",
-        ));
+        ))
     }
 
     Ok(call_function)
@@ -224,7 +226,7 @@ fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path>
         return Err(syn::Error::new(
             protocol_path.span(),
             "incorrect path, Should be Protocol::<ProtocolVarient>",
-        ));
+        ))
     }
 
     let should_protocol = &protocol_path.segments[protocol_path.segments.len() - 2].ident;
@@ -232,7 +234,7 @@ fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path>
         return Err(syn::Error::new(
             should_protocol.span(),
             "incorrect path, Should be Protocol::<ProtocolVarient>",
-        ));
+        ))
     }
     Ok(protocol_path)
 }
@@ -249,7 +251,7 @@ fn parse_decode_fn_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path
         return Err(syn::Error::new(
             fn_path.span(),
             "incorrect path, Should be <crate>::<path_to>::ProtocolModName::FnCall",
-        ));
+        ))
     }
 
     Ok(fn_path)
@@ -270,16 +272,38 @@ fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<LogConfig>
             ignore_before = true;
         }
 
-        let Ok(log_type) = content.parse::<Ident>() else {
+        let fallbacks;
+        // have fallback
+        let buf = if content.peek(Paren) {
+            parenthesized!(fallbacks in content);
+            &fallbacks
+        } else {
+            &content
+        };
+
+        let Ok(log_type) = buf.parse::<Ident>() else {
             break;
         };
+
+        let mut fallback = Vec::new();
+        while buf.peek(Token![|]) {
+            let Ok(log_type) = buf.parse::<Ident>() else {
+                break;
+            };
+            fallback.push(log_type);
+        }
 
         if content.peek(Star) {
             let _ = content.parse::<Star>()?;
             can_repeat = true;
         }
 
-        log_types.push(LogConfig { ignore_before, can_repeat, log_ident: log_type });
+        log_types.push(LogConfig {
+            ignore_before,
+            can_repeat,
+            log_ident: log_type,
+            log_fallbacks: fallback,
+        });
 
         let Ok(_) = content.parse::<Token![,]>() else {
             break;
