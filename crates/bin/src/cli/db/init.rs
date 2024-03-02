@@ -1,10 +1,12 @@
 use std::{env, path::Path, sync::Arc};
 
-use brontes_database::{clickhouse::Clickhouse, libmdbx::LibmdbxReadWriter, Tables};
+use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use clap::Parser;
 
-use super::{get_tracing_provider, static_object};
-use crate::{cli::get_env_vars, runner::CliContext};
+use crate::{
+    cli::{get_env_vars, get_tracing_provider, load_clickhouse, load_database, static_object},
+    runner::CliContext,
+};
 
 #[derive(Debug, Parser)]
 pub struct Init {
@@ -35,15 +37,16 @@ pub struct Init {
 
 impl Init {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+        let db_path = get_env_vars()?;
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
-        let clickhouse = Arc::new(Clickhouse::default());
+        let task_executor = ctx.task_executor;
 
-        let db_path = get_env_vars()?;
-        let tracer =
-            Arc::new(get_tracing_provider(Path::new(&db_path), 10, ctx.task_executor.clone()));
+        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        let clickhouse = static_object(load_clickhouse().await?);
 
-        let libmdbx = static_object(LibmdbxReadWriter::init_db(brontes_db_endpoint, None)?);
+        let tracer = Arc::new(get_tracing_provider(Path::new(&db_path), 10, task_executor.clone()));
+
         if self.init_libmdbx {
             // currently inits all tables
             let range = if let (Some(start), Some(end)) = (self.start_block, self.end_block) {
@@ -52,28 +55,32 @@ impl Init {
                 None
             };
 
-            libmdbx
-                .initialize_tables(
-                    clickhouse.clone(),
-                    tracer,
-                    self.tables_to_init
-                        .unwrap_or({
-                            if self.download_dex_pricing {
-                                //TODO: Joe add non dex price download behaviour
-                                Tables::ALL.to_vec()
-                            } else {
-                                Tables::ALL.to_vec()
-                            }
-                        })
-                        .as_slice(),
-                    false, // add to clear tables to cli
-                    range,
-                )
-                .await?;
+            task_executor
+                .spawn_critical("init", async move {
+                    libmdbx
+                        .initialize_tables(
+                            clickhouse,
+                            tracer,
+                            self.tables_to_init
+                                .unwrap_or({
+                                    if self.download_dex_pricing {
+                                        //TODO: Joe add non dex price download behaviour
+                                        Tables::ALL.to_vec()
+                                    } else {
+                                        Tables::ALL.to_vec()
+                                    }
+                                })
+                                .as_slice(),
+                            false,
+                            range,
+                        )
+                        .await
+                        .unwrap();
+                })
+                .await
+                .unwrap();
         }
 
-        // TODO: Joe, have it download the full range of metadata from the MEV DB so
-        // they can run everything in parallel
         Ok(())
     }
 }
