@@ -307,7 +307,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    pub async fn test_arb() {
+    pub async fn test_simple_triangle() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
