@@ -12,10 +12,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplremove_liquidity_0CallLogs,
+    log: CurveV1MetapoolImplRemove_liquidity_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
@@ -55,10 +55,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplremove_liquidity_1CallLogs,
+    log: CurveV1MetapoolImplRemove_liquidity_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
@@ -95,10 +95,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplremove_liquidity_imbalance_0CallLogs,
+    log: CurveV1MetapoolImplRemove_liquidity_imbalance_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
@@ -136,10 +136,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplremove_liquidity_imbalance_1CallLogs,
+    log: CurveV1MetapoolImplRemove_liquidity_imbalance_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
@@ -178,10 +178,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_0Call,
-    log: CurveV1MetapoolImplremove_liquidity_one_coin_0CallLogs,
+    log: CurveV1MetapoolImplRemove_liquidity_one_coin_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -220,10 +220,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_1Call,
-    log: CurveV1MetapoolImplremove_liquidity_one_coin_1CallLogs,
+    log: CurveV1MetapoolImplRemove_liquidity_one_coin_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
