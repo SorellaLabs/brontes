@@ -104,12 +104,14 @@ action_impl!(
     call_data: true,
     logs: true,
     |info: CallInfo, call_data: joinPoolCall, log_data: BalancerV2joinPoolCallLogs, db: &DB| { 
+        let pool = pool_id_to_address(call_data.poolId);
+
         Ok(NormalizedMint { 
             protocol: Protocol::BalancerV2, 
             trace_index: info.trace_idx, 
             from: call_data.sender, 
             recipient: call_data.recipient, 
-            pool: todo!(), 
+            pool, 
             token: todo!(), 
             amount: todo!() 
         })
@@ -125,6 +127,7 @@ action_impl!(
     logs: true,
     |info: CallInfo, call_data: exitPoolCall, log_data: BalancerV2exitPoolCallLogs, db: &DB| { 
         let pool = pool_id_to_address(call_data.poolId);
+        
         Ok(NormalizedBurn { 
             protocol: Protocol::BalancerV2, 
             trace_index: info.trace_idx, 
