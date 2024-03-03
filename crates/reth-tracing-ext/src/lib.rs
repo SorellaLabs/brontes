@@ -41,7 +41,7 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 mod provider;
-mod txn_tracer;
+mod reth_tracer;
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
     ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory<EthEvmConfig>>,
