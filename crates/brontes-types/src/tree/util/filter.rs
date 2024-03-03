@@ -1,4 +1,4 @@
-use std::{iter::Iterator, sync::Arc};
+use std::sync::Arc;
 
 use crate::{normalized_actions::NormalizedAction, BlockTree};
 
