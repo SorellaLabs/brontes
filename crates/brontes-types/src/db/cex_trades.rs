@@ -29,6 +29,7 @@ impl CexTradeMap {
     /// the execution quality params that are passed in.
     pub fn get_price(
         &self,
+        exchanges: &[CexExchange],
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
@@ -38,7 +39,13 @@ impl CexTradeMap {
             .0
             .par_iter()
             .filter_map(|bin| {
-                CexTradeBasket(bin).get_vwam_price(pair, volume, baskets, quality.as_ref())
+                CexTradeBasket(bin).get_vwam_price(
+                    exchanges,
+                    pair,
+                    volume,
+                    baskets,
+                    quality.as_ref(),
+                )
             })
             .unzip();
 
@@ -54,17 +61,19 @@ type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
 impl CexTradeBasket<'_> {
     fn get_vwam_price(
         &self,
+        exchanges: &[CexExchange],
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
         quality: Option<&HashMap<CexExchange, HashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
-        self.get_vwam_no_intermediary(pair, volume, baskets, quality)
-            .or_else(|| self.get_vwam_via_intermediary(pair, volume, baskets, quality))
+        self.get_vwam_no_intermediary(exchanges, pair, volume, baskets, quality)
+            .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, baskets, quality))
     }
 
     fn get_vwam_via_intermediary(
         &self,
+        exchanges: &[CexExchange],
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
@@ -84,6 +93,7 @@ impl CexTradeBasket<'_> {
         let (pair0_vwams, mut pair1_vwams) = self
             .0
             .keys()
+            .filter(|ex| exchanges.contains(ex))
             .map(|exchange| {
                 exchange
                     .most_common_quote_assets()
@@ -94,11 +104,15 @@ impl CexTradeBasket<'_> {
                         Some((
                             (
                                 intermediary,
-                                self.get_vwam_no_intermediary(&pair0, volume, baskets, quality)?,
+                                self.get_vwam_no_intermediary(
+                                    exchanges, &pair0, volume, baskets, quality,
+                                )?,
                             ),
                             (
                                 intermediary,
-                                self.get_vwam_no_intermediary(&pair1, volume, baskets, quality)?,
+                                self.get_vwam_no_intermediary(
+                                    exchanges, &pair1, volume, baskets, quality,
+                                )?,
                             ),
                         ))
                     })
@@ -135,6 +149,7 @@ impl CexTradeBasket<'_> {
 
     fn get_vwam_no_intermediary(
         &self,
+        exchanges: &[CexExchange],
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
@@ -150,6 +165,7 @@ impl CexTradeBasket<'_> {
         let trades = self
             .0
             .iter()
+            .filter(|(e, _)| exchanges.contains(e))
             .filter_map(|(exchange, trades)| {
                 Some((
                     *exchange,

@@ -14,5 +14,5 @@ pub mod redefined_types;
 pub mod searcher;
 pub mod token_info;
 pub mod traces;
-pub mod trades;
+pub mod cex_trades;
 pub mod traits;
