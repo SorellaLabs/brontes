@@ -23,12 +23,13 @@ reth-beacon-consensus.workspace = true
 reth-revm.workspace = true
 reth-interfaces.workspace = true
 alloy-primitives.workspace = true
+alloy-sol-types.workspace = true
 futures.workspace = true
 brontes-types.workspace = true
 tracing.workspace = true
 
 num_cpus.workspace = true
-
+alloy-rpc-trace-types = { git = "https://github.com/alloy-rs/alloy", rev = "52bf712" }
 revm = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
   "std",
   "secp256k1",
@@ -36,6 +37,7 @@ revm = { git = "https://github.com/bluealloy/revm", branch = "main", features = 
 revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
   "std",
 ], default-features = false }
+revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "ac63f06" }
 bitflags = "2.4"
 
 # error
