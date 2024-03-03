@@ -17,16 +17,27 @@ const BASE_EXECUTION_QUALITY: usize = 100;
 /// as part of execution
 const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(5, 100);
 
-type MakerTaker = (Rational, Rational);
+/// the calcuated price based off of trades with the estimated exchanges with
+/// volume amount that where used to hedge
+#[derive(Debug, Clone)]
+pub struct ExchangePrice {
+    // cex exchange with amount of volume executed on it
+    pub exchanges: Vec<(CexExchange, Rational)>,
+    pub price:     Rational,
+}
+
+type MakerTaker = (ExchangePrice, ExchangePrice);
 
 /// All cex trades for a given period, grouped into there dedicated markout
 /// periods
+#[derive(Debug, Clone)]
 pub struct CexTradeMap(pub Vec<HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>>);
 
 impl CexTradeMap {
     /// goes through each set of trade periods calculating
-    /// the best execution cost across all exchanges while adhearing to
+    /// the best execution cost across all exchanges while adhering to
     /// the execution quality params that are passed in.
+    /// NOTE: the prices returned are fee adjusted.
     pub fn get_price(
         &self,
         exchanges: &[CexExchange],
@@ -49,7 +60,10 @@ impl CexTradeMap {
             })
             .unzip();
 
-        Some((maker.into_iter().max()?, taker.into_iter().max()?))
+        Some((
+            maker.into_iter().max_by_key(|a| a.price.clone())?,
+            taker.into_iter().max_by_key(|a| a.price.clone())?,
+        ))
     }
 }
 
@@ -90,7 +104,7 @@ impl CexTradeBasket<'_> {
             (pair0_vwam, pair1_vwam)
         };
 
-        let (pair0_vwams, mut pair1_vwams) = self
+        let (pair0_vwams, pair1_vwams) = self
             .0
             .keys()
             .filter(|ex| exchanges.contains(ex))
@@ -128,23 +142,7 @@ impl CexTradeBasket<'_> {
             })
             .fold((HashMap::new(), HashMap::new()), fold_fn);
 
-        let (maker, taker): (Vec<_>, Vec<_>) = pair0_vwams
-            .into_iter()
-            .flat_map(|(inter, vwam0)| {
-                let Some(vwam1) = pair1_vwams.remove(&inter) else { return vec![] };
-
-                vwam0
-                    .into_iter()
-                    .flat_map(|(maker0, taker0)| {
-                        vwam1
-                            .iter()
-                            .map(move |(maker1, taker1)| (&maker0 * maker1, &taker0 * taker1))
-                    })
-                    .collect_vec()
-            })
-            .unzip();
-
-        Some((maker.into_iter().max()?, taker.into_iter().max()?))
+        calculate_cross_pair(pair0_vwams, pair1_vwams)
     }
 
     fn get_vwam_no_intermediary(
@@ -188,7 +186,7 @@ impl CexTradeBasket<'_> {
         mut queue: PairTradeQueue<'a>,
         volume: &Rational,
         baskets: usize,
-    ) -> Option<(Rational, Rational)> {
+    ) -> Option<MakerTaker> {
         let mut trades = Vec::new();
 
         let volume_amount = volume * Rational::from(baskets);
@@ -217,20 +215,31 @@ impl CexTradeBasket<'_> {
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
         let mut trade_volume = Rational::ZERO;
+        let mut exchange_with_vol = HashMap::new();
 
         for trade in closest {
             let (m_fee, t_fee) = trade.get().exchange.fees();
 
             vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
             vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
+            *exchange_with_vol
+                .entry(trade.get().exchange)
+                .or_insert(Rational::ZERO) += &trade.get().amount;
+
             trade_volume += &trade.get().amount;
         }
 
         if trade_volume == Rational::ZERO {
             return None
         }
+        let exchanges = exchange_with_vol.into_iter().collect_vec();
 
-        Some((vxp_maker / &trade_volume, vxp_taker / trade_volume))
+        let maker =
+            ExchangePrice { exchanges: exchanges.clone(), price: vxp_maker / &trade_volume };
+        let taker =
+            ExchangePrice { exchanges: exchanges.clone(), price: vxp_taker / &trade_volume };
+
+        Some((maker, taker))
     }
 }
 
@@ -306,6 +315,63 @@ impl<'a> PairTradeQueue<'a> {
 
         next
     }
+}
+
+fn calculate_cross_pair(
+    v0: HashMap<Address, Vec<MakerTaker>>,
+    mut v1: HashMap<Address, Vec<MakerTaker>>,
+) -> Option<MakerTaker> {
+    let (maker, taker): (Vec<_>, Vec<_>) = v0
+        .into_iter()
+        .flat_map(|(inter, vwam0)| {
+            let Some(vwam1) = v1.remove(&inter) else { return vec![] };
+
+            vwam0
+                .into_iter()
+                .flat_map(|(maker0, taker0)| {
+                    vwam1.iter().map(move |(maker1, taker1)| {
+                        let maker_exchanges = maker0
+                            .exchanges
+                            .iter()
+                            .chain(maker1.exchanges.iter())
+                            .fold(HashMap::new(), |mut a, b| {
+                                *a.entry(b.0).or_insert(Rational::ZERO) += &b.1;
+                                a
+                            })
+                            .into_iter()
+                            .collect_vec();
+
+                        let taker_exchanges = taker0
+                            .exchanges
+                            .iter()
+                            .chain(taker0.exchanges.iter())
+                            .fold(HashMap::new(), |mut a, b| {
+                                *a.entry(b.0).or_insert(Rational::ZERO) += &b.1;
+                                a
+                            })
+                            .into_iter()
+                            .collect_vec();
+
+                        let maker = ExchangePrice {
+                            exchanges: maker_exchanges,
+                            price:     &maker0.price * &maker1.price,
+                        };
+
+                        let taker = ExchangePrice {
+                            exchanges: taker_exchanges,
+                            price:     &taker0.price * &taker1.price,
+                        };
+                        (maker, taker)
+                    })
+                })
+                .collect_vec()
+        })
+        .unzip();
+
+    Some((
+        maker.into_iter().max_by_key(|a| a.price.clone())?,
+        taker.into_iter().max_by_key(|a| a.price.clone())?,
+    ))
 }
 
 fn closest<'a>(

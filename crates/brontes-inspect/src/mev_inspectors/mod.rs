@@ -1,3 +1,4 @@
+#[cfg(feature = "cex-dex-markout")]
 pub mod cex_dex_markout;
 pub mod atomic_arb;
 pub mod cex_dex;

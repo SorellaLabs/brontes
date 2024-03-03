@@ -8,6 +8,8 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use serde_with::serde_as;
 
+#[cfg(feature = "cex-dex-markout")]
+use super::cex_trades::CexTradeMap;
 use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{
     constants::{USDC_ADDRESS, WETH_ADDRESS},
@@ -56,6 +58,8 @@ pub struct Metadata {
     pub cex_quotes:     CexPriceMap,
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
+    #[cfg(feature = "cex-dex-markout")]
+    pub cex_trades:     Option<CexTradeMap>,
 }
 
 impl Metadata {
