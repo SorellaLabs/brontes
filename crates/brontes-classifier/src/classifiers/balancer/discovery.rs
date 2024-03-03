@@ -35,6 +35,7 @@ discovery_impl!(
 
 
 // Balancer V2
+
 discovery_impl!(
     BalancerV2ComposableStablePoolV5Discovery,
     crate::BalancerV2ComposableStablePoolFactoryV5::createCall,
@@ -67,7 +68,7 @@ discovery_impl!(
 // Deprecated but had pool creations.
 discovery_impl!(
     BalancerV2ComposableStablePoolV3Discovery,
-    crate::BalancerV2ComposableStablePoolFactoryV4::createCall,
+    crate::BalancerV2ComposableStablePoolFactoryV3::createCall,
     0xdba127fBc23fb20F5929C546af220A991b5C6e01,
     |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
         vec![NormalizedNewPool {
@@ -78,6 +79,51 @@ discovery_impl!(
         }]
     }
 );
+
+discovery_impl!(
+    BalancerV2WeightedPoolFactoryV4Discovery,
+    crate::BalancerV2WeightedPoolFactoryV4::createCall,
+    0x897888115Ada5773E02aA29F775430BFB5F34c51,
+    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+        vec![NormalizedNewPool {
+            trace_index,
+            protocol: Protocol::BalancerV2,
+            pool_address: deployed_address,
+            tokens: call_data.tokens,
+        }]
+    }
+);
+
+// Deprecated but had pool creations.
+discovery_impl!(
+    BalancerV2WeightedPoolFactoryV3Discovery,
+    crate::BalancerV2WeightedPoolFactoryV2::createCall,
+    0x5Dd94Da3644DDD055fcf6B3E1aa310Bb7801EB8b,
+    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+        vec![NormalizedNewPool {
+            trace_index,
+            protocol: Protocol::BalancerV2,
+            pool_address: deployed_address,
+            tokens: call_data.tokens,
+        }]
+    }
+);
+
+// Deprecated but had pool creations.
+discovery_impl!(
+    BalancerV2WeightedPoolFactoryV2Discovery,
+    crate::BalancerV2WeightedPoolFactoryV2::createCall,
+    0xcC508a455F5b0073973107Db6a878DdBDab957bC,
+    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+        vec![NormalizedNewPool {
+            trace_index,
+            protocol: Protocol::BalancerV2,
+            pool_address: deployed_address,
+            tokens: call_data.tokens,
+        }]
+    }
+);
+
 
 
 // Smart Pool Factory

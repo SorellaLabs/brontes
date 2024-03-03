@@ -63,6 +63,8 @@ sol!(BalancerV1SmartPoolFactory, "./classifier-abis/balancer/BalancerV1CrpFactor
 sol!(BalancerV2ComposableStablePoolFactoryV5, "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV5.json");
 sol!(BalancerV2ComposableStablePoolFactoryV4, "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV4.json");
 sol!(BalancerV2ComposableStablePoolFactoryV3, "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV3.json");
+sol!(BalancerV2WeightedPoolFactoryV4, "./classifier-abis/balancer/BalancerV2WeightedPoolFactoryV4.json");
+sol!(BalancerV2WeightedPoolFactoryV2, "./classifier-abis/balancer/BalancerV2WeightedPoolFactoryV2.json");
 
 
 sol! {
