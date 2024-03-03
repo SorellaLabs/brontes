@@ -560,6 +560,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             - &swap.amount_in * &token_price;
         let maker_profit = &swap.amount_out * (total_maker_vwp / total_maker_volume)
             - &swap.amount_in * &token_price;
+
         Some(ExchangeLeg {
             exchange:  exchange_cex_price
                 .first()

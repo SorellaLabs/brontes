@@ -334,16 +334,16 @@ pub struct CexQuote {
 
 pub struct ExchangeData {
     pub exchange: CexExchange,
-    pub quotes: Vec<CexQuote>,
-    pub trades: Vec<Trade>,
+    pub quotes:   Vec<CexQuote>,
+    pub trades:   Vec<Trade>,
 }
 
 pub struct Trade {
-    pub exchange: CexExchange,
+    pub exchange:  CexExchange,
     pub timestamp: u64,
-    pub price: Rational,
-    pub amount: Rational,
-    pub side: TradeSide,
+    pub price:     Rational,
+    pub amount:    Rational,
+    pub side:      TradeSide,
 }
 
 pub enum TradeSide {

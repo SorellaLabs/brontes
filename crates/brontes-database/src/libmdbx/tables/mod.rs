@@ -536,7 +536,6 @@ compressed_table!(
             can_insert: False
         }
     }
-
 );
 
 compressed_table!(
@@ -784,3 +783,22 @@ compressed_table!(
         }
     }
 );
+
+compressed_table!(
+    Table CexTrades {
+        Data {
+        key: u64,
+        value: CexPriceMap,
+        compressed_value: CexPriceMapRedefined
+        },
+        Init {
+            init_size: Some(50_000),
+            init_method: Clickhouse,
+            http_endpoint: None
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
