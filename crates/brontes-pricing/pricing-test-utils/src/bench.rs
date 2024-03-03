@@ -3,6 +3,7 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_pricing::{types::ProtocolState, LoadState};
 use brontes_types::{pair::Pair, Protocol};
 use criterion::{black_box, Criterion};
+use futures::StreamExt;
 
 pub struct BrontesPricingBencher {
     inner:       ClassifierTestUtils,
@@ -27,13 +28,19 @@ impl BrontesPricingBencher {
         c: &mut Criterion,
     ) -> Result<(), ClassifierTestUtilsError> {
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async move {
-                black_box(
-                    self.inner
-                        .build_block_tree_with_pricing(block_number, self.quote_asset, vec![])
-                        .await,
-                )
-            })
+            b.to_async(&self.rt).iter_batched(
+                || {
+                    self.rt
+                        .block_on(self.inner.setup_pricing_for_bench(
+                            block_number,
+                            self.quote_asset,
+                            vec![],
+                        ))
+                        .unwrap()
+                },
+                |(mut data, _tx)| async move { black_box(data.next().await) },
+                criterion::BatchSize::LargeInput,
+            )
         });
 
         Ok(())
