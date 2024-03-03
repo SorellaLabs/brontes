@@ -32,10 +32,43 @@ discovery_impl!(
     }
 );
 
+
+
+// Balancer V2
 discovery_impl!(
-    BalancerV2ComposableStablePoolDiscovery,
-    crate::BalancerV2ComposableStablePoolFactory::createCall,
+    BalancerV2ComposableStablePoolV5Discovery,
+    crate::BalancerV2ComposableStablePoolFactoryV5::createCall,
     0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A,
+    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+        vec![NormalizedNewPool {
+            trace_index,
+            protocol: Protocol::BalancerV2,
+            pool_address: deployed_address,
+            tokens: call_data.tokens,
+        }]
+    }
+);
+
+// Deprecated but had pool creations.
+discovery_impl!(
+    BalancerV2ComposableStablePoolV4Discovery,
+    crate::BalancerV2ComposableStablePoolFactoryV4::createCall,
+    0xfADa0f4547AB2de89D1304A668C39B3E09Aa7c76,
+    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+        vec![NormalizedNewPool {
+            trace_index,
+            protocol: Protocol::BalancerV2,
+            pool_address: deployed_address,
+            tokens: call_data.tokens,
+        }]
+    }
+);
+
+// Deprecated but had pool creations.
+discovery_impl!(
+    BalancerV2ComposableStablePoolV3Discovery,
+    crate::BalancerV2ComposableStablePoolFactoryV4::createCall,
+    0xdba127fBc23fb20F5929C546af220A991b5C6e01,
     |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
         vec![NormalizedNewPool {
             trace_index,
