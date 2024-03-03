@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, marker::PhantomData};
 
 use alloy_primitives::Address;
 use itertools::Itertools;
@@ -52,7 +52,6 @@ struct CexTradeBasket<'a>(pub &'a HashMap<CexExchange, HashMap<Pair, Vec<CexTrad
 type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
 
 impl CexTradeBasket<'_> {
-    /// takes the best vwam price for
     fn get_vwam_price(
         &self,
         pair: &Pair,
@@ -60,15 +59,8 @@ impl CexTradeBasket<'_> {
         baskets: usize,
         quality: Option<&HashMap<CexExchange, HashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
-        let regular = self.get_vwam_no_intermediary(pair, volume, baskets, quality);
-        let inter = self.get_vwam_via_intermediary(pair, volume, baskets, quality);
-
-        match (regular, inter) {
-            (Some(reg), Some(inter)) => Some((max(reg.0, inter.0), max(reg.1, inter.1))),
-            (Some(reg), None) => Some(reg),
-            (None, Some(inter)) => Some(inter),
-            _ => None,
-        }
+        self.get_vwam_no_intermediary(pair, volume, baskets, quality)
+            .or_else(|| self.get_vwam_via_intermediary(pair, volume, baskets, quality))
     }
 
     fn get_vwam_via_intermediary(
@@ -216,6 +208,10 @@ impl CexTradeBasket<'_> {
             vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
             vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
             trade_volume += &trade.get().amount;
+        }
+
+        if trade_volume == Rational::ZERO {
+            return None
         }
 
         Some((vxp_maker / &trade_volume, vxp_taker / trade_volume))
