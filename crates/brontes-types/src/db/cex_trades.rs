@@ -154,7 +154,7 @@ impl CexTradeBasket<'_> {
         quality: Option<&HashMap<CexExchange, HashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
         let quality_pct = quality.map(|map| {
-            map.into_iter()
+            map.iter()
                 .map(|(k, v)| (*k, v.get(pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
                 .collect::<HashMap<_, _>>()
         });
@@ -169,7 +169,7 @@ impl CexTradeBasket<'_> {
                     *exchange,
                     trades.get(pair).map(|trades| {
                         trades
-                            .into_iter()
+                            .iter()
                             .filter(|f| f.amount.le(&max_vol_per_trade))
                             .collect_vec()
                     })?,
@@ -181,9 +181,9 @@ impl CexTradeBasket<'_> {
         self.get_most_accurate_basket(trade_queue, volume, baskets)
     }
 
-    fn get_most_accurate_basket<'a>(
+    fn get_most_accurate_basket(
         &self,
-        mut queue: PairTradeQueue<'a>,
+        mut queue: PairTradeQueue<'_>,
         volume: &Rational,
         baskets: usize,
     ) -> Option<MakerTaker> {
@@ -299,11 +299,11 @@ impl<'a> PairTradeQueue<'a> {
                     // found a better price
 
                     if trade.price.gt(&cur_best.get().price) {
-                        next = Some(CexTradePtr::new(*trade));
+                        next = Some(CexTradePtr::new(trade));
                     }
                 // not set
                 } else {
-                    next = Some(CexTradePtr::new(*trade));
+                    next = Some(CexTradePtr::new(trade));
                 }
             }
         }
@@ -401,7 +401,7 @@ struct CexTradePtr<'ptr> {
 
 impl<'ptr> CexTradePtr<'ptr> {
     fn new(raw: &CexTrades) -> Self {
-        Self { raw: raw as *const _, _p: PhantomData::default() }
+        Self { raw: raw as *const _, _p: PhantomData }
     }
 
     fn get(&'ptr self) -> &'ptr CexTrades {

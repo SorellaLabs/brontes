@@ -10,7 +10,7 @@ use serde_with::serde_as;
 
 #[cfg(feature = "cex-dex-markout")]
 use super::cex_trades::CexTradeMap;
-use super::{builder::BuilderInfo, cex::CexPriceMap, cex_trades::CexTradeMap, dex::DexQuotes};
+use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{
     constants::{USDC_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::*,
