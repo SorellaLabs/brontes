@@ -155,19 +155,24 @@ impl DbRow for CexDex {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct StatArbDetails {
     #[redefined(same_fields)]
-    pub cex_exchange: CexExchange,
-    pub cex_price:    Rational,
+    pub cex_exchanges: Vec<CexExchange>,
+    pub cex_price:     Rational,
     #[redefined(same_fields)]
-    pub dex_exchange: Protocol,
-    pub dex_price:    Rational,
+    pub dex_exchange:  Protocol,
+    pub dex_price:     Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
-    pub pnl_pre_gas:  StatArbPnl,
+    pub pnl_pre_gas:   StatArbPnl,
 }
 
 impl fmt::Display for StatArbDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Arb Leg Details:")?;
-        writeln!(f, "   - Price on {}: {}", self.cex_exchange, self.cex_price.clone().to_float())?;
+        writeln!(
+            f,
+            "   - Price on {:#?}: {}",
+            self.cex_exchanges,
+            self.cex_price.clone().to_float()
+        )?;
         writeln!(f, "   - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;
         write!(f, "   - Pnl pre-gas: {}", self.pnl_pre_gas)
     }

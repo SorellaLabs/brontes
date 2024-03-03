@@ -144,6 +144,6 @@ impl BlockMetadata {
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
     ) -> Metadata {
-        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info }
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades: None }
     }
 }

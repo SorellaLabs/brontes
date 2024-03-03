@@ -9,12 +9,9 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use malachite::{
-    num::basic::traits::{Two, Zero},
-    Rational,
-};
+use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
-use tracing::debug;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
@@ -56,12 +53,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                 // For each swap in the transaction, detect potential CEX-DEX
                 let cex_dex_legs: Vec<PossibleCexDexLeg> = swaps
                     .into_iter()
-                    .filter_map(|swap| {
-                        let possible_cex_dex =
-                            self.detect_cex_dex_opportunity(&swap, metadata.as_ref())?;
-
-                        Some(possible_cex_dex)
-                    })
+                    .filter_map(|swap| self.detect_cex_dex_opportunity(&swap, metadata.as_ref()))
                     .collect();
 
                 let possible_cex_dex =
@@ -106,7 +98,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     ) -> Option<PossibleCexDexLeg> {
         let pair = Pair(swap.token_out.address, swap.token_in.address);
 
-        let (maker_price, taker_price) = metadata.cex_trades?.get_price(
+        let (maker_price, taker_price) = metadata.cex_trades.as_ref()?.get_price(
             &self.cex_exchanges,
             &pair,
             // we always are buying amount in on cex
@@ -116,7 +108,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             // add lookup
             None,
         )?;
-        let best_leg = self.profit_classifier(swap, maker_price, taker_price, metadata);
+        let leg = self.profit_classifier(swap, maker_price, taker_price);
 
         Some(PossibleCexDexLeg { swap: swap.clone(), leg })
     }
@@ -129,7 +121,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         swap: &NormalizedSwap,
         maker_price: ExchangePrice,
         taker_price: ExchangePrice,
-        metadata: &Metadata,
     ) -> SwapLeg {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
@@ -139,8 +130,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calcuate taking a fee here
-            maker_delta * swap.amount_out * maker_price.price,
-            taker_delta * swap.amount_out * taker_delta.price,
+            maker_delta * &swap.amount_out * &maker_price.price,
+            taker_delta * &swap.amount_out * &taker_price.price,
         );
 
         SwapLeg { taker_price, maker_price, pnl: StatArbPnl { maker_profit, taker_profit } }
@@ -175,18 +166,24 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         swaps_with_profit_by_exchange
             .iter()
             .for_each(|swap_with_profit| {
-                let most_profitable_leg = swap_with_profit.leg;
+                let most_profitable_leg = &swap_with_profit.leg;
 
                 swaps.push(swap_with_profit.swap.clone());
                 arb_details.push(StatArbDetails {
-                    cex_exchange: most_profitable_leg.exchange,
-                    cex_price:    most_profitable_leg.cex_price,
-                    dex_exchange: swap_with_profit.swap.protocol,
-                    dex_price:    swap_with_profit.swap.swap_rate(),
-                    pnl_pre_gas:  most_profitable_leg.pnl.clone(),
+                    cex_exchanges: most_profitable_leg
+                        .maker_price
+                        .exchanges
+                        .iter()
+                        .map(|(a, _)| *a)
+                        .collect_vec(),
+                    cex_price:     most_profitable_leg.maker_price.price.clone(),
+                    dex_exchange:  swap_with_profit.swap.protocol,
+                    dex_price:     swap_with_profit.swap.swap_rate(),
+                    pnl_pre_gas:   most_profitable_leg.pnl.clone(),
                 });
-                total_arb_pre_gas.maker_profit += most_profitable_leg.pnl.maker_profit;
-                total_arb_pre_gas.taker_profit += most_profitable_leg.pnl.taker_profit;
+
+                total_arb_pre_gas.maker_profit += &most_profitable_leg.pnl.maker_profit;
+                total_arb_pre_gas.taker_profit += &most_profitable_leg.pnl.taker_profit;
             });
 
         if swaps.is_empty() {

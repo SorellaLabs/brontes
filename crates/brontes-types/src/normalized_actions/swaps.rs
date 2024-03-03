@@ -225,7 +225,7 @@ pub struct ClickhouseStatArbDetails {
 impl From<StatArbDetails> for ClickhouseStatArbDetails {
     fn from(value: StatArbDetails) -> Self {
         Self {
-            cex_exchange:     format!("{:?}", value.cex_exchange),
+            cex_exchange:     format!("{:?}", value.cex_exchanges),
             cex_price:        rational_to_u256_bytes(value.cex_price),
             dex_exchange:     value.dex_exchange.to_string(),
             dex_price:        rational_to_u256_bytes(value.dex_price),

@@ -1,7 +1,7 @@
-#[cfg(feature = "cex-dex-markout")]
-pub mod cex_dex_markout;
 pub mod atomic_arb;
 pub mod cex_dex;
+#[cfg(feature = "cex-dex-markout")]
+pub mod cex_dex_markout;
 pub mod jit;
 pub mod liquidations;
 #[allow(dead_code, unused_imports, unused_variables)]
