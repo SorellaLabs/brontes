@@ -10,7 +10,7 @@ use serde_with::serde_as;
 
 #[cfg(feature = "cex-dex-markout")]
 use super::cex_trades::CexTradeMap;
-use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
+use super::{builder::BuilderInfo, cex::CexPriceMap, cex_trades::CexTradeMap, dex::DexQuotes};
 use crate::{
     constants::{USDC_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::*,
@@ -143,7 +143,15 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
+        #[cfg(feature = "cex-dex-markout")] cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
-        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades: None }
+        Metadata {
+            block_metadata: self,
+            cex_quotes,
+            dex_quotes,
+            builder_info,
+            #[cfg(feature = "cex-dex-markout")]
+            cex_trades,
+        }
     }
 }
