@@ -323,7 +323,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
             max(eth_prices.price.0, eth_prices.price.1),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None))
+        .into_metadata(
+            cex_quotes,
+            None,
+            None,
+            #[cfg(feature = "cex-dex-markout")]
+            None,
+        ))
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -346,7 +352,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 max(eth_prices.price.0, eth_prices.price.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None)
+            .into_metadata(
+                cex_quotes,
+                Some(dex_quotes),
+                None,
+                #[cfg(feature = "cex-dex-markout")]
+                None,
+            )
         })
     }
 
