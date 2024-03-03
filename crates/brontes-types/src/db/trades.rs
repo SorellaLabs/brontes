@@ -6,7 +6,7 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use super::cex::CexExchange;
 use crate::pair::Pair;
@@ -19,22 +19,49 @@ const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(5, 100);
 
 type MakerTaker = (Rational, Rational);
 
-// cex trades are sorted from lowest fill price to highest fill price
-pub struct CexTradeMap(HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
-
-type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
+/// All cex trades for a given period, grouped into there dedicated markout
+/// periods
+pub struct CexTradeMap(pub Vec<HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>>);
 
 impl CexTradeMap {
-    /// takes the best vwam price for
-    pub fn get_vwam_price(
+    /// goes through each set of trade periods calculating
+    /// the best execution cost across all exchanges while adhearing to
+    /// the execution quality params that are passed in.
+    pub fn get_price(
         &self,
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
         quality: Option<HashMap<CexExchange, HashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
-        let regular = self.get_vwam_no_intermediary(pair, volume, baskets, quality.as_ref());
-        let inter = self.get_vwam_via_intermediary(pair, volume, baskets, quality.as_ref());
+        let (maker, taker): (Vec<_>, Vec<_>) = self
+            .0
+            .par_iter()
+            .filter_map(|bin| {
+                CexTradeBasket(bin).get_vwam_price(pair, volume, baskets, quality.as_ref())
+            })
+            .unzip();
+
+        Some((maker.into_iter().max()?, taker.into_iter().max()?))
+    }
+}
+
+// cex trades are sorted from lowest fill price to highest fill price
+struct CexTradeBasket<'a>(pub &'a HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
+
+type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
+
+impl CexTradeBasket<'_> {
+    /// takes the best vwam price for
+    fn get_vwam_price(
+        &self,
+        pair: &Pair,
+        volume: &Rational,
+        baskets: usize,
+        quality: Option<&HashMap<CexExchange, HashMap<Pair, usize>>>,
+    ) -> Option<MakerTaker> {
+        let regular = self.get_vwam_no_intermediary(pair, volume, baskets, quality);
+        let inter = self.get_vwam_via_intermediary(pair, volume, baskets, quality);
 
         match (regular, inter) {
             (Some(reg), Some(inter)) => Some((max(reg.0, inter.0), max(reg.1, inter.1))),
@@ -197,10 +224,9 @@ impl CexTradeMap {
 
 #[derive(Debug, Clone)]
 pub struct CexTrades {
-    pub timestamp: u64,
-    pub exchange:  CexExchange,
-    pub price:     Rational,
-    pub amount:    Rational,
+    pub exchange: CexExchange,
+    pub price:    Rational,
+    pub amount:   Rational,
 }
 
 /// Its ok that we create 2 of these for pair price and intermediary price
