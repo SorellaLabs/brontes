@@ -12,9 +12,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImpladd_liquidity_0CallLogs,
+    log: CurveV2PlainPoolImplAdd_liquidity_0CallLogs,
     db_tx: &DB|{
-        let log = log.AddLiquidity_field;
+        let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -49,9 +49,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImpladd_liquidity_1CallLogs,
+    log: CurveV2PlainPoolImplAdd_liquidity_1CallLogs,
     db_tx: &DB|{
-        let log = log.AddLiquidity_field;
+        let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;

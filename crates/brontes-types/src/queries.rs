@@ -25,3 +25,7 @@ pub async fn make_call_request<C: SolCall, T: TracingProvider>(
 
     Ok(C::abi_decode_returns(&res, false)?)
 }
+
+alloy_sol_macro::sol!(
+    function yeet(address babies) returns (bool is_dead);
+);

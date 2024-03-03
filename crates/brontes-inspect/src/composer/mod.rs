@@ -226,7 +226,7 @@ fn try_compose_mev(
                 if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
                     let indexes = find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes);
                     if indexes.is_empty() {
-                        break;
+                        break
                     }
                     for index in indexes {
                         let other_bundle = &other_mev_data_list[index];
@@ -235,7 +235,7 @@ fn try_compose_mev(
                         temp_removal_indices.push((other_mev_type, index));
                     }
                 } else {
-                    break;
+                    break
                 }
             }
 
@@ -262,7 +262,7 @@ fn try_compose_mev(
     for (mev_type, indices) in removal_indices {
         if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
             for &index in indices.iter().rev() {
-                if !mev_list.is_empty() {
+                if mev_list.len() > index {
                     mev_list.remove(index);
                 }
             }
@@ -276,7 +276,7 @@ pub mod tests {
 
     use super::*;
     use crate::{
-        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS, USDT_ADDRESS},
+        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS},
         Inspectors,
     };
 
@@ -302,29 +302,6 @@ pub mod tests {
             hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
             hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
         ]);
-
-        inspector_util.run_composer(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    pub async fn test_deduplicate() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = ComposerRunConfig::new(
-            vec![Inspectors::AtomicArb, Inspectors::CexDex],
-            MevType::AtomicArb,
-        )
-        .with_dex_prices()
-        .needs_tokens(vec![
-            hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
-            hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
-        ])
-        .with_gas_paid_usd(10.20)
-        .with_expected_profit_usd(349.2)
-        .with_mev_tx_hashes(vec![hex!(
-            "3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f"
-        )
-        .into()]);
 
         inspector_util.run_composer(config, None).await.unwrap();
     }

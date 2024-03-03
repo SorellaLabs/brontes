@@ -211,18 +211,17 @@ pub fn calculate_builder_profit(
 
     if metadata.proposer_fee_recipient.is_none() | metadata.proposer_mev_reward.is_none() {
         debug!("Isn't an mev-boost block");
-        return (builder_payments, 0.0);
+        return (builder_payments, 0.0)
     }
 
-    let builder_sponsorships = tree.collect_all(
+    let builder_sponsorships = tree.clone().collect_all(
         TreeSearchBuilder::default()
             .with_action(Actions::is_eth_transfer)
             .with_from_address(builder_address),
     );
 
     let builder_sponsorship_amount: i128 = builder_sponsorships
-        .values()
-        .flatten()
+        .flat_map(|(_, v)| v)
         .map(|action| match action {
             Actions::EthTransfer(transfer) => {
                 // So we don't double count when deducting proposer mev reward below
@@ -245,7 +244,7 @@ pub fn calculate_builder_profit(
                     - builder_sponsorship_amount
                     - metadata.proposer_mev_reward.unwrap_or_default() as i128,
                 0.0,
-            );
+            )
         }
     };
     // Calculate the builder's mev profit from it's associated vertically integrated
@@ -279,7 +278,7 @@ pub fn calculate_builder_profit(
                     - builder_sponsorship_amount
                     - metadata.proposer_mev_reward.unwrap() as i128,
                 mev_searching_profit,
-            );
+            )
         }
     };
 

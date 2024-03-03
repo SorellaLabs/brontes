@@ -7,8 +7,11 @@ use clap::Parser;
 use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 
-use super::{determine_max_tasks, get_env_vars, load_database, static_object};
-use crate::{cli::get_tracing_provider, runner::CliContext};
+use crate::{
+    cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
+    runner::CliContext,
+};
+
 #[derive(Debug, Parser)]
 pub struct TraceArgs {
     /// Start Block
