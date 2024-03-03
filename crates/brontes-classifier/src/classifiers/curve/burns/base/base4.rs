@@ -12,10 +12,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool4remove_liquidityCallLogs,
+    log: CurveBasePool4Remove_liquidityCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
@@ -52,10 +52,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool4remove_liquidity_imbalanceCallLogs,
+    log: CurveBasePool4Remove_liquidity_imbalanceCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
