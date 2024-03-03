@@ -10,7 +10,6 @@ pub mod initialized_state;
 pub mod metadata;
 pub mod mev_block;
 pub mod pool_creation_block;
-pub mod raw_quotes;
 pub mod redefined_types;
 pub mod searcher;
 pub mod token_info;

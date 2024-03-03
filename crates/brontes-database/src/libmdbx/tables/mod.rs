@@ -801,4 +801,3 @@ compressed_table!(
         }
     }
 );
-
