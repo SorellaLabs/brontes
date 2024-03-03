@@ -60,6 +60,7 @@ sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
 sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
 sol!(BalancerV1CorePoolFactory, "./classifier-abis/balancer/BalancerV1Factory.json");
 sol!(BalancerV1SmartPoolFactory, "./classifier-abis/balancer/BalancerV1CrpFactory.json");
+sol!(BalancerV2ComposableStablePoolFactory, "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactory.json");
 
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);

@@ -32,6 +32,21 @@ discovery_impl!(
     }
 );
 
+discovery_impl!(
+    BalancerV2ComposableStablePoolDiscovery,
+    crate::BalancerV2ComposableStablePoolFactory::createCall,
+    0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A,
+    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+        vec![NormalizedNewPool {
+            trace_index,
+            protocol: Protocol::BalancerV2,
+            pool_address: deployed_address,
+            tokens: call_data.tokens,
+        }]
+    }
+);
+
+
 // Smart Pool Factory
 //  fub4
 
