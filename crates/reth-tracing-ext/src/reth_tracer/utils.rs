@@ -132,3 +132,4 @@ impl TraceStyle {
         matches!(self, Self::Parity)
     }
 }
+
