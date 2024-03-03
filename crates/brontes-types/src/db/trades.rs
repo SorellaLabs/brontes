@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashMap};
+use std::{cmp::max, collections::HashMap, marker::PhantomData};
 
 use alloy_primitives::Address;
 use itertools::Itertools;
@@ -148,9 +148,9 @@ impl CexTradeMap {
         self.get_most_accurate_basket(trade_queue, volume, baskets)
     }
 
-    fn get_most_accurate_basket(
+    fn get_most_accurate_basket<'a>(
         &self,
-        mut queue: PairTradeQueue<'_>,
+        mut queue: PairTradeQueue<'a>,
         volume: &Rational,
         baskets: usize,
     ) -> Option<(Rational, Rational)> {
@@ -161,8 +161,11 @@ impl CexTradeMap {
 
         while volume_amount.gt(&cur_vol) {
             let Some(next) = queue.next_best_trade() else { break };
-            cur_vol += &next.amount;
-            trades.push(next.clone());
+            // we do this due to the sheer amount of trades we have and to not have to copy.
+            // all of this is safe
+            cur_vol += &next.get().amount;
+
+            trades.push(next);
         }
 
         let closest = closest(
@@ -181,11 +184,11 @@ impl CexTradeMap {
         let mut trade_volume = Rational::ZERO;
 
         for trade in closest {
-            let (m_fee, t_fee) = trade.exchange.fees();
+            let (m_fee, t_fee) = trade.get().exchange.fees();
 
-            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount;
-            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount;
-            trade_volume += &trade.amount;
+            vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
+            vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
+            trade_volume += &trade.get().amount;
         }
 
         Some((vxp_maker / &trade_volume, vxp_taker / trade_volume))
@@ -232,8 +235,8 @@ impl<'a> PairTradeQueue<'a> {
         Self { exchange_depth, trades }
     }
 
-    pub fn next_best_trade(&mut self) -> Option<&CexTrades> {
-        let mut next: Option<&CexTrades> = None;
+    fn next_best_trade(&mut self) -> Option<CexTradePtr<'a>> {
+        let mut next: Option<CexTradePtr<'a>> = None;
 
         for (exchange, trades) in &self.trades {
             let exchange_depth = *self.exchange_depth.entry(*exchange).or_insert(0);
@@ -247,35 +250,57 @@ impl<'a> PairTradeQueue<'a> {
             if let Some(trade) = trades.get(len - exchange_depth) {
                 if let Some(cur_best) = next.as_ref() {
                     // found a better price
-                    if trade.price > cur_best.price {
-                        next = Some(*trade)
+
+                    if trade.price.gt(&cur_best.get().price) {
+                        next = Some(CexTradePtr::new(*trade));
                     }
                 // not set
                 } else {
-                    next = Some(*trade);
+                    next = Some(CexTradePtr::new(*trade));
                 }
             }
         }
 
         // increment ptr
         if let Some(next) = next.as_ref() {
-            *self.exchange_depth.get_mut(&next.exchange).unwrap() += 1;
+            *self.exchange_depth.get_mut(&next.get().exchange).unwrap() += 1;
         }
 
         next
     }
 }
 
-pub fn closest<'a>(
-    iter: impl Iterator<Item = Vec<&'a CexTrades>>,
+fn closest<'a>(
+    iter: impl Iterator<Item = Vec<&'a CexTradePtr<'a>>>,
     vol: &Rational,
-) -> Option<Vec<&'a CexTrades>> {
+) -> Option<Vec<&'a CexTradePtr<'a>>> {
     // sort from lowest to highest volume returning the first
     iter.sorted_by(|a, b| {
         a.iter()
-            .map(|t| &t.amount)
+            .map(|t| &t.get().amount)
             .sum::<Rational>()
-            .cmp(&b.iter().map(|t| &t.amount).sum::<Rational>())
+            .cmp(&b.iter().map(|t| &t.get().amount).sum::<Rational>())
     })
-    .find(|set| set.iter().map(|t| &t.amount).sum::<Rational>().ge(vol))
+    .find(|set| {
+        set.iter()
+            .map(|t| &t.get().amount)
+            .sum::<Rational>()
+            .ge(vol)
+    })
+}
+
+struct CexTradePtr<'ptr> {
+    raw: *const CexTrades,
+    /// used to bound the raw ptr so we can't use it if it goes out of scope.
+    _p:  PhantomData<&'ptr u8>,
+}
+
+impl<'ptr> CexTradePtr<'ptr> {
+    fn new(raw: &CexTrades) -> Self {
+        Self { raw: raw as *const _, _p: PhantomData::default() }
+    }
+
+    fn get(&'ptr self) -> &'ptr CexTrades {
+        unsafe { &*self.raw }
+    }
 }
