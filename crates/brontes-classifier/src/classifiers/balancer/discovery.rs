@@ -33,101 +33,55 @@ discovery_impl!(
 );
 
 
-
 // Balancer V2
+// Macro to implement the discovery_impl! for Balancer V2 factories with the exact same implementation method
+macro_rules! implement_discovery {
+    ($($name:ident, $factory:path, $address:expr),*) => {
+        $(
+            discovery_impl!(
+                $name,
+                $factory::createCall,
+                $address,
+                |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+                    vec![NormalizedNewPool {
+                        trace_index,
+                        protocol: Protocol::BalancerV2,
+                        pool_address: deployed_address,
+                        tokens: call_data.tokens,
+                    }]
+                }
+            );
+        )*
+    };
+}
 
+implement_discovery!(
+    BalancerV2ComposableStablePoolV5Discovery, crate::BalancerV2ComposableStablePoolFactoryV5, 0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A,
+    BalancerV2ComposableStablePoolV4Discovery, crate::BalancerV2ComposableStablePoolFactoryV4, 0xfADa0f4547AB2de89D1304A668C39B3E09Aa7c76,
+    BalancerV2ComposableStablePoolV3Discovery, crate::BalancerV2ComposableStablePoolFactoryV3, 0xdba127fBc23fb20F5929C546af220A991b5C6e01,
+    BalancerV2WeightedPoolFactoryV4Discovery, crate::BalancerV2WeightedPoolFactoryV4, 0x897888115Ada5773E02aA29F775430BFB5F34c51,
+    BalancerV2WeightedPoolFactoryV3Discovery, crate::BalancerV2WeightedPoolFactoryV2, 0x5Dd94Da3644DDD055fcf6B3E1aa310Bb7801EB8b,
+    BalancerV2WeightedPoolFactoryV2Discovery, crate::BalancerV2WeightedPoolFactoryV2, 0xcC508a455F5b0073973107Db6a878DdBDab957bC
+);
+
+// Euler Linear pool
 discovery_impl!(
-    BalancerV2ComposableStablePoolV5Discovery,
-    crate::BalancerV2ComposableStablePoolFactoryV5::createCall,
-    0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A,
+    BalancerV2EulerLinearPoolFactoryDiscovery,
+    crate::BalancerV2EulerLinearPoolFactory::createCall,
+    0x5F43FBa61f63Fa6bFF101a0A0458cEA917f6B347,
     |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+        let mut tokens = vec![call_data.mainToken, call_data.wrappedToken, deployed_address];
+        tokens.sort();
+
         vec![NormalizedNewPool {
             trace_index,
             protocol: Protocol::BalancerV2,
             pool_address: deployed_address,
-            tokens: call_data.tokens,
+            tokens,
         }]
     }
 );
 
-// Deprecated but had pool creations.
-discovery_impl!(
-    BalancerV2ComposableStablePoolV4Discovery,
-    crate::BalancerV2ComposableStablePoolFactoryV4::createCall,
-    0xfADa0f4547AB2de89D1304A668C39B3E09Aa7c76,
-    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV2,
-            pool_address: deployed_address,
-            tokens: call_data.tokens,
-        }]
-    }
-);
-
-// Deprecated but had pool creations.
-discovery_impl!(
-    BalancerV2ComposableStablePoolV3Discovery,
-    crate::BalancerV2ComposableStablePoolFactoryV3::createCall,
-    0xdba127fBc23fb20F5929C546af220A991b5C6e01,
-    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV2,
-            pool_address: deployed_address,
-            tokens: call_data.tokens,
-        }]
-    }
-);
-
-discovery_impl!(
-    BalancerV2WeightedPoolFactoryV4Discovery,
-    crate::BalancerV2WeightedPoolFactoryV4::createCall,
-    0x897888115Ada5773E02aA29F775430BFB5F34c51,
-    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV2,
-            pool_address: deployed_address,
-            tokens: call_data.tokens,
-        }]
-    }
-);
-
-// Deprecated but had pool creations.
-discovery_impl!(
-    BalancerV2WeightedPoolFactoryV3Discovery,
-    crate::BalancerV2WeightedPoolFactoryV2::createCall,
-    0x5Dd94Da3644DDD055fcf6B3E1aa310Bb7801EB8b,
-    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV2,
-            pool_address: deployed_address,
-            tokens: call_data.tokens,
-        }]
-    }
-);
-
-// Deprecated but had pool creations.
-discovery_impl!(
-    BalancerV2WeightedPoolFactoryV2Discovery,
-    crate::BalancerV2WeightedPoolFactoryV2::createCall,
-    0xcC508a455F5b0073973107Db6a878DdBDab957bC,
-    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV2,
-            pool_address: deployed_address,
-            tokens: call_data.tokens,
-        }]
-    }
-);
-
-
-
-// Smart Pool Factory
-//  fub4
 
 #[cfg(test)]
 mod tests {
