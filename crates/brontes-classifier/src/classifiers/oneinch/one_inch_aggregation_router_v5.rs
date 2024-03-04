@@ -199,7 +199,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_one_inch_aggregator_swap() {
         let classifier_utils = ClassifierTestUtils::new().await;
-        let swap =
+        let aggregator =
             B256::from(hex!("68603b7dce39738bc7aa9ce1cce39992965820ae39388a6d62db8d2db70132bb"));
 
         let eq_action = Actions::Aggregator(NormalizedAggregator {
@@ -223,10 +223,10 @@ mod tests {
 
         classifier_utils
             .contains_action(
-                swap,
+                aggregator,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
             )
             .await
             .unwrap();
