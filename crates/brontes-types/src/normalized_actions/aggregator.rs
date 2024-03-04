@@ -5,8 +5,8 @@ use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
-pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use super::accounting::{AddressDeltas, TokenAccounting};
+pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]

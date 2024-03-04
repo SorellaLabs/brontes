@@ -1,5 +1,5 @@
-pub mod aggregator;
 pub mod accounting;
+pub mod aggregator;
 pub mod batch;
 pub mod comparison;
 pub mod eth_transfer;
@@ -14,8 +14,8 @@ pub mod transfer;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
-pub use aggregator::*;
 use accounting::{AddressDeltas, TokenAccounting};
+pub use aggregator::*;
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 use clickhouse::InsertRow;
