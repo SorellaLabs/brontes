@@ -39,16 +39,15 @@ revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", 
 ], default-features = false }
 revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "ac63f06" }
 bitflags = "2.4"
-
+clap = "4.5.1"
 # error
 eyre = "0.6.8"
-
+jsonrpsee = { version = "0.20" }
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
 
 serde.workspace = true
 serde_json.workspace = true
-jsonrpsee = "0.22.1"
 [dev-dependencies]
 brontes-core = { workspace = true, features = ["tests"] }
 reth-tracing-ext = { workspace = true, features = ["tests"] }
