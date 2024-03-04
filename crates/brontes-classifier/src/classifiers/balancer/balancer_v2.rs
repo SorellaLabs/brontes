@@ -1,5 +1,5 @@
 use alloy_primitives::{Address, FixedBytes};
-use brontes_core::{DBWriter, LibmdbxReader};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{

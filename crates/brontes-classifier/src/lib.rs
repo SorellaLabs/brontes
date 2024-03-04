@@ -60,14 +60,30 @@ sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
 sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
 sol!(BalancerV1CorePoolFactory, "./classifier-abis/balancer/BalancerV1Factory.json");
 sol!(BalancerV1SmartPoolFactory, "./classifier-abis/balancer/BalancerV1CrpFactory.json");
-sol!(BalancerV2ComposableStablePoolFactoryV5, "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV5.json");
-sol!(BalancerV2ComposableStablePoolFactoryV4, "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV4.json");
-sol!(BalancerV2ComposableStablePoolFactoryV3, "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV3.json");
-sol!(BalancerV2WeightedPoolFactoryV4, "./classifier-abis/balancer/BalancerV2WeightedPoolFactoryV4.json");
-sol!(BalancerV2WeightedPoolFactoryV2, "./classifier-abis/balancer/BalancerV2WeightedPoolFactoryV2.json");
-sol!(BalancerV2EulerLinearPoolFactory, "./classifier-abis/balancer/BalancerV2EulerLinearPoolFactory.json");
-
-
+sol!(
+    BalancerV2ComposableStablePoolFactoryV5,
+    "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV5.json"
+);
+sol!(
+    BalancerV2ComposableStablePoolFactoryV4,
+    "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV4.json"
+);
+sol!(
+    BalancerV2ComposableStablePoolFactoryV3,
+    "./classifier-abis/balancer/BalancerV2ComposableStablePoolFactoryV3.json"
+);
+sol!(
+    BalancerV2WeightedPoolFactoryV4,
+    "./classifier-abis/balancer/BalancerV2WeightedPoolFactoryV4.json"
+);
+sol!(
+    BalancerV2WeightedPoolFactoryV2,
+    "./classifier-abis/balancer/BalancerV2WeightedPoolFactoryV2.json"
+);
+sol!(
+    BalancerV2EulerLinearPoolFactory,
+    "./classifier-abis/balancer/BalancerV2EulerLinearPoolFactory.json"
+);
 
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);

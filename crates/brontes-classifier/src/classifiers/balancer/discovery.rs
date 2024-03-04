@@ -36,7 +36,7 @@ discovery_impl!(
 // Balancer V2
 // Macro to implement the discovery_impl! for Balancer V2 factories with the exact same implementation method
 macro_rules! implement_discovery {
-    ($($name:ident, $factory:path, $address:expr),*) => {
+    ( $( [ $name:ident => $factory:path => $address:expr ] ),* $(,)? ) => {
         $(
             discovery_impl!(
                 $name,
@@ -55,13 +55,14 @@ macro_rules! implement_discovery {
     };
 }
 
+
 implement_discovery!(
-    BalancerV2ComposableStablePoolV5Discovery, crate::BalancerV2ComposableStablePoolFactoryV5, 0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A,
-    BalancerV2ComposableStablePoolV4Discovery, crate::BalancerV2ComposableStablePoolFactoryV4, 0xfADa0f4547AB2de89D1304A668C39B3E09Aa7c76,
-    BalancerV2ComposableStablePoolV3Discovery, crate::BalancerV2ComposableStablePoolFactoryV3, 0xdba127fBc23fb20F5929C546af220A991b5C6e01,
-    BalancerV2WeightedPoolFactoryV4Discovery, crate::BalancerV2WeightedPoolFactoryV4, 0x897888115Ada5773E02aA29F775430BFB5F34c51,
-    BalancerV2WeightedPoolFactoryV3Discovery, crate::BalancerV2WeightedPoolFactoryV2, 0x5Dd94Da3644DDD055fcf6B3E1aa310Bb7801EB8b,
-    BalancerV2WeightedPoolFactoryV2Discovery, crate::BalancerV2WeightedPoolFactoryV2, 0xcC508a455F5b0073973107Db6a878DdBDab957bC
+    [BalancerV2ComposableStablePoolV5Discovery => crate::BalancerV2ComposableStablePoolFactoryV5 => 0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A],
+    [BalancerV2ComposableStablePoolV4Discovery => crate::BalancerV2ComposableStablePoolFactoryV4 => 0xfADa0f4547AB2de89D1304A668C39B3E09Aa7c76],
+    [BalancerV2ComposableStablePoolV3Discovery => crate::BalancerV2ComposableStablePoolFactoryV3 => 0xdba127fBc23fb20F5929C546af220A991b5C6e01],
+    [BalancerV2WeightedPoolFactoryV4Discovery => crate::BalancerV2WeightedPoolFactoryV4 => 0x897888115Ada5773E02aA29F775430BFB5F34c51],
+    [BalancerV2WeightedPoolFactoryV3Discovery => crate::BalancerV2WeightedPoolFactoryV2 => 0x5Dd94Da3644DDD055fcf6B3E1aa310Bb7801EB8b],
+    [BalancerV2WeightedPoolFactoryV2Discovery => crate::BalancerV2WeightedPoolFactoryV2 => 0xcC508a455F5b0073973107Db6a878DdBDab957bC]
 );
 
 // Euler Linear pool
