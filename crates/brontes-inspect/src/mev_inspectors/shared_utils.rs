@@ -10,8 +10,7 @@ use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
     normalized_actions::{
-        Actions, NormalizedBatch, NormalizedBurn, NormalizedCollect, NormalizedFlashLoan,
-        NormalizedLiquidation, NormalizedMint, NormalizedSwap, NormalizedTransfer,
+        Actions, NormalizedAggregator, NormalizedBatch, NormalizedBurn, NormalizedCollect, NormalizedFlashLoan, NormalizedLiquidation, NormalizedMint, NormalizedSwap, NormalizedTransfer
     },
     pair::Pair,
     utils::ToFloatNearest,
@@ -355,6 +354,7 @@ impl TokenAccounting for Actions {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         match self {
             Actions::Swap(swap) => swap.apply_token_deltas(delta_map),
+            Actions::Aggregator(swap) => swap.apply_token_deltas(delta_map),
             Actions::Transfer(transfer) => transfer.apply_token_deltas(delta_map),
             Actions::FlashLoan(flash_loan) => flash_loan.apply_token_deltas(delta_map),
             Actions::Liquidation(liquidation) => liquidation.apply_token_deltas(delta_map),
@@ -375,6 +375,14 @@ impl TokenAccounting for Actions {
 }
 
 impl TokenAccounting for NormalizedFlashLoan {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.child_actions
+            .iter()
+            .for_each(|action| action.apply_token_deltas(delta_map))
+    }
+}
+
+impl TokenAccounting for NormalizedAggregator {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         self.child_actions
             .iter()

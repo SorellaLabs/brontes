@@ -9,6 +9,7 @@ pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
 pub mod utils;
+pub mod aggregator;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
@@ -17,6 +18,7 @@ pub use batch::*;
 use clickhouse::InsertRow;
 pub use eth_transfer::*;
 pub use flashloan::*;
+pub use aggregator::*;
 pub use lending::*;
 pub use liquidation::*;
 pub use liquidity::*;
@@ -75,6 +77,7 @@ impl NormalizedAction for Actions {
             Self::Revert => false,
             Self::NewPool(_) => false,
             Self::PoolConfigUpdate(_) => false,
+            Self::Aggregator(_) => true,
         }
     }
 
@@ -93,6 +96,13 @@ impl NormalizedAction for Actions {
                 Self::is_swap,
                 Self::is_transfer,
                 Self::is_eth_transfer,
+            ]),
+            Self::Aggregator(_) => TreeSearchBuilder::default().with_actions([
+                Self::is_batch,
+                Self::is_swap,
+                Self::is_mint,
+                Self::is_burn,
+                Self::is_transfer,
             ]),
             Self::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
             action => unreachable!("no continue_classification function for {action:?}"),
@@ -115,6 +125,7 @@ impl NormalizedAction for Actions {
             Self::Unclassified(u) => u.trace_idx,
             Self::NewPool(p) => p.trace_index,
             Self::PoolConfigUpdate(p) => p.trace_index,
+            Self::Aggregator(a) => a.trace_index,
             Self::Revert => unreachable!("no trace index for revert"),
         }
     }
@@ -124,6 +135,7 @@ impl NormalizedAction for Actions {
             Self::FlashLoan(f) => f.finish_classification(actions),
             Self::Batch(f) => f.finish_classification(actions),
             Self::Liquidation(l) => l.finish_classification(actions),
+            Self::Aggregator(a) => a.finish_classification(actions),
             action => unreachable!("{action:?} never require complex classification"),
         }
     }
@@ -146,6 +158,7 @@ pub enum Actions {
     EthTransfer(NormalizedEthTransfer),
     NewPool(NormalizedNewPool),
     PoolConfigUpdate(NormalizedPoolConfigUpdate),
+    Aggregator(NormalizedAggregator),
     Revert,
 }
 
@@ -166,6 +179,7 @@ impl InsertRow for Actions {
             Actions::NewPool(_) => todo!(),
             Actions::PoolConfigUpdate(_) => todo!(),
             Actions::Unclassified(..) | Actions::Revert => panic!(),
+            Actions::Aggregator(_) => NormalizedAggregator::COLUMN_NAMES,
         }
     }
 }
@@ -179,6 +193,7 @@ impl serde::Serialize for Actions {
             Actions::Swap(s) => s.serialize(serializer),
             Actions::SwapWithFee(s) => s.serialize(serializer),
             Actions::FlashLoan(f) => f.serialize(serializer),
+            Actions::Aggregator(a) => a.serialize(serializer),
             Actions::Batch(b) => b.serialize(serializer),
             Actions::Mint(m) => m.serialize(serializer),
             Actions::Transfer(t) => t.serialize(serializer),
@@ -257,6 +272,7 @@ impl Actions {
             Actions::Swap(s) => s.pool,
             Actions::SwapWithFee(s) => s.pool,
             Actions::FlashLoan(f) => f.pool,
+            Actions::Aggregator(a) => a.pool,
             Actions::Batch(b) => b.settlement_contract,
             Actions::Mint(m) => m.pool,
             Actions::Burn(b) => b.pool,
@@ -282,6 +298,7 @@ impl Actions {
             Actions::Swap(s) => s.from,
             Actions::SwapWithFee(s) => s.from,
             Actions::FlashLoan(f) => f.from,
+            Actions::Aggregator(a) => a.from,
             Actions::Batch(b) => b.solver,
             Actions::Mint(m) => m.from,
             Actions::Burn(b) => b.from,
@@ -316,6 +333,10 @@ impl Actions {
 
     pub const fn is_flash_loan(&self) -> bool {
         matches!(self, Actions::FlashLoan(_))
+    }
+
+    pub const fn is_aggregator(&self) -> bool {
+        matches!(self, Actions::Aggregator(_))
     }
 
     pub const fn is_liquidation(&self) -> bool {
@@ -429,7 +450,8 @@ extra_impls!(
     (SwapWithFee, NormalizedSwapWithFee),
     (Transfer, NormalizedTransfer),
     (Liquidation, NormalizedLiquidation),
-    (FlashLoan, NormalizedFlashLoan)
+    (FlashLoan, NormalizedFlashLoan),
+    (Aggregator, NormalizedAggregator)
 );
 
 /// Custom impl for itering over swaps and swap with fee
