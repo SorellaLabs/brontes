@@ -6,6 +6,7 @@ use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
+use super::accounting::{AddressDeltas, TokenAccounting};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
@@ -30,6 +31,14 @@ pub struct NormalizedAggregator {
     //  - Transfers
     pub child_actions: Vec<Actions>,
     pub msg_value:     U256,
+}
+
+impl TokenAccounting for NormalizedAggregator {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.child_actions
+            .iter()
+            .for_each(|action| action.apply_token_deltas(delta_map))
+    }
 }
 
 impl NormalizedAggregator {

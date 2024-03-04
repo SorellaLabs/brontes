@@ -452,7 +452,7 @@ extra_impls!(
     (Transfer, NormalizedTransfer),
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan),
-    (Aggregator, NormalizedAggregator)
+    (Aggregator, NormalizedAggregator),
     (Batch, NormalizedBatch)
 );
 
@@ -497,6 +497,7 @@ impl TokenAccounting for Actions {
             Actions::Swap(swap) => swap.apply_token_deltas(delta_map),
             Actions::Transfer(transfer) => transfer.apply_token_deltas(delta_map),
             Actions::FlashLoan(flash_loan) => flash_loan.apply_token_deltas(delta_map),
+            Actions::Aggregator(aggregator) => aggregator.apply_token_deltas(delta_map),
             Actions::Liquidation(liquidation) => liquidation.apply_token_deltas(delta_map),
             Actions::Batch(batch) => batch.apply_token_deltas(delta_map),
             Actions::Burn(burn) => burn.apply_token_deltas(delta_map),
