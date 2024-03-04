@@ -1,7 +1,7 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap, structured_trace::CallInfo, utils::ToScaledRational,
+    normalized_actions::NormalizedAggregator, structured_trace::CallInfo, utils::ToScaledRational,
 };
 
 use crate::OneInchAggregationRouterV5::{
@@ -12,7 +12,7 @@ use crate::OneInchAggregationRouterV5::{
 action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::swapCall,
-    Swap,
+    Aggregator,
     [],
     call_data: true,
     return_data: true,
@@ -28,7 +28,7 @@ action_impl!(
         let token_out = db_tx.try_fetch_token_info(call_data.desc.dstToken)?;
         let amount_in = token_in_amount.to_scaled_rational(token_in.decimals);
         let amount_out = token_out_amount.to_scaled_rational(token_out.decimals);
-        return Ok(NormalizedSwap {
+        return Ok(NormalizedAggregator {
             protocol: Protocol::OneInch,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -38,6 +38,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
+            child_actions: vec![],
             msg_value: info.msg_value
         })
     }
@@ -46,7 +47,7 @@ action_impl!(
 action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::fillOrderToCall,
-    Swap,
+    Aggregator,
     [..OrderFilled],
     call_data: true,
     return_data: true,
@@ -62,7 +63,7 @@ action_impl!(
         let token_out = db_tx.try_fetch_token_info(call_data.order_.takerAsset)?;
         let amount_in = token_in_amount.to_scaled_rational(token_in.decimals);
         let amount_out = token_out_amount.to_scaled_rational(token_out.decimals);
-        return Ok(NormalizedSwap {
+        return Ok(NormalizedAggregator {
             protocol: Protocol::OneInch,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -72,6 +73,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
+            child_actions: vec![],
             msg_value: info.msg_value
         })
     }
@@ -80,7 +82,7 @@ action_impl!(
 action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::clipperSwapCall,
-    Swap,
+    Aggregator,
     [],
     call_data: true,
     return_data: true,
@@ -95,7 +97,7 @@ action_impl!(
         let token_out = db_tx.try_fetch_token_info(call_data.dstToken)?;
         let amount_in = token_in_amount.to_scaled_rational(token_in.decimals);
         let amount_out = token_out_amount.to_scaled_rational(token_out.decimals);
-        return Ok(NormalizedSwap {
+        return Ok(NormalizedAggregator {
             protocol: Protocol::OneInch,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -105,6 +107,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
+            child_actions: vec![],
             msg_value: info.msg_value
         })
     }
@@ -113,7 +116,7 @@ action_impl!(
 action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::clipperSwapToCall,
-    Swap,
+    Aggregator,
     [],
     call_data: true,
     return_data: true,
@@ -129,7 +132,7 @@ action_impl!(
         let token_out = db_tx.try_fetch_token_info(call_data.dstToken)?;
         let amount_in = token_in_amount.to_scaled_rational(token_in.decimals);
         let amount_out = token_out_amount.to_scaled_rational(token_out.decimals);
-        return Ok(NormalizedSwap {
+        return Ok(NormalizedAggregator {
             protocol: Protocol::OneInch,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -139,6 +142,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
+            child_actions: vec![],
             msg_value: info.msg_value
         })
     }
@@ -147,7 +151,7 @@ action_impl!(
 action_impl!(
     Protocol::OneInch,
     crate::OneInchAggregationRouterV5::clipperSwapToWithPermitCall,
-    Swap,
+    Aggregator,
     [],
     call_data: true,
     return_data: true,
@@ -163,7 +167,7 @@ action_impl!(
         let token_out = db_tx.try_fetch_token_info(call_data.dstToken)?;
         let amount_in = token_in_amount.to_scaled_rational(token_in.decimals);
         let amount_out = token_out_amount.to_scaled_rational(token_out.decimals);
-        return Ok(NormalizedSwap {
+        return Ok(NormalizedAggregator {
             protocol: Protocol::OneInch,
             trace_index: info.trace_idx,
             from: info.from_address,
@@ -173,6 +177,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
+            child_actions: vec![],
             msg_value: info.msg_value
         })
     }
@@ -197,20 +202,21 @@ mod tests {
         let swap =
             B256::from(hex!("68603b7dce39738bc7aa9ce1cce39992965820ae39388a6d62db8d2db70132bb"));
 
-        let eq_action = Actions::Swap(NormalizedSwap {
-            protocol:    OneInch,
-            trace_index: 0,
-            from:        Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
-            recipient:   Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
-            pool:        Address::new(hex!("1111111254EEB25477B68fb85Ed929f73A960582")),
-            token_in:    TokenInfoWithAddress::usdc(),
-            amount_in:   U256::from_str("126000000000")
+        let eq_action = Actions::Aggregator(NormalizedAggregator {
+            protocol:      OneInch,
+            trace_index:   0,
+            from:          Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
+            recipient:     Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
+            pool:          Address::new(hex!("1111111254EEB25477B68fb85Ed929f73A960582")),
+            token_in:      TokenInfoWithAddress::usdc(),
+            amount_in:     U256::from_str("126000000000")
                 .unwrap()
                 .to_scaled_rational(6),
-            token_out:   TokenInfoWithAddress::usdt(),
-            amount_out:  U256::from_str("125475168379")
+            token_out:     TokenInfoWithAddress::usdt(),
+            amount_out:    U256::from_str("125475168379")
                 .unwrap()
                 .to_scaled_rational(6),
+            child_actions: vec![],
 
             msg_value: U256::ZERO,
         });

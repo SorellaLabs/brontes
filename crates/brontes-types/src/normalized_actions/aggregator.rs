@@ -10,13 +10,15 @@ use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
 pub struct NormalizedAggregator {
-    pub protocol:          Protocol,
-    pub trace_index:       u64,
-    pub from:              Address,
-    pub recipient:         Address,
-    pub pool:              Address,
-    pub assets:            Vec<TokenInfoWithAddress>,
-    pub amounts:           Vec<Rational>,
+    pub protocol:    Protocol,
+    pub trace_index: u64,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token_in:    TokenInfoWithAddress,
+    pub token_out:   TokenInfoWithAddress,
+    pub amount_in:   Rational,
+    pub amount_out:  Rational,
 
     // Child actions contained within this aggregator in order of execution
     // They can be:
@@ -35,7 +37,7 @@ impl NormalizedAggregator {
         let mut nodes_to_prune = Vec::new();
         for (trace_index, action) in actions.iter() {
             match &action {
-                Actions::Swap(_) 
+                Actions::Swap(_)
                 | Actions::Liquidation(_)
                 | Actions::Batch(_)
                 | Actions::Burn(_)
@@ -44,7 +46,7 @@ impl NormalizedAggregator {
                     self.child_actions.push(action.clone());
                     nodes_to_prune.push(*trace_index);
                 }
-                _=> continue,
+                _ => continue,
             }
         }
         nodes_to_prune

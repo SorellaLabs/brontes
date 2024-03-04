@@ -1,3 +1,4 @@
+pub mod aggregator;
 pub mod batch;
 pub mod eth_transfer;
 pub mod flashloan;
@@ -9,16 +10,15 @@ pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
 pub mod utils;
-pub mod aggregator;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
+pub use aggregator::*;
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 use clickhouse::InsertRow;
 pub use eth_transfer::*;
 pub use flashloan::*;
-pub use aggregator::*;
 pub use lending::*;
 pub use liquidation::*;
 pub use liquidity::*;

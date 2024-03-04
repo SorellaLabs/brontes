@@ -10,7 +10,9 @@ use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
     normalized_actions::{
-        Actions, NormalizedAggregator, NormalizedBatch, NormalizedBurn, NormalizedCollect, NormalizedFlashLoan, NormalizedLiquidation, NormalizedMint, NormalizedSwap, NormalizedTransfer
+        Actions, NormalizedAggregator, NormalizedBatch, NormalizedBurn, NormalizedCollect,
+        NormalizedFlashLoan, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+        NormalizedTransfer,
     },
     pair::Pair,
     utils::ToFloatNearest,
