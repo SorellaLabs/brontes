@@ -1,5 +1,7 @@
 pub mod aggregator;
+pub mod accounting;
 pub mod batch;
+pub mod comparison;
 pub mod eth_transfer;
 pub mod flashloan;
 pub mod lending;
@@ -9,11 +11,11 @@ pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
-pub mod utils;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 pub use aggregator::*;
+use accounting::{AddressDeltas, TokenAccounting};
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 use clickhouse::InsertRow;
@@ -426,7 +428,6 @@ macro_rules! extra_impls {
                         Box::new(Actions::[<try _$action_name:snake>])
                                 as Box<dyn Fn(Actions) -> Option<$ret>>
                     }
-
                 )*
             }
 
@@ -452,6 +453,7 @@ extra_impls!(
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan),
     (Aggregator, NormalizedAggregator)
+    (Batch, NormalizedBatch)
 );
 
 /// Custom impl for itering over swaps and swap with fee
@@ -486,5 +488,28 @@ impl Actions {
     /// Merges swap and swap with fee
     pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
         Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
+    }
+}
+
+impl TokenAccounting for Actions {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        match self {
+            Actions::Swap(swap) => swap.apply_token_deltas(delta_map),
+            Actions::Transfer(transfer) => transfer.apply_token_deltas(delta_map),
+            Actions::FlashLoan(flash_loan) => flash_loan.apply_token_deltas(delta_map),
+            Actions::Liquidation(liquidation) => liquidation.apply_token_deltas(delta_map),
+            Actions::Batch(batch) => batch.apply_token_deltas(delta_map),
+            Actions::Burn(burn) => burn.apply_token_deltas(delta_map),
+            Actions::Mint(mint) => mint.apply_token_deltas(delta_map),
+            Actions::SwapWithFee(swap_with_fee) => swap_with_fee.swap.apply_token_deltas(delta_map),
+            Actions::Collect(collect) => collect.apply_token_deltas(delta_map),
+            Actions::Unclassified(_) => (), /* Potentially no token deltas to apply, adjust as */
+            // necessary
+            Actions::SelfDestruct(_self_destruct) => (),
+            Actions::EthTransfer(_eth_transfer) => (),
+            Actions::NewPool(_new_pool) => (),
+            Actions::PoolConfigUpdate(_pool_update) => (),
+            Actions::Revert => (), // No token deltas to apply for a revert
+        }
     }
 }

@@ -14,10 +14,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coinCall,
-    log: CurveBasePool2remove_liquidity_one_coinCallLogs,
+    log: CurveBasePool2Remove_liquidity_one_coinCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 

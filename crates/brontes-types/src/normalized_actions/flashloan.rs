@@ -5,6 +5,7 @@ use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
+use super::accounting::{AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 
@@ -32,6 +33,14 @@ pub struct NormalizedFlashLoan {
     pub repayments:    Vec<NormalizedTransfer>,
     pub fees_paid:     Vec<Rational>,
     pub msg_value:     U256,
+}
+
+impl TokenAccounting for NormalizedFlashLoan {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        self.child_actions
+            .iter()
+            .for_each(|action| action.apply_token_deltas(delta_map))
+    }
 }
 
 impl NormalizedFlashLoan {
