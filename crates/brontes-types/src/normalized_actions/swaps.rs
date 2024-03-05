@@ -151,8 +151,7 @@ impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
 
 #[derive(Default)]
 pub struct ClickhouseDoubleVecNormalizedSwap {
-    pub tx_hash:     Vec<String>, /* clickhouse requires nested fields to have the same
-                                   * number of rows */
+    pub tx_hash:     Vec<String>,
     pub trace_index: Vec<u64>,
     pub from:        Vec<String>,
     pub recipient:   Vec<String>,
