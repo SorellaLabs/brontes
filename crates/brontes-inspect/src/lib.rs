@@ -123,6 +123,7 @@ pub trait Inspector: Send + Sync {
 )]
 pub enum Inspectors {
     AtomicArb,
+    #[cfg(not(feature = "cex-dex-markout"))]
     CexDex,
     Jit,
     Liquidations,
@@ -145,6 +146,7 @@ impl Inspectors {
                 static_object(AtomicArbInspector::new(quote_token, db)) as DynMevInspector
             }
             Self::Jit => static_object(JitInspector::new(quote_token, db)) as DynMevInspector,
+            #[cfg(not(feature = "cex-dex-markout"))]
             Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
                 as DynMevInspector,
             Self::Sandwich => {

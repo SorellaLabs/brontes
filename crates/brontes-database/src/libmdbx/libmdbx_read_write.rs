@@ -805,10 +805,8 @@ impl LibmdbxReadWriter {
     #[cfg(feature = "cex-dex-markout")]
     fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
         let tx = self.0.ro_tx()?;
-        let res = tx
-            .get::<CexTrades>(block_num)?
+        tx.get::<CexTrades>(block_num)?
             .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
-            .map(|e| e.0);
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
