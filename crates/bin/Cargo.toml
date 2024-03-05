@@ -87,13 +87,20 @@ default = [
   "brontes-core/default",
   "brontes-database/default",
   "brontes-classifier/default",
-  "brontes-inspect/default"
+  "brontes-inspect/default",
 ]
 
-local-no-inserts = []
+
+sorella-server = ["local-reth", "local-clickhouse", "cex-dex-markout"]
+
+cex-dex-markout = [
+  "brontes-types/cex-dex-markout",
+  "brontes-database/cex-dex-markout",
+  "brontes-inspect/cex-dex-markout",
+]
 
 api = ["brontes-types/api"]
-sorella-server = ["local-reth", "local-clickhouse"]
+local-no-inserts = []
 
 tests = [
   "brontes-core/tests",

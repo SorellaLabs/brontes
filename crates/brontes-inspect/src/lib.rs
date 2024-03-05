@@ -100,10 +100,12 @@ use brontes_types::{
     tree::BlockTree,
 };
 use cex_dex::CexDexInspector;
+#[cfg(feature = "cex-dex-markout")]
+use cex_dex_markout::CexDexMarkoutInspector;
 use jit::JitInspector;
 use liquidations::LiquidationInspector;
-//use long_tail::LongTailInspector;
 use sandwich::SandwichInspector;
+//use long_tail::LongTailInspector;
 
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
@@ -124,8 +126,9 @@ pub enum Inspectors {
     CexDex,
     Jit,
     Liquidations,
-    //LongTail,
     Sandwich,
+    #[cfg(feature = "cex-dex-markout")]
+    CexDexMarkout,
 }
 
 type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
@@ -142,9 +145,6 @@ impl Inspectors {
                 static_object(AtomicArbInspector::new(quote_token, db)) as DynMevInspector
             }
             Self::Jit => static_object(JitInspector::new(quote_token, db)) as DynMevInspector,
-            //Self::LongTail => {
-            //  static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
-            //}
             Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
                 as DynMevInspector,
             Self::Sandwich => {
@@ -153,6 +153,14 @@ impl Inspectors {
             Self::Liquidations => {
                 static_object(LiquidationInspector::new(quote_token, db)) as DynMevInspector
             }
+            #[cfg(feature = "cex-dex-markout")]
+            Self::CexDexMarkout => {
+                static_object(CexDexMarkoutInspector::new(quote_token, db, cex_exchanges))
+                    as DynMevInspector
+            }
+            //Self::LongTail => {
+            //  static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
+            //}
         }
     }
 }
