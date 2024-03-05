@@ -90,8 +90,7 @@ default = [
   "brontes-inspect/default",
 ]
 
-
-sorella-server = ["local-reth", "local-clickhouse", "cex-dex-markout"]
+sorella-server = ["local-reth", "local-clickhouse"]
 
 cex-dex-markout = [
   "brontes-types/cex-dex-markout",
