@@ -90,6 +90,13 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
 
 #[cfg(test)]
 pub mod test {
+    use alloy_primitives::hex;
+
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        Inspectors,
+    };
+
     #[brontes_macros::test]
     async fn test_simple_searcher_tx() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
