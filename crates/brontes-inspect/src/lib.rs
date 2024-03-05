@@ -99,6 +99,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
+#[cfg(not(feature = "cex-dex-markout"))]
 use cex_dex::CexDexInspector;
 #[cfg(feature = "cex-dex-markout")]
 use cex_dex_markout::CexDexMarkoutInspector;
