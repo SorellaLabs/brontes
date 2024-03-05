@@ -179,16 +179,6 @@ mod tests {
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
                 }),
                 Actions::Transfer(NormalizedTransfer {
-                    trace_index: 19,
-                    from:        Address::new(hex!("655edce464cc797526600a462a8154650eee4b77")),
-                    to:          Address::new(hex!("235d3afac42f5e5ff346cb6c19af13194988551f")),
-                    token:       TokenInfoWithAddress::weth(),
-                    amount:      U256::from_str("47652261091733496")
-                        .unwrap()
-                        .to_scaled_rational(18),
-                    fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
-                }),
-                Actions::Transfer(NormalizedTransfer {
                     trace_index: 20,
                     from:        Address::new(hex!("235d3afac42f5e5ff346cb6c19af13194988551f")),
                     to:          Address::new(hex!("a88800cd213da5ae406ce248380802bd53b47647")),
