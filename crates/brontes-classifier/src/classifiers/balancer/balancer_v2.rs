@@ -170,3 +170,56 @@ action_impl!(
 fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
     Address::from_slice(&pool_id[0..20])
 }
+
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, Address, B256, U256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::{TokenInfo, TokenInfoWithAddress},
+        normalized_actions::Actions,
+        Protocol::BalancerV2,
+        TreeSearchBuilder,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_balancer_v2_swap() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap =
+            B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
+
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol:    BalancerV2,
+            trace_index: 1,
+            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            pool:        Address::new(hex!("92E7Eb99a38C8eB655B15467774C6d56Fb810BC9")),
+            token_in:    TokenInfoWithAddress::usdc(),
+            amount_in:   U256::from_str("72712976").unwrap().to_scaled_rational(6),
+            token_out:   TokenInfoWithAddress {
+                address: Address::new(hex!("f8C3527CC04340b208C854E985240c02F7B7793f")),
+                inner:   TokenInfo { decimals: 18, symbol: "FRONT".to_string() },
+            },
+            amount_out:  U256::from_str("229136254468181839981")
+                .unwrap()
+                .to_scaled_rational(18),
+
+            msg_value: U256::ZERO,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap,
+                1,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+}
