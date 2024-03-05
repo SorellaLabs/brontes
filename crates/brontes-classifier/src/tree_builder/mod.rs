@@ -273,10 +273,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             }
 
             (vec![results.0], results.1)
-        } else if let Some(transfer) = self
-            .classify_transfer(tx_idx, trace_index, &trace, block)
-            .await
-        {
+        } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
             return transfer
         } else {
             return (vec![], self.classify_eth_transfer(trace, trace_index))
@@ -285,7 +282,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
     async fn classify_transfer(
         &self,
-        tx_idx: u64,
         trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
