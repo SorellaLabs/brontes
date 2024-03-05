@@ -66,6 +66,7 @@ jobs:
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
     needs: [clippy, build]
     strategy:
+          fail-fast: false
           matrix:
             features: ["sorella-server", "default"]
     steps:
@@ -89,6 +90,7 @@ jobs:
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
     needs: [clippy, build]
     strategy:
+          fail-fast: false
           matrix:
             features: ["sorella-server", "default"]
     steps:
@@ -108,6 +110,7 @@ jobs:
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}'"
   bench:
     strategy:
+          fail-fast: false
           matrix:
             features: ["sorella-server", "default"]
     runs-on: ubuntu-latest
