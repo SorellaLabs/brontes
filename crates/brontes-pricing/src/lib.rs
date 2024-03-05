@@ -274,12 +274,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
         let Some(price0) = self.get_dex_price(pair0) else {
-            error!(?pair0, "no price for token");
+            debug!(?pair0, "no price for token");
             return;
         };
 
         let Some(price1) = self.get_dex_price(pair1) else {
-            error!(?pair1, "no price for token");
+            debug!(?pair1, "no price for token");
             return;
         };
 
