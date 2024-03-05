@@ -82,7 +82,7 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo test
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
+        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
 
   it-test:
     runs-on: ubuntu-latest
@@ -105,7 +105,7 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo it test
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-it  && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}'"
+        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}'"
   bench:
     strategy:
           matrix:
@@ -127,5 +127,5 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo bench
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-bench && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} bench ${{ matrix.features }} '"
+        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} bench ${{ matrix.features }} '"
 
