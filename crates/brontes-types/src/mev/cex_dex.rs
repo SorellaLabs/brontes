@@ -139,7 +139,7 @@ impl DbRow for CexDex {
         "swaps.token_out",
         "swaps.amount_in",
         "swaps.amount_out",
-        "stat_arb_details.cex_exchange",
+        "stat_arb_details.cex_exchanges",
         "stat_arb_details.cex_price",
         "stat_arb_details.dex_exchange",
         "stat_arb_details.dex_price",
