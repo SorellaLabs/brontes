@@ -60,7 +60,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::error;
+use tracing::{debug, error};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
