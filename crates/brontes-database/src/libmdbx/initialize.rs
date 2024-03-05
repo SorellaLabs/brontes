@@ -166,7 +166,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
 
                 match data {
-                    Ok(d) => libmdbx.0.write_table(&d)?,
+                    Ok(d) => {
+                        tracing::info!("writing data of len {} to libmdbx", d.len());
+                        libmdbx.0.write_table(&d)?;
+                    }
                     Err(e) => {
                         info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                     }

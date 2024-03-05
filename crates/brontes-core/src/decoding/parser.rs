@@ -43,7 +43,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
 
     pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         let traces = self.libmdbx.load_trace(block_num).ok()?;
-        tracing::info!("trace loaded from db");
 
         Some((traces, self.tracer.header_by_number(block_num).await.ok()??))
     }
@@ -53,12 +52,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
-            return Some(res);
+            return Some(res)
         }
         #[cfg(not(feature = "local-reth"))]
         {
             tracing::error!("no block found in db");
-            return None;
+            return None
         }
 
         let parity_trace = self.trace_block(block_num).await;
@@ -73,7 +72,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             let _ = self
                 .metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
-            return None;
+            return None
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
