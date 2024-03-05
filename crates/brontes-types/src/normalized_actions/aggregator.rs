@@ -44,7 +44,8 @@ impl TokenAccounting for NormalizedAggregator {
 impl NormalizedAggregator {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         let mut nodes_to_prune = Vec::new();
-        let mut trace_index_counter: u64 = 0;
+        let mut token_out_trace_index_counter: u64 = 0;
+        let mut token_in_trace_index_counter: u64 = 0;
         if self.protocol == Protocol::OneInchFusion {
             for (index, action) in actions {
                 match &action {
@@ -58,12 +59,16 @@ impl NormalizedAggregator {
                     }
                     Actions::Transfer(transfer) => {
                         if transfer.token == self.token_out
-                            && self.amount_out > transfer.amount
-                            && transfer.trace_index > trace_index_counter
+                            && transfer.trace_index > token_out_trace_index_counter
                         {
                             self.amount_out = transfer.amount.clone();
-                            self.recipient = transfer.to;
-                            trace_index_counter = transfer.trace_index;
+                            token_out_trace_index_counter = transfer.trace_index;
+                        }
+                        if transfer.token == self.token_in
+                            && transfer.trace_index < token_in_trace_index_counter
+                        {
+                            self.recipient = transfer.from;
+                            token_in_trace_index_counter = transfer.trace_index;
                         }
                         self.child_actions.push(action.clone());
                         nodes_to_prune.push(index);
