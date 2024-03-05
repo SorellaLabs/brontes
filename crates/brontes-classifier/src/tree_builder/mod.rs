@@ -1,7 +1,6 @@
 use std::{cmp::min, sync::Arc};
 
 use alloy_primitives::U256;
-use brontes_pricing::types::PoolUpdate;
 use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
     tree::root::NodeData,
@@ -332,15 +331,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 }
 
                 // Return the adjusted transfer as an action
-                Some((
-                    vec![DexPriceMsg::Update(PoolUpdate {
-                        block,
-                        tx_idx,
-                        logs: trace.logs.clone(),
-                        action: Actions::Transfer(transfer.clone()),
-                    })],
-                    Actions::Transfer(transfer),
-                ))
+                Some((vec![], Actions::Transfer(transfer)))
             }
             Err(_) => None,
         }
