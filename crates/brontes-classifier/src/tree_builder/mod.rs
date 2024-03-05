@@ -1,6 +1,7 @@
 use std::{cmp::min, sync::Arc};
 
 use alloy_primitives::U256;
+use brontes_pricing::types::PoolUpdate;
 use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
     tree::root::NodeData,
@@ -273,7 +274,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             }
 
             (vec![results.0], results.1)
-        } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
+        } else if let Some(transfer) = self
+            .classify_transfer(tx_idx, trace_index, &trace, block)
+            .await
+        {
             return transfer
         } else {
             return (vec![], self.classify_eth_transfer(trace, trace_index))
@@ -282,6 +286,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
     async fn classify_transfer(
         &self,
+        tx_idx: u64,
         trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
@@ -327,7 +332,15 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 }
 
                 // Return the adjusted transfer as an action
-                Some((vec![], Actions::Transfer(transfer)))
+                Some((
+                    vec![DexPriceMsg::Update(PoolUpdate {
+                        block,
+                        tx_idx,
+                        logs: trace.logs.clone(),
+                        action: Actions::Transfer(transfer.clone()),
+                    })],
+                    Actions::Transfer(transfer),
+                ))
             }
             Err(_) => None,
         }
