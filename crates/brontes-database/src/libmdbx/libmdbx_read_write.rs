@@ -4,6 +4,8 @@ use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync:
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
+#[cfg(feature = "cex-dex-markout")]
+use brontes_types::db::cex_trades::CexTradeMap;
 use brontes_types::{
     constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
@@ -311,6 +313,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
+        #[cfg(feature = "cex-dex-markout")]
+        let trades = self.fetch_trades(block_num).ok();
 
         Ok(BlockMetadata::new(
             block_num,
@@ -323,7 +327,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
             max(eth_prices.price.0, eth_prices.price.1),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None))
+        .into_metadata(
+            cex_quotes,
+            None,
+            None,
+            #[cfg(feature = "cex-dex-markout")]
+            trades,
+        ))
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -333,6 +343,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
+
+        #[cfg(feature = "cex-dex-markout")]
+        let trades = self.fetch_trades(block_num).ok();
 
         Ok({
             BlockMetadata::new(
@@ -346,7 +359,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 max(eth_prices.price.0, eth_prices.price.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None)
+            .into_metadata(
+                cex_quotes,
+                Some(dex_quotes),
+                None,
+                #[cfg(feature = "cex-dex-markout")]
+                trades,
+            )
         })
     }
 
@@ -781,6 +800,13 @@ impl LibmdbxReadWriter {
             self.init_state_updating(block_num, SKIP_FLAG)?;
         }
         res
+    }
+
+    #[cfg(feature = "cex-dex-markout")]
+    fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
+        let tx = self.0.ro_tx()?;
+        tx.get::<CexTrades>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {

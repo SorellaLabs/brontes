@@ -122,6 +122,7 @@ alloy-primitives.workspace = true
 [features]
 default = ["api-des"]
 api-des = []
+cex-dex-markout = ["brontes-types/cex-dex-markout"]
 tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
