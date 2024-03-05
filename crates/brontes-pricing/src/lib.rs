@@ -199,7 +199,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .unique_by(|(_, p, _)| *p)
             .for_each(|(graph_edges, pair, block)| {
                 if graph_edges.is_empty() {
-                    error!(?pair, "new pool has no graph edges");
+                    debug!(?pair, "new pool has no graph edges");
                     return
                 }
 
