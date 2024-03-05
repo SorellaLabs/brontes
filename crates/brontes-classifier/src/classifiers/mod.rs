@@ -28,6 +28,9 @@ pub use maker::*;
 pub mod oneinch;
 pub use oneinch::*;
 
+pub mod clipper;
+pub use clipper::*;
+
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,
