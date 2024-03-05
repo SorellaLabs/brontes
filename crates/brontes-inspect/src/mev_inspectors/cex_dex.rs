@@ -315,11 +315,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 if let Some(most_profitable_leg) = swap_with_profit.filter_most_profitable_leg() {
                     swaps.push(swap_with_profit.swap.clone());
                     arb_details.push(StatArbDetails {
-                        cex_exchange: most_profitable_leg.exchange,
-                        cex_price:    most_profitable_leg.cex_price,
-                        dex_exchange: swap_with_profit.swap.protocol,
-                        dex_price:    swap_with_profit.swap.swap_rate(),
-                        pnl_pre_gas:  most_profitable_leg.pnl.clone(),
+                        cex_exchanges: vec![most_profitable_leg.exchange],
+                        cex_price:     most_profitable_leg.cex_price,
+                        dex_exchange:  swap_with_profit.swap.protocol,
+                        dex_price:     swap_with_profit.swap.swap_rate(),
+                        pnl_pre_gas:   most_profitable_leg.pnl.clone(),
                     });
                     total_arb_pre_gas.maker_profit += most_profitable_leg.pnl.maker_profit;
                     total_arb_pre_gas.taker_profit += most_profitable_leg.pnl.taker_profit;
