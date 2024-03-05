@@ -311,6 +311,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
+        #[cfg(feature = "cex-dex-markout")]
+        let trades = self.fetch_trades(block_num).ok();
 
         Ok(BlockMetadata::new(
             block_num,
@@ -328,7 +330,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             None,
             None,
             #[cfg(feature = "cex-dex-markout")]
-            None,
+            trades,
         ))
     }
 
@@ -339,6 +341,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
+
+        #[cfg(feature = "cex-dex-markout")]
+        let trades = self.fetch_trades(block_num).ok();
 
         Ok({
             BlockMetadata::new(
@@ -357,7 +362,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 Some(dex_quotes),
                 None,
                 #[cfg(feature = "cex-dex-markout")]
-                None,
+                trades,
             )
         })
     }
@@ -793,6 +798,15 @@ impl LibmdbxReadWriter {
             self.init_state_updating(block_num, SKIP_FLAG)?;
         }
         res
+    }
+
+    #[cfg(feature = "cex-dex-markout")]
+    fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
+        let tx = self.0.ro_tx()?;
+        let res = tx
+            .get::<CexTrades>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
+            .map(|e| e.0);
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {

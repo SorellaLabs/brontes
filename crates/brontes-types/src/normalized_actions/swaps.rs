@@ -214,7 +214,7 @@ impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecN
 
 #[derive(Default)]
 pub struct ClickhouseStatArbDetails {
-    pub cex_exchange:     String,
+    pub cex_exchanges:    Vec<String>,
     pub cex_price:        ([u8; 32], [u8; 32]),
     pub dex_exchange:     String,
     pub dex_price:        ([u8; 32], [u8; 32]),
@@ -225,7 +225,11 @@ pub struct ClickhouseStatArbDetails {
 impl From<StatArbDetails> for ClickhouseStatArbDetails {
     fn from(value: StatArbDetails) -> Self {
         Self {
-            cex_exchange:     format!("{:?}", value.cex_exchanges),
+            cex_exchanges:    value
+                .cex_exchanges
+                .into_iter()
+                .map(|e| format!("{:?}", e))
+                .collect_vec(),
             cex_price:        rational_to_u256_bytes(value.cex_price),
             dex_exchange:     value.dex_exchange.to_string(),
             dex_price:        rational_to_u256_bytes(value.dex_price),
@@ -237,7 +241,7 @@ impl From<StatArbDetails> for ClickhouseStatArbDetails {
 
 #[derive(Default)]
 pub struct ClickhouseVecStatArbDetails {
-    pub cex_exchange:     Vec<String>,
+    pub cex_exchanges:    Vec<Vec<String>>,
     pub cex_price:        Vec<([u8; 32], [u8; 32])>,
     pub dex_exchange:     Vec<String>,
     pub dex_price:        Vec<([u8; 32], [u8; 32])>,
@@ -251,7 +255,7 @@ impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
 
         value.into_iter().for_each(|exch| {
             let val: ClickhouseStatArbDetails = exch.into();
-            this.cex_exchange.push(val.cex_exchange);
+            this.cex_exchanges.push(val.cex_exchanges);
             this.cex_price.push(val.cex_price);
             this.dex_exchange.push(val.dex_exchange);
             this.dex_price.push(val.dex_price);

@@ -85,7 +85,7 @@ impl Serialize for CexDex {
         let stat_arb_details: ClickhouseVecStatArbDetails = self.stat_arb_details.clone().into();
 
         ser_struct
-            .serialize_field("stat_arb_details.cex_exchange", &stat_arb_details.cex_exchange)?;
+            .serialize_field("stat_arb_details.cex_exchanges", &stat_arb_details.cex_exchanges)?;
         ser_struct.serialize_field("stat_arb_details.cex_price", &stat_arb_details.cex_price)?;
         ser_struct
             .serialize_field("stat_arb_details.dex_exchange", &stat_arb_details.dex_exchange)?;
