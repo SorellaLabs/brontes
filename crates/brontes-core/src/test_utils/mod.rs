@@ -65,10 +65,15 @@ impl TraceLoader {
         &self,
         block: u64,
     ) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
-        self.tracing_provider
-            .execute_block(block)
-            .await
-            .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
+        if let Some(traces) = self.tracing_provider.execute_block(block).await {
+            Ok(traces)
+        } else {
+            self.fetch_missing_traces(block).await;
+            self.tracing_provider
+                .execute_block(block)
+                .await
+                .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
+        }
     }
 
     pub async fn get_metadata(
@@ -92,6 +97,23 @@ impl TraceLoader {
                 .test_metadata(block)
                 .map_err(|_| TraceLoaderError::NoMetadataFound(block))
         }
+    }
+
+    pub async fn fetch_missing_traces(&self, block: u64) -> eyre::Result<()> {
+        tracing::info!(%block, "fetching missing trces");
+
+        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        self.libmdbx
+            .initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                &[Tables::TxTraces],
+                false,
+                Some((block - 2, block + 2)),
+            )
+            .await?;
+
+        Ok(())
     }
 
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
@@ -326,7 +348,6 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                         Tables::PoolCreationBlocks,
                         Tables::TokenDecimals,
                         Tables::AddressToProtocolInfo,
-                        Tables::TxTraces,
                     ],
                     false,
                     None,
