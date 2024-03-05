@@ -235,7 +235,7 @@ impl Tables {
             Tables::SubGraphs => Ok(()),
             Tables::TxTraces => {
                 initializer
-                    .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
+                    .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
                     )
                     .await
