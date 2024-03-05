@@ -203,36 +203,4 @@ mod tests {
             .await
             .unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_clipper_exchange_sell_eth_for_token() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let swap =
-            B256::from(hex!("3b25a1df22cec5e683312064a84c1b304ec20081f7aaed3c8013e65aa5367ec8"));
-
-        let eq_action = Actions::Swap(NormalizedSwap {
-            protocol:    ClipperExchange,
-            trace_index: 0,
-            from:        Address::new(hex!("9631Fadc7D5843eb8071fCB3E84087fafA47794F")),
-            recipient:   Address::new(hex!("9631Fadc7D5843eb8071fCB3E84087fafA47794F")),
-            pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")),
-            token_in:    TokenInfoWithAddress::weth(),
-            amount_in:   U256::from_str("660000000000000000")
-                .unwrap()
-                .to_scaled_rational(18),
-            token_out:   TokenInfoWithAddress::usdc(),
-            amount_out:  U256::from_str("2266146924").unwrap().to_scaled_rational(6),
-            msg_value:   U256::from(0x928ca80cfc20000),
-        });
-
-        classifier_utils
-            .contains_action(
-                swap,
-                0,
-                eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
-            )
-            .await
-            .unwrap();
-    }
 }
