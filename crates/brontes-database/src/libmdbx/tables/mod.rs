@@ -12,6 +12,7 @@ use brontes_types::{
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
+        cex_trades::{CexTradeMap, CexTradeMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
@@ -41,7 +42,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 16;
+pub const NUM_TABLES: usize = 17;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -187,6 +188,7 @@ impl Tables {
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
+            Tables::CexTrades => Ok(()),
         }
     }
 
@@ -247,6 +249,7 @@ impl Tables {
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
+            Tables::CexTrades => Ok(()),
         }
     }
 }
@@ -267,7 +270,8 @@ tables!(
     SearcherContracts,
     InitializedState,
     SearcherStatistics,
-    BuilderStatistics
+    BuilderStatistics,
+    CexTrades
 );
 
 /// Must be in this order when defining
@@ -536,7 +540,6 @@ compressed_table!(
             can_insert: False
         }
     }
-
 );
 
 compressed_table!(
@@ -777,6 +780,24 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Other,
+            http_endpoint: None
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table CexTrades {
+        Data {
+        key: u64,
+        value: CexTradeMap,
+        compressed_value: CexTradeMapRedefined
+        },
+        Init {
+            init_size: Some(50_000),
+            init_method: Clickhouse,
             http_endpoint: None
         },
         CLI {
