@@ -98,7 +98,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
-
                 let mut meta = clickhouse
                     .get_metadata(block)
                     .await
