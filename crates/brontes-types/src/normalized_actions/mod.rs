@@ -274,7 +274,7 @@ impl Actions {
             Actions::Swap(s) => s.pool,
             Actions::SwapWithFee(s) => s.pool,
             Actions::FlashLoan(f) => f.pool,
-            Actions::Aggregator(a) => a.pool,
+            Actions::Aggregator(_) => Address::ZERO,
             Actions::Batch(b) => b.settlement_contract,
             Actions::Mint(m) => m.pool,
             Actions::Burn(b) => b.pool,

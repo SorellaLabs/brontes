@@ -92,7 +92,7 @@ utils!(
         CurveTriCryptoPool,
         CompoundV2,
         MakerPSM,
-        OneInch,
+        OneInchV5,
         OneInchFusion,
         ClipperExchange,
         #[default]
@@ -131,7 +131,7 @@ impl Protocol {
             Protocol::CurveTriCryptoPool => ("Curve.fi", "TriCrypto"),
             Protocol::CompoundV2 => ("Compound", "V2"),
             Protocol::MakerPSM => ("Maker", "PSM"),
-            Protocol::OneInch => ("OneInch", ""),
+            Protocol::OneInchV5 => ("OneInch", "V5"),
             Protocol::OneInchFusion => ("OneInch", "Fusion"),
             Protocol::ClipperExchange => ("ClipperExchange", ""),
             Protocol::Unknown => ("Unknown", "Unknown"),

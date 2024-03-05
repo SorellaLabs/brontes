@@ -1,10 +1,6 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::{
-    db::token_info::TokenInfoWithAddress, normalized_actions::NormalizedAggregator,
-    structured_trace::CallInfo,
-};
-use malachite::{num::basic::traits::Zero, Rational};
+use brontes_types::{normalized_actions::NormalizedAggregator, structured_trace::CallInfo};
 use reth_primitives::Address;
 
 action_impl!(
@@ -18,11 +14,6 @@ action_impl!(
             trace_index:   info.trace_idx,
             from:          info.from_address,
             recipient:     Address::default(),
-            pool:          info.target_address,
-            token_in:      TokenInfoWithAddress::default(),
-            token_out:     TokenInfoWithAddress::default(),
-            amount_in:     Rational::ZERO,
-            amount_out:    Rational::ZERO,
             child_actions: vec![],
             msg_value:     info.msg_value,
         })
@@ -55,11 +46,6 @@ mod tests {
             trace_index:   0,
             from:          Address::new(hex!("D14699b6B02e900A5C2338700d5181a674FDB9a2")),
             recipient:     Address::new(hex!("d10F17699137DD6215c01F539726227fC042c9b2")),
-            pool:          Address::new(hex!("A88800CD213dA5Ae406ce248380802BD53b47647")),
-            token_in:      TokenInfoWithAddress::usdc(),
-            amount_in:     U256::from_str("269875186").unwrap().to_scaled_rational(6),
-            token_out:     TokenInfoWithAddress::usdt(),
-            amount_out:    U256::from_str("216122672").unwrap().to_scaled_rational(6),
             child_actions: vec![
                 Actions::Swap(NormalizedSwap {
                     protocol:    ClipperExchange,
