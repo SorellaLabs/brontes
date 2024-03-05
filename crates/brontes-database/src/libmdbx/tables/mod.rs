@@ -12,6 +12,7 @@ use brontes_types::{
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
+        cex_trades::{CexTradeMap, CexTradeMapRedefined},
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
@@ -788,8 +789,8 @@ compressed_table!(
     Table CexTrades {
         Data {
         key: u64,
-        value: CexPriceMap,
-        compressed_value: CexPriceMapRedefined
+        value: CexTradeMap,
+        compressed_value: CexTradeMapRedefined
         },
         Init {
             init_size: Some(50_000),

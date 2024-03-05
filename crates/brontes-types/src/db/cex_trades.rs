@@ -1,15 +1,26 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{
+    collections::{HashMap, HashSet},
+    marker::PhantomData,
+};
 
 use alloy_primitives::Address;
+use clickhouse::Row;
 use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use redefined::{Redefined, RedefinedConvert};
+use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+use serde::{Deserialize, Serialize};
 
 use super::cex::CexExchange;
-use crate::pair::Pair;
+use crate::{
+    db::redefined_types::malachite::RationalRedefined,
+    implement_table_value_codecs_with_zc,
+    pair::{Pair, PairRedefined},
+};
 
 /// TODO: lets prob not set this to 100%
 const BASE_EXECUTION_QUALITY: usize = 100;
@@ -28,17 +39,43 @@ pub struct ExchangePrice {
 
 type MakerTaker = (ExchangePrice, ExchangePrice);
 
-/// All cex trades for a given period, grouped into there dedicated markout
-/// periods
-#[derive(Debug, Clone)]
-pub struct CexTradeMap(pub Vec<HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>>);
+// cex trades are sorted from lowest fill price to highest fill price
+#[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CexTradeMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
+
+#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
+#[redefined(CexTradeMap)]
+#[redefined_attr(
+    to_source = "CexTradeMap(self.map.into_iter().collect::<HashMap<_,_>>().to_source())",
+    from_source = "CexTradeMapRedefined::new(src.0)"
+)]
+pub struct CexTradeMapRedefined {
+    pub map: Vec<(CexExchange, HashMap<PairRedefined, Vec<CexTradesRedefined>>)>,
+}
+
+impl CexTradeMapRedefined {
+    fn new(map: HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>) -> Self {
+        Self {
+            map: map
+                .into_iter()
+                .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
+                .collect::<Vec<_>>(),
+        }
+    }
+}
+
+implement_table_value_codecs_with_zc!(CexTradeMapRedefined);
+
+type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
+
+impl Default for CexTradeMap {
+    fn default() -> Self {
+        Self(HashMap::new())
+    }
+}
 
 impl CexTradeMap {
-    /// goes through each set of trade periods calculating
-    /// the best execution cost across all exchanges while adhering to
-    /// the execution quality params that are passed in.
-    /// NOTE: the prices returned are fee adjusted.
-    pub fn get_price(
+    pub fn get_vwam_price(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
@@ -46,43 +83,33 @@ impl CexTradeMap {
         baskets: usize,
         quality: Option<HashMap<CexExchange, HashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
-        let (maker, taker): (Vec<_>, Vec<_>) = self
-            .0
-            .par_iter()
-            .filter_map(|bin| {
-                CexTradeBasket(bin).get_vwam_price(
-                    exchanges,
-                    pair,
-                    volume,
-                    baskets,
-                    quality.as_ref(),
-                )
+        self.get_vwam_no_intermediary(exchanges, pair, volume, baskets, quality.as_ref())
+            .or_else(|| {
+                self.get_vwam_via_intermediary(exchanges, pair, volume, baskets, quality.as_ref())
             })
-            .unzip();
-
-        Some((
-            maker.into_iter().max_by_key(|a| a.price.clone())?,
-            taker.into_iter().max_by_key(|a| a.price.clone())?,
-        ))
     }
-}
 
-// cex trades are sorted from lowest fill price to highest fill price
-struct CexTradeBasket<'a>(pub &'a HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
-
-type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
-
-impl CexTradeBasket<'_> {
-    fn get_vwam_price(
+    fn calculate_intermediary_addresses(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
-        volume: &Rational,
-        baskets: usize,
-        quality: Option<&HashMap<CexExchange, HashMap<Pair, usize>>>,
-    ) -> Option<MakerTaker> {
-        self.get_vwam_no_intermediary(exchanges, pair, volume, baskets, quality)
-            .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, baskets, quality))
+    ) -> HashSet<Address> {
+        self.0
+            .par_iter()
+            .filter(|(k, _)| exchanges.contains(k))
+            .flat_map(|(_, pairs)| {
+                pairs
+                    .keys()
+                    .filter_map(|trade_pair| {
+                        (trade_pair.0 == pair.0 && trade_pair.1 != pair.1)
+                            .then_some(pair.1)
+                            .or_else(|| {
+                                (trade_pair.0 != pair.0 && trade_pair.1 == pair.1).then_some(pair.0)
+                            })
+                    })
+                    .collect_vec()
+            })
+            .collect::<HashSet<_>>()
     }
 
     fn get_vwam_via_intermediary(
@@ -105,42 +132,31 @@ impl CexTradeBasket<'_> {
         };
 
         let (pair0_vwams, pair1_vwams) = self
-            .0
-            .keys()
-            .filter(|ex| exchanges.contains(ex))
-            .map(|exchange| {
-                exchange
-                    .most_common_quote_assets()
-                    .into_par_iter()
-                    .filter_map(|intermediary| {
-                        let pair0 = Pair(pair.0, intermediary);
-                        let pair1 = Pair(intermediary, pair.1);
-                        Some((
-                            (
-                                intermediary,
-                                self.get_vwam_no_intermediary(
-                                    exchanges, &pair0, volume, baskets, quality,
-                                )?,
-                            ),
-                            (
-                                intermediary,
-                                self.get_vwam_no_intermediary(
-                                    exchanges, &pair1, volume, baskets, quality,
-                                )?,
-                            ),
-                        ))
-                    })
-                    .fold(
-                        || (HashMap::new(), HashMap::new()),
-                        |(mut pair0_vwam, mut pair1_vwam), ((iter0, prices0), (iter1, prices1))| {
-                            pair0_vwam.entry(iter0).or_insert(vec![]).push(prices0);
-                            pair1_vwam.entry(iter1).or_insert(vec![]).push(prices1);
-                            (pair0_vwam, pair1_vwam)
-                        },
-                    )
-                    .reduce(|| (HashMap::new(), HashMap::new()), fold_fn)
+            .calculate_intermediary_addresses(exchanges, pair)
+            .into_par_iter()
+            .filter_map(|intermediary| {
+                let pair0 = Pair(pair.0, intermediary);
+                let pair1 = Pair(intermediary, pair.1);
+                Some((
+                    (
+                        intermediary,
+                        self.get_vwam_no_intermediary(exchanges, &pair0, volume, baskets, quality)?,
+                    ),
+                    (
+                        intermediary,
+                        self.get_vwam_no_intermediary(exchanges, &pair1, volume, baskets, quality)?,
+                    ),
+                ))
             })
-            .fold((HashMap::new(), HashMap::new()), fold_fn);
+            .fold(
+                || (HashMap::new(), HashMap::new()),
+                |(mut pair0_vwam, mut pair1_vwam), ((iter0, prices0), (iter1, prices1))| {
+                    pair0_vwam.entry(iter0).or_insert(vec![]).push(prices0);
+                    pair1_vwam.entry(iter1).or_insert(vec![]).push(prices1);
+                    (pair0_vwam, pair1_vwam)
+                },
+            )
+            .reduce(|| (HashMap::new(), HashMap::new()), fold_fn);
 
         calculate_cross_pair(pair0_vwams, pair1_vwams)
     }
@@ -176,6 +192,10 @@ impl CexTradeBasket<'_> {
                 ))
             })
             .collect::<Vec<_>>();
+
+        if trades.is_empty() {
+            return None
+        }
 
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
         self.get_most_accurate_basket(trade_queue, volume, baskets)
@@ -243,8 +263,20 @@ impl CexTradeBasket<'_> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, Redefined, PartialEq, Eq)]
+#[redefined_attr(derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Hash,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive
+))]
 pub struct CexTrades {
+    #[redefined(same_fields)]
     pub exchange: CexExchange,
     pub price:    Rational,
     pub amount:   Rational,
