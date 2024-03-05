@@ -21,7 +21,7 @@ action_impl!(
             let amount_in = logs.inAmount.to_scaled_rational(token_in.decimals);
             let amount_out = logs.outAmount.to_scaled_rational(token_out.decimals);
             Ok(NormalizedSwap {
-                protocol: Protocol::PancakeSwapV3,
+                protocol: Protocol::ClipperExchange,
                 trace_index: info.trace_idx,
                 from: info.from_address,
                 recipient,
@@ -52,7 +52,7 @@ action_impl!(
             let amount_in = logs.inAmount.to_scaled_rational(token_in.decimals);
             let amount_out = logs.outAmount.to_scaled_rational(token_out.decimals);
             Ok(NormalizedSwap {
-                protocol: Protocol::PancakeSwapV3,
+                protocol: Protocol::ClipperExchange,
                 trace_index: info.trace_idx,
                 from: info.from_address,
                 recipient,
@@ -83,7 +83,7 @@ action_impl!(
             let amount_in = logs.inAmount.to_scaled_rational(token_in.decimals);
             let amount_out = logs.outAmount.to_scaled_rational(token_out.decimals);
             Ok(NormalizedSwap {
-                protocol: Protocol::PancakeSwapV3,
+                protocol: Protocol::ClipperExchange,
                 trace_index: info.trace_idx,
                 from: info.from_address,
                 recipient,
@@ -114,7 +114,7 @@ action_impl!(
             let amount_in = logs.inAmount.to_scaled_rational(token_in.decimals);
             let amount_out = logs.outAmount.to_scaled_rational(token_out.decimals);
             Ok(NormalizedSwap {
-                protocol: Protocol::PancakeSwapV3,
+                protocol: Protocol::ClipperExchange,
                 trace_index: info.trace_idx,
                 from: info.from_address,
                 recipient,
@@ -145,7 +145,7 @@ action_impl!(
             let amount_in = logs.inAmount.to_scaled_rational(token_in.decimals);
             let amount_out = logs.outAmount.to_scaled_rational(token_out.decimals);
             Ok(NormalizedSwap {
-                protocol: Protocol::PancakeSwapV3,
+                protocol: Protocol::ClipperExchange,
                 trace_index: info.trace_idx,
                 from: info.from_address,
                 recipient,
@@ -180,7 +180,7 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    ClipperExchange,
-            trace_index: 2,
+            trace_index: 0,
             from:        Address::new(hex!("aeaC71B09AeaeDC6A52CEe06373a648CAd620c20")),
             recipient:   Address::new(hex!("aeaC71B09AeaeDC6A52CEe06373a648CAd620c20")),
             pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")),
@@ -212,7 +212,7 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    ClipperExchange,
-            trace_index: 2,
+            trace_index: 0,
             from:        Address::new(hex!("9631Fadc7D5843eb8071fCB3E84087fafA47794F")),
             recipient:   Address::new(hex!("9631Fadc7D5843eb8071fCB3E84087fafA47794F")),
             pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")),
@@ -222,7 +222,7 @@ mod tests {
                 .to_scaled_rational(18),
             token_out:   TokenInfoWithAddress::usdc(),
             amount_out:  U256::from_str("2266146924").unwrap().to_scaled_rational(6),
-            msg_value:   U256::ZERO,
+            msg_value:   U256::from(0x928ca80cfc20000),
         });
 
         classifier_utils
