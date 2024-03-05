@@ -1,6 +1,10 @@
+#[cfg(not(feature = "cex-dex-markout"))]
 use std::str::FromStr;
 
-use alloy_primitives::{hex, B256};
+use alloy_primitives::hex;
+#[cfg(not(feature = "cex-dex-markout"))]
+use alloy_primitives::B256;
+#[cfg(not(feature = "cex-dex-markout"))]
 use brontes_classifier::test_utils::ClassifierTestUtils;
 use brontes_inspect::{
     test_utils::{InspectorBenchUtils, USDC_ADDRESS},
@@ -231,6 +235,9 @@ fn bench_cex_dex_regular_block(c: &mut Criterion) {
         .unwrap()
 }
 
+#[cfg(feature = "cex-dex-markout")]
+fn bench_markout_cexdex(_c: &mut Criterion) {}
+
 criterion_group!(
     inspector_specific_tx_benches,
     bench_sandwich,
@@ -238,14 +245,13 @@ criterion_group!(
     bench_backrun_triagular,
     bench_backrun_10_swaps,
     bench_liquidation,
-    bench_cex_dex,
     bench_composer,
 );
 
 #[cfg(not(feature = "cex-dex-markout"))]
 criterion_group!(cex_dex, bench_cex_dex, bench_cex_dex_regular_block);
 #[cfg(feature = "cex-dex-markout")]
-criterion_group!(cex_dex);
+criterion_group!(cex_dex, bench_markout_cexdex);
 
 criterion_group!(
     inspector_full_block_benches,
@@ -254,7 +260,6 @@ criterion_group!(
     bench_liquidations_regular_block,
     bench_backrun_regular_block,
     bench_jit_regular_block,
-    bench_cex_dex_regular_block
 );
 
 criterion_main!(inspector_full_block_benches, inspector_specific_tx_benches, cex_dex);
