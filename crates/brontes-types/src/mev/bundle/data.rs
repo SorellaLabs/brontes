@@ -20,17 +20,8 @@ pub struct BundleDataWithRevenue {
     pub data:    BundleData,
 }
 
-#[derive(Debug, Default, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]
-#[redefined_attr(derive(
-    Debug,
-    Default,
-    PartialEq,
-    Clone,
-    Serialize,
-    rSerialize,
-    rDeserialize,
-    Archive
-))]
+#[derive(Debug, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub enum BundleData {
     Sandwich(Sandwich),
     AtomicArb(AtomicArb),
@@ -38,8 +29,13 @@ pub enum BundleData {
     Jit(JitLiquidity),
     CexDex(CexDex),
     Liquidation(Liquidation),
-    #[default]
-    Unknown,
+    Unknown(SearcherTx),
+}
+
+impl Default for BundleData {
+    fn default() -> Self {
+        BundleData::Unknown(SearcherTx::default())
+    }
 }
 
 impl Mev for BundleData {
@@ -51,7 +47,7 @@ impl Mev for BundleData {
             BundleData::Jit(m) => m.mev_type(),
             BundleData::CexDex(m) => m.mev_type(),
             BundleData::Liquidation(m) => m.mev_type(),
-            BundleData::Unknown => MevType::Unknown,
+            BundleData::Unknown(_) => MevType::Unknown,
         }
     }
 
@@ -63,7 +59,7 @@ impl Mev for BundleData {
             BundleData::Jit(m) => m.total_gas_paid(),
             BundleData::CexDex(m) => m.total_gas_paid(),
             BundleData::Liquidation(m) => m.total_gas_paid(),
-            BundleData::Unknown => unimplemented!("calling total_gas_paid() on unknown mev"),
+            BundleData::Unknown(s) => s.total_gas_paid(),
         }
     }
 
@@ -75,9 +71,7 @@ impl Mev for BundleData {
             BundleData::Jit(m) => m.total_priority_fee_paid(base_fee),
             BundleData::CexDex(m) => m.total_priority_fee_paid(base_fee),
             BundleData::Liquidation(m) => m.total_priority_fee_paid(base_fee),
-            BundleData::Unknown => {
-                unimplemented!("calling total_priority_fee_paid() on unknown mev")
-            }
+            BundleData::Unknown(s) => s.total_priority_fee_paid(base_fee),
         }
     }
 
@@ -89,7 +83,7 @@ impl Mev for BundleData {
             BundleData::Jit(m) => m.bribe(),
             BundleData::CexDex(m) => m.bribe(),
             BundleData::Liquidation(m) => m.bribe(),
-            BundleData::Unknown => unimplemented!("calling bribe() on unknown mev"),
+            BundleData::Unknown(s) => s.bribe(),
         }
     }
 
@@ -101,9 +95,7 @@ impl Mev for BundleData {
             BundleData::Jit(m) => m.mev_transaction_hashes(),
             BundleData::CexDex(m) => m.mev_transaction_hashes(),
             BundleData::Liquidation(m) => m.mev_transaction_hashes(),
-            BundleData::Unknown => {
-                unimplemented!("calling mev_transaction_hashes() on unknown mev")
-            }
+            BundleData::Unknown(s) => s.mev_transaction_hashes(),
         }
     }
 }
@@ -156,9 +148,7 @@ impl Serialize for BundleData {
             BundleData::Jit(jit) => jit.serialize(serializer),
             BundleData::CexDex(cex_dex) => cex_dex.serialize(serializer),
             BundleData::Liquidation(liquidation) => liquidation.serialize(serializer),
-            BundleData::Unknown => {
-                unimplemented!("attempted to serialize unknown mev: UNIMPLEMENTED")
-            }
+            BundleData::Unknown(s) => s.serialize(serializer),
         }
     }
 }
@@ -172,9 +162,7 @@ impl InsertRow for BundleData {
             BundleData::Jit(jit) => jit.get_column_names(),
             BundleData::CexDex(cex_dex) => cex_dex.get_column_names(),
             BundleData::Liquidation(liquidation) => liquidation.get_column_names(),
-            BundleData::Unknown => {
-                unimplemented!("attempted to inserted unknown mev into clickhouse: UNIMPLEMENTED")
-            }
+            BundleData::Unknown(s) => s.get_column_names(),
         }
     }
 }
