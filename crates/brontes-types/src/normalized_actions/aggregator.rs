@@ -45,7 +45,7 @@ impl NormalizedAggregator {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         let mut nodes_to_prune = Vec::new();
         let mut token_out_trace_index_counter: u64 = 0;
-        let mut token_in_trace_index_counter: u64 = 0;
+        let mut token_in_trace_index_counter: u64 = u64::MAX;
         if self.protocol == Protocol::OneInchFusion {
             for (index, action) in actions {
                 match &action {
