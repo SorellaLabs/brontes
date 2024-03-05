@@ -148,6 +148,7 @@ action_dispatch!(
     OneInchClipperSwapCall,
     OneInchClipperSwapToCall,
     OneInchClipperSwapToWithPermitCall,
+    OneInchFusionSettleOrdersCall,
     ClipperExchangeSwapCall,
     ClipperExchangeSellEthForTokenCall,
     ClipperExchangeSellTokenForEthCall,

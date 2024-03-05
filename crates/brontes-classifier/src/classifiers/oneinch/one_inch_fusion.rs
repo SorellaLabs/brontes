@@ -14,7 +14,7 @@ action_impl!(
     [],
     |info: CallInfo, _db_tx: &DB| {
         return Ok(NormalizedAggregator {
-            protocol:      Protocol::OneInch,
+            protocol:      Protocol::OneInchFusion,
             trace_index:   info.trace_idx,
             from:          info.from_address,
             recipient:     Address::default(),
