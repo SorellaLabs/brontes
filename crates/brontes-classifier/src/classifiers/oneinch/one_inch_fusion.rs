@@ -2,7 +2,7 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
     db::token_info::TokenInfoWithAddress, normalized_actions::NormalizedAggregator,
-    structured_trace::CallInfo, utils::ToScaledRational,
+    structured_trace::CallInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
@@ -35,11 +35,8 @@ mod tests {
 
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_pricing::Protocol::UniswapV3;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress,
-        normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
-        Protocol::OneInchFusion,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::OneInchFusion,
         ToScaledRational, TreeSearchBuilder,
     };
 
