@@ -87,3 +87,21 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
             .collect::<Vec<_>>()
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    #[brontes_macros::test]
+    async fn test_simple_searcher_tx() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let tx = hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into();
+        let config = InspectorTxRunConfig::new(Inspectors::SearcherActivity)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .needs_token(hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into())
+            .with_expected_profit_usd(0.188588)
+            .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+}
