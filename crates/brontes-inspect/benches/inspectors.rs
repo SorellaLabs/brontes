@@ -97,6 +97,7 @@ fn bench_liquidation(c: &mut Criterion) {
         .unwrap()
 }
 
+#[cfg(not(feature = "cex-dex-markout"))]
 fn bench_cex_dex(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
 
@@ -215,6 +216,7 @@ fn bench_jit_regular_block(c: &mut Criterion) {
         .unwrap()
 }
 
+#[cfg(not(feature = "cex-dex-markout"))]
 fn bench_cex_dex_regular_block(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
@@ -240,6 +242,11 @@ criterion_group!(
     bench_composer,
 );
 
+#[cfg(not(feature = "cex-dex-markout"))]
+criterion_group!(cex_dex, bench_cex_dex, bench_cex_dex_regular_block);
+#[cfg(feature = "cex-dex-markout")]
+criterion_group!(cex_dex);
+
 criterion_group!(
     inspector_full_block_benches,
     bench_regular_block,
@@ -250,4 +257,4 @@ criterion_group!(
     bench_cex_dex_regular_block
 );
 
-criterion_main!(inspector_full_block_benches, inspector_specific_tx_benches);
+criterion_main!(inspector_full_block_benches, inspector_specific_tx_benches, cex_dex);
