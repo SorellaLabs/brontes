@@ -68,7 +68,7 @@ impl TraceLoader {
         if let Some(traces) = self.tracing_provider.execute_block(block).await {
             Ok(traces)
         } else {
-            self.fetch_missing_traces(block).await;
+            self.fetch_missing_traces(block).await.unwrap();
             self.tracing_provider
                 .execute_block(block)
                 .await
