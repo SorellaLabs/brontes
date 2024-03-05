@@ -234,7 +234,11 @@ impl Tables {
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
             Tables::TxTraces => {
-                unimplemented!("'initialize_table_arbitrary_state' not implemented for TxTraces");
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
+                        block_range,
+                    )
+                    .await
             }
             Tables::Builder => {
                 unimplemented!("'initialize_table_arbitrary_state' not implemented for Builder");
