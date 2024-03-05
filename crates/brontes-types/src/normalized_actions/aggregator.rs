@@ -47,38 +47,50 @@ impl NormalizedAggregator {
         let mut token_out_trace_index_counter: u64 = 0;
         let mut token_in_trace_index_counter: u64 = u64::MAX;
         if self.protocol == Protocol::OneInchFusion {
-            for (index, action) in actions {
-                match &action {
-                    Actions::Swap(swap) => {
-                        self.amount_in = swap.amount_in.clone();
-                        self.amount_out = swap.amount_out.clone();
-                        self.token_in = swap.token_in.clone();
-                        self.token_out = swap.token_out.clone();
-                        self.child_actions.push(action.clone());
-                        nodes_to_prune.push(index);
-                    }
-                    Actions::Transfer(transfer) => {
-                        if transfer.token == self.token_out
-                            && transfer.trace_index > token_out_trace_index_counter
-                        {
-                            self.amount_out = transfer.amount.clone();
-                            token_out_trace_index_counter = transfer.trace_index;
-                        }
-                        if transfer.token == self.token_in
-                            && transfer.trace_index < token_in_trace_index_counter
-                        {
-                            self.recipient = transfer.from;
-                            token_in_trace_index_counter = transfer.trace_index;
-                        }
-                        self.child_actions.push(action.clone());
-                        nodes_to_prune.push(index);
-                    }
-                    Actions::Batch(_) | Actions::Burn(_) | Actions::Mint(_) => {
-                        self.child_actions.push(action.clone());
-                        nodes_to_prune.push(index);
-                    }
-                    _ => {}
+            // First, process Swap actions
+            for (index, action) in actions
+                .iter()
+                .filter(|(_, action)| matches!(action, Actions::Swap(_)))
+            {
+                if let Actions::Swap(swap) = action {
+                    self.amount_in = swap.amount_in.clone();
+                    self.amount_out = swap.amount_out.clone();
+                    self.token_in = swap.token_in.clone();
+                    self.token_out = swap.token_out.clone();
+                    self.child_actions.push(action.clone());
+                    nodes_to_prune.push(*index);
                 }
+            }
+
+            // Then, process Transfer actions
+            for (index, action) in actions
+                .iter()
+                .filter(|(_, action)| matches!(action, Actions::Transfer(_)))
+            {
+                if let Actions::Transfer(transfer) = action {
+                    if transfer.token == self.token_out
+                        && transfer.trace_index > token_out_trace_index_counter
+                    {
+                        self.amount_out = transfer.amount.clone();
+                        token_out_trace_index_counter = transfer.trace_index;
+                    }
+                    if transfer.token == self.token_in
+                        && transfer.trace_index < token_in_trace_index_counter
+                    {
+                        self.recipient = transfer.from;
+                        token_in_trace_index_counter = transfer.trace_index;
+                    }
+                    self.child_actions.push(action.clone());
+                    nodes_to_prune.push(*index);
+                }
+            }
+
+            // Process other actions (Batch, Burn, Mint)
+            for (index, action) in actions.iter().filter(|(_, action)| {
+                matches!(action, Actions::Batch(_) | Actions::Burn(_) | Actions::Mint(_))
+            }) {
+                self.child_actions.push(action.clone());
+                nodes_to_prune.push(*index);
             }
         } else {
             for (trace_index, action) in actions {
