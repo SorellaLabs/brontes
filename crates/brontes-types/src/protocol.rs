@@ -93,6 +93,7 @@ utils!(
         CompoundV2,
         MakerPSM,
         OneInch,
+        OneInchFusion,
         ClipperExchange,
         #[default]
         Unknown,
@@ -131,6 +132,7 @@ impl Protocol {
             Protocol::CompoundV2 => ("Compound", "V2"),
             Protocol::MakerPSM => ("Maker", "PSM"),
             Protocol::OneInch => ("OneInch", ""),
+            Protocol::OneInchFusion => ("OneInch", "Fusion"),
             Protocol::ClipperExchange => ("ClipperExchange", ""),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }

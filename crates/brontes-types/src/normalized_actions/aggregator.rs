@@ -44,20 +44,54 @@ impl TokenAccounting for NormalizedAggregator {
 impl NormalizedAggregator {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         let mut nodes_to_prune = Vec::new();
-        for (trace_index, action) in actions.iter() {
-            match &action {
-                Actions::Swap(_)
-                | Actions::Liquidation(_)
-                | Actions::Batch(_)
-                | Actions::Burn(_)
-                | Actions::Mint(_)
-                | Actions::Transfer(_) => {
-                    self.child_actions.push(action.clone());
-                    nodes_to_prune.push(*trace_index);
+        let mut trace_index_counter: u64 = 0;
+        if self.protocol == Protocol::OneInchFusion {
+            for (index, action) in actions {
+                match &action {
+                    Actions::Swap(swap) => {
+                        self.amount_in = swap.amount_in.clone();
+                        self.amount_out = swap.amount_out.clone();
+                        self.token_in = swap.token_in.clone();
+                        self.token_out = swap.token_out.clone();
+                        self.child_actions.push(action.clone());
+                        nodes_to_prune.push(index);
+                    }
+                    Actions::Transfer(transfer) => {
+                        if transfer.token == self.token_out
+                            && self.amount_out > transfer.amount
+                            && transfer.trace_index > trace_index_counter
+                        {
+                            self.amount_out = transfer.amount.clone();
+                            self.recipient = transfer.to;
+                            trace_index_counter = transfer.trace_index;
+                        }
+                        self.child_actions.push(action.clone());
+                        nodes_to_prune.push(index);
+                    }
+                    Actions::Batch(_) | Actions::Burn(_) | Actions::Mint(_) => {
+                        self.child_actions.push(action.clone());
+                        nodes_to_prune.push(index);
+                    }
+                    _ => {}
                 }
-                _ => continue,
+            }
+        } else {
+            for (trace_index, action) in actions {
+                match action {
+                    Actions::Swap(_)
+                    | Actions::Liquidation(_)
+                    | Actions::Batch(_)
+                    | Actions::Burn(_)
+                    | Actions::Mint(_)
+                    | Actions::Transfer(_) => {
+                        self.child_actions.push(action.clone());
+                        nodes_to_prune.push(trace_index);
+                    }
+                    _ => {}
+                }
             }
         }
+
         nodes_to_prune
     }
 }

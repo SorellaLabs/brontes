@@ -187,7 +187,9 @@ mod tests {
             token_in:    TokenInfoWithAddress::usdc(),
             amount_in:   U256::from_str("1213920000").unwrap().to_scaled_rational(6),
             token_out:   TokenInfoWithAddress::weth(),
-            amount_out:  U256::from_str("360342259234585088").unwrap().to_scaled_rational(18),
+            amount_out:  U256::from_str("360342259234585088")
+                .unwrap()
+                .to_scaled_rational(18),
             msg_value:   U256::ZERO,
         });
 
@@ -215,7 +217,9 @@ mod tests {
             recipient:   Address::new(hex!("9631Fadc7D5843eb8071fCB3E84087fafA47794F")),
             pool:        Address::new(hex!("655eDCE464CC797526600a462A8154650EEe4B77")),
             token_in:    TokenInfoWithAddress::weth(),
-            amount_in:   U256::from_str("660000000000000000").unwrap().to_scaled_rational(18),
+            amount_in:   U256::from_str("660000000000000000")
+                .unwrap()
+                .to_scaled_rational(18),
             token_out:   TokenInfoWithAddress::usdc(),
             amount_out:  U256::from_str("2266146924").unwrap().to_scaled_rational(6),
             msg_value:   U256::ZERO,
