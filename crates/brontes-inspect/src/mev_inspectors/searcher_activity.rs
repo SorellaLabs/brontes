@@ -9,6 +9,7 @@ use brontes_types::{
     ActionIter, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
+use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
@@ -40,6 +41,10 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
         searcher_txs
             .into_par_iter()
             .filter_map(|(tx_hash, transfers)| {
+                if transfers.is_empty() {
+                    return None
+                }
+
                 let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
                 (info.searcher_eoa_info.is_some() || info.mev_contract.is_some()).then(|| {
