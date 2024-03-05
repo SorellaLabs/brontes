@@ -147,5 +147,10 @@ action_dispatch!(
     OneInchSwapCall,
     OneInchClipperSwapCall,
     OneInchClipperSwapToCall,
-    OneInchClipperSwapToWithPermitCall
+    OneInchClipperSwapToWithPermitCall,
+    ClipperExchangeSwapCall,
+    ClipperExchangeSellEthForTokenCall,
+    ClipperExchangeSellTokenForEthCall,
+    ClipperExchangeTransmitAndSwapCall,
+    ClipperExchangeTransmitAndSellTokenForEthCall
 );

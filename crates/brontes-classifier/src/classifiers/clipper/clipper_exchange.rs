@@ -128,6 +128,37 @@ action_impl!(
         }
 );
 
+action_impl!(
+    Protocol::ClipperExchange,
+    crate::ClipperExchange::transmitAndSellTokenForEthCall,
+    Swap,
+    [..Swapped],
+    logs: true,
+    |
+    info: CallInfo,
+    logs: ClipperExchangeTransmitAndSellTokenForEthCallLogs,
+    db_tx: &DB| {
+            let logs = logs.swapped_field?;
+            let recipient = logs.recipient;
+            let token_in = db_tx.try_fetch_token_info(logs.inAsset)?;
+            let token_out = db_tx.try_fetch_token_info(logs.outAsset)?;
+            let amount_in = logs.inAmount.to_scaled_rational(token_in.decimals);
+            let amount_out = logs.outAmount.to_scaled_rational(token_out.decimals);
+            Ok(NormalizedSwap {
+                protocol: Protocol::PancakeSwapV3,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                recipient,
+                pool: info.target_address,
+                token_in,
+                token_out,
+                amount_in,
+                amount_out,
+                msg_value: info.msg_value,
+            })
+        }
+);
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
