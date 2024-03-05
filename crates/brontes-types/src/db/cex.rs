@@ -332,6 +332,25 @@ pub struct CexQuote {
     pub token0:    Address,
 }
 
+pub struct ExchangeData {
+    pub exchange: CexExchange,
+    pub quotes:   Vec<CexQuote>,
+    pub trades:   Vec<Trade>,
+}
+
+pub struct Trade {
+    pub exchange:  CexExchange,
+    pub timestamp: u64,
+    pub price:     Rational,
+    pub amount:    Rational,
+    pub side:      TradeSide,
+}
+
+pub enum TradeSide {
+    Buy,
+    Sell,
+}
+
 impl CexQuote {
     fn inverse_price(&mut self) {
         self.price.0.reciprocal_assign();

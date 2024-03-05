@@ -87,6 +87,7 @@ default = ["api-des"]
 tests = []
 api = []
 api-des = []
+cex-dex-markout = []
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",

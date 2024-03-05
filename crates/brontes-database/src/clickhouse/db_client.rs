@@ -256,7 +256,13 @@ impl ClickhouseHandle for Clickhouse {
             max(eth_prices.price.0, eth_prices.price.1),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None))
+        .into_metadata(
+            cex_quotes,
+            None,
+            None,
+            #[cfg(feature = "cex-dex-markout")]
+            None,
+        ))
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>

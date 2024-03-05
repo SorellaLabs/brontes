@@ -12,7 +12,7 @@ CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
         `amount_out` Tuple(UInt256, UInt256)
     ),
     `stat_arb_details` Nested (
-        `cex_exchange` String,
+        `cex_exchanges` Array(String),
         `cex_price` Tuple(UInt256, UInt256),
         `dex_exchange` String,
         `dex_price` Tuple(UInt256, UInt256),
