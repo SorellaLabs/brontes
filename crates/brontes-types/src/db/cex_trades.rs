@@ -40,17 +40,21 @@ pub struct ExchangePrice {
 type MakerTaker = (ExchangePrice, ExchangePrice);
 
 // cex trades are sorted from lowest fill price to highest fill price
-#[derive(Debug, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CexTradeMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
+
+type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
 
 #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexTradeMap)]
 #[redefined_attr(
-    to_source = "CexTradeMap(self.map.into_iter().collect::<HashMap<_,_>>().to_source())",
+    to_source = "CexTradeMap(self.map.into_iter().map(|(k,v)| \
+                 (k,v.into_iter().collect::<HashMap<_,_>>())).collect::<HashMap<_,_>>().\
+                 to_source())",
     from_source = "CexTradeMapRedefined::new(src.0)"
 )]
 pub struct CexTradeMapRedefined {
-    pub map: Vec<(CexExchange, HashMap<PairRedefined, Vec<CexTradesRedefined>>)>,
+    pub map: Vec<(CexExchange, RedefinedTradeMapVec)>,
 }
 
 impl CexTradeMapRedefined {
@@ -58,7 +62,20 @@ impl CexTradeMapRedefined {
         Self {
             map: map
                 .into_iter()
-                .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
+                .map(|(exch, inner_map)| {
+                    (
+                        exch,
+                        inner_map
+                            .into_iter()
+                            .map(|(a, b)| {
+                                (
+                                    PairRedefined::from_source(a),
+                                    Vec::<CexTradesRedefined>::from_source(b),
+                                )
+                            })
+                            .collect_vec(),
+                    )
+                })
                 .collect::<Vec<_>>(),
         }
     }
@@ -68,14 +85,8 @@ implement_table_value_codecs_with_zc!(CexTradeMapRedefined);
 
 type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
 
-impl Default for CexTradeMap {
-    fn default() -> Self {
-        Self(HashMap::new())
-    }
-}
-
 impl CexTradeMap {
-    pub fn get_vwam_price(
+    pub fn get_price(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
