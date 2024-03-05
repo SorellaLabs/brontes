@@ -84,6 +84,7 @@
 pub mod composer;
 pub mod discovery;
 pub mod mev_inspectors;
+use mev_inspectors::searcher_activity::SearcherActivity;
 pub use mev_inspectors::*;
 
 #[cfg(feature = "tests")]
@@ -129,6 +130,8 @@ pub enum Inspectors {
     Jit,
     Liquidations,
     Sandwich,
+    SearcherActivity,
+    //LongTail,
     #[cfg(feature = "cex-dex-markout")]
     CexDexMarkout,
 }
@@ -155,6 +158,9 @@ impl Inspectors {
             }
             Self::Liquidations => {
                 static_object(LiquidationInspector::new(quote_token, db)) as DynMevInspector
+            }
+            Self::SearcherActivity => {
+                static_object(SearcherActivity::new(quote_token, db)) as DynMevInspector
             }
             #[cfg(feature = "cex-dex-markout")]
             Self::CexDexMarkout => {
