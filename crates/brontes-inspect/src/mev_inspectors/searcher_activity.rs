@@ -9,7 +9,6 @@ use brontes_types::{
     ActionIter, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
-use malachite::Rational;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
