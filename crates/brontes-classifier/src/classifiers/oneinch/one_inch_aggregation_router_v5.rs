@@ -190,9 +190,10 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::OneInch,
+        db::token_info::TokenInfoWithAddress, normalized_actions::{NormalizedTransfer, NormalizedSwap, Actions}, Protocol::OneInch,
         ToScaledRational, TreeSearchBuilder,
     };
+    use brontes_pricing::Protocol::UniswapV3;
 
     use super::*;
 
@@ -216,7 +217,108 @@ mod tests {
             amount_out:    U256::from_str("125475168379")
                 .unwrap()
                 .to_scaled_rational(6),
-            child_actions: vec![],
+            child_actions: vec![Actions::Transfer(
+                NormalizedTransfer {
+                    trace_index: 1,
+                    from: Address::new(hex!("f4f8845cede63e79de1b2c3bba395e8547fe4283")),
+                    to: Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
+                    token: TokenInfoWithAddress::usdc(),
+                    amount: U256::from_str("126000000000")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    fee: U256::from_str("0")
+                    .unwrap()
+                    .to_scaled_rational(1),
+                },
+            ),
+            Actions::Transfer(
+                NormalizedTransfer {
+                    trace_index: 5,
+                    from: Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
+                    to: Address::new(hex!("beec796a4a2a27b687e1d48efad3805d78800522")),
+                    token: TokenInfoWithAddress::usdc(),
+                    amount: U256::from_str("441000000")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    fee: U256::from_str("0")
+                    .unwrap()
+                    .to_scaled_rational(1),
+                },
+            ),
+            Actions::Swap(
+                NormalizedSwap {
+                    protocol: UniswapV3,
+                    trace_index: 11,
+                    from: Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
+                    recipient: Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
+                    pool: Address::new(hex!("3416cf6c708da44db2624d63ea0aaef7113527c6")),
+                    token_in: TokenInfoWithAddress::usdc(),
+                    token_out: TokenInfoWithAddress::usdt(),
+                    amount_in: U256::from_str("125559000000")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    amount_out: U256::from_str("125475168379")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    msg_value: U256::ZERO,
+                },
+            ),
+            Actions::Transfer(
+                NormalizedTransfer {
+                    trace_index: 12,
+                    from: Address::new(hex!("3416cf6c708da44db2624d63ea0aaef7113527c6")),
+                    to: Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
+                    token: TokenInfoWithAddress::usdt(),
+                    amount: U256::from_str("125475168379")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    fee: U256::from_str("0")
+                    .unwrap()
+                    .to_scaled_rational(1),
+                },
+            ),
+            Actions::Transfer(
+                NormalizedTransfer {
+                    trace_index: 16,
+                    from: Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
+                    to: Address::new(hex!("3416cf6c708da44db2624d63ea0aaef7113527c6")),
+                    token: TokenInfoWithAddress::usdc(),
+                    amount: U256::from_str("125559000000")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    fee: U256::from_str("0")
+                    .unwrap()
+                    .to_scaled_rational(1),
+                },
+            ),
+            Actions::Transfer(
+                NormalizedTransfer {
+                    trace_index: 21,
+                    from: Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
+                    to: Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
+                    token: TokenInfoWithAddress::usdt(),
+                    amount: U256::from_str("125475168379")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    fee: U256::from_str("0")
+                    .unwrap()
+                    .to_scaled_rational(1),
+                },
+            ),
+            Actions::Transfer(
+                NormalizedTransfer {
+                    trace_index: 23,
+                    from: Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
+                    to: Address::new(hex!("f4f8845cede63e79de1b2c3bba395e8547fe4283")),
+                    token: TokenInfoWithAddress::usdt(),
+                    amount: U256::from_str("125475168379")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                    fee: U256::from_str("0")
+                    .unwrap()
+                    .to_scaled_rational(1),
+                },
+            ),],
 
             msg_value: U256::ZERO,
         });
