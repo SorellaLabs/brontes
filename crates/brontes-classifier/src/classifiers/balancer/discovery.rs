@@ -32,9 +32,9 @@ discovery_impl!(
     }
 );
 
-
 // Balancer V2
-// Macro to implement the discovery_impl! for Balancer V2 factories with the exact same implementation method
+// Macro to implement the discovery_impl! for Balancer V2 factories with the
+// exact same implementation method
 macro_rules! implement_discovery {
     ( $( [ $name:ident => $factory:path => $address:expr ] ),* $(,)? ) => {
         $(
@@ -43,11 +43,15 @@ macro_rules! implement_discovery {
                 $factory::createCall,
                 $address,
                 |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+                    let mut tokens = vec![deployed_address];
+                    tokens.extend(&call_data.tokens);
+                    tokens.sort();
+
                     vec![NormalizedNewPool {
                         trace_index,
                         protocol: Protocol::BalancerV2,
                         pool_address: deployed_address,
-                        tokens: call_data.tokens,
+                        tokens,
                     }]
                 }
             );
@@ -55,14 +59,37 @@ macro_rules! implement_discovery {
     };
 }
 
-
 implement_discovery!(
-    [BalancerV2ComposableStablePoolV5Discovery => crate::BalancerV2ComposableStablePoolFactoryV5 => 0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A],
-    [BalancerV2ComposableStablePoolV4Discovery => crate::BalancerV2ComposableStablePoolFactoryV4 => 0xfADa0f4547AB2de89D1304A668C39B3E09Aa7c76],
-    [BalancerV2ComposableStablePoolV3Discovery => crate::BalancerV2ComposableStablePoolFactoryV3 => 0xdba127fBc23fb20F5929C546af220A991b5C6e01],
-    [BalancerV2WeightedPoolFactoryV4Discovery => crate::BalancerV2WeightedPoolFactoryV4 => 0x897888115Ada5773E02aA29F775430BFB5F34c51],
-    [BalancerV2WeightedPoolFactoryV3Discovery => crate::BalancerV2WeightedPoolFactoryV2 => 0x5Dd94Da3644DDD055fcf6B3E1aa310Bb7801EB8b],
-    [BalancerV2WeightedPoolFactoryV2Discovery => crate::BalancerV2WeightedPoolFactoryV2 => 0xcC508a455F5b0073973107Db6a878DdBDab957bC]
+    [
+        BalancerV2ComposableStablePoolV5Discovery
+        => crate::BalancerV2ComposableStablePoolFactoryV5
+        => 0xDB8d758BCb971e482B2C45f7F8a7740283A1bd3A
+    ],
+    [
+        BalancerV2ComposableStablePoolV4Discovery
+        => crate::BalancerV2ComposableStablePoolFactoryV4
+        => 0xfADa0f4547AB2de89D1304A668C39B3E09Aa7c76
+    ],
+    [
+        BalancerV2ComposableStablePoolV3Discovery
+        => crate::BalancerV2ComposableStablePoolFactoryV3
+        => 0xdba127fBc23fb20F5929C546af220A991b5C6e01
+    ],
+    [
+        BalancerV2WeightedPoolFactoryV4Discovery
+        => crate::BalancerV2WeightedPoolFactoryV4
+        => 0x897888115Ada5773E02aA29F775430BFB5F34c51
+    ],
+    [
+        BalancerV2WeightedPoolFactoryV3Discovery
+        => crate::BalancerV2WeightedPoolFactoryV2
+        => 0x5Dd94Da3644DDD055fcf6B3E1aa310Bb7801EB8b
+    ],
+    [
+        BalancerV2WeightedPoolFactoryV2Discovery
+        => crate::BalancerV2WeightedPoolFactoryV2
+        => 0xcC508a455F5b0073973107Db6a878DdBDab957bC
+    ]
 );
 
 // Euler Linear pool
@@ -83,7 +110,6 @@ discovery_impl!(
     }
 );
 
-
 #[cfg(test)]
 mod tests {
     use alloy_primitives::{hex, Address, B256};
@@ -102,6 +128,42 @@ mod tests {
             protocol:     Protocol::BalancerV1,
             pool_address: Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
             tokens:       vec![],
+        };
+
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_balancer_v2_discovery() {
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!("b7e0de4684554cefb028113594d6d0a4c5ef55c771da6012deccaad06012785d"));
+
+        let mut tokens = vec![
+            Address::new(hex!("83F20F44975D03b1b09e64809B757c47f942BEeA")),
+            Address::new(hex!("a48F322F8b3edff967629Af79E027628b9Dd1298")),
+            Address::new(hex!("35c5C8C7B77942f9D44B535Fa590D8b503B2b00C")),
+        ];
+        tokens.sort();
+
+        let eq_create = NormalizedNewPool {
+            trace_index: 1,
+            protocol: Protocol::BalancerV2,
+            pool_address: Address::new(hex!("35c5C8C7B77942f9D44B535Fa590D8b503B2b00C")),
+            tokens,
         };
 
         utils
