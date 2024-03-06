@@ -1056,7 +1056,7 @@ dependencies = [
 [[package]]
 name = "binance"
 version = "0.20.2"
-source = "git+https://github.com/wisespace-io/binance-rs.git?rev=10c72c6#10c72c6a54a47f2c8e54463999fc1f0f6fb26c1a"
+source = "git+https://github.com/wisespace-io/binance-rs.git#909e14b19cb34e50876f230b684760cd10211396"
 dependencies = [
  "error-chain",
  "hex",
@@ -1065,7 +1065,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "tungstenite 0.18.0",
+ "tungstenite 0.19.0",
  "url",
 ]
 
@@ -3237,9 +3237,9 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "2.0.14"
+version = "2.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "816841ea989f0c69e459af1cf23a6b0033b19a55424a1ea3a30099becdb8dec0"
+checksum = "6c7cd562832e2ff584fa844cd2f6e5d4f35bbe11b28c7c9b8df957b2e1d0c701"
 dependencies = [
  "ethers-addressbook",
  "ethers-contract",
@@ -9275,7 +9275,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=9ebb143#9ebb1434dba8177c79f85e6cb121562e01236e56"
+source = "git+https://github.com/SorellaLabs/Database?rev=b240a9d#b240a9d501cbf2cb33e9193581312f1c780df281"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -9305,7 +9305,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=9ebb143#9ebb1434dba8177c79f85e6cb121562e01236e56"
+source = "git+https://github.com/SorellaLabs/Database?rev=b240a9d#b240a9d501cbf2cb33e9193581312f1c780df281"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -9319,7 +9319,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=9ebb143#9ebb1434dba8177c79f85e6cb121562e01236e56"
+source = "git+https://github.com/SorellaLabs/Database?rev=b240a9d#b240a9d501cbf2cb33e9193581312f1c780df281"
 dependencies = [
  "chrono",
  "paste",
@@ -9335,7 +9335,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=9ebb143#9ebb1434dba8177c79f85e6cb121562e01236e56"
+source = "git+https://github.com/SorellaLabs/Database?rev=b240a9d#b240a9d501cbf2cb33e9193581312f1c780df281"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
@@ -9349,8 +9349,10 @@ dependencies = [
  "jsonrpsee-types",
  "malachite",
  "metrics",
+ "paste",
  "pin-project",
  "primitive-types",
+ "reqwest",
  "reth-primitives 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
  "reth-revm 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
  "reth-rpc-types 0.1.0-alpha.19 (git+https://github.com/paradigmxyz/reth?rev=99d1d8d)",
@@ -10291,13 +10293,13 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tungstenite"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30ee6ab729cd4cf0fd55218530c4522ed30b7b6081752839b68fcec8d0960788"
+checksum = "15fba1a6d6bb030745759a9a2a588bfe8490fc8b4751a277db3a0be1c9ebbf67"
 dependencies = [
- "base64 0.13.1",
  "byteorder",
  "bytes",
+ "data-encoding",
  "http",
  "httparse",
  "log",
