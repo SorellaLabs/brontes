@@ -62,7 +62,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .into_iter()
         .collect::<eyre::Result<_>>()?;
 
-        tracing::info!("initalizing config");
         self.load_classifier_config_data().await;
         self.load_searcher_builder_config_data().await;
         Ok(())
@@ -82,7 +81,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .into_iter()
         .collect::<eyre::Result<_>>()?;
 
-        tracing::info!("initalizing config");
         self.load_classifier_config_data().await;
         self.load_searcher_builder_config_data().await;
         Ok(())
