@@ -85,7 +85,6 @@ reth-tracing-ext.workspace = true
 [features]
 default = ["api-des"]
 tests = []
-api = []
 api-des = []
 cex-dex-markout = []
 
