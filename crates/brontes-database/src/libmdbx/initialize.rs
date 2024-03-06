@@ -281,12 +281,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         let Ok(config) = toml::from_str::<Table>(&{
             let Ok(path) = std::fs::read_to_string(workspace_dir) else {
-                tracing::error!("failed to read classifier_config");
+                tracing::error!(target: "brontes::init", "failed to read classifier_config");
                 return;
             };
             path
         }) else {
-            tracing::error!("failed to load toml");
+            tracing::error!(target: "brontes::init", "failed to load toml");
             return;
         };
 
