@@ -4,7 +4,6 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
-use brontes_types::db::clickhouse_serde::tx_trace::tx_traces_inner;
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
@@ -12,6 +11,7 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         cex_trades::{CexTradeMap, CexTradeMapRedefined},
+        clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
