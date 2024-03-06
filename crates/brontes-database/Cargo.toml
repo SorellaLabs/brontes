@@ -46,10 +46,10 @@ zstd = "0.13"
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
-sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "a14ab7b", optional = true, features = [
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "92e3a0dc", optional = true, features = [
   "test-utils",
 ] }
-sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "a14ab7b", optional = true }
+sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "92e3a0dc", optional = true }
 clickhouse.workspace = true
 
 # serde
