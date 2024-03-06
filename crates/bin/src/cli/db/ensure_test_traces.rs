@@ -41,16 +41,8 @@ impl TestTraceArgs {
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
-        futures::stream::iter(blocks.into_iter())
-            .unordered_buffer_map(100, |i| {
-                if i % 5000 == 0 {
-                    tracing::info!(
-                        "tracing {:.2}% done",
-                        (i - self.start_block) as f64 / amount * 100.0
-                    );
-                }
-                parser.execute(i)
-            })
+        futures::stream::iter(self.blocks.into_iter())
+            .unordered_buffer_map(100, |i| parser.execute(i))
             .map(|_res| ())
             .collect::<Vec<_>>()
             .await;
