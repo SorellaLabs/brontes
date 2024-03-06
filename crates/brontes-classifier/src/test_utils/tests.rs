@@ -422,7 +422,7 @@ impl ClassifierTestUtils {
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
-        tracing::info("{:#?}", root);
+        tracing::info!("{:#?}", root);
         let actions = root.collect(&tree_collect_builder);
 
         assert!(actions.is_empty(), "found: {:#?}", actions);
