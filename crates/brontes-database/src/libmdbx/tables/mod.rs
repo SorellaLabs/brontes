@@ -4,7 +4,6 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
-#[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
 use brontes_types::db::clickhouse_serde::tx_trace::tx_traces_inner;
 use brontes_types::{
     db::{
@@ -644,7 +643,7 @@ compressed_table!(
         #[serde_as]
         Data {
             key: u64,
-            #[cfg_attr(any(not(feature="api-des"), feature="local-clickhouse"), serde(deserialize_with = "tx_traces_inner::deserialize"))]
+            #[serde(deserialize_with = "tx_traces_inner::deserialize")]
             value: TxTracesInner,
             compressed_value: TxTracesInnerRedefined
         },
