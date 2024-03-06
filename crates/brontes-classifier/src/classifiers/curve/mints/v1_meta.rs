@@ -16,6 +16,7 @@ action_impl!(
     db_tx: &DB|{
         let log = log.add_liquidity_field?;
 
+        tracing::info!("test 0call");
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
@@ -56,6 +57,7 @@ action_impl!(
     db_tx: &DB|{
         let log = log.add_liquidity_field?;
 
+        tracing::info!("test 1call");
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
