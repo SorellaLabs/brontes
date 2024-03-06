@@ -8850,7 +8850,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-databases"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=92e3a0dc#92e3a0dc92c4b0613a0a29c7d749a088933eb59a"
+source = "git+https://github.com/SorellaLabs/Database?rev=449cc32#449cc32eb3e515a7788d68fb9cecbdbc3468fec6"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -8880,7 +8880,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=92e3a0dc#92e3a0dc92c4b0613a0a29c7d749a088933eb59a"
+source = "git+https://github.com/SorellaLabs/Database?rev=449cc32#449cc32eb3e515a7788d68fb9cecbdbc3468fec6"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8894,7 +8894,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-tracing"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=92e3a0dc#92e3a0dc92c4b0613a0a29c7d749a088933eb59a"
+source = "git+https://github.com/SorellaLabs/Database?rev=449cc32#449cc32eb3e515a7788d68fb9cecbdbc3468fec6"
 dependencies = [
  "chrono",
  "paste",
@@ -8910,7 +8910,7 @@ dependencies = [
 [[package]]
 name = "sorella-db-types"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/Database?rev=92e3a0dc#92e3a0dc92c4b0613a0a29c7d749a088933eb59a"
+source = "git+https://github.com/SorellaLabs/Database?rev=449cc32#449cc32eb3e515a7788d68fb9cecbdbc3468fec6"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
