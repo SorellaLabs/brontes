@@ -34,7 +34,7 @@ pub async fn clickhouse_data<T, D, CH: ClickhouseHandle>(
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + Unpin +'static,
 {
     let data = if let Some(rang) = block_range {
         clickhouse.query_many_range::<T, D>(rang.0, rang.1).await?
