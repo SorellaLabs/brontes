@@ -46,7 +46,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         block_number: u64,
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_dex_quotes(block_number, quotes.clone())
             .await?;
@@ -60,7 +59,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_token_info(address, decimals, symbol.clone())
             .await?;
@@ -76,7 +74,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .save_mev_blocks(block_number, block.clone(), mev.clone())
             .await?;
@@ -89,7 +86,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_searcher_eoa_info(searcher_eoa, searcher_info.clone())
             .await?;
@@ -104,7 +100,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_searcher_contract_info(searcher_contract, searcher_info.clone())
             .await?;
@@ -119,7 +114,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         builder_coinbase_addr: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_builder_info(builder_coinbase_addr, builder_info.clone())
             .await?;
@@ -137,7 +131,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await?;
@@ -148,7 +141,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client.save_traces(block, traces.clone()).await?;
 
         self.inner().save_traces(block, traces).await
