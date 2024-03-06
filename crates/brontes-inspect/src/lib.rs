@@ -107,7 +107,6 @@ use cex_dex_markout::CexDexMarkoutInspector;
 use jit::JitInspector;
 use liquidations::LiquidationInspector;
 use sandwich::SandwichInspector;
-//use long_tail::LongTailInspector;
 
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
@@ -131,7 +130,6 @@ pub enum Inspectors {
     Liquidations,
     Sandwich,
     SearcherActivity,
-    //LongTail,
     #[cfg(feature = "cex-dex-markout")]
     CexDexMarkout,
 }
@@ -167,9 +165,6 @@ impl Inspectors {
                 static_object(CexDexMarkoutInspector::new(quote_token, db, cex_exchanges))
                     as DynMevInspector
             }
-            //Self::LongTail => {
-            //  static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
-            //}
         }
     }
 }
