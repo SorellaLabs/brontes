@@ -137,7 +137,7 @@ impl Protocol {
             "uniswapv2" => Protocol::UniswapV2,
             "sushiswapv2" => Protocol::SushiSwapV2,
             "uniswapv3" => Protocol::UniswapV3,
-            "sushiswapV3" => Protocol::SushiSwapV3,
+            "sushiswapv3" => Protocol::SushiSwapV3,
             "curve.fibase2" => Protocol::CurveBasePool2,
             "curve.fibase3" => Protocol::CurveBasePool3,
             "curve.fibase4" => Protocol::CurveBasePool4,
