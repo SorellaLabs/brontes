@@ -4,7 +4,7 @@ MISSING=`cargo test | grep -o 'BlockTraceError([0-9]\{1,9\}' | cut -c17- | sed '
 
 if [ ${#MISSING} -ne 0 ]; then 
   echo "inserting missing blocks"
-  if cargo run --features sorella-server -- run db test-traces-init --blocks $MISSING; then : ; else; return 1; fi
+  if cargo run --features sorella-server -- run db test-traces-init --blocks $MISSING; then : ; else return 1; fi
 fi
 echo "done"
 
