@@ -133,20 +133,19 @@ impl Protocol {
     }
 
     pub fn from_db_string(s: &str) -> Self {
-        match s {
-            "UniswapV2" => Protocol::UniswapV2,
-            "SushiSwapV2" => Protocol::SushiSwapV2,
-            "UniswapV3" => Protocol::UniswapV3,
-            "SushiSwapV3" => Protocol::SushiSwapV3,
-            "Curve.fiBase2" => Protocol::CurveBasePool2,
-            "Curve.fiBase3" => Protocol::CurveBasePool3,
-            "Curve.fiBase4" => Protocol::CurveBasePool4,
-            "Curve.fiV1 Metapool" => Protocol::CurveV1MetaPool,
-            "curve.fiV2 metapool" => Protocol::CurveV2MetaPool,
-            "Curve.fiV2 Plain" => Protocol::CurveV2PlainPool,
+        match s.to_lowercase().as_str() {
+            "uniswapv2" => Protocol::UniswapV2,
+            "sushiswapv2" => Protocol::SushiSwapV2,
+            "uniswapv3" => Protocol::UniswapV3,
+            "sushiswapV3" => Protocol::SushiSwapV3,
+            "curve.fibase2" => Protocol::CurveBasePool2,
+            "curve.fibase3" => Protocol::CurveBasePool3,
+            "curve.fibase4" => Protocol::CurveBasePool4,
+            "curve.fiv1 metapool" => Protocol::CurveV1MetaPool,
+            "curve.fiv2 metapool" => Protocol::CurveV2MetaPool,
             "curve.fiv2 plain" => Protocol::CurveV2PlainPool,
-            "curve.ficrvUSD metapool" => Protocol::CurvecrvUSDMetaPool,
-            "curve.ficrvUSD plain" => Protocol::CurvecrvUSDPlainPool,
+            "curve.ficrvusd metapool" => Protocol::CurvecrvUSDMetaPool,
+            "curve.ficrvusd plain" => Protocol::CurvecrvUSDPlainPool,
             "curve.ficryptoswap" => Protocol::CurveCryptoSwapPool,
             "curve.fitricrypto" => Protocol::CurveTriCryptoPool,
             _ => Protocol::Unknown,
