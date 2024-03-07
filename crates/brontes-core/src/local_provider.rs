@@ -46,7 +46,7 @@ impl TracingProvider for LocalProvider {
             if res.is_ok() || attempts > self.retries {
                 return res.map_err(Into::into)
             } else {
-                tracing::error!(eth_call_error=%res_str);
+                tracing::error!(eth_call_error=%res_str, ?request, err=?res);
             }
             attempts += 1
         }
