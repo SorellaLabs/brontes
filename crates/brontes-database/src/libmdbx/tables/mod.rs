@@ -4,8 +4,6 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
-#[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
-use brontes_types::db::clickhouse_serde::tx_trace::tx_traces_inner;
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
@@ -13,6 +11,7 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         cex_trades::{CexTradeMap, CexTradeMapRedefined},
+        clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
@@ -234,7 +233,11 @@ impl Tables {
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
             Tables::TxTraces => {
-                unimplemented!("'initialize_table_arbitrary_state' not implemented for TxTraces");
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
+                        block_range,
+                    )
+                    .await
             }
             Tables::Builder => {
                 unimplemented!("'initialize_table_arbitrary_state' not implemented for Builder");
@@ -640,7 +643,7 @@ compressed_table!(
         #[serde_as]
         Data {
             key: u64,
-            #[cfg_attr(any(not(feature="api-des"), feature="local-clickhouse"), serde(deserialize_with = "tx_traces_inner::deserialize"))]
+            #[serde(deserialize_with = "tx_traces_inner::deserialize")]
             value: TxTracesInner,
             compressed_value: TxTracesInnerRedefined
         },

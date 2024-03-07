@@ -9,7 +9,7 @@ use super::uniswap_v3::uniswap_v3_math::error::UniswapV3MathError;
 
 #[derive(Error, Debug)]
 pub enum AmmError {
-    #[error("call error")]
+    #[error(transparent)]
     CallError(#[from] eyre::Error),
     #[error("No state was found for address: {0:?}")]
     NoStateError(Address),

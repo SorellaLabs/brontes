@@ -9,7 +9,7 @@ use alloy_primitives::Address;
 use brontes_types::pair::Pair;
 use itertools::Itertools;
 use petgraph::prelude::*;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use super::yens::yen;
 use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
@@ -211,12 +211,12 @@ impl AllPairGraph {
 
         let Some(start_idx) = self.token_to_index.get(&pair.0) else {
             let addr = pair.0;
-            error!(?addr, "no node for address");
+            debug!(?addr, "no node for address");
             return vec![];
         };
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
-            error!(?addr, "no node for address");
+            debug!(?addr, "no node for address");
             return vec![];
         };
 

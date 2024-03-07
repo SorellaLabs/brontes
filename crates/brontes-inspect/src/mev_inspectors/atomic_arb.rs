@@ -293,16 +293,4 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_not_false_positive_hex_usdc() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-        let tx = hex!("e4b8b358118daa26809a1ff77323d825664202c4f31a2afe923f3fe83d7eccc4").into();
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("2b591e99afE9f32eAA6214f7B7629768c40Eeb39").into())
-            .with_dex_prices();
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
 }

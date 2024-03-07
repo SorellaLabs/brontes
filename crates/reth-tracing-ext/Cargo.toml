@@ -28,16 +28,10 @@ brontes-types.workspace = true
 tracing.workspace = true
 
 num_cpus.workspace = true
-
-revm = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
-  "std",
-  "secp256k1",
-], default-features = false }
-revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
-  "std",
-], default-features = false }
+revm-primitives.workspace = true
 bitflags = "2.4"
 
+revm.workspace = true
 # error
 eyre = "0.6.8"
 

@@ -397,6 +397,7 @@ impl ClassifierTestUtils {
         tree_collect_builder: TreeSearchBuilder<Actions>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
+
         assert!(!tree.tx_roots.is_empty(), "empty tree. most likely a invalid hash");
 
         let root = tree.tx_roots.remove(0);
