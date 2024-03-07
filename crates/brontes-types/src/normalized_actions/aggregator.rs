@@ -1,5 +1,3 @@
-use std::{cmp::Ordering, fmt::Debug};
-
 use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
@@ -14,7 +12,7 @@ pub struct NormalizedAggregator {
     pub from:        Address,
     pub recipient:   Address,
 
-    // Child actions contained within this aggregator in this order
+    // Child actions contained within this aggregator in order of execution
     // They can be:
     //  - Swaps
     //  - Batchs
@@ -76,6 +74,14 @@ impl NormalizedAggregator {
                 self.child_actions.push(action.1.clone());
                 nodes_to_prune.push(index.try_into().unwrap());
             }
+
+            // Sort child_actions to restore the original order
+            self.child_actions.sort_by_key(|action| {
+                actions
+                    .iter()
+                    .position(|(_, a)| *a == *action)
+                    .unwrap_or(usize::MAX)
+            });
         } else {
             for (trace_index, action) in actions {
                 match action {
@@ -92,29 +98,6 @@ impl NormalizedAggregator {
                 }
             }
         }
-        self.sort_child_actions();
         nodes_to_prune
-    }
-
-    fn sort_child_actions(&mut self) {
-        self.child_actions.sort_by(|a, b| {
-            use Actions::*;
-            match (a, b) {
-                (Swap(_), _) => Ordering::Less,
-                (_, Swap(_)) => Ordering::Greater,
-                (Batch(_), _) => Ordering::Less,
-                (_, Batch(_)) => Ordering::Greater,
-                (Liquidation(_), _) => Ordering::Less,
-                (_, Liquidation(_)) => Ordering::Greater,
-                (Mint(_), _) => Ordering::Less,
-                (_, Mint(_)) => Ordering::Greater,
-                (Burn(_), _) => Ordering::Less,
-                (_, Burn(_)) => Ordering::Greater,
-                (Transfer(_), Transfer(_)) => Ordering::Equal,
-                (Transfer(_), _) => Ordering::Less,
-                (_, Transfer(_)) => Ordering::Greater,
-                _ => Ordering::Equal, // Ignore any other variants
-            }
-        });
     }
 }
