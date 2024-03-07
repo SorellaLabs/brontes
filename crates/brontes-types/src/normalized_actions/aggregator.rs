@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{cmp::Ordering, fmt::Debug};
 
 use clickhouse::Row;
 use reth_primitives::{Address, U256};
@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use super::accounting::{AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
-
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
 pub struct NormalizedAggregator {
     pub protocol:    Protocol,
@@ -15,7 +14,7 @@ pub struct NormalizedAggregator {
     pub from:        Address,
     pub recipient:   Address,
 
-    // Child actions contained within this aggregator
+    // Child actions contained within this aggregator in order of execution
     // They can be:
     //  - Swaps
     //  - Batchs
@@ -42,14 +41,19 @@ impl NormalizedAggregator {
         let mut token_in = TokenInfoWithAddress::default();
         if self.protocol == Protocol::OneInchFusion {
             // First, process Swap actions
+            let mut lowest_swap_index = None;
             for (index, action) in actions
                 .iter()
-                .filter(|(_, action)| matches!(action, Actions::Swap(_)))
+                .enumerate()
+                .filter(|(_, action)| matches!(action.1, Actions::Swap(_)))
             {
-                if let Actions::Swap(swap) = action {
-                    token_in = swap.token_in.clone();
-                    self.child_actions.push(action.clone());
-                    nodes_to_prune.push(*index);
+                if let Actions::Swap(swap) = &action.1 {
+                    if lowest_swap_index.map_or(true, |idx| index < idx) {
+                        token_in = swap.token_in.clone();
+                        lowest_swap_index = Some(index);
+                    }
+                    self.child_actions.push(action.1.clone());
+                    nodes_to_prune.push(index.try_into().unwrap());
                 }
             }
 
@@ -88,7 +92,29 @@ impl NormalizedAggregator {
                 }
             }
         }
-
+        self.sort_child_actions();
         nodes_to_prune
+    }
+
+    fn sort_child_actions(&mut self) {
+        self.child_actions.sort_by(|a, b| {
+            use Actions::*;
+            match (a, b) {
+                (Swap(_), _) => Ordering::Less,
+                (_, Swap(_)) => Ordering::Greater,
+                (Batch(_), _) => Ordering::Less,
+                (_, Batch(_)) => Ordering::Greater,
+                (Liquidation(_), _) => Ordering::Less,
+                (_, Liquidation(_)) => Ordering::Greater,
+                (Mint(_), _) => Ordering::Less,
+                (_, Mint(_)) => Ordering::Greater,
+                (Burn(_), _) => Ordering::Less,
+                (_, Burn(_)) => Ordering::Greater,
+                (Transfer(_), Transfer(_)) => Ordering::Equal,
+                (Transfer(_), _) => Ordering::Less,
+                (_, Transfer(_)) => Ordering::Greater,
+                _ => Ordering::Equal, // Ignore any other variants
+            }
+        });
     }
 }
