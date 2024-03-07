@@ -11,12 +11,14 @@ use reth_rpc_types::{
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
     provider: Arc<Provider<Http<reqwest::Client>>>,
+    retries:  u8,
 }
 
 impl LocalProvider {
-    pub fn new(url: String) -> Self {
+    pub fn new(url: String, retries: u8) -> Self {
         let http = Http::new(url.parse().unwrap());
-        Self { provider: Arc::new(Provider::new(http)) }
+
+        Self { provider: Arc::new(Provider::new(http)), retries }
     }
 }
 
@@ -32,10 +34,18 @@ impl TracingProvider for LocalProvider {
         if state_overrides.is_some() || block_overrides.is_some() {
             panic!("local provider doesn't support block or state overrides");
         }
-        self.provider
-            .call(request, block_number)
-            .await
-            .map_err(Into::into)
+        // for tests, shit can get beefy
+        let mut attempts = 0;
+        loop {
+            let res = self
+                .provider
+                .call(request.clone(), block_number.clone())
+                .await;
+            if res.is_ok() || attempts > self.retries {
+                return res.map_err(Into::into)
+            }
+            attempts += 1;
+        }
     }
 
     async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>> {
