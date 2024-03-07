@@ -43,7 +43,7 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static;
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + Unpin + 'static;
 
     fn query_many_arbitrary<T, D>(
         &self,
@@ -52,13 +52,13 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static;
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + Unpin + 'static;
 
     fn query_many<T, D>(&self) -> impl Future<Output = eyre::Result<Vec<D>>> + Send
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static;
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + Unpin + 'static;
 
     #[cfg(feature = "local-clickhouse")]
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables>;

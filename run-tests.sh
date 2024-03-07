@@ -6,7 +6,7 @@ setup() {
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"
 
-  if cp /home/brontes-ci/.env .env; then :;else return 1;fi
+  if cp /home/brontes-ci/.env .env; then :; else return 1;fi
 
   echo "BRONTES_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
   echo "BRONTES_TEST_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
@@ -42,15 +42,15 @@ BENCH="bench";
 
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
 if [ "$3" = "$IT" ]; then 
-  if cargo run --release --features sorella-server -- run --start-block 18300000 --end-block 18300002 --run-dex-pricing; then : ; else teardown $2; exit 1; fi
+  if cargo run --release --features $4 -- run --start-block 18300000 --end-block 18300002 --run-dex-pricing; then : ; else teardown $2; exit 1; fi
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  if cargo +nightly test --features sorella-server; then : ;else  teardown $2; exit 1; fi
+  if cargo +nightly test --features $4; then : ;else  teardown $2; exit 1; fi
 fi
 
 if [ "$3" = "$BENCH" ]; then 
-  if cargo +nightly bench --features sorella-server; then : ; else teardown $2; exit 1; fi
+  if cargo +nightly bench --features $4; then : ; else teardown $2; exit 1; fi
 fi 
 
 teardown $2

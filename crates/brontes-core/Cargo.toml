@@ -20,7 +20,6 @@ reth-network-api.workspace = true
 reth-db.workspace = true
 reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
-#reth-revm.workspace = true
 reth-interfaces.workspace = true
 reth-metrics.workspace = true
 reth-tracing-ext.workspace = true
@@ -45,8 +44,8 @@ alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-providers.workspace = true
-alloy-rpc-types.workspace = true
 alloy-transport-http.workspace = true
+alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
 
 # Serde 
 serde.workspace = true
@@ -94,3 +93,4 @@ local-clickhouse = [
   "brontes-database/local-clickhouse",
   "reth-tracing-ext/local-clickhouse",
 ]
+

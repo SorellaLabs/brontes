@@ -98,7 +98,6 @@ cex-dex-markout = [
   "brontes-inspect/cex-dex-markout",
 ]
 
-api = ["brontes-types/api"]
 local-no-inserts = []
 
 tests = [

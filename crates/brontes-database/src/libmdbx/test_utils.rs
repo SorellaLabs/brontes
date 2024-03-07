@@ -34,7 +34,7 @@ pub async fn clickhouse_data<T, D, CH: ClickhouseHandle>(
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + Unpin + 'static,
 {
     let data = if let Some(rang) = block_range {
         clickhouse.query_many_range::<T, D>(rang.0, rang.1).await?
@@ -60,7 +60,7 @@ pub async fn clickhouse_arbitrary_data<T, D, CH: ClickhouseHandle>(
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + Unpin + 'static,
 {
     let data = clickhouse.query_many_arbitrary::<T, D>(block_range).await?;
 
@@ -83,9 +83,8 @@ pub async fn compare_clickhouse_libmdbx_data<T, D, CH: ClickhouseHandle>(
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + Unpin + 'static,
 {
-    #[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
     let _clickhouse_data = clickhouse_data::<T, D, CH>(_clickhouse, _block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
@@ -105,9 +104,8 @@ pub async fn compare_clickhouse_libmdbx_arbitrary_data<T, D, CH: ClickhouseHandl
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+    D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + Unpin + 'static,
 {
-    #[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
     let _clickhouse_data = clickhouse_arbitrary_data::<T, D, CH>(_clickhouse, _block_range).await?;
 
     let tx = libmdbx.0.ro_tx()?;
