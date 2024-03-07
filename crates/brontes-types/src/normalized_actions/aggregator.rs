@@ -15,7 +15,7 @@ pub struct NormalizedAggregator {
     pub from:        Address,
     pub recipient:   Address,
 
-    // Child actions contained within this aggregator in order of execution
+    // Child actions contained within this aggregator
     // They can be:
     //  - Swaps
     //  - Batchs
@@ -54,28 +54,23 @@ impl NormalizedAggregator {
             }
 
             // Then, process Transfer actions
-            for (index, action) in actions
-                .iter()
-                .filter(|(_, action)| matches!(action, Actions::Transfer(_)))
-            {
-                if let Actions::Transfer(transfer) = action {
+            for (index, action) in actions.iter().enumerate().filter(|(_, action)| {
+                matches!(
+                    action.1,
+                    Actions::Transfer(_) | Actions::Batch(_) | Actions::Burn(_) | Actions::Mint(_)
+                )
+            }) {
+                if let Actions::Transfer(transfer) = &action.1 {
                     if transfer.token == token_in
                         && transfer.trace_index < token_in_trace_index_counter
                     {
                         self.recipient = transfer.from;
                         token_in_trace_index_counter = transfer.trace_index;
                     }
-                    self.child_actions.push(action.clone());
-                    nodes_to_prune.push(*index);
                 }
-            }
 
-            // Process other actions (Batch, Burn, Mint)
-            for (index, action) in actions.iter().filter(|(_, action)| {
-                matches!(action, Actions::Batch(_) | Actions::Burn(_) | Actions::Mint(_))
-            }) {
-                self.child_actions.push(action.clone());
-                nodes_to_prune.push(*index);
+                self.child_actions.push(action.1.clone());
+                nodes_to_prune.push(index.try_into().unwrap());
             }
         } else {
             for (trace_index, action) in actions {
