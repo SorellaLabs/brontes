@@ -39,10 +39,11 @@ pub struct ExchangePrice {
 
 type MakerTaker = (ExchangePrice, ExchangePrice);
 
+type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
+
 // cex trades are sorted from lowest fill price to highest fill price
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CexTradeMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
-
 #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexTradeMap)]
 #[redefined_attr(
@@ -52,7 +53,7 @@ pub struct CexTradeMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
     from_source = "CexTradeMapRedefined::new(src.0)"
 )]
 pub struct CexTradeMapRedefined {
-    pub map: Vec<(CexExchange, Vec<(PairRedefined, Vec<CexTradesRedefined>)>)>,
+    pub map: Vec<(CexExchange, RedefinedTradeMapVec)>,
 }
 
 impl CexTradeMapRedefined {
