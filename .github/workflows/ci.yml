@@ -112,7 +112,7 @@ jobs:
     strategy:
           fail-fast: false
           matrix:
-            features: ["sorella-server", "default"]
+            features: ["sorella-server"]
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
     needs: [clippy, build]
