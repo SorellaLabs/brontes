@@ -2,6 +2,7 @@ pub mod address_metadata;
 pub mod address_to_protocol_info;
 pub mod builder;
 pub mod cex;
+pub mod cex_trades;
 pub mod clickhouse;
 pub mod clickhouse_serde;
 pub mod codecs;

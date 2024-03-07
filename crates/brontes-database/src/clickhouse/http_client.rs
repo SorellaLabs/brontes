@@ -7,7 +7,8 @@ use brontes_types::{
     },
     pair::Pair,
 };
-use clickhouse::DbRow;
+use clickhouse::{remote_cursor::RemoteCursor, DbRow};
+use futures::TryStreamExt;
 use hyper::StatusCode;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -114,7 +115,14 @@ impl ClickhouseHandle for ClickhouseHttpClient {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
         let request = self
             .client
@@ -133,57 +141,75 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 
         tracing::debug!(?request, "querying endpoint");
 
-        let text = self
-            .client
-            .execute(request)
-            .await
-            .map_err(|e| {
-                if let Some(status_code) = e.status() {
-                    tracing::error!(%status_code, "clickhouse http query")
-                }
-                e
-            })?
-            .text()
-            .await?;
-
-        let val = serde_json::from_str(&text);
-
-        if val.is_err() {
-            println!("ERROR: {:?}", text);
+        let mut cur = RemoteCursor::new(
+            self.client
+                .execute(request)
+                .await
+                .map_err(|e| {
+                    if let Some(status_code) = e.status() {
+                        tracing::error!(%status_code, "clickhouse http query")
+                    }
+                    e
+                })?
+                .bytes_stream(),
+        );
+        let mut res = Vec::new();
+        while let Some(next) = cur.try_next().await? {
+            res.push(next)
         }
 
-        Ok(val?)
-        //.map_err(Into::into)
+        Ok(res)
     }
 
     async fn query_many<T, D>(&self) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
-        self.client
-            .get(format!(
-                "{}/{}",
-                self.url,
-                T::HTTP_ENDPOINT.unwrap_or_else(|| panic!(
-                    "tried to init remote when no http endpoint was set {}",
-                    T::NAME
+        let mut cur = RemoteCursor::new(
+            self.client
+                .get(format!(
+                    "{}/{}",
+                    self.url,
+                    T::HTTP_ENDPOINT.unwrap_or_else(|| panic!(
+                        "tried to init remote when no http endpoint was set {}",
+                        T::NAME
+                    ))
                 ))
-            ))
-            .header("api-key", &self.api_key)
-            .send()
-            .await?
-            .json()
-            .await
-            .map_err(Into::into)
+                .header("api-key", &self.api_key)
+                .send()
+                .await?
+                .bytes_stream(),
+        );
+
+        let mut res = Vec::new();
+        while let Some(next) = cur.try_next().await? {
+            res.push(next)
+        }
+
+        Ok(res)
     }
 
     async fn query_many_arbitrary<T, D>(&self, range: &'static [u64]) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
         let range_str = range
             .iter()
@@ -207,18 +233,25 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 
         tracing::debug!(?request, "querying endpoint");
 
-        self.client
-            .execute(request)
-            .await
-            .map_err(|e| {
-                if let Some(status_code) = e.status() {
-                    tracing::error!(%status_code, "clickhouse http query")
-                }
-                e
-            })?
-            .json()
-            .await
-            .map_err(Into::into)
+        let mut cur = RemoteCursor::new(
+            self.client
+                .execute(request)
+                .await
+                .map_err(|e| {
+                    if let Some(status_code) = e.status() {
+                        tracing::error!(%status_code, "clickhouse http query")
+                    }
+                    e
+                })?
+                .bytes_stream(),
+        );
+
+        let mut res = Vec::new();
+        while let Some(next) = cur.try_next().await? {
+            res.push(next)
+        }
+
+        Ok(res)
     }
 }
 

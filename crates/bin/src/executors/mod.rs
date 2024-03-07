@@ -252,7 +252,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .initialize_tables(
                     self.clickhouse,
                     self.parser.get_tracer(),
-                    &[Tables::BlockInfo, Tables::CexPrice],
+                    &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                     false,
                     Some((*start, *end)),
                 )
@@ -277,7 +277,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .initialize_tables_arbitrary(
                 self.clickhouse,
                 self.parser.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
+                &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                 state_to_init_disc,
             )
             .await?;
