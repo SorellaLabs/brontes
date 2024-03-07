@@ -65,10 +65,15 @@ impl TraceLoader {
         &self,
         block: u64,
     ) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
-        self.tracing_provider
-            .execute_block(block)
-            .await
-            .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
+        if let Some(traces) = self.tracing_provider.execute_block(block).await {
+            Ok(traces)
+        } else {
+            self.fetch_missing_traces(block).await.unwrap();
+            self.tracing_provider
+                .execute_block(block)
+                .await
+                .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
+        }
     }
 
     pub async fn get_metadata(
@@ -92,6 +97,23 @@ impl TraceLoader {
                 .test_metadata(block)
                 .map_err(|_| TraceLoaderError::NoMetadataFound(block))
         }
+    }
+
+    pub async fn fetch_missing_traces(&self, block: u64) -> eyre::Result<()> {
+        tracing::info!(%block, "fetching missing trces");
+
+        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        self.libmdbx
+            .initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                &[Tables::TxTraces],
+                false,
+                Some((block - 2, block + 2)),
+            )
+            .await?;
+
+        Ok(())
     }
 
     pub async fn fetch_missing_metadata(&self, block: u64) -> eyre::Result<()> {
@@ -186,7 +208,8 @@ impl TraceLoader {
         tx_hashes: Vec<B256>,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
         let mut flattened: HashMap<u64, BlockTracesWithHeaderAnd<()>> = HashMap::new();
-        join_all(tx_hashes.into_iter().map(|tx_hash| async move {
+
+        for res in join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self
                 .tracing_provider
                 .get_tracer()
@@ -195,29 +218,33 @@ impl TraceLoader {
             let (traces, header) = self.trace_block(block).await?;
             let trace = traces[tx_idx].clone();
 
-            Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: () })
+            Ok::<_, TraceLoaderError>(TxTracesWithHeaderAnd {
+                block,
+                tx_hash,
+                trace,
+                header,
+                other: (),
+            })
         }))
         .await
-        .into_iter()
-        .for_each(|res: Result<TxTracesWithHeaderAnd<()>, TraceLoaderError>| {
-            if let Ok(res) = res {
-                match flattened.entry(res.block) {
-                    Entry::Occupied(mut o) => {
-                        let e = o.get_mut();
-                        e.traces.push(res.trace)
-                    }
-                    Entry::Vacant(v) => {
-                        let entry = BlockTracesWithHeaderAnd {
-                            traces: vec![res.trace],
-                            block:  res.block,
-                            other:  (),
-                            header: res.header,
-                        };
-                        v.insert(entry);
-                    }
+        {
+            let res = res?;
+            match flattened.entry(res.block) {
+                Entry::Occupied(mut o) => {
+                    let e = o.get_mut();
+                    e.traces.push(res.trace)
+                }
+                Entry::Vacant(v) => {
+                    let entry = BlockTracesWithHeaderAnd {
+                        traces: vec![res.trace],
+                        block:  res.block,
+                        other:  (),
+                        header: res.header,
+                    };
+                    v.insert(entry);
                 }
             }
-        });
+        }
 
         let mut res = flattened
             .into_values()
@@ -388,7 +415,7 @@ pub async fn init_trace_parser(
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
-    let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
+    let tracer = Box::new(LocalProvider::new(url, 15)) as Box<dyn TracingProvider>;
 
     TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx)).await
 }
