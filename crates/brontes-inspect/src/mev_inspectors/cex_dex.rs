@@ -473,7 +473,7 @@ pub struct ExchangeLeg {
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::USDT_ADDRESS;
+    use brontes_types::constants::{USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS};
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
@@ -518,7 +518,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
+            .needs_tokens(vec![WETH_ADDRESS, WBTC_ADDRESS])
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();

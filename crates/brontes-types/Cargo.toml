@@ -83,10 +83,8 @@ reth-tracing-ext.workspace = true
 
 
 [features]
-default = ["api-des"]
+default = []
 tests = []
-api = []
-api-des = []
 cex-dex-markout = []
 
 local-clickhouse = [

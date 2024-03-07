@@ -2,21 +2,17 @@ use std::str::FromStr;
 
 use alloy_primitives::{Address, Log, U256};
 use clickhouse::DbRow;
-#[cfg(not(feature = "api"))]
 use itertools::Itertools;
 use redefined::self_convert_redefined;
 use reth_primitives::{Bytes, B256};
 use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-#[cfg(not(feature = "api"))]
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
-#[cfg(not(feature = "api"))]
-use crate::db::clickhouse_serde::tx_trace::*;
 use crate::{
     constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
+    db::clickhouse_serde::tx_trace::*,
     serde_utils::u256,
 };
 pub trait TraceActions {
@@ -218,7 +214,6 @@ impl TransactionTraceWithLogs {
 
 #[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
-#[cfg_attr(feature = "api", derive(Serialize))]
 pub struct TxTrace {
     pub block_number:    u64,
     pub trace:           Vec<TransactionTraceWithLogs>,
@@ -245,7 +240,6 @@ impl TxTrace {
     }
 }
 
-#[cfg(not(feature = "api"))]
 impl Serialize for TxTrace {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
