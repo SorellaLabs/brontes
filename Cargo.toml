@@ -86,12 +86,15 @@ alloy-json-abi = "0.6.0"
 alloy-dyn-abi = "0.6.0 "
 # Alloy core
 
+
 alloy-providers = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9", features = ["jsonrpsee-types"]}
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb", features = [
+  "jsonrpsee-types",
+] }
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 
 # Async
