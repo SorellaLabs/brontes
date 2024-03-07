@@ -554,9 +554,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn run_all(
-        database: &ClickhouseTestingClient<BrontesClickhouseTables>,
-    ) -> Result<(), ClickhouseError> {
+    async fn run_all(database: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         tx_traces(database).await;
         builder_info(database).await;
         pools(database).await;
@@ -573,8 +571,6 @@ mod tests {
         searcher_stats(database).await;
         token_info(database).await;
         searcher_info(database).await;
-
-        Ok(())
     }
 
     #[brontes_macros::test]
