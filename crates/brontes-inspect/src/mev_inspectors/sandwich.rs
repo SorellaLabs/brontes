@@ -9,7 +9,9 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
-    normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
+    normalized_actions::{
+        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedSwap,
+    },
     tree::{BlockTree, GasDetails, TxInfo},
     ActionIter, IntoZipTree, ToFloatNearest, TreeBase, TreeIter, TreeSearchBuilder, UnzipPadded,
 };
@@ -73,7 +75,23 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                     let (victim_swaps, victim_info): (Vec<_>, Vec<_>) = victims
                         .into_iter()
                         .map(|victim| {
-                            (tree.clone().collect_txes(&victim, search_args.clone()), victim)
+                            (
+                                tree.clone()
+                                    .collect_txes(&victim, search_args.clone())
+                                    .t_map(|a| {
+                                        a.into_iter().flatten_specified(
+                                            Actions::try_aggregator_ref,
+                                            |actions: NormalizedAggregator| {
+                                                actions
+                                                    .child_actions
+                                                    .into_iter()
+                                                    .filter(|f| f.is_swap() || f.is_transfer())
+                                                    .collect::<Vec<_>>()
+                                            },
+                                        )
+                                    }),
+                                victim,
+                            )
                         })
                         .try_fold(vec![], |mut acc, (victim_set, hashes)| {
                             let tree = victim_set.tree();
