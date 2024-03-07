@@ -208,7 +208,8 @@ impl TraceLoader {
         tx_hashes: Vec<B256>,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
         let mut flattened: HashMap<u64, BlockTracesWithHeaderAnd<()>> = HashMap::new();
-        join_all(tx_hashes.into_iter().map(|tx_hash| async move {
+
+        for res in join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self
                 .tracing_provider
                 .get_tracer()
@@ -217,29 +218,33 @@ impl TraceLoader {
             let (traces, header) = self.trace_block(block).await?;
             let trace = traces[tx_idx].clone();
 
-            Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: () })
+            Ok::<_, TraceLoaderError>(TxTracesWithHeaderAnd {
+                block,
+                tx_hash,
+                trace,
+                header,
+                other: (),
+            })
         }))
         .await
-        .into_iter()
-        .for_each(|res: Result<TxTracesWithHeaderAnd<()>, TraceLoaderError>| {
-            if let Ok(res) = res {
-                match flattened.entry(res.block) {
-                    Entry::Occupied(mut o) => {
-                        let e = o.get_mut();
-                        e.traces.push(res.trace)
-                    }
-                    Entry::Vacant(v) => {
-                        let entry = BlockTracesWithHeaderAnd {
-                            traces: vec![res.trace],
-                            block:  res.block,
-                            other:  (),
-                            header: res.header,
-                        };
-                        v.insert(entry);
-                    }
+        {
+            let res = res?;
+            match flattened.entry(res.block) {
+                Entry::Occupied(mut o) => {
+                    let e = o.get_mut();
+                    e.traces.push(res.trace)
+                }
+                Entry::Vacant(v) => {
+                    let entry = BlockTracesWithHeaderAnd {
+                        traces: vec![res.trace],
+                        block:  res.block,
+                        other:  (),
+                        header: res.header,
+                    };
+                    v.insert(entry);
                 }
             }
-        });
+        }
 
         let mut res = flattened
             .into_values()

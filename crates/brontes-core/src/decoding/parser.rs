@@ -43,8 +43,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
 
     pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         let mut traces = self.libmdbx.load_trace(block_num).ok()?;
-        traces.sort_by(|a,b| a.tx_index.cmp(&b.tx_index));
-        traces.dedup_by(|a,b| a.tx_index.eq(&b.tx_index));
+        traces.sort_by(|a, b| a.tx_index.cmp(&b.tx_index));
+        traces.dedup_by(|a, b| a.tx_index.eq(&b.tx_index));
 
         Some((traces, self.tracer.header_by_number(block_num).await.ok()??))
     }
