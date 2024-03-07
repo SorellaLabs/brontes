@@ -220,8 +220,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         Tables::TokenDecimals,
                         Tables::Builder,
                         Tables::AddressMeta,
-                        #[cfg(not(feature = "local-reth"))]
-                        Tables::TxTraces,
                     ],
                     false,
                     None,
