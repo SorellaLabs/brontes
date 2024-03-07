@@ -43,8 +43,6 @@ type MakerTaker = (ExchangePrice, ExchangePrice);
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CexTradeMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
 
-type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
-
 #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexTradeMap)]
 #[redefined_attr(
@@ -54,7 +52,7 @@ type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
     from_source = "CexTradeMapRedefined::new(src.0)"
 )]
 pub struct CexTradeMapRedefined {
-    pub map: Vec<(CexExchange, RedefinedTradeMapVec)>,
+    pub map: Vec<(CexExchange, Vec<(PairRedefined, Vec<CexTradesRedefined>)>)>,
 }
 
 impl CexTradeMapRedefined {

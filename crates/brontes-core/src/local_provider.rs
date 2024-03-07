@@ -37,11 +37,18 @@ impl TracingProvider for LocalProvider {
         // for tests, shit can get beefy
         let mut attempts = 0;
         loop {
+            let inner = self.provider.inner();
+            let res_str: String = inner
+                .prepare("eth_call", (request.clone(), block_number))
+                .await
+                .unwrap();
             let res = self.provider.call(request.clone(), block_number).await;
             if res.is_ok() || attempts > self.retries {
                 return res.map_err(Into::into)
+            } else {
+                tracing::error!(eth_call_error=%res_str);
             }
-            attempts += 1;
+            attempts += 1
         }
     }
 
