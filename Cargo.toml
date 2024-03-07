@@ -11,7 +11,7 @@ members = [
   "crates/brontes-database",
   "crates/brontes-macros",
   "crates/brontes-pricing",
-  "crates/brontes-analytics"
+  "crates/brontes-analytics",
 ]
 
 resolver = "2"
@@ -91,7 +91,7 @@ alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "7
 alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9", features = ["jsonrpsee-types"]}
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "76c70fb9" }
 
 # Async

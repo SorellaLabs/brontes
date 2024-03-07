@@ -428,6 +428,7 @@ dependencies = [
  "alloy-primitives",
  "alloy-rlp",
  "itertools 0.12.1",
+ "jsonrpsee-types",
  "serde",
  "serde_json",
  "thiserror",
