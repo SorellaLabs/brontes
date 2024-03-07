@@ -2,7 +2,10 @@ use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
-use super::accounting::{AddressDeltas, TokenAccounting};
+use super::{
+    accounting::{AddressDeltas, TokenAccounting},
+    NormalizedAction,
+};
 pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
@@ -76,12 +79,8 @@ impl NormalizedAggregator {
             }
 
             // Sort child_actions to restore the original order
-            self.child_actions.sort_by_key(|action| {
-                actions
-                    .iter()
-                    .position(|(_, a)| *a == *action)
-                    .unwrap_or(usize::MAX)
-            });
+            self.child_actions
+                .sort_by_key(|action| action.get_trace_index());
         } else {
             for (trace_index, action) in actions {
                 match action {
