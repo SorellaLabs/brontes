@@ -415,7 +415,7 @@ pub async fn init_trace_parser(
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");
-    let tracer = Box::new(LocalProvider::new(url)) as Box<dyn TracingProvider>;
+    let tracer = Box::new(LocalProvider::new(url, 10)) as Box<dyn TracingProvider>;
 
     TraceParser::new(libmdbx, Arc::new(tracer), Arc::new(metrics_tx)).await
 }
