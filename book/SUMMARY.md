@@ -2,7 +2,6 @@
 
 - [Introduction](./intro.md)
 - [Installation](./installation/installation.md)
-  - [Docker](./installation/docker.md)
   - [Build from Source](./installation/source.md)
 - [Run Brontes](./run/run_brontes.md)
 - [Brontes Architecture](./architecture/intro.md)
