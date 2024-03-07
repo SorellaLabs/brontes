@@ -32,6 +32,12 @@ impl TracingProvider for LocalProvider {
         if state_overrides.is_some() || block_overrides.is_some() {
             panic!("local provider doesn't support block or state overrides");
         }
+        let call: String = self
+            .provider
+            .inner()
+            .prepare("eth_call", (request, block_number.unwrap_or_default()))
+            .await?;
+        tracing::info!(resp=call, "made eth_call");
         self.provider
             .call(request, block_number)
             .await
