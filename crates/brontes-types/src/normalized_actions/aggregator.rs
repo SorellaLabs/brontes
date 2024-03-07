@@ -14,7 +14,7 @@ pub struct NormalizedAggregator {
     pub from:        Address,
     pub recipient:   Address,
 
-    // Child actions contained within this aggregator in order of execution
+    // Child actions contained within this aggregator in this order
     // They can be:
     //  - Swaps
     //  - Batchs
