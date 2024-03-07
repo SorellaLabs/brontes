@@ -35,9 +35,9 @@ impl TracingProvider for LocalProvider {
         let call: String = self
             .provider
             .inner()
-            .prepare("eth_call", (request, block_number.unwrap_or_default()))
+            .prepare("eth_call", (request.clone(), block_number.unwrap_or_default()))
             .await?;
-        tracing::info!(resp=call, "made eth_call");
+        tracing::info!(resp = call, "made eth_call");
         self.provider
             .call(request, block_number)
             .await
