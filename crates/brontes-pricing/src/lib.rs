@@ -1050,7 +1050,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "local-reth"))]
 pub mod test {
     use std::{collections::HashMap, sync::Arc};
 
@@ -1065,6 +1065,7 @@ pub mod test {
     use itertools::Itertools;
     use malachite::Rational;
 
+    // takes to long if using http
     #[brontes_macros::test(threads = 11)]
     async fn test_pricing_variance() {
         let utils = Arc::new(ClassifierTestUtils::new().await);
