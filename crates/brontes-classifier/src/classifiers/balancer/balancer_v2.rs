@@ -222,4 +222,31 @@ mod tests {
             .await
             .unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_balancer_v2_mint() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let mint = B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
+
+        let eq_action = Actions::Mint(NormalizedMint {
+            protocol:    BalancerV2,
+            trace_index: 1,
+            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            pool:        Address::new(hex!("92E7Eb99a38C8eB655B15467774C6d56Fb810BC9")),
+            token:       vec![TokenInfoWithAddress::usdc()],
+            amount:      vec![U256::from_str("72712976").unwrap().to_scaled_rational(6)],
+        });
+
+        classifier_utils
+            .contains_action(
+                mint,
+                1,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
+            .await
+            .unwrap();
+    }
+
 }
