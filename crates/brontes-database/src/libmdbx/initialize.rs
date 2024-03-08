@@ -243,7 +243,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
                 match data {
                     Ok(d) => {
-                        tracing::info!(target: "brontes::init::missing_state", "writing data of len {} to libmdbx", d.len());
                         libmdbx.0.write_table(&d)?;
                     }
                     Err(e) => {
