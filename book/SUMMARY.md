@@ -8,8 +8,8 @@
   - [Tree Construction and Normalization](./architecture/tree_builder_and_normalization.md)
   - [Database](./architecture/database.md)
   - [Inspectors](./architecture/inspectors.md)
+  - [Classifiers](./architecture/classifiers.md)
 - [Extending Brontes](./guide/intro.md)
-
   - [Implementing Custom Classifiers](./guide/classifier_guide.md)
   - [Implementing Custom Inspectors](./guide/inspector_guide.md)
 
