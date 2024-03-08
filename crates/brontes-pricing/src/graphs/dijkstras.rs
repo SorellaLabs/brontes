@@ -1,21 +1,16 @@
 //! Compute a shortest path using the [Dijkstra search
 //! algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 
-use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap, HashSet},
-    hash::{BuildHasherDefault, Hash},
-    usize,
-};
+use std::{cmp::Ordering, collections::BinaryHeap, hash::Hash, usize};
 
+use brontes_types::{FastFastHashMap, FastFastHashSet, FastHasher};
 use indexmap::{
     map::Entry::{Occupied, Vacant},
     IndexMap,
 };
 use pathfinding::num_traits::Zero;
-use rustc_hash::FxHasher;
 
-type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
+type FxIndexMap<K, V> = IndexMap<K, V, FastHasher>;
 const MAX_LEN: usize = 4;
 
 /// Compute a shortest path using the [Dijkstra search
@@ -165,7 +160,7 @@ where
     FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
-    let mut visited = HashSet::new();
+    let mut visited = FastFastHashSet::default();
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
@@ -258,7 +253,7 @@ where
 #[allow(clippy::implicit_hasher)]
 #[allow(dead_code)]
 //TODO: Will prune if not used
-pub fn build_path<N, C>(target: &N, parents: &HashMap<N, (N, C)>) -> Vec<N>
+pub fn build_path<N, C>(target: &N, parents: &FastFastHashMap<N, (N, C)>) -> Vec<N>
 where
     N: Eq + Hash + Clone,
 {

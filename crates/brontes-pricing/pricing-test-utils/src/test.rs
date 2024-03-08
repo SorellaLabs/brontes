@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::FastHashMap,
     sync::{atomic::AtomicBool, Arc},
 };
 
@@ -38,7 +38,7 @@ impl PricingTestUtils {
             .map_err(|_| PricingTestError::LibmdbxError)?;
 
         let pair_graph =
-            GraphManager::init_from_db_state(pairs, HashMap::default(), self.tracer.libmdbx);
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.tracer.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.tracer
@@ -52,9 +52,9 @@ impl PricingTestUtils {
                         .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                         .collect::<Vec<_>>()
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         } else {
-            HashMap::new()
+            FastHashMap::default()
         };
         Ok(BrontesBatchPricer::new(
             Arc::new(AtomicBool::new(false)),

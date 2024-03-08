@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::FastHashMap,
     ops::{Deref, DerefMut},
 };
 
@@ -12,7 +12,7 @@ use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_wit
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
+pub struct SubGraphsEntry(pub FastHashMap<u64, Vec<SubGraphEdge>>);
 
 implement_table_value_codecs_with_zc!(SubGraphsEntryRedefined);
 

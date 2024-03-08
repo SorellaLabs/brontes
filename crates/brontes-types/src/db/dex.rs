@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, min},
-    collections::HashMap,
+    collections::FastHashMap,
     fmt::Display,
 };
 
@@ -74,7 +74,7 @@ impl DexPrices {
 }
 
 #[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
-pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
+pub struct DexQuotes(pub Vec<Option<FastHashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {
     /// checks for price at the given tx index. if it isn't found, will look for
@@ -124,7 +124,7 @@ impl Display for DexQuotes {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DexQuote(pub HashMap<Pair, DexPrices>);
+pub struct DexQuote(pub FastHashMap<Pair, DexPrices>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
     fn from(value: DexQuoteWithIndex) -> Self {
@@ -203,7 +203,7 @@ pub struct DexQuotesWithBlockNumber {
     pub block_number: u64,
     pub tx_idx:       u64,
     #[serde(with = "dex_quote")]
-    pub quote:        Option<HashMap<Pair, DexPrices>>,
+    pub quote:        Option<FastHashMap<Pair, DexPrices>>,
 }
 
 impl DexQuotesWithBlockNumber {

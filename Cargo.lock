@@ -76,6 +76,17 @@ dependencies = [
 
 [[package]]
 name = "ahash"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "891477e0c6a8957309ee5c45a6368af3ae14bb510732d2684ffa19af310920f9"
+dependencies = [
+ "getrandom 0.2.12",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
+name = "ahash"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
@@ -712,7 +723,7 @@ version = "50.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d390feeb7f21b78ec997a4081a025baef1e2e0d6069e181939b61864c9779609"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
  "arrow-buffer",
  "arrow-data",
  "arrow-schema",
@@ -837,7 +848,7 @@ version = "50.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "007035e17ae09c4e8993e4cb8b5b96edf0afb927cd38e2dff27189b274d83dcf"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
  "arrow-array",
  "arrow-buffer",
  "arrow-data",
@@ -858,7 +869,7 @@ version = "50.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ce20973c1912de6514348e064829e50947e35977bb9d7fb637dc99ea9ffd78c"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
  "arrow-array",
  "arrow-buffer",
  "arrow-data",
@@ -1785,6 +1796,7 @@ dependencies = [
  "dyn-clone",
  "erased-serde",
  "eyre",
+ "fasthash",
  "futures",
  "indoc",
  "itertools 0.11.0",
@@ -1955,6 +1967,12 @@ checksum = "c59e92b5a388f549b863a7bea62612c09f24c8393560709a54558a9abdfb3b9c"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "cargo-emit"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1582e1c9e755dd6ad6b224dcffb135d199399a4568d454bd89fe515ca8425695"
 
 [[package]]
 name = "cargo-platform"
@@ -3496,6 +3514,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95765f67b4b18863968b4a1bd5bb576f732b29a4a28c7cd84c09fa3e2875f33c"
 
 [[package]]
+name = "fasthash"
+version = "0.4.1"
+source = "git+https://github.com/flier/rust-fasthash?rev=ef0c52b#ef0c52b4157af9a1a7d19b2a37658b6c26a6bea6"
+dependencies = [
+ "ahash 0.7.8",
+ "cfg-if",
+ "derive_more",
+ "fasthash-sys",
+ "lazy_static",
+ "num-traits",
+ "rand 0.7.3",
+ "raw-cpuid",
+ "seahash",
+ "xoroshiro128",
+]
+
+[[package]]
+name = "fasthash-sys"
+version = "0.4.1"
+source = "git+https://github.com/flier/rust-fasthash?rev=ef0c52b#ef0c52b4157af9a1a7d19b2a37658b6c26a6bea6"
+dependencies = [
+ "cargo-emit",
+ "cc",
+ "cfg-if",
+ "lazy_static",
+ "raw-cpuid",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3895,7 +3942,7 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
 ]
 
 [[package]]
@@ -3904,7 +3951,7 @@ version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
  "allocator-api2",
  "serde",
 ]
@@ -5169,7 +5216,7 @@ version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fde3af1a009ed76a778cb84fdef9e7dbbdf5775ae3e4cc1f434a6a307f6f76c5"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
  "metrics-macros",
  "portable-atomic",
 ]
@@ -5798,7 +5845,7 @@ version = "50.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "547b92ebf0c1177e3892f44c8f79757ee62e678d564a9834189725f2c5b7a750"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
  "arrow-array",
  "arrow-buffer",
  "arrow-cast",
@@ -8267,7 +8314,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "772575a524feeb803e5b0fcbc6dd9f367e579488197c94c6e4023aad2305774d"
 dependencies = [
- "ahash",
+ "ahash 0.8.11",
  "cfg-if",
  "hashbrown 0.13.2",
 ]
@@ -10483,6 +10530,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7d8a75eaf6557bb84a65ace8609883db44a29951042ada9b393151532e41fcb"
 dependencies = [
  "xml-rs",
+]
+
+[[package]]
+name = "xoroshiro128"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4f00a0749a98500c8390e71228e707f281b5d893ae913362470704a3c13947e"
+dependencies = [
+ "rand 0.7.3",
+ "rand_core 0.5.1",
 ]
 
 [[package]]

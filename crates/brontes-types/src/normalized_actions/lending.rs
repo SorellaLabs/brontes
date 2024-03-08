@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::FastHashMap, fmt::Debug};
 
 use alloy_primitives::U256;
 use clickhouse::Row;
@@ -16,7 +16,7 @@ pub struct NormalizedLoan {
     pub borrower:     Address,
     pub loaned_token: TokenInfoWithAddress,
     pub loan_amount:  Rational,
-    pub collateral:   HashMap<TokenInfoWithAddress, Rational>,
+    pub collateral:   FastHashMap<TokenInfoWithAddress, Rational>,
     pub msg_value:    U256,
 }
 
@@ -28,6 +28,6 @@ pub struct NormalizedRepayment {
     pub borrower:         Address,
     pub repayed_token:    TokenInfoWithAddress,
     pub repayment_amount: Rational,
-    pub collateral:       HashMap<TokenInfoWithAddress, Rational>,
+    pub collateral:       FastHashMap<TokenInfoWithAddress, Rational>,
     pub msg_value:        U256,
 }

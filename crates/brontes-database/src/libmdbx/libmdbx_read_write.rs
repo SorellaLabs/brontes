@@ -1,6 +1,6 @@
 #[cfg(feature = "local-clickhouse")]
 use std::str::FromStr;
-use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{cmp::max, collections::FastHashMap, ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -400,11 +400,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn protocols_created_before(
         &self,
         block_num: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
+    ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
         let tx = self.0.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
+        let mut map = FastHashMap::default();
 
         for result in cursor.walk_range(0..=block_num)? {
             let res = result?.1;
@@ -429,11 +429,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, Protocol, Pair)>>> {
+    ) -> eyre::Result<FastHashMap<u64, Vec<(Address, Protocol, Pair)>>> {
         let tx = self.0.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
+        let mut map = FastHashMap::default();
 
         for result in cursor.walk_range(start_block..end_block)? {
             let result = result?;
@@ -676,7 +676,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .write_table::<SubGraphs, SubGraphsData>(&vec![data])
                 .expect("libmdbx write failure");
         } else {
-            let mut map = HashMap::new();
+            let mut map = FastHashMap::default();
             map.insert(block, edges);
             let subgraph_entry = SubGraphsEntry(map);
             let data = SubGraphsData::new(pair, subgraph_entry);
@@ -823,7 +823,7 @@ impl LibmdbxReadWriter {
     }
 
     pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
-        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let mut dex_quotes: Vec<Option<FastHashMap<Pair, DexPrices>>> = Vec::new();
         let (start_range, end_range) = make_filter_key_range(block_num);
         let tx = self.0.ro_tx()?;
 
@@ -842,7 +842,7 @@ impl LibmdbxReadWriter {
                             tx.insert(pair, price);
                         }
                     } else {
-                        let mut tx_pairs = HashMap::default();
+                        let mut tx_pairs = FastHashMap::default();
                         for (pair, price) in val.quote {
                             tx_pairs.insert(pair, price);
                         }

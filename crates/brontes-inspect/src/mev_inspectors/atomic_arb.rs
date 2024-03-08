@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::FastHashSet, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -92,7 +92,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         let (swaps, transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
-        let mev_addresses: HashSet<Address> = vec![info.eoa]
+        let mev_addresses: FastHashSet<Address> = vec![info.eoa]
             .into_iter()
             .chain(
                 info.mev_contract
@@ -100,7 +100,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     .map(|a| vec![*a])
                     .unwrap_or_default(),
             )
-            .collect::<HashSet<_>>();
+            .collect::<FastHashSet<_>>();
 
         let account_deltas = transfers
             .into_iter()

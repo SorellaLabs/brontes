@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::FastHashSet, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -68,7 +68,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
-        let mev_addresses: HashSet<Address> = vec![info.eoa]
+        let mev_addresses: FastHashSet<Address> = vec![info.eoa]
             .into_iter()
             .chain(
                 info.mev_contract
@@ -76,7 +76,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                     .map(|a| vec![*a])
                     .unwrap_or_default(),
             )
-            .collect::<HashSet<_>>();
+            .collect::<FastHashSet<_>>();
 
         let deltas = actions.into_iter().account_for_actions();
 

@@ -26,7 +26,7 @@ mod graphs;
 pub mod protocols;
 pub mod types;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
+    collections::{hash_map::Entry, FastHashMap, FastHashSet, VecDeque},
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
         Arc,
@@ -105,12 +105,12 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
+    new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
     graph_manager:   GraphManager<DB>,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
-    dex_quotes:      HashMap<u64, DexQuotes>,
+    dex_quotes:      FastHashMap<u64, DexQuotes>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
     overlap_update:  Option<PoolUpdate>,
@@ -124,7 +124,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
-        new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
+        new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     ) -> Self {
         Self {
             finished,
@@ -133,7 +133,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             buffer: StateBuffer::new(),
             update_rx,
             graph_manager,
-            dex_quotes: HashMap::default(),
+            dex_quotes: FastHashMap::default(),
             lazy_loader: LazyExchangeLoader::new(provider),
             current_block,
             completed_block: current_block,
@@ -236,7 +236,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 if let Some(tx) = tx.as_mut() {
                     tx.insert(pool_pair, prices);
                 } else {
-                    let mut tx_pairs = HashMap::default();
+                    let mut tx_pairs = FastHashMap::default();
                     tx_pairs.insert(pool_pair, prices);
                     *tx = Some(tx_pairs)
                 }
@@ -248,7 +248,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     vec.push(None);
                 }
                 // insert
-                let mut map = HashMap::new();
+                let mut map = FastHashMap::default();
                 map.insert(pool_pair, prices);
 
                 let entry = vec.get_mut(tx_idx as usize).unwrap();
@@ -449,7 +449,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
-    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>) {
+    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, FastHashSet<Pair>, Vec<Address>)>) {
         if pairs.is_empty() {
             return
         }
@@ -514,13 +514,15 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .iter()
                 .copied()
                 .combinations(ignores.len() - 1)
-                .map(|ignores| (pair, block, ignores.into_iter().collect::<HashSet<_>>(), vec![]))
+                .map(|ignores| {
+                    (pair, block, ignores.into_iter().collect::<FastHashSet<_>>(), vec![])
+                })
                 .collect_vec()
         } else {
             ignores
                 .iter()
                 .copied()
-                .map(|_| (pair, block, HashSet::new(), vec![]))
+                .map(|_| (pair, block, FastHashSet::default(), vec![]))
                 .collect_vec()
         };
 
@@ -538,7 +540,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let query = ignores
                 .iter()
                 .copied()
-                .map(|_| (pair, block, HashSet::new(), vec![]))
+                .map(|_| (pair, block, FastHashSet::default(), vec![]))
                 .collect_vec();
 
             par_state_query(&self.graph_manager, query)
@@ -842,13 +844,13 @@ enum PollResult {
 /// loading of pools is being applied
 pub struct StateBuffer {
     /// updates for a given block in order that they occur
-    pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    pub updates:   FastHashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     /// when we have a override for a given address at a block. it means that
     /// we don't want to apply any pool updates for the block. This is useful
     /// for when a pool is initted at a block and we can only query the end
     /// of block state. we can override all pool updates for the init block
     /// to ensure our pool state is in sync
-    pub overrides: HashMap<u64, HashSet<Address>>,
+    pub overrides: FastHashMap<u64, FastHashSet<Address>>,
 }
 
 impl Default for StateBuffer {
@@ -859,7 +861,7 @@ impl Default for StateBuffer {
 
 impl StateBuffer {
     pub fn new() -> Self {
-        Self { updates: HashMap::default(), overrides: HashMap::default() }
+        Self { updates: FastHashMap::default(), overrides: FastHashMap::default() }
     }
 }
 
@@ -921,7 +923,7 @@ type ParStateQueryRes = Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>)>;
 
 fn par_state_query<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
-    pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>,
+    pairs: Vec<(Pair, u64, FastHashSet<Pair>, Vec<Address>)>,
 ) -> ParStateQueryRes {
     pairs
         .into_par_iter()
@@ -1030,7 +1032,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         let subgraph = graph.create_subgraph(
             block,
             pair,
-            HashSet::new(),
+            FastHashSet::default(),
             100,
             Some(5),
             Duration::from_millis(69),
@@ -1052,7 +1054,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
 #[cfg(all(test, feature = "local-reth"))]
 pub mod test {
-    use std::{collections::HashMap, sync::Arc};
+    use std::{collections::FastHashMap, sync::Arc};
 
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
@@ -1116,7 +1118,7 @@ pub mod test {
             .iter()
             .chain([last].iter())
             .map(|i| &i.0)
-            .flat_map(|quotes: &Vec<Option<HashMap<Pair, DexPrices>>>| {
+            .flat_map(|quotes: &Vec<Option<FastHashMap<Pair, DexPrices>>>| {
                 quotes
                     .iter()
                     .filter_map(|a| a.as_ref())

@@ -1,6 +1,6 @@
 pub mod batch_request;
 pub mod uniswap_v3_math;
-use std::{cmp::Ordering, collections::HashMap, sync::Arc};
+use std::{cmp::Ordering, collections::FastHashMap, sync::Arc};
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{Decodable, Encodable};
@@ -136,8 +136,8 @@ pub struct UniswapV3Pool {
     pub fee:              u32,
     pub tick:             i32,
     pub tick_spacing:     i32,
-    pub tick_bitmap:      HashMap<i16, U256>,
-    pub ticks:            HashMap<i32, Info>,
+    pub tick_bitmap:      FastHashMap<i16, U256>,
+    pub ticks:            FastHashMap<i32, Info>,
 
     // non v3 native state
     pub reserve_0: U256,
@@ -184,11 +184,11 @@ impl Decodable for UniswapV3Pool {
         let tick_bitmap = Vec::<TickBitMapEncodeHelper>::decode(buf)?
             .into_iter()
             .map(|inner| (inner.key, inner.val))
-            .collect::<HashMap<i16, U256>>();
+            .collect::<FastHashMap<i16, U256>>();
         let ticks = Vec::<TicksEncodeHelper>::decode(buf)?
             .into_iter()
             .map(|inner| (inner.key, inner.val))
-            .collect::<HashMap<i32, Info>>();
+            .collect::<FastHashMap<i32, Info>>();
 
         let r0 = U256::decode(buf)?;
         let r1 = U256::decode(buf)?;
@@ -360,8 +360,8 @@ impl UniswapV3Pool {
             tick: 0,
             tick_spacing: 0,
             fee: 0,
-            tick_bitmap: HashMap::new(),
-            ticks: HashMap::new(),
+            tick_bitmap: FastHashMap::default(),
+            ticks: FastHashMap::default(),
             ..Default::default()
         };
 

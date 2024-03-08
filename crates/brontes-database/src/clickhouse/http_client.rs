@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashMap, fmt::Debug};
+use std::{cmp::max, collections::FastHashMap, fmt::Debug};
 
 use brontes_types::{
     db::{
@@ -47,7 +47,7 @@ impl ClickhouseHttpClient {
     }
 
     fn process_dex_quotes(val: DexPriceData) -> DexQuotes {
-        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let mut dex_quotes: Vec<Option<FastHashMap<Pair, DexPrices>>> = Vec::new();
         let dex_q = val.value;
         for _ in dex_quotes.len()..=dex_q.tx_idx as usize {
             dex_quotes.push(None);
@@ -60,7 +60,7 @@ impl ClickhouseHttpClient {
                 tx.insert(pair, price);
             }
         } else {
-            let mut tx_pairs = HashMap::default();
+            let mut tx_pairs = FastHashMap::default();
             for (pair, price) in dex_q.quote {
                 tx_pairs.insert(pair, price);
             }

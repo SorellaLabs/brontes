@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::FastHashSet;
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -50,7 +50,7 @@ impl BuilderInfo {
             .iter()
             .chain(other.pub_keys.iter())
             .cloned()
-            .collect::<HashSet<_>>()
+            .collect::<FastHashSet<_>>()
             .into_iter()
             .collect();
 
@@ -59,7 +59,7 @@ impl BuilderInfo {
             .iter()
             .chain(other.searchers_eoas.iter())
             .cloned()
-            .collect::<HashSet<_>>()
+            .collect::<FastHashSet<_>>()
             .into_iter()
             .collect();
 
@@ -68,7 +68,7 @@ impl BuilderInfo {
             .iter()
             .chain(other.searchers_contracts.iter())
             .cloned()
-            .collect::<HashSet<_>>()
+            .collect::<FastHashSet<_>>()
             .into_iter()
             .collect();
 

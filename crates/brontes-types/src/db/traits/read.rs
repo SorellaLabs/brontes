@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::FastHashMap;
 
 use alloy_primitives::Address;
 
@@ -14,7 +14,7 @@ use crate::{
     Protocol, SubGraphEdge,
 };
 
-pub type ProtocolCreatedRange = HashMap<u64, Vec<(Address, Protocol, Pair)>>;
+pub type ProtocolCreatedRange = FastHashMap<u64, Vec<(Address, Protocol, Pair)>>;
 
 #[auto_impl::auto_impl(&)]
 pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
@@ -72,7 +72,7 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn protocols_created_before(
         &self,
         start_block: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>>;
+    ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>>;
 
     fn protocols_created_range(
         &self,

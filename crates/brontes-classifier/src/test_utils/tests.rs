@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::FastHashMap,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
@@ -79,7 +79,8 @@ impl ClassifierTestUtils {
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
@@ -92,9 +93,9 @@ impl ClassifierTestUtils {
                         .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                         .collect::<Vec<_>>()
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         } else {
-            HashMap::new()
+            FastHashMap::default()
         };
         let ctr = Arc::new(AtomicBool::new(false));
 

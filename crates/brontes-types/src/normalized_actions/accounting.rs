@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, FastHashMap},
     hash::Hash,
 };
 
@@ -8,8 +8,8 @@ use malachite::Rational;
 
 use super::{comparison::ActionComparison, Actions};
 
-pub type TokenDeltas = HashMap<Address, Rational>;
-pub type AddressDeltas = HashMap<Address, TokenDeltas>;
+pub type TokenDeltas = FastHashMap<Address, Rational>;
+pub type AddressDeltas = FastHashMap<Address, TokenDeltas>;
 
 /// apply's the given actions token deltas to the map;
 pub trait TokenAccounting {
@@ -77,7 +77,7 @@ impl Default for Accounting {
 
 impl Accounting {
     pub fn new() -> Self {
-        Self { delta_map: HashMap::new(), accounted_for_actions: vec![] }
+        Self { delta_map: FastHashMap::default(), accounted_for_actions: vec![] }
     }
 }
 
@@ -85,7 +85,7 @@ pub fn apply_delta<K: PartialEq + Hash + Eq>(
     address: K,
     token: K,
     amount: Rational,
-    delta_map: &mut HashMap<K, HashMap<K, Rational>>,
+    delta_map: &mut FastHashMap<K, FastHashMap<K, Rational>>,
 ) {
     match delta_map.entry(address).or_default().entry(token) {
         Entry::Occupied(mut o) => {

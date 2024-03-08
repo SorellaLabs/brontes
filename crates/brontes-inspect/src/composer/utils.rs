@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::FastHashMap, sync::Arc};
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
@@ -117,17 +117,20 @@ pub(crate) fn build_mev_header(
 /// Sorts the given MEV data by type.
 ///
 /// This function takes a vector of tuples, where each tuple contains a
-/// `BundleHeader` and a `BundleData`. It returns a HashMap where the keys are
-/// `MevType` and the values are vectors of tuples (same as input). Each vector
-/// contains all the MEVs of the corresponding type.
-pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> HashMap<MevType, Vec<Bundle>> {
+/// `BundleHeader` and a `BundleData`. It returns a FastHashMap where the keys
+/// are `MevType` and the values are vectors of tuples (same as input). Each
+/// vector contains all the MEVs of the corresponding type.
+pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> FastHashMap<MevType, Vec<Bundle>> {
     orchestra_data
         .into_iter()
         .map(|bundle| (bundle.header.mev_type, bundle))
-        .fold(HashMap::default(), |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
-            acc.entry(mev_type).or_default().push(v);
-            acc
-        })
+        .fold(
+            FastHashMap::default(),
+            |mut acc: FastHashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
+                acc.entry(mev_type).or_default().push(v);
+                acc
+            },
+        )
 }
 
 /// Finds the index of the first classified mev in the list whose transaction
@@ -151,7 +154,7 @@ pub(crate) fn find_mev_with_matching_tx_hashes(
 }
 
 pub fn filter_and_count_bundles(
-    sorted_mev: HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: FastHashMap<MevType, Vec<Bundle>>,
 ) -> (MevCount, Vec<Bundle>) {
     let mut mev_count = MevCount::default();
     let mut all_filtered_bundles = Vec::new();

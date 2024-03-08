@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, FastHashMap, FastHashSet},
     hash::Hash,
     iter,
     sync::Arc,
@@ -263,7 +263,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .chain(back_run_actions)
             .account_for_actions();
 
-        let mev_addresses: HashSet<Address> = possible_front_runs_info
+        let mev_addresses: FastHashSet<Address> = possible_front_runs_info
             .iter()
             .chain(iter::once(&backrun_info))
             .flat_map(|tx_info| iter::once(&tx_info.eoa).chain(tx_info.mev_contract.as_ref()))
@@ -332,12 +332,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .iter()
             .flatten()
             .map(|s| s.pool)
-            .collect::<HashSet<_>>();
+            .collect::<FastHashSet<_>>();
 
         let back_run_pools = back_run_swaps
             .iter()
             .map(|swap| swap.pool)
-            .collect::<HashSet<_>>();
+            .collect::<FastHashSet<_>>();
 
         // we group all victims by eoa, such that instead of a tx needing to be a
         // victim, a eoa needs to be a victim. this allows for more complex
@@ -393,16 +393,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         // Combine and deduplicate results
         let combined_results = result_senders.into_iter().chain(result_contracts);
-        let unique_results: HashSet<_> = combined_results.collect();
+        let unique_results: FastHashSet<_> = combined_results.collect();
 
         unique_results.into_iter().collect()
     }
 }
 
 fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec<PossibleSandwich> {
-    let mut duplicate_senders: HashMap<Address, B256> = HashMap::new();
-    let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
-    let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
+    let mut duplicate_senders: FastHashMap<Address, B256> = FastHashMap::default();
+    let mut possible_victims: FastHashMap<B256, Vec<B256>> = FastHashMap::default();
+    let mut possible_sandwiches: FastHashMap<Address, PossibleSandwich> = FastHashMap::default();
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {
@@ -465,9 +465,9 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
 fn get_possible_sandwich_duplicate_contracts(
     tree: Arc<BlockTree<Actions>>,
 ) -> Vec<PossibleSandwich> {
-    let mut duplicate_mev_contracts: HashMap<Address, (B256, Address)> = HashMap::new();
-    let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
-    let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::new();
+    let mut duplicate_mev_contracts: FastHashMap<Address, (B256, Address)> = FastHashMap::default();
+    let mut possible_victims: FastHashMap<B256, Vec<B256>> = FastHashMap::default();
+    let mut possible_sandwiches: FastHashMap<Address, PossibleSandwich> = FastHashMap::default();
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {

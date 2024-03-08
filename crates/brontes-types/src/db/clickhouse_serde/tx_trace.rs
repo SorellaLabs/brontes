@@ -293,7 +293,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
 }
 
 pub mod tx_traces_inner {
-    use std::{collections::HashMap, str::FromStr};
+    use std::{collections::FastHashMap, str::FromStr};
 
     use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256, U64};
     use itertools::Itertools;
@@ -376,7 +376,7 @@ pub mod tx_traces_inner {
         tx_trace.tx_index = tx_index;
         tx_trace.is_success = is_success;
 
-        let mut map = HashMap::new();
+        let mut map = FastHashMap::default();
 
         // meta
         meta.into_iter()
@@ -420,10 +420,10 @@ pub mod tx_traces_inner {
             });
 
         // logs
-        let mut log_map = HashMap::new();
+        let mut log_map = FastHashMap::default();
         logs.into_iter()
             .for_each(|(trace_idx, log_idx, address, topics, data)| {
-                let log_entry = log_map.entry(trace_idx).or_insert(HashMap::new());
+                let log_entry = log_map.entry(trace_idx).or_insert(FastHashMap::default());
 
                 log_entry.insert(
                     log_idx,

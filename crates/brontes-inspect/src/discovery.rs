@@ -5,7 +5,7 @@
 //! coinbase transfer, or are private transactions based on the indexed mempool
 //! transactions we have in our metadata database (s/o chainbound).
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::FastHashMap, sync::Arc};
 
 use alloy_primitives::B256;
 use brontes_types::{
@@ -30,7 +30,10 @@ impl DiscoveryInspector {
     /// Find possible mev transactions in a block tree. This is done by looking
     /// for transactions that are x standard deviations above the average
     /// priority fee, or have a coinbase transfer, or are private transactions.
-    pub fn find_possible_mev(&self, tree: Arc<BlockTree<Actions>>) -> HashMap<B256, PossibleMev> {
+    pub fn find_possible_mev(
+        &self,
+        tree: Arc<BlockTree<Actions>>,
+    ) -> FastHashMap<B256, PossibleMev> {
         let avr_priority = tree.avg_priority_fee;
         let base_fee = tree.header.base_fee_per_gas.unwrap();
 

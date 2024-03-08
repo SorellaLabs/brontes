@@ -1,7 +1,7 @@
 #[cfg(feature = "local-reth")]
 use std::sync::OnceLock;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, FastHashMap},
     env,
     sync::Arc,
 };
@@ -207,7 +207,7 @@ impl TraceLoader {
         &self,
         tx_hashes: Vec<B256>,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
-        let mut flattened: HashMap<u64, BlockTracesWithHeaderAnd<()>> = HashMap::new();
+        let mut flattened: FastHashMap<u64, BlockTracesWithHeaderAnd<()>> = FastHashMap::default();
 
         for res in join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self

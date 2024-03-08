@@ -2,6 +2,8 @@
 #![feature(trivial_bounds)]
 #![feature(const_type_id)]
 
+pub mod hasher;
+pub use hasher::*;
 pub mod action_iter;
 pub use action_iter::*;
 pub mod executor;

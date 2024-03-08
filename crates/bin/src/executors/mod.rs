@@ -6,7 +6,7 @@ use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
 use std::{
-    collections::HashMap,
+    collections::FastHashMap,
     marker::PhantomData,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
@@ -186,9 +186,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                     .collect::<Vec<_>>()
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<FastHashMap<_, _>>();
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
         let pricer = BrontesBatchPricer::new(
             shutdown.clone(),

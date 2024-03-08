@@ -320,7 +320,7 @@ impl ClickhouseHandle for Clickhouse {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::FastHashMap;
 
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
@@ -409,7 +409,7 @@ mod tests {
     async fn dex_price_mapping(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0_pair = Pair::default();
         let case0_dex_prices = DexPrices::default();
-        let mut case0_map = HashMap::new();
+        let mut case0_map = FastHashMap::default();
         case0_map.insert(case0_pair, case0_dex_prices);
 
         let case0 = DexQuotesWithBlockNumber {

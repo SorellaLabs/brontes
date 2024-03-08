@@ -70,6 +70,10 @@ statrs = "0.16"
 eyre.workspace = true
 thiserror.workspace = true
 
+
+# hashing
+fasthash = { git = "https://github.com/flier/rust-fasthash", rev = "ef0c52b" }
+
 [dev-dependencies]
 dotenv.workspace = true
 tokio.workspace = true

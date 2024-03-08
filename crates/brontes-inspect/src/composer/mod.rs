@@ -28,7 +28,7 @@
 //! // Future execution of the composer to process MEV data
 //! ```
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::FastHashMap, sync::Arc};
 
 use brontes_types::mev::Mev;
 mod mev_filters;
@@ -154,7 +154,7 @@ fn on_orchestra_resolution(
 fn deduplicate_mev(
     dominant_mev_type: &MevType,
     subordinate_mev_types: &[MevType],
-    sorted_mev: &mut HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
     let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
         Some(list) => list,
@@ -211,10 +211,10 @@ fn try_compose_mev(
     parent_mev_type: &MevType,
     child_mev_type: &[MevType],
     compose: &ComposeFunction,
-    sorted_mev: &mut HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
     let first_mev_type = child_mev_type[0];
-    let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
+    let mut removal_indices: FastHashMap<MevType, Vec<usize>> = FastHashMap::default();
 
     if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
         for (first_i, bundle) in first_mev_list.iter().enumerate() {

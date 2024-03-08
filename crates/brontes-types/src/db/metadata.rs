@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::FastHashSet;
 
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
@@ -109,7 +109,7 @@ pub struct BlockMetadata {
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     /// Tx
-    pub private_flow:           HashSet<TxHash>,
+    pub private_flow:           FastHashSet<TxHash>,
 }
 
 impl BlockMetadata {
@@ -123,7 +123,7 @@ impl BlockMetadata {
         proposer_fee_recipient: Option<Address>,
         proposer_mev_reward: Option<u128>,
         eth_prices: Rational,
-        private_flow: HashSet<TxHash>,
+        private_flow: FastHashSet<TxHash>,
     ) -> Self {
         Self {
             block_num,

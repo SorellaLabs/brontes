@@ -1,5 +1,5 @@
 pub mod dex_quote {
-    use std::{collections::HashMap, str::FromStr};
+    use std::{collections::FastHashMap, str::FromStr};
 
     use alloy_primitives::Address;
     use itertools::Itertools;
@@ -15,7 +15,7 @@ pub mod dex_quote {
 
     #[allow(dead_code)]
     pub fn serialize<S>(
-        value: &Option<HashMap<Pair, DexPrices>>,
+        value: &Option<FastHashMap<Pair, DexPrices>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -50,7 +50,7 @@ pub mod dex_quote {
     #[allow(dead_code)]
     pub fn deserialize<'de, D>(
         deserializer: D,
-    ) -> Result<Option<HashMap<Pair, DexPrices>>, D::Error>
+    ) -> Result<Option<FastHashMap<Pair, DexPrices>>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -78,7 +78,7 @@ pub mod dex_quote {
                     },
                 )
             })
-            .collect::<HashMap<Pair, DexPrices>>();
+            .collect::<FastHashMap<Pair, DexPrices>>();
 
         Ok(Some(val))
     }

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::FastHashMap,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -28,7 +28,7 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     receiver: PricingReceiver<T, DB>,
     tx:       PricingSender<T, DB>,
 
-    pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, Metadata)>,
+    pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Actions>, Metadata)>,
     task_executor:            BrontesTaskExecutor,
 }
 
@@ -46,7 +46,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         });
 
         task_executor.spawn_critical("dex pricer", fut);
-        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
+        Self { pending_trees: FastHashMap::default(), task_executor, tx, receiver: rx }
     }
 
     pub fn is_done(&self) -> bool {

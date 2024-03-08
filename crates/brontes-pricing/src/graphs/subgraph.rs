@@ -2,13 +2,13 @@ use std::{
     cmp::Ordering,
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap, HashSet, VecDeque,
+        BinaryHeap, FastHashMap, FastHashSet, VecDeque,
     },
     hash::Hash,
 };
 
 use alloy_primitives::Address;
-use brontes_types::price_graph_types::*;
+use brontes_types::{price_graph_types::*, FastFastHashMap, FastFastHashSet};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -29,7 +29,7 @@ use crate::{types::ProtocolState, AllPairGraph, Pair};
 
 pub struct VerificationOutcome {
     pub should_requery: bool,
-    pub removals:       HashMap<Pair, HashSet<BadEdge>>,
+    pub removals:       FastFastHashMap<Pair, FastFastHashSet<BadEdge>>,
     pub frayed_ends:    Vec<Address>,
 }
 
@@ -44,7 +44,7 @@ pub struct BadEdge {
 
 #[derive(Debug, Default)]
 struct BfsArgs {
-    pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub removal_state: FastFastHashMap<Pair, FastFastHashSet<BadEdge>>,
 }
 
 const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
@@ -74,11 +74,11 @@ const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
 pub struct PairSubGraph {
     pair:           Pair,
     graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
-    token_to_index: HashMap<Address, u16>,
+    token_to_index: FastHashMap<Address, u16>,
 
     /// if a nodes liquidity drops more than 50% from when validation
     /// was last ran on this subgraph. a re_query is triggered.
-    start_nodes_liq: HashMap<Address, Rational>,
+    start_nodes_liq: FastHashMap<Address, Rational>,
 
     start_node: u16,
     end_node:   u16,
@@ -87,9 +87,9 @@ pub struct PairSubGraph {
 impl PairSubGraph {
     pub fn init(pair: Pair, edges: Vec<SubGraphEdge>) -> Self {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, u16>::default();
-        let mut token_to_index = HashMap::new();
+        let mut token_to_index = FastHashMap::default();
 
-        let mut connections: HashMap<(u16, u16), Vec<SubGraphEdge>> = HashMap::new();
+        let mut connections: FastHashMap<(u16, u16), Vec<SubGraphEdge>> = FastHashMap::default();
         for edge in edges.into_iter() {
             let token_0 = edge.token_0;
             let token_1 = edge.token_1;
@@ -125,12 +125,19 @@ impl PairSubGraph {
         let comp = connected_components(&graph);
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
-        Self { pair, graph, start_node, end_node, token_to_index, start_nodes_liq: HashMap::new() }
+        Self {
+            pair,
+            graph,
+            start_node,
+            end_node,
+            token_to_index,
+            start_nodes_liq: FastHashMap::default(),
+        }
     }
 
     pub fn save_last_verification_liquidity<T: ProtocolState>(
         &mut self,
-        state: &HashMap<Address, T>,
+        state: &FastHashMap<Address, T>,
     ) {
         let init_tvl = self
             .graph
@@ -143,14 +150,14 @@ impl PairSubGraph {
                     Some((edge.pool_addr, tvl_added))
                 })
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<FastHashMap<_, _>>();
 
         self.start_nodes_liq = init_tvl;
     }
 
     /// checks to see if the liquidity of any pool has dropped by over 50%.
     /// if this has happened, will send the pair for reverification
-    pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &HashMap<Address, T>) -> bool {
+    pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &FastHashMap<Address, T>) -> bool {
         self.graph
             .edge_weights()
             .map(|weight| {
@@ -173,7 +180,7 @@ impl PairSubGraph {
     }
 
     pub fn extend_subgraph(&mut self, edges: Vec<SubGraphEdge>) {
-        let mut connections: HashMap<(u16, u16), Vec<SubGraphEdge>> = HashMap::new();
+        let mut connections: FastHashMap<(u16, u16), Vec<SubGraphEdge>> = FastHashMap::default();
 
         for edge in edges {
             let token_0 = edge.token_0;
@@ -244,7 +251,7 @@ impl PairSubGraph {
 
     pub fn fetch_price<T: ProtocolState>(
         &self,
-        edge_state: &HashMap<Address, T>,
+        edge_state: &FastHashMap<Address, T>,
     ) -> Option<Rational> {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
     }
@@ -311,7 +318,7 @@ impl PairSubGraph {
     pub fn verify_subgraph<T: ProtocolState>(
         &mut self,
         start: Address,
-        state: HashMap<Address, T>,
+        state: FastHashMap<Address, T>,
         _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
         tracing::debug!(?self.pair, "verification starting");
@@ -343,7 +350,7 @@ impl PairSubGraph {
     fn run_bfs_with_liquidity_params<T: ProtocolState>(
         &self,
         start: Address,
-        state: &HashMap<Address, T>,
+        state: &FastHashMap<Address, T>,
     ) -> BfsArgs {
         self.bfs_with_price(start, |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
             let mut pxw = Rational::ZERO;
@@ -396,7 +403,7 @@ impl PairSubGraph {
         pair: Pair,
         info: &SubGraphEdge,
         liq: Rational,
-        map: &mut HashMap<Pair, HashSet<BadEdge>>,
+        map: &mut FastFastHashMap<Pair, FastFastHashSet<BadEdge>>,
     ) {
         let bad_edge = BadEdge {
             pair,
@@ -408,7 +415,7 @@ impl PairSubGraph {
         map.entry(pair).or_default().insert(bad_edge);
     }
 
-    fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, HashSet<BadEdge>>) {
+    fn prune_subgraph(&mut self, removal_state: &FastFastHashMap<Pair, FastFastHashSet<BadEdge>>) {
         removal_state.iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else {
                 tracing::error!("no token 0 in token to index");
@@ -466,7 +473,7 @@ impl PairSubGraph {
         ) -> Option<Rational>,
     ) -> R {
         let mut result = R::default();
-        let mut visited = HashSet::new();
+        let mut visited = FastHashSet::default();
         let mut visit_next = VecDeque::new();
 
         let Some(start) = self.token_to_index.get(&start) else {
@@ -508,7 +515,7 @@ impl PairSubGraph {
     fn disjoint_furthest_nodes(&self) -> Vec<Address> {
         tracing::debug!(?self.pair, "grabing frayed ends");
         let mut frayed_ends = Vec::new();
-        let mut visited = HashSet::new();
+        let mut visited = FastHashSet::default();
         let mut visit_next = VecDeque::new();
 
         visit_next.extend(
@@ -582,14 +589,14 @@ pub fn dijkstra_path<T>(
     graph: &DiGraph<(), Vec<SubGraphEdge>, u16>,
     start: NodeIndex<u16>,
     goal: NodeIndex<u16>,
-    state: &HashMap<Address, T>,
+    state: &FastHashMap<Address, T>,
 ) -> Option<Rational>
 where
     T: ProtocolState,
 {
     let mut visited = graph.visit_map();
-    let mut scores = HashMap::new();
-    let mut node_price = HashMap::new();
+    let mut scores = FastHashMap::default();
+    let mut node_price = FastHashMap::default();
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
     scores.insert(start, zero_score.clone());
@@ -790,7 +797,7 @@ pub mod test {
     fn test_dijkstra_pricing() {
         addresses!(t0, t1, t2, t3, _t4);
         let graph = make_simple_graph();
-        let mut state_map = HashMap::new();
+        let mut state_map = FastHashMap::default();
 
         // t1 / t0 == 10
         let e0_price =

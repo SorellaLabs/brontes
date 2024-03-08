@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::FastHashMap,
     fmt::Debug,
     path,
     sync::{Arc, Mutex},
@@ -423,9 +423,9 @@ pub struct TokenInfoWithAddressToml {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BSConfig {
-    builders:           HashMap<String, BuilderInfo>,
-    searcher_eoas:      HashMap<String, SearcherInfo>,
-    searcher_contracts: HashMap<String, SearcherInfo>,
+    builders:           FastHashMap<String, BuilderInfo>,
+    searcher_eoas:      FastHashMap<String, SearcherInfo>,
+    searcher_contracts: FastHashMap<String, SearcherInfo>,
 }
 
 #[cfg(test)]

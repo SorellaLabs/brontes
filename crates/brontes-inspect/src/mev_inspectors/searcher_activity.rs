@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::FastHashSet, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -50,7 +50,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                     || {
                         let deltas = transfers.clone().into_iter().account_for_actions();
 
-                        let mut searcher_address: HashSet<Address> = HashSet::new();
+                        let mut searcher_address: FastHashSet<Address> = FastHashSet::default();
                         searcher_address.insert(info.eoa);
                         if let Some(mev_contract) = info.mev_contract {
                             searcher_address.insert(mev_contract);

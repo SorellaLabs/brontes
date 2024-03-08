@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::FastHashMap;
 
 use alloy_primitives::Address;
 use brontes_types::{
@@ -247,7 +247,7 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
     fn protocols_created_before(
         &self,
         start_block: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
+    ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
         self.inner.protocols_created_before(start_block)
     }
 

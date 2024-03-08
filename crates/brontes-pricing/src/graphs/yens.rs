@@ -2,11 +2,12 @@
 //! algorithm](https://en.wikipedia.org/wiki/Yen%27s_algorithm).
 use std::{
     cmp::{Ordering, Reverse},
-    collections::{BinaryHeap, HashSet},
+    collections::BinaryHeap,
     hash::Hash,
     time::{Duration, SystemTime},
 };
 
+use brontes_types::{FastFastHashSet, FastHasher};
 use dashmap::DashSet;
 use pathfinding::num_traits::Zero;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -137,7 +138,7 @@ where
         return vec![];
     };
 
-    let visited = DashSet::new();
+    let visited = DashSet::with_hasher(FastHasher::new());
     // A vector containing our paths.
     let mut routes = vec![Path { nodes: n, weights: e, cost: c }];
     // A min-heap to store our lowest-cost route candidate
@@ -167,7 +168,7 @@ where
                     let root_path = &previous[0..i];
                     let weight_root_path = &prev_weight[0..i];
 
-                    let mut filtered_edges = HashSet::new();
+                    let mut filtered_edges = FastFastHashSet::default();
                     for path in &routes {
                         if path.nodes.len() > i + 1
                             && &path.nodes[0..i] == root_path
@@ -176,7 +177,7 @@ where
                             filtered_edges.insert((&path.nodes[i], &path.nodes[i + 1]));
                         }
                     }
-                    let filtered_nodes: HashSet<&N> = HashSet::from_iter(root_path);
+                    let filtered_nodes: FastFastHashSet<&N> = FastFastHashSet::from_iter(root_path);
                     // We are creating a new successor function that will not return the
                     // filtered edges and nodes that routes already used.
                     let filtered_successor = |n: &N| {
