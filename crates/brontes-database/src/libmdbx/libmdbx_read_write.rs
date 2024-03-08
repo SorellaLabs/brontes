@@ -278,7 +278,6 @@ impl LibmdbxInit for LibmdbxReadWriter {
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                 ))
             }
-            tracing::info!("block_tracking -1 != end_block");
             result.push(block_tracking - 1..=end_block);
         }
 

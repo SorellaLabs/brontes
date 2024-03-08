@@ -234,6 +234,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             !self.with_dex_pricing,
         )?;
 
+        if state_to_init.is_empty() {
+            return Ok(())
+        }
+
         tracing::info!("Downloading missing {:#?} ranges", state_to_init);
 
         let state_to_init_continuous = state_to_init
@@ -291,6 +295,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 state_to_init_disc,
             )
             .await?;
+
         Ok(())
     }
 

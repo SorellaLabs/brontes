@@ -260,7 +260,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 info!(target: "brontes::init::missing_state", "{} -- Finished Chunk {}", T::NAME, num);
 
                 if let Some(flag) = mark_init {
-                    libmdbx.inited_range(inner_range.into_iter().copied(), flag)?;
+                    libmdbx.inited_range(inner_range.iter().copied(), flag)?;
                 }
 
                 Ok::<(), eyre::Report>(())
