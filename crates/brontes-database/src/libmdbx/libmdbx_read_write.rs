@@ -783,7 +783,7 @@ impl LibmdbxReadWriter {
         Ok(())
     }
 
-    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
+    pub fn inited_range(&self, range: impl Iterator<Item = u64>, flag: u8) -> eyre::Result<()> {
         for block in range {
             self.init_state_updating(block, flag)?;
         }

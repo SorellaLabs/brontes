@@ -214,6 +214,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
         &self,
         block_range: &'static [u64],
+        mark_init: Option<u8>,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -257,6 +258,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 };
 
                 info!(target: "brontes::init::missing_state", "{} -- Finished Chunk {}", T::NAME, num);
+
+                if let Some(flag) = mark_init {
+                    libmdbx.inited_range(inner_range.into_iter().copied(), flag)?;
+                }
 
                 Ok::<(), eyre::Report>(())
             }
