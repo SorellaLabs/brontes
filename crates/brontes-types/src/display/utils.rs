@@ -719,6 +719,60 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     Ok(())
 }
 
+pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
+    let ascii_header = indoc! {r#"
+    
+             _____                     _                 _____    
+            /  ___|                   | |               |_   _|   
+            \ `--.  ___  __ _ _ __ ___| |__   ___ _ __    | |_  __
+             `--. \/ _ \/ _` | '__/ __| '_ \ / _ \ '__|   | \ \/ /
+            /\__/ /  __/ (_| | | | (__| | | |  __/ |      | |>  < 
+            \____/ \___|\__,_|_|  \___|_| |_|\___|_|      \_/_/\_\
+
+    "#};
+
+    
+    let searcher_tx_data = match &bundle.data {
+        BundleData::Unknown(data) => data,
+        _ => panic!("Wrong bundle type"),
+    };
+
+    for line in ascii_header.lines() {
+        writeln!(f, "{}", line)?;
+    }
+
+    // Transaction Details
+    writeln!(f, "{}: \n", "Transaction Details".underline().bright_yellow())?;
+    writeln!(
+        f,
+        "   - {}: {}",
+        format!("Transaction").bright_magenta(),
+        format_etherscan_url(&searcher_tx_data.tx_hash)
+    )?;
+
+    // Transfers
+    writeln!(f, "\n{}:\n", "Transfers".underline().bright_yellow())?;
+    for (i, transfer) in searcher_tx_data.transfers.iter().enumerate() {
+        writeln!(
+            f,
+            "    {}: From: {}, To: {}, amount: {}",
+            i + 1,
+            transfer.from.to_string().red(),     // Making 'from' red
+            transfer.to.to_string().green(),     // Making 'to' green
+            transfer.amount.to_string().green()  // Making 'amount' green
+        )?;
+    }
+
+    // Gas Details
+    writeln!(f, "\n{}: \n", "Gas Details".underline().bright_yellow())?;
+
+    searcher_tx_data
+        .gas_details
+        .pretty_print_with_spaces(f, 8)?;
+
+    Ok(())
+}
+
 // Helper function to format profit values
 fn format_profit(value: f64) -> ColoredString {
     if value < 0.0 {
