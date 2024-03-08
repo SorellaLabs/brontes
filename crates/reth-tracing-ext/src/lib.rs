@@ -25,6 +25,7 @@ use reth_rpc::{
     },
     BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
 };
+use reth_tracer::inspector::BrontesTracingInspector;
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
@@ -155,9 +156,9 @@ impl TracingClient {
             .trace_block_with(block_id, config, move |tx_info, inspector, res, _, _| {
                 // this is safe as there the exact same memory layout. This is needed as we need
                 // access to the internal fields of the struct that arent public
-                let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
+                let tracing_inspector: BrontesTracingInspector = unsafe { std::mem::transmute(inspector) };
 
-                Ok(inspector.into_trace_results(tx_info, &res))
+                Ok(tracing_inspector.into_trace_results(tx_info, &res))
             })
             .await
     }
