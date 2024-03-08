@@ -55,6 +55,10 @@ pub struct Root<V: NormalizedAction> {
 
 impl<V: NormalizedAction> Root<V> {
     //TODO: Add field for reinit bool flag
+    //TODO: Once metadata table is updated
+    //TODO: Filter out know entities from address metadata enum variant or contract
+    // info struct
+
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,
@@ -360,4 +364,8 @@ impl From<(Vec<Vec<TxHash>>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
 
         (tx_hashes, gas_details).into()
     }
+}
+
+pub enum FalsePositiveEntity {
+    MaestroBots,
 }

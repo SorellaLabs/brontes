@@ -252,7 +252,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .initialize_tables(
                     self.clickhouse,
                     self.parser.get_tracer(),
-                    &[Tables::BlockInfo, Tables::CexPrice],
+                    &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                     false,
                     Some((*start, *end)),
                 )
@@ -273,6 +273,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .flatten()
             .collect_vec();
 
+        #[cfg(feature = "sorella-server")]
         self.libmdbx
             .initialize_tables_arbitrary(
                 self.clickhouse,
@@ -281,7 +282,15 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 state_to_init_disc,
             )
             .await?;
-
+        #[cfg(not(feature = "sorella-server"))]
+        self.libmdbx
+            .initialize_tables_arbitrary(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                state_to_init_disc,
+            )
+            .await?;
         Ok(())
     }
 

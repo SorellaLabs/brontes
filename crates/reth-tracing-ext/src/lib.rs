@@ -448,7 +448,7 @@ pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
     reth_db::open_db(path.as_ref(), Default::default())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "local-reth"))]
 pub mod test {
 
     use brontes_core::test_utils::TraceLoader;
