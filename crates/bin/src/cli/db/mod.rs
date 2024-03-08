@@ -17,10 +17,10 @@ pub struct Database {
 #[derive(Debug, Subcommand)]
 pub enum DatabaseCommands {
     /// Allows for inserting items into libmdbx
-    #[command(name = "db-insert")]
+    #[command(name = "insert")]
     DbInserts(db_insert::AddToDb),
     /// Query data from any libmdbx table and pretty print it in stdout
-    #[command(name = "db-query")]
+    #[command(name = "query")]
     DbQuery(db_query::DatabaseQuery),
     /// Generates traces and will store them in libmdbx (also clickhouse if
     /// --feature local-clickhouse)

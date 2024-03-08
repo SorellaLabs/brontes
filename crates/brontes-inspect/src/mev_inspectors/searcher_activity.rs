@@ -46,47 +46,49 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
 
                 let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
-                (info.searcher_eoa_info.is_some() || info.mev_contract.is_some()).then(|| {
-                    let deltas = transfers.clone().into_iter().account_for_actions();
+                (info.searcher_eoa_info.is_some() || info.searcher_contract_info.is_some()).then(
+                    || {
+                        let deltas = transfers.clone().into_iter().account_for_actions();
 
-                    let mut searcher_address: HashSet<Address> = HashSet::new();
-                    searcher_address.insert(info.eoa);
-                    if let Some(mev_contract) = info.mev_contract {
-                        searcher_address.insert(mev_contract);
-                    }
+                        let mut searcher_address: HashSet<Address> = HashSet::new();
+                        searcher_address.insert(info.eoa);
+                        if let Some(mev_contract) = info.mev_contract {
+                            searcher_address.insert(mev_contract);
+                        }
 
-                    let rev_usd = self.utils.get_deltas_usd(
-                        info.tx_index,
-                        PriceAt::After,
-                        searcher_address,
-                        &deltas,
-                        metadata.clone(),
-                    )?;
-                    let gas_paid = metadata.get_gas_price_usd(info.gas_details.gas_paid());
-                    let profit = rev_usd - gas_paid;
+                        let rev_usd = self.utils.get_deltas_usd(
+                            info.tx_index,
+                            PriceAt::After,
+                            searcher_address,
+                            &deltas,
+                            metadata.clone(),
+                        )?;
+                        let gas_paid = metadata.get_gas_price_usd(info.gas_details.gas_paid());
+                        let profit = rev_usd - gas_paid;
 
-                    let header = self.utils.build_bundle_header(
-                        vec![deltas],
-                        vec![tx_hash],
-                        &info,
-                        profit.to_float(),
-                        PriceAt::Average,
-                        &[info.gas_details],
-                        metadata.clone(),
-                        MevType::Unknown,
-                    );
+                        let header = self.utils.build_bundle_header(
+                            vec![deltas],
+                            vec![tx_hash],
+                            &info,
+                            profit.to_float(),
+                            PriceAt::After,
+                            &[info.gas_details],
+                            metadata.clone(),
+                            MevType::Unknown,
+                        );
 
-                    Some(Bundle {
-                        header,
-                        data: BundleData::Unknown(SearcherTx {
-                            tx_hash,
-                            gas_details: info.gas_details,
-                            transfers: transfers
-                                .into_iter()
-                                .collect_action_vec(Actions::try_transfer),
-                        }),
-                    })
-                })?
+                        Some(Bundle {
+                            header,
+                            data: BundleData::Unknown(SearcherTx {
+                                tx_hash,
+                                gas_details: info.gas_details,
+                                transfers: transfers
+                                    .into_iter()
+                                    .collect_action_vec(Actions::try_transfer),
+                            }),
+                        })
+                    },
+                )?
             })
             .collect::<Vec<_>>()
     }
