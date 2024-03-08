@@ -25,6 +25,12 @@ pub use compound::*;
 pub mod maker;
 pub use maker::*;
 
+pub mod oneinch;
+pub use oneinch::*;
+
+pub mod clipper;
+pub use clipper::*;
+
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,
@@ -137,5 +143,19 @@ action_dispatch!(
     BalancerV1BindCall,
     CompoundV2LiquidateBorrowCall,
     CompoundV2Initialize_0Call,
-    CompoundV2Initialize_1Call
+    CompoundV2Initialize_1Call,
+    OneInchV5SwapCall,
+    OneInchV5ClipperSwapCall,
+    OneInchV5ClipperSwapToCall,
+    OneInchV5ClipperSwapToWithPermitCall,
+    OneInchV5UnoswapToCall,
+    OneInchV5UnoswapToWithPermitCall,
+    OneInchV5UniswapV3SwapToCall,
+    OneInchV5UniswapV3SwapToWithPermitCall,
+    OneInchFusionSettleOrdersCall,
+    ClipperExchangeSwapCall,
+    ClipperExchangeSellEthForTokenCall,
+    ClipperExchangeSellTokenForEthCall,
+    ClipperExchangeTransmitAndSwapCall,
+    ClipperExchangeTransmitAndSellTokenForEthCall
 );
