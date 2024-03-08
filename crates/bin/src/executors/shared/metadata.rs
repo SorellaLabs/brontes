@@ -92,9 +92,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             meta.builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
+
             tracing::debug!(?block, "caching result buf");
             self.result_buf.push_back((tree, meta));
-        // need to pull the metadata from clickhouse
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
@@ -108,7 +108,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
-        // don't need to pull from clickhouse, means we are running pricing
         } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
             let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
                 tracing::error!(%err);

@@ -93,7 +93,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
         if clear_table {
             self.libmdbx.0.clear_table::<T>()?;
@@ -120,7 +127,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
         if clear_table {
             self.libmdbx.0.clear_table::<T>()?;
@@ -166,7 +180,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
 
                 match data {
-                    Ok(d) => libmdbx.0.write_table(&d)?,
+                    Ok(d) => {
+                        libmdbx.0.write_table(&d)?;
+                    }
                     Err(e) => {
                         info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                     }
@@ -202,7 +218,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
         let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
 
@@ -219,7 +242,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
 
                 match data {
-                    Ok(d) => libmdbx.0.write_table(&d)?,
+                    Ok(d) => {
+                        tracing::info!(target: "brontes::init::missing_state", "writing data of len {} to libmdbx", d.len());
+                        libmdbx.0.write_table(&d)?;
+                    }
                     Err(e) => {
                         info!(target: "brontes::init::missing_state", "{} -- Error Writing -- {:?}", T::NAME,  e)
                     }
@@ -253,10 +279,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         let Ok(config) = toml::from_str::<Table>(&{
             let Ok(path) = std::fs::read_to_string(workspace_dir) else {
+                tracing::error!(target: "brontes::init", "failed to read classifier_config");
                 return;
             };
             path
         }) else {
+            tracing::error!(target: "brontes::init", "failed to load toml");
             return;
         };
 

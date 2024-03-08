@@ -4,14 +4,14 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
-#[cfg(any(not(feature = "api-des"), feature = "local-clickhouse"))]
-use brontes_types::db::clickhouse_serde::tx_trace::tx_traces_inner;
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
+        cex_trades::{CexTradeMap, CexTradeMapRedefined},
+        clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
         initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
@@ -41,7 +41,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 16;
+pub const NUM_TABLES: usize = 17;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -187,6 +187,7 @@ impl Tables {
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
+            Tables::CexTrades => Ok(()),
         }
     }
 
@@ -232,7 +233,11 @@ impl Tables {
             Tables::MevBlocks => Ok(()),
             Tables::SubGraphs => Ok(()),
             Tables::TxTraces => {
-                unimplemented!("'initialize_table_arbitrary_state' not implemented for TxTraces");
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
+                        block_range,
+                    )
+                    .await
             }
             Tables::Builder => {
                 unimplemented!("'initialize_table_arbitrary_state' not implemented for Builder");
@@ -247,6 +252,7 @@ impl Tables {
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
+            Tables::CexTrades => Ok(()),
         }
     }
 }
@@ -267,7 +273,8 @@ tables!(
     SearcherContracts,
     InitializedState,
     SearcherStatistics,
-    BuilderStatistics
+    BuilderStatistics,
+    CexTrades
 );
 
 /// Must be in this order when defining
@@ -536,7 +543,6 @@ compressed_table!(
             can_insert: False
         }
     }
-
 );
 
 compressed_table!(
@@ -637,7 +643,7 @@ compressed_table!(
         #[serde_as]
         Data {
             key: u64,
-            #[cfg_attr(any(not(feature="api-des"), feature="local-clickhouse"), serde(deserialize_with = "tx_traces_inner::deserialize"))]
+            #[serde(deserialize_with = "tx_traces_inner::deserialize")]
             value: TxTracesInner,
             compressed_value: TxTracesInnerRedefined
         },
@@ -777,6 +783,24 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Other,
+            http_endpoint: None
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table CexTrades {
+        Data {
+        key: u64,
+        value: CexTradeMap,
+        compressed_value: CexTradeMapRedefined
+        },
+        Init {
+            init_size: Some(50_000),
+            init_method: Clickhouse,
             http_endpoint: None
         },
         CLI {
