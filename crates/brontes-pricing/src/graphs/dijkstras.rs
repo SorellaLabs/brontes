@@ -3,7 +3,7 @@
 
 use std::{cmp::Ordering, collections::BinaryHeap, hash::Hash, usize};
 
-use brontes_types::{FastFastHashMap, FastFastHashSet, FastHasher};
+use brontes_types::{FastHashMap, FastHashSet, FastHasher};
 use indexmap::{
     map::Entry::{Occupied, Vacant},
     IndexMap,
@@ -160,7 +160,7 @@ where
     FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
-    let mut visited = FastFastHashSet::default();
+    let mut visited = FastHashSet::default();
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
@@ -253,7 +253,7 @@ where
 #[allow(clippy::implicit_hasher)]
 #[allow(dead_code)]
 //TODO: Will prune if not used
-pub fn build_path<N, C>(target: &N, parents: &FastFastHashMap<N, (N, C)>) -> Vec<N>
+pub fn build_path<N, C>(target: &N, parents: &FastHashMap<N, (N, C)>) -> Vec<N>
 where
     N: Eq + Hash + Clone,
 {

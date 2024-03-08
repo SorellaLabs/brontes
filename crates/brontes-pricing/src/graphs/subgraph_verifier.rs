@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, FastFastHashMap, FastFastHashSet, ToFloatNearest};
+use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -35,19 +35,19 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   system.
 #[derive(Debug)]
 pub struct SubgraphVerifier {
-    pending_subgraphs:           FastFastHashMap<Pair, Subgraph>,
+    pending_subgraphs:           FastHashMap<Pair, Subgraph>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
-    subgraph_verification_state: FastFastHashMap<Pair, SubgraphVerificationState>,
+    subgraph_verification_state: FastHashMap<Pair, SubgraphVerificationState>,
 }
 
 impl SubgraphVerifier {
     pub fn new() -> Self {
         Self {
-            pending_subgraphs:           FastFastHashMap::default(),
-            subgraph_verification_state: FastFastHashMap::default(),
+            pending_subgraphs:           FastHashMap::default(),
+            subgraph_verification_state: FastHashMap::default(),
         }
     }
 
@@ -83,7 +83,7 @@ impl SubgraphVerifier {
             pair,
             Subgraph {
                 subgraph,
-                frayed_end_extensions: FastFastHashMap::default(),
+                frayed_end_extensions: FastHashMap::default(),
                 id: 0,
                 in_rundown: false,
                 iters: 0,
@@ -103,7 +103,7 @@ impl SubgraphVerifier {
     fn store_edges_with_liq(
         &mut self,
         pair: Pair,
-        removals: &FastFastHashMap<Pair, FastFastHashSet<BadEdge>>,
+        removals: &FastHashMap<Pair, FastHashSet<BadEdge>>,
         all_graph: &AllPairGraph,
     ) {
         removals

@@ -5,13 +5,14 @@
 //! coinbase transfer, or are private transactions based on the indexed mempool
 //! transactions we have in our metadata database (s/o chainbound).
 
-use std::{collections::FastHashMap, sync::Arc};
+use std::sync::Arc;
 
 use alloy_primitives::B256;
 use brontes_types::{
     mev::{PossibleMev, PossibleMevTriggers},
     normalized_actions::Actions,
     tree::BlockTree,
+    FastHashMap,
 };
 
 // Add new inspector that checks for Know searchers by checking the from & to

@@ -1,4 +1,4 @@
-use std::{collections::FastHashSet, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, Liquidation, MevType},
     normalized_actions::{accounting::ActionAccounting, Actions},
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};

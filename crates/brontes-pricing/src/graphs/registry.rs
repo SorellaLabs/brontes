@@ -1,7 +1,5 @@
-use std::collections::FastHashMap;
-
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, price_graph_types::*};
+use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 

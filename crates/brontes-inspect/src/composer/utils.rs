@@ -1,4 +1,4 @@
-use std::{collections::FastHashMap, sync::Arc};
+use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational, TreeSearchBuilder,
+    FastHashMap, ToScaledRational, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};

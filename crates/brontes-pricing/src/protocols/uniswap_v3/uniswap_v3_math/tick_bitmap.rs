@@ -1,6 +1,5 @@
-use std::collections::FastHashMap;
-
 use alloy_primitives::U256;
+use brontes_types::FastHashMap;
 
 use super::{bit_math, error::UniswapV3MathError};
 

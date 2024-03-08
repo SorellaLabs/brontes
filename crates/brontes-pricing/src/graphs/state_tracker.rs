@@ -1,6 +1,5 @@
-use std::collections::FastHashMap;
-
 use alloy_primitives::Address;
+use brontes_types::FastHashMap;
 use itertools::Itertools;
 use tracing::debug;
 

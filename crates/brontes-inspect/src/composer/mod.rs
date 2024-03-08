@@ -28,9 +28,9 @@
 //! // Future execution of the composer to process MEV data
 //! ```
 
-use std::{collections::FastHashMap, sync::Arc};
+use std::sync::Arc;
 
-use brontes_types::mev::Mev;
+use brontes_types::{mev::Mev, FastHashMap};
 mod mev_filters;
 mod utils;
 use async_scoped::{Scope, TokioScope};

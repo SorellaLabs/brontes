@@ -1,11 +1,10 @@
-use std::collections::{FastHashMap, FastHashSet};
-
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_types::{
     db::{builder::BuilderStats, searcher::SearcherStats},
     mev::bundle::MevType,
     traits::TracingProvider,
+    FastHashMap, FastHashSet,
 };
 use eyre::Result;
 use tracing::info;
@@ -32,7 +31,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                     if !types.contains(&bundle.mev_type())
                         || bundle.get_searcher_contract().is_none()
                     {
-                        continue;
+                        continue
                     }
                 }
 

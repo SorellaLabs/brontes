@@ -1,11 +1,10 @@
 #[cfg(feature = "dyn-decode")]
-use std::collections::FastHashMap;
-
-#[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
+#[cfg(feature = "dyn-decode")]
+use brontes_types::FastHashMap;
 use futures::future::join_all;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;

@@ -1,9 +1,4 @@
-use std::{
-    collections::{hash_map::Entry, FastHashMap, FastHashSet},
-    hash::Hash,
-    iter,
-    sync::Arc,
-};
+use std::{collections::hash_map::Entry, hash::Hash, iter, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -13,7 +8,8 @@ use brontes_types::{
         accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedSwap,
     },
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, IntoZipTree, ToFloatNearest, TreeBase, TreeIter, TreeSearchBuilder, UnzipPadded,
+    ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeIter,
+    TreeSearchBuilder, UnzipPadded,
 };
 use reth_primitives::{Address, B256};
 

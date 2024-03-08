@@ -1,5 +1,4 @@
 use std::{
-    collections::FastHashMap,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
@@ -28,7 +27,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TraceActions,
     tree::BlockTree,
-    TreeSearchBuilder,
+    FastHashMap, TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
 use malachite::{num::basic::traits::Zero, Rational};

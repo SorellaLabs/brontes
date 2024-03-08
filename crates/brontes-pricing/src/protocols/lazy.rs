@@ -1,12 +1,9 @@
-use std::{
-    collections::{hash_map::Entry, FastHashMap, FastHashSet},
-    pin::Pin,
-    sync::Arc,
-    task::Poll,
-};
+use std::{collections::hash_map::Entry, pin::Pin, sync::Arc, task::Poll};
 
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, traits::TracingProvider, unzip_either::IterExt};
+use brontes_types::{
+    pair::Pair, traits::TracingProvider, unzip_either::IterExt, FastHashMap, FastHashSet,
+};
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
 

@@ -1,5 +1,4 @@
 use std::{
-    collections::FastHashMap,
     fmt::Debug,
     path,
     sync::{Arc, Mutex},
@@ -15,7 +14,7 @@ use brontes_types::{
     },
     traits::TracingProvider,
     unordered_buffer_map::BrontesStreamExt,
-    Protocol,
+    FastHashMap, Protocol,
 };
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;

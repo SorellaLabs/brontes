@@ -1,4 +1,4 @@
-use std::{collections::FastHashSet, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -10,7 +10,7 @@ use brontes_types::{
         NormalizedTransfer,
     },
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;

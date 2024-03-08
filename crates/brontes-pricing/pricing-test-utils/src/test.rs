@@ -1,13 +1,12 @@
-use std::{
-    collections::FastHashMap,
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::sync::{atomic::AtomicBool, Arc};
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
+use brontes_types::{
+    normalized_actions::Actions, traits::TracingProvider, tree::BlockTree, FastHashMap,
+};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 

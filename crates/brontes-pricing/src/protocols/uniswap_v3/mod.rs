@@ -1,13 +1,15 @@
 pub mod batch_request;
 pub mod uniswap_v3_math;
-use std::{cmp::Ordering, collections::FastHashMap, sync::Arc};
+use std::{cmp::Ordering, sync::Arc};
 
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{Decodable, Encodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
+use brontes_types::{
+    normalized_actions::Actions, traits::TracingProvider, FastHashMap, ToScaledRational,
+};
 use bytes::BufMut;
 use malachite::Rational;
 use serde::{Deserialize, Serialize};

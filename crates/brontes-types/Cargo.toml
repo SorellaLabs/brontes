@@ -38,7 +38,7 @@ serde_with.workspace = true
 serde_repr.workspace = true
 
 # database
-clickhouse.workspace = true
+clickhouse = { workspace = true, features = ["tls"] }
 
 # misc
 phf.workspace = true
@@ -72,7 +72,9 @@ thiserror.workspace = true
 
 
 # hashing
-fasthash = { git = "https://github.com/flier/rust-fasthash", rev = "ef0c52b" }
+fasthash = { git = "https://github.com/flier/rust-fasthash", rev = "ef0c52b", features = [
+  "xx",
+] }
 
 [dev-dependencies]
 dotenv.workspace = true

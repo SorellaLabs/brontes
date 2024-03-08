@@ -1,10 +1,6 @@
 #[cfg(feature = "local-reth")]
 use std::sync::OnceLock;
-use std::{
-    collections::{hash_map::Entry, FastHashMap},
-    env,
-    sync::Arc,
-};
+use std::{collections::hash_map::Entry, env, sync::Arc};
 
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
@@ -13,7 +9,9 @@ use brontes_database::clickhouse::ClickhouseHttpClient;
 pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
-use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
+use brontes_types::{
+    db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider, FastHashMap,
+};
 use futures::future::join_all;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;

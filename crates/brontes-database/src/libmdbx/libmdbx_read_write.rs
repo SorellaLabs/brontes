@@ -1,6 +1,6 @@
 #[cfg(feature = "local-clickhouse")]
 use std::str::FromStr;
-use std::{cmp::max, collections::FastHashMap, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{cmp::max, ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -27,7 +27,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    SubGraphsEntry,
+    FastHashMap, SubGraphsEntry,
 };
 use eyre::{eyre, ErrReport};
 use futures::Future;

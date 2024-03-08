@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::FastHashMap, fmt::Debug};
+use std::{cmp::max, fmt::Debug};
 
 use brontes_types::{
     db::{
@@ -6,6 +6,7 @@ use brontes_types::{
         metadata::{BlockMetadata, Metadata},
     },
     pair::Pair,
+    FastHashMap,
 };
 use clickhouse::{remote_cursor::RemoteCursor, DbRow};
 use futures::TryStreamExt;

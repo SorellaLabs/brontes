@@ -1,7 +1,4 @@
-use std::{
-    collections::{FastHashMap, FastHashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
@@ -12,7 +9,7 @@ use brontes_types::{
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
     pair::Pair,
     utils::ToFloatNearest,
-    GasDetails, TxInfo,
+    FastHashMap, FastHashSet, GasDetails, TxInfo,
 };
 use malachite::{
     num::basic::traits::{One, Zero},

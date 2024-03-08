@@ -1,12 +1,11 @@
 use std::{
     cmp::max,
-    collections::{FastHashMap, FastHashSet},
     ops::{Deref, DerefMut},
     time::{Duration, SystemTime},
 };
 
 use alloy_primitives::Address;
-use brontes_types::pair::Pair;
+use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use petgraph::prelude::*;
 use tracing::{debug, error, info};
@@ -76,7 +75,7 @@ pub struct AllPairGraph {
 }
 
 impl AllPairGraph {
-    pub fn init_from_FastHashMap(all_pool_data: FastHashMap<(Address, Protocol), Pair>) -> Self {
+    pub fn init_from_hash_map(all_pool_data: FastHashMap<(Address, Protocol), Pair>) -> Self {
         let mut graph = UnGraph::<(), Vec<EdgeWithInsertBlock>, usize>::default();
 
         let mut token_to_index = FastHashMap::default();

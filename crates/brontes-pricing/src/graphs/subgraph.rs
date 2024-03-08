@@ -2,13 +2,13 @@ use std::{
     cmp::Ordering,
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, FastHashMap, FastHashSet, VecDeque,
+        BinaryHeap, VecDeque,
     },
     hash::Hash,
 };
 
 use alloy_primitives::Address;
-use brontes_types::{price_graph_types::*, FastFastHashMap, FastFastHashSet};
+use brontes_types::{price_graph_types::*, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -29,7 +29,7 @@ use crate::{types::ProtocolState, AllPairGraph, Pair};
 
 pub struct VerificationOutcome {
     pub should_requery: bool,
-    pub removals:       FastFastHashMap<Pair, FastFastHashSet<BadEdge>>,
+    pub removals:       FastHashMap<Pair, FastHashSet<BadEdge>>,
     pub frayed_ends:    Vec<Address>,
 }
 
@@ -44,7 +44,7 @@ pub struct BadEdge {
 
 #[derive(Debug, Default)]
 struct BfsArgs {
-    pub removal_state: FastFastHashMap<Pair, FastFastHashSet<BadEdge>>,
+    pub removal_state: FastHashMap<Pair, FastHashSet<BadEdge>>,
 }
 
 const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
@@ -403,7 +403,7 @@ impl PairSubGraph {
         pair: Pair,
         info: &SubGraphEdge,
         liq: Rational,
-        map: &mut FastFastHashMap<Pair, FastFastHashSet<BadEdge>>,
+        map: &mut FastHashMap<Pair, FastHashSet<BadEdge>>,
     ) {
         let bad_edge = BadEdge {
             pair,
@@ -415,7 +415,7 @@ impl PairSubGraph {
         map.entry(pair).or_default().insert(bad_edge);
     }
 
-    fn prune_subgraph(&mut self, removal_state: &FastFastHashMap<Pair, FastFastHashSet<BadEdge>>) {
+    fn prune_subgraph(&mut self, removal_state: &FastHashMap<Pair, FastHashSet<BadEdge>>) {
         removal_state.iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else {
                 tracing::error!("no token 0 in token to index");

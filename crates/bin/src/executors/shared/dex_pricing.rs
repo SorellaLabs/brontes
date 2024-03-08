@@ -1,5 +1,4 @@
 use std::{
-    collections::FastHashMap,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -15,7 +14,7 @@ use brontes_types::{
     },
     normalized_actions::Actions,
     tree::BlockTree,
-    BrontesTaskExecutor,
+    BrontesTaskExecutor, FastHashMap,
 };
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, Receiver, Sender};

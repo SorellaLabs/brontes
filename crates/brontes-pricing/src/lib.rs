@@ -26,7 +26,7 @@ mod graphs;
 pub mod protocols;
 pub mod types;
 use std::{
-    collections::{hash_map::Entry, FastHashMap, FastHashSet, VecDeque},
+    collections::{hash_map::Entry, VecDeque},
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
         Arc,
@@ -48,6 +48,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     traits::TracingProvider,
+    FastHashMap, FastHashSet,
 };
 use futures::{Stream, StreamExt};
 pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
@@ -1054,7 +1055,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
 #[cfg(all(test, feature = "local-reth"))]
 pub mod test {
-    use std::{collections::FastHashMap, sync::Arc};
+    use std::sync::Arc;
 
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
@@ -1066,6 +1067,8 @@ pub mod test {
     use futures::future::join_all;
     use itertools::Itertools;
     use malachite::Rational;
+
+    use crate::FastHashMap;
 
     // takes to long if using http
     #[brontes_macros::test(threads = 11)]

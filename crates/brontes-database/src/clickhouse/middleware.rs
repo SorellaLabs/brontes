@@ -1,5 +1,3 @@
-use std::collections::FastHashMap;
-
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
@@ -16,7 +14,7 @@ use brontes_types::{
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
-    Protocol, SubGraphEdge,
+    FastHashMap, Protocol, SubGraphEdge,
 };
 
 use super::Clickhouse;
