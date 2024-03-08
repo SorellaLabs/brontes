@@ -293,7 +293,8 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
 }
 
 pub mod tx_traces_inner {
-    use std::{collections::FastHashMap, str::FromStr};
+    use std::{ str::FromStr};
+    use crate::FastHashMap;
 
     use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256, U64};
     use itertools::Itertools;

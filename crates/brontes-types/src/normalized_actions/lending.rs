@@ -1,4 +1,4 @@
-use std::{collections::FastHashMap, fmt::Debug};
+use std::fmt::Debug;
 
 use alloy_primitives::U256;
 use clickhouse::Row;
@@ -6,7 +6,7 @@ use malachite::Rational;
 use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 
-use crate::{db::token_info::TokenInfoWithAddress, Protocol};
+use crate::{db::token_info::TokenInfoWithAddress, FastHashMap, Protocol};
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedLoan {

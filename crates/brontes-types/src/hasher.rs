@@ -1,6 +1,6 @@
 //! default hashing types with custom hasher
 
-use std::collections::{FastHashMap, FastHashSet};
+use std::collections::{HashMap, HashSet};
 
 use fasthash::RandomState;
 
@@ -10,6 +10,6 @@ pub type FastHasher = RandomState<fasthash::xxh3::Hash64>;
 pub type FastHasher = RandomState<fasthash::xx::Hash32>;
 
 /// FastHashMap using xx hash
-pub type FastFastHashMap<K, V> = FastHashMap<K, V, FastHasher>;
+pub type FastHashMap<K, V> = HashMap<K, V, FastHasher>;
 /// FastHashSet using xx hash
-pub type FastFastHashSet<V> = FastHashSet<V, FastHasher>;
+pub type FastHashSet<V> = HashSet<V, FastHasher>;

@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::collections::FastHashMap;
+use std::collections::HashMap;
 
 use metrics::Counter;
 use reth_metrics::Metrics;
@@ -11,7 +11,7 @@ pub mod types;
 #[derive(Debug, Default, Clone)]
 pub struct DynamicContractMetrics {
     contracts: ContractMetrics,
-    functions: FastHashMap<String, ContractFunctionMetrics>,
+    functions: HashMap<String, ContractFunctionMetrics>,
 }
 
 impl DynamicContractMetrics {

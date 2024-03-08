@@ -1,7 +1,4 @@
-use std::{
-    collections::{FastHashMap, FastHashSet},
-    marker::PhantomData,
-};
+use std::marker::PhantomData;
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -20,6 +17,7 @@ use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    FastHashMap, FastHashSet,
 };
 
 /// TODO: lets prob not set this to 100%

@@ -1,4 +1,4 @@
-use std::collections::FastHashMap;
+use crate::FastHashMap;
 
 use alloy_primitives::Address;
 

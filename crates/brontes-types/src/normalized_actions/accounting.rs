@@ -1,12 +1,10 @@
-use std::{
-    collections::{hash_map::Entry, FastHashMap},
-    hash::Hash,
-};
+use std::{collections::hash_map::Entry, hash::Hash};
 
 use alloy_primitives::Address;
 use malachite::Rational;
 
 use super::{comparison::ActionComparison, Actions};
+use crate::FastHashMap;
 
 pub type TokenDeltas = FastHashMap<Address, Rational>;
 pub type AddressDeltas = FastHashMap<Address, TokenDeltas>;

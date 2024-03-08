@@ -1,11 +1,9 @@
-use std::collections::FastHashMap;
-
 use alloy_primitives::B256;
 
 use super::TreeSearchBuilder;
 use crate::{
     normalized_actions::{Actions, NormalizedAction},
-    ActionIter, BlockTree,
+    ActionIter, BlockTree, FastHashMap,
 };
 
 pub trait TreeUtils<V: NormalizedAction> {

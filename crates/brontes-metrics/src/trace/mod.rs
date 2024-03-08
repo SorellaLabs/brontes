@@ -1,4 +1,4 @@
-use std::collections::FastHashMap;
+use std::collections::HashMap;
 
 use metrics::{Counter, Gauge};
 use reth_metrics::Metrics;
@@ -10,7 +10,7 @@ use super::TraceMetricEvent;
 
 #[derive(Debug, Default, Clone)]
 pub struct TraceMetrics {
-    txs: FastHashMap<String, TransactionTracingMetrics>,
+    txs: HashMap<String, TransactionTracingMetrics>,
 }
 
 impl TraceMetrics {

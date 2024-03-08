@@ -12,7 +12,7 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-use std::{collections::FastHashMap, default::Default, ops::MulAssign, str::FromStr};
+use std::{default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -33,6 +33,7 @@ use crate::{
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
     utils::ToFloatNearest,
+    FastHashMap,
 };
 
 /// Centralized exchange price map organized by exchange.

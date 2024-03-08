@@ -1,8 +1,8 @@
 use std::{
     cmp::{max, min},
-    collections::FastHashMap,
     fmt::Display,
 };
+use crate::FastHashMap;
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use clickhouse::Row;

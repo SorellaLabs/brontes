@@ -1,5 +1,5 @@
 use std::{
-    collections::FastHashMap,
+    collections::HashMap,
     pin::Pin,
     task::{ready, Context, Poll},
 };
@@ -29,7 +29,7 @@ pub enum PoirotMetricEvents {
 pub struct PoirotMetricsListener {
     events_rx:        UnboundedReceiver<PoirotMetricEvents>,
     tx_metrics:       TraceMetrics,
-    contract_metrics: FastHashMap<String, DynamicContractMetrics>,
+    contract_metrics: HashMap<String, DynamicContractMetrics>,
 }
 
 impl PoirotMetricsListener {
@@ -39,7 +39,7 @@ impl PoirotMetricsListener {
         Self {
             events_rx,
             tx_metrics: TraceMetrics::default(),
-            contract_metrics: FastHashMap::default(),
+            contract_metrics: HashMap::default(),
         }
     }
 

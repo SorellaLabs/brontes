@@ -1,5 +1,5 @@
 pub mod dex_quote {
-    use std::{collections::FastHashMap, str::FromStr};
+    use std::str::FromStr;
 
     use alloy_primitives::Address;
     use itertools::Itertools;
@@ -9,7 +9,7 @@ pub mod dex_quote {
         Serialize, Serializer,
     };
 
-    use crate::{db::dex::DexPrices, pair::Pair};
+    use crate::{db::dex::DexPrices, pair::Pair, FastHashMap};
 
     type DexPriceQuotesVec = Vec<((String, String), ((Vec<u64>, Vec<u64>), (Vec<u64>, Vec<u64>)))>;
 

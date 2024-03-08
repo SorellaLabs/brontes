@@ -1,4 +1,4 @@
-use std::collections::FastHashSet;
+use crate::FastHashSet;
 
 use alloy_primitives::Address;
 use clickhouse::Row;
