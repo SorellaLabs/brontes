@@ -13,7 +13,7 @@ use brontes_types::{
         cex_trades::{CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
+        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG, TRACE_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -168,7 +168,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<TxTraces, TxTracesData>(
                         block_range,
                         clear_table,
-                        Some(META_FLAG),
+                        Some(TRACE_FLAG),
                     )
                     .await
             }
@@ -219,6 +219,7 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
+                        Some(CEX_FLAG),
                     )
                     .await
             }
@@ -226,6 +227,7 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
+                        Some(META_FLAG),
                     )
                     .await
             }
@@ -236,6 +238,7 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
+                        Some(TRACE_FLAG),
                     )
                     .await
             }
