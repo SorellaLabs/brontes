@@ -1,4 +1,4 @@
-use std::{fmt::Debug, path::Path, sync::Arc};
+use std::{fmt::Debug, path::{Path, PathBuf}, sync::Arc};
 
 use alloy_primitives::{Log, B256};
 use brontes_types::{
@@ -33,8 +33,9 @@ use reth_rpc::{
         gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
         EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
     },
-    BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
+    EthApi, TraceApi,
 };
+use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
 use reth_rpc_types::{trace::parity::*, TransactionInfo};
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
@@ -68,7 +69,8 @@ impl TracingClient {
         task_executor: BrontesTaskExecutor,
     ) -> Self {
         let chain = MAINNET.clone();
-        let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
+        // some breaking changes were introduced in provider factory in the latest reth version, which required to pass the path to the provider factory, for now I have passed an empty path, but this should be fixed in the future see line 73 and 88
+        let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), PathBuf::new()).unwrap();
 
         let tree_externals = TreeExternals::new(
             provider_factory,
@@ -83,7 +85,7 @@ impl TracingClient {
         );
 
         let provider = BlockchainProvider::new(
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain)),
+            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), PathBuf::new()).unwrap(),
             blockchain_tree,
         )
         .unwrap();
@@ -134,7 +136,7 @@ impl TracingClient {
             EthEvmConfig::default(),
         );
 
-        let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
+        let tracing_call_guard = BlockingTaskGuard::new((max_tasks as u32).try_into().unwrap());
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
@@ -152,8 +154,6 @@ pub async fn replay_block_transactions_with_inspector(
     block_id: BlockId,
 ) -> EthResult<Option<Vec<TxTrace>>> {
     let insp_setup = || {
-        // Initialize your inspector here. This example assumes a hypothetical `CustomInspector` type.
-        // You should replace this with your actual inspector initialization logic.
         TracingInspectorLocal {
             _config:                TracingInspectorConfig {
                 record_logs:              true,
@@ -178,15 +178,8 @@ pub async fn replay_block_transactions_with_inspector(
             block_id,
             insp_setup,
             move |tx_info, inspector, res, _, _| {
-                // Assuming `inspector` is now of type `CustomInspector` or whatever type you provide in `insp_setup`.
-                // You will need to adjust this block to interact with your inspector appropriately.
 
-                // This example simply casts the inspector to a hypothetical `TracingInspectorLocal`
-                // type to demonstrate processing, similar to your existing logic. Adjust according
-                // to your actual logic and types.
-                let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
-
-                Ok(localized.into_trace_results(tx_info, &res))
+                Ok(inspector.into_trace_results(tx_info, &res))
             },
         )
         .await
