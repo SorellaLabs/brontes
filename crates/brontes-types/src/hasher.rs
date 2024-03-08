@@ -1,13 +1,8 @@
 //! default hashing types with custom hasher
-
 use std::collections::{HashMap, HashSet};
+use ahash::{AHasher, RandomState};
 
-use fasthash::RandomState;
-
-#[cfg(target_pointer_width = "64")]
-pub type FastHasher = RandomState<fasthash::xxh3::Hash64>;
-#[cfg(target_pointer_width = "32")]
-pub type FastHasher = RandomState<fasthash::xx::Hash32>;
+pub type FastHasher = RandomState<AHasher>;
 
 /// FastHashMap using xx hash
 pub type FastHashMap<K, V> = HashMap<K, V, FastHasher>;

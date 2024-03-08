@@ -75,6 +75,7 @@ thiserror.workspace = true
 fasthash = { git = "https://github.com/flier/rust-fasthash", rev = "ef0c52b", features = [
   "xx",
 ] }
+ahash = "0.8.11"
 
 [dev-dependencies]
 dotenv.workspace = true
