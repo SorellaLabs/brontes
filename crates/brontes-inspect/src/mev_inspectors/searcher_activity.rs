@@ -45,6 +45,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                 }
 
                 let info = tree.get_tx_info(tx_hash, self.utils.db)?;
+                tracing::info!("{:#?}", info);
 
                 (info.searcher_eoa_info.is_some() || info.searcher_contract_info.is_some()).then(
                     || {
