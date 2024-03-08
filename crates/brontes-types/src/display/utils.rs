@@ -731,7 +731,6 @@ pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
 
     "#};
 
-    
     let searcher_tx_data = match &bundle.data {
         BundleData::Unknown(data) => data,
         _ => panic!("Wrong bundle type"),
