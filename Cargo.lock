@@ -4148,7 +4148,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.5.6",
+ "socket2 0.4.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -6599,7 +6599,7 @@ dependencies = [
 [[package]]
 name = "redefined"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/redefined#8d4780a6cc7c85159b4f97c9f3526d62baa76326"
+source = "git+https://github.com/SorellaLabs/redefined#69f92534b75bd73c24e0ac45b400d80ebcc53c99"
 dependencies = [
  "redefined-derive",
 ]
@@ -6607,7 +6607,7 @@ dependencies = [
 [[package]]
 name = "redefined-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/redefined#8d4780a6cc7c85159b4f97c9f3526d62baa76326"
+source = "git+https://github.com/SorellaLabs/redefined#69f92534b75bd73c24e0ac45b400d80ebcc53c99"
 dependencies = [
  "futures",
  "proc-macro2",

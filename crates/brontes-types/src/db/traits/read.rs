@@ -1,5 +1,3 @@
-use crate::FastHashMap;
-
 use alloy_primitives::Address;
 
 use crate::{
@@ -11,7 +9,7 @@ use crate::{
     },
     pair::Pair,
     structured_trace::TxTrace,
-    Protocol, SubGraphEdge,
+    FastHashMap, Protocol, SubGraphEdge,
 };
 
 pub type ProtocolCreatedRange = FastHashMap<u64, Vec<(Address, Protocol, Pair)>>;

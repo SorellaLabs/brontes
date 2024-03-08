@@ -2,7 +2,6 @@ use std::{
     cmp::{max, min},
     fmt::Display,
 };
-use crate::FastHashMap;
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use clickhouse::Row;
@@ -24,6 +23,7 @@ use crate::{
     db::{clickhouse_serde::dex::dex_quote, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    FastHashMap,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize, Redefined)]

@@ -6,8 +6,7 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, FastHashMap,
-    Protocol,
+    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, FastHashMap, Protocol,
 };
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Deserialize, Redefined)]
