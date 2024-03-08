@@ -10,7 +10,8 @@ pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
-    db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider, FastHashMap,
+    db::metadata::Metadata, init_pricing_threadpool, init_tree_threadpool,
+    structured_trace::TxTrace, traits::TracingProvider, FastHashMap,
 };
 use futures::future::join_all;
 #[cfg(feature = "local-reth")]
@@ -51,6 +52,8 @@ impl TraceLoader {
 
         let (a, b) = unbounded_channel();
         let tracing_provider = init_trace_parser(handle, a, libmdbx, 10).await;
+        init_tree_threadpool(7);
+        init_pricing_threadpool(7);
 
         Self { libmdbx, tracing_provider, _metrics: b }
     }

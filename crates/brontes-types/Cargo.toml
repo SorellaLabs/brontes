@@ -70,7 +70,6 @@ statrs = "0.16"
 eyre.workspace = true
 thiserror.workspace = true
 
-
 # hashing
 ahash = "0.8.11"
 

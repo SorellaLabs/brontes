@@ -45,6 +45,7 @@ use brontes_types::{
         token_info::TokenInfoWithAddress,
         traits::{DBWriter, LibmdbxReader},
     },
+    execute_on_pricing_threadpool,
     normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     traits::TracingProvider,
@@ -182,7 +183,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             });
 
         tracing::debug!("search triggered by on pool updates");
-        let (state, pools) = graph_search_par(&self.graph_manager, self.quote_asset, updates);
+        let (state, pools) = execute_on_pricing_threadpool(|| {
+            graph_search_par(&self.graph_manager, self.quote_asset, updates)
+        });
         tracing::debug!("search triggered by on pool updates completed");
 
         state.into_iter().flatten().for_each(|(addr, update)| {
@@ -456,7 +459,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
         tracing::debug!("requerying bad state");
 
-        let new_state = par_state_query(&self.graph_manager, pairs);
+        let new_state =
+            execute_on_pricing_threadpool(|| par_state_query(&self.graph_manager, pairs));
+
         if new_state.is_empty() {
             tracing::error!("requery bad state returned nothing");
         }
@@ -486,7 +491,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             });
 
         if !recusing.is_empty() {
-            self.try_verify_subgraph(recusing);
+            execute_on_pricing_threadpool(|| self.try_verify_subgraph(recusing));
         }
         tracing::debug!("finished requerying bad state");
     }
@@ -529,30 +534,32 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         tracing::debug!(?pair, ?block, subgraph_variations = queries.len(), "starting rundown");
 
-        let edges = par_state_query(&self.graph_manager, queries)
-            .into_iter()
-            .flat_map(|e| e.2)
-            .flatten()
-            .unique()
-            .collect_vec();
-
-        // if we done have any edges, lets run with no ignores.
-        let edges = if edges.is_empty() {
-            let query = ignores
-                .iter()
-                .copied()
-                .map(|_| (pair, block, FastHashSet::default(), vec![]))
-                .collect_vec();
-
-            par_state_query(&self.graph_manager, query)
+        let edges = execute_on_pricing_threadpool(|| {
+            let edges = par_state_query(&self.graph_manager, queries)
                 .into_iter()
                 .flat_map(|e| e.2)
                 .flatten()
                 .unique()
-                .collect_vec()
-        } else {
-            edges
-        };
+                .collect_vec();
+
+            // if we done have any edges, lets run with no ignores.
+            if edges.is_empty() {
+                let query = ignores
+                    .iter()
+                    .copied()
+                    .map(|_| (pair, block, FastHashSet::default(), vec![]))
+                    .collect_vec();
+
+                par_state_query(&self.graph_manager, query)
+                    .into_iter()
+                    .flat_map(|e| e.2)
+                    .flatten()
+                    .unique()
+                    .collect_vec()
+            } else {
+                edges
+            }
+        });
 
         if edges.is_empty() {
             tracing::error!(?pair, ?block, "failed to find connection for graph");
@@ -563,7 +570,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             };
 
             if !need_state {
-                self.try_verify_subgraph(vec![(block, id, pair)]);
+                execute_on_pricing_threadpool(|| self.try_verify_subgraph(vec![(block, id, pair)]));
             }
         }
         tracing::debug!(?pair, ?block, "finished rundown");
@@ -746,7 +753,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
 
         let pairs = self.lazy_loader.pairs_to_verify();
-        self.try_verify_subgraph(pairs);
+
+        execute_on_pricing_threadpool(|| self.try_verify_subgraph(pairs));
 
         // check if we can progress to the next block.
         self.try_resolve_block()
@@ -827,11 +835,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
 
                 // we poll here to continuously progress state fetches as they are slow
                 if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                    self.on_pool_resolve(state)
+                    self.on_pool_resolve(state);
                 }
             }
 
-            self.on_pool_updates(block_updates);
+            execute_on_pricing_threadpool(|| self.on_pool_updates(block_updates));
         }
     }
 }

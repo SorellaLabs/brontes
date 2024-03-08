@@ -10,7 +10,7 @@ use tokio::sync::mpsc::unbounded_channel;
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
     banner,
-    cli::{get_tracing_provider, init_inspectors},
+    cli::{get_tracing_provider, init_inspectors, init_thread_pools},
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
 };
@@ -56,6 +56,7 @@ impl RunArgs {
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
+        init_thread_pools(max_tasks);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);

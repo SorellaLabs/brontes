@@ -13,6 +13,7 @@ use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{
     db::{cex::CexExchange, traits::LibmdbxReader},
+    init_pricing_threadpool, init_tree_threadpool,
     mev::Bundle,
     BrontesTaskExecutor,
 };
@@ -63,6 +64,16 @@ pub fn get_tracing_provider(
     executor: BrontesTaskExecutor,
 ) -> TracingClient {
     TracingClient::new(db_path, tracing_tasks, executor.clone())
+}
+
+/// initalizes the global tree threadpool and pricing threadpool given
+/// the amount of threads passed in.
+/// the pricing threadpool is allocated 65% while the tree is allocated 35%
+pub fn init_thread_pools(max_tasks: u64) {
+    let tree_tasks = (max_tasks as f64 * 0.35) as usize + 1;
+    let pricing_tasks = (max_tasks as f64 * 0.65) as usize + 1;
+    init_pricing_threadpool(pricing_tasks);
+    init_tree_threadpool(tree_tasks);
 }
 
 pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {

@@ -3,7 +3,9 @@
 #![feature(const_type_id)]
 
 pub mod hasher;
+pub mod rayon_utils;
 pub use hasher::*;
+pub use rayon_utils::*;
 pub mod action_iter;
 pub use action_iter::*;
 pub mod executor;

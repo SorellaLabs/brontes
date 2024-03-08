@@ -1,5 +1,6 @@
 //! default hashing types with custom hasher
 use std::collections::{HashMap, HashSet};
+
 use ahash::RandomState;
 
 pub type FastHasher = RandomState;
