@@ -5,6 +5,8 @@ use std::{
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
+#[cfg(not(feature = "pretty-print"))]
+use brontes_types::db::token_info::TokenInfoWithAddress;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt, metadata::Metadata},
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
@@ -211,14 +213,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                     )
                                     .unwrap_or(Rational::ZERO)
                                 };
-
+                                //TODO: Restructure code so I don't have to requery token deltas
                                 TokenBalanceDelta {
-                                    token:     self
+                                    #[cfg(feature = "pretty-print")]
+                                    token: self
                                         .db
                                         .try_fetch_token_info(token)
                                         .ok()
                                         .unwrap_or_default(),
-                                    amount:    amount.clone().to_float(),
+                                    #[cfg(not(feature = "pretty-print"))]
+                                    token: TokenInfoWithAddress::default(),
+                                    amount: amount.clone().to_float(),
                                     usd_value: usd_value.to_float(),
                                 }
                             })
