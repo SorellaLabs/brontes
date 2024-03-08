@@ -224,7 +224,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             })
                             .collect();
 
+                        #[cfg(feature = "pretty-print")]
                         let name = self.fetch_address_name(address);
+                        #[cfg(not(feature = "pretty-print"))]
+                        let name = None;
 
                         AddressBalanceDeltas { address, name, token_deltas: deltas }
                     })
