@@ -146,31 +146,51 @@ impl TracingClient {
         Self::new_with_db(db, max_tasks, task_executor)
     }
 
-    /// Replays all transactions in a block
-    pub async fn replay_block_transactions(
-        &self,
-        block_id: BlockId,
-    ) -> EthResult<Option<Vec<TxTrace>>> {
-        let config = TracingInspectorConfig {
-            record_logs:              true,
-            record_steps:             false,
-            record_state_diff:        false,
-            record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
-            record_memory_snapshots:  false,
-            record_call_return_data:  true,
-            exclude_precompile_calls: true,
-        };
+    /// Replays all transactions in a block using a custom inspector for each transaction
+pub async fn replay_block_transactions_with_inspector(
+    &self,
+    block_id: BlockId,
+) -> EthResult<Option<Vec<TxTrace>>> {
+    let insp_setup = || {
+        // Initialize your inspector here. This example assumes a hypothetical `CustomInspector` type.
+        // You should replace this with your actual inspector initialization logic.
+        TracingInspectorLocal {
+            _config:                TracingInspectorConfig {
+                record_logs:              true,
+                record_steps:             false,
+                record_state_diff:        false,
+                record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
+                record_memory_snapshots:  false,
+                record_call_return_data:  true,
+                exclude_precompile_calls: true,
+            },
+            traces:                 CallTraceArena::default(),
+            _trace_stack:           Vec::new(),
+            _step_stack:            Vec::new(),
+            _last_call_return_data: None,
+            _gas_inspector:         GasInspector::default(),
+            _spec_id:               None,
+        }
+    };
 
-        self.api
-            .trace_block_with(block_id, config, move |tx_info, inspector, res, _, _| {
-                // this is safe as there the exact same memory layout. This is needed as we need
-                // access to the internal fields of the struct that arent public
+    self.api
+        .trace_block_with_inspector(
+            block_id,
+            insp_setup,
+            move |tx_info, inspector, res, _, _| {
+                // Assuming `inspector` is now of type `CustomInspector` or whatever type you provide in `insp_setup`.
+                // You will need to adjust this block to interact with your inspector appropriately.
+
+                // This example simply casts the inspector to a hypothetical `TracingInspectorLocal`
+                // type to demonstrate processing, similar to your existing logic. Adjust according
+                // to your actual logic and types.
                 let localized: TracingInspectorLocal = unsafe { std::mem::transmute(inspector) };
 
                 Ok(localized.into_trace_results(tx_info, &res))
-            })
-            .await
-    }
+            },
+        )
+        .await
+}
 }
 
 #[derive(Debug, Clone)]
