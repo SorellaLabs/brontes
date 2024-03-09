@@ -100,7 +100,7 @@ static RAYON_INSPECT_THREADPOOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
 fn init_inspect_threadpool(threads: usize) {
     let threadpool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
-        .thread_name(|idx| format!("Tree: {}", idx))
+        .thread_name(|idx| format!("Inspect: {}", idx))
         .build()
         .unwrap();
     RAYON_INSPECT_THREADPOOL.set(threadpool).unwrap();
@@ -120,7 +120,7 @@ static RAYON_DBWRITE_THREADPOOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
 fn init_db_write_threadpool(threads: usize) {
     let threadpool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
-        .thread_name(|idx| format!("Tree: {}", idx))
+        .thread_name(|idx| format!("DB: {}", idx))
         .build()
         .unwrap();
     RAYON_DBWRITE_THREADPOOL.set(threadpool).unwrap();
