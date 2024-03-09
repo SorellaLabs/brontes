@@ -125,6 +125,7 @@ pub enum Fund {
     Wintermute,
     JaneStreet,
     JumpTrading,
+    Kronos,
     FlowTraders,
     TokkaLabs,
     EthBuilder,
@@ -134,12 +135,13 @@ pub enum Fund {
 impl From<String> for Fund {
     fn from(value: String) -> Self {
         match value.as_str() {
-            "SymbolicCapitalPartners" => Self::SymbolicCapitalPartners,
+            "Symbolic Capital Partners" => Self::SymbolicCapitalPartners,
             "Wintermute" => Self::Wintermute,
-            "JaneStreet" => Self::JaneStreet,
-            "JumpTrading" => Self::JumpTrading,
-            "FlowTraders" => Self::FlowTraders,
-            "TokkaLabs" => Self::TokkaLabs,
+            "Jane Street" => Self::JaneStreet,
+            "Jump Trading" => Self::JumpTrading,
+            "Flow Traders" => Self::FlowTraders,
+            "Tokka Labs" => Self::TokkaLabs,
+            "Kronos Research" => Self::Kronos,
             "EthBuilder" => Self::EthBuilder,
             "ICANHAZBLOCK" => Self::ICANHAZBLOCK,
             _ => Self::None,

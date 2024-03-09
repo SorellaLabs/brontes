@@ -167,5 +167,5 @@ init_block = 16792677
 [ClipperExchange."0x655eDCE464CC797526600a462A8154650EEe4B77"]
 init_block = 16908406
 
-[PropellerLabsSolver."0x14f2b6ca0324cd2B013aD02a7D85541d215e2906"]
-init_block = 19025601
+#[PropellerLabsSolver."0x14f2b6ca0324cd2B013aD02a7D85541d215e2906"]
+#init_block = 19025601
