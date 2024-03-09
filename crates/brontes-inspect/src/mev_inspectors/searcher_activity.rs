@@ -24,15 +24,10 @@ impl<'db, DB: LibmdbxReader> SearcherActivity<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let search_args = TreeSearchBuilder::default().with_actions([Actions::is_transfer]);
 
         let searcher_txs = tree.clone().collect_all(search_args).collect_vec();

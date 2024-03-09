@@ -39,15 +39,10 @@ pub struct PossibleSandwich {
 // Add support for this, where there is a frontrun & then backrun & in between
 // there is an unrelated tx that is not frontrun but is backrun. See the rari
 // trade here. https://libmev.com/blocks/18215838
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let search_args = TreeSearchBuilder::default().with_actions([
             Actions::is_swap,
             Actions::is_transfer,

@@ -24,7 +24,7 @@ tracing.workspace = true
 
 # async
 rayon.workspace = true
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 futures.workspace = true
 
 # numbers

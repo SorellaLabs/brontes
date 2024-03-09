@@ -27,11 +27,10 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
+    fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,

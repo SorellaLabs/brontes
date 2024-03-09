@@ -7,6 +7,7 @@ pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
 pub mod initialize;
 mod libmdbx_read_write;
+use brontes_types::execute_on;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
@@ -103,15 +104,17 @@ impl Libmdbx {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T>,
     {
-        self.update_db(|tx| {
-            entries
-                .par_iter()
-                .map(|entry| {
-                    let e = entry.into_key_val();
-                    tx.put::<T>(e.key, e.value)
-                })
-                .collect::<Result<Vec<_>, DatabaseError>>()?;
-            Ok::<(), DatabaseError>(())
+        execute_on!(target = db, {
+            self.update_db(|tx| {
+                entries
+                    .par_iter()
+                    .map(|entry| {
+                        let e = entry.into_key_val();
+                        tx.put::<T>(e.key, e.value)
+                    })
+                    .collect::<Result<Vec<_>, DatabaseError>>()?;
+                Ok::<(), DatabaseError>(())
+            })
         })??;
 
         Ok(())

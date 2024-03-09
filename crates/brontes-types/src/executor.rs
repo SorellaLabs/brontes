@@ -196,15 +196,21 @@ impl BrontesTaskExecutor {
     }
 
     /// Spawns a future on the tokio runtime depending on the [TaskKind]
-    fn spawn_on_rt<F>(&self, fut: F, task_kind: TaskKind) -> JoinHandle<()>
+    fn spawn_on_rt<F>(&self, name: &'static str, fut: F, task_kind: TaskKind) -> JoinHandle<()>
     where
         F: Future<Output = ()> + Send + 'static,
     {
         match task_kind {
-            TaskKind::Default => self.handle.spawn(fut),
+            TaskKind::Default => tokio::task::Builder::new()
+                .name(name)
+                .spawn_on(fut, &self.handle)
+                .unwrap(),
             TaskKind::Blocking => {
                 let handle = self.handle.clone();
-                self.handle.spawn_blocking(move || handle.block_on(fut))
+                tokio::task::Builder::new()
+                    .name(name)
+                    .spawn_blocking_on(move || handle.block_on(fut), &self.handle)
+                    .unwrap()
             }
         }
     }
@@ -226,7 +232,7 @@ impl BrontesTaskExecutor {
         }
         .in_current_span();
 
-        self.spawn_on_rt(task, task_kind)
+        self.spawn_on_rt("un-named task", task, task_kind)
     }
 
     /// Spawns the task onto the runtime.
@@ -295,7 +301,7 @@ impl BrontesTaskExecutor {
             let _ = select(on_shutdown, task).await;
         };
 
-        self.spawn_on_rt(task, task_kind)
+        self.spawn_on_rt(name, task, task_kind)
     }
 
     /// This spawns a critical blocking task onto the runtime.
@@ -346,7 +352,10 @@ impl BrontesTaskExecutor {
             .map(|_| ())
             .in_current_span();
 
-        self.handle.spawn(task)
+        tokio::task::Builder::new()
+            .name(name)
+            .spawn_on(task, &self.handle)
+            .unwrap()
     }
 
     /// This spawns a critical task onto the runtime.
@@ -396,7 +405,10 @@ impl BrontesTaskExecutor {
             .map(|_| ())
             .in_current_span();
 
-        self.handle.spawn(task)
+        tokio::task::Builder::new()
+            .name(name)
+            .spawn_on(task, &self.handle)
+            .unwrap()
     }
 
     /// This spawns a regular task onto the runtime.

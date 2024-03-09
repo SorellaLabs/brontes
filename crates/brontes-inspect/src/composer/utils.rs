@@ -117,9 +117,9 @@ pub(crate) fn build_mev_header(
 /// Sorts the given MEV data by type.
 ///
 /// This function takes a vector of tuples, where each tuple contains a
-/// `BundleHeader` and a `BundleData`. It returns a FastHashMap where the keys
-/// are `MevType` and the values are vectors of tuples (same as input). Each
-/// vector contains all the MEVs of the corresponding type.
+/// `BundleHeader` and a `BundleData`. It returns a HashMap where the keys are
+/// `MevType` and the values are vectors of tuples (same as input). Each vector
+/// contains all the MEVs of the corresponding type.
 pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> FastHashMap<MevType, Vec<Bundle>> {
     orchestra_data
         .into_iter()
