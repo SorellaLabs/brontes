@@ -8,7 +8,7 @@ Brontes transforms raw Ethereum transaction traces into a structured, analyzable
 
 2. **Tree Construction**: Brontes constructs a tree of all transactions within a block, encapsulating each transaction in its own `TransactionTree`, which preserves the execution order and context.
 
-3. **Metadata Integration**: In parallel to the tree construction, Brontes fetches and integrates relevant metadata, such as DEX pricing, exchange pricing, and private transaction sets. For more information, see the [database](./architecture/database.md) section.
+3. **Metadata Integration**: In parallel to the tree construction, Brontes fetches and integrates relevant metadata, such as DEX pricing, exchange pricing, and private transaction sets. For more information, see the [database](./database.md) section.
 
 4. **Normalization**: Brontes employs [Classifiers](./classifiers.md) to normalize the raw traces into standardized `NormalizedActions`, establishing a consistent analytical framework across different DeFi protocols.
 
