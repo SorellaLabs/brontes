@@ -3,20 +3,14 @@ use futures::Future;
 
 use crate::{
     db::{
-        address_metadata::AddressMetadata,
-        address_to_protocol_info::ProtocolInfo,
         builder::{BuilderInfo, BuilderStats},
         dex::DexQuotes,
-        metadata::Metadata,
-        mev_block::MevBlockWithClassified,
         searcher::{SearcherInfo, SearcherStats},
-        token_info::TokenInfoWithAddress,
-        traits::{LibmdbxReader, ProtocolCreatedRange},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
-    FastHashMap, Protocol, SubGraphEdge,
+    Protocol, SubGraphEdge,
 };
 
 #[auto_impl::auto_impl(&)]
