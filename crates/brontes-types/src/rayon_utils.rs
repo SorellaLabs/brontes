@@ -63,7 +63,7 @@ fn init_tree_threadpool(threads: usize) {
         .thread_name(|idx| format!("Tree: {}", idx))
         .build()
         .unwrap();
-    RAYON_TREE_THREADPOOL.set(threadpool).unwrap();
+    let _ = RAYON_TREE_THREADPOOL.set(threadpool);
 }
 
 pub fn execute_on_tree_threadpool<OP, R>(op: OP) -> R
@@ -86,7 +86,7 @@ fn init_pricing_threadpool(threads: usize) {
         .build()
         .unwrap();
 
-    RAYON_PRICING_THREADPOOL.set(threadpool).unwrap();
+    let _ = RAYON_PRICING_THREADPOOL.set(threadpool);
 }
 
 pub fn execute_on_pricing_threadpool<OP, R>(op: OP) -> R
@@ -109,7 +109,7 @@ fn init_inspect_threadpool(threads: usize) {
         .thread_name(|idx| format!("Inspect: {}", idx))
         .build()
         .unwrap();
-    RAYON_INSPECT_THREADPOOL.set(threadpool).unwrap();
+    let _ = RAYON_INSPECT_THREADPOOL.set(threadpool);
 }
 
 pub fn execute_on_inspect_threadpool<OP, R>(op: OP) -> R
@@ -132,7 +132,7 @@ fn init_db_write_threadpool(threads: usize) {
         .thread_name(|idx| format!("DB: {}", idx))
         .build()
         .unwrap();
-    RAYON_DBWRITE_THREADPOOL.set(threadpool).unwrap();
+    let _ = RAYON_DBWRITE_THREADPOOL.set(threadpool);
 }
 
 pub fn execute_on_db_write_threadpool<OP, R>(op: OP) -> R
