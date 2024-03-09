@@ -323,6 +323,7 @@ mod tests {
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
         db::{dex::DexPrices, searcher::SearcherEoaContract},
+        init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
@@ -574,6 +575,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_all_inserts() {
         dotenv::dotenv().ok();
+        init_threadpools(10);
         let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
 
         let tables = &BrontesClickhouseTables::all_tables();
