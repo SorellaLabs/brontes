@@ -1,8 +1,7 @@
 use std::{fmt::Debug, path::{Path, PathBuf}, sync::Arc};
 
-use alloy_primitives::{Log, B256};
 use brontes_types::{
-    structured_trace::{TransactionTraceWithLogs, TxTrace},
+    structured_trace::TxTrace,
     BrontesTaskExecutor,
 };
 use reth_beacon_consensus::BeaconConsensus;
@@ -12,14 +11,10 @@ use reth_blockchain_tree::{
 use reth_db::DatabaseEnv;
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::EthEvmConfig;
-use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
+use reth_primitives::{BlockId, PruneModes, MAINNET};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{
     inspectors::GasInspector,
-    revm::{
-        interpreter::InstructionResult,
-        primitives::{ExecutionResult, SpecId},
-    },
     EvmProcessorFactory,
 };
 use reth_rpc::{
@@ -32,13 +27,12 @@ use reth_rpc::{
     EthApi, TraceApi,
 };
 use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
-use reth_rpc_types::{trace::parity::*, TransactionInfo};
 use reth_tracer::inspector::BrontesTracingInspector;
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
-use reth_tracer::{arena::CallTraceArena, types::{CallTraceNode, CallKind}, config::{TracingInspectorConfig, StackSnapshotType}};
+use reth_tracer::{arena::CallTraceArena, config::{TracingInspectorConfig, StackSnapshotType}};
 mod provider;
 pub mod reth_tracer;
 
