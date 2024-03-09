@@ -234,7 +234,11 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             !self.with_dex_pricing,
         )?;
 
-        tracing::info!("Downloading missing {} ranges", state_to_init.len());
+        if state_to_init.is_empty() {
+            return Ok(())
+        }
+
+        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
 
         let state_to_init_continuous = state_to_init
             .clone()
@@ -242,7 +246,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .filter(|range| range.clone().collect_vec().len() >= 1000)
             .collect_vec();
 
-        tracing::info!("Downloading {} missing continuous ranges", state_to_init_continuous.len());
+        tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
 
         join_all(state_to_init_continuous.iter().map(|range| async move {
             let start = range.start();
@@ -291,6 +295,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 state_to_init_disc,
             )
             .await?;
+
         Ok(())
     }
 
