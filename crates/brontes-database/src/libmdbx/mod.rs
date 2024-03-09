@@ -104,18 +104,18 @@ impl Libmdbx {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T>,
     {
-        execute_on!(target = db, {
-            self.update_db(|tx| {
-                entries
-                    .par_iter()
-                    .map(|entry| {
-                        let e = entry.into_key_val();
-                        tx.put::<T>(e.key, e.value)
-                    })
-                    .collect::<Result<Vec<_>, DatabaseError>>()?;
-                Ok::<(), DatabaseError>(())
-            })
+        // execute_on!(target = db, {
+        self.update_db(|tx| {
+            entries
+                .par_iter()
+                .map(|entry| {
+                    let e = entry.into_key_val();
+                    tx.put::<T>(e.key, e.value)
+                })
+                .collect::<Result<Vec<_>, DatabaseError>>()?;
+            Ok::<(), DatabaseError>(())
         })??;
+        // })??;
 
         Ok(())
     }
