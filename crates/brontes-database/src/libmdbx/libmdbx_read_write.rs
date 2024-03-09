@@ -226,7 +226,6 @@ impl LibmdbxInit for LibmdbxReadWriter {
             }
 
             tracing::info!("entire range missing");
-
             return Ok(vec![start_block..=end_block])
         }
 
@@ -254,6 +253,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 }
 
                 block_tracking += 1;
+
                 if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
                     tracing::error!("block is missing dex pricing");
                     return Err(eyre::eyre!(
@@ -278,7 +278,6 @@ impl LibmdbxInit for LibmdbxReadWriter {
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                 ))
             }
-
             result.push(block_tracking - 1..=end_block);
         }
 
@@ -783,7 +782,7 @@ impl LibmdbxReadWriter {
         Ok(())
     }
 
-    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
+    pub fn inited_range(&self, range: impl Iterator<Item = u64>, flag: u8) -> eyre::Result<()> {
         for block in range {
             self.init_state_updating(block, flag)?;
         }
