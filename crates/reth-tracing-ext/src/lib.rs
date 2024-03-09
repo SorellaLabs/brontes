@@ -1,9 +1,10 @@
-use std::{fmt::Debug, path::{Path, PathBuf}, sync::Arc};
-
-use brontes_types::{
-    structured_trace::TxTrace,
-    BrontesTaskExecutor,
+use std::{
+    fmt::Debug,
+    path::{Path, PathBuf},
+    sync::Arc,
 };
+
+use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
@@ -13,10 +14,7 @@ use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::EthEvmConfig;
 use reth_primitives::{BlockId, PruneModes, MAINNET};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
-use reth_revm::{
-    inspectors::GasInspector,
-    EvmProcessorFactory,
-};
+use reth_revm::{inspectors::GasInspector, EvmProcessorFactory};
 use reth_rpc::{
     eth::{
         cache::{EthStateCache, EthStateCacheConfig},
@@ -27,12 +25,15 @@ use reth_rpc::{
     EthApi, TraceApi,
 };
 use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
-use reth_tracer::inspector::BrontesTracingInspector;
+use reth_tracer::{
+    arena::CallTraceArena,
+    config::{StackSnapshotType, TracingInspectorConfig},
+    inspector::BrontesTracingInspector,
+};
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
-use reth_tracer::{arena::CallTraceArena, config::{TracingInspectorConfig, StackSnapshotType}};
 mod provider;
 pub mod reth_tracer;
 
@@ -62,8 +63,12 @@ impl TracingClient {
         task_executor: BrontesTaskExecutor,
     ) -> Self {
         let chain = MAINNET.clone();
-        // some breaking changes were introduced in provider factory in the latest reth version, which required to pass the path to the provider factory, for now I have passed an empty path, but this should be fixed in the future see line 73 and 88
-        let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), PathBuf::new()).unwrap();
+        // some breaking changes were introduced in provider factory in the latest reth
+        // version, which required to pass the path to the provider factory, for now I
+        // have passed an empty path, but this should be fixed in the future see line 73
+        // and 88
+        let provider_factory =
+            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), PathBuf::new()).unwrap();
 
         let tree_externals = TreeExternals::new(
             provider_factory,
@@ -141,13 +146,13 @@ impl TracingClient {
         Self::new_with_db(db, max_tasks, task_executor)
     }
 
-    /// Replays all transactions in a block using a custom inspector for each transaction
-pub async fn replay_block_transactions_with_inspector(
-    &self,
-    block_id: BlockId,
-) -> EthResult<Option<Vec<TxTrace>>> {
-    let insp_setup = || {
-        BrontesTracingInspector {
+    /// Replays all transactions in a block using a custom inspector for each
+    /// transaction
+    pub async fn replay_block_transactions_with_inspector(
+        &self,
+        block_id: BlockId,
+    ) -> EthResult<Option<Vec<TxTrace>>> {
+        let insp_setup = || BrontesTracingInspector {
             config:                TracingInspectorConfig {
                 record_logs:              true,
                 record_steps:             false,
@@ -163,10 +168,9 @@ pub async fn replay_block_transactions_with_inspector(
             last_call_return_data: None,
             gas_inspector:         GasInspector::default(),
             spec_id:               None,
-        }
-    };
+        };
 
-    self.api
+        self.api
         .trace_block_with_inspector(
             block_id,
             insp_setup,
@@ -176,7 +180,7 @@ pub async fn replay_block_transactions_with_inspector(
             },
         )
         .await
-}
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -3,11 +3,8 @@
 use alloy_primitives::hex;
 use alloy_sol_types::{ContractError, GenericRevertReason};
 use revm::{
+    interpreter::{opcode, OpCode},
     primitives::SpecId,
-    interpreter::{
-        opcode,
-        OpCode,
-    },
 };
 
 /// creates the memory data in 32byte chunks

@@ -1,76 +1,81 @@
-use alloy_rpc_trace_types::{geth::GethDefaultTracingOptions, parity::TraceType};
 use std::collections::HashSet;
+
+use alloy_rpc_trace_types::{geth::GethDefaultTracingOptions, parity::TraceType};
 
 /// Gives guidance to the [TracingInspector](crate::tracing::TracingInspector).
 ///
-/// Use [TracingInspectorConfig::default_parity] or [TracingInspectorConfig::default_geth] to get
-/// the default configs for specific styles of traces.
+/// Use [TracingInspectorConfig::default_parity] or
+/// [TracingInspectorConfig::default_geth] to get the default configs for
+/// specific styles of traces.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TracingInspectorConfig {
     /// Whether to record every individual opcode level step.
-    pub record_steps: bool,
+    pub record_steps:             bool,
     /// Whether to record individual memory snapshots.
-    pub record_memory_snapshots: bool,
+    pub record_memory_snapshots:  bool,
     /// Whether to record individual stack snapshots.
-    pub record_stack_snapshots: StackSnapshotType,
+    pub record_stack_snapshots:   StackSnapshotType,
     /// Whether to record state diffs.
-    pub record_state_diff: bool,
+    pub record_state_diff:        bool,
     /// Whether to ignore precompile calls.
     pub exclude_precompile_calls: bool,
     /// Whether to record individual return data
-    pub record_call_return_data: bool,
+    pub record_call_return_data:  bool,
     /// Whether to record logs
-    pub record_logs: bool,
+    pub record_logs:              bool,
 }
 
 impl TracingInspectorConfig {
     /// Returns a config with everything enabled.
     pub const fn all() -> Self {
         Self {
-            record_steps: true,
-            record_memory_snapshots: true,
-            record_stack_snapshots: StackSnapshotType::Full,
-            record_state_diff: false,
+            record_steps:             true,
+            record_memory_snapshots:  true,
+            record_stack_snapshots:   StackSnapshotType::Full,
+            record_state_diff:        false,
             exclude_precompile_calls: false,
-            record_call_return_data: false,
-            record_logs: true,
+            record_call_return_data:  false,
+            record_logs:              true,
         }
     }
 
     /// Returns a config for parity style traces.
     ///
-    /// This config does _not_ record opcode level traces and is suited for `trace_transaction`
+    /// This config does _not_ record opcode level traces and is suited for
+    /// `trace_transaction`
     pub const fn default_parity() -> Self {
         Self {
-            record_steps: false,
-            record_memory_snapshots: false,
-            record_stack_snapshots: StackSnapshotType::None,
-            record_state_diff: false,
+            record_steps:             false,
+            record_memory_snapshots:  false,
+            record_stack_snapshots:   StackSnapshotType::None,
+            record_state_diff:        false,
             exclude_precompile_calls: true,
-            record_call_return_data: false,
-            record_logs: false,
+            record_call_return_data:  false,
+            record_logs:              false,
         }
     }
 
     /// Returns a config for geth style traces.
     ///
-    /// This config does _not_ record opcode level traces and is suited for `debug_traceTransaction`
+    /// This config does _not_ record opcode level traces and is suited for
+    /// `debug_traceTransaction`
     pub const fn default_geth() -> Self {
         Self {
-            record_steps: true,
-            record_memory_snapshots: true,
-            record_stack_snapshots: StackSnapshotType::Full,
-            record_state_diff: true,
+            record_steps:             true,
+            record_memory_snapshots:  true,
+            record_stack_snapshots:   StackSnapshotType::Full,
+            record_state_diff:        true,
             exclude_precompile_calls: false,
-            record_call_return_data: false,
-            record_logs: false,
+            record_call_return_data:  false,
+            record_logs:              false,
         }
     }
 
-    /// Returns the [TracingInspectorConfig] depending on the enabled [TraceType]s
+    /// Returns the [TracingInspectorConfig] depending on the enabled
+    /// [TraceType]s
     ///
-    /// Note: the parity statediffs can be populated entirely via the execution result, so we don't
-    /// need statediff recording
+    /// Note: the parity statediffs can be populated entirely via the execution
+    /// result, so we don't need statediff recording
     #[inline]
     pub fn from_parity_config(trace_types: &HashSet<TraceType>) -> Self {
         let needs_vm_trace = trace_types.contains(&TraceType::VmTrace);
@@ -82,7 +87,8 @@ impl TracingInspectorConfig {
             .set_memory_snapshots(needs_vm_trace)
     }
 
-    /// Returns a config for geth style traces based on the given [GethDefaultTracingOptions].
+    /// Returns a config for geth style traces based on the given
+    /// [GethDefaultTracingOptions].
     #[inline]
     pub fn from_geth_config(config: &GethDefaultTracingOptions) -> Self {
         Self {
@@ -99,7 +105,8 @@ impl TracingInspectorConfig {
 
     /// Configure whether calls to precompiles should be ignored.
     ///
-    /// If set to `true`, calls to precompiles without value transfers will be ignored.
+    /// If set to `true`, calls to precompiles without value transfers will be
+    /// ignored.
     pub const fn set_exclude_precompile_calls(mut self, exclude_precompile_calls: bool) -> Self {
         self.exclude_precompile_calls = exclude_precompile_calls;
         self
@@ -136,8 +143,10 @@ impl TracingInspectorConfig {
 
     /// Configure whether the tracer should record steps and state diffs.
     ///
-    /// This is a convenience method for setting both [TracingInspectorConfig::set_steps] and
-    /// [TracingInspectorConfig::set_state_diffs] since tracking state diffs requires steps tracing.
+    /// This is a convenience method for setting both
+    /// [TracingInspectorConfig::set_steps] and
+    /// [TracingInspectorConfig::set_state_diffs] since tracking state diffs
+    /// requires steps tracing.
     pub const fn set_steps_and_state_diffs(mut self, steps_and_diffs: bool) -> Self {
         self.record_steps = steps_and_diffs;
         self.record_state_diff = steps_and_diffs;
@@ -151,7 +160,8 @@ impl TracingInspectorConfig {
     }
 }
 
-/// How much of the stack to record. Nothing, just the items pushed, or the full stack
+/// How much of the stack to record. Nothing, just the items pushed, or the full
+/// stack
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StackSnapshotType {
     /// Don't record stack snapshots
@@ -179,6 +189,7 @@ impl StackSnapshotType {
 /// What kind of tracing style this is.
 ///
 /// This affects things like error messages.
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TraceStyle {
     /// Parity style tracer
@@ -190,6 +201,7 @@ pub(crate) enum TraceStyle {
 
 impl TraceStyle {
     /// Returns true if this is a parity style tracer.
+    #[allow(dead_code)]
     pub(crate) const fn is_parity(self) -> bool {
         matches!(self, Self::Parity)
     }

@@ -1,8 +1,10 @@
 use types::{CallTrace, CallTraceNode, LogCallOrder};
+
 use super::types;
 /// An arena of recorded traces.
 ///
-/// This type will be populated via the [TracingInspector](crate::tracing::TracingInspector).
+/// This type will be populated via the
+/// [TracingInspector](crate::tracing::TracingInspector).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CallTraceArena {
     /// The arena of recorded trace nodes
@@ -12,9 +14,10 @@ pub struct CallTraceArena {
 impl CallTraceArena {
     /// Pushes a new trace into the arena, returning the trace ID
     ///
-    /// This appends a new trace to the arena, and also inserts a new entry in the node's parent
-    /// node children set if `attach_to_parent` is `true`. E.g. if calls to precompiles should
-    /// not be included in the call graph this should be called with [PushTraceKind::PushOnly].
+    /// This appends a new trace to the arena, and also inserts a new entry in
+    /// the node's parent node children set if `attach_to_parent` is `true`.
+    /// E.g. if calls to precompiles should not be included in the call
+    /// graph this should be called with [PushTraceKind::PushOnly].
     pub(crate) fn push_trace(
         &mut self,
         mut entry: usize,
@@ -51,7 +54,10 @@ impl CallTraceArena {
                 }
                 _ => {
                     // We haven't found the parent node, go deeper
-                    entry = *self.arena[entry].children.last().expect("Disconnected trace");
+                    entry = *self.arena[entry]
+                        .children
+                        .last()
+                        .expect("Disconnected trace");
                 }
             }
         }
@@ -72,8 +78,8 @@ impl CallTraceArena {
 pub(crate) enum PushTraceKind {
     /// This will _only_ push the trace into the arena.
     PushOnly,
-    /// This will push the trace into the arena, and also insert a new entry in the node's parent
-    /// node children set.
+    /// This will push the trace into the arena, and also insert a new entry in
+    /// the node's parent node children set.
     PushAndAttachToParent,
 }
 
