@@ -48,6 +48,7 @@ pub struct TraceLoader {
 impl TraceLoader {
     pub async fn new() -> Self {
         let handle = tokio::runtime::Handle::current();
+        init_threadpools(10);
         let libmdbx = get_db_handle(handle.clone()).await;
 
         let (a, b) = unbounded_channel();
@@ -333,7 +334,6 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
     *DB_HANDLE
         .get_or_init(|| async {
             let _ = dotenv::dotenv();
-            init_threadpools(10);
             init_tracing();
             let brontes_db_endpoint =
                 env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
