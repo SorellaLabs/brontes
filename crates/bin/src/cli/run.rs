@@ -43,6 +43,9 @@ pub struct RunArgs {
     /// dex prices.
     #[arg(long, short, default_value = "false")]
     pub run_dex_pricing: bool,
+    /// How many blocks behind chain tip to run.
+    #[arg(long, default_value = "15")]
+    pub behind_tip:      u64,
 }
 
 impl RunArgs {
@@ -83,6 +86,7 @@ impl RunArgs {
                 if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
                     self.start_block,
                     self.end_block,
+                    self.behind_tip,
                     max_tasks,
                     self.min_batch_size,
                     quote_asset,

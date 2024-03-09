@@ -25,6 +25,7 @@ pub struct TipInspector<
     P: Processor,
 > {
     current_block:      u64,
+    back_from_tip:      u64,
     parser:             &'static Parser<'static, T, DB>,
     state_collector:    StateCollector<T, DB, CH>,
     database:           &'static DB,
@@ -38,12 +39,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 {
     pub fn new(
         current_block: u64,
+        back_from_tip: u64,
         state_collector: StateCollector<T, DB, CH>,
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     ) -> Self {
         Self {
+            back_from_tip,
             state_collector,
             inspectors,
             current_block,
@@ -76,12 +79,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     #[cfg(feature = "local-reth")]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
-            return false;
+            return false
         }
 
         match self.parser.get_latest_block_number() {
             Ok(chain_tip) => {
-                if chain_tip > self.current_block {
+                if chain_tip - self.back_from_tip > self.current_block {
                     self.current_block += 1;
                     true
                 } else {
@@ -98,7 +101,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     #[cfg(not(feature = "local-reth"))]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
-            return false;
+            return false
         }
 
         let cur_block = tokio::task::block_in_place(|| {
@@ -108,7 +111,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
         match cur_block {
             Ok(chain_tip) => {
-                if chain_tip > self.current_block {
+                if chain_tip - self.back_from_tip > self.current_block {
                     self.current_block += 1;
                     true
                 } else {
