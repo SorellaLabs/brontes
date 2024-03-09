@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
+use brontes_database::clickhouse::{Clickhouse, ClickhouseMiddleware};
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
     db::traits::NoopWriter, init_threadpools, unordered_buffer_map::BrontesStreamExt,
