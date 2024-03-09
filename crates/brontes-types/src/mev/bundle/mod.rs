@@ -15,10 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use strum::{Display, EnumIter};
 
-use crate::display::utils::{
-    display_atomic_backrun, display_jit_liquidity, display_jit_liquidity_sandwich,
-    display_liquidation,
-};
+use crate::display::utils::*;
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_cex_dex, display_sandwich},
@@ -53,7 +50,7 @@ impl fmt::Display for Bundle {
             MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
             MevType::JitSandwich => display_jit_liquidity_sandwich(self, f)?,
-            _ => writeln!(f, "{:#?}", self)?,
+            MevType::Unknown => display_searcher_tx(self, f)?,
         }
 
         Ok(())
