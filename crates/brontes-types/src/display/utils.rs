@@ -745,7 +745,7 @@ pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
     writeln!(
         f,
         "   - {}: {}",
-        format!("Transaction").bright_magenta(),
+        "Transaction".to_string().bright_magenta(),
         format_etherscan_url(&searcher_tx_data.tx_hash)
     )?;
 
