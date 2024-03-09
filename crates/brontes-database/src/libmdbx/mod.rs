@@ -7,12 +7,10 @@ pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
 pub mod initialize;
 mod libmdbx_read_write;
-use brontes_types::execute_on;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
 pub use libmdbx_read_write::{determine_eth_prices, LibmdbxInit, LibmdbxReadWriter};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reth_db::{
     is_database_empty,
     mdbx::DatabaseArguments,
@@ -104,10 +102,9 @@ impl Libmdbx {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T>,
     {
-        // execute_on!(target = db, {
         self.update_db(|tx| {
             entries
-                .par_iter()
+                .iter()
                 .map(|entry| {
                     let e = entry.into_key_val();
                     tx.put::<T>(e.key, e.value)
@@ -115,7 +112,6 @@ impl Libmdbx {
                 .collect::<Result<Vec<_>, DatabaseError>>()?;
             Ok::<(), DatabaseError>(())
         })??;
-        // })??;
 
         Ok(())
     }

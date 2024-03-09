@@ -7,19 +7,16 @@ use std::sync::OnceLock;
 /// tree gets 35% threads
 /// pricing gets 70% threads
 /// inspect gets 35% threads
-/// database writes gets 10% threads
 /// NOTE: we exceed 100% due to the call operation flow.
 /// we still expect to keep cpu usage near given value
 pub fn init_threadpools(max_tasks: usize) {
     let tree_tasks = (max_tasks as f64 * 0.35) as usize + 1;
     let pricing_tasks = (max_tasks as f64 * 0.70) as usize + 1;
     let inspect_tasks = (max_tasks as f64 * 0.35) as usize + 1;
-    let db_tasks = (max_tasks as f64 * 0.10) as usize + 1;
 
     init_tree_threadpool(tree_tasks);
     init_pricing_threadpool(pricing_tasks);
     init_inspect_threadpool(inspect_tasks);
-    init_db_write_threadpool(db_tasks);
 }
 
 /// To use
@@ -48,9 +45,6 @@ macro_rules! execute_on {
     };
     (inspect, $block:block) => {
         ::brontes_types::execute_on_inspect_threadpool(|| $block)
-    };
-    (db, $block:block) => {
-        ::brontes_types::execute_on_db_write_threadpool(|| $block)
     };
 }
 
@@ -118,29 +112,6 @@ where
     R: Send,
 {
     RAYON_INSPECT_THREADPOOL
-        .get()
-        .expect("threadpool not initialized")
-        .install(op)
-}
-
-/// ThreadPool for db-write operations
-static RAYON_DBWRITE_THREADPOOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
-
-fn init_db_write_threadpool(threads: usize) {
-    let threadpool = rayon::ThreadPoolBuilder::new()
-        .num_threads(threads)
-        .thread_name(|idx| format!("DB: {}", idx))
-        .build()
-        .unwrap();
-    let _ = RAYON_DBWRITE_THREADPOOL.set(threadpool);
-}
-
-pub fn execute_on_db_write_threadpool<OP, R>(op: OP) -> R
-where
-    OP: FnOnce() -> R + Send,
-    R: Send,
-{
-    RAYON_DBWRITE_THREADPOOL
         .get()
         .expect("threadpool not initialized")
         .install(op)
