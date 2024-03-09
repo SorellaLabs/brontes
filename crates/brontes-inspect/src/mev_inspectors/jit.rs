@@ -1,7 +1,6 @@
 use std::{collections::hash_map::Entry, sync::Arc};
 
 use alloy_primitives::{Address, B256};
-use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,

@@ -1,5 +1,5 @@
 //! Utils around grouping operations to specific threadpools
-//! this is done to allow for more percice control over our
+//! this is done to allow for more precise control over our
 //! par_iter allocations.
 use std::sync::OnceLock;
 
@@ -41,7 +41,7 @@ macro_rules! execute_on {
         execute_on!($t, { $($block)+ })
     };
     (tree, $block:block) => {
-        crate::execute_on_tree_threadpool(|| $block)
+        $crate::execute_on_tree_threadpool(|| $block)
     };
     (pricing, $block:block) => {
         ::brontes_types::execute_on_pricing_threadpool(|| $block)
@@ -71,7 +71,10 @@ where
     OP: FnOnce() -> R + Send,
     R: Send,
 {
-    RAYON_TREE_THREADPOOL.get().unwrap().install(op)
+    RAYON_TREE_THREADPOOL
+        .get()
+        .expect("threadpool not initialized")
+        .install(op)
 }
 /// ThreadPool for pricing operations
 static RAYON_PRICING_THREADPOOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
@@ -91,7 +94,10 @@ where
     OP: FnOnce() -> R + Send,
     R: Send,
 {
-    RAYON_PRICING_THREADPOOL.get().unwrap().install(op)
+    RAYON_PRICING_THREADPOOL
+        .get()
+        .expect("threadpool not initialized")
+        .install(op)
 }
 
 /// ThreadPool for inspect operations
@@ -111,7 +117,10 @@ where
     OP: FnOnce() -> R + Send,
     R: Send,
 {
-    RAYON_INSPECT_THREADPOOL.get().unwrap().install(op)
+    RAYON_INSPECT_THREADPOOL
+        .get()
+        .expect("threadpool not initialized")
+        .install(op)
 }
 
 /// ThreadPool for db-write operations
@@ -131,5 +140,8 @@ where
     OP: FnOnce() -> R + Send,
     R: Send,
 {
-    RAYON_DBWRITE_THREADPOOL.get().unwrap().install(op)
+    RAYON_DBWRITE_THREADPOOL
+        .get()
+        .expect("threadpool not initialized")
+        .install(op)
 }
