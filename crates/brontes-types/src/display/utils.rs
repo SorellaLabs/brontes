@@ -744,6 +744,11 @@ pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
 
     writeln!(f, "   - Etherscan: {}", format_etherscan_url(&bundle.header.tx_hash))?;
 
+    writeln!(f, "  - {}:", "PnL".bright_blue())?;
+
+    writeln!(f, "   - Transaction Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
+    writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
+
     // Transfers
     bundle
         .header
