@@ -1,6 +1,6 @@
-use std::fmt;
+use std::fmt::{self};
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
@@ -638,18 +638,6 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
         _ => panic!("Wrong bundle type"),
     };
 
-    // MEV Bot Details
-    writeln!(f, "{}: \n", "Transaction Details".bold().underline().bright_yellow())?;
-    writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-
-    match bundle.header.mev_contract {
-        Some(contract) => {
-            writeln!(f, "   - Mev Contract: {}", contract)?;
-        }
-        None => {
-            writeln!(f, "   - Mev Contract: None")?;
-        }
-    }
     // Tx details
     writeln!(f, "\n{}: \n", "Transaction Details".bold().underline().bright_yellow())?;
     writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
@@ -740,27 +728,28 @@ pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
         writeln!(f, "{}", line)?;
     }
 
-    // Transaction Details
-    writeln!(f, "{}: \n", "Transaction Details".underline().bright_yellow())?;
-    writeln!(
-        f,
-        "   - {}: {}",
-        "Transaction".to_string().bright_magenta(),
-        format_etherscan_url(&searcher_tx_data.tx_hash)
-    )?;
+    // Tx details
+    writeln!(f, "\n{}: \n", "Transaction Details".bold().underline().bright_yellow())?;
+    writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
+    writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", formate_etherscan_address_url(&contract))?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
+
+    writeln!(f, "   - Etherscan: {}", format_etherscan_url(&bundle.header.tx_hash))?;
 
     // Transfers
-    writeln!(f, "\n{}:\n", "Transfers".underline().bright_yellow())?;
-    for (i, transfer) in searcher_tx_data.transfers.iter().enumerate() {
-        writeln!(
-            f,
-            "    {}: From: {}, To: {}, amount: {}",
-            i + 1,
-            transfer.from.to_string().red(),     // Making 'from' red
-            transfer.to.to_string().green(),     // Making 'to' green
-            transfer.amount.to_string().green()  // Making 'amount' green
-        )?;
-    }
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
 
     // Gas Details
     writeln!(f, "\n{}: \n", "Gas Details".underline().bright_yellow())?;
@@ -789,6 +778,12 @@ fn format_bribe(value: f64) -> ColoredString {
 
 fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
     format!("https://etherscan.io/tx/{:?}", tx_hash)
+        .underline()
+        .to_string()
+}
+
+fn formate_etherscan_address_url(tx_hash: &Address) -> String {
+    format!("https://etherscan.io/address/{:?}", tx_hash)
         .underline()
         .to_string()
 }
