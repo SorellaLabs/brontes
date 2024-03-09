@@ -29,7 +29,7 @@ impl AddToDb {
                 $(
                     Tables::$tables => {
                         db.write_table(
-                            &vec![
+                            &[
                             brontes_database::libmdbx::tables::$tables::into_table_data(
                                     $arg0,
                                     $arg1
