@@ -3,14 +3,20 @@ use futures::Future;
 
 use crate::{
     db::{
+        address_metadata::AddressMetadata,
+        address_to_protocol_info::ProtocolInfo,
         builder::{BuilderInfo, BuilderStats},
         dex::DexQuotes,
+        metadata::Metadata,
+        mev_block::MevBlockWithClassified,
         searcher::{SearcherInfo, SearcherStats},
+        token_info::TokenInfoWithAddress,
+        traits::{LibmdbxReader, ProtocolCreatedRange},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
-    Protocol, SubGraphEdge,
+    FastHashMap, Protocol, SubGraphEdge,
 };
 
 #[auto_impl::auto_impl(&)]
@@ -124,79 +130,5 @@ pub trait DBWriter: Send + Unpin + 'static {
         traces: Vec<TxTrace>,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().save_traces(block, traces)
-    }
-}
-
-pub struct NoopWriter;
-impl DBWriter for NoopWriter {
-    type Inner = Self;
-
-    fn inner(&self) -> &Self::Inner {
-        unreachable!();
-    }
-
-    async fn write_dex_quotes(
-        &self,
-        block_number: u64,
-        quotes: Option<DexQuotes>,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
-
-    async fn write_token_info(
-        &self,
-        address: Address,
-        decimals: u8,
-        symbol: String,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
-
-    async fn save_mev_blocks(
-        &self,
-        block_number: u64,
-        block: MevBlock,
-        mev: Vec<Bundle>,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
-
-    async fn write_searcher_eoa_info(
-        &self,
-        searcher_eoa: Address,
-        searcher_info: SearcherInfo,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
-
-    async fn write_searcher_contract_info(
-        &self,
-        searcher_contract: Address,
-        searcher_info: SearcherInfo,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
-
-    async fn write_builder_info(
-        &self,
-        builder_coinbase_addr: Address,
-        builder_info: BuilderInfo,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
-
-    async fn insert_pool(
-        &self,
-        block: u64,
-        address: Address,
-        tokens: &[Address],
-        curve_lp_token: Option<Address>,
-        classifier_name: Protocol,
-    ) -> eyre::Result<()> {
-        Ok(())
-    }
-
-    async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        Ok(())
     }
 }

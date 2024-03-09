@@ -12,7 +12,7 @@ use reth_tasks::TaskSpawner;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    cli::{determine_max_tasks, get_env_vars, get_tracing_provider, static_object},
+    cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
     runner::CliContext,
 };
 
@@ -74,9 +74,4 @@ impl TipTraceArgs {
 
         Ok(())
     }
-}
-
-pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<NoopWriter>> {
-    let clickhouse = Clickhouse::default();
-    Ok(ClickhouseMiddleware::new(clickhouse, NoopWriter))
 }
