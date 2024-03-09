@@ -1,6 +1,7 @@
 use std::{env, path::Path, sync::Arc};
 
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
+use brontes_types::init_threadpools;
 use clap::Parser;
 
 use crate::{
@@ -40,6 +41,7 @@ impl Init {
         let db_path = get_env_vars()?;
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
+        init_threadpools(10);
         let task_executor = ctx.task_executor;
 
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
