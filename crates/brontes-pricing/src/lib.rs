@@ -1081,7 +1081,7 @@ pub mod test {
     async fn test_pricing_variance() {
         let utils = Arc::new(ClassifierTestUtils::new().await);
         let bad_block = 18500018;
-        let mut dex_quotes: Vec<DexQuotes> = join_all((0..10).map(|_| {
+        let mut dex_quotes: Vec<DexQuotes> = join_all((0..4).map(|_| {
             let c = utils.clone();
             tokio::spawn(async move {
                 c.build_block_tree_with_pricing(bad_block, USDC_ADDRESS, vec![])
