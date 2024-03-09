@@ -320,8 +320,6 @@ impl ClickhouseHandle for Clickhouse {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::FastHashMap;
-
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
         db::{dex::DexPrices, searcher::SearcherEoaContract},
@@ -333,7 +331,7 @@ mod tests {
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
         },
         pair::Pair,
-        GasDetails,
+        FastHashMap, GasDetails,
     };
     use sorella_db_databases::{
         clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
