@@ -8,7 +8,7 @@ pub static RAYON_PRICING_THREADPOOL: OnceLock<rayon::ThreadPool> = OnceLock::new
 pub fn init_tree_threadpool(threads: usize) {
     let threadpool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
-        .thread_name(|idx| format!("BrontesTree: {}", idx))
+        .thread_name(|idx| format!("Tree: {}", idx))
         .build()
         .unwrap();
     RAYON_TREE_THREADPOOL.set(threadpool).unwrap();
@@ -25,7 +25,7 @@ where
 pub fn init_pricing_threadpool(threads: usize) {
     let threadpool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
-        .thread_name(|idx| format!("BrontesPricing: {}", idx))
+        .thread_name(|idx| format!("Pricing: {}", idx))
         .build()
         .unwrap();
 
