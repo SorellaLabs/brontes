@@ -98,6 +98,10 @@ cex-dex-markout = [
   "brontes-inspect/cex-dex-markout",
 ]
 
+pretty-print = [
+  "brontes-inspect/pretty-print"
+]
+
 local-no-inserts = []
 
 tests = [
