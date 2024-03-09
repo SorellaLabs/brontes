@@ -96,7 +96,7 @@ impl Libmdbx {
     }
 
     /// writes to a table
-    pub fn write_table<T, D>(&self, entries: &Vec<D>) -> Result<(), DatabaseError>
+    pub fn write_table<T, D>(&self, entries: &[D]) -> Result<(), DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
