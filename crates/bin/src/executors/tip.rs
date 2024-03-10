@@ -13,7 +13,7 @@ use brontes_inspect::Inspector;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
-use tracing::{debug, info, error};
+use tracing::{debug, error, info};
 
 use super::shared::state_collector::StateCollector;
 use crate::Processor;
@@ -139,9 +139,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
             tracing::info!("starting new tip block");
-            self.current_block += 1;
             let block = self.current_block;
             self.state_collector.fetch_state_for(block);
+            self.current_block += 1;
         }
 
         if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
