@@ -411,7 +411,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .values()
             .fold(Rational::ZERO, |acc, delta| acc + delta);
 
-        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid(),self.utils.quote) > Rational::ZERO
+        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid(), self.utils.quote)
+            > Rational::ZERO
     }
 }
 

@@ -10,7 +10,7 @@ use serde_with::serde_as;
 use super::cex_trades::CexTradeMap;
 use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    constants::WETH_ADDRESS,
     db::redefined_types::primitives::*,
     implement_table_value_codecs_with_zc,
     pair::Pair,
