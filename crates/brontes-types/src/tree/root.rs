@@ -114,11 +114,10 @@ impl<V: NormalizedAction> Root<V> {
         // protocol addresses as mev contracts
         if is_verified_contract
             || is_classified
-            || emits_logs
-                && searcher_contract_info.is_none()
-                && contract_type
-                    .as_ref()
-                    .map_or(true, |ct| !ct.could_be_mev_contract())
+            || contract_type
+                .as_ref()
+                .map_or(false, |ct| !ct.could_be_mev_contract())
+            || (emits_logs && searcher_contract_info.is_none())
         {
             return Ok(TxInfo::new(
                 block_number,
