@@ -1,11 +1,10 @@
 #[cfg(feature = "dyn-decode")]
-use std::collections::HashMap;
-
-#[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
+#[cfg(feature = "dyn-decode")]
+use brontes_types::FastHashMap;
 use futures::future::join_all;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
@@ -106,7 +105,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     pub(crate) async fn trace_block(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TxTrace>>, HashMap<Address, JsonAbi>, BlockStats) {
+    ) -> (Option<Vec<TxTrace>>, FastHashMap<Address, JsonAbi>, BlockStats) {
         let merged_trace = self
             .tracer
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)))
@@ -140,9 +139,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
                 .collect::<Vec<Address>>();
             info!("addresses for dyn decoding: {:#?}", addresses);
             //self.libmdbx.get_abis(addresses).await.unwrap()
-            HashMap::default()
+            FastHashMap::default()
         } else {
-            HashMap::default()
+            FastHashMap::default()
         };
 
         info!("{:#?}", json);
@@ -199,7 +198,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     pub(crate) async fn fill_metadata(
         &self,
         block_trace: Vec<TxTrace>,
-        #[cfg(feature = "dyn-decode")] dyn_json: HashMap<Address, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: FastHashMap<Address, JsonAbi>,
         block_receipts: Vec<TransactionReceipt>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
@@ -244,7 +243,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     async fn parse_transaction(
         &self,
         mut tx_trace: TxTrace,
-        #[cfg(feature = "dyn-decode")] dyn_json: &HashMap<Address, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: &FastHashMap<Address, JsonAbi>,
         block_num: u64,
         tx_hash: B256,
         tx_idx: u64,

@@ -320,11 +320,10 @@ impl ClickhouseHandle for Clickhouse {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
         db::{dex::DexPrices, searcher::SearcherEoaContract},
+        init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
@@ -333,7 +332,7 @@ mod tests {
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
         },
         pair::Pair,
-        GasDetails,
+        FastHashMap, GasDetails,
     };
     use sorella_db_databases::{
         clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
@@ -409,7 +408,7 @@ mod tests {
     async fn dex_price_mapping(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0_pair = Pair::default();
         let case0_dex_prices = DexPrices::default();
-        let mut case0_map = HashMap::new();
+        let mut case0_map = FastHashMap::default();
         case0_map.insert(case0_pair, case0_dex_prices);
 
         let case0 = DexQuotesWithBlockNumber {
@@ -576,6 +575,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_all_inserts() {
         dotenv::dotenv().ok();
+        init_threadpools(10);
         let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
 
         let tables = &BrontesClickhouseTables::all_tables();
