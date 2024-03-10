@@ -28,12 +28,11 @@
 //! // Future execution of the composer to process MEV data
 //! ```
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
-use brontes_types::mev::Mev;
+use brontes_types::{mev::Mev, FastHashMap};
 mod mev_filters;
 mod utils;
-use async_scoped::{Scope, TokioScope};
 use brontes_types::{
     db::metadata::Metadata,
     mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
@@ -41,6 +40,7 @@ use brontes_types::{
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, pre_process,
     sort_mev_by_type, BlockPreprocessing,
@@ -58,14 +58,14 @@ pub struct ComposerResults {
     pub possible_mev_txes: PossibleMevCollection,
 }
 
-pub async fn compose_mev_results(
+pub fn compose_mev_results(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
     let pre_processing = pre_process(tree.clone());
     let (possible_mev_txes, classified_mev) =
-        run_inspectors(orchestra, tree.clone(), metadata.clone()).await;
+        run_inspectors(orchestra, tree.clone(), metadata.clone());
 
     let possible_arbs = possible_mev_txes.clone();
 
@@ -74,36 +74,29 @@ pub async fn compose_mev_results(
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
-async fn run_inspectors(
+fn run_inspectors(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
-    let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
-    orchestra
-        .iter()
-        .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), metadata.clone())));
-
     let mut possible_mev_txes =
-        DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree);
+        DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree.clone());
 
     // Remove the classified mev txes from the possibly missed tx list
-    let results = scope
-        .collect()
-        .await
-        .into_iter()
-        .flat_map(|r| r.unwrap())
-        .map(|bundle| {
-            bundle
-                .data
-                .mev_transaction_hashes()
-                .into_iter()
-                .for_each(|mev_tx| {
-                    possible_mev_txes.remove(&mev_tx);
-                });
-            bundle
-        })
+    let results = orchestra
+        .par_iter()
+        .flat_map(|inspector| inspector.process_tree(tree.clone(), metadata.clone()))
         .collect::<Vec<_>>();
+
+    results.iter().for_each(|bundle| {
+        bundle
+            .data
+            .mev_transaction_hashes()
+            .into_iter()
+            .for_each(|mev_tx| {
+                possible_mev_txes.remove(&mev_tx);
+            });
+    });
 
     let mut possible_mev_collection =
         PossibleMevCollection(possible_mev_txes.into_values().collect());
@@ -154,7 +147,7 @@ fn on_orchestra_resolution(
 fn deduplicate_mev(
     dominant_mev_type: &MevType,
     subordinate_mev_types: &[MevType],
-    sorted_mev: &mut HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
     let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
         Some(list) => list,
@@ -211,10 +204,10 @@ fn try_compose_mev(
     parent_mev_type: &MevType,
     child_mev_type: &[MevType],
     compose: &ComposeFunction,
-    sorted_mev: &mut HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
     let first_mev_type = child_mev_type[0];
-    let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
+    let mut removal_indices: FastHashMap<MevType, Vec<usize>> = FastHashMap::default();
 
     if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
         for (first_i, bundle) in first_mev_list.iter().enumerate() {

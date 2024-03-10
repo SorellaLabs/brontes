@@ -2,7 +2,7 @@ use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::unordered_buffer_map::BrontesStreamExt;
+use brontes_types::{init_threadpools, unordered_buffer_map::BrontesStreamExt};
 use clap::Parser;
 use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
@@ -27,6 +27,7 @@ impl TraceArgs {
         let db_path = get_env_vars()?;
 
         let max_tasks = determine_max_tasks(None) * 2;
+        init_threadpools(max_tasks as usize);
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);

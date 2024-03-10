@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use alloy_primitives::B256;
 
 use super::TreeSearchBuilder;
 use crate::{
     normalized_actions::{Actions, NormalizedAction},
-    ActionIter, BlockTree,
+    ActionIter, BlockTree, FastHashMap,
 };
 
 pub trait TreeUtils<V: NormalizedAction> {
@@ -13,7 +11,7 @@ pub trait TreeUtils<V: NormalizedAction> {
         &self,
         call: TreeSearchBuilder<V>,
         collector: fn(Actions) -> Option<Ret>,
-    ) -> HashMap<B256, Ret>
+    ) -> FastHashMap<B256, Ret>
     where
         Self: TreeUtilsCast<(Ret,), (fn(Actions) -> Option<Ret>,), V>,
     {
@@ -28,7 +26,7 @@ pub trait TreeUtils<V: NormalizedAction> {
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
         collector: fn(Actions) -> Option<Ret>,
-    ) -> HashMap<B256, Ret>
+    ) -> FastHashMap<B256, Ret>
     where
         Self: TreeUtilsCast<(Ret,), (fn(Actions) -> Option<Ret>,), V>,
     {
@@ -54,7 +52,7 @@ pub trait TreeUtils<V: NormalizedAction> {
         &self,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>
+    ) -> FastHashMap<B256, FromI>
     where
         Self: TreeUtilsCast<FromI, Fns, V>,
     {
@@ -66,7 +64,7 @@ pub trait TreeUtils<V: NormalizedAction> {
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>
+    ) -> FastHashMap<B256, FromI>
     where
         Self: TreeUtilsCast<FromI, Fns, V>,
     {
@@ -91,14 +89,14 @@ pub trait TreeUtilsCast<FromI, Fns, V: NormalizedAction> {
         &self,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>;
+    ) -> FastHashMap<B256, FromI>;
 
     fn collect_actions_range_filter(
         &self,
         range: Vec<B256>,
         call: TreeSearchBuilder<V>,
         collector: Fns,
-    ) -> HashMap<B256, FromI>;
+    ) -> FastHashMap<B256, FromI>;
 
     fn collect_actions_filter(
         &self,
@@ -117,13 +115,13 @@ macro_rules! tree_cast {
                     &self,
                     call: TreeSearchBuilder<Actions>,
                     collector: ($($fns,)*),
-                ) -> HashMap<B256, ($($from,)*)> {
+                ) -> FastHashMap<B256, ($($from,)*)> {
                     self.collect_all(call).into_iter().map(|(k,v)| {
                         (k,
                          ActionIter::action_split_ref::<($($from,)*), ($($fns,)*)>
                             (v.into_iter(), &collector),
                          )
-                    }).collect::<HashMap<_,_>>()
+                    }).collect::<FastHashMap<_,_>>()
                 }
 
                 fn collect_actions_range_filter(
@@ -131,13 +129,13 @@ macro_rules! tree_cast {
                     range: Vec<B256>,
                     call: TreeSearchBuilder<Actions>,
                     collector: ($($fns,)*),
-                ) -> HashMap<B256, ($($from,)*)> {
+                ) -> FastHashMap<B256, ($($from,)*)> {
                     self.collect_txes(range, call).into_iter().map(|(k,v)| {
                         (k,
                          ActionIter::action_split_ref::<($($from,)*), ($($fns,)*)>
                             (v.into_iter(), &collector),
                          )
-                    }).collect::<HashMap<_,_>>()
+                    }).collect::<FastHashMap<_,_>>()
                 }
 
                 fn collect_actions_filter(

@@ -1,16 +1,12 @@
-use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::hash_map::Entry, sync::Arc};
 
 use alloy_primitives::{Address, B256};
-use async_trait::async_trait;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::accounting::ActionAccounting,
-    ActionIter, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 #[allow(unused)]
 use clickhouse::{fixed_string::FixedString, row::*};
@@ -40,15 +36,10 @@ impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
     }
 }
 
-#[async_trait]
 impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
@@ -154,11 +145,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        let mev_addresses: HashSet<Address> = info
+        let mev_addresses: FastHashSet<Address> = info
             .iter()
             .map(|i| i.eoa)
             .chain(info.iter().filter_map(|i| i.mev_contract))
-            .collect::<HashSet<_>>();
+            .collect::<FastHashSet<_>>();
 
         let has_collect = !collect.is_empty();
         let deltas = searcher_actions
@@ -238,11 +229,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return vec![]
         }
 
-        let mut set: HashSet<PossibleJit> = HashSet::new();
-        let mut duplicate_mev_contracts: HashMap<Address, Vec<B256>> = HashMap::new();
-        let mut duplicate_senders: HashMap<Address, Vec<B256>> = HashMap::new();
+        let mut set: FastHashSet<PossibleJit> = FastHashSet::default();
+        let mut duplicate_mev_contracts: FastHashMap<Address, Vec<B256>> = FastHashMap::default();
+        let mut duplicate_senders: FastHashMap<Address, Vec<B256>> = FastHashMap::default();
 
-        let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::new();
+        let mut possible_victims: FastHashMap<B256, Vec<B256>> = FastHashMap::default();
 
         for root in iter {
             if root.get_root_action().is_revert() {

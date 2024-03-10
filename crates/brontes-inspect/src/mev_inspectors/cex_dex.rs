@@ -83,7 +83,6 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
@@ -104,11 +103,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     ///
     /// # Returns
     /// A vector of `Bundle` instances representing classified CEX-DEX arbitrage
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let swap_txes = tree.clone().collect_all(
             TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_transfer]),
         );
