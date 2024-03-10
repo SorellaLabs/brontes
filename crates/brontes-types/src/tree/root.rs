@@ -71,11 +71,19 @@ impl<V: NormalizedAction> Root<V> {
             .clone()
             .get_action()
             .get_to_address();
-
-        let is_verified_contract = database
+        let address_meta = database
             .try_fetch_address_metadata(to_address)
-            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
-            .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
+            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))?;
+
+        let (is_verified_contract, contract_type) = match address_meta {
+            Some(meta) => {
+                let verified = meta.is_verified();
+                let contract_type = meta.get_contract_type();
+
+                (verified, Some(contract_type))
+            }
+            None => (false, None),
+        };
 
         let is_classified = self
             .data_store
@@ -104,12 +112,20 @@ impl<V: NormalizedAction> Root<V> {
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if is_verified_contract || is_classified || emits_logs && searcher_contract_info.is_none() {
+        if is_verified_contract
+            || is_classified
+            || emits_logs
+                && searcher_contract_info.is_none()
+                && contract_type
+                    .as_ref()
+                    .map_or(true, |ct| !ct.could_be_mev_contract())
+        {
             return Ok(TxInfo::new(
                 block_number,
                 self.position as u64,
                 self.head.address,
                 None,
+                contract_type,
                 self.tx_hash,
                 self.gas_details,
                 is_classified,
@@ -126,6 +142,7 @@ impl<V: NormalizedAction> Root<V> {
             self.position as u64,
             self.head.address,
             Some(to_address),
+            contract_type,
             self.tx_hash,
             self.gas_details,
             is_classified,
