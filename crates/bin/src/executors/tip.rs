@@ -64,14 +64,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         let mut graceful_guard = None;
         tokio::select! {
             _= &mut tip => {
-
             },
             guard = shutdown => {
                 graceful_guard = Some(guard);
             },
         }
-
-        while (tip.processing_futures.next().await).is_some() {}
 
         drop(graceful_guard);
     }
@@ -142,7 +139,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if self.start_block_inspector() {
+        if self.start_block_inspector() && self.state_collector.should_process_next_block() {
             let block = self.current_block;
             self.state_collector.fetch_state_for(block);
         }
@@ -150,7 +147,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
             match item {
                 Some((tree, meta)) => self.on_price_finish(tree, meta),
-                None => return Poll::Ready(()),
+                None if self.processing_futures.is_empty() => return Poll::Ready(()),
+                _ => {}
             }
         }
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
