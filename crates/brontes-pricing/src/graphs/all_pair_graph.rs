@@ -1,12 +1,11 @@
 use std::{
     cmp::max,
-    collections::{HashMap, HashSet},
     ops::{Deref, DerefMut},
     time::{Duration, SystemTime},
 };
 
 use alloy_primitives::Address;
-use brontes_types::pair::Pair;
+use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use petgraph::prelude::*;
 use tracing::{debug, error, info};
@@ -72,15 +71,16 @@ impl DerefMut for EdgeWithInsertBlock {
 #[derive(Debug, Clone)]
 pub struct AllPairGraph {
     graph:          UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
-    token_to_index: HashMap<Address, usize>,
+    token_to_index: FastHashMap<Address, usize>,
 }
 
 impl AllPairGraph {
-    pub fn init_from_hashmap(all_pool_data: HashMap<(Address, Protocol), Pair>) -> Self {
+    pub fn init_from_hash_map(all_pool_data: FastHashMap<(Address, Protocol), Pair>) -> Self {
         let mut graph = UnGraph::<(), Vec<EdgeWithInsertBlock>, usize>::default();
 
-        let mut token_to_index = HashMap::new();
-        let mut connections: HashMap<(usize, usize), Vec<EdgeWithInsertBlock>> = HashMap::new();
+        let mut token_to_index = FastHashMap::default();
+        let mut connections: FastHashMap<(usize, usize), Vec<EdgeWithInsertBlock>> =
+            FastHashMap::default();
 
         let t0 = SystemTime::now();
 
@@ -198,7 +198,7 @@ impl AllPairGraph {
     pub fn get_paths_ignoring(
         &self,
         pair: Pair,
-        ignore: &HashSet<Pair>,
+        ignore: &FastHashSet<Pair>,
         block: u64,
         connectivity_wight: usize,
         connections: Option<usize>,
