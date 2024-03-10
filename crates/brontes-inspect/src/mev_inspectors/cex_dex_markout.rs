@@ -33,9 +33,13 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
-        let swap_txes = tree.clone().collect_all(
-            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_transfer]),
-        );
+        let swap_txes = tree
+            .clone()
+            .collect_all(TreeSearchBuilder::default().with_actions([
+                Actions::is_swap,
+                Actions::is_transfer,
+                Actions::is_eth_transfer,
+            ]));
 
         swap_txes
             .filter_map(|(tx, swaps)| {
