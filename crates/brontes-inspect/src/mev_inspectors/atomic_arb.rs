@@ -40,6 +40,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 Actions::is_flash_loan,
                 Actions::is_swap,
                 Actions::is_transfer,
+                Actions::is_eth_transfer,
                 Actions::is_batch,
             ]))
             .t_map(|(k, v)| {
