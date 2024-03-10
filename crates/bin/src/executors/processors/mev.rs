@@ -7,6 +7,7 @@ use brontes_inspect::{
 };
 use brontes_types::{
     db::metadata::Metadata,
+    execute_on,
     mev::{Bundle, MevBlock},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -28,7 +29,7 @@ impl Processor for MevProcessor {
         metadata: Arc<Metadata>,
     ) {
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
-            compose_mev_results(inspectors, tree, metadata.clone()).await;
+            execute_on!(target = inspect, compose_mev_results(inspectors, tree, metadata.clone()));
 
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())

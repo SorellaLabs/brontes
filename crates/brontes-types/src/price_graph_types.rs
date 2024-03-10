@@ -1,18 +1,17 @@
-use std::{
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 use alloy_primitives::Address;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, Protocol};
+use crate::{
+    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, FastHashMap, Protocol,
+};
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
+pub struct SubGraphsEntry(pub FastHashMap<u64, Vec<SubGraphEdge>>);
 
 implement_table_value_codecs_with_zc!(SubGraphsEntryRedefined);
 

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, Liquidation, MevType},
     normalized_actions::{accounting::ActionAccounting, Actions},
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -24,15 +24,10 @@ impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let liq_txs = tree
             .clone()
             .collect_all(
@@ -68,7 +63,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
-        let mev_addresses: HashSet<Address> = vec![info.eoa]
+        let mev_addresses: FastHashSet<Address> = vec![info.eoa]
             .into_iter()
             .chain(
                 info.mev_contract
@@ -76,7 +71,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                     .map(|a| vec![*a])
                     .unwrap_or_default(),
             )
-            .collect::<HashSet<_>>();
+            .collect::<FastHashSet<_>>();
 
         let deltas = actions.into_iter().account_for_actions();
 

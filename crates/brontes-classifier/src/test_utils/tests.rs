@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
@@ -28,7 +27,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TraceActions,
     tree::BlockTree,
-    TreeSearchBuilder,
+    FastHashMap, TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
 use malachite::{num::basic::traits::Zero, Rational};
@@ -79,7 +78,8 @@ impl ClassifierTestUtils {
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
@@ -92,9 +92,9 @@ impl ClassifierTestUtils {
                         .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                         .collect::<Vec<_>>()
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         } else {
-            HashMap::new()
+            FastHashMap::default()
         };
         let ctr = Arc::new(AtomicBool::new(false));
 
@@ -439,7 +439,7 @@ impl ClassifierTestUtils {
         // write protocol to libmdbx
         self.libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
 
@@ -522,7 +522,7 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData {
                     key:   address,
                     value: ProtocolInfo {
@@ -546,7 +546,7 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData {
                 key:   token.address,
                 value: brontes_types::db::token_info::TokenInfo {
                     decimals: token.decimals,
