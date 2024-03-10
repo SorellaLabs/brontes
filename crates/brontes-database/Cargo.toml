@@ -50,7 +50,7 @@ sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = 
   "test-utils",
 ] }
 sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "0a93f459bf054f48104b05ab17ef0f51fcb0ca6b", optional = true }
-clickhouse.workspace = true
+clickhouse = { workspace = true, features = ["tls"] }
 
 # serde
 serde = { workspace = true, features = ["derive"] }

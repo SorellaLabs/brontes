@@ -1,13 +1,12 @@
-use std::{
-    collections::HashMap,
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::sync::{atomic::AtomicBool, Arc};
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider, tree::BlockTree};
+use brontes_types::{
+    normalized_actions::Actions, traits::TracingProvider, tree::BlockTree, FastHashMap,
+};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -38,7 +37,7 @@ impl PricingTestUtils {
             .map_err(|_| PricingTestError::LibmdbxError)?;
 
         let pair_graph =
-            GraphManager::init_from_db_state(pairs, HashMap::default(), self.tracer.libmdbx);
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.tracer.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.tracer
@@ -52,9 +51,9 @@ impl PricingTestUtils {
                         .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                         .collect::<Vec<_>>()
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         } else {
-            HashMap::new()
+            FastHashMap::default()
         };
         Ok(BrontesBatchPricer::new(
             Arc::new(AtomicBool::new(false)),
