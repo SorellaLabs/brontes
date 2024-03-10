@@ -50,7 +50,8 @@ impl fmt::Display for Bundle {
             MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
             MevType::JitSandwich => display_jit_liquidity_sandwich(self, f)?,
-            MevType::Unknown => display_searcher_tx(self, f)?,
+            MevType::SearcherTx => display_searcher_tx(self, f)?,
+            MevType::Unknown => (),
         }
 
         Ok(())
@@ -79,6 +80,7 @@ pub enum MevType {
     JitSandwich,
     Liquidation,
     AtomicArb,
+    SearcherTx,
     #[default]
     Unknown,
 }
@@ -92,6 +94,7 @@ impl MevType {
             | MevType::AtomicArb
             | MevType::Liquidation
             | MevType::Unknown => false,
+            MevType::SearcherTx => false,
             MevType::CexDex => true,
         }
     }
@@ -108,6 +111,7 @@ impl From<String> for MevType {
             "Liquidation" => MevType::Liquidation,
             "JitSandwich" => MevType::JitSandwich,
             "AtomicArb" => MevType::AtomicArb,
+            "SearcherTx" => MevType::SearcherTx,
             _ => MevType::Unknown,
         }
     }

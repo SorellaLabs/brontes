@@ -25,6 +25,7 @@ pub struct AddressMetadata {
     #[serde(deserialize_with = "socials::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
     #[redefined(same_fields)]
+    //TODO: Joe make option on table
     pub social_metadata: Socials,
 }
 
@@ -111,6 +112,31 @@ impl AddressMetadata {
             }
         })
     }
+
+    pub fn merge(&mut self, other: Self) {
+        if other.entity_name.is_some() {
+            self.entity_name = other.entity_name;
+        }
+
+        for label in other.labels.into_iter() {
+            if !self.labels.iter().any(|l| l.eq_ignore_ascii_case(&label)) {
+                self.labels.push(label);
+            }
+        }
+
+        self.nametag = other.nametag.or(self.nametag.take());
+        self.address_type = other.address_type.or(self.address_type.take());
+        self.ens = other.ens.or(self.ens.take());
+
+        if let Some(other_contract_info) = other.contract_info {
+            match &mut self.contract_info {
+                Some(c) => c.merge(other_contract_info),
+                None => self.contract_info = Some(other_contract_info),
+            }
+        }
+
+        self.social_metadata.merge(other.social_metadata);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +167,17 @@ pub struct ContractInfo {
     pub reputation:        Option<u8>,
 }
 
+impl ContractInfo {
+    fn merge(&mut self, other: ContractInfo) {
+        //TODO: Find more idiomatic way of doing this
+        self.verified_contract = other.verified_contract.or(self.verified_contract.take());
+
+        self.contract_creator = other.contract_creator.or(self.contract_creator.take());
+
+        self.reputation = other.reputation.or(self.reputation);
+    }
+}
+
 #[derive(
     Debug, Default, PartialEq, Clone, Eq, Serialize, Deserialize, rSerialize, rDeserialize, Archive,
 )]
@@ -150,6 +187,16 @@ pub struct Socials {
     pub website_url:       Option<String>,
     pub crunchbase:        Option<String>,
     pub linkedin:          Option<String>,
+}
+
+impl Socials {
+    fn merge(&mut self, other: Socials) {
+        self.twitter = other.twitter.or(self.twitter.take());
+        self.twitter_followers = other.twitter_followers.or(self.twitter_followers.take());
+        self.website_url = other.website_url.or(self.website_url.take());
+        self.crunchbase = other.crunchbase.or(self.crunchbase.take());
+        self.linkedin = other.linkedin.or(self.linkedin.take());
+    }
 }
 
 self_convert_redefined!(Socials);

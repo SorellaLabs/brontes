@@ -71,7 +71,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             PriceAt::After,
                             &[info.gas_details],
                             metadata.clone(),
-                            MevType::Unknown,
+                            MevType::SearcherTx,
                         );
 
                         Some(Bundle {

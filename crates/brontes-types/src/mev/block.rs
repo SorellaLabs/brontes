@@ -148,6 +148,7 @@ pub struct MevCount {
     pub jit_sandwich_count:   Option<u64>,
     pub atomic_backrun_count: Option<u64>,
     pub liquidation_count:    Option<u64>,
+    pub searcher_tx_count:    Option<u64>,
 }
 
 self_convert_redefined!(MevCount);
@@ -173,6 +174,9 @@ impl fmt::Display for MevCount {
         }
         if let Some(count) = self.liquidation_count {
             writeln!(f, "    - Liquidation: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.searcher_tx_count {
+            writeln!(f, "   - Searcher Transactions: {}", count.to_string().bold())?;
         }
 
         Ok(())

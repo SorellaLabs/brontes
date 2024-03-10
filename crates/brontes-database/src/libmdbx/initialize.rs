@@ -8,6 +8,7 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
+        address_metadata::AddressMetadata,
         builder::BuilderInfo,
         searcher::SearcherInfo,
         traits::{DBWriter, LibmdbxReader},
@@ -16,7 +17,7 @@ use brontes_types::{
     unordered_buffer_map::BrontesStreamExt,
     FastHashMap, Protocol,
 };
-use futures::{future::join_all, stream::iter, StreamExt};
+use futures::{future::join_all, join, stream::iter, StreamExt};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use toml::Table;
@@ -29,6 +30,7 @@ use crate::{
 };
 const CLASSIFIER_CONFIG_FILE_NAME: &str = "config/classifier_config.toml";
 const SEARCHER_BUILDER_CONFIG_FILE_NAME: &str = "config/searcher_builder_config.toml";
+const METADATA_CONFIG_FILE_NAME: &str = "config/metadata_config.toml";
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
@@ -60,9 +62,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
-
-        self.load_classifier_config_data().await;
-        self.load_searcher_builder_config_data().await;
+        join!(
+            self.load_classifier_config_data(),
+            self.load_searcher_builder_config_data(),
+            self.load_address_metadata_config(),
+        );
         Ok(())
     }
 
@@ -399,6 +403,37 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             }
         }
     }
+
+    async fn load_address_metadata_config(&self) {
+        let mut workspace_dir = workspace_dir();
+        workspace_dir.push(METADATA_CONFIG_FILE_NAME);
+
+        let config_str =
+            std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
+
+        let config: AddressConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
+
+        for (address_str, metadata) in config.metadata {
+            let address = address_str.parse().unwrap();
+            let existing_info = self.libmdbx.try_fetch_address_metadata(address);
+
+            match existing_info.expect("Failed to query address metadata table") {
+                Some(mut existing) => {
+                    existing.merge(metadata);
+                    self.libmdbx
+                        .write_address_meta(address, existing)
+                        .await
+                        .expect("Failed to write address metadata");
+                }
+                None => {
+                    self.libmdbx
+                        .write_address_meta(address, metadata)
+                        .await
+                        .expect("Failed to write address metadata");
+                }
+            }
+        }
+    }
 }
 
 fn workspace_dir() -> path::PathBuf {
@@ -425,6 +460,11 @@ struct BSConfig {
     builders:           FastHashMap<String, BuilderInfo>,
     searcher_eoas:      FastHashMap<String, SearcherInfo>,
     searcher_contracts: FastHashMap<String, SearcherInfo>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct AddressConfig {
+    pub metadata: FastHashMap<String, AddressMetadata>,
 }
 
 #[cfg(test)]
