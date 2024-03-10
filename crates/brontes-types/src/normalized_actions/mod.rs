@@ -54,6 +54,8 @@ impl NormalizedAction for Actions {
     fn emitted_logs(&self) -> bool {
         match self {
             Actions::Unclassified(u) => !u.logs.is_empty(),
+            Actions::SelfDestruct(_) => false,
+            Actions::EthTransfer(_) => false,
             _ => true,
         }
     }
