@@ -164,7 +164,7 @@ impl InspectorTestUtils {
             ],
         );
 
-        let results = inspector.process_tree(tree.into(), metadata.into()).await;
+        let results = inspector.process_tree(tree.into(), metadata.into());
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
 
         Ok(())
@@ -245,7 +245,7 @@ impl InspectorTestUtils {
             ],
         );
 
-        let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
+        let mut results = inspector.process_tree(tree.into(), metadata.into());
 
         assert_eq!(
             results.len(),
@@ -353,7 +353,7 @@ impl InspectorTestUtils {
             })
             .collect::<Vec<_>>();
 
-        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
+        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into());
 
         let mut results = results
             .mev_details

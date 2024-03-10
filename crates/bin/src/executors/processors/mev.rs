@@ -7,7 +7,8 @@ use brontes_inspect::{
 };
 use brontes_types::{
     db::metadata::Metadata,
-    mev::{Bundle, MevBlock},
+    execute_on,
+    mev::{Bundle, MevBlock, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -28,7 +29,7 @@ impl Processor for MevProcessor {
         metadata: Arc<Metadata>,
     ) {
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
-            compose_mev_results(inspectors, tree, metadata.clone()).await;
+            execute_on!(target = inspect, compose_mev_results(inspectors, tree, metadata.clone()));
 
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
@@ -77,6 +78,10 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             "mev details\n {}",
             mev.to_string()
         );
+
+        if mev.header.mev_type == MevType::Unknown {
+            continue
+        }
 
         let (eoa_info, contract_info) = database
             .try_fetch_searcher_info(mev.header.eoa, mev.header.mev_contract)

@@ -54,6 +54,8 @@ impl NormalizedAction for Actions {
     fn emitted_logs(&self) -> bool {
         match self {
             Actions::Unclassified(u) => !u.logs.is_empty(),
+            Actions::SelfDestruct(_) => false,
+            Actions::EthTransfer(_) => false,
             _ => true,
         }
     }
@@ -504,10 +506,10 @@ impl TokenAccounting for Actions {
             Actions::Mint(mint) => mint.apply_token_deltas(delta_map),
             Actions::SwapWithFee(swap_with_fee) => swap_with_fee.swap.apply_token_deltas(delta_map),
             Actions::Collect(collect) => collect.apply_token_deltas(delta_map),
+            Actions::EthTransfer(eth_transfer) => eth_transfer.apply_token_deltas(delta_map),
             Actions::Unclassified(_) => (), /* Potentially no token deltas to apply, adjust as */
             // necessary
             Actions::SelfDestruct(_self_destruct) => (),
-            Actions::EthTransfer(_eth_transfer) => (),
             Actions::NewPool(_new_pool) => (),
             Actions::PoolConfigUpdate(_pool_update) => (),
             Actions::Revert => (), // No token deltas to apply for a revert

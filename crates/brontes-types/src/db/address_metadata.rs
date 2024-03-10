@@ -44,6 +44,91 @@ impl AddressMetadata {
             .or_else(|| self.social_metadata.twitter.clone())
             .or_else(|| self.labels.first().cloned())
     }
+
+    pub fn get_contract_type(&self) -> ContractType {
+        if self.is_cex_exchange() {
+            return ContractType::CexExchange;
+        }
+
+        if self.is_cex() {
+            return ContractType::Cex;
+        }
+
+        if self.is_aggregator() {
+            return ContractType::Router;
+        }
+
+        if let Some(contract_type) = self.get_contract_type_from_nametag() {
+            return contract_type;
+        }
+
+        self.get_contract_type_from_labels()
+            .unwrap_or(ContractType::Unknown)
+    }
+
+    fn is_cex(&self) -> bool {
+        self.address_type
+            .as_deref()
+            .map_or(false, |t| t.eq_ignore_ascii_case("cex"))
+    }
+
+    fn is_aggregator(&self) -> bool {
+        self.address_type
+            .as_deref()
+            .map_or(false, |t| t.eq_ignore_ascii_case("aggregator"))
+    }
+
+    fn is_cex_exchange(&self) -> bool {
+        self.labels
+            .iter()
+            .any(|label| label.to_lowercase().contains("exchange"))
+            && self.is_cex()
+    }
+
+    fn get_contract_type_from_nametag(&self) -> Option<ContractType> {
+        self.nametag.as_ref().and_then(|nametag| {
+            let nametag_lower = nametag.to_lowercase();
+            match nametag_lower.as_str() {
+                n if n.starts_with("mev bot:") => Some(ContractType::MevBot),
+                n if n.contains("router") => Some(ContractType::Router),
+                n if n.contains("protocol") => Some(ContractType::Protocol),
+                n if n.contains("exchange") => Some(ContractType::Exchange),
+                n if n.contains("bridge") => Some(ContractType::Bridge),
+                _ => None,
+            }
+        })
+    }
+
+    fn get_contract_type_from_labels(&self) -> Option<ContractType> {
+        self.labels.iter().find_map(|label| {
+            let label_lower = label.to_lowercase();
+            match label_lower.as_str() {
+                l if l.contains("mev bot") => Some(ContractType::MevBot),
+                l if l.contains("router") => Some(ContractType::Router),
+                l if l.contains("protocol") => Some(ContractType::Protocol),
+                l if l.contains("exchange") => Some(ContractType::Exchange),
+                _ => None,
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ContractType {
+    MevBot,
+    Router,
+    Exchange,
+    Cex,
+    Protocol,
+    CexExchange,
+    Bridge,
+    Unknown,
+}
+
+impl ContractType {
+    pub fn could_be_mev_contract(&self) -> bool {
+        matches!(self, ContractType::MevBot | ContractType::Unknown)
+    }
 }
 
 implement_table_value_codecs_with_zc!(AddressMetadataRedefined);

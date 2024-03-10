@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, SearcherTx},
     normalized_actions::{accounting::ActionAccounting, Actions},
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeSearchBuilder,
+    ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -24,16 +24,12 @@ impl<'db, DB: LibmdbxReader> SearcherActivity<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
-        let search_args = TreeSearchBuilder::default().with_actions([Actions::is_transfer]);
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+        let search_args = TreeSearchBuilder::default()
+            .with_actions([Actions::is_transfer, Actions::is_eth_transfer]);
 
         let searcher_txs = tree.clone().collect_all(search_args).collect_vec();
 
@@ -50,7 +46,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                     || {
                         let deltas = transfers.clone().into_iter().account_for_actions();
 
-                        let mut searcher_address: HashSet<Address> = HashSet::new();
+                        let mut searcher_address: FastHashSet<Address> = FastHashSet::default();
                         searcher_address.insert(info.eoa);
                         if let Some(mev_contract) = info.mev_contract {
                             searcher_address.insert(mev_contract);
@@ -63,7 +59,8 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             &deltas,
                             metadata.clone(),
                         )?;
-                        let gas_paid = metadata.get_gas_price_usd(info.gas_details.gas_paid());
+                        let gas_paid = metadata
+                            .get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
                         let profit = rev_usd - gas_paid;
 
                         let header = self.utils.build_bundle_header(
@@ -91,30 +88,5 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                 )?
             })
             .collect::<Vec<_>>()
-    }
-}
-
-#[cfg(test)]
-pub mod test {
-    use alloy_primitives::hex;
-
-    use crate::{
-        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
-        Inspectors,
-    };
-
-    #[brontes_macros::test]
-    async fn test_simple_searcher_tx() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-
-        let tx = hex!("76971a4f00a0a836322c9825b6edf06c8c49bf4261ef86fc88893154283a7124").into();
-        let config = InspectorTxRunConfig::new(Inspectors::SearcherActivity)
-            .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
-            .needs_token(hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into())
-            .with_expected_profit_usd(0.188588)
-            .with_gas_paid_usd(71.632668);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }

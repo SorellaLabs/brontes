@@ -4,7 +4,7 @@ use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{init_threadpools, unordered_buffer_map::BrontesStreamExt};
 use clap::Parser;
-use futures::StreamExt;
+use futures::{join, StreamExt};
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
@@ -13,12 +13,13 @@ use crate::{
 };
 
 #[derive(Debug, Parser)]
-pub struct TestTraceArgs {
-    #[arg(long, short, value_delimiter = ',')]
-    pub blocks: Vec<u64>,
+pub struct TipTraceArgs {
+    /// Start Block
+    #[arg(long, short)]
+    pub start_block: u64,
 }
 
-impl TestTraceArgs {
+impl TipTraceArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
@@ -41,12 +42,32 @@ impl TestTraceArgs {
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
+        let mut end_block = parser.get_latest_block_number().unwrap();
 
-        futures::stream::iter(self.blocks.into_iter())
-            .unordered_buffer_map(100, |i| parser.execute(i))
-            .map(|_res| ())
-            .collect::<Vec<_>>()
-            .await;
+        // trace up to chaintip
+        let catchup = ctx.task_executor.spawn_critical("catchup", async move {
+            futures::stream::iter(self.start_block..=end_block)
+                .unordered_buffer_map(100, |i| parser.execute(i))
+                .map(|_res| ())
+                .collect::<Vec<_>>()
+                .await;
+        });
+
+        let tip = ctx.task_executor.spawn_critical("tip", async move {
+            loop {
+                let tip = parser.get_latest_block_number().unwrap();
+                if tip + 1 > end_block {
+                    end_block += 1;
+                    let _ = parser.execute(end_block).await;
+                }
+            }
+        });
+
+        ctx.task_executor
+            .spawn_critical("tasks", async move {
+                let _ = join!(catchup, tip);
+            })
+            .await?;
 
         Ok(())
     }

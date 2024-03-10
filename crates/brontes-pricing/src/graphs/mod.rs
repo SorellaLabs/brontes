@@ -4,10 +4,9 @@ mod registry;
 mod state_tracker;
 mod subgraph;
 mod yens;
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-};
+use std::time::Duration;
+
+use brontes_types::{FastHashMap, FastHashSet};
 mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
@@ -67,11 +66,11 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
 
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
-        all_pool_data: HashMap<(Address, Protocol), Pair>,
-        sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,
+        all_pool_data: FastHashMap<(Address, Protocol), Pair>,
+        sub_graph_registry: FastHashMap<Pair, Vec<SubGraphEdge>>,
         db: &'static DB,
     ) -> Self {
-        let graph = AllPairGraph::init_from_hashmap(all_pool_data);
+        let graph = AllPairGraph::init_from_hash_map(all_pool_data);
         let registry = SubGraphRegistry::new(sub_graph_registry);
         let subgraph_verifier = SubgraphVerifier::new();
 
@@ -102,7 +101,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         &self,
         block: u64,
         pair: Pair,
-        ignore: HashSet<Pair>,
+        ignore: FastHashSet<Pair>,
         connectivity_wight: usize,
         connections: Option<usize>,
         timeout: Duration,

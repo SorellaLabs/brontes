@@ -233,7 +233,7 @@ impl ClassifierBenchUtils {
         self.trace_loader
             .libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: protocol_address, value: protocol },
             ])?;
 

@@ -83,7 +83,6 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
@@ -104,14 +103,14 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     ///
     /// # Returns
     /// A vector of `Bundle` instances representing classified CEX-DEX arbitrage
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
-        let swap_txes = tree.clone().collect_all(
-            TreeSearchBuilder::default().with_actions([Actions::is_swap, Actions::is_transfer]),
-        );
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+        let swap_txes = tree
+            .clone()
+            .collect_all(TreeSearchBuilder::default().with_actions([
+                Actions::is_swap,
+                Actions::is_transfer,
+                Actions::is_eth_transfer,
+            ]));
 
         swap_txes
             .filter_map(|(tx, swaps)| {
@@ -330,7 +329,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             return None
         }
 
-        let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid());
+        let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
 
         let pnl = StatArbPnl {
             maker_profit: total_arb_pre_gas.maker_profit - gas_cost.clone(),
@@ -416,7 +415,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .values()
             .fold(Rational::ZERO, |acc, delta| acc + delta);
 
-        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) > Rational::ZERO
+        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid(), self.utils.quote)
+            > Rational::ZERO
     }
 }
 
