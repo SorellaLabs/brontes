@@ -46,55 +46,70 @@ impl AddressMetadata {
     }
 
     pub fn get_contract_type(&self) -> ContractType {
-        if self
-            .address_type
-            .as_deref()
-            .map_or(false, |t| t.eq_ignore_ascii_case("cex"))
-        {
-            return ContractType::Cex;
-        }
-        if self
-            .labels
-            .iter()
-            .any(|label| label.to_lowercase().contains("exchange"))
-            && self
-                .address_type
-                .as_deref()
-                .map_or(false, |t| t.eq_ignore_ascii_case("cex"))
-        {
+        if self.is_cex_exchange() {
             return ContractType::CexExchange;
         }
-        if let Some(nametag) = &self.nametag {
+
+        if self.is_cex() {
+            return ContractType::Cex;
+        }
+
+        if self.is_aggregator() {
+            return ContractType::Router;
+        }
+
+        if let Some(contract_type) = self.get_contract_type_from_nametag() {
+            return contract_type;
+        }
+
+        self.get_contract_type_from_labels()
+            .unwrap_or(ContractType::Unknown)
+    }
+
+    fn is_cex(&self) -> bool {
+        self.address_type
+            .as_deref()
+            .map_or(false, |t| t.eq_ignore_ascii_case("cex"))
+    }
+
+    fn is_aggregator(&self) -> bool {
+        self.address_type
+            .as_deref()
+            .map_or(false, |t| t.eq_ignore_ascii_case("aggregator"))
+    }
+
+    fn is_cex_exchange(&self) -> bool {
+        self.labels
+            .iter()
+            .any(|label| label.to_lowercase().contains("exchange"))
+            && self.is_cex()
+    }
+
+    fn get_contract_type_from_nametag(&self) -> Option<ContractType> {
+        self.nametag.as_ref().and_then(|nametag| {
             let nametag_lower = nametag.to_lowercase();
-            if nametag_lower.starts_with("mev bot:") {
-                return ContractType::MevBot;
+            match nametag_lower.as_str() {
+                n if n.starts_with("mev bot:") => Some(ContractType::MevBot),
+                n if n.contains("router") => Some(ContractType::Router),
+                n if n.contains("protocol") => Some(ContractType::Protocol),
+                n if n.contains("exchange") => Some(ContractType::Exchange),
+                n if n.contains("bridge") => Some(ContractType::Bridge),
+                _ => None,
             }
-            if nametag_lower.contains("router") {
-                return ContractType::Router;
-            }
-            if nametag_lower.contains("protocol") {
-                return ContractType::Protocol;
-            }
-            if nametag_lower.contains("exchange") {
-                return ContractType::Exchange;
-            }
-        }
-        for label in &self.labels {
+        })
+    }
+
+    fn get_contract_type_from_labels(&self) -> Option<ContractType> {
+        self.labels.iter().find_map(|label| {
             let label_lower = label.to_lowercase();
-            if label_lower.contains("mev bot") {
-                return ContractType::MevBot;
+            match label_lower.as_str() {
+                l if l.contains("mev bot") => Some(ContractType::MevBot),
+                l if l.contains("router") => Some(ContractType::Router),
+                l if l.contains("protocol") => Some(ContractType::Protocol),
+                l if l.contains("exchange") => Some(ContractType::Exchange),
+                _ => None,
             }
-            if label_lower.contains("router") {
-                return ContractType::Router;
-            }
-            if label_lower.contains("protocol") {
-                return ContractType::Protocol;
-            }
-            if label_lower.contains("exchange") {
-                return ContractType::Exchange;
-            }
-        }
-        ContractType::Unknown
+        })
     }
 }
 
@@ -106,6 +121,7 @@ pub enum ContractType {
     Cex,
     Protocol,
     CexExchange,
+    Bridge,
     Unknown,
 }
 
