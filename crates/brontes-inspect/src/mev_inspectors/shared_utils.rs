@@ -143,7 +143,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let bribe_usd = gas_details
             .iter()
-            .map(|details| metadata.get_gas_price_usd(details.gas_paid()).to_float())
+            .map(|details| {
+                metadata
+                    .get_gas_price_usd(details.gas_paid(), self.quote)
+                    .to_float()
+            })
             .sum::<f64>();
 
         BundleHeader {

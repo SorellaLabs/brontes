@@ -40,6 +40,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 Actions::is_flash_loan,
                 Actions::is_swap,
                 Actions::is_transfer,
+                Actions::is_eth_transfer,
                 Actions::is_batch,
             ]))
             .t_map(|(k, v)| {
@@ -115,7 +116,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         )?;
 
         let gas_used = info.gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used);
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
         let profit = rev_usd - gas_used_usd;
 
         let is_profitable = profit > Rational::ZERO;

@@ -39,6 +39,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
 {
     pub start_block:      u64,
     pub end_block:        Option<u64>,
+    pub back_from_tip:    u64,
     pub max_tasks:        u64,
     pub min_batch_size:   u64,
     pub quote_asset:      Address,
@@ -58,6 +59,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     pub fn new(
         start_block: u64,
         end_block: Option<u64>,
+        back_from_tip: u64,
         max_tasks: u64,
         min_batch_size: u64,
         quote_asset: Address,
@@ -72,6 +74,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         Self {
             clickhouse,
             start_block,
+            back_from_tip,
             min_batch_size,
             max_tasks,
             with_dex_pricing,
@@ -89,7 +92,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         executor: BrontesTaskExecutor,
         end_block: u64,
-        tip: bool,
     ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -116,7 +118,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                                 executor.clone(),
                                 start_block,
                                 end_block,
-                                tip,
+                                false,
                             )
                             .await
                         } else {
@@ -140,11 +142,19 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         executor: BrontesTaskExecutor,
         start_block: u64,
+        back_from_tip: u64,
     ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self
             .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
-        TipInspector::new(start_block, state_collector, self.parser, self.libmdbx, self.inspectors)
+        TipInspector::new(
+            start_block,
+            back_from_tip,
+            state_collector,
+            self.parser,
+            self.libmdbx,
+            self.inspectors,
+        )
     }
 
     fn state_collector_no_dex_price(&self) -> StateCollector<T, DB, CH> {
@@ -253,15 +263,30 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             let start = range.start();
             let end = range.end();
 
-            self.libmdbx
-                .initialize_tables(
-                    self.clickhouse,
-                    self.parser.get_tracer(),
-                    &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
-                    false,
-                    Some((*start, *end)),
-                )
-                .await
+            #[cfg(feature = "sorella-server")]
+            {
+                self.libmdbx
+                    .initialize_tables(
+                        self.clickhouse,
+                        self.parser.get_tracer(),
+                        &[Tables::BlockInfo, Tables::CexPrice],
+                        false,
+                        Some((*start, *end)),
+                    )
+                    .await
+            }
+            #[cfg(not(feature = "sorella-server"))]
+            {
+                self.libmdbx
+                    .initialize_tables(
+                        self.clickhouse,
+                        self.parser.get_tracer(),
+                        &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                        false,
+                        Some((*start, *end)),
+                    )
+                    .await
+            }
         }))
         .await
         .into_iter()
@@ -308,7 +333,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             let chain_tip = self.parser.get_latest_block_number().unwrap();
             #[cfg(not(feature = "local-reth"))]
             let chain_tip = self.parser.get_latest_block_number().await.unwrap();
-            (false, chain_tip)
+            (false, chain_tip - self.back_from_tip)
         }
     }
 
@@ -321,7 +346,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let futures = FuturesUnordered::new();
 
         if had_end_block {
-            self.build_range_executors(executor.clone(), end_block, false)
+            self.build_range_executors(executor.clone(), end_block)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -333,7 +358,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     ));
                 });
         } else {
-            self.build_range_executors(executor.clone(), end_block, true)
+            self.build_range_executors(executor.clone(), end_block)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -345,7 +370,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     ));
                 });
 
-            let tip_inspector = self.build_tip_inspector(executor.clone(), end_block).await;
+            let tip_inspector = self
+                .build_tip_inspector(executor.clone(), end_block, self.back_from_tip)
+                .await;
+
             futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                 "Tip Inspector",
                 |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },

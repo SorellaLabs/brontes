@@ -46,6 +46,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         let search_args = TreeSearchBuilder::default().with_actions([
             Actions::is_swap,
             Actions::is_transfer,
+            Actions::is_eth_transfer,
             Actions::is_aggregator,
         ]);
 
@@ -246,7 +247,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|g| g.gas_paid())
             .sum::<u128>();
 
-        let gas_used = metadata.get_gas_price_usd(gas_used);
+        let gas_used = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
         let searcher_deltas = searcher_actions
             .into_iter()

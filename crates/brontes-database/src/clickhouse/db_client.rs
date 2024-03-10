@@ -237,6 +237,7 @@ impl ClickhouseHandle for Clickhouse {
             .query_one::<BlockInfoData>(BLOCK_INFO, &(block_num))
             .await?
             .value;
+
         let cex_quotes = self
             .client
             .query_one::<CexPriceData>(CEX_PRICE, &(block_num))

@@ -28,7 +28,8 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
     type Result = Vec<Bundle>;
 
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
-        let search_args = TreeSearchBuilder::default().with_actions([Actions::is_transfer]);
+        let search_args = TreeSearchBuilder::default()
+            .with_actions([Actions::is_transfer, Actions::is_eth_transfer]);
 
         let searcher_txs = tree.clone().collect_all(search_args).collect_vec();
 
@@ -58,7 +59,8 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             &deltas,
                             metadata.clone(),
                         )?;
-                        let gas_paid = metadata.get_gas_price_usd(info.gas_details.gas_paid());
+                        let gas_paid = metadata
+                            .get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
                         let profit = rev_usd - gas_paid;
 
                         let header = self.utils.build_bundle_header(
