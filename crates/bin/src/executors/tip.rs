@@ -82,7 +82,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         match self.parser.get_latest_block_number() {
             Ok(chain_tip) => {
                 if chain_tip - self.back_from_tip > self.current_block {
-                    self.current_block += 1;
                     true
                 } else {
                     false
@@ -109,7 +108,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         match cur_block {
             Ok(chain_tip) => {
                 if chain_tip - self.back_from_tip > self.current_block {
-                    self.current_block += 1;
                     true
                 } else {
                     false
@@ -140,8 +138,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
-            let block = self.current_block;
-            self.state_collector.fetch_state_for(block);
+            self.current_block += 1;
+            self.state_collector.fetch_state_for(self.block);
         }
 
         if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
