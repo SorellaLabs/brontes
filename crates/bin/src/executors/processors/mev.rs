@@ -54,7 +54,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     );
 
     let block_number = block_details.block_number;
-    output_mev_and_update_searcher_info(database, &mev_details).await;
+    // output_mev_and_update_searcher_info(database, &mev_details).await;
 
     // Attempt to save the MEV block details
     if let Err(e) = database
