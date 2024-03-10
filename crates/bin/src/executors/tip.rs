@@ -126,7 +126,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     }
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
-        info!(target:"brontes","Completed DEX pricing");
+        info!(target:"brontes::tip_inspector","Completed DEX pricing");
         self.processing_futures.push(Box::pin(P::process_results(
             self.database,
             self.inspectors,
@@ -146,6 +146,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             let block = self.current_block;
             self.state_collector.fetch_state_for(block);
         }
+
         if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
             match item {
                 Some((tree, meta)) => self.on_price_finish(tree, meta),
@@ -154,6 +155,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         }
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
 
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
