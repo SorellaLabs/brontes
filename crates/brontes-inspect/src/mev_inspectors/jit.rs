@@ -316,7 +316,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     fn get_bribes(&self, price: Arc<Metadata>, gas: &[GasDetails]) -> Rational {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
-        price.get_gas_price_usd(bribe)
+        price.get_gas_price_usd(bribe, self.utils.quote)
     }
 }
 
