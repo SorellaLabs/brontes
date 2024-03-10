@@ -108,15 +108,10 @@ use jit::JitInspector;
 use liquidations::LiquidationInspector;
 use sandwich::SandwichInspector;
 
-#[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result;
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result;
 }
 
 #[derive(

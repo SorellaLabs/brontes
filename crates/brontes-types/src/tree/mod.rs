@@ -1,15 +1,12 @@
 use std::{panic::AssertUnwindSafe, sync::Arc};
 
 use itertools::Itertools;
-use rayon::{
-    prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator},
-    ThreadPool, ThreadPoolBuilder,
-};
+use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, span, Level};
 
-use crate::db::traits::LibmdbxReader;
+use crate::{db::traits::LibmdbxReader, execute_on};
 pub mod node;
 mod types;
 #[allow(unused_parens)]
@@ -25,8 +22,6 @@ pub use search_args::*;
 
 use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
-const MAX_SEARCH_THREADS: usize = 4;
-
 type SpansAll<V> = TreeIterator<V, std::vec::IntoIter<(B256, Vec<Vec<V>>)>>;
 
 #[derive(Debug)]
@@ -35,7 +30,6 @@ pub struct BlockTree<V: NormalizedAction> {
     pub header:               Header,
     pub priority_fee_std_dev: f64,
     pub avg_priority_fee:     f64,
-    pub tp:                   ThreadPool,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -45,15 +39,11 @@ impl<V: NormalizedAction> BlockTree<V> {
             header,
             priority_fee_std_dev: 0.0,
             avg_priority_fee: 0.0,
-            tp: ThreadPoolBuilder::new()
-                .num_threads(MAX_SEARCH_THREADS)
-                .build()
-                .unwrap(),
         }
     }
 
     pub fn get_tx_info<DB: LibmdbxReader>(&self, tx_hash: B256, database: &DB) -> Option<TxInfo> {
-        self.tp.install(|| {
+        execute_on!(target = tree, {
             self.tx_roots
                 .par_iter()
                 .find_any(|r| r.tx_hash == tx_hash)
@@ -145,7 +135,7 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// transaction that contain the wanted actions.
     pub fn collect_spans_all(self: Arc<Self>, call: TreeSearchBuilder<V>) -> SpansAll<V> {
         self.run_in_span_ref(|this| {
-            this.tp.install(|| {
+            execute_on!(target = tree, {
                 TreeIterator::new(
                     this.clone(),
                     this.tx_roots
@@ -165,7 +155,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
     {
         self.run_in_span_mut(|this| {
-            this.tp.install(|| {
+            execute_on!(target = tree, {
                 this.tx_roots.par_iter_mut().for_each(|root| {
                     root.modify_spans(&find, &modify);
                 });
@@ -196,7 +186,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         call: TreeSearchBuilder<V>,
     ) -> TreeIterator<V, std::vec::IntoIter<(B256, Vec<V>)>> {
         self.run_in_span_ref(|this| {
-            this.tp.install(|| {
+            execute_on!(target = tree, {
                 TreeIterator::new(
                     this.clone(),
                     this.tx_roots
@@ -215,7 +205,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         call: TreeSearchBuilder<V>,
     ) -> TreeIterator<V, std::vec::IntoIter<Vec<V>>> {
         self.run_in_span_ref(|this| {
-            this.clone().tp.install(|| {
+            execute_on!(target = tree, {
                 TreeIterator::new(
                     this.clone(),
                     txes.par_iter()
@@ -239,7 +229,7 @@ impl<V: NormalizedAction> BlockTree<V> {
                 .zip(search_params.iter())
                 .collect::<Vec<_>>();
 
-            this.tp.install(|| {
+            execute_on!(target = tree, {
                 roots_with_search_params
                     .par_iter_mut()
                     .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
@@ -258,7 +248,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
     {
         self.run_in_span_mut(|this| {
-            this.tp.install(|| {
+            execute_on!(target = tree, {
                 this.tx_roots
                     .par_iter_mut()
                     .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
