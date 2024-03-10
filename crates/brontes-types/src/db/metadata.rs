@@ -10,7 +10,7 @@ use serde_with::serde_as;
 use super::cex_trades::CexTradeMap;
 use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{
-    constants::{USDC_ADDRESS, WETH_ADDRESS},
+    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::redefined_types::primitives::*,
     implement_table_value_codecs_with_zc,
     pair::Pair,
@@ -68,6 +68,12 @@ impl Metadata {
             if let Some(dex_quotes) = &self.dex_quotes {
                 dex_quotes
                     .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), dex_quotes.0.len())
+                    .or_else(|| {
+                        dex_quotes.price_at_or_before(
+                            Pair(WETH_ADDRESS, USDT_ADDRESS),
+                            dex_quotes.0.len(),
+                        )
+                    })
                     .map(|price| price.post_state)
                     .unwrap_or(Rational::ZERO)
             } else {
