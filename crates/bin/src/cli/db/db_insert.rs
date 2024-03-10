@@ -1,6 +1,7 @@
 use std::env;
 
 use brontes_database::{libmdbx::Libmdbx, IntoTableKey, Tables};
+use brontes_types::init_threadpools;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
@@ -20,6 +21,7 @@ impl AddToDb {
     pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
+        init_threadpools(10);
 
         macro_rules! write_to_table {
         ($table:expr, $($tables:ident),+ = $arg0:expr, $arg1:expr) => {
@@ -27,7 +29,7 @@ impl AddToDb {
                 $(
                     Tables::$tables => {
                         db.write_table(
-                            &vec![
+                            &[
                             brontes_database::libmdbx::tables::$tables::into_table_data(
                                     $arg0,
                                     $arg1

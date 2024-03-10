@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -10,7 +10,7 @@ use brontes_types::{
         NormalizedTransfer,
     },
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
@@ -27,11 +27,10 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
+    fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
@@ -92,7 +91,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         let (swaps, transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
-        let mev_addresses: HashSet<Address> = vec![info.eoa]
+        let mev_addresses: FastHashSet<Address> = vec![info.eoa]
             .into_iter()
             .chain(
                 info.mev_contract
@@ -100,7 +99,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     .map(|a| vec![*a])
                     .unwrap_or_default(),
             )
-            .collect::<HashSet<_>>();
+            .collect::<FastHashSet<_>>();
 
         let account_deltas = transfers
             .into_iter()

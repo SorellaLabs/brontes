@@ -5,8 +5,8 @@ mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
+
 use std::{
-    collections::HashMap,
     marker::PhantomData,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
@@ -19,7 +19,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::BrontesTaskExecutor;
+use brontes_types::{BrontesTaskExecutor, FastHashMap};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
@@ -186,9 +186,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                     .collect::<Vec<_>>()
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<FastHashMap<_, _>>();
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
         let pricer = BrontesBatchPricer::new(
             shutdown.clone(),
