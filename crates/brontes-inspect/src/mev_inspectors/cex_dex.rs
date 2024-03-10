@@ -325,7 +325,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             return None
         }
 
-        let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid());
+        let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
 
         let pnl = StatArbPnl {
             maker_profit: total_arb_pre_gas.maker_profit - gas_cost.clone(),
@@ -411,7 +411,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .values()
             .fold(Rational::ZERO, |acc, delta| acc + delta);
 
-        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) > Rational::ZERO
+        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid(),self.utils.quote) > Rational::ZERO
     }
 }
 

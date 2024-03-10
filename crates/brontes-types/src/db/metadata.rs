@@ -62,18 +62,12 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    pub fn get_gas_price_usd(&self, gas_used: u128) -> Rational {
+    pub fn get_gas_price_usd(&self, gas_used: u128, quote_token: Address) -> Rational {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
         let eth_price = if self.block_metadata.eth_prices == Rational::ZERO {
             if let Some(dex_quotes) = &self.dex_quotes {
                 dex_quotes
-                    .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), dex_quotes.0.len())
-                    .or_else(|| {
-                        dex_quotes.price_at_or_before(
-                            Pair(WETH_ADDRESS, USDT_ADDRESS),
-                            dex_quotes.0.len(),
-                        )
-                    })
+                    .price_at_or_before(Pair(WETH_ADDRESS, quote_token), dex_quotes.0.len())
                     .map(|price| price.post_state)
                     .unwrap_or(Rational::ZERO)
             } else {
