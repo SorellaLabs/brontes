@@ -13,7 +13,7 @@ use brontes_inspect::Inspector;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use super::shared::state_collector::StateCollector;
 use crate::Processor;
@@ -88,7 +88,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
                 }
             }
             Err(e) => {
-                error!("Error: {:?}", e);
+                tracing::error!("Error: {:?}", e);
                 false
             }
         }
@@ -107,11 +107,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
         match cur_block {
             Ok(chain_tip) => {
-                if chain_tip - self.back_from_tip > self.current_block {
-                    true
-                } else {
-                    false
-                }
+                chain_tip - self.back_from_tip > self.current_block
             }
             Err(e) => {
                 debug!("Error: {:?}", e);

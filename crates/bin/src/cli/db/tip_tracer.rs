@@ -60,16 +60,16 @@ impl TipTraceArgs {
                 let tip = parser.get_latest_block_number().unwrap();
                 if tip + 1 > end_block {
                     end_block += 1;
-                    parser.execute(end_block).await;
+                    let _ = parser.execute(end_block).await;
                 }
             }
         });
 
         ctx.task_executor
             .spawn_critical("tasks", async move {
-                join!(catchup, tip);
+                let _ = join!(catchup, tip);
             })
-            .await;
+            .await?;
 
         Ok(())
     }
