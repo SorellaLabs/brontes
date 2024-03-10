@@ -83,7 +83,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             metadata.clone(),
         )?;
 
-        let gas_finalized = metadata.get_gas_price_usd(info.gas_details.gas_paid());
+        let gas_finalized =
+            metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
         let profit_usd = (rev - &gas_finalized).to_float();
 
         let header = self.utils.build_bundle_header(

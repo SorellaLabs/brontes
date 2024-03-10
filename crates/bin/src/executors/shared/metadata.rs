@@ -98,10 +98,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
-                let mut meta = clickhouse
-                    .get_metadata(block)
-                    .await
-                    .expect("missing metadata for clickhouse.get_metadata request");
+                let mut meta = clickhouse.get_metadata(block).await.unwrap_or_else(|_| {
+                    panic!("missing metadata for clickhouse.get_metadata request {block}")
+                });
+
                 meta.builder_info = libmdbx
                     .try_fetch_builder_info(tree.header.beneficiary)
                     .expect("failed to fetch builder info table in libmdbx");
@@ -141,10 +141,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         if let Some(res) = self.result_buf.pop_front() {
             return Poll::Ready(Some(res))
         }
+
         if let Some(mut pricer) = self.dex_pricer_stream.take() {
             while let Poll::Ready(Some((block, tree, meta))) =
                 self.clickhouse_futures.poll_next_unpin(cx)
             {
+                tracing::info!("clickhouse future resolved");
                 pricer.add_pending_inspection(block, tree, meta)
             }
 
