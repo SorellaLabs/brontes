@@ -1,12 +1,9 @@
-use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
-    pin::Pin,
-    sync::Arc,
-    task::Poll,
-};
+use std::{collections::hash_map::Entry, pin::Pin, sync::Arc, task::Poll};
 
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, traits::TracingProvider, unzip_either::IterExt};
+use brontes_types::{
+    pair::Pair, traits::TracingProvider, unzip_either::IterExt, FastHashMap, FastHashSet,
+};
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
 
@@ -45,7 +42,7 @@ pub struct LazyResult {
 pub struct PairStateLoadingProgress {
     pub block:         u64,
     pub id:            Option<u64>,
-    pub pending_pools: HashSet<Address>,
+    pub pending_pools: FastHashSet<Address>,
 }
 
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
@@ -58,28 +55,28 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_load_futures: MultiBlockPoolFutures,
     /// addresses currently being processed. to the blocks of the address we are
     /// fetching state for
-    pool_buf: HashMap<Address, Vec<BlockNumber>>,
+    pool_buf: FastHashMap<Address, Vec<BlockNumber>>,
     /// requests we are processing for a given block.
-    req_per_block: HashMap<BlockNumber, u64>,
+    req_per_block: FastHashMap<BlockNumber, u64>,
     /// all current parent pairs with all the state that is required for there
     /// subgraph to be loaded
-    parent_pair_state_loading: HashMap<Pair, PairStateLoadingProgress>,
+    parent_pair_state_loading: FastHashMap<Pair, PairStateLoadingProgress>,
     /// All current request addresses to subgraph pair that requested the
     /// loading. in the case that a pool fails to load, we need all subgraph
     /// pairs that are dependent on the node in order to remove it from the
     /// subgraph and possibly reconstruct it.
-    protocol_address_to_parent_pairs: HashMap<Address, Vec<(BlockNumber, Pair)>>,
+    protocol_address_to_parent_pairs: FastHashMap<Address, Vec<(BlockNumber, Pair)>>,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
-            pool_buf: HashMap::default(),
+            pool_buf: FastHashMap::default(),
             pool_load_futures: MultiBlockPoolFutures::new(),
             provider,
-            req_per_block: HashMap::default(),
-            protocol_address_to_parent_pairs: HashMap::default(),
-            parent_pair_state_loading: HashMap::default(),
+            req_per_block: FastHashMap::default(),
+            protocol_address_to_parent_pairs: FastHashMap::default(),
+            parent_pair_state_loading: FastHashMap::default(),
         }
     }
 
@@ -141,7 +138,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
         match self.parent_pair_state_loading.entry(parent_pair) {
             Entry::Vacant(v) => {
-                let mut set = HashSet::new();
+                let mut set = FastHashSet::default();
                 set.insert(address);
                 v.insert(PairStateLoadingProgress { block: parent_block, id, pending_pools: set });
             }
@@ -280,7 +277,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
 /// current block pairs to all be verified making the pricing module very
 /// efficient.
 pub struct MultiBlockPoolFutures(
-    HashMap<u64, FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>>,
+    FastHashMap<u64, FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>>,
 );
 impl Default for MultiBlockPoolFutures {
     fn default() -> Self {
@@ -290,7 +287,7 @@ impl Default for MultiBlockPoolFutures {
 
 impl MultiBlockPoolFutures {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(FastHashMap::default())
     }
 
     pub fn is_empty(&self) -> bool {

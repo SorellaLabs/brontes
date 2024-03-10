@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -17,6 +15,7 @@ use crate::{
     implement_table_value_codecs_with_zc,
     pair::Pair,
     serde_utils::{option_addresss, u256, vec_txhash},
+    FastHashSet,
 };
 
 /// libmdbx type
@@ -109,7 +108,7 @@ pub struct BlockMetadata {
     /// Best ask at p2p timestamp
     pub eth_prices:             Rational,
     /// Tx
-    pub private_flow:           HashSet<TxHash>,
+    pub private_flow:           FastHashSet<TxHash>,
 }
 
 impl BlockMetadata {
@@ -123,7 +122,7 @@ impl BlockMetadata {
         proposer_fee_recipient: Option<Address>,
         proposer_mev_reward: Option<u128>,
         eth_prices: Rational,
-        private_flow: HashSet<TxHash>,
+        private_flow: FastHashSet<TxHash>,
     ) -> Self {
         Self {
             block_num,

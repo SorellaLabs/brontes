@@ -74,7 +74,10 @@ impl LoadState for Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV2(pool), block_number),
+                    PoolState::new(
+                        crate::types::PoolVariants::UniswapV2(Box::new(pool)),
+                        block_number,
+                    ),
                     res,
                 ))
             }
@@ -99,7 +102,10 @@ impl LoadState for Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV3(pool), block_number),
+                    PoolState::new(
+                        crate::types::PoolVariants::UniswapV3(Box::new(pool)),
+                        block_number,
+                    ),
                     res,
                 ))
             }

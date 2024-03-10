@@ -92,8 +92,8 @@ impl PoolState {
 
 #[derive(Debug, Clone)]
 pub enum PoolVariants {
-    UniswapV2(UniswapV2Pool), // 104
-    UniswapV3(UniswapV3Pool), // 192,
+    UniswapV2(Box<UniswapV2Pool>),
+    UniswapV3(Box<UniswapV3Pool>),
 }
 
 impl PoolVariants {
