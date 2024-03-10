@@ -92,7 +92,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         executor: BrontesTaskExecutor,
         end_block: u64,
-        tip: bool,
     ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -119,7 +118,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                                 executor.clone(),
                                 start_block,
                                 end_block,
-                                tip,
+                                false,
                             )
                             .await
                         } else {
@@ -344,7 +343,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let futures = FuturesUnordered::new();
 
         if had_end_block {
-            self.build_range_executors(executor.clone(), end_block, false)
+            self.build_range_executors(executor.clone(), end_block)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -356,7 +355,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     ));
                 });
         } else {
-            self.build_range_executors(executor.clone(), end_block, true)
+            self.build_range_executors(executor.clone(), end_block)
                 .await
                 .into_iter()
                 .for_each(|block_range| {

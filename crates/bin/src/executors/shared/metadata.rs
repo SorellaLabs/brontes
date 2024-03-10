@@ -141,10 +141,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         if let Some(res) = self.result_buf.pop_front() {
             return Poll::Ready(Some(res))
         }
+
         if let Some(mut pricer) = self.dex_pricer_stream.take() {
             while let Poll::Ready(Some((block, tree, meta))) =
                 self.clickhouse_futures.poll_next_unpin(cx)
             {
+                tracing::info!("clickhouse future resolved");
                 pricer.add_pending_inspection(block, tree, meta)
             }
 
