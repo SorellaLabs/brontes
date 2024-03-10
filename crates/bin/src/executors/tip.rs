@@ -80,13 +80,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         }
 
         match self.parser.get_latest_block_number() {
-            Ok(chain_tip) => {
-                if chain_tip - self.back_from_tip > self.current_block {
-                    true
-                } else {
-                    false
-                }
-            }
+            Ok(chain_tip) => chain_tip - self.back_from_tip > self.current_block,
             Err(e) => {
                 tracing::error!("Error: {:?}", e);
                 false
