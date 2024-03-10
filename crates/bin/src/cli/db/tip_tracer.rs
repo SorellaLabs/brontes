@@ -1,12 +1,10 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::{Clickhouse, ClickhouseMiddleware};
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{init_threadpools, unordered_buffer_map::BrontesStreamExt};
 use clap::Parser;
 use futures::{join, StreamExt};
-use reth_tasks::TaskSpawner;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
@@ -51,11 +49,11 @@ impl TipTraceArgs {
             futures::stream::iter(self.start_block..=end_block)
                 .unordered_buffer_map(100, |i| parser.execute(i))
                 .map(|_res| ())
-                .collect::<Vec<_>>();
+                .collect::<Vec<_>>()
+                .await;
         });
 
         let tip = ctx.task_executor.spawn_critical("tip", async move {
-            let mut end_block = end_block;
             loop {
                 let tip = parser.get_latest_block_number().unwrap();
                 if tip + 1 > end_block {

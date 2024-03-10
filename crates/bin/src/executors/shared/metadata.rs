@@ -98,7 +98,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
-                let mut meta = clickhouse.get_metadata(block).await.unwrap_or_else(|_| panic!("missing metadata for clickhouse.get_metadata request {block}"));
+                let mut meta = clickhouse.get_metadata(block).await.unwrap_or_else(|_| {
+                    panic!("missing metadata for clickhouse.get_metadata request {block}")
+                });
 
                 meta.builder_info = libmdbx
                     .try_fetch_builder_info(tree.header.beneficiary)
