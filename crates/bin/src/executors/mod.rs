@@ -264,6 +264,18 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             let start = range.start();
             let end = range.end();
 
+            #[cfg(feature = "sorella-server")]
+            self.libmdbx
+                .initialize_tables(
+                    self.clickhouse,
+                    self.parser.get_tracer(),
+                    &[Tables::BlockInfo, Tables::CexPrice],
+                    false,
+                    Some((*start, *end)),
+                )
+                .await;
+
+            #[cfg(not(feature = "sorella-server"))]
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,
