@@ -58,7 +58,8 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             &deltas,
                             metadata.clone(),
                         )?;
-                        let gas_paid = metadata.get_gas_price_usd(info.gas_details.gas_paid());
+                        let gas_paid = metadata
+                            .get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
                         let profit = rev_usd - gas_paid;
 
                         let header = self.utils.build_bundle_header(
