@@ -79,6 +79,10 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             mev.to_string()
         );
 
+        if mev.header.mev_type == MevType::Unknown {
+            continue
+        }
+
         let (eoa_info, contract_info) = database
             .try_fetch_searcher_info(mev.header.eoa, mev.header.mev_contract)
             .expect("Failed to fetch searcher info from the database");
@@ -86,14 +90,11 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
         let mut eoa_info = eoa_info.unwrap_or_default();
         let mut contract_info = contract_info.unwrap_or_default();
 
-        if !eoa_info.mev.contains(&mev.header.mev_type) && &mev.header.mev_type != &MevType::Unknown
-        {
+        if !eoa_info.mev.contains(&mev.header.mev_type) {
             eoa_info.mev.push(mev.header.mev_type);
         }
 
-        if !contract_info.mev.contains(&mev.header.mev_type)
-            && &mev.header.mev_type != &MevType::Unknown
-        {
+        if !contract_info.mev.contains(&mev.header.mev_type) {
             contract_info.mev.push(mev.header.mev_type);
         }
 
