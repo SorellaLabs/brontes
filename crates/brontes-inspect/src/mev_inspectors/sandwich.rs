@@ -246,7 +246,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|g| g.gas_paid())
             .sum::<u128>();
 
-        let gas_used = metadata.get_gas_price_usd(gas_used);
+        let gas_used = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
         let searcher_deltas = searcher_actions
             .into_iter()
