@@ -46,6 +46,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         let search_args = TreeSearchBuilder::default().with_actions([
             Actions::is_swap,
             Actions::is_transfer,
+            Actions::is_eth_transfer,
             Actions::is_aggregator,
         ]);
 
