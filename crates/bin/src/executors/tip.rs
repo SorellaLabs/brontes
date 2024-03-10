@@ -139,7 +139,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        tracing::info!("tip poll");
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
             let block = self.current_block;
             self.state_collector.fetch_state_for(block);
