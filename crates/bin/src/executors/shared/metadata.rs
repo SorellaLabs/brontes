@@ -21,9 +21,8 @@ use super::dex_pricing::WaitingForPricerFuture;
 /// as the Pricer is a slow process
 const MAX_PENDING_TREES: usize = 20;
 
-pub type ClickhouseMetadataFuture = FuturesOrdered<
-    Pin<Box<dyn Future<Output = Option<(u64, BlockTree<Actions>, Metadata)>> + Send>>,
->;
+pub type ClickhouseMetadataFuture =
+    FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> {
@@ -99,15 +98,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
-                let Ok(mut meta) = clickhouse.get_metadata(block).await else {
-                    tracing::error!(?block, "failed to load full metadata from clickhouse ");
-                    return None;
-                };
+                let mut meta = clickhouse.get_metadata(block).await.expect(&format!(
+                    "missing metadata for clickhouse.get_metadata request {block}"
+                ));
 
                 meta.builder_info = libmdbx
                     .try_fetch_builder_info(tree.header.beneficiary)
                     .expect("failed to fetch builder info table in libmdbx");
-                Some((block, tree, meta))
+                (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
         } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
@@ -144,7 +142,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             return Poll::Ready(Some(res))
         }
         if let Some(mut pricer) = self.dex_pricer_stream.take() {
-            while let Poll::Ready(Some(Some((block, tree, meta)))) =
+            while let Poll::Ready(Some((block, tree, meta))) =
                 self.clickhouse_futures.poll_next_unpin(cx)
             {
                 pricer.add_pending_inspection(block, tree, meta)
