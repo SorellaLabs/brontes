@@ -88,7 +88,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
                 }
             }
             Err(e) => {
-                debug!("Error: {:?}", e);
+                error!("Error: {:?}", e);
                 false
             }
         }
@@ -138,6 +138,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
+            tracing::info!("starting new tip block");
             self.current_block += 1;
             let block = self.current_block;
             self.state_collector.fetch_state_for(block);
