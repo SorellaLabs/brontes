@@ -439,7 +439,7 @@ impl ClassifierTestUtils {
         // write protocol to libmdbx
         self.libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
 
@@ -522,7 +522,7 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData {
                     key:   address,
                     value: ProtocolInfo {
@@ -546,7 +546,7 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData {
                 key:   token.address,
                 value: brontes_types::db::token_info::TokenInfo {
                     decimals: token.decimals,
