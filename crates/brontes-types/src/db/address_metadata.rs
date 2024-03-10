@@ -44,6 +44,75 @@ impl AddressMetadata {
             .or_else(|| self.social_metadata.twitter.clone())
             .or_else(|| self.labels.first().cloned())
     }
+
+    pub fn get_contract_type(&self) -> ContractType {
+        if self
+            .address_type
+            .as_deref()
+            .map_or(false, |t| t.eq_ignore_ascii_case("cex"))
+        {
+            return ContractType::Cex;
+        }
+        if self
+            .labels
+            .iter()
+            .any(|label| label.to_lowercase().contains("exchange"))
+            && self
+                .address_type
+                .as_deref()
+                .map_or(false, |t| t.eq_ignore_ascii_case("cex"))
+        {
+            return ContractType::CexExchange;
+        }
+        if let Some(nametag) = &self.nametag {
+            let nametag_lower = nametag.to_lowercase();
+            if nametag_lower.starts_with("mev bot:") {
+                return ContractType::MevBot;
+            }
+            if nametag_lower.contains("router") {
+                return ContractType::Router;
+            }
+            if nametag_lower.contains("protocol") {
+                return ContractType::Protocol;
+            }
+            if nametag_lower.contains("exchange") {
+                return ContractType::Exchange;
+            }
+        }
+        for label in &self.labels {
+            let label_lower = label.to_lowercase();
+            if label_lower.contains("mev bot") {
+                return ContractType::MevBot;
+            }
+            if label_lower.contains("router") {
+                return ContractType::Router;
+            }
+            if label_lower.contains("protocol") {
+                return ContractType::Protocol;
+            }
+            if label_lower.contains("exchange") {
+                return ContractType::Exchange;
+            }
+        }
+        ContractType::Unknown
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ContractType {
+    MevBot,
+    Router,
+    Exchange,
+    Cex,
+    Protocol,
+    CexExchange,
+    Unknown,
+}
+
+impl ContractType {
+    pub fn could_be_mev_contract(&self) -> bool {
+        matches!(self, ContractType::MevBot | ContractType::Unknown)
+    }
 }
 
 implement_table_value_codecs_with_zc!(AddressMetadataRedefined);
