@@ -96,6 +96,7 @@ utils!(
         OneInchV5,
         OneInchFusion,
         ClipperExchange,
+        PropellerLabsSolver,
         #[default]
         Unknown,
     }
@@ -136,6 +137,7 @@ impl Protocol {
             Protocol::OneInchV5 => ("OneInch", "V5"),
             Protocol::OneInchFusion => ("OneInch", "Fusion"),
             Protocol::ClipperExchange => ("ClipperExchange", ""),
+            Protocol::PropellerLabsSolver => ("PropellerLabsSolver", ""),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
@@ -156,6 +158,7 @@ impl Protocol {
             "curve.ficrvusd plain" => Protocol::CurvecrvUSDPlainPool,
             "curve.ficryptoswap" => Protocol::CurveCryptoSwapPool,
             "curve.fitricrypto" => Protocol::CurveTriCryptoPool,
+            "propellerlabssolver" => Protocol::PropellerLabsSolver,
             _ => Protocol::Unknown,
         }
     }

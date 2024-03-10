@@ -20,7 +20,7 @@ malachite.workspace = true
 toml = "0.8.2"
 
 # Async
-tokio = { workspace = true, features = ["full", "tracing"] }
+tokio = { workspace = true }
 async-scoped = { version = "0.7.1", features = ["use-tokio"] }
 futures.workspace = true
 
@@ -96,6 +96,10 @@ cex-dex-markout = [
   "brontes-types/cex-dex-markout",
   "brontes-database/cex-dex-markout",
   "brontes-inspect/cex-dex-markout",
+]
+
+pretty-print = [
+  "brontes-inspect/pretty-print"
 ]
 
 local-no-inserts = []

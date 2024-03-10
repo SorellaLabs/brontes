@@ -35,7 +35,7 @@ impl TracingProvider for TracingClient {
     fn best_block_number(&self) -> eyre::Result<u64> {
         self.trace
             .provider()
-            .best_block_number()
+            .last_block_number()
             .map_err(Into::into)
     }
 
@@ -43,7 +43,7 @@ impl TracingProvider for TracingClient {
     async fn best_block_number(&self) -> eyre::Result<u64> {
         self.trace
             .provider()
-            .best_block_number()
+            .last_block_number()
             .map_err(Into::into)
     }
 

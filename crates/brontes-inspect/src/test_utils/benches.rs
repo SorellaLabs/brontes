@@ -62,10 +62,10 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
                     for inspector in &inspectors {
-                        black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                        black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                     }
                 }
             });
@@ -127,9 +127,9 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -181,9 +181,9 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -220,9 +220,9 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -273,12 +273,13 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(
-                        compose_mev_results(inspectors.as_slice(), tree.clone(), metadata.clone())
-                            .await,
-                    );
+                    black_box(compose_mev_results(
+                        inspectors.as_slice(),
+                        tree.clone(),
+                        metadata.clone(),
+                    ));
                 }
             });
         });
@@ -322,12 +323,13 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| async {
                 for _ in 0..=iters {
-                    black_box(
-                        compose_mev_results(inspectors.as_slice(), tree.clone(), metadata.clone())
-                            .await,
-                    );
+                    black_box(compose_mev_results(
+                        inspectors.as_slice(),
+                        tree.clone(),
+                        metadata.clone(),
+                    ));
                 }
             });
         });

@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-
 use alloy_primitives::U256;
+use brontes_types::FastHashMap;
 
 use super::{bit_math, error::UniswapV3MathError};
 
 //Flips the initialized state for a given tick from false to true, or vice
 // versa
 pub fn flip_tick(
-    tick_bitmap: &mut HashMap<i16, U256>,
+    tick_bitmap: &mut FastHashMap<i16, U256>,
     tick: i32,
     tick_spacing: i32,
 ) -> Result<(), UniswapV3MathError> {
@@ -26,7 +25,7 @@ pub fn flip_tick(
 // word) as the tick that is either to the left (less than or equal to) or right
 // (greater than) of the given tick
 pub fn next_initialized_tick_within_one_word(
-    tick_bitmap: &HashMap<i16, U256>,
+    tick_bitmap: &FastHashMap<i16, U256>,
     tick: i32,
     tick_spacing: i32,
     lte: bool,
@@ -89,22 +88,22 @@ pub fn position(tick: i32) -> (i16, u8) {
 
 // #[cfg(test)]
 // mod test {
-//     use std::{collections::HashMap, vec};
+//     use std::{collections::FastHashMap, vec};
 //
 //     use ethers::types::U256;
 //
 //     use super::{flip_tick, next_initialized_tick_within_one_word};
 //
-//     pub fn init_test_ticks() -> eyre::Result<HashMap<i16, U256>> {
+//     pub fn init_test_ticks() -> eyre::Result<FastHashMap<i16, U256>> {
 //         let test_ticks = vec![-200, -55, -4, 70, 78, 84, 139, 240, 535];
-//         let mut tick_bitmap: HashMap<i16, U256> = HashMap::new();
+//         let mut tick_bitmap: FastHashMap<i16, U256> = FastHashMap::default();
 //         for tick in test_ticks {
 //             flip_tick(&mut tick_bitmap, tick, 1)?;
 //         }
 //         Ok(tick_bitmap)
 //     }
 //
-//     pub fn initialized(tick: i32, tick_bitmap: &HashMap<i16, U256>) ->
+//     pub fn initialized(tick: i32, tick_bitmap: &FastHashMap<i16, U256>) ->
 // eyre::Result<bool> {         let (next, initialized) =
 //             next_initialized_tick_within_one_word(tick_bitmap, tick, 1,
 // true)?;         if next == tick {
@@ -267,7 +266,7 @@ pub fn position(tick: i32) -> (i16, u8) {
 //     #[test]
 //     pub fn test_initialized() -> eyre::Result<()> {
 //         //is false at first
-//         let mut tick_bitmap: HashMap<i16, U256> = HashMap::new();
+//         let mut tick_bitmap: FastHashMap<i16, U256> = FastHashMap::default();
 //         let is_initialized = initialized(1, &tick_bitmap)?;
 //
 //         assert_eq!(is_initialized, false);
@@ -302,7 +301,7 @@ pub fn position(tick: i32) -> (i16, u8) {
 //     #[test]
 //     pub fn test_flip_tick() -> eyre::Result<()> {
 //         //flips only the specified tick
-//         let mut tick_bitmap = HashMap::new();
+//         let mut tick_bitmap = FastHashMap::default();
 //         flip_tick(&mut tick_bitmap, -230, 1)?;
 //         let is_initialized = initialized(-230, &tick_bitmap)?;
 //         assert_eq!(is_initialized, true);

@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fmt::Debug,
     path,
     sync::{Arc, Mutex},
@@ -15,7 +14,7 @@ use brontes_types::{
     },
     traits::TracingProvider,
     unordered_buffer_map::BrontesStreamExt,
-    Protocol,
+    FastHashMap, Protocol,
 };
 use futures::{future::join_all, stream::iter, StreamExt};
 use itertools::Itertools;
@@ -214,6 +213,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
         &self,
         block_range: &'static [u64],
+        mark_init: Option<u8>,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -243,7 +243,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
                 match data {
                     Ok(d) => {
-                        tracing::info!(target: "brontes::init::missing_state", "writing data of len {} to libmdbx", d.len());
                         libmdbx.0.write_table(&d)?;
                     }
                     Err(e) => {
@@ -258,6 +257,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 };
 
                 info!(target: "brontes::init::missing_state", "{} -- Finished Chunk {}", T::NAME, num);
+
+                if let Some(flag) = mark_init {
+                    libmdbx.inited_range(inner_range.iter().copied(), flag)?;
+                }
 
                 Ok::<(), eyre::Report>(())
             }
@@ -419,9 +422,9 @@ pub struct TokenInfoWithAddressToml {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BSConfig {
-    builders:           HashMap<String, BuilderInfo>,
-    searcher_eoas:      HashMap<String, SearcherInfo>,
-    searcher_contracts: HashMap<String, SearcherInfo>,
+    builders:           FastHashMap<String, BuilderInfo>,
+    searcher_eoas:      FastHashMap<String, SearcherInfo>,
+    searcher_contracts: FastHashMap<String, SearcherInfo>,
 }
 
 #[cfg(test)]
@@ -430,6 +433,7 @@ mod tests {
     use brontes_database::libmdbx::{
         initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
     };
+    use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
 
     #[brontes_macros::test]
@@ -439,6 +443,7 @@ mod tests {
         let arbitrary_set = Box::leak(Box::new(vec![17000000, 17000010, 17000100]));
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        init_threadpools(10);
         let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
         let (tx, _rx) = unbounded_channel();
         let tracing_client =
