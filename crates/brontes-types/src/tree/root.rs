@@ -117,7 +117,7 @@ impl<V: NormalizedAction> Root<V> {
             || contract_type
                 .as_ref()
                 .map_or(false, |ct| !ct.could_be_mev_contract())
-            || (emits_logs && searcher_contract_info.is_none())
+            || emits_logs && searcher_contract_info.is_none()
         {
             return Ok(TxInfo::new(
                 block_number,
@@ -385,3 +385,31 @@ impl From<(Vec<Vec<TxHash>>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
 pub enum FalsePositiveEntity {
     MaestroBots,
 }
+
+/*
+#[cfg(test)]
+pub mod test {
+    use std::sync::Arc;
+
+    use alloy_primitives::hex;
+    use brontes_classifier::test_utils::{get_db_handle, ClassifierTestUtils};
+    use brontes_types::{normalized_actions::Actions, tree::BlockTree};
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_tx_info_filters() {
+        let handle = tokio::runtime::Handle::current();
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let tx = hex!("d6aa973068528615f4bba657b9b3366166c1ea0f56ac1313afe7abd97668ae4f").into();
+
+        let tree: Arc<BlockTree<Actions>> =
+            Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
+
+        let info = tree
+            .get_tx_info(tx, classifier_utils.)
+            .unwrap();
+
+        assert_eq!(info.mev_contract, None)
+    }
+}*/
