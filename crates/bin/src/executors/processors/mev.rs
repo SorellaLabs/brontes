@@ -8,7 +8,7 @@ use brontes_inspect::{
 use brontes_types::{
     db::metadata::Metadata,
     execute_on,
-    mev::{Bundle, MevBlock},
+    mev::{Bundle, MevBlock, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -78,6 +78,10 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             "mev details\n {}",
             mev.to_string()
         );
+
+        if mev.header.mev_type == MevType::Unknown {
+            continue
+        }
 
         let (eoa_info, contract_info) = database
             .try_fetch_searcher_info(mev.header.eoa, mev.header.mev_contract)
