@@ -32,7 +32,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
 
         let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
 
-        //TODO: This looks slow asf, make fast
+        //TODO: This looks slow asf, make fast, make go brrr
         let bundles: Vec<Bundle> = mev_blocks
             .into_par_iter()
             .filter(|mev_block| !mev_block.mev.is_empty())

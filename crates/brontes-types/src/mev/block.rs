@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug};
+use std::{
+    fmt::{self, Debug},
+    ops::Add,
+};
 
 use alloy_primitives::Address;
 #[allow(unused)]
@@ -11,6 +14,7 @@ use rkyv::{Archive, Deserialize as rDeser, Serialize as rSer};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
+use super::MevType;
 use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};
 #[allow(unused_imports)]
 use crate::{
@@ -151,6 +155,34 @@ pub struct MevCount {
     pub searcher_tx_count:    Option<u64>,
 }
 
+impl MevCount {
+    pub fn increment_count(&mut self, mev_type: MevType) {
+        self.mev_count += 1;
+        match mev_type {
+            MevType::CexDex => {
+                self.cex_dex_count = Some(self.cex_dex_count.unwrap_or_default().add(1))
+            }
+            MevType::Sandwich => {
+                self.sandwich_count = Some(self.sandwich_count.unwrap_or_default().add(1))
+            }
+            MevType::AtomicArb => {
+                self.atomic_backrun_count =
+                    Some(self.atomic_backrun_count.unwrap_or_default().add(1))
+            }
+            MevType::Jit => self.jit_count = Some(self.jit_count.unwrap_or_default().add(1)),
+            MevType::JitSandwich => {
+                self.jit_sandwich_count = Some(self.jit_sandwich_count.unwrap_or_default().add(1))
+            }
+            MevType::Liquidation => {
+                self.liquidation_count = Some(self.liquidation_count.unwrap_or_default().add(1))
+            }
+            MevType::SearcherTx => {
+                self.searcher_tx_count = Some(self.searcher_tx_count.unwrap_or_default().add(1))
+            }
+            _ => (),
+        }
+    }
+}
 self_convert_redefined!(MevCount);
 
 impl fmt::Display for MevCount {

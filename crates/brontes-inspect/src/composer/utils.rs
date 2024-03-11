@@ -171,7 +171,7 @@ pub fn filter_and_count_bundles(
             })
             .collect();
 
-        // Update count for this MEV type
+        // Update  for this MEV type
         let count = filtered_bundles.len() as u64;
         mev_count.mev_count += count; // Increment total MEV count
 

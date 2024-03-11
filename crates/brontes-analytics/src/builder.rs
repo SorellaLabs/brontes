@@ -66,7 +66,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         let single_builder_searchers: FastHashMap<Address, Address> = searcher_to_builder_map
             .into_iter()
             .filter_map(|(searcher, (searcher_stats, builders))| {
-                if searcher_stats.bundle_count > 10 && builders.len() == 1 {
+                if searcher_stats.bundle_count.mev_count > 10 && builders.len() == 1 {
                     builders.iter().next().map(|builder| (searcher, *builder))
                 } else {
                     None
