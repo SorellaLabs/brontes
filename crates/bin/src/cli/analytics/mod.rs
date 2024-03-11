@@ -4,10 +4,7 @@ use clap::{Parser, Subcommand};
 use searcher_stats::GetStats;
 use vertical_integration::SearcherBuilder;
 
-use crate::{
-    cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
-    runner::CliContext,
-};
+use crate::runner::CliContext;
 
 #[derive(Debug, Parser)]
 pub struct Analytics {

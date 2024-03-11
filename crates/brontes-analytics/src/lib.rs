@@ -1,5 +1,4 @@
 mod builder;
-use std::sync::Arc;
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxInit;
@@ -10,7 +9,7 @@ use brontes_types::{
     FastHashMap, Protocol,
 };
 use eyre::Ok;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 pub struct BrontesAnalytics<T: TracingProvider, DB: LibmdbxInit> {
     pub db:             &'static DB,
     pub tracing_client: T,
@@ -21,7 +20,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         Self { db, tracing_client }
     }
 
-    pub fn searcher_stats(
+    pub async fn get_searcher_stats(
         &self,
         start_block: u64,
         end_block: u64,
@@ -33,27 +32,34 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
 
         let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
 
-        mev_blocks
-            .par_iter()
+        //TODO: This looks slow asf, make fast
+        let bundles: Vec<Bundle> = mev_blocks
+            .into_par_iter()
             .filter(|mev_block| !mev_block.mev.is_empty())
             .map(|block| {
                 block
                     .mev
                     .iter()
                     .filter_map(|bundle| self.filter_bundle(bundle, &mev_types, &protocols, &funds))
-                    .for_each(|filtered_bundle| {
-                        let stats = searcher_stats
-                            .entry(filtered_bundle.get_searcher_contract_or_eoa())
-                            .or_insert_with(|| (SearcherStats::default()));
-                        stats.update_with_bundle(&filtered_bundle.header);
-                    })
-            });
+                    .collect::<Vec<Bundle>>()
+            })
+            .flatten()
+            .collect();
+
+        for bundle in bundles {
+            let stats = searcher_stats
+                .entry(bundle.get_searcher_contract_or_eoa())
+                .or_default();
+            stats.update_with_bundle(&bundle.header);
+        }
+
+        //TODO: Print out / write searcher file report
         Ok(())
     }
 
-    pub fn filter_bundle<'a>(
+    pub fn filter_bundle(
         &self,
-        bundle: &'a Bundle,
+        bundle: &Bundle,
         mev_types: &Option<Vec<MevType>>,
         protocols: &Option<Vec<Protocol>>,
         funds: &Option<Vec<Fund>>,

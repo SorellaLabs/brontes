@@ -27,7 +27,7 @@ pub struct GetStats {
     pub funds:       Option<Vec<Fund>>,
     /// Optional MevType to filter searcher bundles by
     #[arg(long, short, value_delimiter = ',')]
-    pub mev_type:    Option<Vec<MevType>>,
+    pub mev_types:   Option<Vec<MevType>>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
@@ -57,7 +57,15 @@ impl GetStats {
 
         let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone());
 
-        brontes_analytics.get_searcher_stats(self).await?;
+        let _ = brontes_analytics
+            .get_searcher_stats(
+                self.start_block,
+                self.end_block,
+                self.mev_types,
+                self.protocols,
+                self.funds,
+            )
+            .await;
 
         Ok(())
     }
