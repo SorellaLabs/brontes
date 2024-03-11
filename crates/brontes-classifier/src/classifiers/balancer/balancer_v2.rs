@@ -4,7 +4,7 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
     db::token_info::TokenInfoWithAddress,
-    normalized_actions::{NormalizedBatch, NormalizedBurn, NormalizedMint, NormalizedSwap},
+    normalized_actions::{Actions, NormalizedAggregator, NormalizedBatch, NormalizedBurn, NormalizedMint, NormalizedSwap},
     structured_trace::CallInfo,
     ToScaledRational,
 };
@@ -41,7 +41,7 @@ action_impl!(
             token_out,
             amount_in,
             amount_out,
-            msg_value: U256::ZERO,
+            msg_value: info.msg_value,
         })
     }
 );
@@ -49,7 +49,7 @@ action_impl!(
 action_impl!(
     Protocol::BalancerV2,
     crate::BalancerV2Vault::batchSwapCall,
-    Batch,
+    Aggregator,
     [..Swap*],
     call_data: true,
     logs: true,
@@ -87,13 +87,14 @@ action_impl!(
             });
         }
 
-        Ok(NormalizedBatch {
+        let child_actions: Vec<Actions> = normalized_swaps.into_iter().map(|d| Actions::Swap(d)).collect();
+
+        Ok(NormalizedAggregator {
             protocol: Protocol::BalancerV2,
             trace_index: info.trace_idx,
-            solver: info.msg_sender,
-            settlement_contract: info.target_address,
-            user_swaps: normalized_swaps,
-            solver_swaps: None,
+            from: call_data.funds.sender,
+            recipient: call_data.funds.sender,
+            child_actions,
             msg_value: info.msg_value
         })
     }
@@ -107,6 +108,10 @@ fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
     let mut amounts = Vec::new();
 
     for (i, &token_address) in logs.tokens.iter().enumerate() {
+        if logs.deltas[i].is_zero() {
+            continue;
+        }
+
         let token = db.try_fetch_token_info(token_address)?;
         let amount = logs.deltas[i].abs().to_scaled_rational(token.decimals);
         tokens.push(token);
@@ -176,11 +181,10 @@ fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        db::token_info::TokenInfo,
         Protocol::BalancerV2,
         TreeSearchBuilder,
     };
@@ -195,27 +199,27 @@ mod tests {
 
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    BalancerV2,
-            trace_index: 1,
+            trace_index: 0,
             from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
             recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            pool:        Address::new(hex!("92E7Eb99a38C8eB655B15467774C6d56Fb810BC9")),
-            token_in:    TokenInfoWithAddress::usdc(),
-            amount_in:   U256::from_str("72712976").unwrap().to_scaled_rational(6),
+            pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
+            token_in:    TokenInfoWithAddress::weth(),
+            amount_in:   U256::from_str("10000000000000000").unwrap().to_scaled_rational(18),
             token_out:   TokenInfoWithAddress {
-                address: Address::new(hex!("f8C3527CC04340b208C854E985240c02F7B7793f")),
-                inner:   TokenInfo { decimals: 18, symbol: "FRONT".to_string() },
+                address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
+                inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
             },
-            amount_out:  U256::from_str("229136254468181839981")
+            amount_out:  U256::from_str("7727102831493")
                 .unwrap()
-                .to_scaled_rational(18),
+                .to_scaled_rational(9),
 
-            msg_value: U256::ZERO,
+            msg_value: U256::from_str("10000000000000000").unwrap(),
         });
 
         classifier_utils
             .contains_action(
                 swap,
-                1,
+                0,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Actions::is_swap),
             )
@@ -224,24 +228,32 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_balancer_v2_mint() {
+    async fn test_balancer_v2_join_pool() {
         let classifier_utils = ClassifierTestUtils::new().await;
-        let mint = B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
+        let mint =
+            B256::from(hex!("ffed34d6f2d9e239b5cd3985840a37f1fa0c558edcd1a2f3d2b8bd7f314ef6a3"));
 
-        let eq_action = Actions::Mint(NormalizedMint {
-            protocol:    BalancerV2,
-            trace_index: 1,
-            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            pool:        Address::new(hex!("92E7Eb99a38C8eB655B15467774C6d56Fb810BC9")),
-            token:       vec![TokenInfoWithAddress::usdc()],
-            amount:      vec![U256::from_str("72712976").unwrap().to_scaled_rational(6)],
+        let eq_action = Actions::Mint(NormalizedMint{ 
+            protocol: Protocol::BalancerV2, 
+            trace_index: 0, 
+            from: Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")), 
+            recipient: Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")), 
+            pool: Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")), 
+            token: vec![
+                TokenInfoWithAddress {
+                    address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
+                    inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() }
+                }
+            ],
+            amount: vec![
+                U256::from_str("1935117712922949743").unwrap().to_scaled_rational(18),
+            ] 
         });
 
         classifier_utils
             .contains_action(
                 mint,
-                1,
+                0,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Actions::is_mint),
             )
@@ -249,4 +261,47 @@ mod tests {
             .unwrap();
     }
 
+    #[brontes_macros::test]
+    async fn test_balancer_v2_exit_pool() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let burn =
+            B256::from(hex!("ad13973ee8e507b36adc5d28dc53b77d58d00d5ac6a09aa677936be8aaf6c8a1"));
+
+        let eq_action = Actions::Burn(NormalizedBurn{ 
+            protocol: Protocol::BalancerV2, 
+            trace_index: 0, 
+            from: Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")), 
+            recipient: Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")), 
+            pool: Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")), 
+            token: vec![
+                TokenInfoWithAddress {
+                    address: Address::new(hex!("bf5495efe5db9ce00f80364c8b423567e58d2110")),
+                    inner: TokenInfo { decimals: 18, symbol: "ezETH".to_string() }
+                },
+                TokenInfoWithAddress {
+                    address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
+                    inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() }
+                },
+                TokenInfoWithAddress {
+                    address: Address::new(hex!("fae103dc9cf190ed75350761e95403b7b8afa6c0")),
+                    inner: TokenInfo { decimals: 18, symbol: "rswETH".to_string() }
+                }
+            ],
+            amount: vec![
+                U256::from_str("471937215318872937").unwrap().to_scaled_rational(18),
+                U256::from_str("757823171697267931").unwrap().to_scaled_rational(18),
+                U256::from_str("699970729674926490").unwrap().to_scaled_rational(18)
+            ] 
+        });
+
+        classifier_utils
+            .contains_action(
+                burn,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_burn),
+            )
+            .await
+            .unwrap();
+    }
 }
