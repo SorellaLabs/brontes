@@ -488,6 +488,7 @@ pub struct ContractInfoConfig {
 #[derive(Serialize, Deserialize, Default)]
 pub struct SocialsConfig {
     pub twitter:           Option<String>,
+    #[serde(default)]
     pub twitter_followers: Option<u64>,
     pub website_url:       Option<String>,
     pub crunchbase:        Option<String>,
