@@ -1442,6 +1442,7 @@ dependencies = [
  "brontes-database",
  "brontes-types",
  "eyre",
+ "rayon",
  "reth-tracing-ext",
  "tracing",
 ]

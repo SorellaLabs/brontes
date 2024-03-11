@@ -2,6 +2,7 @@ use std::{fmt, fmt::Debug};
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+use ahash::HashSet;
 use alloy_primitives::U256;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
@@ -59,6 +60,10 @@ impl Mev for CexDex {
 
     fn bribe(&self) -> u128 {
         self.gas_details.coinbase_transfer.unwrap_or(0)
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        self.swaps.iter().map(|swap| swap.protocol).collect()
     }
 }
 

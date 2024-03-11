@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+use ahash::HashSet;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -9,7 +10,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::{db::redefined_types::primitives::*, normalized_actions::*, ClickhouseVecGasDetails};
+use crate::{
+    db::redefined_types::primitives::*, normalized_actions::*, ClickhouseVecGasDetails, Protocol,
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
@@ -121,6 +124,25 @@ impl Mev for Sandwich {
         txs.extend(self.victim_swaps_tx_hashes.iter().flatten().copied());
         txs.push(self.backrun_tx_hash);
         txs
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        let mut protocols: HashSet<Protocol> = self
+            .frontrun_swaps
+            .iter()
+            .flatten()
+            .map(|swap| swap.protocol)
+            .collect();
+
+        self.victim_swaps.iter().flatten().for_each(|swap| {
+            protocols.insert(swap.protocol);
+        });
+
+        self.backrun_swaps.iter().for_each(|swap| {
+            protocols.insert(swap.protocol);
+        });
+
+        protocols
     }
 }
 

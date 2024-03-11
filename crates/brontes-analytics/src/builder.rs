@@ -30,6 +30,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 if let Some(types) = &mev_type {
                     if !types.contains(&bundle.mev_type())
                         || bundle.get_searcher_contract().is_none()
+                        || bundle.mev_type() == MevType::SearcherTx
                     {
                         continue
                     }

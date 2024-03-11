@@ -20,5 +20,7 @@ eyre.workspace = true
 # tracing
 tracing.workspace = true
 
+rayon.workspace = true
+
 [features]
 local-clickhouse = ["brontes-database/local-clickhouse"]
