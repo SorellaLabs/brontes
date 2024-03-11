@@ -1,16 +1,11 @@
 # AddressMetadata configurations
-[metadata]
 
 [metadata."0x111111125421cA6dc452d289314280a0f8842A65"]
 entity_name = "1inch"
 nametag = "1inch v6: Aggregation Router"
 labels = ["DEX", "Aggregation Router V6", "SC:sourcecodeverified", "1inch", "CN:AggregationRouterV6"]
-type = "dex-aggregator"
-
-[metadata."0x111111125421cA6dc452d289314280a0f8842A65".contract_info]
-verified_contract = true
-contract_creator = "0xccbdbd9b0309a77fc6a56e087ff2765ff394012e"
-reputation = 1
+address_type = "dex-aggregator"
+contract_info = [true, "0xccbdbd9b0309a77fc6a56e087ff2765ff394012e", 1]
 
 [metadata."0x111111125421cA6dc452d289314280a0f8842A65".social_metadata]
 twitter = "https://twitter.com/1inch"
