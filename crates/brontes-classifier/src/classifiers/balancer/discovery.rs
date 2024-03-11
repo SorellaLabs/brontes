@@ -98,8 +98,8 @@ implement_discovery!(
 //     crate::BalancerV2EulerLinearPoolFactory::createCall,
 //     0x5F43FBa61f63Fa6bFF101a0A0458cEA917f6B347,
 //     |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
-//         let mut tokens = vec![call_data.mainToken, call_data.wrappedToken, deployed_address];
-//         tokens.sort();
+//         let mut tokens = vec![call_data.mainToken, call_data.wrappedToken,
+// deployed_address];         tokens.sort();
 
 //         vec![NormalizedNewPool {
 //             trace_index,

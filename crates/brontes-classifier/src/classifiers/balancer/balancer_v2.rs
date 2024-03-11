@@ -4,7 +4,9 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
     db::token_info::TokenInfoWithAddress,
-    normalized_actions::{Actions, NormalizedAggregator, NormalizedBatch, NormalizedBurn, NormalizedMint, NormalizedSwap},
+    normalized_actions::{
+        Actions, NormalizedAggregator, NormalizedBurn, NormalizedMint, NormalizedSwap,
+    },
     structured_trace::CallInfo,
     ToScaledRational,
 };
@@ -87,7 +89,7 @@ action_impl!(
             });
         }
 
-        let child_actions: Vec<Actions> = normalized_swaps.into_iter().map(|d| Actions::Swap(d)).collect();
+        let child_actions = normalized_swaps.into_iter().map(|d| Actions::Swap(d)).collect();
 
         Ok(NormalizedAggregator {
             protocol: Protocol::BalancerV2,
@@ -176,18 +178,13 @@ fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
     Address::from_slice(&pool_id[0..20])
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
 
     use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{
-        db::token_info::TokenInfo,
-        Protocol::BalancerV2,
-        TreeSearchBuilder,
-    };
+    use brontes_types::{db::token_info::TokenInfo, Protocol::BalancerV2, TreeSearchBuilder};
 
     use super::*;
 
@@ -204,7 +201,9 @@ mod tests {
             recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
             pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
             token_in:    TokenInfoWithAddress::weth(),
-            amount_in:   U256::from_str("10000000000000000").unwrap().to_scaled_rational(18),
+            amount_in:   U256::from_str("10000000000000000")
+                .unwrap()
+                .to_scaled_rational(18),
             token_out:   TokenInfoWithAddress {
                 address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
                 inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
@@ -233,21 +232,19 @@ mod tests {
         let mint =
             B256::from(hex!("ffed34d6f2d9e239b5cd3985840a37f1fa0c558edcd1a2f3d2b8bd7f314ef6a3"));
 
-        let eq_action = Actions::Mint(NormalizedMint{ 
-            protocol: Protocol::BalancerV2, 
-            trace_index: 0, 
-            from: Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")), 
-            recipient: Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")), 
-            pool: Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")), 
-            token: vec![
-                TokenInfoWithAddress {
-                    address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
-                    inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() }
-                }
-            ],
-            amount: vec![
-                U256::from_str("1935117712922949743").unwrap().to_scaled_rational(18),
-            ] 
+        let eq_action = Actions::Mint(NormalizedMint {
+            protocol:    Protocol::BalancerV2,
+            trace_index: 0,
+            from:        Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")),
+            recipient:   Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")),
+            pool:        Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")),
+            token:       vec![TokenInfoWithAddress {
+                address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
+                inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+            }],
+            amount:      vec![U256::from_str("1935117712922949743")
+                .unwrap()
+                .to_scaled_rational(18)],
         });
 
         classifier_utils
@@ -267,31 +264,37 @@ mod tests {
         let burn =
             B256::from(hex!("ad13973ee8e507b36adc5d28dc53b77d58d00d5ac6a09aa677936be8aaf6c8a1"));
 
-        let eq_action = Actions::Burn(NormalizedBurn{ 
-            protocol: Protocol::BalancerV2, 
-            trace_index: 0, 
-            from: Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")), 
-            recipient: Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")), 
-            pool: Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")), 
-            token: vec![
+        let eq_action = Actions::Burn(NormalizedBurn {
+            protocol:    Protocol::BalancerV2,
+            trace_index: 0,
+            from:        Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")),
+            recipient:   Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")),
+            pool:        Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")),
+            token:       vec![
                 TokenInfoWithAddress {
                     address: Address::new(hex!("bf5495efe5db9ce00f80364c8b423567e58d2110")),
-                    inner: TokenInfo { decimals: 18, symbol: "ezETH".to_string() }
+                    inner:   TokenInfo { decimals: 18, symbol: "ezETH".to_string() },
                 },
                 TokenInfoWithAddress {
                     address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
-                    inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() }
+                    inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
                 },
                 TokenInfoWithAddress {
                     address: Address::new(hex!("fae103dc9cf190ed75350761e95403b7b8afa6c0")),
-                    inner: TokenInfo { decimals: 18, symbol: "rswETH".to_string() }
-                }
+                    inner:   TokenInfo { decimals: 18, symbol: "rswETH".to_string() },
+                },
             ],
-            amount: vec![
-                U256::from_str("471937215318872937").unwrap().to_scaled_rational(18),
-                U256::from_str("757823171697267931").unwrap().to_scaled_rational(18),
-                U256::from_str("699970729674926490").unwrap().to_scaled_rational(18)
-            ] 
+            amount:      vec![
+                U256::from_str("471937215318872937")
+                    .unwrap()
+                    .to_scaled_rational(18),
+                U256::from_str("757823171697267931")
+                    .unwrap()
+                    .to_scaled_rational(18),
+                U256::from_str("699970729674926490")
+                    .unwrap()
+                    .to_scaled_rational(18),
+            ],
         });
 
         classifier_utils
