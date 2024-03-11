@@ -17,10 +17,11 @@ use crate::{
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
-    /// Start Block
+    /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:     u64,
-    /// Optional End Block, if omitted it will continue to run until killed
+    pub start_block:     Option<u64>,
+    /// Optional End Block, if omitted it will run historically & at tip until
+    /// killed
     #[arg(long, short)]
     pub end_block:       Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
@@ -33,7 +34,7 @@ pub struct RunArgs {
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
     pub quote_asset:     String,
-    /// inspectors wanted for the run. If empty will run all inspectors
+    /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
     pub inspectors:      Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
