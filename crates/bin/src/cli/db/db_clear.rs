@@ -1,10 +1,8 @@
 use std::env;
 
-use brontes_database::Tables;
+use brontes_database::{libmdbx::Libmdbx, Tables};
 use clap::Parser;
 use eyre::Ok;
-
-use crate::cli::load_database;
 
 #[derive(Debug, Parser)]
 pub struct Clear {
@@ -16,14 +14,14 @@ pub struct Clear {
 impl Clear {
     pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = load_database(brontes_db_endpoint)?;
+        let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
         macro_rules! clear_table {
     ($table:expr, $($tables:ident),+) => {
         match $table {
             $(
                 Tables::$tables => {
-                            libmdbx.0
+                            db
                             .clear_table::<brontes_database::libmdbx::tables::$tables>().unwrap()
                 }
             )+
