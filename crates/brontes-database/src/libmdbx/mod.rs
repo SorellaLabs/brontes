@@ -80,9 +80,7 @@ impl Libmdbx {
     }
 
     /// Clears a table in the database
-    /// Only called on initialization
-    #[allow(unused)]
-    fn clear_table<T>(&self) -> eyre::Result<()>
+    pub fn clear_table<T>(&self) -> eyre::Result<()>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
