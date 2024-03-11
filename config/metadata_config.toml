@@ -6,9 +6,4 @@ nametag = "1inch v6: Aggregation Router"
 labels = ["DEX", "Aggregation Router V6", "SC:sourcecodeverified", "1inch", "CN:AggregationRouterV6"]
 address_type = "dex-aggregator"
 contract_info = [true, "0xccbdbd9b0309a77fc6a56e087ff2765ff394012e", 1]
-
-[metadata."0x111111125421cA6dc452d289314280a0f8842A65".social_metadata]
-twitter = "https://twitter.com/1inch"
-website_url = "https://app.1inch.io/"
-crunchbase = "https://www.crunchbase.com/organization/1inch-limited"
-linkedin = "https://www.linkedin.com/company/1inch"
+social_metadata = ["https://twitter.com/1inch", "https://app.1inch.io/", "https://www.crunchbase.com/organization/1inch-limited", "https://www.linkedin.com/company/1inch"]
