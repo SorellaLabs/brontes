@@ -8,7 +8,7 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
-        address_metadata::AddressMetadata,
+        address_metadata::{AddressMetadata, ContractInfo, Socials},
         builder::BuilderInfo,
         searcher::SearcherInfo,
         traits::{DBWriter, LibmdbxReader},
@@ -411,10 +411,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         let config_str =
             std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
 
-        let config: AddressConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
+        let config: MetadataConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
 
-        for (address_str, metadata) in config.metadata {
+        for (address_str, toml_metadata) in config.metadata {
             let address = address_str.parse().unwrap();
+            let metadata: AddressMetadata = toml_metadata.into_address_metadata();
+
             let existing_info = self.libmdbx.try_fetch_address_metadata(address);
 
             match existing_info.expect("Failed to query address metadata table") {
@@ -463,8 +465,61 @@ struct BSConfig {
 }
 
 #[derive(Serialize, Deserialize)]
-struct AddressConfig {
-    pub metadata: FastHashMap<String, AddressMetadata>,
+pub struct AddressMetadataConfig {
+    pub entity_name:     Option<String>,
+    pub nametag:         Option<String>,
+    pub labels:          Vec<String>,
+    #[serde(rename = "type")]
+    pub address_type:    Option<String>,
+    #[serde(default)]
+    pub contract_info:   Option<ContractInfoConfig>,
+    pub ens:             Option<String>,
+    #[serde(flatten)]
+    pub social_metadata: SocialsConfig,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ContractInfoConfig {
+    pub verified_contract: Option<bool>,
+    pub contract_creator:  Option<String>,
+    pub reputation:        Option<u8>,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct SocialsConfig {
+    pub twitter:           Option<String>,
+    pub twitter_followers: Option<u64>,
+    pub website_url:       Option<String>,
+    pub crunchbase:        Option<String>,
+    pub linkedin:          Option<String>,
+}
+#[derive(Serialize, Deserialize)]
+struct MetadataConfig {
+    pub metadata: FastHashMap<String, AddressMetadataConfig>,
+}
+
+impl AddressMetadataConfig {
+    fn into_address_metadata(self) -> AddressMetadata {
+        AddressMetadata {
+            entity_name:     self.entity_name,
+            nametag:         self.nametag,
+            labels:          self.labels,
+            address_type:    self.address_type,
+            contract_info:   self.contract_info.map(|config| ContractInfo {
+                verified_contract: config.verified_contract,
+                contract_creator:  config.contract_creator.map(|s| s.parse().unwrap()),
+                reputation:        config.reputation,
+            }),
+            ens:             self.ens,
+            social_metadata: Socials {
+                twitter:           self.social_metadata.twitter,
+                twitter_followers: self.social_metadata.twitter_followers,
+                website_url:       self.social_metadata.website_url,
+                crunchbase:        self.social_metadata.crunchbase,
+                linkedin:          self.social_metadata.linkedin,
+            },
+        }
+    }
 }
 
 #[cfg(test)]
