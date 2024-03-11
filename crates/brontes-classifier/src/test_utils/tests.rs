@@ -397,7 +397,7 @@ impl ClassifierTestUtils {
         tree_collect_builder: TreeSearchBuilder<Actions>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
-
+        println!("{:#?}", tree);
         assert!(!tree.tx_roots.is_empty(), "empty tree. most likely a invalid hash");
 
         let root = tree.tx_roots.remove(0);
@@ -480,7 +480,7 @@ impl ClassifierTestUtils {
 
         let mut trace_addr = found_trace.get_trace_address();
 
-        if trace_addr.len() > 1 {
+        if trace_addr.len() >= 1 {
             trace_addr.pop().unwrap();
         } else {
             return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))

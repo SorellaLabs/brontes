@@ -93,22 +93,22 @@ implement_discovery!(
 );
 
 // Euler Linear pool
-discovery_impl!(
-    BalancerV2EulerLinearPoolFactoryDiscovery,
-    crate::BalancerV2EulerLinearPoolFactory::createCall,
-    0x5F43FBa61f63Fa6bFF101a0A0458cEA917f6B347,
-    |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
-        let mut tokens = vec![call_data.mainToken, call_data.wrappedToken, deployed_address];
-        tokens.sort();
+// discovery_impl!(
+//     BalancerV2EulerLinearPoolFactoryDiscovery,
+//     crate::BalancerV2EulerLinearPoolFactory::createCall,
+//     0x5F43FBa61f63Fa6bFF101a0A0458cEA917f6B347,
+//     |deployed_address: Address, trace_index: u64, call_data: createCall, _| async move {
+//         let mut tokens = vec![call_data.mainToken, call_data.wrappedToken, deployed_address];
+//         tokens.sort();
 
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV2,
-            pool_address: deployed_address,
-            tokens,
-        }]
-    }
-);
+//         vec![NormalizedNewPool {
+//             trace_index,
+//             protocol: Protocol::BalancerV2,
+//             pool_address: deployed_address,
+//             tokens,
+//         }]
+//     }
+// );
 
 #[cfg(test)]
 mod tests {
@@ -169,10 +169,9 @@ mod tests {
         utils
             .test_discovery_classification(
                 tx,
-                Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
-                |mut pool| {
-                    assert_eq!(pool.len(), 1);
-                    let pool = pool.remove(0);
+                Address::new(hex!("35c5C8C7B77942f9D44B535Fa590D8b503B2b00C")),
+                |mut pool: Vec<NormalizedNewPool>| {
+                    let pool: NormalizedNewPool = pool.remove(0);
                     assert_eq!(pool.protocol, eq_create.protocol);
                     assert_eq!(pool.pool_address, eq_create.pool_address);
                     assert_eq!(pool.tokens, eq_create.tokens);

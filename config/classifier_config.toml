@@ -49,6 +49,9 @@ symbol = "USDP"
 [UniswapX."0x6000da47483062a0d734ba3dc7576ce6a0b645c4"]
 init_block = 17777988
 
+[BalancerV2."0xBA12222222228d8Ba445958a75a0704d566BF2C8"]
+init_block = 12272146
+
 [BalancerV1."0x92E7Eb99a38C8eB655B15467774C6d56Fb810BC9"]
 init_block = 10866521
 
