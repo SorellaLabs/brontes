@@ -181,7 +181,10 @@ mod tests {
 
     use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{db::token_info::TokenInfo, normalized_actions::Actions, Protocol::BalancerV2, TreeSearchBuilder};
+    use brontes_types::{
+        db::token_info::TokenInfo, normalized_actions::Actions, Protocol::BalancerV2,
+        TreeSearchBuilder,
+    };
 
     use super::*;
 
