@@ -36,7 +36,7 @@ discovery_impl!(
 // Macro to implement the discovery_impl! for Balancer V2 factories with the
 // exact same implementation method
 macro_rules! implement_discovery {
-    ( $( [ $name:ident => $factory:path => $address:expr ] ),* $(,)? ) => {
+    ( $( [ $name:ident => $factory:path => $address:expr ] ),* ) => {
         $(
             discovery_impl!(
                 $name,
