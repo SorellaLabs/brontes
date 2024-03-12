@@ -1,11 +1,10 @@
 #[cfg(feature = "dyn-decode")]
-use std::collections::HashMap;
-
-#[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
+#[cfg(feature = "dyn-decode")]
+use brontes_types::FastHashMap;
 use futures::future::join_all;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
@@ -42,7 +41,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     }
 
     pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
-        let traces = self.libmdbx.load_trace(block_num).ok()?;
+        let mut traces = self.libmdbx.load_trace(block_num).ok()?;
+        traces.sort_by(|a, b| a.tx_index.cmp(&b.tx_index));
+        traces.dedup_by(|a, b| a.tx_index.eq(&b.tx_index));
 
         Some((traces, self.tracer.header_by_number(block_num).await.ok()??))
     }
@@ -52,12 +53,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
-            return Some(res);
+            return Some(res)
         }
         #[cfg(not(feature = "local-reth"))]
         {
             tracing::error!("no block found in db");
-            return None;
+            return None
         }
 
         let parity_trace = self.trace_block(block_num).await;
@@ -72,7 +73,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             let _ = self
                 .metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
-            return None;
+            return None
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
@@ -104,7 +105,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     pub(crate) async fn trace_block(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TxTrace>>, HashMap<Address, JsonAbi>, BlockStats) {
+    ) -> (Option<Vec<TxTrace>>, FastHashMap<Address, JsonAbi>, BlockStats) {
         let merged_trace = self
             .tracer
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)))
@@ -138,9 +139,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
                 .collect::<Vec<Address>>();
             info!("addresses for dyn decoding: {:#?}", addresses);
             //self.libmdbx.get_abis(addresses).await.unwrap()
-            HashMap::default()
+            FastHashMap::default()
         } else {
-            HashMap::default()
+            FastHashMap::default()
         };
 
         info!("{:#?}", json);
@@ -197,7 +198,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     pub(crate) async fn fill_metadata(
         &self,
         block_trace: Vec<TxTrace>,
-        #[cfg(feature = "dyn-decode")] dyn_json: HashMap<Address, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: FastHashMap<Address, JsonAbi>,
         block_receipts: Vec<TransactionReceipt>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
@@ -242,7 +243,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     async fn parse_transaction(
         &self,
         mut tx_trace: TxTrace,
-        #[cfg(feature = "dyn-decode")] dyn_json: &HashMap<Address, JsonAbi>,
+        #[cfg(feature = "dyn-decode")] dyn_json: &FastHashMap<Address, JsonAbi>,
         block_num: u64,
         tx_hash: B256,
         tx_idx: u64,

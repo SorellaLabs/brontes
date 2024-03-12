@@ -15,14 +15,12 @@ action_impl!(
     crate::UniswapX::executeCall,
     Batch,
     [..Fill*],
-    call_data: true,
     logs: true,
     |
     info: CallInfo,
-    _call_data: executeCall,
-    logs_data: UniswapXexecuteCallLogs,
+    logs_data: UniswapXExecuteCallLogs,
     _db_tx: &DB| {
-        let fill_logs = logs_data.Fill_field;
+        let fill_logs = logs_data.fill_field?;
         let solver = fill_logs[0].filler;
 
         let user_swaps = fill_logs.iter()
@@ -48,13 +46,11 @@ action_impl!(
     Batch,
     [..Fill*],
     logs: true,
-    call_data: true,
     |
     info: CallInfo,
-    _call_data: executeBatchCall,
-    logs_data: UniswapXexecuteBatchCallLogs,
+    logs_data: UniswapXExecuteBatchCallLogs,
     _db_tx: &DB| {
-        let fill_logs = logs_data.Fill_field;
+        let fill_logs = logs_data.fill_field?;
 
         let solver = fill_logs[0].filler;
 
@@ -80,14 +76,12 @@ action_impl!(
     crate::UniswapX::executeBatchWithCallbackCall,
     Batch,
     [..Fill*],
-    call_data: true,
     logs: true,
     |
     info: CallInfo,
-    _call_data: executeBatchWithCallbackCall,
-    logs_data: UniswapXexecuteBatchWithCallbackCallLogs,
+    logs_data: UniswapXExecuteBatchWithCallbackCallLogs,
     _db_tx: &DB| {
-        let fill_logs = logs_data.Fill_field;
+        let fill_logs = logs_data.fill_field?;
         let solver = fill_logs[0].filler;
 
         let user_swaps = fill_logs.iter()
@@ -111,14 +105,12 @@ action_impl!(
     crate::UniswapX::executeWithCallbackCall,
     Batch,
     [..Fill*],
-    call_data: true,
     logs: true,
     |
     info: CallInfo,
-    _call_data: executeWithCallbackCall,
-    logs_data: UniswapXexecuteWithCallbackCallLogs,
+    logs_data: UniswapXExecuteWithCallbackCallLogs,
     _db_tx: &DB| {
-        let fill_logs = logs_data.Fill_field;
+        let fill_logs = logs_data.fill_field?;
         let solver = fill_logs[0].filler;
 
         let user_swaps = fill_logs.iter()
@@ -141,7 +133,7 @@ impl Fill {
     /// Here we're converting a Fill into a NormalizedSwap, however we don't yet
     /// have the full trade information. We'll fill this in at the final
     /// classification stage. See: [`Finish
-    /// Classification`](brontes_types::NormalizedBatch::normalized_actions::finish_classification)
+    /// Classification`](brontes_types::normalized_actions::NormalizedBatch::finish_classification)
     pub fn into_swap(fill_log: &Fill, settlement_contract: Address) -> NormalizedSwap {
         let swapper = fill_log.swapper;
 
@@ -164,7 +156,7 @@ impl Fill {
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
     use brontes_types::{normalized_actions::Actions, ToScaledRational, TreeSearchBuilder};

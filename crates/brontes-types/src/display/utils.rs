@@ -1,6 +1,6 @@
-use std::fmt;
+use std::fmt::{self};
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
@@ -638,18 +638,6 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
         _ => panic!("Wrong bundle type"),
     };
 
-    // MEV Bot Details
-    writeln!(f, "{}: \n", "Transaction Details".bold().underline().bright_yellow())?;
-    writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
-
-    match bundle.header.mev_contract {
-        Some(contract) => {
-            writeln!(f, "   - Mev Contract: {}", contract)?;
-        }
-        None => {
-            writeln!(f, "   - Mev Contract: None")?;
-        }
-    }
     // Tx details
     writeln!(f, "\n{}: \n", "Transaction Details".bold().underline().bright_yellow())?;
     writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
@@ -688,8 +676,8 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             writeln!(f, "      - {}:", "Arb Leg Details".bright_blue())?;
             writeln!(
                 f,
-                "        - Price on {}: {}",
-                stat_arb_detail.cex_exchange.clone(),
+                "        - Price on {:#?}: {}",
+                stat_arb_detail.cex_exchanges.clone(),
                 stat_arb_detail.cex_price.clone().to_float()
             )?;
             writeln!(
@@ -719,6 +707,65 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     Ok(())
 }
 
+pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
+    let ascii_header = indoc! {r#"
+    
+             _____                     _                 _____    
+            /  ___|                   | |               |_   _|   
+            \ `--.  ___  __ _ _ __ ___| |__   ___ _ __    | |_  __
+             `--. \/ _ \/ _` | '__/ __| '_ \ / _ \ '__|   | \ \/ /
+            /\__/ /  __/ (_| | | | (__| | | |  __/ |      | |>  < 
+            \____/ \___|\__,_|_|  \___|_| |_|\___|_|      \_/_/\_\
+
+    "#};
+
+    let searcher_tx_data = match &bundle.data {
+        BundleData::Unknown(data) => data,
+        _ => panic!("Wrong bundle type"),
+    };
+
+    for line in ascii_header.lines() {
+        writeln!(f, "{}", line)?;
+    }
+
+    // Tx details
+    writeln!(f, "\n{}: \n", "Transaction Details".bold().underline().bright_yellow())?;
+    writeln!(f, "   - Tx Index: {}", bundle.header.tx_index.to_string().bold())?;
+    writeln!(f, "   - EOA: {}", bundle.header.eoa)?;
+
+    match bundle.header.mev_contract {
+        Some(contract) => {
+            writeln!(f, "   - Mev Contract: {}", formate_etherscan_address_url(&contract))?;
+        }
+        None => {
+            writeln!(f, "   - Mev Contract: None")?;
+        }
+    }
+
+    writeln!(f, "   - Etherscan: {}", format_etherscan_url(&bundle.header.tx_hash))?;
+
+    writeln!(f, "  - {}:", "PnL".bright_blue())?;
+
+    writeln!(f, "   - Transaction Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
+    writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
+
+    // Transfers
+    bundle
+        .header
+        .balance_deltas
+        .iter()
+        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
+
+    // Gas Details
+    writeln!(f, "\n{}: \n", "Gas Details".underline().bright_yellow())?;
+
+    searcher_tx_data
+        .gas_details
+        .pretty_print_with_spaces(f, 8)?;
+
+    Ok(())
+}
+
 // Helper function to format profit values
 fn format_profit(value: f64) -> ColoredString {
     if value < 0.0 {
@@ -736,6 +783,12 @@ fn format_bribe(value: f64) -> ColoredString {
 
 fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
     format!("https://etherscan.io/tx/{:?}", tx_hash)
+        .underline()
+        .to_string()
+}
+
+fn formate_etherscan_address_url(tx_hash: &Address) -> String {
+    format!("https://etherscan.io/address/{:?}", tx_hash)
         .underline()
         .to_string()
 }

@@ -17,9 +17,9 @@ action_impl!(
     |
     info: CallInfo,
     call_data: swapCall,
-    log_data: PancakeSwapV2swapCallLogs,
+    log_data: PancakeSwapV2SwapCallLogs,
     db_tx: &DB| {
-        let logs = log_data.Swap_field;
+        let logs = log_data.swap_field?;
         let recipient = call_data.to;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
@@ -75,9 +75,9 @@ action_impl!(
     |
      info: CallInfo,
      call_data: mintCall,
-     log_data: PancakeSwapV2mintCallLogs,
+     log_data: PancakeSwapV2MintCallLogs,
      db_tx: &DB| {
-        let log_data = log_data.Mint_field;
+        let log_data = log_data.mint_field?;
         let details = db_tx.get_protocol_details(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
@@ -108,9 +108,9 @@ action_impl!(
     |
     info: CallInfo,
     call_data: burnCall,
-     log_data: PancakeSwapV2burnCallLogs,
+     log_data: PancakeSwapV2BurnCallLogs,
      db_tx: &DB| {
-        let log_data = log_data.Burn_field;
+        let log_data = log_data.burn_field?;
         let details = db_tx.get_protocol_details(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 

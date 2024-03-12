@@ -55,6 +55,10 @@ pub struct Root<V: NormalizedAction> {
 
 impl<V: NormalizedAction> Root<V> {
     //TODO: Add field for reinit bool flag
+    //TODO: Once metadata table is updated
+    //TODO: Filter out know entities from address metadata enum variant or contract
+    // info struct
+
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,
@@ -67,11 +71,19 @@ impl<V: NormalizedAction> Root<V> {
             .clone()
             .get_action()
             .get_to_address();
-
-        let is_verified_contract = database
+        let address_meta = database
             .try_fetch_address_metadata(to_address)
-            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
-            .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
+            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))?;
+
+        let (is_verified_contract, contract_type) = match address_meta {
+            Some(meta) => {
+                let verified = meta.is_verified();
+                let contract_type = meta.get_contract_type();
+
+                (verified, Some(contract_type))
+            }
+            None => (false, None),
+        };
 
         let is_classified = self
             .data_store
@@ -100,12 +112,19 @@ impl<V: NormalizedAction> Root<V> {
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if is_verified_contract || is_classified || emits_logs && searcher_contract_info.is_none() {
+        if is_verified_contract
+            || is_classified
+            || contract_type
+                .as_ref()
+                .map_or(false, |ct| !ct.could_be_mev_contract())
+            || emits_logs && searcher_contract_info.is_none()
+        {
             return Ok(TxInfo::new(
                 block_number,
                 self.position as u64,
                 self.head.address,
                 None,
+                contract_type,
                 self.tx_hash,
                 self.gas_details,
                 is_classified,
@@ -122,6 +141,7 @@ impl<V: NormalizedAction> Root<V> {
             self.position as u64,
             self.head.address,
             Some(to_address),
+            contract_type,
             self.tx_hash,
             self.gas_details,
             is_classified,
@@ -361,3 +381,35 @@ impl From<(Vec<Vec<TxHash>>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
         (tx_hashes, gas_details).into()
     }
 }
+
+pub enum FalsePositiveEntity {
+    MaestroBots,
+}
+
+/*
+#[cfg(test)]
+pub mod test {
+    use std::sync::Arc;
+
+    use alloy_primitives::hex;
+    use brontes_classifier::test_utils::{get_db_handle, ClassifierTestUtils};
+    use brontes_types::{normalized_actions::Actions, tree::BlockTree};
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_tx_info_filters() {
+        let handle = tokio::runtime::Handle::current();
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let tx = hex!("d6aa973068528615f4bba657b9b3366166c1ea0f56ac1313afe7abd97668ae4f").into();
+
+        let tree: Arc<BlockTree<Actions>> =
+            Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
+
+        let info = tree
+            .get_tx_info(tx, classifier_utils.)
+            .unwrap();
+
+        assert_eq!(info.mev_contract, None)
+    }
+}*/

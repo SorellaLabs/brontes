@@ -1,15 +1,14 @@
 use std::{
     cmp::max,
-    collections::{HashMap, HashSet},
     ops::{Deref, DerefMut},
     time::{Duration, SystemTime},
 };
 
 use alloy_primitives::Address;
-use brontes_types::pair::Pair;
+use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use petgraph::prelude::*;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use super::yens::yen;
 use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
@@ -72,15 +71,16 @@ impl DerefMut for EdgeWithInsertBlock {
 #[derive(Debug, Clone)]
 pub struct AllPairGraph {
     graph:          UnGraph<(), Vec<EdgeWithInsertBlock>, usize>,
-    token_to_index: HashMap<Address, usize>,
+    token_to_index: FastHashMap<Address, usize>,
 }
 
 impl AllPairGraph {
-    pub fn init_from_hashmap(all_pool_data: HashMap<(Address, Protocol), Pair>) -> Self {
+    pub fn init_from_hash_map(all_pool_data: FastHashMap<(Address, Protocol), Pair>) -> Self {
         let mut graph = UnGraph::<(), Vec<EdgeWithInsertBlock>, usize>::default();
 
-        let mut token_to_index = HashMap::new();
-        let mut connections: HashMap<(usize, usize), Vec<EdgeWithInsertBlock>> = HashMap::new();
+        let mut token_to_index = FastHashMap::default();
+        let mut connections: FastHashMap<(usize, usize), Vec<EdgeWithInsertBlock>> =
+            FastHashMap::default();
 
         let t0 = SystemTime::now();
 
@@ -198,7 +198,7 @@ impl AllPairGraph {
     pub fn get_paths_ignoring(
         &self,
         pair: Pair,
-        ignore: &HashSet<Pair>,
+        ignore: &FastHashSet<Pair>,
         block: u64,
         connectivity_wight: usize,
         connections: Option<usize>,
@@ -211,12 +211,12 @@ impl AllPairGraph {
 
         let Some(start_idx) = self.token_to_index.get(&pair.0) else {
             let addr = pair.0;
-            error!(?addr, "no node for address");
+            debug!(?addr, "no node for address");
             return vec![];
         };
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
-            error!(?addr, "no node for address");
+            debug!(?addr, "no node for address");
             return vec![];
         };
 

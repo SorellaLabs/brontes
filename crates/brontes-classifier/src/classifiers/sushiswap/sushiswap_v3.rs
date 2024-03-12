@@ -67,10 +67,13 @@ action_impl!(
     [Mint],
     return_data: true,
     call_data: true,
+    logs: true,
     |
         info: CallInfo,
     call_data: mintCall,
-     return_data: mintReturn,  db_tx: &DB| {
+     return_data: mintReturn, logs: SushiSwapV3MintCallLogs,  db_tx: &DB| {
+
+        let owner = logs.mint_field?.owner;
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
@@ -86,7 +89,7 @@ action_impl!(
         Ok(NormalizedMint {
             protocol:Protocol::SushiSwapV3,
             trace_index: info.trace_idx,
-            from: info.from_address,
+            from: owner,
             recipient: call_data.recipient,
             pool: info.target_address,
             token: vec![t0_info, t1_info],

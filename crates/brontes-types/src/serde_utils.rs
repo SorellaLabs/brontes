@@ -607,8 +607,9 @@ pub mod option_contract_info {
 
     use alloy_primitives::Address;
     use serde::{
-        de::{Deserialize, Deserializer},
+        de::Deserialize,
         ser::{Serialize, Serializer},
+        Deserializer,
     };
 
     use crate::db::address_metadata::ContractInfo;
@@ -637,10 +638,7 @@ pub mod option_contract_info {
 
 pub mod socials {
 
-    use serde::{
-        de::{Deserialize, Deserializer},
-        ser::{Serialize, Serializer},
-    };
+    use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
     type SocalDecode =

@@ -14,9 +14,9 @@ action_impl!(
     |
     info: CallInfo,
     call_data: liquidateBorrowCall,
-    log_data: CompoundV2liquidateBorrowCallLogs,
+    log_data: CompoundV2LiquidateBorrowCallLogs,
     db_tx: &DB | {
-        let logs = log_data.LiquidateBorrow_field;
+        let logs = log_data.liquidate_borrow_field?;
         let debt_asset = info.target_address;
         let debt_info = db_tx.try_fetch_token_info(debt_asset)?;
         let collateral = db_tx.try_fetch_token_info(call_data.cTokenCollateral)?;

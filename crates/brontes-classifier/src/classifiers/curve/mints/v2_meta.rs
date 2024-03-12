@@ -12,9 +12,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2MetapoolImpladd_liquidity_0CallLogs,
+    log: CurveV2MetapoolImplAdd_liquidity_0CallLogs,
     db_tx: &DB|{
-        let log = log.AddLiquidity_field;
+        let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
@@ -52,9 +52,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2MetapoolImpladd_liquidity_1CallLogs,
+    log: CurveV2MetapoolImplAdd_liquidity_1CallLogs,
     db_tx: &DB|{
-        let log = log.AddLiquidity_field;
+        let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
@@ -91,7 +91,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;

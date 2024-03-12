@@ -13,9 +13,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_0CallLogs,
+    log: CurveV1MetapoolImplExchange_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -61,9 +61,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_1CallLogs,
+    log: CurveV1MetapoolImplExchange_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -110,9 +110,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_underlying_0CallLogs,
+    log: CurveV1MetapoolImplExchange_underlying_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
+        let log = log.token_exchange_underlying_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -164,9 +164,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_underlying_1CallLogs,
+    log: CurveV1MetapoolImplExchange_underlying_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
+        let log = log.token_exchange_underlying_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -219,7 +219,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;

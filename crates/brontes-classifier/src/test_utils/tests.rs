@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
@@ -28,14 +27,14 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TraceActions,
     tree::BlockTree,
-    TreeSearchBuilder,
+    FastHashMap, TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use thiserror::Error;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::{
     ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
@@ -79,7 +78,8 @@ impl ClassifierTestUtils {
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
@@ -92,9 +92,9 @@ impl ClassifierTestUtils {
                         .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                         .collect::<Vec<_>>()
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         } else {
-            HashMap::new()
+            FastHashMap::default()
         };
         let ctr = Arc::new(AtomicBool::new(false));
 
@@ -171,6 +171,47 @@ impl ClassifierTestUtils {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
         Ok(self.classifier.build_block_tree(vec![trace], header).await)
+    }
+
+    pub async fn setup_pricing_for_bench(
+        &self,
+        block: u64,
+        quote_asset: Address,
+        needs_tokens: Vec<Address>,
+    ) -> Result<
+        (
+            BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+            UnboundedSender<DexPriceMsg>,
+        ),
+        ClassifierTestUtilsError,
+    > {
+        let BlockTracesWithHeaderAnd { traces, header, block, .. } = self
+            .trace_loader
+            .get_block_traces_with_header(block)
+            .await?;
+        let (tx, rx) = unbounded_channel();
+
+        let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
+        let _tree = classifier.build_block_tree(traces, header).await;
+
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
+        let (ctr, pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
+
+        Ok((pricer, tx))
     }
 
     pub async fn build_tree_tx_with_pricing(
@@ -356,6 +397,7 @@ impl ClassifierTestUtils {
         tree_collect_builder: TreeSearchBuilder<Actions>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
+
         assert!(!tree.tx_roots.is_empty(), "empty tree. most likely a invalid hash");
 
         let root = tree.tx_roots.remove(0);
@@ -397,7 +439,7 @@ impl ClassifierTestUtils {
         // write protocol to libmdbx
         self.libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
 
@@ -480,7 +522,7 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData {
                     key:   address,
                     value: ProtocolInfo {
@@ -504,7 +546,7 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData {
                 key:   token.address,
                 value: brontes_types::db::token_info::TokenInfo {
                     decimals: token.decimals,

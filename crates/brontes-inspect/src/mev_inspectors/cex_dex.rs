@@ -47,16 +47,15 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt},
     mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails, StatArbPnl},
-    normalized_actions::{Actions, NormalizedSwap},
+    normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    ToFloatNearest, TreeCollect, TreeSearchBuilder, TxInfo,
+    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use malachite::{
     num::basic::traits::{Two, Zero},
     Rational,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 use tracing::debug;
 
@@ -84,7 +83,6 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
@@ -105,20 +103,22 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     ///
     /// # Returns
     /// A vector of `Bundle` instances representing classified CEX-DEX arbitrage
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
-        let swap_txes = tree.collect_all_action_filter(
-            TreeSearchBuilder::default().with_action(Actions::is_swap),
-            Actions::try_swaps_merged,
-        );
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+        let swap_txes = tree
+            .clone()
+            .collect_all(TreeSearchBuilder::default().with_actions([
+                Actions::is_swap,
+                Actions::is_transfer,
+                Actions::is_eth_transfer,
+            ]));
 
         swap_txes
-            .into_par_iter()
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+                let deltas = swaps.clone().into_iter().account_for_actions();
+                let swaps = swaps
+                    .into_iter()
+                    .collect_action_vec(Actions::try_swaps_merged);
 
                 // For each swap in the transaction, detect potential CEX-DEX
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
@@ -141,7 +141,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
                 let header = self.utils.build_bundle_header(
-                    tree.clone(),
+                    vec![deltas],
                     vec![tx_info.tx_hash],
                     &tx_info,
                     possible_cex_dex.pnl.taker_profit.clone().to_float(),
@@ -314,11 +314,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 if let Some(most_profitable_leg) = swap_with_profit.filter_most_profitable_leg() {
                     swaps.push(swap_with_profit.swap.clone());
                     arb_details.push(StatArbDetails {
-                        cex_exchange: most_profitable_leg.exchange,
-                        cex_price:    most_profitable_leg.cex_price,
-                        dex_exchange: swap_with_profit.swap.protocol,
-                        dex_price:    swap_with_profit.swap.swap_rate(),
-                        pnl_pre_gas:  most_profitable_leg.pnl.clone(),
+                        cex_exchanges: vec![most_profitable_leg.exchange],
+                        cex_price:     most_profitable_leg.cex_price,
+                        dex_exchange:  swap_with_profit.swap.protocol,
+                        dex_price:     swap_with_profit.swap.swap_rate(),
+                        pnl_pre_gas:   most_profitable_leg.pnl.clone(),
                     });
                     total_arb_pre_gas.maker_profit += most_profitable_leg.pnl.maker_profit;
                     total_arb_pre_gas.taker_profit += most_profitable_leg.pnl.taker_profit;
@@ -329,7 +329,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             return None
         }
 
-        let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid());
+        let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
 
         let pnl = StatArbPnl {
             maker_profit: total_arb_pre_gas.maker_profit - gas_cost.clone(),
@@ -393,18 +393,30 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         if original_token != final_token {
             return false
         }
+        let deltas = possible_cex_dex
+            .swaps
+            .clone()
+            .into_iter()
+            .map(Actions::from)
+            .account_for_actions();
 
-        let profit = self
+        let addr_usd_deltas = self
             .utils
-            .get_dex_swaps_rev_usd(
+            .usd_delta_by_address(
                 tx_info.tx_index,
                 PriceAt::Average,
-                &possible_cex_dex.swaps,
+                &deltas,
                 metadata.clone(),
+                false,
             )
             .unwrap_or_default();
 
-        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid()) > Rational::ZERO
+        let profit = addr_usd_deltas
+            .values()
+            .fold(Rational::ZERO, |acc, delta| acc + delta);
+
+        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid(), self.utils.quote)
+            > Rational::ZERO
     }
 }
 
@@ -461,7 +473,7 @@ pub struct ExchangeLeg {
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::USDT_ADDRESS;
+    use brontes_types::constants::{USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS};
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
@@ -506,7 +518,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
+            .needs_tokens(vec![WETH_ADDRESS, WBTC_ADDRESS])
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();

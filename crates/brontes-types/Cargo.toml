@@ -24,7 +24,7 @@ tracing.workspace = true
 
 # async
 rayon.workspace = true
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 futures.workspace = true
 
 # numbers
@@ -38,7 +38,7 @@ serde_with.workspace = true
 serde_repr.workspace = true
 
 # database
-clickhouse.workspace = true
+clickhouse = { workspace = true, features = ["tls"] }
 
 # misc
 phf.workspace = true
@@ -70,6 +70,9 @@ statrs = "0.16"
 eyre.workspace = true
 thiserror.workspace = true
 
+# hashing
+ahash = "0.8.11"
+
 [dev-dependencies]
 dotenv.workspace = true
 tokio.workspace = true
@@ -85,7 +88,7 @@ reth-tracing-ext.workspace = true
 [features]
 default = []
 tests = []
-api = []
+cex-dex-markout = []
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",

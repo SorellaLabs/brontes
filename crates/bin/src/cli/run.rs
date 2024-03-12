@@ -3,7 +3,7 @@ use std::{env, path::Path};
 use brontes_core::decoding::Parser as DParser;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::constants::USDT_ADDRESS_STRING;
+use brontes_types::{constants::USDT_ADDRESS_STRING, init_threadpools};
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -43,6 +43,9 @@ pub struct RunArgs {
     /// dex prices.
     #[arg(long, short, default_value = "false")]
     pub run_dex_pricing: bool,
+    /// How many blocks behind chain tip to run.
+    #[arg(long, default_value = "2")]
+    pub behind_tip:      u64,
 }
 
 impl RunArgs {
@@ -56,6 +59,7 @@ impl RunArgs {
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
+        init_threadpools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -82,6 +86,7 @@ impl RunArgs {
                 if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
                     self.start_block,
                     self.end_block,
+                    self.behind_tip,
                     max_tasks,
                     self.min_batch_size,
                     quote_asset,

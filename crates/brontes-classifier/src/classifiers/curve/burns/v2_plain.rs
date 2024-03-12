@@ -12,10 +12,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -54,10 +54,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -94,10 +94,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_imbalance_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_imbalance_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -134,10 +134,10 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_imbalance_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_imbalance_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -175,10 +175,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_0Call,
-    log: CurveV2PlainPoolImplremove_liquidity_one_coin_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_one_coin_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -220,10 +220,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_1Call,
-    log: CurveV2PlainPoolImplremove_liquidity_one_coin_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_one_coin_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -262,7 +262,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;

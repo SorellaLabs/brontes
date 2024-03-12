@@ -1,4 +1,7 @@
+pub mod accounting;
+pub mod aggregator;
 pub mod batch;
+pub mod comparison;
 pub mod eth_transfer;
 pub mod flashloan;
 pub mod lending;
@@ -8,10 +11,11 @@ pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
-pub mod utils;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
+use accounting::{AddressDeltas, TokenAccounting};
+pub use aggregator::*;
 use alloy_primitives::{Address, Bytes, Log};
 pub use batch::*;
 use clickhouse::InsertRow;
@@ -23,7 +27,6 @@ pub use liquidity::*;
 pub use pool::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
-use serde::{Deserialize, Serialize};
 pub use swaps::*;
 pub use transfer::*;
 
@@ -51,6 +54,8 @@ impl NormalizedAction for Actions {
     fn emitted_logs(&self) -> bool {
         match self {
             Actions::Unclassified(u) => !u.logs.is_empty(),
+            Actions::SelfDestruct(_) => false,
+            Actions::EthTransfer(_) => false,
             _ => true,
         }
     }
@@ -76,6 +81,7 @@ impl NormalizedAction for Actions {
             Self::Revert => false,
             Self::NewPool(_) => false,
             Self::PoolConfigUpdate(_) => false,
+            Self::Aggregator(_) => true,
         }
     }
 
@@ -94,6 +100,13 @@ impl NormalizedAction for Actions {
                 Self::is_swap,
                 Self::is_transfer,
                 Self::is_eth_transfer,
+            ]),
+            Self::Aggregator(_) => TreeSearchBuilder::default().with_actions([
+                Self::is_batch,
+                Self::is_swap,
+                Self::is_mint,
+                Self::is_burn,
+                Self::is_transfer,
             ]),
             Self::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
             action => unreachable!("no continue_classification function for {action:?}"),
@@ -116,6 +129,7 @@ impl NormalizedAction for Actions {
             Self::Unclassified(u) => u.trace_idx,
             Self::NewPool(p) => p.trace_index,
             Self::PoolConfigUpdate(p) => p.trace_index,
+            Self::Aggregator(a) => a.trace_index,
             Self::Revert => unreachable!("no trace index for revert"),
         }
     }
@@ -125,13 +139,14 @@ impl NormalizedAction for Actions {
             Self::FlashLoan(f) => f.finish_classification(actions),
             Self::Batch(f) => f.finish_classification(actions),
             Self::Liquidation(l) => l.finish_classification(actions),
+            Self::Aggregator(a) => a.finish_classification(actions),
             action => unreachable!("{action:?} never require complex classification"),
         }
     }
 }
 
 /// A normalized action that has been classified
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Deserialize, PartialEq, Eq)]
 pub enum Actions {
     Swap(NormalizedSwap),
     SwapWithFee(NormalizedSwapWithFee),
@@ -147,6 +162,7 @@ pub enum Actions {
     EthTransfer(NormalizedEthTransfer),
     NewPool(NormalizedNewPool),
     PoolConfigUpdate(NormalizedPoolConfigUpdate),
+    Aggregator(NormalizedAggregator),
     Revert,
 }
 
@@ -167,11 +183,12 @@ impl InsertRow for Actions {
             Actions::NewPool(_) => todo!(),
             Actions::PoolConfigUpdate(_) => todo!(),
             Actions::Unclassified(..) | Actions::Revert => panic!(),
+            Actions::Aggregator(_) => NormalizedAggregator::COLUMN_NAMES,
         }
     }
 }
 
-impl Serialize for Actions {
+impl serde::Serialize for Actions {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -180,6 +197,7 @@ impl Serialize for Actions {
             Actions::Swap(s) => s.serialize(serializer),
             Actions::SwapWithFee(s) => s.serialize(serializer),
             Actions::FlashLoan(f) => f.serialize(serializer),
+            Actions::Aggregator(a) => a.serialize(serializer),
             Actions::Batch(b) => b.serialize(serializer),
             Actions::Mint(m) => m.serialize(serializer),
             Actions::Transfer(t) => t.serialize(serializer),
@@ -258,6 +276,7 @@ impl Actions {
             Actions::Swap(s) => s.pool,
             Actions::SwapWithFee(s) => s.pool,
             Actions::FlashLoan(f) => f.pool,
+            Actions::Aggregator(_) => Address::ZERO,
             Actions::Batch(b) => b.settlement_contract,
             Actions::Mint(m) => m.pool,
             Actions::Burn(b) => b.pool,
@@ -283,6 +302,7 @@ impl Actions {
             Actions::Swap(s) => s.from,
             Actions::SwapWithFee(s) => s.from,
             Actions::FlashLoan(f) => f.from,
+            Actions::Aggregator(a) => a.from,
             Actions::Batch(b) => b.solver,
             Actions::Mint(m) => m.from,
             Actions::Burn(b) => b.from,
@@ -317,6 +337,10 @@ impl Actions {
 
     pub const fn is_flash_loan(&self) -> bool {
         matches!(self, Actions::FlashLoan(_))
+    }
+
+    pub const fn is_aggregator(&self) -> bool {
+        matches!(self, Actions::Aggregator(_))
     }
 
     pub const fn is_liquidation(&self) -> bool {
@@ -406,7 +430,6 @@ macro_rules! extra_impls {
                         Box::new(Actions::[<try _$action_name:snake>])
                                 as Box<dyn Fn(Actions) -> Option<$ret>>
                     }
-
                 )*
             }
 
@@ -430,7 +453,9 @@ extra_impls!(
     (SwapWithFee, NormalizedSwapWithFee),
     (Transfer, NormalizedTransfer),
     (Liquidation, NormalizedLiquidation),
-    (FlashLoan, NormalizedFlashLoan)
+    (FlashLoan, NormalizedFlashLoan),
+    (Aggregator, NormalizedAggregator),
+    (Batch, NormalizedBatch)
 );
 
 /// Custom impl for itering over swaps and swap with fee
@@ -465,5 +490,29 @@ impl Actions {
     /// Merges swap and swap with fee
     pub fn try_swaps_merged_dedup() -> Box<dyn Fn(Actions) -> Option<NormalizedSwap>> {
         Box::new(Actions::try_swaps_merged) as Box<dyn Fn(Actions) -> Option<NormalizedSwap>>
+    }
+}
+
+impl TokenAccounting for Actions {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        match self {
+            Actions::Swap(swap) => swap.apply_token_deltas(delta_map),
+            Actions::Transfer(transfer) => transfer.apply_token_deltas(delta_map),
+            Actions::FlashLoan(flash_loan) => flash_loan.apply_token_deltas(delta_map),
+            Actions::Aggregator(aggregator) => aggregator.apply_token_deltas(delta_map),
+            Actions::Liquidation(liquidation) => liquidation.apply_token_deltas(delta_map),
+            Actions::Batch(batch) => batch.apply_token_deltas(delta_map),
+            Actions::Burn(burn) => burn.apply_token_deltas(delta_map),
+            Actions::Mint(mint) => mint.apply_token_deltas(delta_map),
+            Actions::SwapWithFee(swap_with_fee) => swap_with_fee.swap.apply_token_deltas(delta_map),
+            Actions::Collect(collect) => collect.apply_token_deltas(delta_map),
+            Actions::EthTransfer(eth_transfer) => eth_transfer.apply_token_deltas(delta_map),
+            Actions::Unclassified(_) => (), /* Potentially no token deltas to apply, adjust as */
+            // necessary
+            Actions::SelfDestruct(_self_destruct) => (),
+            Actions::NewPool(_new_pool) => (),
+            Actions::PoolConfigUpdate(_pool_update) => (),
+            Actions::Revert => (), // No token deltas to apply for a revert
+        }
     }
 }

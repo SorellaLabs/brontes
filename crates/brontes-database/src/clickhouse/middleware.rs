@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
@@ -16,7 +14,7 @@ use brontes_types::{
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
-    Protocol, SubGraphEdge,
+    FastHashMap, Protocol, SubGraphEdge,
 };
 
 use super::Clickhouse;
@@ -46,7 +44,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         block_number: u64,
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_dex_quotes(block_number, quotes.clone())
             .await?;
@@ -60,7 +57,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_token_info(address, decimals, symbol.clone())
             .await?;
@@ -76,7 +72,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .save_mev_blocks(block_number, block.clone(), mev.clone())
             .await?;
@@ -89,7 +84,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_searcher_eoa_info(searcher_eoa, searcher_info.clone())
             .await?;
@@ -104,7 +98,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_searcher_contract_info(searcher_contract, searcher_info.clone())
             .await?;
@@ -119,7 +112,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         builder_coinbase_addr: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .write_builder_info(builder_coinbase_addr, builder_info.clone())
             .await?;
@@ -137,7 +129,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client
             .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await?;
@@ -148,7 +139,6 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        #[cfg(not(feature = "tests"))]
         self.client.save_traces(block, traces.clone()).await?;
 
         self.inner().save_traces(block, traces).await
@@ -166,6 +156,21 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
     ) -> eyre::Result<()> {
         self.inner
             .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
+            .await
+    }
+
+    async fn initialize_tables_arbitrary<
+        T: brontes_types::traits::TracingProvider,
+        CH: ClickhouseHandle,
+    >(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: std::sync::Arc<T>,
+        tables: &[crate::Tables],
+        block_range: Vec<u64>,
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range)
             .await
     }
 
@@ -240,7 +245,7 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
     fn protocols_created_before(
         &self,
         start_block: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
+    ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
         self.inner.protocols_created_before(start_block)
     }
 

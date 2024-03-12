@@ -59,7 +59,7 @@ impl InspectorTestUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|t| t.header.number).collect(),
-            ));
+            ))
         }
         Ok(trees.remove(0))
     }
@@ -77,7 +77,7 @@ impl InspectorTestUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|(t, _)| t.header.number).collect(),
-            ));
+            ))
         }
         Ok(trees.remove(0))
     }
@@ -132,7 +132,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err());
+            return Err(err())
         };
 
         let block = tree.header.number;
@@ -164,7 +164,7 @@ impl InspectorTestUtils {
             ],
         );
 
-        let results = inspector.process_tree(tree.into(), metadata.into()).await;
+        let results = inspector.process_tree(tree.into(), metadata.into());
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
 
         Ok(())
@@ -203,7 +203,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err());
+            return Err(err())
         };
 
         let block = tree.header.number;
@@ -212,7 +212,13 @@ impl InspectorTestUtils {
             meta
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
-            if config.expected_mev_type == Inspectors::CexDex {
+
+            #[cfg(not(feature = "cex-dex-markout"))]
+            let cmp = Inspectors::CexDex;
+            #[cfg(feature = "cex-dex-markout")]
+            let cmp = Inspectors::CexDexMarkout;
+
+            if config.expected_mev_type == cmp {
                 res?
             } else {
                 res.unwrap_or_else(|_| Metadata::default())
@@ -239,7 +245,7 @@ impl InspectorTestUtils {
             ],
         );
 
-        let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
+        let mut results = inspector.process_tree(tree.into(), metadata.into());
 
         assert_eq!(
             results.len(),
@@ -305,7 +311,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err());
+            return Err(err())
         };
 
         let block = tree.header.number;
@@ -314,7 +320,13 @@ impl InspectorTestUtils {
             meta
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
-            if config.inspectors.contains(&Inspectors::CexDex) {
+
+            #[cfg(not(feature = "cex-dex-markout"))]
+            let cmp = Inspectors::CexDex;
+            #[cfg(feature = "cex-dex-markout")]
+            let cmp = Inspectors::CexDexMarkout;
+
+            if config.inspectors.contains(&cmp) {
                 res?
             } else {
                 res.unwrap_or_else(|_| Metadata::default())
@@ -341,7 +353,7 @@ impl InspectorTestUtils {
             })
             .collect::<Vec<_>>();
 
-        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
+        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into());
 
         let mut results = results
             .mev_details
