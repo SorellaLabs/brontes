@@ -160,5 +160,7 @@ action_dispatch!(
     ClipperExchangeSellEthForTokenCall,
     ClipperExchangeSellTokenForEthCall,
     ClipperExchangeTransmitAndSwapCall,
-    ClipperExchangeTransmitAndSellTokenForEthCall
+    ClipperExchangeTransmitAndSellTokenForEthCall,
+    CowswapSettleCall,
+    CowswapSwapCall
 );

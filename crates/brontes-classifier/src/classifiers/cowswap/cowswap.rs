@@ -3,7 +3,7 @@ use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::{NormalizedBatch, NormalizedSwap},
+    normalized_actions::{NormalizedAggregator, NormalizedBatch, NormalizedSwap},
     structured_trace::CallInfo,
     ToScaledRational,
 };
@@ -39,31 +39,21 @@ fn create_normalized_swap<DB: LibmdbxReader + DBWriter>(
     })
 }
 
-action_impl!(
-    Protocol::Cowswap,
-    crate::CowswapGPv2Settlement::settleCall,
-    Batch,
-    [..Trade*],
-    call_data: true,
-    logs: true,
-    |info: CallInfo, _call_data: settleCall, log_data: CowswapsettleCallLogs, db_tx: &DB| {
-        let user_swaps: Vec<NormalizedSwap> = log_data.Trade_field.iter().map(
-            |trade| {
-                create_normalized_swap(trade, db_tx, Cowswap, info.target_address, 0)
-            }
-        ).collect::<Result<Vec<NormalizedSwap>, Error>>()?;
+fn create_normalized_swap_i(
+    protocol: Protocol,
+    trace_index: u64,
+) -> Result<NormalizedAggregator, Error> {
+    let aggregate = NormalizedAggregator {
+        protocol,
+        trace_index,
+        from: Address::ZERO,
+        recipient: Address::ZERO,
+        msg_value: U256::ZERO,
+        child_actions: vec![],
+    };
 
-        Ok(NormalizedBatch {
-            protocol: Cowswap,
-            trace_index: info.trace_idx,
-            solver: info.msg_sender,
-            settlement_contract: info.target_address,
-            user_swaps,
-            solver_swaps: None,
-            msg_value: info.msg_value,
-        })
-    }
-);
+    Ok(aggregate)
+}
 
 action_impl!(
     Protocol::Cowswap,
@@ -72,9 +62,10 @@ action_impl!(
     [..Trade],
     call_data: true,
     logs: true,
-    |info: CallInfo, _call_data: swapCall, log_data: CowswapswapCallLogs, db_tx: &DB| {
+    |info: CallInfo, _call_data: swapCall, log_data: CowswapSwapCallLogs, db_tx: &DB| {
         let tx_to = info.target_address;
-        let swap = create_normalized_swap(&log_data.Trade_field, db_tx, Cowswap, tx_to, 0)?;
+        let trade_logs = log_data.trade_field?;
+        let swap = create_normalized_swap(&trade_logs, db_tx, Cowswap, tx_to, 0)?;
 
         Ok(NormalizedBatch {
             protocol: Cowswap,
@@ -87,3 +78,59 @@ action_impl!(
         })
     }
 );
+
+action_impl!(
+    Protocol::Cowswap,
+    crate::CowswapGPv2Settlement::settleCall,
+    Aggregator,
+    [..Trade*],
+    call_data: true,
+    logs: true,
+    |info: CallInfo, _call_data: settleCall, log_data: CowswapSettleCallLogs, db_tx: &DB| {
+
+
+        Ok(create_normalized_swap_i(Cowswap, info.trace_idx)?)
+    }
+);
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, B256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::TokenInfo, normalized_actions::Actions,
+        TreeSearchBuilder,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_cowswap_settle() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap =
+            B256::from(hex!("d3bc9024e9c65b2d807dbb956fc9e35a97d131f57d355f806e6cc60de16e18fd"));
+
+        let eq_action = Actions::Aggregator(NormalizedAggregator {
+            protocol: Protocol::Cowswap,
+            trace_index: 0,
+            from: Address::ZERO,
+            recipient: Address::ZERO,
+            msg_value: U256::ZERO,
+            child_actions: vec![],
+         });
+
+
+        classifier_utils
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+            )
+            .await
+            .unwrap();
+    }
+
+}

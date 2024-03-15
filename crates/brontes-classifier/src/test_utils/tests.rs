@@ -398,6 +398,8 @@ impl ClassifierTestUtils {
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
 
+        print!("{:#?}", tree.tx_roots);
+
         assert!(!tree.tx_roots.is_empty(), "empty tree. most likely a invalid hash");
 
         let root = tree.tx_roots.remove(0);
