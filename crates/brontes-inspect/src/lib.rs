@@ -66,7 +66,7 @@
 //! }
 //! ```
 //!
-//! The `Composer` uses  to define a filter that
+//! The `Composer` uses to define a filter that
 //! orders results from individual inspectors. This ensures that lower-level
 //! actions are composed before higher-level actions, which could affect the
 //! composition.
@@ -108,6 +108,9 @@ use jit::JitInspector;
 use liquidations::LiquidationInspector;
 use sandwich::SandwichInspector;
 
+pub type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
+
+/// Refer to crate level docs for information.
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
@@ -128,8 +131,6 @@ pub enum Inspectors {
     #[cfg(feature = "cex-dex-markout")]
     CexDexMarkout,
 }
-
-type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
 
 impl Inspectors {
     pub fn init_mev_inspector<DB: LibmdbxReader>(

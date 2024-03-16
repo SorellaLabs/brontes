@@ -79,27 +79,29 @@ pub fn static_object<T>(obj: T) -> &'static T {
     &*Box::leak(Box::new(obj))
 }
 
+pub fn parse_cex_exchanges(cex_exchanges: Option<Vec<String>>) -> Vec<CexExchange> {
+    cex_exchanges
+        .unwrap_or_default()
+        .into_iter()
+        .map(|s| s.into())
+        .collect()
+}
+
 pub fn init_inspectors<DB: LibmdbxReader>(
     quote_token: Address,
     db: &'static DB,
     inspectors: Option<Vec<Inspectors>>,
-    cex_exchanges: Option<Vec<String>>,
-) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
-    let cex_exchanges: Vec<CexExchange> = cex_exchanges
-        .unwrap_or_default()
-        .into_iter()
-        .map(|s| s.into())
-        .collect();
-
+    cex_exchanges: &[CexExchange],
+) -> Vec<&'static dyn Inspector<Result = Vec<Bundle>>> {
     let mut res = Vec::new();
     for inspector in inspectors
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
     {
-        res.push(inspector.init_mev_inspector(quote_token, db, &cex_exchanges));
+        res.push(inspector.init_mev_inspector(quote_token, db, cex_exchanges));
     }
 
-    &*Box::leak(res.into_boxed_slice())
+    res
 }
 
 pub fn get_env_vars() -> eyre::Result<String> {
