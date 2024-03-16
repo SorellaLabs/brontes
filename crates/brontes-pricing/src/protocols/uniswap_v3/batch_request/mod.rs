@@ -10,6 +10,7 @@ use brontes_types::traits::TracingProvider;
 use reth_primitives::{Address, Bytecode, StorageValue};
 use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
+mod test_bytecodes;
 use super::UniswapV3Pool;
 use crate::errors::AmmError;
 sol!(
@@ -65,7 +66,7 @@ const TOKEN1_RANGE: std::ops::Range<usize> = 9128..9128 + 40;
 const FEE_RANGE: std::ops::Range<usize> = 6682..6682 + 6;
 const TICK_SPACING_RANGE: std::ops::Range<usize> = 6146..6146 + 64;
 
-fn extract_uni_v3_immutables(bytecode: Bytes) -> (Address, Address, u32, i32) {
+pub fn extract_uni_v3_immutables(bytecode: Bytes) -> (Address, Address, u32, i32) {
     // Slices
     let token0_slice = &bytecode[TOKEN0_RANGE];
     let token1_slice = &bytecode[TOKEN1_RANGE];
@@ -191,4 +192,60 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
     let return_data = tick_constructorCall::abi_decode_returns(&res, false).unwrap();
 
     Ok((return_data._0, return_data._1))
+}
+
+#[cfg(test)]
+mod tests {
+    use test_bytecodes::{V2_DAI_MKR, V3_USDC_ETH, V3_WBTC_ETH};
+
+    use super::*;
+
+    #[test]
+    fn test_v3_bytecodes() {
+        let (token0, token1, fees, tick_spacing) = extract_uni_v3_immutables(V3_WBTC_ETH.into());
+
+        assert_eq!(
+            token0,
+            Address::from_str("0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599").unwrap()
+        );
+        assert_eq!(
+            token1,
+            Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap()
+        );
+        assert_eq!(fees, 3000);
+        assert_eq!(tick_spacing, 60);
+
+        let (token0, token1, fees, tick_spacing) = extract_uni_v3_immutables(V3_USDC_ETH.into());
+
+        assert_eq!(
+            token0,
+            Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap()
+        );
+
+        assert_eq!(
+            token1,
+            Address::from_str("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").unwrap()
+        );
+
+        assert_eq!(fees, 500);
+
+        assert_eq!(tick_spacing, 10);
+    }
+
+    // Test fails with error ParseIntError { kind: PosOverflow }
+    #[test]
+    #[should_panic(expected = "ParseIntError")]
+    fn test_fail_v2_bytecode() {
+        let (token0, token1, _fees, _tick_spacing) = extract_uni_v3_immutables(V2_DAI_MKR.into());
+
+        assert_eq!(
+            token0,
+            Address::from_str("0x6B175474E89094C44Da98b954EedeAC495271d0F ").unwrap()
+        );
+
+        assert_eq!(
+            token1,
+            Address::from_str("0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2").unwrap()
+        );
+    }
 }
