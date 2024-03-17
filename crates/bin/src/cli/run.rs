@@ -73,6 +73,7 @@ impl<Ext: InspectorCliExt + clap::Args> RunArgs<Ext> {
 
         tracing::info!(target: "brontes", "starting database initialization");
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        tracing::info!(target: "brontes", "libmdbx init");
         let clickhouse = static_object(load_clickhouse().await?);
         tracing::info!(target: "brontes", "databases initialized");
 
