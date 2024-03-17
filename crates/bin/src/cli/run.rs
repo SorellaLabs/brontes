@@ -5,18 +5,19 @@ use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{constants::USDT_ADDRESS_STRING, init_threadpools};
 use clap::Parser;
+
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
     banner,
-    cli::{get_tracing_provider, init_inspectors},
+    cli::{ext::InspectorCliExt, get_tracing_provider, init_inspectors, parse_cex_exchanges},
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
 };
 
 #[derive(Debug, Parser)]
-pub struct RunArgs {
+pub struct RunArgs<Ext: InspectorCliExt + clap::Args> {
     /// Start Block
     #[arg(long, short)]
     pub start_block:     u64,
@@ -46,9 +47,12 @@ pub struct RunArgs {
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "2")]
     pub behind_tip:      u64,
+    /// Additional cli arguments
+    #[command(flatten, next_help_heading = "Extension")]
+    pub ext:             Ext,
 }
 
-impl RunArgs {
+impl<Ext: InspectorCliExt + clap::Args> RunArgs<Ext> {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         banner::print_banner();
         // Fetch required environment variables.
@@ -73,7 +77,19 @@ impl RunArgs {
         let clickhouse = static_object(load_clickhouse().await?);
         tracing::info!(target: "brontes", "databases initialized");
 
-        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
+        let inspectors = {
+            let cex_exchanges = parse_cex_exchanges(self.cex_exchanges);
+            let inspectors: Vec<_> =
+                init_inspectors(quote_asset, libmdbx, self.inspectors, &cex_exchanges)
+                    .into_iter()
+                    .chain(
+                        self.ext
+                            .init_mev_inspectors(quote_asset, libmdbx, &cex_exchanges),
+                    )
+                    .collect();
+            &*Box::leak(inspectors.into_boxed_slice())
+        };
+        tracing::info!(target: "brontes", "inspectors successfully initialized");
 
         let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 

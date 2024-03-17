@@ -1,7 +1,10 @@
 use std::error::Error;
 
 use brontes::{
-    cli::{Args, Commands},
+    cli::{
+        ext::{InspectorCliExt, NoopInspectorCliExt},
+        Args, Commands,
+    },
     runner,
 };
 use clap::Parser;
@@ -14,7 +17,7 @@ fn main() -> eyre::Result<()> {
     init_tracing();
     fdlimit::raise_fd_limit().unwrap();
 
-    match run() {
+    match run::<NoopInspectorCliExt>() {
         Ok(()) => {
             info!(target: "brontes", "successful shutdown");
             Ok(())
@@ -32,8 +35,8 @@ fn main() -> eyre::Result<()> {
     }
 }
 
-fn run() -> eyre::Result<()> {
-    let opt = Args::parse();
+fn run<Ext: InspectorCliExt + clap::Args>() -> eyre::Result<()> {
+    let opt = Args::<Ext>::parse();
     match opt.command {
         Commands::Run(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::Database(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
