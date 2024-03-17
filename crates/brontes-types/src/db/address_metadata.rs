@@ -13,15 +13,15 @@ use crate::{
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AddressMetadata {
-    pub entity_name:     Option<String>,
-    pub nametag:         Option<String>,
-    pub labels:          Vec<String>,
+    pub entity_name: Option<String>,
+    pub nametag: Option<String>,
+    pub labels: Vec<String>,
     #[serde(rename = "type")]
-    pub address_type:    Option<String>,
+    pub address_type: Option<String>,
     #[serde(deserialize_with = "option_contract_info::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "option_contract_info::Serialize"))]
-    pub contract_info:   Option<ContractInfo>,
-    pub ens:             Option<String>,
+    pub contract_info: Option<ContractInfo>,
+    pub ens: Option<String>,
     #[serde(deserialize_with = "socials::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
     #[redefined(same_fields)]
@@ -124,9 +124,17 @@ impl AddressMetadata {
             }
         }
 
-        self.nametag = other.nametag.or(self.nametag.take());
-        self.address_type = other.address_type.or(self.address_type.take());
-        self.ens = other.ens.or(self.ens.take());
+        if other.nametag.is_some() {
+            self.nametag = other.nametag
+        }
+
+        if other.address_type.is_some() {
+            self.address_type = other.address_type
+        }
+
+        if other.ens.is_some() {
+            self.ens = other.ens
+        }
 
         if let Some(other_contract_info) = other.contract_info {
             match &mut self.contract_info {
@@ -163,18 +171,23 @@ implement_table_value_codecs_with_zc!(AddressMetadataRedefined);
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ContractInfo {
     pub verified_contract: Option<bool>,
-    pub contract_creator:  Option<Address>,
-    pub reputation:        Option<u8>,
+    pub contract_creator: Option<Address>,
+    pub reputation: Option<u8>,
 }
 
 impl ContractInfo {
     fn merge(&mut self, other: ContractInfo) {
-        //TODO: Find more idiomatic way of doing this
-        self.verified_contract = other.verified_contract.or(self.verified_contract.take());
+        if let Some(verified_contract) = other.verified_contract {
+            self.verified_contract = Some(verified_contract);
+        }
 
-        self.contract_creator = other.contract_creator.or(self.contract_creator.take());
+        if let Some(contract_creator) = other.contract_creator {
+            self.contract_creator = Some(contract_creator);
+        }
 
-        self.reputation = other.reputation.or(self.reputation);
+        if let Some(reputation) = other.reputation {
+            self.reputation = Some(reputation);
+        }
     }
 }
 
@@ -182,20 +195,30 @@ impl ContractInfo {
     Debug, Default, PartialEq, Clone, Eq, Serialize, Deserialize, rSerialize, rDeserialize, Archive,
 )]
 pub struct Socials {
-    pub twitter:           Option<String>,
+    pub twitter: Option<String>,
     pub twitter_followers: Option<u64>,
-    pub website_url:       Option<String>,
-    pub crunchbase:        Option<String>,
-    pub linkedin:          Option<String>,
+    pub website_url: Option<String>,
+    pub crunchbase: Option<String>,
+    pub linkedin: Option<String>,
 }
 
 impl Socials {
     fn merge(&mut self, other: Socials) {
-        self.twitter = other.twitter.or(self.twitter.take());
-        self.twitter_followers = other.twitter_followers.or(self.twitter_followers.take());
-        self.website_url = other.website_url.or(self.website_url.take());
-        self.crunchbase = other.crunchbase.or(self.crunchbase.take());
-        self.linkedin = other.linkedin.or(self.linkedin.take());
+        if let Some(twitter) = other.twitter {
+            self.twitter = Some(twitter);
+        }
+        if let Some(twitter_followers) = other.twitter_followers {
+            self.twitter_followers = Some(twitter_followers);
+        }
+        if let Some(website_url) = other.website_url {
+            self.website_url = Some(website_url);
+        }
+        if let Some(crunchbase) = other.crunchbase {
+            self.crunchbase = Some(crunchbase);
+        }
+        if let Some(linkedin) = other.linkedin {
+            self.linkedin = Some(linkedin);
+        }
     }
 }
 

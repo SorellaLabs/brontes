@@ -22,8 +22,8 @@ use crate::{display::utils::display_sandwich, normalized_actions::NormalizedTran
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherTx {
-    pub tx_hash:     B256,
-    pub transfers:   Vec<NormalizedTransfer>,
+    pub tx_hash: B256,
+    pub transfers: Vec<NormalizedTransfer>,
     #[redefined(same_fields)]
     pub gas_details: GasDetails,
 }

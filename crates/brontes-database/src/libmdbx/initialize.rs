@@ -160,13 +160,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
             .filter_map(
-                |chk| {
-                    if !chk.is_empty() {
-                        Some((chk[0], chk[chk.len() - 1]))
-                    } else {
-                        None
-                    }
-                },
+                |chk| if !chk.is_empty() { Some((chk[0], chk[chk.len() - 1])) } else { None },
             )
             .collect_vec();
 
