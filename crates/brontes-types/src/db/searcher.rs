@@ -93,7 +93,7 @@ impl SearcherStats {
     pub fn update_with_bundle(&mut self, header: &BundleHeader) {
         self.pnl.account_by_type(header);
         self.total_bribed.account_by_type(header);
-        self.bundle_count.increment_count(header.mev_type);
+        self.bundle_count.increment_count(&header.mev_type);
         self.last_active = header.block_number;
     }
 }
@@ -161,11 +161,13 @@ impl ProfitByType {
                 )
             }
             MevType::SearcherTx => {
-                self.searcher_tx_pnl = Some(
+
+                //TODO: For now we don't account searcher tx pnl
+                /*                 self.searcher_tx_pnl = Some(
                     self.searcher_tx_pnl
                         .unwrap_or_default()
                         .add(header.profit_usd),
-                )
+                ) */
             }
             _ => (),
         }

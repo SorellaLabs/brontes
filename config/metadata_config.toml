@@ -16,3 +16,24 @@ twitter = "https://twitter.com/1inch"
 website_url = "https://app.1inch.io/"
 crunchbase = "https://www.crunchbase.com/organization/1inch-limited"
 linkedin = "https://www.linkedin.com/company/1inch"
+
+#------------------------------------------------------------------
+
+[metadata."0xdB5889E35e379Ef0498aaE126fc2CCE1fbD23216"]
+entity_name = "Banana Gun"
+nametag = "Banana Gun Router"
+labels = ["Telegram Bot", "Router", "Banana Gun"]
+address_type = "router"
+
+[metadata."0xdB5889E35e379Ef0498aaE126fc2CCE1fbD23216".contract_info]
+verified_contract = false
+contract_creator = "0x37aAb97476bA8dC785476611006fD5dDA4eed66B"
+reputation = 1
+
+[metadata."0xdB5889E35e379Ef0498aaE126fc2CCE1fbD23216".social_metadata]
+twitter = "https://twitter.com/BananaGunBot"
+twitter_followers = "59800"
+website_url = "https://bananagun.io/"
+
+
+ 

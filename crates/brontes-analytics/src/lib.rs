@@ -1,10 +1,9 @@
 mod builder;
-
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_types::{
-    db::searcher::{Fund, SearcherStats},
-    mev::{Bundle, Mev, MevType},
+    db::searcher::{Fund, ProfitByType, SearcherStats},
+    mev::{Bundle, Mev, MevCount, MevType},
     traits::TracingProvider,
     FastHashMap, Protocol,
 };
@@ -28,11 +27,10 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         protocols: Option<Vec<Protocol>>,
         funds: Option<Vec<Fund>>,
     ) -> Result<(), eyre::Error> {
-        let mut searcher_stats: FastHashMap<Address, SearcherStats> = FastHashMap::default();
+        let mut mev_stats = AggregateMevStats::default();
 
         let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
 
-        //TODO: This looks slow asf, make fast, make go brrr
         let bundles: Vec<Bundle> = mev_blocks
             .into_par_iter()
             .filter(|mev_block| !mev_block.mev.is_empty())
@@ -46,14 +44,10 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
             .flatten()
             .collect();
 
-        for bundle in bundles {
-            let stats = searcher_stats
-                .entry(bundle.get_searcher_contract_or_eoa())
-                .or_default();
-            stats.update_with_bundle(&bundle.header);
+        for bundle in &bundles {
+            mev_stats.account(bundle)
         }
 
-        //TODO: Print out / write searcher file report
         Ok(())
     }
 
@@ -106,5 +100,28 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         }
 
         Some(bundle.clone())
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct AggregateMevStats {
+    pub mev_profit:   ProfitByType,
+    pub total_bribed: ProfitByType,
+    pub bundle_count: MevCount,
+    searcher_stats:   FastHashMap<Address, SearcherStats>,
+}
+
+impl AggregateMevStats {
+    pub fn account(&mut self, bundle: &Bundle) {
+        self.mev_profit.account_by_type(&bundle.header);
+
+        self.total_bribed.account_by_type(&bundle.header);
+        self.bundle_count.increment_count(&bundle.header.mev_type);
+
+        let stats = self
+            .searcher_stats
+            .entry(bundle.get_searcher_contract_or_eoa())
+            .or_default();
+        stats.update_with_bundle(&bundle.header);
     }
 }

@@ -183,7 +183,7 @@ pub struct MevCount {
 }
 
 impl MevCount {
-    pub fn increment_count(&mut self, mev_type: MevType) {
+    pub fn increment_count(&mut self, mev_type: &MevType) {
         self.mev_count += 1;
         match mev_type {
             MevType::CexDex => {

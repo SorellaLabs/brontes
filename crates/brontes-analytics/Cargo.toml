@@ -10,6 +10,7 @@ brontes-types.workspace = true
 brontes-database.workspace = true
 reth-tracing-ext.workspace = true
 
+polars = { version = "0.38.2", features = ["lazy"]}
 
 # alloy 
 alloy-primitives.workspace = true

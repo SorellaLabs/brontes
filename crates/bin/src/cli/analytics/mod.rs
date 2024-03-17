@@ -19,7 +19,7 @@ pub enum AnalyticsCommands {
     #[command(name = "detect-vertical-integration", alias = "detect-vi")]
     ViBuilders(SearcherBuilder),
     /// Collects aggregate searcher statistics & prints results
-    #[command(name = "detect-vertical-integration", alias = "detect-vi")]
+    #[command(name = "searcher-stats", alias = "stats")]
     SearcherStats(GetStats),
 }
 
