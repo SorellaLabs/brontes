@@ -196,6 +196,11 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
+    use reth_db::open_db_read_only;
+    use reth_primitives::MAINNET;
+    use reth_provider::providers::ProviderFactory;
     use test_bytecodes::{V2_DAI_MKR, V3_USDC_ETH, V3_WBTC_ETH};
 
     use super::*;
@@ -247,5 +252,78 @@ mod tests {
             token1,
             Address::from_str("0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2").unwrap()
         );
+    }
+
+    #[test]
+    // #[cfg(feature = "local")]
+    fn test_v3_slot0() {
+        let db_path = Path::new("/home/ubuntu/.local/share/reth/mainnet/db");
+
+        let db = open_db_read_only(db_path, Default::default()).unwrap();
+        let chain = MAINNET.clone();
+        let provider_factory = ProviderFactory::new(Arc::new(db), Arc::clone(&chain));
+
+        let block_number: u64 = 19450752;
+        let provider = provider_factory
+            .history_by_block_number(block_number)
+            .unwrap();
+
+        let pool_address = Address::from_str("0xcbcdf9626bc03e24f779434178a73a0b4bad62ed").unwrap();
+
+        let slot0_slot: FixedBytes<32> = FixedBytes::new([0u8; 32]);
+
+        println!("pool_address: {}", pool_address);
+        println!("slot0_slot: {}", slot0_slot);
+        let storage_value = provider.storage(pool_address, slot0_slot).unwrap();
+
+        match storage_value {
+            Some(value) => {
+                let slot0 = hex::encode::<[u8; 32]>(value.to_be_bytes());
+                let sqrt_price = U256::from_str_radix(&slot0[slot0.len() - 40..], 16).unwrap();
+                let tick = i32::from_str_radix(&slot0[slot0.len() - 46..][..6], 16).unwrap();
+
+                // Ref: https://evm.storage/eth/19450752/0xcbcdf9626bc03e24f779434178a73a0b4bad62ed/slot0#map
+                assert_eq!(
+                    sqrt_price,
+                    U256::from_str("34181474658983484482097063224900296").unwrap()
+                );
+
+                assert_eq!(tick, i32::from_str("259510").unwrap());
+            }
+            None => return,
+        };
+    }
+
+    #[test]
+    // #[cfg(feature = "local")]
+    fn test_v3_liquidity() {
+        let db_path = Path::new("/home/ubuntu/.local/share/reth/mainnet/db");
+
+        let db = open_db_read_only(db_path, Default::default()).unwrap();
+        let chain = MAINNET.clone();
+        let provider_factory = ProviderFactory::new(Arc::new(db), Arc::clone(&chain));
+
+        let block_number: u64 = 19450752;
+        let provider = provider_factory
+            .history_by_block_number(block_number)
+            .unwrap();
+
+        let pool_address = Address::from_str("0xcbcdf9626bc03e24f779434178a73a0b4bad62ed").unwrap();
+
+        let liquidity_slot: FixedBytes<32> = FixedBytes::with_last_byte(4);
+
+        let storage_value = provider.storage(pool_address, liquidity_slot).unwrap();
+
+        match storage_value {
+            Some(value) => {
+                let liquidity = hex::encode::<[u8; 32]>(value.to_be_bytes());
+                let liquidity =
+                    u128::from_str_radix(&liquidity[liquidity.len() - 16..], 16).unwrap();
+
+                // Ref: https://evm.storage/eth/19450752/0xcbcdf9626bc03e24f779434178a73a0b4bad62ed/liquidity#map
+                assert_eq!(liquidity, u128::from_str("1266853986742771321").unwrap());
+            }
+            None => return,
+        };
     }
 }

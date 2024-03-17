@@ -87,6 +87,7 @@ brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
+reth-provider.workspace = true
 criterion = { version = "0.5" }
 rand = "0.8.5"
 eyre.workspace = true
