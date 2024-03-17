@@ -6,6 +6,7 @@ mod db_insert;
 mod db_query;
 #[cfg(feature = "local-clickhouse")]
 mod ensure_test_traces;
+mod export;
 mod init;
 #[cfg(feature = "sorella-server")]
 mod tip_tracer;
@@ -36,6 +37,8 @@ pub enum DatabaseCommands {
     /// libmdbx.
     #[command(name = "init")]
     Init(init::Init),
+    #[command(name = "export")]
+    Export(export::Export),
     /// Traces all blocks needed for testing and inserts them into
     /// clickhouse
     #[cfg(feature = "local-clickhouse")]
@@ -54,6 +57,7 @@ impl Database {
             DatabaseCommands::TraceRange(cmd) => cmd.execute(ctx).await,
             DatabaseCommands::Init(cmd) => cmd.execute(ctx).await,
             DatabaseCommands::DbClear(cmd) => cmd.execute().await,
+            DatabaseCommands::Export(cmd) => cmd.execute().await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(ctx).await,
             #[cfg(feature = "sorella-server")]

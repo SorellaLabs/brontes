@@ -1469,9 +1469,11 @@ name = "brontes-analytics"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "arrow",
  "brontes-database",
  "brontes-types",
  "eyre",
+ "parquet",
  "polars",
  "rayon",
  "reth-tracing-ext",
@@ -1611,6 +1613,7 @@ dependencies = [
  "parquet",
  "paste",
  "petgraph",
+ "polars",
  "proptest",
  "proptest-derive",
  "rand 0.8.5",
