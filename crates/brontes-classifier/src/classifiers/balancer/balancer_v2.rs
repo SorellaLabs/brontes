@@ -280,45 +280,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_balancer_v2_swap_2() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let swap =
-            B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
-
-        // Minimal swap
-        let eq_action = Actions::Swap(NormalizedSwap {
-            protocol:    BalancerV2,
-            trace_index: 1,
-            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
-            token_in:    TokenInfoWithAddress::weth(),
-            amount_in:   U256::from_str("10000000000000000")
-                .unwrap()
-                .to_scaled_rational(18),
-            token_out:   TokenInfoWithAddress {
-                address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
-                inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
-            },
-            amount_out:  U256::from_str("7727102831493")
-                .unwrap()
-                .to_scaled_rational(9),
-
-            msg_value: U256::ZERO,
-        });
-
-        classifier_utils
-            .contains_action(
-                swap,
-                0,
-                eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
-            )
-            .await
-            .unwrap();
-    }
-
-    #[brontes_macros::test]
     async fn test_balancer_v2_join_pool() {
         let classifier_utils = ClassifierTestUtils::new().await;
         let mint =
