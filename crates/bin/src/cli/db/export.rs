@@ -4,7 +4,7 @@ use brontes_database::parquet::ParquetExporter;
 use clap::Parser;
 
 use crate::{
-    cli::{load_database, static_object},
+    cli::{load_libmdbx, static_object},
     runner::CliContext,
 };
 
@@ -24,7 +24,7 @@ pub struct Export {
 impl Export {
     pub async fn execute(self, _ctx: CliContext) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        let libmdbx = static_object(load_libmdbx(brontes_db_endpoint)?);
 
         let exporter = ParquetExporter::new(self.start_block, self.end_block, libmdbx);
 

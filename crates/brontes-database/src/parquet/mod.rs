@@ -6,6 +6,7 @@ use parquet::{
     arrow::async_writer::AsyncArrowWriter, basic::Compression, file::properties::WriterProperties,
 };
 use tokio::fs::File;
+use tracing::warn;
 
 #[allow(dead_code)]
 mod address_meta;
@@ -35,6 +36,11 @@ where
             .db
             .try_fetch_mev_blocks(self.start_block, self.end_block)
             .wrap_err("Failed to fetch MEV data from the database")?;
+
+        if mev_blocks.is_empty() {
+            warn!("No MEV blocks fetched for the given range.");
+            return Ok(());
+        }
 
         tokio::fs::create_dir_all("db/parquet")
             .await

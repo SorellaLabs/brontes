@@ -36,6 +36,10 @@ pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<L
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
 }
 
+pub fn load_libmdbx(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
+    LibmdbxReadWriter::init_db(db_endpoint, None)
+}
+
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse() -> eyre::Result<Clickhouse> {
     Ok(Clickhouse::default())
