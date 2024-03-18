@@ -54,12 +54,6 @@ discovery_dispatch!(
     CurveTriCryptoDiscovery,
     BalancerV1CoreDiscovery,
     BalancerV1SmartPoolDiscovery
-    // BalancerV2ComposableStablePoolV5Discovery,
-    // BalancerV2ComposableStablePoolV4Discovery,
-    // BalancerV2ComposableStablePoolV3Discovery,
-    // BalancerV2WeightedPoolFactoryV4Discovery,
-    // BalancerV2WeightedPoolFactoryV3Discovery,
-    // BalancerV2WeightedPoolFactoryV2Discovery
 );
 
 action_dispatch!(
@@ -152,6 +146,7 @@ action_dispatch!(
     BalancerV2OnSwap_1Call,
     BalancerV2JoinPoolCall,
     BalancerV2ExitPoolCall,
+    BalancerV2RegisterTokensCall,
     CompoundV2LiquidateBorrowCall,
     CompoundV2Initialize_0Call,
     CompoundV2Initialize_1Call,

@@ -12,7 +12,10 @@ use eyre::Error;
 use malachite::Rational;
 use reth_primitives::U256;
 
-use crate::{BalancerV2Vault::PoolBalanceChanged, IGeneralPool::onSwap_0Return, IMinimalSwapInfoPool::onSwap_1Return};
+use crate::{
+    BalancerV2Vault::PoolBalanceChanged, IGeneralPool::onSwap_0Return,
+    IMinimalSwapInfoPool::onSwap_1Return,
+};
 
 action_impl!(
     Protocol::BalancerV2,
@@ -157,24 +160,24 @@ action_impl!(
 //     }
 // );
 
-// action_impl!(
-//     Protocol::BalancerV2,
-//     crate::BalancerV2Vault::registerTokensCall,
-//     NewPool,
-//     [..TokensRegistered],
-//     logs: true,
-//     |info: CallInfo, log_data: BalancerV2RegisterTokensCallLogs, _| {
-//         let logs = log_data.tokens_registered_field?;
-//         let pool_address = pool_id_to_address(logs.poolId);
+action_impl!(
+    Protocol::BalancerV2,
+    crate::BalancerV2Vault::registerTokensCall,
+    NewPool,
+    [..TokensRegistered],
+    logs: true,
+    |info: CallInfo, log_data: BalancerV2RegisterTokensCallLogs, _| {
+        let logs = log_data.tokens_registered_field?;
+        let pool_address = pool_id_to_address(logs.poolId);
 
-//         Ok(NormalizedNewPool{ 
-//             trace_index: info.trace_idx,
-//             protocol: Protocol::BalancerV2,
-//             pool_address: pool_address,
-//             tokens: logs.tokens
-//         })
-//     }
-// );
+        Ok(NormalizedNewPool{
+            trace_index: info.trace_idx,
+            protocol: Protocol::BalancerV2,
+            pool_address,
+            tokens: logs.tokens
+        })
+    }
+);
 
 // ~ https://docs.balancer.fi/reference/contracts/pool-interfacing.html#poolids
 // The poolId is a unique identifier, the first portion of which is the pool's
@@ -237,75 +240,83 @@ mod tests {
             .unwrap();
     }
 
-    // #[brontes_macros::test]
-    // async fn test_balancer_v2_batch_swap() {
-    //     let classifier_utils = ClassifierTestUtils::new().await;
-    //     let swap =
-    //         B256::from(hex!("eb74b5996d84c8d95e93a7f8571b8f06d98ed8d8182f7ac864e1d79170f83fb5"));
+    #[brontes_macros::test]
+    async fn test_balancer_v2_swap_1() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap =
+            B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
 
-    //     let eq_action = Actions::Batch(NormalizedBatch {
-    //         protocol:            BalancerV2,
-    //         trace_index:         1,
-    //         solver:              Address::ZERO,
-    //         settlement_contract: Address::new(hex!("BA12222222228d8Ba445958a75a0704d566BF2C8")),
-    //         user_swaps:          vec![
-    //             NormalizedSwap {
-    //                 protocol:    BalancerV2,
-    //                 trace_index: 0,
-    //                 from:        Address::new(hex!("83d364e74e81100cf7343e63e415ea441f961394")),
-    //                 recipient:   Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
-    //                 pool:        Address::new(hex!("0b09dea16768f0799065c475be02919503cb2a35")),
-    //                 token_in:    TokenInfoWithAddress {
-    //                     address: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
-    //                     inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
-    //                 },
-    //                 token_out:   TokenInfoWithAddress {
-    //                     address: Address::new(hex!("6b175474e89094c44da98b954eedeac495271d0f")),
-    //                     inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
-    //                 },
-    //                 amount_in:   U256::from(2).to_scaled_rational(0),
-    //                 amount_out:  U256::from_str("7914528905538304404489")
-    //                     .unwrap()
-    //                     .to_scaled_rational(18),
-    //                 msg_value:   U256::ZERO,
-    //             },
-    //             NormalizedSwap {
-    //                 protocol:    BalancerV2,
-    //                 trace_index: 0,
-    //                 from:        Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
-    //                 recipient:   Address::new(hex!("83d364e74e81100cf7343e63e415ea441f961394")),
-    //                 pool:        Address::new(hex!("8bd4a1e74a27182d23b98c10fd21d4fbb0ed4ba0")),
-    //                 token_in:    TokenInfoWithAddress {
-    //                     address: Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-    //                     inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
-    //                 },
-    //                 token_out:   TokenInfoWithAddress {
-    //                     address: Address::new(hex!("470ebf5f030ed85fc1ed4c2d36b9dd02e77cf1b7")),
-    //                     inner:   TokenInfo { decimals: 18, symbol: "TEMPLE".to_string() },
-    //                 },
-    //                 amount_in:   U256::from_str("7914528905538304404489")
-    //                     .unwrap()
-    //                     .to_scaled_rational(18),
-    //                 amount_out:  U256::from_str("6806103757439516643483")
-    //                     .unwrap()
-    //                     .to_scaled_rational(18),
-    //                 msg_value:   U256::ZERO,
-    //             },
-    //         ],
-    //         solver_swaps:        None,
-    //         msg_value:           U256::from_str("2000000000000000000").unwrap(),
-    //     });
+        // Minimal swap
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol:    BalancerV2,
+            trace_index: 1,
+            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
+            token_in:    TokenInfoWithAddress::weth(),
+            amount_in:   U256::from_str("10000000000000000")
+                .unwrap()
+                .to_scaled_rational(18),
+            token_out:   TokenInfoWithAddress {
+                address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
+                inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
+            },
+            amount_out:  U256::from_str("7727102831493")
+                .unwrap()
+                .to_scaled_rational(9),
 
-    //     classifier_utils
-    //         .contains_action(
-    //             swap,
-    //             0,
-    //             eq_action,
-    //             TreeSearchBuilder::default().with_action(Actions::is_batch),
-    //         )
-    //         .await
-    //         .unwrap();
-    // }
+            msg_value: U256::ZERO,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_balancer_v2_swap_2() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap =
+            B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
+
+        // Minimal swap
+        let eq_action = Actions::Swap(NormalizedSwap {
+            protocol:    BalancerV2,
+            trace_index: 1,
+            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
+            token_in:    TokenInfoWithAddress::weth(),
+            amount_in:   U256::from_str("10000000000000000")
+                .unwrap()
+                .to_scaled_rational(18),
+            token_out:   TokenInfoWithAddress {
+                address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
+                inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
+            },
+            amount_out:  U256::from_str("7727102831493")
+                .unwrap()
+                .to_scaled_rational(9),
+
+            msg_value: U256::ZERO,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
 
     #[brontes_macros::test]
     async fn test_balancer_v2_join_pool() {
