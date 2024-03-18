@@ -88,6 +88,44 @@ sol!(
     "./classifier-abis/balancer/BalancerV2EulerLinearPoolFactory.json"
 );
 
+// Balancer Pool Interfaces
+sol! {
+    enum SwapKind { 
+        GIVEN_IN, 
+        GIVEN_OUT 
+    }
+
+    struct SwapRequest {
+        SwapKind kind;
+        address tokenIn;
+        address tokenOut;
+        uint256 amount;
+        // Misc data
+        bytes32 poolId;
+        uint256 lastChangeBlock;
+        address from;
+        address to;
+        bytes userData;
+    }
+
+    interface IGeneralPool {
+        function onSwap(
+            SwapRequest memory swapRequest,
+            uint256[] memory balances,
+            uint256 indexIn,
+            uint256 indexOut
+        ) external returns (uint256 amount);
+    }
+
+    interface IMinimalSwapInfoPool {
+        function onSwap(
+            SwapRequest memory swapRequest,
+            uint256 currentBalanceTokenIn,
+            uint256 currentBalanceTokenOut
+        ) external returns (uint256 amount);
+    }
+}
+
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

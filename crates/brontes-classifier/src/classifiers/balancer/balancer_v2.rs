@@ -4,7 +4,7 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
     db::token_info::TokenInfoWithAddress,
-    normalized_actions::{NormalizedBatch, NormalizedBurn, NormalizedMint, NormalizedSwap},
+    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap},
     structured_trace::CallInfo,
     ToScaledRational,
 };
@@ -12,89 +12,62 @@ use eyre::Error;
 use malachite::Rational;
 use reth_primitives::U256;
 
-use crate::BalancerV2Vault::PoolBalanceChanged;
+use crate::{BalancerV2Vault::PoolBalanceChanged, IGeneralPool::onSwap_0Return, IMinimalSwapInfoPool::onSwap_1Return};
 
 action_impl!(
     Protocol::BalancerV2,
-    crate::BalancerV2Vault::swapCall,
+    crate::IGeneralPool::onSwap_0Call,
     Swap,
-    [..Swap],
+    [..],
     call_data: true,
-    logs: true,
-    |info: CallInfo, call_data: swapCall, log_data: BalancerV2SwapCallLogs, db: &DB| {
-        let swap_field = log_data.swap_field?;
-
-        let token_in = db.try_fetch_token_info(swap_field.tokenIn)?;
-        let token_out = db.try_fetch_token_info(swap_field.tokenOut)?;
-        let amount_in = swap_field.amountIn.to_scaled_rational(token_in.decimals);
-        let amount_out = swap_field.amountOut.to_scaled_rational(token_out.decimals);
-
-        let pool_address = pool_id_to_address(swap_field.poolId);
+    return_data: true,
+    |info: CallInfo, call_data: onSwap_0Call, return_data: onSwap_0Return, db: &DB| {
+        let pool = pool_id_to_address(call_data.swapRequest.poolId);
+        let token_in = db.try_fetch_token_info(call_data.swapRequest.tokenIn)?;
+        let token_out = db.try_fetch_token_info(call_data.swapRequest.tokenOut)?;
+        let amount_in = call_data.swapRequest.amount.to_scaled_rational(token_in.decimals);
+        let amount_out = return_data.amount.to_scaled_rational(token_out.decimals);
 
         Ok(NormalizedSwap {
             protocol: Protocol::BalancerV2,
             trace_index: info.trace_idx,
-            from: call_data.funds.sender,
-            recipient: call_data.funds.recipient,
-            pool: pool_address,
+            from: call_data.swapRequest.from,
+            recipient: call_data.swapRequest.to,
+            pool,
             token_in,
-            token_out,
             amount_in,
+            token_out,
             amount_out,
-            msg_value: info.msg_value,
+            msg_value: U256::ZERO,
         })
     }
 );
 
 action_impl!(
     Protocol::BalancerV2,
-    crate::BalancerV2Vault::batchSwapCall,
-    Batch,
-    [..Swap*],
+    crate::IMinimalSwapInfoPool::onSwap_1Call,
+    Swap,
+    [..],
     call_data: true,
-    logs: true,
-    |info: CallInfo, call_data: batchSwapCall, log_data: BalancerV2BatchSwapCallLogs, db: &DB| {
-        let swap_field = log_data.swap_field?;
+    return_data: true,
+    |info: CallInfo, call_data: onSwap_1Call, return_data: onSwap_1Return, db: &DB| {
+        let pool = pool_id_to_address(call_data.swapRequest.poolId);
+        let token_in = db.try_fetch_token_info(call_data.swapRequest.tokenIn)?;
+        let token_out = db.try_fetch_token_info(call_data.swapRequest.tokenOut)?;
+        let amount_in = call_data.swapRequest.amount.to_scaled_rational(token_in.decimals);
+        let amount_out = return_data.amount.to_scaled_rational(token_out.decimals);
 
-        let swaps_count = swap_field.len();
-        let mut normalized_swaps = Vec::new();
-
-        for (index, swap_log) in swap_field.iter().enumerate() {
-            let token_in = db.try_fetch_token_info(swap_log.tokenIn)?;
-            let token_out = db.try_fetch_token_info(swap_log.tokenOut)?;
-            let amount_in = swap_log.amountIn.to_scaled_rational(token_in.decimals);
-            let amount_out = swap_log.amountOut.to_scaled_rational(token_out.decimals);
-            let pool_address = pool_id_to_address(swap_log.poolId);
-
-            let (from, recipient) = match index {
-                0 if swaps_count > 1 => (call_data.funds.sender, info.target_address),
-                0 => (call_data.funds.sender, call_data.funds.recipient),
-                _ if index == swaps_count - 1 => (info.target_address, call_data.funds.recipient),
-                _ => (info.target_address, info.target_address),
-            };
-
-            normalized_swaps.push(NormalizedSwap {
-                protocol: Protocol::BalancerV2,
-                trace_index: info.trace_idx,
-                from,
-                recipient,
-                pool: pool_address,
-                token_in,
-                token_out,
-                amount_in,
-                amount_out,
-                msg_value: U256::ZERO,
-            });
-        }
-
-        Ok(NormalizedBatch {
+        Ok(NormalizedSwap {
             protocol: Protocol::BalancerV2,
             trace_index: info.trace_idx,
-            solver: Address::ZERO,
-            settlement_contract: info.target_address,
-            user_swaps: normalized_swaps,
-            solver_swaps: None,
-            msg_value: info.msg_value
+            from: call_data.swapRequest.from,
+            recipient: call_data.swapRequest.to,
+            pool,
+            token_in,
+            amount_in,
+            token_out,
+            amount_out,
+            msg_value: U256::ZERO,
         })
     }
 );
@@ -166,6 +139,43 @@ action_impl!(
     }
 );
 
+// action_impl!(
+//     Protocol::BalancerV2,
+//     crate::BalancerV2Vault::registerPoolCall,
+//     NewPool,
+//     [..PoolRegistered],
+//     logs: true,
+//     |info: CallInfo, log_data: BalancerV2RegisterPoolCallLogs, _| {
+//         let logs = log_data.pool_registered_field?;
+
+//         Ok(NormalizedNewPool {
+//             trace_index: info.trace_idx,
+//             protocol: Protocol::BalancerV2,
+//             pool_address: logs.poolAddress,
+//             tokens: vec![],
+//         })
+//     }
+// );
+
+// action_impl!(
+//     Protocol::BalancerV2,
+//     crate::BalancerV2Vault::registerTokensCall,
+//     NewPool,
+//     [..TokensRegistered],
+//     logs: true,
+//     |info: CallInfo, log_data: BalancerV2RegisterTokensCallLogs, _| {
+//         let logs = log_data.tokens_registered_field?;
+//         let pool_address = pool_id_to_address(logs.poolId);
+
+//         Ok(NormalizedNewPool{ 
+//             trace_index: info.trace_idx,
+//             protocol: Protocol::BalancerV2,
+//             pool_address: pool_address,
+//             tokens: logs.tokens
+//         })
+//     }
+// );
+
 // ~ https://docs.balancer.fi/reference/contracts/pool-interfacing.html#poolids
 // The poolId is a unique identifier, the first portion of which is the pool's
 // contract address. For example, the pool with the id
@@ -194,9 +204,10 @@ mod tests {
         let swap =
             B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
 
+        // Minimal swap
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    BalancerV2,
-            trace_index: 0,
+            trace_index: 1,
             from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
             recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
             pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
@@ -212,7 +223,7 @@ mod tests {
                 .unwrap()
                 .to_scaled_rational(9),
 
-            msg_value: U256::from_str("10000000000000000").unwrap(),
+            msg_value: U256::ZERO,
         });
 
         classifier_utils
@@ -226,75 +237,75 @@ mod tests {
             .unwrap();
     }
 
-    #[brontes_macros::test]
-    async fn test_balancer_v2_batch_swap() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let swap =
-            B256::from(hex!("eb74b5996d84c8d95e93a7f8571b8f06d98ed8d8182f7ac864e1d79170f83fb5"));
+    // #[brontes_macros::test]
+    // async fn test_balancer_v2_batch_swap() {
+    //     let classifier_utils = ClassifierTestUtils::new().await;
+    //     let swap =
+    //         B256::from(hex!("eb74b5996d84c8d95e93a7f8571b8f06d98ed8d8182f7ac864e1d79170f83fb5"));
 
-        let eq_action = Actions::Batch(NormalizedBatch {
-            protocol:            BalancerV2,
-            trace_index:         0,
-            solver:              Address::ZERO,
-            settlement_contract: Address::new(hex!("BA12222222228d8Ba445958a75a0704d566BF2C8")),
-            user_swaps:          vec![
-                NormalizedSwap {
-                    protocol:    BalancerV2,
-                    trace_index: 0,
-                    from:        Address::new(hex!("83d364e74e81100cf7343e63e415ea441f961394")),
-                    recipient:   Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
-                    pool:        Address::new(hex!("0b09dea16768f0799065c475be02919503cb2a35")),
-                    token_in:    TokenInfoWithAddress {
-                        address: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
-                        inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
-                    },
-                    token_out:   TokenInfoWithAddress {
-                        address: Address::new(hex!("6b175474e89094c44da98b954eedeac495271d0f")),
-                        inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
-                    },
-                    amount_in:   U256::from(2).to_scaled_rational(0),
-                    amount_out:  U256::from_str("7914528905538304404489")
-                        .unwrap()
-                        .to_scaled_rational(18),
-                    msg_value:   U256::ZERO,
-                },
-                NormalizedSwap {
-                    protocol:    BalancerV2,
-                    trace_index: 0,
-                    from:        Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
-                    recipient:   Address::new(hex!("83d364e74e81100cf7343e63e415ea441f961394")),
-                    pool:        Address::new(hex!("8bd4a1e74a27182d23b98c10fd21d4fbb0ed4ba0")),
-                    token_in:    TokenInfoWithAddress {
-                        address: Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-                        inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
-                    },
-                    token_out:   TokenInfoWithAddress {
-                        address: Address::new(hex!("470ebf5f030ed85fc1ed4c2d36b9dd02e77cf1b7")),
-                        inner:   TokenInfo { decimals: 18, symbol: "TEMPLE".to_string() },
-                    },
-                    amount_in:   U256::from_str("7914528905538304404489")
-                        .unwrap()
-                        .to_scaled_rational(18),
-                    amount_out:  U256::from_str("6806103757439516643483")
-                        .unwrap()
-                        .to_scaled_rational(18),
-                    msg_value:   U256::ZERO,
-                },
-            ],
-            solver_swaps:        None,
-            msg_value:           U256::from_str("2000000000000000000").unwrap(),
-        });
+    //     let eq_action = Actions::Batch(NormalizedBatch {
+    //         protocol:            BalancerV2,
+    //         trace_index:         1,
+    //         solver:              Address::ZERO,
+    //         settlement_contract: Address::new(hex!("BA12222222228d8Ba445958a75a0704d566BF2C8")),
+    //         user_swaps:          vec![
+    //             NormalizedSwap {
+    //                 protocol:    BalancerV2,
+    //                 trace_index: 0,
+    //                 from:        Address::new(hex!("83d364e74e81100cf7343e63e415ea441f961394")),
+    //                 recipient:   Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
+    //                 pool:        Address::new(hex!("0b09dea16768f0799065c475be02919503cb2a35")),
+    //                 token_in:    TokenInfoWithAddress {
+    //                     address: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
+    //                     inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
+    //                 },
+    //                 token_out:   TokenInfoWithAddress {
+    //                     address: Address::new(hex!("6b175474e89094c44da98b954eedeac495271d0f")),
+    //                     inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
+    //                 },
+    //                 amount_in:   U256::from(2).to_scaled_rational(0),
+    //                 amount_out:  U256::from_str("7914528905538304404489")
+    //                     .unwrap()
+    //                     .to_scaled_rational(18),
+    //                 msg_value:   U256::ZERO,
+    //             },
+    //             NormalizedSwap {
+    //                 protocol:    BalancerV2,
+    //                 trace_index: 0,
+    //                 from:        Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
+    //                 recipient:   Address::new(hex!("83d364e74e81100cf7343e63e415ea441f961394")),
+    //                 pool:        Address::new(hex!("8bd4a1e74a27182d23b98c10fd21d4fbb0ed4ba0")),
+    //                 token_in:    TokenInfoWithAddress {
+    //                     address: Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+    //                     inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
+    //                 },
+    //                 token_out:   TokenInfoWithAddress {
+    //                     address: Address::new(hex!("470ebf5f030ed85fc1ed4c2d36b9dd02e77cf1b7")),
+    //                     inner:   TokenInfo { decimals: 18, symbol: "TEMPLE".to_string() },
+    //                 },
+    //                 amount_in:   U256::from_str("7914528905538304404489")
+    //                     .unwrap()
+    //                     .to_scaled_rational(18),
+    //                 amount_out:  U256::from_str("6806103757439516643483")
+    //                     .unwrap()
+    //                     .to_scaled_rational(18),
+    //                 msg_value:   U256::ZERO,
+    //             },
+    //         ],
+    //         solver_swaps:        None,
+    //         msg_value:           U256::from_str("2000000000000000000").unwrap(),
+    //     });
 
-        classifier_utils
-            .contains_action(
-                swap,
-                0,
-                eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_batch),
-            )
-            .await
-            .unwrap();
-    }
+    //     classifier_utils
+    //         .contains_action(
+    //             swap,
+    //             0,
+    //             eq_action,
+    //             TreeSearchBuilder::default().with_action(Actions::is_batch),
+    //         )
+    //         .await
+    //         .unwrap();
+    // }
 
     #[brontes_macros::test]
     async fn test_balancer_v2_join_pool() {
