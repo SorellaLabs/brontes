@@ -53,13 +53,13 @@ discovery_dispatch!(
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
     BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery,
-    BalancerV2ComposableStablePoolV5Discovery,
-    BalancerV2ComposableStablePoolV4Discovery,
-    BalancerV2ComposableStablePoolV3Discovery,
-    BalancerV2WeightedPoolFactoryV4Discovery,
-    BalancerV2WeightedPoolFactoryV3Discovery,
-    BalancerV2WeightedPoolFactoryV2Discovery
+    BalancerV1SmartPoolDiscovery
+    // BalancerV2ComposableStablePoolV5Discovery,
+    // BalancerV2ComposableStablePoolV4Discovery,
+    // BalancerV2ComposableStablePoolV3Discovery,
+    // BalancerV2WeightedPoolFactoryV4Discovery,
+    // BalancerV2WeightedPoolFactoryV3Discovery,
+    // BalancerV2WeightedPoolFactoryV2Discovery
 );
 
 action_dispatch!(
@@ -148,8 +148,8 @@ action_dispatch!(
     BalancerV1SwapExactAmountInCall,
     BalancerV1SwapExactAmountOutCall,
     BalancerV1BindCall,
-    BalancerV2SwapCall,
-    BalancerV2BatchSwapCall,
+    BalancerV2OnSwap_0Call,
+    BalancerV2OnSwap_1Call,
     BalancerV2JoinPoolCall,
     BalancerV2ExitPoolCall,
     CompoundV2LiquidateBorrowCall,
