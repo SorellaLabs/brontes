@@ -7,7 +7,6 @@ use parquet::{
 };
 use tokio::fs::File;
 
-use crate::libmdbx::LibmdbxReadWriter;
 #[allow(dead_code)]
 mod address_meta;
 mod bundle_header;
@@ -17,14 +16,17 @@ pub mod utils;
 use bundle_header::bundle_headers_to_record_batch;
 use mev_block::mev_block_to_record_batch;
 
-pub struct ParquetExporter {
+pub struct ParquetExporter<DB: LibmdbxReader> {
     pub start_block: u64,
     pub end_block:   u64,
-    pub db:          LibmdbxReadWriter,
+    pub db:          &'static DB,
 }
 
-impl ParquetExporter {
-    pub fn new(start_block: u64, end_block: u64, db: LibmdbxReadWriter) -> Self {
+impl<DB> ParquetExporter<DB>
+where
+    DB: LibmdbxReader,
+{
+    pub fn new(start_block: u64, end_block: u64, db: &'static DB) -> Self {
         Self { start_block, end_block, db }
     }
 
