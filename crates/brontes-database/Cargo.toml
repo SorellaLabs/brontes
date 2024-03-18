@@ -42,8 +42,8 @@ bytes = "1.5"
 zstd = "0.13"
 
 polars = { version = "0.38.2", features = ["lazy"]}
-arrow = "50.0.0"
-parquet = "50.0.0"
+arrow = {version = "51.0.0"} 
+parquet = {version = "51.0.0", features = ["async"]}
 
 
 

@@ -1,14 +1,11 @@
 use std::env;
 
-use brontes_database::{
-    libmdbx::{cursor::CompressedCursor, Libmdbx},
-    CompressedTable, IntoTableKey, Tables,
-};
+use brontes_core::LibmdbxReader;
+use brontes_database::parquet::export_mev_blocks_and_bundles;
 use brontes_types::init_threadpools;
 use clap::Parser;
-use itertools::Itertools;
-use reth_db::mdbx::RO;
-use reth_interfaces::db::DatabaseErrorInfo;
+
+use crate::cli::{load_database, static_object};
 
 #[derive(Debug, Parser)]
 pub struct Export {
@@ -27,8 +24,13 @@ impl Export {
     pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         init_threadpools(10);
-        let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
-        let tx = db.ro_tx()?;
+        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+
+        let mev_blocks = libmdbx.try_fetch_mev_blocks(self.start_block, self.end_block)?;
+
+        export_mev_blocks_and_bundles(mev_blocks).await?;
+
+        Ok(())
     }
 }
