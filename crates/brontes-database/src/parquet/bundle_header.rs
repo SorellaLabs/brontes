@@ -13,7 +13,7 @@ use super::utils::{
 };
 
 pub fn bundle_headers_to_record_batch(
-    bundle_headers: Vec<BundleHeader>,
+    bundle_headers: Vec<&BundleHeader>,
 ) -> Result<RecordBatch, ArrowError> {
     let block_number_array =
         build_uint64_array(bundle_headers.iter().map(|bh| bh.block_number).collect());
@@ -66,7 +66,7 @@ pub fn bundle_headers_to_record_batch(
     )
 }
 
-fn get_mev_contract_array(bundle_headers: &Vec<BundleHeader>) -> StringArray {
+fn get_mev_contract_array(bundle_headers: &Vec<&BundleHeader>) -> StringArray {
     // Storing as string so 40
     let mev_contract_data_capacity = 40 * bundle_headers.len();
     let mut mev_contract_array =

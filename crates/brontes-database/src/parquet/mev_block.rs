@@ -13,7 +13,7 @@ use super::utils::{
     u128_to_binary_array,
 };
 
-pub fn mev_block_to_record_batch(mev_blocks: Vec<MevBlock>) -> Result<RecordBatch, ArrowError> {
+pub fn mev_block_to_record_batch(mev_blocks: Vec<&MevBlock>) -> Result<RecordBatch, ArrowError> {
     let block_hash_array = build_string_array(
         mev_blocks
             .iter()
@@ -145,7 +145,7 @@ fn build_schema() -> Schema {
 }
 
 fn build_mev_count_arrays(
-    mev_blocks: &[MevBlock],
+    mev_blocks: &Vec<&MevBlock>,
 ) -> (
     StringArray,
     Float64Array,

@@ -1,5 +1,5 @@
 use arrow::record_batch::RecordBatch;
-use brontes_types::{db::traits::LibmdbxReader, mev::BundleHeader};
+use brontes_types::db::traits::LibmdbxReader;
 use eyre::{Error, Result, WrapErr};
 use futures::try_join;
 use parquet::{
@@ -46,24 +46,23 @@ where
             .await
             .wrap_err("Failed to create the directory for Parquet files")?;
 
-        for mev_block_with_classified in mev_blocks {
-            let block_batch = mev_block_to_record_batch(vec![mev_block_with_classified.block])
+        let block_batch =
+            mev_block_to_record_batch(mev_blocks.iter().map(|mb| &mb.block).collect::<Vec<_>>())
                 .wrap_err("Failed to convert MEV block data to record batch")?;
-            let bundle_headers: Vec<BundleHeader> = mev_block_with_classified
-                .mev
+
+        let bundle_batch = bundle_headers_to_record_batch(
+            mev_blocks
                 .iter()
-                .map(|bundle| bundle.header.clone())
-                .collect();
-            let bundle_batch = bundle_headers_to_record_batch(bundle_headers)
-                .wrap_err("Failed to convert bundle headers to record batch")?;
+                .flat_map(|mb| mb.mev.iter().map(|bundle| &bundle.header))
+                .collect::<Vec<_>>(),
+        )
+        .wrap_err("Failed to convert bundle headers to record batch")?;
 
-            let block_write = write_to_parquet_async(block_batch, "db/parquet/block_table.parquet");
-            let bundle_write =
-                write_to_parquet_async(bundle_batch, "db/parquet/bundle_table.parquet");
+        let block_write = write_to_parquet_async(block_batch, "db/parquet/block_table.parquet");
+        let bundle_write = write_to_parquet_async(bundle_batch, "db/parquet/bundle_table.parquet");
 
-            try_join!(block_write, bundle_write)
-                .wrap_err("Failed to write MEV blocks and bundles to Parquet files")?;
-        }
+        try_join!(block_write, bundle_write)
+            .wrap_err("Failed to write MEV blocks and bundles to Parquet files")?;
 
         Ok(())
     }
