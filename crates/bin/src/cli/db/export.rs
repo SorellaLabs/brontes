@@ -4,6 +4,7 @@ use brontes_core::LibmdbxReader;
 use brontes_database::parquet::export_mev_blocks_and_bundles;
 use brontes_types::init_threadpools;
 use clap::Parser;
+use eyre::WrapErr;
 
 use crate::cli::{load_database, static_object};
 
@@ -27,7 +28,9 @@ impl Export {
 
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
 
-        let mev_blocks = libmdbx.try_fetch_mev_blocks(self.start_block, self.end_block)?;
+        let mev_blocks = libmdbx
+            .try_fetch_mev_blocks(self.start_block, self.end_block)
+            .wrap_err("Failed to fetch MEV blocks")?;
 
         export_mev_blocks_and_bundles(mev_blocks).await?;
 

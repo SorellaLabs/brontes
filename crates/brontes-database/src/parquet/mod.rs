@@ -1,11 +1,14 @@
 use arrow::record_batch::RecordBatch;
 use brontes_types::{db::mev_block::MevBlockWithClassified, mev::BundleHeader};
-use eyre::Result;
+use eyre::{Result, WrapErr};
 use futures::try_join;
 use parquet::{
     arrow::async_writer::AsyncArrowWriter, basic::Compression, file::properties::WriterProperties,
 };
 use tokio::fs::File;
+
+#[allow(dead_code)]
+mod address_meta;
 mod bundle_header;
 mod mev_block;
 pub mod utils;
@@ -37,7 +40,9 @@ pub async fn export_mev_blocks_and_bundles(
 }
 
 async fn write_to_parquet_async(record_batch: RecordBatch, file_path: &str) -> Result<()> {
-    let file = File::create(file_path).await?;
+    let file = File::create(file_path)
+        .await
+        .wrap_err_with(|| format!("Failed to create file at path: {}", file_path))?;
 
     let props = WriterProperties::builder()
         .set_compression(Compression::SNAPPY)
