@@ -1,12 +1,9 @@
 use std::env;
 
-use brontes_core::LibmdbxReader;
-use brontes_database::parquet::export_mev_blocks_and_bundles;
-use brontes_types::init_threadpools;
+use brontes_database::parquet::ParquetExporter;
 use clap::Parser;
-use eyre::WrapErr;
 
-use crate::cli::{load_database, static_object};
+use crate::{cli::load_database, runner::CliContext};
 
 #[derive(Debug, Parser)]
 pub struct Export {
@@ -22,17 +19,16 @@ pub struct Export {
 }
 
 impl Export {
-    pub async fn execute(self) -> eyre::Result<()> {
+    pub async fn execute(self, _ctx: CliContext) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        init_threadpools(10);
+        let libmdbx = load_database(brontes_db_endpoint)?;
 
-        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        let exporter = ParquetExporter::new(self.start_block, self.end_block, libmdbx);
 
-        let mev_blocks = libmdbx
-            .try_fetch_mev_blocks(self.start_block, self.end_block)
-            .wrap_err("Failed to fetch MEV blocks")?;
-
-        export_mev_blocks_and_bundles(mev_blocks).await?;
+        exporter
+            .export_mev_blocks_and_bundles()
+            .await
+            .expect("Failed to export mev data to parquet");
 
         Ok(())
     }

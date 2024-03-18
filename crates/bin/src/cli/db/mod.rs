@@ -57,7 +57,7 @@ impl Database {
             DatabaseCommands::TraceRange(cmd) => cmd.execute(ctx).await,
             DatabaseCommands::Init(cmd) => cmd.execute(ctx).await,
             DatabaseCommands::DbClear(cmd) => cmd.execute().await,
-            DatabaseCommands::Export(cmd) => cmd.execute().await,
+            DatabaseCommands::Export(cmd) => cmd.execute(ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(ctx).await,
             #[cfg(feature = "sorella-server")]
