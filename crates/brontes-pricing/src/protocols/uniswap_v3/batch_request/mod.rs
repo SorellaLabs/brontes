@@ -254,6 +254,7 @@ mod tests {
     #[test]
     // #[cfg(feature = "local")]
     fn test_v3_slot0() {
+        dotenv::dotenv().unwrap();
         let path = std::env::var("DB_PATH")
             .map_err(|_| Box::new(std::env::VarError::NotPresent))
             .unwrap();
@@ -298,6 +299,7 @@ mod tests {
     #[test]
     // #[cfg(feature = "local")]
     fn test_v3_liquidity() {
+        dotenv::dotenv().unwrap();
         let path = std::env::var("DB_PATH")
             .map_err(|_| Box::new(std::env::VarError::NotPresent))
             .unwrap();
