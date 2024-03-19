@@ -15,11 +15,12 @@ brontes-database.workspace = true
 brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
+brontes-analytics.workspace = true
 malachite.workspace = true
 toml = "0.8.2"
 
 # Async
-tokio = { workspace = true, features = ["full", "tracing"] }
+tokio = { workspace = true }
 async-scoped = { version = "0.7.1", features = ["use-tokio"] }
 futures.workspace = true
 
@@ -44,10 +45,10 @@ alloy-primitives.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
 
-alloy-providers.workspace = true 
-alloy-transport-http.workspace = true 
+alloy-providers.workspace = true
+alloy-transport-http.workspace = true
 alloy-transport.workspace = true
-alloy-network.workspace = true 
+alloy-network.workspace = true
 alloy-json-rpc.workspace = true
 alloy-rpc-types.workspace = true
 alloy-rpc-client.workspace = true
@@ -69,8 +70,7 @@ thiserror.workspace = true
 hyper.workspace = true
 
 # cli
-clap = { version = "4.4.6", features = ["derive"] }
-
+clap.workspace = true
 # logging
 indoc = "2"
 rayon.workspace = true
@@ -79,21 +79,56 @@ cfg-if = "1.0.0"
 # prometheus
 metrics-process.workspace = true
 itertools.workspace = true
+fdlimit = "0.3.0"
 
 
 [features]
+default = [
+  "brontes-core/default",
+  "brontes-database/default",
+  "brontes-classifier/default",
+  "brontes-inspect/default",
+]
+
+sorella-server = ["local-reth", "local-clickhouse"]
+
+cex-dex-markout = [
+  "brontes-types/cex-dex-markout",
+  "brontes-database/cex-dex-markout",
+  "brontes-inspect/cex-dex-markout",
+]
+
+pretty-print = [
+  "brontes-inspect/pretty-print"
+]
+
+local-no-inserts = []
+
 tests = [
   "brontes-core/tests",
   "brontes-database/tests",
   "brontes-classifier/tests",
   "brontes-inspect/tests",
+  "brontes-pricing/tests",
 ]
 
-local = [
-  "brontes-core/local",
-  "brontes-database/local",
-  "brontes-types/local",
-  "reth-tracing-ext/local",
+local-reth = [
+  "brontes-core/local-reth",
+  "brontes-database/local-reth",
+  "brontes-types/local-reth",
+  "brontes-pricing/local-reth",
+  "brontes-inspect/local-reth",
+  "reth-tracing-ext/local-reth",
 ]
+
+local-clickhouse = [
+  "brontes-database/local-clickhouse",
+  "brontes-core/local-clickhouse",
+  "brontes-inspect/local-clickhouse",
+  "brontes-classifier/local-clickhouse",
+  "brontes-analytics/local-clickhouse",
+  "brontes-types/local-clickhouse",
+]
+
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]

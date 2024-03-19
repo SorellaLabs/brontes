@@ -1,40 +1,64 @@
 use std::fmt::{self, Debug};
 
 use alloy_primitives::U256;
+use clickhouse::Row;
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{fixed_string::FixedString, Row},
-};
 
+use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap};
 use crate::{
     db::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    Protocol,
+    rational_to_clickhouse_tuple, Protocol,
 };
 
-#[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
+#[derive(Default, Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedLiquidation {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
-    pub trace_index: u64,
-    pub pool: Address,
-    pub liquidator: Address,
-    pub debtor: Address,
-    pub collateral_asset: TokenInfoWithAddress,
-    pub debt_asset: TokenInfoWithAddress,
-    pub covered_debt: Rational,
+    pub protocol:              Protocol,
+    pub trace_index:           u64,
+    pub pool:                  Address,
+    pub liquidator:            Address,
+    pub debtor:                Address,
+    pub collateral_asset:      TokenInfoWithAddress,
+    pub debt_asset:            TokenInfoWithAddress,
+    pub covered_debt:          Rational,
     pub liquidated_collateral: Rational,
-    pub msg_value: U256,
+    pub msg_value:             U256,
+}
+
+impl TokenAccounting for NormalizedLiquidation {
+    fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
+        let debt_covered = self.covered_debt.clone();
+        // Liquidator sends debt_asset to the pool, effectively swapping the debt asset
+        // for the liquidatee's collateral
+        apply_delta(self.pool, self.debt_asset.address, debt_covered.clone(), delta_map);
+        apply_delta(self.liquidator, self.debt_asset.address, -debt_covered, delta_map);
+
+        // Pool sends collateral to the liquidator
+        apply_delta(
+            self.pool,
+            self.collateral_asset.address,
+            -self.liquidated_collateral.clone(),
+            delta_map,
+        );
+
+        // Liquidator gains collateral asset
+        apply_delta(
+            self.liquidator,
+            self.collateral_asset.address,
+            self.liquidated_collateral.clone(),
+            delta_map,
+        )
+    }
 }
 
 impl fmt::Display for NormalizedLiquidation {
@@ -66,23 +90,27 @@ impl fmt::Display for NormalizedLiquidation {
 
 impl NormalizedLiquidation {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
-        actions
-            .into_iter()
-            .find_map(|(index, action)| {
-                if let Actions::Transfer(transfer) = action {
-                    // because aave has the option to return the Atoken or regular,
-                    // we can't filter by collateral filter. This might be an issue...
-                    // tbd tho
-                    if transfer.to == self.liquidator {
-                        self.liquidated_collateral = transfer.amount;
-                        return Some(index);
+        if self.protocol == Protocol::AaveV3 || self.protocol == Protocol::AaveV2 {
+            actions
+                .into_iter()
+                .find_map(|(index, action)| {
+                    if let Actions::Transfer(transfer) = action {
+                        // because aave has the option to return the Atoken or regular,
+                        // we can't filter by collateral filter. This might be an issue...
+                        // tbd tho
+                        if transfer.to == self.liquidator {
+                            self.liquidated_collateral = transfer.amount;
+                            return Some(index)
+                        }
                     }
-                }
 
-                None
-            })
-            .map(|e| vec![e])
-            .unwrap_or_default()
+                    None
+                })
+                .map(|e| vec![e])
+                .unwrap_or_default()
+        } else {
+            vec![]
+        }
     }
 
     pub fn pretty_print(&self, f: &mut fmt::Formatter<'_>, spaces: usize) -> fmt::Result {
@@ -139,50 +167,46 @@ impl NormalizedLiquidation {
 }
 
 pub struct ClickhouseVecNormalizedLiquidation {
-    pub trace_index: Vec<u64>,
-    pub pool: Vec<FixedString>,
-    pub liquidator: Vec<FixedString>,
-    pub debtor: Vec<FixedString>,
-    pub collateral_asset: Vec<FixedString>,
-    pub debt_asset: Vec<FixedString>,
-    pub covered_debt: Vec<[u8; 32]>,
-    pub liquidated_collateral: Vec<[u8; 32]>,
+    pub trace_index:           Vec<u64>,
+    pub pool:                  Vec<String>,
+    pub liquidator:            Vec<String>,
+    pub debtor:                Vec<String>,
+    pub collateral_asset:      Vec<String>,
+    pub debt_asset:            Vec<String>,
+    pub covered_debt:          Vec<([u8; 32], [u8; 32])>,
+    pub liquidated_collateral: Vec<([u8; 32], [u8; 32])>,
 }
 
 impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
-    fn from(_value: Vec<NormalizedLiquidation>) -> Self {
-        todo!("todo");
-        // ClickhouseVecNormalizedLiquidation {
-        //     trace_index: value.iter().map(|val| val.trace_index).collect(),
-        //     pool:        value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.pool).into())
-        //         .collect(),
-        //     liquidator:  value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.liquidator).into())
-        //         .collect(),
-        //     debtor:      value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.debtor).into())
-        //         .collect(),
-        //
-        //     collateral_asset:      value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.collateral_asset).into())
-        //         .collect(),
-        //     debt_asset:            value
-        //         .iter()
-        //         .map(|val| format!("{:?}", val.debt_asset).into())
-        //         .collect(),
-        //     covered_debt:          value
-        //         .iter()
-        //         .map(|val| val.covered_debt.to_le_bytes())
-        //         .collect(),
-        //     liquidated_collateral: value
-        //         .iter()
-        //         .map(|val| val.liquidated_collateral.to_le_bytes())
-        //         .collect(),
-        // }
+    fn from(value: Vec<NormalizedLiquidation>) -> Self {
+        ClickhouseVecNormalizedLiquidation {
+            trace_index: value.iter().map(|val| val.trace_index).collect(),
+            pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
+            liquidator:  value
+                .iter()
+                .map(|val| format!("{:?}", val.liquidator))
+                .collect(),
+            debtor:      value
+                .iter()
+                .map(|val| format!("{:?}", val.debtor))
+                .collect(),
+
+            collateral_asset:      value
+                .iter()
+                .map(|val| format!("{:?}", val.collateral_asset))
+                .collect(),
+            debt_asset:            value
+                .iter()
+                .map(|val| format!("{:?}", val.debt_asset))
+                .collect(),
+            covered_debt:          value
+                .iter()
+                .map(|val| rational_to_clickhouse_tuple(&val.covered_debt))
+                .collect(),
+            liquidated_collateral: value
+                .iter()
+                .map(|val| rational_to_clickhouse_tuple(&val.liquidated_collateral))
+                .collect(),
+        }
     }
 }

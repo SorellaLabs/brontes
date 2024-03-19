@@ -49,15 +49,14 @@ pub mod test {
     #[brontes_macros::test]
     async fn test_pancake_v3_discovery() {
         let utils = ClassifierTestUtils::new().await;
-        let tx = TxHash::new(hex!(
-            "2b16d7a3937375d50b29bbec621b3f33bee00c76d1f4c907ae483fa49f63e2f1"
-        ));
+        let tx =
+            TxHash::new(hex!("2b16d7a3937375d50b29bbec621b3f33bee00c76d1f4c907ae483fa49f63e2f1"));
 
         let eq_create = NormalizedNewPool {
-            trace_index: 1,
-            protocol: Protocol::PancakeSwapV3,
+            trace_index:  1,
+            protocol:     Protocol::PancakeSwapV3,
             pool_address: Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
-            tokens: vec![
+            tokens:       vec![
                 Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
                 TokenInfoWithAddress::usdt().address,
             ],

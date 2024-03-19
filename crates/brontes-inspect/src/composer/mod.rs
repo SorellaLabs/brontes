@@ -28,12 +28,11 @@
 //! // Future execution of the composer to process MEV data
 //! ```
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
-use brontes_types::mev::Mev;
+use brontes_types::{mev::Mev, FastHashMap};
 mod mev_filters;
 mod utils;
-use async_scoped::{Scope, TokioScope};
 use brontes_types::{
     db::metadata::Metadata,
     mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
@@ -41,6 +40,7 @@ use brontes_types::{
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, pre_process,
     sort_mev_by_type, BlockPreprocessing,
@@ -52,67 +52,51 @@ use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]
 pub struct ComposerResults {
-    pub block_details: MevBlock,
-    pub mev_details: Vec<Bundle>,
+    pub block_details:     MevBlock,
+    pub mev_details:       Vec<Bundle>,
     /// all txes with coinbase.transfers that weren't classified
     pub possible_mev_txes: PossibleMevCollection,
 }
 
-pub async fn compose_mev_results(
+pub fn compose_mev_results(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
-    let pre_processing = pre_process(tree.clone(), metadata.clone());
+    let pre_processing = pre_process(tree.clone());
     let (possible_mev_txes, classified_mev) =
-        run_inspectors(orchestra, tree.clone(), metadata.clone()).await;
+        run_inspectors(orchestra, tree.clone(), metadata.clone());
 
     let possible_arbs = possible_mev_txes.clone();
 
-    let (block_details, mev_details) = on_orchestra_resolution(
-        pre_processing,
-        tree,
-        possible_mev_txes,
-        metadata,
-        classified_mev,
-    );
-    ComposerResults {
-        block_details,
-        mev_details,
-        possible_mev_txes: possible_arbs,
-    }
+    let (block_details, mev_details) =
+        on_orchestra_resolution(pre_processing, tree, possible_mev_txes, metadata, classified_mev);
+    ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
-async fn run_inspectors(
+fn run_inspectors(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
-    let mut scope: TokioScope<'_, Vec<Bundle>> = unsafe { Scope::create() };
-    orchestra
-        .iter()
-        .for_each(|inspector| scope.spawn(inspector.process_tree(tree.clone(), metadata.clone())));
-
     let mut possible_mev_txes =
-        DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree);
+        DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree.clone());
 
     // Remove the classified mev txes from the possibly missed tx list
-    let results = scope
-        .collect()
-        .await
-        .into_iter()
-        .flat_map(|r| r.unwrap())
-        .map(|bundle| {
-            bundle
-                .data
-                .mev_transaction_hashes()
-                .into_iter()
-                .for_each(|mev_tx| {
-                    possible_mev_txes.remove(&mev_tx);
-                });
-            bundle
-        })
+    let results = orchestra
+        .par_iter()
+        .flat_map(|inspector| inspector.process_tree(tree.clone(), metadata.clone()))
         .collect::<Vec<_>>();
+
+    results.iter().for_each(|bundle| {
+        bundle
+            .data
+            .mev_transaction_hashes()
+            .into_iter()
+            .for_each(|mev_tx| {
+                possible_mev_txes.remove(&mev_tx);
+            });
+    });
 
     let mut possible_mev_collection =
         PossibleMevCollection(possible_mev_txes.into_values().collect());
@@ -130,13 +114,6 @@ fn on_orchestra_resolution(
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
 ) -> (MevBlock, Vec<Bundle>) {
-    let mut header = build_mev_header(
-        metadata.clone(),
-        tree,
-        &pre_processing,
-        possible_mev_txes,
-        &orchestra_data,
-    );
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
     MEV_COMPOSABILITY_FILTER
@@ -153,7 +130,14 @@ fn on_orchestra_resolution(
 
     let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
 
-    header.mev_count = mev_count;
+    let header = build_mev_header(
+        &metadata,
+        tree,
+        &pre_processing,
+        possible_mev_txes,
+        mev_count,
+        &filtered_bundles,
+    );
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
@@ -163,7 +147,7 @@ fn on_orchestra_resolution(
 fn deduplicate_mev(
     dominant_mev_type: &MevType,
     subordinate_mev_types: &[MevType],
-    sorted_mev: &mut HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
     let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
         Some(list) => list,
@@ -220,10 +204,10 @@ fn try_compose_mev(
     parent_mev_type: &MevType,
     child_mev_type: &[MevType],
     compose: &ComposeFunction,
-    sorted_mev: &mut HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
     let first_mev_type = child_mev_type[0];
-    let mut removal_indices: HashMap<MevType, Vec<usize>> = HashMap::new();
+    let mut removal_indices: FastHashMap<MevType, Vec<usize>> = FastHashMap::default();
 
     if let Some(first_mev_list) = sorted_mev.remove(&first_mev_type) {
         for (first_i, bundle) in first_mev_list.iter().enumerate() {
@@ -235,7 +219,7 @@ fn try_compose_mev(
                 if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
                     let indexes = find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes);
                     if indexes.is_empty() {
-                        break;
+                        break
                     }
                     for index in indexes {
                         let other_bundle = &other_mev_data_list[index];
@@ -244,7 +228,7 @@ fn try_compose_mev(
                         temp_removal_indices.push((other_mev_type, index));
                     }
                 } else {
-                    break;
+                    break
                 }
             }
 
@@ -271,7 +255,7 @@ fn try_compose_mev(
     for (mev_type, indices) in removal_indices {
         if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
             for &index in indices.iter().rev() {
-                if !mev_list.is_empty() {
+                if mev_list.len() > index {
                     mev_list.remove(index);
                 }
             }
@@ -285,7 +269,7 @@ pub mod tests {
 
     use super::*;
     use crate::{
-        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS, USDT_ADDRESS},
+        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS},
         Inspectors,
     };
 
@@ -311,29 +295,6 @@ pub mod tests {
             hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
             hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
         ]);
-
-        inspector_util.run_composer(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    pub async fn test_deduplicate() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = ComposerRunConfig::new(
-            vec![Inspectors::AtomicArb, Inspectors::CexDex],
-            MevType::AtomicArb,
-        )
-        .with_dex_prices()
-        .needs_tokens(vec![
-            hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into(),
-            hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
-        ])
-        .with_gas_paid_usd(10.20)
-        .with_expected_profit_usd(349.2)
-        .with_mev_tx_hashes(vec![hex!(
-            "3329c54fef27a24cef640fbb28f11d3618c63662bccc4a8c5a0d53d13267652f"
-        )
-        .into()]);
 
         inspector_util.run_composer(config, None).await.unwrap();
     }

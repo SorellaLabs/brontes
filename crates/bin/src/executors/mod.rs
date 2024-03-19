@@ -1,10 +1,13 @@
+mod processors;
 mod range;
+pub use processors::*;
 mod shared;
-use brontes_database::Tables;
+use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
+
 use std::{
-    collections::HashMap,
+    marker::PhantomData,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
     task::{Context, Poll},
@@ -13,17 +16,14 @@ use std::{
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{
-    clickhouse::Clickhouse,
-    libmdbx::{LibmdbxReadWriter, LibmdbxReader},
-};
+use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::mev::Bundle;
+use brontes_types::{BrontesTaskExecutor, FastHashMap};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::{shutdown::GracefulShutdown, TaskExecutor};
+use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
@@ -35,39 +35,46 @@ use crate::cli::static_object;
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
-pub struct BrontesRunConfig<T: TracingProvider> {
-    pub start_block: u64,
-    pub end_block: Option<u64>,
-    pub max_tasks: u64,
-    pub min_batch_size: u64,
-    pub quote_asset: Address,
+pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
+{
+    pub start_block:      u64,
+    pub end_block:        Option<u64>,
+    pub back_from_tip:    u64,
+    pub max_tasks:        u64,
+    pub min_batch_size:   u64,
+    pub quote_asset:      Address,
     pub with_dex_pricing: bool,
 
-    pub inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
-    pub clickhouse: &'static Clickhouse,
-    pub parser: &'static Parser<'static, T, LibmdbxReadWriter>,
-    pub libmdbx: &'static LibmdbxReadWriter,
+    pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
+    pub clickhouse: &'static CH,
+    pub parser:     &'static Parser<'static, T, DB>,
+    pub libmdbx:    &'static DB,
+    _p:             PhantomData<P>,
 }
 
-impl<T: TracingProvider> BrontesRunConfig<T> {
+impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
+    BrontesRunConfig<T, DB, CH, P>
+{
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         start_block: u64,
         end_block: Option<u64>,
+        back_from_tip: u64,
         max_tasks: u64,
         min_batch_size: u64,
         quote_asset: Address,
         with_dex_pricing: bool,
 
-        inspectors: &'static [&'static dyn Inspector<Result = Vec<Bundle>>],
-        clickhouse: &'static Clickhouse,
+        inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
+        clickhouse: &'static CH,
 
-        parser: &'static Parser<'static, T, LibmdbxReadWriter>,
-        libmdbx: &'static LibmdbxReadWriter,
+        parser: &'static Parser<'static, T, DB>,
+        libmdbx: &'static DB,
     ) -> Self {
         Self {
             clickhouse,
             start_block,
+            back_from_tip,
             min_batch_size,
             max_tasks,
             with_dex_pricing,
@@ -76,27 +83,23 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             inspectors,
             quote_asset,
             end_block,
+            _p: PhantomData,
         }
     }
 
     #[allow(clippy::async_yields_async)]
     async fn build_range_executors(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         end_block: u64,
-        tip: bool,
-    ) -> Vec<RangeExecutorWithPricing<T, LibmdbxReadWriter>> {
+    ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block;
         let cpus_min = range / self.min_batch_size + 1;
 
         let cpus = std::cmp::min(cpus_min, self.max_tasks);
-        let chunk_size = if cpus == 0 {
-            range + 1
-        } else {
-            (range / cpus) + 1
-        };
+        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
         join_all(
             (self.start_block..=end_block)
@@ -115,7 +118,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                                 executor.clone(),
                                 start_block,
                                 end_block,
-                                tip,
+                                false,
                             )
                             .await
                         } else {
@@ -137,15 +140,16 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
 
     async fn build_tip_inspector(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         start_block: u64,
-    ) -> TipInspector<T, LibmdbxReadWriter> {
+        back_from_tip: u64,
+    ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self
             .state_collector_dex_price(executor, start_block, start_block, true)
             .await;
         TipInspector::new(
             start_block,
-            self.quote_asset,
+            back_from_tip,
             state_collector,
             self.parser,
             self.libmdbx,
@@ -153,7 +157,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         )
     }
 
-    fn state_collector_no_dex_price(&self) -> StateCollector<T, LibmdbxReadWriter> {
+    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB, CH> {
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
 
@@ -169,11 +173,11 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
 
     async fn state_collector_dex_price(
         &self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         start_block: u64,
         end_block: u64,
         tip: bool,
-    ) -> StateCollector<T, LibmdbxReadWriter> {
+    ) -> StateCollector<T, DB, CH> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
         let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
@@ -192,9 +196,10 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                     .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                     .collect::<Vec<_>>()
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<FastHashMap<_, _>>();
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
         let pricer = BrontesBatchPricer::new(
             shutdown.clone(),
@@ -240,23 +245,82 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
             !self.with_dex_pricing,
         )?;
 
-        join_all(state_to_init.into_iter().map(|range| async move {
+        if state_to_init.is_empty() {
+            return Ok(())
+        }
+
+        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
+
+        let state_to_init_continuous = state_to_init
+            .clone()
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() >= 1000)
+            .collect_vec();
+
+        tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
+
+        join_all(state_to_init_continuous.iter().map(|range| async move {
             let start = range.start();
             let end = range.end();
-            tracing::info!(start, end, "Downloading missing range");
-            self.libmdbx
-                .initialize_tables(
-                    self.clickhouse,
-                    self.parser.get_tracer(),
-                    &[Tables::BlockInfo, Tables::CexPrice],
-                    false,
-                    Some((*start, *end)),
-                )
-                .await
+
+            #[cfg(feature = "sorella-server")]
+            {
+                self.libmdbx
+                    .initialize_tables(
+                        self.clickhouse,
+                        self.parser.get_tracer(),
+                        &[Tables::BlockInfo, Tables::CexPrice],
+                        false,
+                        Some((*start, *end)),
+                    )
+                    .await
+            }
+            #[cfg(not(feature = "sorella-server"))]
+            {
+                self.libmdbx
+                    .initialize_tables(
+                        self.clickhouse,
+                        self.parser.get_tracer(),
+                        &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                        false,
+                        Some((*start, *end)),
+                    )
+                    .await
+            }
         }))
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
+
+        tracing::info!(
+            "Downloading {} missing discontinuous ranges",
+            state_to_init.len() - state_to_init_continuous.len()
+        );
+
+        let state_to_init_disc = state_to_init
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() < 1000)
+            .flatten()
+            .collect_vec();
+
+        #[cfg(feature = "sorella-server")]
+        self.libmdbx
+            .initialize_tables_arbitrary(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice],
+                state_to_init_disc,
+            )
+            .await?;
+        #[cfg(not(feature = "sorella-server"))]
+        self.libmdbx
+            .initialize_tables_arbitrary(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                state_to_init_disc,
+            )
+            .await?;
 
         Ok(())
     }
@@ -265,24 +329,24 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
         if let Some(end_block) = self.end_block {
             (true, end_block)
         } else {
-            #[cfg(not(feature = "local"))]
+            #[cfg(feature = "local-reth")]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
-            #[cfg(feature = "local")]
+            #[cfg(not(feature = "local-reth"))]
             let chain_tip = self.parser.get_latest_block_number().await.unwrap();
-            (false, chain_tip)
+            (false, chain_tip - self.back_from_tip)
         }
     }
 
     async fn build_internal(
         self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         had_end_block: bool,
         end_block: u64,
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
         if had_end_block {
-            self.build_range_executors(executor.clone(), end_block, false)
+            self.build_range_executors(executor.clone(), end_block)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -294,7 +358,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                     ));
                 });
         } else {
-            self.build_range_executors(executor.clone(), end_block, true)
+            self.build_range_executors(executor.clone(), end_block)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -306,7 +370,10 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
                     ));
                 });
 
-            let tip_inspector = self.build_tip_inspector(executor.clone(), end_block).await;
+            let tip_inspector = self
+                .build_tip_inspector(executor.clone(), end_block, self.back_from_tip)
+                .await;
+
             futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                 "Tip Inspector",
                 |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },
@@ -318,7 +385,7 @@ impl<T: TracingProvider> BrontesRunConfig<T> {
 
     pub async fn build(
         self,
-        executor: TaskExecutor,
+        executor: BrontesTaskExecutor,
         shutdown: GracefulShutdown,
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
@@ -351,11 +418,11 @@ impl Future for Brontes {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.0.is_empty() {
-            return Poll::Ready(());
+            return Poll::Ready(())
         }
 
         if let Poll::Ready(None) = self.0.poll_next_unpin(cx) {
-            return Poll::Ready(());
+            return Poll::Ready(())
         }
 
         cx.waker().wake_by_ref();

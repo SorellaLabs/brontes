@@ -12,16 +12,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -53,16 +54,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -92,16 +94,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_imbalance_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_imbalance_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -131,16 +134,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_imbalance_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_imbalance_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -171,10 +175,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_0Call,
-    log: CurveV2PlainPoolImplremove_liquidity_one_coin_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_one_coin_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -216,10 +220,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_1Call,
-    log: CurveV2PlainPoolImplremove_liquidity_one_coin_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_one_coin_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -258,7 +262,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -270,63 +274,49 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
             None,
         );
 
-        let burn = B256::from(hex!(
-            "01263e507a992709a0a53c014ead38c109edc7aa08bc8329a94d051530da8258"
-        ));
+        let burn =
+            B256::from(hex!("01263e507a992709a0a53c014ead38c109edc7aa08bc8329a94d051530da8258"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "CRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
-            from: Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
-            recipient: Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token: vec![token0, token1],
-            amount: vec![
+            from:        Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
+            recipient:   Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
+            pool:        Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token:       vec![token0, token1],
+            amount:      vec![
                 U256::from(7558238951551444616838_u128).to_scaled_rational(18),
                 U256::from(33415347097773187822792_u128).to_scaled_rational(18),
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_burn())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_burn()),
-        };
-
         classifier_utils
-            .contains_action(burn, 0, eq_action, search_fn)
+            .contains_action(
+                burn,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_burn),
+            )
             .await
             .unwrap();
     }
@@ -338,63 +328,49 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
             None,
         );
 
-        let burn = B256::from(hex!(
-            "d6ea9a7ee442796536490731fb1236fad076ce6994aeda37735670f3690ad06a"
-        ));
+        let burn =
+            B256::from(hex!("d6ea9a7ee442796536490731fb1236fad076ce6994aeda37735670f3690ad06a"));
 
         let token0 = TokenInfoWithAddress {
             address: Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "CRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "CRV".to_string() },
         };
 
         let token1 = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
-            from: Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
-            recipient: Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token: vec![token0, token1],
-            amount: vec![
+            from:        Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
+            recipient:   Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
+            pool:        Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token:       vec![token0, token1],
+            amount:      vec![
                 U256::from(827904920210000000000000_u128).to_scaled_rational(18),
                 U256::from(332024620000000000000000_u128).to_scaled_rational(18),
             ],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_burn())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_burn()),
-        };
-
         classifier_utils
-            .contains_action(burn, 0, eq_action, search_fn)
+            .contains_action(
+                burn,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_burn),
+            )
             .await
             .unwrap();
     }
@@ -406,51 +382,40 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
             None,
         );
 
-        let burn = B256::from(hex!(
-            "c6efe6fdf9d1e872765c98730455a9803781958fab7774c48a0be9148ad1165e"
-        ));
+        let burn =
+            B256::from(hex!("c6efe6fdf9d1e872765c98730455a9803781958fab7774c48a0be9148ad1165e"));
 
         let token = TokenInfoWithAddress {
             address: Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "cvxCRV".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "cvxCRV".to_string() },
         };
 
         classifier_utils.ensure_token(token.clone());
 
         let eq_action = Actions::Burn(NormalizedBurn {
-            protocol: Protocol::CurveV2PlainPool,
+            protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
-            from: Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
-            recipient: Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
-            pool: Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
-            token: vec![token],
-            amount: vec![U256::from(915720089431618525538_u128).to_scaled_rational(18)],
+            from:        Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
+            recipient:   Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
+            pool:        Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
+            token:       vec![token],
+            amount:      vec![U256::from(915720089431618525538_u128).to_scaled_rational(18)],
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_burn())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_burn()),
-        };
-
         classifier_utils
-            .contains_action(burn, 0, eq_action, search_fn)
+            .contains_action(
+                burn,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_burn),
+            )
             .await
             .unwrap();
     }

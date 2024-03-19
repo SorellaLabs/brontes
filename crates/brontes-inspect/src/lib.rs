@@ -19,11 +19,13 @@
 //! ```ignore
 //! #[async_trait::async_trait]
 //! pub trait Inspector: Send + Sync {
+//!     type Result: Send + Sync;
+//!
 //!     async fn process_tree(
 //!         &self,
 //!         tree: Arc<BlockTree<Actions>>,
 //!         metadata: Arc<Metadata>,
-//!     ) -> Vec<Bundle>;
+//!     ) -> Self::Result;
 //! }
 //! ```
 //!
@@ -78,19 +80,12 @@
 //! analyzing MEV strategies in Ethereum transactions. Individual inspectors
 //! identify specific MEV strategies, while the `Composer` combines these
 //! results to identify more complex strategies.
-//TODO: Update composer section once finished
 
-pub mod atomic_arb;
-pub mod cex_dex;
 pub mod composer;
 pub mod discovery;
-pub mod jit;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod liquidations;
-#[allow(dead_code, unused_imports, unused_variables)]
-pub mod long_tail;
-pub mod sandwich;
-pub mod shared_utils;
+pub mod mev_inspectors;
+use mev_inspectors::searcher_activity::SearcherActivity;
+pub use mev_inspectors::*;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
@@ -99,28 +94,24 @@ use std::sync::Arc;
 
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
-use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::Metadata},
+    db::{cex::CexExchange, metadata::Metadata, traits::LibmdbxReader},
     mev::{Bundle, BundleData},
     normalized_actions::Actions,
     tree::BlockTree,
 };
+#[cfg(not(feature = "cex-dex-markout"))]
 use cex_dex::CexDexInspector;
+#[cfg(feature = "cex-dex-markout")]
+use cex_dex_markout::CexDexMarkoutInspector;
 use jit::JitInspector;
 use liquidations::LiquidationInspector;
-use long_tail::LongTailInspector;
 use sandwich::SandwichInspector;
 
-#[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result;
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result;
 }
 
 #[derive(
@@ -128,20 +119,23 @@ pub trait Inspector: Send + Sync {
 )]
 pub enum Inspectors {
     AtomicArb,
+    #[cfg(not(feature = "cex-dex-markout"))]
     CexDex,
     Jit,
     Liquidations,
-    LongTail,
     Sandwich,
+    SearcherActivity,
+    #[cfg(feature = "cex-dex-markout")]
+    CexDexMarkout,
 }
 
 type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
 
 impl Inspectors {
-    pub fn init_mev_inspector(
+    pub fn init_mev_inspector<DB: LibmdbxReader>(
         &self,
         quote_token: Address,
-        db: &'static LibmdbxReadWriter,
+        db: &'static DB,
         cex_exchanges: &[CexExchange],
     ) -> DynMevInspector {
         match &self {
@@ -149,9 +143,7 @@ impl Inspectors {
                 static_object(AtomicArbInspector::new(quote_token, db)) as DynMevInspector
             }
             Self::Jit => static_object(JitInspector::new(quote_token, db)) as DynMevInspector,
-            Self::LongTail => {
-                static_object(LongTailInspector::new(quote_token, db)) as DynMevInspector
-            }
+            #[cfg(not(feature = "cex-dex-markout"))]
             Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
                 as DynMevInspector,
             Self::Sandwich => {
@@ -159,6 +151,14 @@ impl Inspectors {
             }
             Self::Liquidations => {
                 static_object(LiquidationInspector::new(quote_token, db)) as DynMevInspector
+            }
+            Self::SearcherActivity => {
+                static_object(SearcherActivity::new(quote_token, db)) as DynMevInspector
+            }
+            #[cfg(feature = "cex-dex-markout")]
+            Self::CexDexMarkout => {
+                static_object(CexDexMarkoutInspector::new(quote_token, db, cex_exchanges))
+                    as DynMevInspector
             }
         }
     }

@@ -49,14 +49,14 @@ pub const SYNC_EVENT_SIGNATURE: B256 = FixedBytes([
     Debug, Clone, Default, Serialize, Deserialize, RlpEncodable, RlpDecodable, Hash, PartialEq, Eq,
 )]
 pub struct UniswapV2Pool {
-    pub address: Address,
-    pub token_a: Address,
+    pub address:          Address,
+    pub token_a:          Address,
     pub token_a_decimals: u8,
-    pub token_b: Address,
+    pub token_b:          Address,
     pub token_b_decimals: u8,
-    pub reserve_0: u128,
-    pub reserve_1: u128,
-    pub fee: u32,
+    pub reserve_0:        u128,
+    pub reserve_1:        u128,
+    pub fee:              u32,
 }
 
 #[async_trait]
@@ -65,22 +65,22 @@ impl UpdatableProtocol for UniswapV2Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
+    fn sync_from_action(&mut self, _action: Actions) -> Result<(), AmmError> {
         todo!("syncing from actions is currently not supported for v2")
     }
 
-    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
+    fn sync_from_log(&mut self, log: Log) -> Result<(), AmmError> {
         let event_signature = log.topics()[0];
 
         if event_signature == SYNC_EVENT_SIGNATURE {
-            let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false).unwrap();
+            let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false)?;
 
             self.reserve_0 = sync_event.reserve0;
             self.reserve_1 = sync_event.reserve1;
 
             Ok(())
         } else {
-            Err(EventLogError::InvalidEventSignature)
+            Err(AmmError::EventLogError(EventLogError::InvalidEventSignature))
         }
     }
 
@@ -133,20 +133,20 @@ impl UniswapV2Pool {
         block: u64,
     ) -> Result<Self, AmmError> {
         let mut pool = UniswapV2Pool {
-            address: pair_addr,
-            token_a: Address::ZERO,
+            address:          pair_addr,
+            token_a:          Address::ZERO,
             token_a_decimals: 0,
-            token_b: Address::ZERO,
+            token_b:          Address::ZERO,
             token_b_decimals: 0,
-            reserve_0: 0,
-            reserve_1: 0,
-            fee: 0,
+            reserve_0:        0,
+            reserve_1:        0,
+            fee:              0,
         };
 
         pool.populate_data(Some(block), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::NoStateError(pair_addr));
+            return Err(AmmError::NoStateError(pair_addr))
         }
 
         Ok(pool)
@@ -173,7 +173,7 @@ impl UniswapV2Pool {
         pool.populate_data(None, middleware.clone()).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::PoolDataError);
+            return Err(AmmError::PoolDataError)
         }
 
         Ok(pool)

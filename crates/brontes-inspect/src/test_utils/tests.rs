@@ -39,19 +39,15 @@ type StateTests = Option<Box<dyn for<'a> Fn(&'a Bundle)>>;
 
 /// Inspector Specific testing functionality
 pub struct InspectorTestUtils {
-    classifier_inspector: ClassifierTestUtils,
-    quote_address: Address,
+    classifier_inspector:  ClassifierTestUtils,
+    quote_address:         Address,
     max_result_difference: f64,
 }
 
 impl InspectorTestUtils {
     pub async fn new(quote_address: Address, max_result_difference: f64) -> Self {
         let classifier_inspector = ClassifierTestUtils::new().await;
-        Self {
-            classifier_inspector,
-            quote_address,
-            max_result_difference,
-        }
+        Self { classifier_inspector, quote_address, max_result_difference }
     }
 
     async fn get_tree_txes(
@@ -63,7 +59,7 @@ impl InspectorTestUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|t| t.header.number).collect(),
-            ));
+            ))
         }
         Ok(trees.remove(0))
     }
@@ -81,7 +77,7 @@ impl InspectorTestUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|(t, _)| t.header.number).collect(),
-            ));
+            ))
         }
         Ok(trees.remove(0))
     }
@@ -136,7 +132,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err());
+            return Err(err())
         };
 
         let block = tree.header.number;
@@ -168,13 +164,8 @@ impl InspectorTestUtils {
             ],
         );
 
-        let results = inspector.process_tree(tree.into(), metadata.into()).await;
-        assert_eq!(
-            results.len(),
-            0,
-            "found mev when we shouldn't of {:#?}",
-            results
-        );
+        let results = inspector.process_tree(tree.into(), metadata.into());
+        assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
 
         Ok(())
     }
@@ -212,7 +203,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err());
+            return Err(err())
         };
 
         let block = tree.header.number;
@@ -221,7 +212,13 @@ impl InspectorTestUtils {
             meta
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
-            if config.expected_mev_type == Inspectors::CexDex {
+
+            #[cfg(not(feature = "cex-dex-markout"))]
+            let cmp = Inspectors::CexDex;
+            #[cfg(feature = "cex-dex-markout")]
+            let cmp = Inspectors::CexDexMarkout;
+
+            if config.expected_mev_type == cmp {
                 res?
             } else {
                 res.unwrap_or_else(|_| Metadata::default())
@@ -248,7 +245,7 @@ impl InspectorTestUtils {
             ],
         );
 
-        let mut results = inspector.process_tree(tree.into(), metadata.into()).await;
+        let mut results = inspector.process_tree(tree.into(), metadata.into());
 
         assert_eq!(
             results.len(),
@@ -314,7 +311,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err());
+            return Err(err())
         };
 
         let block = tree.header.number;
@@ -323,7 +320,13 @@ impl InspectorTestUtils {
             meta
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
-            if config.inspectors.contains(&Inspectors::CexDex) {
+
+            #[cfg(not(feature = "cex-dex-markout"))]
+            let cmp = Inspectors::CexDex;
+            #[cfg(feature = "cex-dex-markout")]
+            let cmp = Inspectors::CexDexMarkout;
+
+            if config.inspectors.contains(&cmp) {
                 res?
             } else {
                 res.unwrap_or_else(|_| Metadata::default())
@@ -350,7 +353,7 @@ impl InspectorTestUtils {
             })
             .collect::<Vec<_>>();
 
-        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into()).await;
+        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into());
 
         let mut results = results
             .mev_details
@@ -407,27 +410,27 @@ impl InspectorTestUtils {
 /// bundle.
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
-    pub metadata_override: Option<Metadata>,
-    pub mev_tx_hashes: Option<Vec<TxHash>>,
-    pub block: Option<u64>,
+    pub metadata_override:   Option<Metadata>,
+    pub mev_tx_hashes:       Option<Vec<TxHash>>,
+    pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
-    pub expected_gas_usd: Option<f64>,
-    pub expected_mev_type: Inspectors,
-    pub needs_dex_prices: bool,
-    pub needs_tokens: Vec<Address>,
+    pub expected_gas_usd:    Option<f64>,
+    pub expected_mev_type:   Inspectors,
+    pub needs_dex_prices:    bool,
+    pub needs_tokens:        Vec<Address>,
 }
 
 impl InspectorTxRunConfig {
     pub fn new(mev: Inspectors) -> Self {
         Self {
-            expected_mev_type: mev,
-            block: None,
-            mev_tx_hashes: None,
+            expected_mev_type:   mev,
+            block:               None,
+            mev_tx_hashes:       None,
             expected_profit_usd: None,
-            expected_gas_usd: None,
-            metadata_override: None,
-            needs_tokens: Vec::new(),
-            needs_dex_prices: false,
+            expected_gas_usd:    None,
+            metadata_override:   None,
+            needs_tokens:        Vec::new(),
+            needs_dex_prices:    false,
         }
     }
 
@@ -476,16 +479,16 @@ impl InspectorTxRunConfig {
 
 #[derive(Debug, Clone)]
 pub struct ComposerRunConfig {
-    pub inspectors: Vec<Inspectors>,
-    pub expected_mev_type: MevType,
-    pub metadata_override: Option<Metadata>,
-    pub mev_tx_hashes: Option<Vec<TxHash>>,
-    pub block: Option<u64>,
+    pub inspectors:          Vec<Inspectors>,
+    pub expected_mev_type:   MevType,
+    pub metadata_override:   Option<Metadata>,
+    pub mev_tx_hashes:       Option<Vec<TxHash>>,
+    pub block:               Option<u64>,
     pub expected_profit_usd: Option<f64>,
-    pub expected_gas_usd: Option<f64>,
+    pub expected_gas_usd:    Option<f64>,
     pub prune_opportunities: Option<Vec<TxHash>>,
-    pub needs_dex_prices: bool,
-    pub needs_tokens: Vec<Address>,
+    pub needs_dex_prices:    bool,
+    pub needs_tokens:        Vec<Address>,
 }
 
 impl ComposerRunConfig {

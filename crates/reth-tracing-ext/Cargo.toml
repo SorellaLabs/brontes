@@ -28,23 +28,26 @@ brontes-types.workspace = true
 tracing.workspace = true
 
 num_cpus.workspace = true
-
-revm = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
-  "std",
-  "secp256k1",
-], default-features = false }
-revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
-  "std",
-], default-features = false }
+revm-primitives.workspace = true
 bitflags = "2.4"
 
+revm.workspace = true
 # error
 eyre = "0.6.8"
 
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
 
+[dev-dependencies]
+brontes-core = { workspace = true, features = ["tests"] }
+reth-tracing-ext = { workspace = true, features = ["tests"] }
+brontes-macros.workspace = true
+dotenv.workspace = true
 
 [features]
 tests = []
-local = ["brontes-types/local"]
+local-reth = ["brontes-types/local-reth", "brontes-core/local-reth"]
+local-clickhouse = [
+  "brontes-core/local-clickhouse",
+  "brontes-types/local-clickhouse",
+]

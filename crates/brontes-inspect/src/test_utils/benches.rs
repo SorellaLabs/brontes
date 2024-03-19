@@ -10,8 +10,8 @@ use crate::{composer::compose_mev_results, Inspectors};
 
 pub struct InspectorBenchUtils {
     classifier_inspector: ClassifierTestUtils,
-    quote_address: Address,
-    pub rt: tokio::runtime::Runtime,
+    quote_address:        Address,
+    pub rt:               tokio::runtime::Runtime,
 }
 
 impl InspectorBenchUtils {
@@ -22,11 +22,7 @@ impl InspectorBenchUtils {
             .unwrap();
 
         let classifier_inspector = rt.block_on(ClassifierTestUtils::new());
-        Self {
-            classifier_inspector,
-            quote_address,
-            rt,
-        }
+        Self { classifier_inspector, quote_address, rt }
     }
 
     pub fn bench_inspectors_block(
@@ -66,10 +62,10 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
                     for inspector in &inspectors {
-                        black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                        black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                     }
                 }
             });
@@ -104,7 +100,7 @@ impl InspectorBenchUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|(t, _)| t.header.number).collect(),
-            ));
+            ))
         }
 
         let (tree, prices) = trees.remove(0);
@@ -115,7 +111,12 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false)
                 .await;
 
-            if inspector_type == Inspectors::CexDex {
+            #[cfg(not(feature = "cex-dex-markout"))]
+            let cmp = Inspectors::CexDex;
+            #[cfg(feature = "cex-dex-markout")]
+            let cmp = Inspectors::CexDexMarkout;
+
+            if inspector_type == cmp {
                 res
             } else {
                 Ok(res.unwrap_or_else(|_| Metadata::default()))
@@ -126,9 +127,9 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -165,7 +166,12 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false)
                 .await;
 
-            if inspector_type == Inspectors::CexDex {
+            #[cfg(not(feature = "cex-dex-markout"))]
+            let cmp = Inspectors::CexDex;
+            #[cfg(feature = "cex-dex-markout")]
+            let cmp = Inspectors::CexDexMarkout;
+
+            if inspector_type == cmp {
                 res
             } else {
                 Ok(res.unwrap_or_else(|_| Metadata::default()))
@@ -175,9 +181,9 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -207,16 +213,16 @@ impl InspectorBenchUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|t| t.header.number).collect(),
-            ));
+            ))
         }
 
         let tree = trees.remove(0);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()).await);
+                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -255,7 +261,7 @@ impl InspectorBenchUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|(t, _)| t.header.number).collect(),
-            ));
+            ))
         }
         let (tree, prices) = trees.remove(0);
 
@@ -267,12 +273,13 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(
-                        compose_mev_results(inspectors.as_slice(), tree.clone(), metadata.clone())
-                            .await,
-                    );
+                    black_box(compose_mev_results(
+                        inspectors.as_slice(),
+                        tree.clone(),
+                        metadata.clone(),
+                    ));
                 }
             });
         });
@@ -316,12 +323,13 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async {
+            b.iter(|| async {
                 for _ in 0..=iters {
-                    black_box(
-                        compose_mev_results(inspectors.as_slice(), tree.clone(), metadata.clone())
-                            .await,
-                    );
+                    black_box(compose_mev_results(
+                        inspectors.as_slice(),
+                        tree.clone(),
+                        metadata.clone(),
+                    ));
                 }
             });
         });

@@ -1,16 +1,36 @@
+use std::str::FromStr;
+
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{spanned::Spanned, ItemFn};
+use syn::{
+    parse::{Parse, Parser},
+    spanned::Spanned,
+    Expr, ItemFn, MetaNameValue,
+};
 
-pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
+pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
+    // grab threads if specified
+    let threads = Parser::parse2(MetaNameValue::parse, attr)
+        .map(|name_val| {
+            if name_val.path.segments.last()?.ident == "threads" {
+                let Expr::Lit(ref a) = name_val.value else { return None };
+                match &a.lit {
+                    syn::Lit::Int(i) => return Some(usize::from_str(i.base10_digits()).unwrap()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .ok()
+        .flatten()
+        .unwrap_or(4);
+
     let attrs = item.attrs;
     let vis = item.vis;
     let mut sig = item.sig;
     if sig.asyncness.is_none() {
-        return Err(syn::Error::new(
-            sig.asyncness.span(),
-            "function must be async",
-        ));
+        return Err(syn::Error::new(sig.asyncness.span(), "function must be async"))
     }
     sig.asyncness = None;
     let block = item.block;
@@ -21,10 +41,12 @@ pub fn parse(item: ItemFn) -> syn::Result<TokenStream> {
         #vis
         #sig
         {
+            dotenv::dotenv().expect("failed to load env");
+            ::brontes_core::test_utils::init_tracing();
             std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
-                .worker_threads(2)
+                .worker_threads(#threads)
                 .build()
                 .unwrap()
                 .block_on(async move #block)

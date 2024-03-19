@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, price_graph_types::*};
+use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -25,11 +23,11 @@ use super::{subgraph::PairSubGraph, PoolState};
 #[derive(Debug)]
 pub struct SubGraphRegistry {
     /// all currently known sub-graphs
-    sub_graphs: HashMap<Pair, PairSubGraph>,
+    sub_graphs: FastHashMap<Pair, PairSubGraph>,
 }
 
 impl SubGraphRegistry {
-    pub fn new(subgraphs: HashMap<Pair, Vec<SubGraphEdge>>) -> Self {
+    pub fn new(subgraphs: FastHashMap<Pair, Vec<SubGraphEdge>>) -> Self {
         let sub_graphs = subgraphs
             .into_iter()
             .map(|(pair, edges)| (pair.ordered(), PairSubGraph::init(pair, edges)))
@@ -41,7 +39,7 @@ impl SubGraphRegistry {
         &mut self,
         pair: Pair,
         mut subgraph: PairSubGraph,
-        graph_state: &HashMap<Address, PoolState>,
+        graph_state: &FastHashMap<Address, PoolState>,
     ) {
         subgraph.save_last_verification_liquidity(graph_state);
         if self.sub_graphs.insert(pair.ordered(), subgraph).is_some() {
@@ -51,17 +49,19 @@ impl SubGraphRegistry {
 
     /// looks through the subgraph for any pools that have had significant
     /// liquidity drops. when this occurs. removes the pair
-    pub fn audit_subgraphs(&mut self, graph_state: &HashMap<Address, PoolState>) {
+    pub fn audit_subgraphs(&mut self, graph_state: &FastHashMap<Address, PoolState>) {
         let bad_graphs = self
             .sub_graphs
             .par_iter()
-            .filter_map(|(pair, graph)| {
-                if graph.has_stale_liquidity(graph_state) {
-                    Some(*pair)
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |(pair, graph)| {
+                    if graph.has_stale_liquidity(graph_state) {
+                        Some(*pair)
+                    } else {
+                        None
+                    }
+                },
+            )
             .collect::<Vec<_>>();
 
         self.sub_graphs.retain(|k, _| !bad_graphs.contains(k));
@@ -74,7 +74,7 @@ impl SubGraphRegistry {
     pub fn get_price(
         &self,
         unordered_pair: Pair,
-        edge_state: &HashMap<Address, PoolState>,
+        edge_state: &FastHashMap<Address, PoolState>,
     ) -> Option<Rational> {
         let pair = unordered_pair.ordered();
 
@@ -82,12 +82,14 @@ impl SubGraphRegistry {
             .get(&pair)
             .map(|graph| (graph.get_unordered_pair(), graph))
             .and_then(|(default_pair, graph)| Some((default_pair, graph.fetch_price(edge_state)?)))
-            .map(|(default_pair, res)| {
-                if !unordered_pair.eq_unordered(&default_pair) {
-                    res.reciprocal()
-                } else {
-                    res
-                }
-            })
+            .map(
+                |(default_pair, res)| {
+                    if !unordered_pair.eq_unordered(&default_pair) {
+                        res.reciprocal()
+                    } else {
+                        res
+                    }
+                },
+            )
     }
 }

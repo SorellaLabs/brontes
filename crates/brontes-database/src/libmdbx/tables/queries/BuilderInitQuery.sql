@@ -1,8 +1,9 @@
-SELECT
-    toString(address) AS address,
+SELECT  
+    address,
     name,
-    groupArray(toString(pub_key)) AS pub_keys,
-    CAST([], 'Array(String)') AS searchers,
-    CAST(Null, 'Nullable(String)') AS ultrasound_relay_collateral_address
-FROM ethereum.builders
-GROUP BY address, name
+    fund,
+    pub_keys,
+    searchers_eoas,
+    searchers_contracts,
+    ultrasound_relay_collateral_address
+FROM brontes_api.builder_info

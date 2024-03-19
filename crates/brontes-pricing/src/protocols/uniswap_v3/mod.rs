@@ -1,15 +1,16 @@
 pub mod batch_request;
 pub mod uniswap_v3_math;
-use std::{cmp::Ordering, collections::HashMap, sync::Arc};
+use std::{cmp::Ordering, sync::Arc};
 
-use alloy_primitives::{Address, FixedBytes, Log, B256, I256, U256};
+use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
 use alloy_rlp::{Decodable, Encodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
+use brontes_types::{
+    normalized_actions::Actions, traits::TracingProvider, FastHashMap, ToScaledRational,
+};
 use bytes::BufMut;
-use ethers::{abi::ethabi::Bytes, prelude::AbiError};
 use malachite::Rational;
 use serde::{Deserialize, Serialize};
 
@@ -127,18 +128,18 @@ pub const MINT_EVENT_SIGNATURE: B256 = FixedBytes([
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UniswapV3Pool {
-    pub address: Address,
-    pub token_a: Address,
+    pub address:          Address,
+    pub token_a:          Address,
     pub token_a_decimals: u8,
-    pub token_b: Address,
+    pub token_b:          Address,
     pub token_b_decimals: u8,
-    pub liquidity: u128,
-    pub sqrt_price: U256,
-    pub fee: u32,
-    pub tick: i32,
-    pub tick_spacing: i32,
-    pub tick_bitmap: HashMap<i16, U256>,
-    pub ticks: HashMap<i32, Info>,
+    pub liquidity:        u128,
+    pub sqrt_price:       U256,
+    pub fee:              u32,
+    pub tick:             i32,
+    pub tick_spacing:     i32,
+    pub tick_bitmap:      FastHashMap<i16, U256>,
+    pub ticks:            FastHashMap<i32, Info>,
 
     // non v3 native state
     pub reserve_0: U256,
@@ -185,11 +186,11 @@ impl Decodable for UniswapV3Pool {
         let tick_bitmap = Vec::<TickBitMapEncodeHelper>::decode(buf)?
             .into_iter()
             .map(|inner| (inner.key, inner.val))
-            .collect::<HashMap<i16, U256>>();
+            .collect::<FastHashMap<i16, U256>>();
         let ticks = Vec::<TicksEncodeHelper>::decode(buf)?
             .into_iter()
             .map(|inner| (inner.key, inner.val))
-            .collect::<HashMap<i32, Info>>();
+            .collect::<FastHashMap<i32, Info>>();
 
         let r0 = U256::decode(buf)?;
         let r1 = U256::decode(buf)?;
@@ -231,10 +232,7 @@ impl Decodable for TickBitMapEncodeHelper {
         let key: [u8; 2] = Decodable::decode(buf)?;
         let val = U256::decode(buf)?;
 
-        Ok(Self {
-            key: i16::from_be_bytes(key),
-            val,
-        })
+        Ok(Self { key: i16::from_be_bytes(key), val })
     }
 }
 
@@ -256,18 +254,15 @@ impl Decodable for TicksEncodeHelper {
         let key: [u8; 4] = Decodable::decode(buf)?;
         let val = Info::decode(buf)?;
 
-        Ok(Self {
-            key: i32::from_be_bytes(key),
-            val,
-        })
+        Ok(Self { key: i32::from_be_bytes(key), val })
     }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Info {
     pub liquidity_gross: u128,
-    pub liquidity_net: i128,
-    pub initialized: bool,
+    pub liquidity_net:   i128,
+    pub initialized:     bool,
 }
 
 impl Encodable for Info {
@@ -284,21 +279,13 @@ impl Decodable for Info {
         let liquidity_net: [u8; 16] = Decodable::decode(buf)?;
         let initialized = bool::decode(buf)?;
 
-        Ok(Self {
-            liquidity_gross,
-            liquidity_net: i128::from_be_bytes(liquidity_net),
-            initialized,
-        })
+        Ok(Self { liquidity_gross, liquidity_net: i128::from_be_bytes(liquidity_net), initialized })
     }
 }
 
 impl Info {
     pub fn new(liquidity_gross: u128, liquidity_net: i128, initialized: bool) -> Self {
-        Info {
-            liquidity_gross,
-            liquidity_net,
-            initialized,
-        }
+        Info { liquidity_gross, liquidity_net, initialized }
     }
 }
 
@@ -308,11 +295,11 @@ impl UpdatableProtocol for UniswapV3Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, _action: Actions) -> Result<(), EventLogError> {
+    fn sync_from_action(&mut self, _action: Actions) -> Result<(), AmmError> {
         todo!("syncing from actions is currently not supported for v3")
     }
 
-    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError> {
+    fn sync_from_log(&mut self, log: Log) -> Result<(), AmmError> {
         let event_signature = log.topics()[0];
 
         if event_signature == BURN_EVENT_SIGNATURE {
@@ -335,7 +322,6 @@ impl UpdatableProtocol for UniswapV3Pool {
     fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError> {
         let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
         let shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
-
         let price = match shift.cmp(&0) {
             Ordering::Less => 1.0001_f64.powi(tick) / 10_f64.powi(-shift as i32),
             Ordering::Greater => 1.0001_f64.powi(tick) * 10_f64.powi(shift as i32),
@@ -348,9 +334,6 @@ impl UpdatableProtocol for UniswapV3Pool {
             Ok(Rational::try_from(1.0 / price).unwrap())
         }
     }
-
-    // NOTE: This function will not populate the tick_bitmap and ticks, if you want
-    // to populate those, you must call populate_tick_data on an initialized pool
 }
 
 impl UniswapV3Pool {
@@ -379,8 +362,8 @@ impl UniswapV3Pool {
             tick: 0,
             tick_spacing: 0,
             fee: 0,
-            tick_bitmap: HashMap::new(),
-            ticks: HashMap::new(),
+            tick_bitmap: FastHashMap::default(),
+            ticks: FastHashMap::default(),
             ..Default::default()
         };
 
@@ -393,7 +376,7 @@ impl UniswapV3Pool {
         pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::NoStateError(pair_address));
+            return Err(AmmError::NoStateError(pair_address))
         }
 
         Ok(pool)
@@ -407,7 +390,7 @@ impl UniswapV3Pool {
         provider: Arc<M>,
     ) {
         if tick_amount.is_negative() {
-            return;
+            return
         }
 
         if self.tick == 0 {
@@ -482,8 +465,8 @@ impl UniswapV3Pool {
         .await?)
     }
 
-    pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let burn_event = IUniswapV3Pool::Burn::decode_log_data(&log, false).unwrap();
+    pub fn sync_from_burn_log(&mut self, log: Log) -> Result<(), AmmError> {
+        let burn_event = IUniswapV3Pool::Burn::decode_log_data(&log, false)?;
         self.reserve_0 -= burn_event.amount0;
         self.reserve_1 -= burn_event.amount1;
 
@@ -497,18 +480,14 @@ impl UniswapV3Pool {
         Ok(())
     }
 
-    pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let mint_event = IUniswapV3Pool::Mint::decode_log_data(&log, false).unwrap();
+    pub fn sync_from_mint_log(&mut self, log: Log) -> Result<(), AmmError> {
+        let mint_event = IUniswapV3Pool::Mint::decode_log_data(&log, false)?;
 
         self.reserve_0 += mint_event.amount0;
         self.reserve_1 += mint_event.amount1;
 
         #[cfg(feature = "uni-v3-ticks")]
-        self.modify_position(
-            mint_event.tickLower,
-            mint_event.tickUpper,
-            mint_event.amount as i128,
-        );
+        self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
 
         Ok(())
     }
@@ -608,8 +587,8 @@ impl UniswapV3Pool {
         }
     }
 
-    pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AbiError> {
-        let swap_event = IUniswapV3Pool::Swap::decode_log_data(&log, false).unwrap();
+    pub fn sync_from_swap_log(&mut self, log: Log) -> Result<(), AmmError> {
+        let swap_event = IUniswapV3Pool::Swap::decode_log_data(&log, false)?;
 
         if swap_event.amount0.is_negative() {
             self.reserve_0 -= swap_event.amount0.unsigned_abs();
@@ -639,35 +618,17 @@ impl UniswapV3Pool {
             )
         }
     }
-
-    pub fn swap_calldata(
-        &self,
-        recipient: Address,
-        zero_for_one: bool,
-        amount_specified: I256,
-        sqrt_price_limit_x_96: U256,
-        calldata: Vec<u8>,
-    ) -> Result<Bytes, ethers::abi::Error> {
-        Ok(IUniswapV3Pool::swapCall::new((
-            recipient,
-            zero_for_one,
-            amount_specified,
-            sqrt_price_limit_x_96,
-            calldata,
-        ))
-        .abi_encode())
-    }
 }
 
 #[derive(Default)]
 pub struct StepComputations {
     pub sqrt_price_start_x_96: U256,
-    pub tick_next: i32,
-    pub initialized: bool,
-    pub sqrt_price_next_x96: U256,
-    pub amount_in: U256,
-    pub amount_out: U256,
-    pub fee_amount: U256,
+    pub tick_next:             i32,
+    pub initialized:           bool,
+    pub sqrt_price_next_x96:   U256,
+    pub amount_in:             U256,
+    pub amount_out:            U256,
+    pub fee_amount:            U256,
 }
 
 pub struct Tick {

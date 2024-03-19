@@ -13,9 +13,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_0CallLogs,
+    log: CurveV1MetapoolImplExchange_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -61,9 +61,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_1CallLogs,
+    log: CurveV1MetapoolImplExchange_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -110,9 +110,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_underlying_0CallLogs,
+    log: CurveV1MetapoolImplExchange_underlying_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
+        let log = log.token_exchange_underlying_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -164,9 +164,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImplexchange_underlying_1CallLogs,
+    log: CurveV1MetapoolImplExchange_underlying_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchangeUnderlying_field;
+        let log = log.token_exchange_underlying_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -219,7 +219,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        Node, NodeData, ToScaledRational, TreeSearchArgs,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -231,37 +231,24 @@ mod tests {
             Protocol::CurveV1MetaPool,
             Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
-            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F"))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let swap = B256::from(hex!(
-            "0c673f1ede30f20bb7ca3e7c05a71dcc49a8bb18498e148e3967bb7173d6794e"
-        ));
+        let swap =
+            B256::from(hex!("0c673f1ede30f20bb7ca3e7c05a71dcc49a8bb18498e148e3967bb7173d6794e"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "T".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "T".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("6c3f90f043a72fa612cbac8115ee7e52bde6e490")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "3Crv".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "3Crv".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -284,20 +271,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_swap())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_swap()),
-        };
-
         classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
             .await
             .unwrap()
     }
@@ -309,37 +289,24 @@ mod tests {
             Protocol::CurveV1MetaPool,
             Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
-            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            Some(Address::new(hex!(
-                "A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-            ))),
-            Some(Address::new(hex!(
-                "dAC17F958D2ee523a2206206994597C13D831ec7"
-            ))),
+            Some(Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F"))),
+            Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
+            Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,
-            Some(Address::new(hex!(
-                "6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            ))),
+            Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
-        let swap = B256::from(hex!(
-            "84d55076a9eb3d9d30e26dc1f498f03216d7216647a51597933901c55534e355"
-        ));
+        let swap =
+            B256::from(hex!("84d55076a9eb3d9d30e26dc1f498f03216d7216647a51597933901c55534e355"));
 
         let token_in = TokenInfoWithAddress {
             address: Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "T".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "T".to_string() },
         };
 
         let token_out = TokenInfoWithAddress {
             address: Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "DAI".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
         };
 
         classifier_utils.ensure_token(token_in.clone());
@@ -362,20 +329,13 @@ mod tests {
             msg_value: U256::ZERO,
         });
 
-        let search_fn = |node: &Node, data: &NodeData<Actions>| TreeSearchArgs {
-            collect_current_node: data
-                .get_ref(node.data)
-                .map(|s| s.is_swap())
-                .unwrap_or_default(),
-            child_node_to_collect: node
-                .get_all_sub_actions()
-                .iter()
-                .filter_map(|d| data.get_ref(*d))
-                .any(|action| action.is_swap()),
-        };
-
         classifier_utils
-            .contains_action(swap, 0, eq_action, search_fn)
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
             .await
             .unwrap();
     }

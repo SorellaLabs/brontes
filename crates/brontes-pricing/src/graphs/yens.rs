@@ -2,12 +2,15 @@
 //! algorithm](https://en.wikipedia.org/wiki/Yen%27s_algorithm).
 use std::{
     cmp::{Ordering, Reverse},
-    collections::{BinaryHeap, HashSet},
+    collections::BinaryHeap,
     hash::Hash,
-    iter::FromIterator,
+    time::{Duration, SystemTime},
 };
 
+use brontes_types::{FastHashSet, FastHasher};
+use dashmap::DashSet;
 use pathfinding::num_traits::Zero;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 pub use crate::graphs::dijkstras::*;
 
@@ -15,11 +18,11 @@ pub use crate::graphs::dijkstras::*;
 #[derive(Eq, PartialEq, Debug)]
 struct Path<N: Eq + Hash + Clone, E: Eq + Hash + Clone, C: Zero + Ord + Copy> {
     /// The nodes along the path
-    nodes: Vec<N>,
+    nodes:   Vec<N>,
     /// wieghts,
     weights: Vec<E>,
     /// The total cost of the path
-    cost: C,
+    cost:    C,
 }
 
 impl<N, E, C> PartialOrd for Path<N, E, C>
@@ -107,108 +110,112 @@ where
 
 pub fn yen<N, C, E, FN, IN, FS, PV>(
     start: &N,
-    mut successors: FN,
-    mut success: FS,
-    mut path_value: PV,
-    k: usize,
+    successors: FN,
+    success: FS,
+    path_value: PV,
+    k: Option<usize>,
     max_iters: usize,
+    extra_path_timeout: Duration,
 ) -> Vec<(Vec<E>, C)>
 where
-    N: Eq + Hash + Clone,
-    E: Clone + Default + Eq + Hash,
-    C: Zero + Ord + Copy,
-    FN: FnMut(&N) -> IN,
-    PV: FnMut(&N, &N) -> E,
+    N: Eq + Hash + Clone + Send + Sync,
+    E: Clone + Default + Eq + Hash + Send + Sync,
+    C: Zero + Ord + Copy + Send + Sync,
+    FN: Fn(&N) -> IN + Send + Sync,
+    PV: Fn(&N, &N) -> E + Send + Sync,
     IN: IntoIterator<Item = (N, C)>,
-    FS: FnMut(&N) -> bool,
+    FS: Fn(&N) -> bool + Send + Sync,
 {
-    let Some((e, n, c)) = dijkstra_internal(
-        start,
-        &mut successors,
-        &mut path_value,
-        &mut success,
-        20_000,
-    ) else {
+    let iter_k = k.unwrap_or(usize::MAX);
+    let Some((e, n, c)) = dijkstra_internal(start, &successors, &path_value, &success, 20_000)
+    else {
         return vec![];
     };
 
-    let mut visited = HashSet::new();
+    let visited = DashSet::with_hasher(FastHasher::new());
     // A vector containing our paths.
-    let mut routes = vec![Path {
-        nodes: n,
-        weights: e,
-        cost: c,
-    }];
+    let mut routes = vec![Path { nodes: n, weights: e, cost: c }];
     // A min-heap to store our lowest-cost route candidate
     let mut k_routes = BinaryHeap::new();
-    for ki in 0..(k - 1) {
-        if routes.len() <= ki || routes.len() == k {
+    let start = SystemTime::now();
+    for ki in 0..(iter_k - 1) {
+        if routes.len() <= ki || routes.len() == iter_k {
             // We have no more routes to explore, or we have found enough.
-            break;
+            break
+        }
+
+        if SystemTime::now().duration_since(start).unwrap() > extra_path_timeout
+            && k.map(|k| k >= routes.len()).unwrap_or(true)
+        {
+            tracing::debug!("timeout for extra routes hit");
+            break
         }
         // Take the most recent route to explore new spurs.
         let previous = &routes[ki].nodes;
         let prev_weight = &routes[ki].weights;
-        // Iterate over every node except the sink node.
-        for i in 0..(previous.len() - 1) {
-            let spur_node = &previous[i];
-            let root_path = &previous[0..i];
-            let weight_root_path = &prev_weight[0..i];
 
-            let mut filtered_edges = HashSet::new();
-            for path in &routes {
-                if path.nodes.len() > i + 1
-                    && &path.nodes[0..i] == root_path
-                    && &path.nodes[i] == spur_node
-                {
-                    filtered_edges.insert((&path.nodes[i], &path.nodes[i + 1]));
-                }
-            }
-            let filtered_nodes: HashSet<&N> = HashSet::from_iter(root_path);
-            // We are creating a new successor function that will not return the
-            // filtered edges and nodes that routes already used.
-            let mut filtered_successor = |n: &N| {
-                successors(n)
-                    .into_iter()
-                    .filter(|(n2, _)| {
-                        !filtered_nodes.contains(&n2) && !filtered_edges.contains(&(n, n2))
-                    })
-                    .collect::<Vec<_>>()
-            };
+        let k_routes_vec = (0..(previous.len() - 1))
+            .into_par_iter()
+            .filter_map(|i| {
+                let spur_node = &previous[i];
+                let root_path = &previous[0..i];
+                let weight_root_path = &prev_weight[0..i];
 
-            // Let us find the spur path from the spur node to the sink using.
-            if let Some((values, spur_path, _)) = dijkstra_internal(
-                spur_node,
-                &mut filtered_successor,
-                &mut path_value,
-                &mut success,
-                max_iters,
-            ) {
-                let nodes: Vec<N> = root_path.iter().cloned().chain(spur_path).collect();
-                let weights: Vec<E> = weight_root_path.iter().cloned().chain(values).collect();
-                // If we have found the same path before, we will not add it.
-                if !visited.contains(&nodes) {
-                    // Since we don't know the root_path cost, we need to recalculate.
-                    let cost = make_cost(&nodes, &mut successors);
-                    let path = Path {
-                        nodes,
-                        weights,
-                        cost,
-                    };
-                    // Mark as visited
-                    visited.insert(path.nodes.clone());
-                    // Build a min-heap
-                    k_routes.push(Reverse(path));
+                let mut filtered_edges = FastHashSet::default();
+                for path in &routes {
+                    if path.nodes.len() > i + 1
+                        && &path.nodes[0..i] == root_path
+                        && &path.nodes[i] == spur_node
+                    {
+                        filtered_edges.insert((&path.nodes[i], &path.nodes[i + 1]));
+                    }
                 }
-            }
-        }
+                let filtered_nodes: FastHashSet<&N> = FastHashSet::from_iter(root_path);
+                // We are creating a new successor function that will not return the
+                // filtered edges and nodes that routes already used.
+                let filtered_successor = |n: &N| {
+                    successors(n)
+                        .into_iter()
+                        .filter(|(n2, _)| {
+                            !filtered_nodes.contains(&n2) && !filtered_edges.contains(&(n, n2))
+                        })
+                        .collect::<Vec<_>>()
+                };
+
+                // Let us find the spur path from the spur node to the sink using.
+                if let Some((values, spur_path, _)) = dijkstra_internal(
+                    spur_node,
+                    &filtered_successor,
+                    &path_value,
+                    &success,
+                    max_iters,
+                ) {
+                    let nodes: Vec<N> = root_path.iter().cloned().chain(spur_path).collect();
+                    let weights: Vec<E> = weight_root_path.iter().cloned().chain(values).collect();
+                    // If we have found the same path before, we will not add it.
+                    if !visited.contains(&nodes) {
+                        // Since we don't know the root_path cost, we need to recalculate.
+                        let cost = make_cost(&nodes, &successors);
+                        let path = Path { nodes, weights, cost };
+                        // Mark as visited
+                        visited.insert(path.nodes.clone());
+                        // Build a min-heap
+                        return Some(Reverse(path))
+                    }
+                }
+                None
+            })
+            .collect::<Vec<_>>();
+
+        k_routes.extend(k_routes_vec);
+
         if let Some(k_route) = k_routes.pop() {
             let route = k_route.0;
             let cost = route.cost;
             routes.push(route);
             // If we have other potential best routes with the same cost, we can insert
             // them in the found routes since we will not find a better alternative.
-            while routes.len() < k {
+            while routes.len() < iter_k {
                 let Some(k_route) = k_routes.peek() else {
                     break;
                 };
@@ -218,7 +225,7 @@ where
                     };
                     routes.push(k_route.0);
                 } else {
-                    break; // Other routes have higher cost
+                    break // Other routes have higher cost
                 }
             }
         }
@@ -231,11 +238,11 @@ where
         .collect()
 }
 
-fn make_cost<N, FN, IN, C>(nodes: &[N], successors: &mut FN) -> C
+fn make_cost<N, FN, IN, C>(nodes: &[N], successors: &FN) -> C
 where
     N: Eq,
     C: Zero,
-    FN: FnMut(&N) -> IN,
+    FN: Fn(&N) -> IN,
     IN: IntoIterator<Item = (N, C)>,
 {
     let mut cost = C::zero();

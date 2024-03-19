@@ -113,11 +113,11 @@ pub(crate) mod vec_vec_fixed_string {
     use std::str::FromStr;
 
     use alloy_primitives::Address;
+    use clickhouse::fixed_string::FixedString;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &[Vec<Address>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
@@ -156,11 +156,11 @@ pub(crate) mod vec_vec_b256 {
     use std::str::FromStr;
 
     use alloy_primitives::B256;
+    use clickhouse::fixed_string::FixedString;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
-    use sorella_db_databases::clickhouse::fixed_string::FixedString;
 
     pub fn serialize<S: Serializer>(u: &[Vec<B256>], serializer: S) -> Result<S::Ok, S::Error> {
         u.iter()
@@ -215,8 +215,11 @@ pub mod u256 {
     where
         D: Deserializer<'de>,
     {
-        let data: String = Deserialize::deserialize(deserializer)?;
+        let mut data: String = Deserialize::deserialize(deserializer)?;
 
+        if data.ends_with("_U256") {
+            data = data[..data.len() - 5].to_string()
+        }
         Ok(U256::from_str(&data)
             .map_err(serde::de::Error::custom)?
             .into())
@@ -299,6 +302,7 @@ pub mod address {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
+
     #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
     where
@@ -311,8 +315,6 @@ pub mod address {
 }
 
 pub mod static_bindings {
-
-    use std::str::FromStr;
 
     use serde::{
         de::{Deserialize, Deserializer},
@@ -333,7 +335,7 @@ pub mod static_bindings {
     {
         let address: Option<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(Protocol::from_str(&address.unwrap()).unwrap())
+        Ok(Protocol::from_db_string(&address.unwrap()))
     }
 }
 
@@ -437,6 +439,35 @@ pub mod vec_txhash {
     }
 }
 
+pub mod txhash {
+
+    use std::{fmt::Debug, str::FromStr};
+
+    use alloy_primitives::TxHash;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    #[allow(dead_code)]
+    pub fn serialize<S: Serializer, D: Into<TxHash> + Debug>(
+        u: &D,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let data = format!("{:?}", u);
+
+        data.serialize(serializer)
+    }
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D, T: From<TxHash>>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(TxHash::from_str(&data).unwrap().into())
+    }
+}
+
 pub mod option_r_address {
 
     use std::str::FromStr;
@@ -466,9 +497,7 @@ pub mod option_r_address {
         let data = des.map(|d| Address::from_str(&d));
 
         if let Some(d) = data {
-            Ok(Some(AddressRedefined::from_source(
-                d.map_err(serde::de::Error::custom)?,
-            )))
+            Ok(Some(AddressRedefined::from_source(d.map_err(serde::de::Error::custom)?)))
         } else {
             Ok(None)
         }
@@ -577,42 +606,43 @@ pub mod option_contract_info {
     use std::str::FromStr;
 
     use alloy_primitives::Address;
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{
+        de::Deserialize,
+        ser::{Serialize, Serializer},
+        Deserializer,
+    };
 
-    use crate::{db::address_metadata::ContractInfo, Protocol};
+    use crate::db::address_metadata::ContractInfo;
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ContractInfo>, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let (verified_contract, contract_creator_opt, protocol, reputation): (
+        let (verified_contract, contract_creator_opt, reputation): (
             Option<bool>,
-            Option<String>,
             Option<String>,
             Option<u8>,
         ) = Deserialize::deserialize(deserializer)?;
 
         Ok(contract_creator_opt.map(|contract_creator| ContractInfo {
             verified_contract,
-            contract_creator: Address::from_str(&contract_creator).unwrap(),
-            protocol: protocol.and_then(|p| Protocol::from_str(&p).ok()),
+            contract_creator: Address::from_str(&contract_creator).ok(),
             reputation,
         }))
+    }
+
+    pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
+        (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
     }
 }
 
 pub mod socials {
 
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
-    type SocalDecode = (
-        Option<String>,
-        Option<u64>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-    );
+    type SocalDecode =
+        (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
 
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
@@ -621,13 +651,26 @@ pub mod socials {
         let (twitter, twitter_followers, website_url, crunchbase, linkedin): SocalDecode =
             Deserialize::deserialize(deserializer)?;
 
-        Ok(Socials {
-            twitter,
-            twitter_followers,
-            website_url,
-            crunchbase,
-            linkedin,
-        }
-        .into())
+        Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
+    }
+
+    pub fn serialize<S: Serializer>(u: &Socials, serializer: S) -> Result<S::Ok, S::Error> {
+        (&u.twitter, &u.twitter_followers, &u.website_url, &u.crunchbase, &u.linkedin)
+            .serialize(serializer)
+    }
+}
+
+pub mod option_fund {
+    use serde::de::{Deserialize, Deserializer};
+
+    use crate::db::searcher::Fund;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Fund>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let fund: Option<String> = Deserialize::deserialize(deserializer)?;
+
+        Ok(fund.map(Into::into))
     }
 }

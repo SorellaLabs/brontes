@@ -46,7 +46,11 @@ zstd = "0.13"
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
-sorella-db-databases.workspace = true
+sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "0a93f459bf054f48104b05ab17ef0f51fcb0ca6b", optional = true, features = [
+  "test-utils",
+] }
+sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "0a93f459bf054f48104b05ab17ef0f51fcb0ca6b", optional = true }
+clickhouse = { workspace = true, features = ["tls"] }
 
 # serde
 serde = { workspace = true, features = ["derive"] }
@@ -84,7 +88,11 @@ paste = "1.0.14"
 petgraph = "0.6.4"
 itertools = "0.12.0"
 rayon.workspace = true
-
+strum = "0.25"
+strum_macros = "0.25"
+async-trait = "0.1.73"
+reqwest = { workspace = true, features = ["stream"] }
+toml = "0.8.9"
 
 # benches
 criterion = "0.5"
@@ -104,6 +112,7 @@ async-trait.workspace = true
 reth-tasks.workspace = true
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
+brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 
 [build-dependencies]
@@ -113,5 +122,17 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-tests = ["reth-tasks"]
-local = ["brontes-core/local", "reth-tracing-ext/local", "brontes-types/local"]
+default = []
+cex-dex-markout = ["brontes-types/cex-dex-markout"]
+tests = ["reth-tasks", "brontes-pricing/tests"]
+local-reth = [
+  "brontes-core/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-types/local-reth",
+]
+
+local-clickhouse = [
+  "sorella-db-databases",
+  "sorella-db-types",
+  "brontes-core/local-clickhouse",
+]

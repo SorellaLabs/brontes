@@ -1,7 +1,5 @@
-use std::collections::{HashMap, HashSet};
-
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, ToFloatNearest};
+use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -37,19 +35,19 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   system.
 #[derive(Debug)]
 pub struct SubgraphVerifier {
-    pending_subgraphs: HashMap<Pair, Subgraph>,
+    pending_subgraphs:           FastHashMap<Pair, Subgraph>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
-    subgraph_verification_state: HashMap<Pair, SubgraphVerificationState>,
+    subgraph_verification_state: FastHashMap<Pair, SubgraphVerificationState>,
 }
 
 impl SubgraphVerifier {
     pub fn new() -> Self {
         Self {
-            pending_subgraphs: HashMap::new(),
-            subgraph_verification_state: HashMap::new(),
+            pending_subgraphs:           FastHashMap::default(),
+            subgraph_verification_state: FastHashMap::default(),
         }
     }
 
@@ -59,6 +57,11 @@ impl SubgraphVerifier {
 
     pub fn is_verifying(&self, pair: &Pair) -> bool {
         self.pending_subgraphs.contains_key(pair)
+    }
+
+    pub fn pool_dep_failure(&mut self, pair: Pair) {
+        self.subgraph_verification_state.remove(&pair);
+        self.pending_subgraphs.remove(&pair);
     }
 
     // creates a new subgraph returning
@@ -73,14 +76,14 @@ impl SubgraphVerifier {
 
         let subgraph = PairSubGraph::init(pair, path);
         if self.pending_subgraphs.contains_key(&pair) {
-            return vec![];
+            return vec![]
         };
 
         self.pending_subgraphs.insert(
             pair,
             Subgraph {
                 subgraph,
-                frayed_end_extensions: HashMap::new(),
+                frayed_end_extensions: FastHashMap::default(),
                 id: 0,
                 in_rundown: false,
                 iters: 0,
@@ -100,7 +103,7 @@ impl SubgraphVerifier {
     fn store_edges_with_liq(
         &mut self,
         pair: Pair,
-        removals: &HashMap<Pair, HashSet<BadEdge>>,
+        removals: &FastHashMap<Pair, FastHashSet<BadEdge>>,
         all_graph: &AllPairGraph,
     ) {
         removals
@@ -175,7 +178,7 @@ impl SubgraphVerifier {
                     .clone()
                     .into_iter()
                     .filter(|(k, _)| !(ignores.contains(k)))
-                    .collect::<HashMap<_, _>>();
+                    .collect::<FastHashMap<_, _>>();
 
                 if result.should_requery {
                     self.pending_subgraphs.insert(pair, subgraph);
@@ -188,7 +191,7 @@ impl SubgraphVerifier {
                         prune_state: removals,
                         ignore_state: ignores,
                         frayed_ends: result.frayed_ends,
-                    });
+                    })
                 }
 
                 self.passed_verification(pair, block, subgraph, removals, state_tracker)
@@ -217,7 +220,7 @@ impl SubgraphVerifier {
                         let ex = extensions
                             .iter()
                             .map(|e| Pair(e.token_0, e.token_1))
-                            .collect::<HashSet<_>>();
+                            .collect::<FastHashSet<_>>();
 
                         tracing::debug!(
                             ?pair,
@@ -252,8 +255,8 @@ impl SubgraphVerifier {
                 let result = if rundown {
                     VerificationOutcome {
                         should_requery: false,
-                        removals: HashMap::new(),
-                        frayed_ends: vec![],
+                        removals:       FastHashMap::default(),
+                        frayed_ends:    vec![],
                     }
                 } else {
                     subgraph
@@ -271,7 +274,7 @@ impl SubgraphVerifier {
         pair: Pair,
         block: u64,
         subgraph: Subgraph,
-        removals: HashMap<Pair, HashSet<BadEdge>>,
+        removals: FastHashMap<Pair, FastHashSet<BadEdge>>,
         state_tracker: &mut StateTracker,
     ) -> VerificationResults {
         // remove state for pair
@@ -293,11 +296,11 @@ impl SubgraphVerifier {
 
 #[derive(Debug)]
 pub struct Subgraph {
-    pub subgraph: PairSubGraph,
-    pub frayed_end_extensions: HashMap<u64, Vec<SubGraphEdge>>,
-    pub id: u64,
-    pub in_rundown: bool,
-    pub iters: usize,
+    pub subgraph:              PairSubGraph,
+    pub frayed_end_extensions: FastHashMap<u64, Vec<SubGraphEdge>>,
+    pub id:                    u64,
+    pub in_rundown:            bool,
+    pub iters:                 usize,
 }
 impl Subgraph {
     pub fn add_extension(&mut self, edges: Vec<SubGraphEdge>) -> u64 {
@@ -311,21 +314,21 @@ impl Subgraph {
 
 #[derive(Debug)]
 pub struct VerificationPass {
-    pub pair: Pair,
-    pub block: u64,
-    pub subgraph: PairSubGraph,
-    pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub pair:        Pair,
+    pub block:       u64,
+    pub subgraph:    PairSubGraph,
+    pub prune_state: FastHashMap<Pair, FastHashSet<BadEdge>>,
 }
 #[derive(Debug)]
 pub struct VerificationFailed {
-    pub pair: Pair,
-    pub block: u64,
+    pub pair:         Pair,
+    pub block:        u64,
     // prunes the partial edges of this state.
-    pub prune_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub prune_state:  FastHashMap<Pair, FastHashSet<BadEdge>>,
     // the state that should be ignored when we re-query.
-    pub ignore_state: HashSet<Pair>,
+    pub ignore_state: FastHashSet<Pair>,
     // ends that we were able to get to before disjointness occurred
-    pub frayed_ends: Vec<Address>,
+    pub frayed_ends:  Vec<Address>,
 }
 
 #[derive(Debug)]
@@ -348,11 +351,11 @@ pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
     /// we can lookup the edge with the best liquidity.
-    edges: EdgesWithLiq,
+    edges:            EdgesWithLiq,
     /// when we are recusing we remove most liquidity edges until we find a
     /// proper path. However we want to make sure on recusion that these
     /// don't get removed
-    removed_recusing: HashMap<Pair, Address>,
+    removed_recusing: FastHashMap<Pair, Address>,
 }
 
 impl SubgraphVerificationState {
@@ -397,15 +400,15 @@ impl SubgraphVerificationState {
     }
 
     /// Grabs all the nodes that we want the graph search to ignore
-    fn get_nodes_to_ignore(&self) -> HashSet<Pair> {
+    fn get_nodes_to_ignore(&self) -> FastHashSet<Pair> {
         self.edges
             .0
             .values()
             .flatten()
             .map(|node| node.pair.ordered())
-            .collect::<HashSet<_>>()
+            .collect::<FastHashSet<_>>()
     }
 }
 
 #[derive(Debug, Default)]
-pub struct EdgesWithLiq(HashMap<Address, HashSet<BadEdge>>);
+pub struct EdgesWithLiq(FastHashMap<Address, FastHashSet<BadEdge>>);

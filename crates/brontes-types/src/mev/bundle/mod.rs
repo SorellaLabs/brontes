@@ -1,8 +1,10 @@
 pub mod data;
 pub mod header;
-
 use std::fmt::{self, Debug};
 
+use alloy_primitives::Address;
+use clap::ValueEnum;
+use clickhouse::Row;
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
@@ -10,18 +12,10 @@ use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
-use sorella_db_databases::{
-    clickhouse,
-    clickhouse::{InsertRow, Row},
-};
 use strum::{Display, EnumIter};
 
-use crate::display::utils::{
-    display_atomic_backrun, display_jit_liquidity, display_jit_liquidity_sandwich,
-    display_liquidation,
-};
+use crate::display::utils::*;
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_cex_dex, display_sandwich},
@@ -34,7 +28,17 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Bundle {
     pub header: BundleHeader,
-    pub data: BundleData,
+    pub data:   BundleData,
+}
+
+impl Bundle {
+    pub fn get_searcher_contract(&self) -> Option<Address> {
+        self.header.mev_contract
+    }
+
+    pub fn mev_type(&self) -> MevType {
+        self.header.mev_type
+    }
 }
 
 impl fmt::Display for Bundle {
@@ -46,7 +50,7 @@ impl fmt::Display for Bundle {
             MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
             MevType::JitSandwich => display_jit_liquidity_sandwich(self, f)?,
-            _ => writeln!(f, "{:#?}", self)?,
+            MevType::Unknown => display_searcher_tx(self, f)?,
         }
 
         Ok(())
@@ -55,8 +59,6 @@ impl fmt::Display for Bundle {
 
 #[derive(
     Debug,
-    Serialize_repr,
-    Deserialize_repr,
     PartialEq,
     Eq,
     Hash,
@@ -68,24 +70,18 @@ impl fmt::Display for Bundle {
     Copy,
     Default,
     Display,
+    ValueEnum,
 )]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-#[serde(rename_all = "lowercase")]
 pub enum MevType {
-    Sandwich = 1,
-    AtomicArb = 5,
-    #[serde(rename = "jit_sandwich")]
-    JitSandwich = 3,
-    Jit = 2,
-    #[serde(rename = "cex_dex")]
-    CexDex = 0,
-    Liquidation = 4,
+    CexDex,
+    Sandwich,
+    Jit,
+    JitSandwich,
+    Liquidation,
+    AtomicArb,
     #[default]
-    Unknown = 6,
+    Unknown,
 }
-
-self_convert_redefined!(MevType);
 
 impl MevType {
     pub fn use_cex_pricing_for_deltas(&self) -> bool {
@@ -101,9 +97,47 @@ impl MevType {
     }
 }
 
-pub trait Mev:
-    InsertRow + erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone
-{
+impl From<String> for MevType {
+    fn from(value: String) -> Self {
+        let val = value.as_str();
+
+        match val {
+            "CexDex" => MevType::CexDex,
+            "Sandwich" => MevType::Sandwich,
+            "Jit" => MevType::Jit,
+            "Liquidation" => MevType::Liquidation,
+            "JitSandwich" => MevType::JitSandwich,
+            "AtomicArb" => MevType::AtomicArb,
+            _ => MevType::Unknown,
+        }
+    }
+}
+
+impl Serialize for MevType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mev_type = format!("{}", self);
+
+        Serialize::serialize(&mev_type, serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for MevType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let mev_type: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(mev_type.into())
+    }
+}
+
+self_convert_redefined!(MevType);
+
+pub trait Mev: erased_serde::Serialize + Send + Sync + Debug + 'static + DynClone {
     fn mev_type(&self) -> MevType;
 
     /// The total amount of gas paid by the bundle in wei

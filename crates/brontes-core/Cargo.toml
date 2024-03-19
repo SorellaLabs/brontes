@@ -20,7 +20,6 @@ reth-network-api.workspace = true
 reth-db.workspace = true
 reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
-#reth-revm.workspace = true
 reth-interfaces.workspace = true
 reth-metrics.workspace = true
 reth-tracing-ext.workspace = true
@@ -45,8 +44,8 @@ alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-providers.workspace = true
-alloy-rpc-types.workspace = true
 alloy-transport-http.workspace = true
+alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
 
 # Serde 
 serde.workspace = true
@@ -70,7 +69,7 @@ lazy_static.workspace = true
 auto_impl.workspace = true
 dotenv.workspace = true
 itertools.workspace = true
-toml = "0.8.9"
+
 
 [dev-dependencies]
 serial_test.workspace = true
@@ -85,8 +84,13 @@ criterion = { version = "0.5", features = ["async", "async_tokio"] }
 default = []
 dyn-decode = []
 tests = []
-local = [
-  "brontes-types/local",
-  "reth-tracing-ext/local",
-  "brontes-database/local",
+local-reth = [
+  "brontes-types/local-reth",
+  "reth-tracing-ext/local-reth",
+  "brontes-database/local-reth",
 ]
+local-clickhouse = [
+  "brontes-database/local-clickhouse",
+  "reth-tracing-ext/local-clickhouse",
+]
+

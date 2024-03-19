@@ -29,7 +29,7 @@ impl ProtocolState for PoolState {
 
 #[derive(Clone)]
 pub struct PoolState {
-    variant: PoolVariants,
+    variant:         PoolVariants,
     pub last_update: u64,
 }
 impl Debug for PoolState {
@@ -46,10 +46,7 @@ impl Debug for PoolState {
 
 impl PoolState {
     pub fn new(variant: PoolVariants, last_update: u64) -> Self {
-        Self {
-            variant,
-            last_update,
-        }
+        Self { variant, last_update }
     }
 
     pub fn pair(&self) -> Pair {
@@ -95,8 +92,8 @@ impl PoolState {
 
 #[derive(Debug, Clone)]
 pub enum PoolVariants {
-    UniswapV2(UniswapV2Pool), // 104
-    UniswapV3(UniswapV3Pool), // 192,
+    UniswapV2(Box<UniswapV2Pool>),
+    UniswapV3(Box<UniswapV3Pool>),
 }
 
 impl PoolVariants {
@@ -130,26 +127,22 @@ impl DexPriceMsg {
 
 #[derive(Debug, Clone)]
 pub struct DiscoveredPool {
-    pub protocol: Protocol,
+    pub protocol:     Protocol,
     pub pool_address: Address,
-    pub tokens: Vec<Address>,
+    pub tokens:       Vec<Address>,
 }
 
 impl DiscoveredPool {
     pub fn new(tokens: Vec<Address>, pool_address: Address, protocol: Protocol) -> Self {
-        Self {
-            protocol,
-            pool_address,
-            tokens,
-        }
+        Self { protocol, pool_address, tokens }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct PoolUpdate {
-    pub block: u64,
+    pub block:  u64,
     pub tx_idx: u64,
-    pub logs: Vec<Log>,
+    pub logs:   Vec<Log>,
     pub action: Actions,
 }
 
@@ -163,9 +156,15 @@ impl PoolUpdate {
     pub fn get_pair(&self, quote: Address) -> Option<Pair> {
         match &self.action {
             Actions::Swap(s) => Some(Pair(s.token_in.address, s.token_out.address)),
-            Actions::Mint(m) => Some(Pair(m.token[0].address, m.token[1].address)),
-            Actions::Burn(b) => Some(Pair(b.token[0].address, b.token[1].address)),
-            Actions::Collect(b) => Some(Pair(b.token[0].address, b.token[1].address)),
+            Actions::Mint(m) => {
+                Some(Pair(m.token[0].address, m.token.get(1).map(|t| t.address).unwrap_or(quote)))
+            }
+            Actions::Burn(b) => {
+                Some(Pair(b.token[0].address, b.token.get(1).map(|t| t.address).unwrap_or(quote)))
+            }
+            Actions::Collect(b) => {
+                Some(Pair(b.token[0].address, b.token.get(1).map(|t| t.address).unwrap_or(quote)))
+            }
             Actions::Transfer(t) => Some(Pair(t.token.address, quote)),
             Actions::Liquidation(l) => Some(Pair(l.collateral_asset.address, l.debt_asset.address)),
             Actions::SwapWithFee(s) => Some(Pair(s.token_in.address, s.token_out.address)),

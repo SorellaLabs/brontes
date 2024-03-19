@@ -17,12 +17,12 @@ action_impl!(
     |
     info: CallInfo,
     call_data: swapCall,
-    logs: SushiSwapV2swapCallLogs,
+    logs: SushiSwapV2SwapCallLogs,
     db_tx: &DB| {
-        let logs = logs.Swap_field;
+        let logs = logs.swap_field?;
 
         let recipient = call_data.to;
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
@@ -74,11 +74,11 @@ action_impl!(
     |
         info: CallInfo,
      call_data: mintCall,
-     log_data: SushiSwapV2mintCallLogs,
+     log_data: SushiSwapV2MintCallLogs,
      db_tx: &DB| {
-        let log_data = log_data.Mint_field;
+        let log_data = log_data.mint_field?;
 
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
@@ -109,10 +109,10 @@ action_impl!(
     |
      info: CallInfo,
      call_data: burnCall,
-     log_data: SushiSwapV2burnCallLogs,
+     log_data: SushiSwapV2BurnCallLogs,
      db_tx: &DB| {
-        let log_data = log_data.Burn_field;
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let log_data = log_data.burn_field?;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;

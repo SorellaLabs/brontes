@@ -14,7 +14,7 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 /// action_impl!(ProtocolPath, PathToCall, CallType, [LogType / 's], [logs: bool , call_data: bool, return_data: bool])
 /// ```
 /// The generated structs name will be as the following:
-///  <LastIdentInProtocolPath> + <LastIdentInPathToCall>
+///  &lt;LastIdentInProtocolPath&gt; + &lt;LastIdentInPathToCall&gt;
 /// Example:
 /// a macro invoked with
 ///     Protocol::UniswapV2,
@@ -66,6 +66,15 @@ use crate::action_classifier::{ActionDispatch, ActionMacro};
 /// if a log is repeating and dynamic in length, use `*` after the log
 /// to mark that there is a arbitrary amount of these logs emitted.
 /// ex `Transfer*` or `..Transfer*`
+///
+/// ## Fallback logs.
+/// in the case that you might need a fallback log, these can be defined by
+/// wrapping the names in parens. e.g (Transfer | SpecialTransfer).
+/// this will try to decode transfer first and if it fails, special transfer.
+/// Fallback logs are configurable with other log parsing options. this means
+/// you can do something like ..(Transfer | SpecialTransfer) or ..(Transfer |
+/// SpecialTransfer)*
+///
 ///
 /// the fields `call_data`, `return_data` and `log_data` are only put into the
 /// closure if specified they are always in this order, for example if you put
@@ -159,7 +168,7 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 ///     - z: number of plain pools
 ///
 /// ### Example
-/// ```
+/// ```ignore
 /// curve_discovery_impl!(
 ///     CurvecrvUSD,
 ///     crate::raw::pools::impls::CurvecrvUSDFactory,
@@ -186,9 +195,9 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn test(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemFn);
-    libmdbx_test::parse(item)
+    libmdbx_test::parse(item, attr.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

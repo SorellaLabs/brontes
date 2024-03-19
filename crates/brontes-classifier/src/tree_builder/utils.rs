@@ -14,9 +14,8 @@ pub(crate) fn get_coinbase_transfer(builder: Address, action: &Action) -> Option
     }
 }
 
-const TRANSFER_TOPIC: B256 = FixedBytes(hex!(
-    "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-));
+const TRANSFER_TOPIC: B256 =
+    FixedBytes(hex!("ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"));
 
 pub(crate) fn decode_transfer(log: &Log) -> Option<(Address, Address, Address, U256)> {
     if log.topics().len() != 3 {

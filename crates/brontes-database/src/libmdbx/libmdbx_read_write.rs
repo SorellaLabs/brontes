@@ -1,52 +1,90 @@
-use std::{
-    cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, str::FromStr, sync::Arc,
-};
+#[cfg(feature = "local-clickhouse")]
+use std::str::FromStr;
+use std::{cmp::max, ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
+#[cfg(feature = "cex-dex-markout")]
+use brontes_types::db::cex_trades::CexTradeMap;
 use brontes_types::{
-    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo,
+        builder::{BuilderInfo, BuilderStats},
         cex::{CexPriceMap, CexQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
-        searcher::SearcherInfo,
+        searcher::{SearcherInfo, SearcherStats},
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
-        traits::{LibmdbxReader, LibmdbxWriter},
+        traits::{DBWriter, LibmdbxReader},
     },
     mev::{Bundle, MevBlock},
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    SubGraphsEntry,
+    FastHashMap, SubGraphsEntry,
 };
-use eyre::eyre;
+use eyre::{eyre, ErrReport};
+use futures::Future;
+#[cfg(feature = "local-clickhouse")]
 use futures::{FutureExt, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
+#[cfg(feature = "local-clickhouse")]
 use sorella_db_databases::Database;
 use tracing::info;
 
-use crate::{
-    clickhouse::{
-        Clickhouse, MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS,
-        MIN_MAX_TOKEN_DECIMALS,
-    },
-    libmdbx::{
-        tables::{BlockInfo, CexPrice, DexPrice, MevBlocks, Tables, *},
-        types::LibmdbxData,
-        CompressedTable, Libmdbx, LibmdbxInitializer,
-    },
-    AddressToProtocolInfo, PoolCreationBlocks, SubGraphs, TokenDecimals, TxTraces,
+#[cfg(feature = "local-clickhouse")]
+use crate::clickhouse::{
+    MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS, MIN_MAX_TOKEN_DECIMALS,
 };
+#[cfg(feature = "local-clickhouse")]
+use crate::libmdbx::CompressedTable;
+use crate::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
+};
+
+pub trait LibmdbxInit: LibmdbxReader + DBWriter {
+    /// initializes all the tables with data via the CLI
+    fn initialize_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
+
+    /// initializes all the tables with missing data ranges via the CLI
+    fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        block_range: Vec<u64>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
+
+    /// checks the min and max values of the clickhouse db and sees if the full
+    /// range tables have the values.
+    fn init_full_range_tables<CH: ClickhouseHandle>(
+        &self,
+        clickhouse: &'static CH,
+    ) -> impl Future<Output = bool> + Send;
+
+    fn state_to_initialize(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        needs_dex_price: bool,
+    ) -> eyre::Result<Vec<RangeInclusive<u64>>>;
+}
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
 
@@ -55,62 +93,11 @@ impl LibmdbxReadWriter {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
     }
 
-    /// initializes all the tables with data via the CLI
-    pub async fn initialize_tables<T: TracingProvider>(
-        &'static self,
-        clickhouse: &'static Clickhouse,
-        tracer: Arc<T>,
-        tables: &[Tables],
-        clear_tables: bool,
-        block_range: Option<(u64, u64)>, // inclusive of start only
-    ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
-        initializer
-            .initialize(tables, clear_tables, block_range)
-            .await?;
-
-        Ok(())
-    }
-
-    /// checks the min and max values of the clickhouse db and sees if the full
-    /// range tables have the values.
-    pub async fn init_full_range_tables(&self, clickhouse: &'static Clickhouse) -> bool {
-        futures::stream::iter([
-            Tables::PoolCreationBlocks,
-            Tables::AddressToProtocolInfo,
-            Tables::TokenDecimals,
-        ])
-        .map(|table| async move {
-            match table {
-                Tables::AddressToProtocolInfo => self
-                    .has_clickhouse_min_max::<AddressToProtocolInfo>(
-                        MIN_MAX_ADDRESS_TO_PROTOCOL,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                Tables::TokenDecimals => self
-                    .has_clickhouse_min_max::<TokenDecimals>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
-                    .await
-                    .unwrap_or_default(),
-                Tables::PoolCreationBlocks => self
-                    .has_clickhouse_min_max::<PoolCreationBlocks>(
-                        MIN_MAX_POOL_CREATION_BLOCKS,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                _ => true,
-            }
-        })
-        .any(|f| f.map(|f| !f))
-        .await
-    }
-
-    async fn has_clickhouse_min_max<TB>(
+    #[cfg(feature = "local-clickhouse")]
+    async fn has_clickhouse_min_max<TB, CH: ClickhouseHandle>(
         &self,
         query: &str,
-        clickhouse: &'static Clickhouse,
+        clickhouse: &'static CH,
     ) -> eyre::Result<bool>
     where
         TB: CompressedTable,
@@ -142,8 +129,86 @@ impl LibmdbxReadWriter {
 
         Ok(has_min && has_max)
     }
+}
 
-    pub fn state_to_initialize(
+impl LibmdbxInit for LibmdbxReadWriter {
+    /// initializes all the tables with data via the CLI
+    async fn initialize_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        clear_tables: bool,
+        block_range: Option<(u64, u64)>, // inclusive of start only
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize(tables, clear_tables, block_range)
+            .await?;
+
+        Ok(())
+    }
+
+    /// initializes all the tables with missing data ranges via the CLI
+    async fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+        tables: &[Tables],
+        block_range: Vec<u64>,
+    ) -> eyre::Result<()> {
+        let block_range = Box::leak(Box::new(block_range));
+
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer
+            .initialize_arbitrary_state(tables, block_range)
+            .await?;
+
+        Ok(())
+    }
+
+    /// checks the min and max values of the clickhouse db and sees if the full
+    /// range tables have the values.
+    #[cfg(feature = "local-clickhouse")]
+    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
+        futures::stream::iter([
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+        ])
+        .map(|table| async move {
+            match table {
+                Tables::AddressToProtocolInfo => self
+                    .has_clickhouse_min_max::<AddressToProtocolInfo, CH>(
+                        MIN_MAX_ADDRESS_TO_PROTOCOL,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                Tables::TokenDecimals => self
+                    .has_clickhouse_min_max::<TokenDecimals, CH>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
+                    .await
+                    .unwrap_or_default(),
+                Tables::PoolCreationBlocks => self
+                    .has_clickhouse_min_max::<PoolCreationBlocks, CH>(
+                        MIN_MAX_POOL_CREATION_BLOCKS,
+                        clickhouse,
+                    )
+                    .await
+                    .unwrap_or_default(),
+                _ => true,
+            }
+        })
+        .any(|f| f.map(|f| !f))
+        .await
+    }
+
+    #[cfg(not(feature = "local-clickhouse"))]
+    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, _clickhouse: &'static CH) -> bool {
+        true
+    }
+
+    fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,
@@ -157,12 +222,11 @@ impl LibmdbxReadWriter {
             if needs_dex_price {
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ));
+                ))
             }
 
             tracing::info!("entire range missing");
-
-            return Ok(vec![start_block..=end_block]);
+            return Ok(vec![start_block..=end_block])
         }
 
         let mut result = Vec::new();
@@ -182,22 +246,23 @@ impl LibmdbxReadWriter {
                         return Err(eyre::eyre!(
                             "Block is missing dex pricing, please run with flag \
                              `--run-dex-pricing`"
-                        ));
+                        ))
                     }
 
-                    continue;
+                    continue
                 }
 
                 block_tracking += 1;
+
                 if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
                     tracing::error!("block is missing dex pricing");
                     return Err(eyre::eyre!(
                         "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                    ));
+                    ))
                 }
 
                 if !state.is_init() {
-                    tracing::info!(?state, "state isn't init");
+                    tracing::trace!(?state, "state isn't init");
                     result.push(block..=block);
                 }
             } else {
@@ -211,9 +276,8 @@ impl LibmdbxReadWriter {
                 tracing::error!("block is missing dex pricing");
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ));
+                ))
             }
-
             result.push(block_tracking - 1..=end_block);
         }
 
@@ -248,6 +312,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
+        #[cfg(feature = "cex-dex-markout")]
+        let trades = self.fetch_trades(block_num).ok();
 
         Ok(BlockMetadata::new(
             block_num,
@@ -260,7 +326,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
             max(eth_prices.price.0, eth_prices.price.1),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None))
+        .into_metadata(
+            cex_quotes,
+            None,
+            None,
+            #[cfg(feature = "cex-dex-markout")]
+            trades,
+        ))
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -270,6 +342,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.init_state_updating(block_num, CEX_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
+
+        #[cfg(feature = "cex-dex-markout")]
+        let trades = self.fetch_trades(block_num).ok();
 
         Ok({
             BlockMetadata::new(
@@ -283,31 +358,53 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 max(eth_prices.price.0, eth_prices.price.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None)
+            .into_metadata(
+                cex_quotes,
+                Some(dex_quotes),
+                None,
+                #[cfg(feature = "cex-dex-markout")]
+                trades,
+            )
         })
     }
 
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let tx = self.0.ro_tx()?;
+
+        let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
+
         tx.get::<TokenDecimals>(address)?
             .map(|inner| TokenInfoWithAddress { inner, address })
             .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
     }
 
-    fn try_fetch_searcher_info(&self, searcher_eoa: Address) -> eyre::Result<SearcherInfo> {
+    fn try_fetch_searcher_eoa_info(
+        &self,
+        searcher_eoa: Address,
+    ) -> eyre::Result<Option<SearcherInfo>> {
+        self.0
+            .ro_tx()?
+            .get::<SearcherEOAs>(searcher_eoa)
+            .map_err(ErrReport::from)
+    }
+
+    fn try_fetch_searcher_contract_info(
+        &self,
+        searcher_contract: Address,
+    ) -> eyre::Result<Option<SearcherInfo>> {
         let tx = self.0.ro_tx()?;
-        tx.get::<Searcher>(searcher_eoa)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in SearcherInfo", searcher_eoa))
+        tx.get::<SearcherContracts>(searcher_contract)
+            .map_err(ErrReport::from)
     }
 
     fn protocols_created_before(
         &self,
         block_num: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
+    ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
         let tx = self.0.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
+        let mut map = FastHashMap::default();
 
         for result in cursor.walk_range(0..=block_num)? {
             let res = result?.1;
@@ -332,11 +429,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, Protocol, Pair)>>> {
+    ) -> eyre::Result<FastHashMap<u64, Vec<(Address, Protocol, Pair)>>> {
         let tx = self.0.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
+        let mut map = FastHashMap::default();
 
         for result in cursor.walk_range(start_block..end_block)? {
             let result = result?;
@@ -380,14 +477,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 "no pricing for block. cannot verify most recent subgraph is valid"
             );
 
-            return Err(eyre::eyre!("subgraph not inited at this block range"));
+            return Err(eyre::eyre!("subgraph not inited at this block range"))
         }
 
         let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
 
         for (cur_block, update) in subgraphs.0 {
             if cur_block > block {
-                break;
+                break
             }
             last = Some((pair, update))
         }
@@ -395,33 +492,106 @@ impl LibmdbxReader for LibmdbxReadWriter {
         last.ok_or_else(|| eyre::eyre!("no pair found"))
     }
 
-    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<AddressMetadata> {
+    fn try_fetch_address_metadata(
+        &self,
+        address: Address,
+    ) -> eyre::Result<Option<AddressMetadata>> {
         self.0
             .ro_tx()?
-            .get::<AddressMeta>(address)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in address metadata", address))
+            .get::<AddressMeta>(address)
+            .map_err(ErrReport::from)
     }
 
-    fn try_fetch_builder_info(&self, builder_coinbase_addr: Address) -> eyre::Result<BuilderInfo> {
+    fn try_fetch_builder_info(
+        &self,
+        builder_coinbase_addr: Address,
+    ) -> eyre::Result<Option<BuilderInfo>> {
         self.0
             .ro_tx()?
-            .get::<Builder>(builder_coinbase_addr)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in builder info", builder_coinbase_addr))
+            .get::<Builder>(builder_coinbase_addr)
+            .map_err(ErrReport::from)
+    }
+
+    fn try_fetch_mev_blocks(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<MevBlocks>()?;
+        let mut res = Vec::new();
+
+        for entry in cursor.walk_range(start_block..end_block)?.flatten() {
+            res.push(entry.1);
+        }
+
+        Ok(res)
     }
 }
 
-impl LibmdbxWriter for LibmdbxReadWriter {
-    fn write_searcher_info(
+impl DBWriter for LibmdbxReadWriter {
+    type Inner = Self;
+
+    fn inner(&self) -> &Self::Inner {
+        unreachable!()
+    }
+
+    async fn write_searcher_info(
+        &self,
+        eoa_address: Address,
+        contract_address: Option<Address>,
+        eoa_info: SearcherInfo,
+        contract_info: Option<SearcherInfo>,
+    ) -> eyre::Result<()> {
+        self.write_searcher_eoa_info(eoa_address, eoa_info)
+            .await
+            .expect("libmdbx write failure");
+
+        if let Some(contract_address) = contract_address {
+            self.write_searcher_contract_info(contract_address, contract_info.unwrap_or_default())
+                .await
+                .expect("libmdbx write failure");
+        }
+        Ok(())
+    }
+
+    async fn write_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let data = SearcherData::new(searcher_eoa, searcher_info);
-        self.0.write_table::<Searcher, SearcherData>(&vec![data])?;
+        let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
+        self.0
+            .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 
-    fn save_mev_blocks(
+    async fn write_searcher_contract_info(
+        &self,
+        searcher_contract: Address,
+        searcher_info: SearcherInfo,
+    ) -> eyre::Result<()> {
+        let data = SearcherContractsData::new(searcher_contract, searcher_info);
+        self.0
+            .write_table::<SearcherContracts, SearcherContractsData>(&[data])
+            .expect("libmdbx write failure");
+        Ok(())
+    }
+
+    async fn write_searcher_stats(
+        &self,
+        searcher_eoa: Address,
+        searcher_stats: SearcherStats,
+    ) -> eyre::Result<()> {
+        let data = SearcherStatisticsData::new(searcher_eoa, searcher_stats);
+        self.0
+            .write_table::<SearcherStatistics, SearcherStatisticsData>(&[data])
+            .expect("libmdbx write failure");
+        Ok(())
+    }
+
+    async fn save_mev_blocks(
         &self,
         block_number: u64,
         block: MevBlock,
@@ -430,13 +600,19 @@ impl LibmdbxWriter for LibmdbxReadWriter {
         let data = MevBlocksData::new(block_number, MevBlockWithClassified { block, mev });
 
         self.0
-            .write_table::<MevBlocks, MevBlocksData>(&vec![data])?;
+            .write_table::<MevBlocks, MevBlocksData>(&[data])
+            .expect("libmdbx write failure");
         Ok(())
     }
 
-    fn write_dex_quotes(&self, block_num: u64, quotes: Option<DexQuotes>) -> eyre::Result<()> {
+    async fn write_dex_quotes(
+        &self,
+        block_num: u64,
+        quotes: Option<DexQuotes>,
+    ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
-            self.init_state_updating(block_num, DEX_PRICE_FLAG)?;
+            self.init_state_updating(block_num, DEX_PRICE_FLAG)
+                .expect("libmdbx write failure");
             let data = quotes
                 .0
                 .into_iter()
@@ -445,109 +621,149 @@ impl LibmdbxWriter for LibmdbxReadWriter {
                 .map(|(idx, value)| {
                     let index = DexQuoteWithIndex {
                         tx_idx: idx as u16,
-                        quote: value.into_iter().collect_vec(),
+                        quote:  value.into_iter().collect_vec(),
                     };
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
                 .collect::<Vec<_>>();
 
-            self.0.update_db(|tx| {
-                let mut cursor = tx.cursor_write::<DexPrice>()?;
+            self.0
+                .update_db(|tx| {
+                    let mut cursor = tx
+                        .cursor_write::<DexPrice>()
+                        .expect("libmdbx write failure");
 
-                data.into_iter()
-                    .map(|entry| {
-                        let entry = entry.into_key_val();
-                        cursor.upsert(entry.key, entry.value)?;
-                        Ok(())
-                    })
-                    .collect::<Result<Vec<_>, DatabaseError>>()
-            })??;
+                    data.into_iter()
+                        .map(|entry| {
+                            let entry = entry.into_key_val();
+                            cursor
+                                .upsert(entry.key, entry.value)
+                                .expect("libmdbx write failure");
+                            Ok(())
+                        })
+                        .collect::<Result<Vec<_>, DatabaseError>>()
+                })
+                .expect("libmdbx write failure")
+                .expect("libmdbx write failure");
         }
 
         Ok(())
     }
 
-    fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
-        Ok(self
-            .0
-            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData::new(
+    async fn write_token_info(
+        &self,
+        address: Address,
+        decimals: u8,
+        symbol: String,
+    ) -> eyre::Result<()> {
+        self.0
+            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
                 address,
                 TokenInfo::new(decimals, symbol),
-            )])?)
+            )])
+            .expect("libmdbx write failure");
+        Ok(())
     }
 
     fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
         let tx = self.0.ro_tx()?;
 
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair)? {
+        if let Some(mut entry) = tx.get::<SubGraphs>(pair).expect("libmdbx write failure") {
             entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
 
             let data = SubGraphsData::new(pair, entry);
             self.0
-                .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+                .write_table::<SubGraphs, SubGraphsData>(&[data])
+                .expect("libmdbx write failure");
         } else {
-            let mut map = HashMap::new();
+            let mut map = FastHashMap::default();
             map.insert(block, edges);
             let subgraph_entry = SubGraphsEntry(map);
             let data = SubGraphsData::new(pair, subgraph_entry);
             self.0
-                .write_table::<SubGraphs, SubGraphsData>(&vec![data])?;
+                .write_table::<SubGraphs, SubGraphsData>(&[data])
+                .expect("libmdbx write failure");
         }
 
         Ok(())
     }
 
-    fn insert_pool(
+    async fn insert_pool(
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
         // add to default table
+        let mut tokens = tokens.iter();
+        let default = Address::ZERO;
         self.0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData::new(
                     address,
                     ProtocolInfo {
                         protocol: classifier_name,
                         init_block: block,
-                        token0: tokens[0],
-                        token1: tokens[1],
-                        token2: None,
-                        token3: None,
-                        token4: None,
-                        curve_lp_token: None,
+                        token0: *tokens.next().unwrap_or(&default),
+                        token1: *tokens.next().unwrap_or(&default),
+                        token2: tokens.next().cloned(),
+                        token3: tokens.next().cloned(),
+                        token4: tokens.next().cloned(),
+                        curve_lp_token,
                     },
                 ),
-            ])?;
+            ])
+            .expect("libmdbx write failure");
 
         // add to pool creation block
-        let tx = self.0.ro_tx()?;
+        let tx = self.0.ro_tx().expect("libmdbx write failure");
         let mut addrs = tx
-            .get::<PoolCreationBlocks>(block)?
+            .get::<PoolCreationBlocks>(block)
+            .expect("libmdbx write failure")
             .map(|i| i.0)
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
 
         addrs.push(address);
         self.0
-            .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
+            .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
                 PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
-            ])?;
+            ])
+            .expect("libmdbx write failure");
 
         Ok(())
     }
 
-    fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        let table = TxTracesData::new(
-            block,
-            TxTracesInner {
-                traces: Some(traces),
-            },
-        );
-        self.0.write_table(&vec![table])?;
+    async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+        let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
+        self.0.write_table(&[table]).expect("libmdbx write failure");
 
         self.init_state_updating(block, TRACE_FLAG)
+    }
+
+    async fn write_builder_info(
+        &self,
+        builder_address: Address,
+        builder_info: BuilderInfo,
+    ) -> eyre::Result<()> {
+        let data = BuilderData::new(builder_address, builder_info);
+        self.0
+            .write_table::<Builder, BuilderData>(&[data])
+            .expect("libmdbx write failure");
+        Ok(())
+    }
+
+    async fn write_builder_stats(
+        &self,
+        builder_address: Address,
+        builder_stats: BuilderStats,
+    ) -> eyre::Result<()> {
+        let data = BuilderStatisticsData::new(builder_address, builder_stats);
+        self.0
+            .write_table::<BuilderStatistics, BuilderStatisticsData>(&[data])
+            .expect("libmdbx write failure");
+        Ok(())
     }
 }
 
@@ -557,14 +773,14 @@ impl LibmdbxReadWriter {
         let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
         state.set(flag);
         self.0
-            .write_table::<InitializedState, InitializedStateData>(&vec![
-                InitializedStateData::new(block, state),
-            ])?;
+            .write_table::<InitializedState, InitializedStateData>(&[InitializedStateData::new(
+                block, state,
+            )])?;
 
         Ok(())
     }
 
-    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
+    pub fn inited_range(&self, range: impl Iterator<Item = u64>, flag: u8) -> eyre::Result<()> {
         for block in range {
             self.init_state_updating(block, flag)?;
         }
@@ -573,17 +789,21 @@ impl LibmdbxReadWriter {
 
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         let tx = self.0.ro_tx()?;
-        let res = tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
-            eyre!(
-                "Failed to fetch Metadata's block info for block {}",
-                block_num
-            )
-        });
+        let res = tx
+            .get::<BlockInfo>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num));
 
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;
         }
         res
+    }
+
+    #[cfg(feature = "cex-dex-markout")]
+    fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
+        let tx = self.0.ro_tx()?;
+        tx.get::<CexTrades>(block_num)?
+            .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
@@ -601,7 +821,7 @@ impl LibmdbxReadWriter {
     }
 
     pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
-        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let mut dex_quotes: Vec<Option<FastHashMap<Pair, DexPrices>>> = Vec::new();
         let (start_range, end_range) = make_filter_key_range(block_num);
         let tx = self.0.ro_tx()?;
 
@@ -620,7 +840,7 @@ impl LibmdbxReadWriter {
                             tx.insert(pair, price);
                         }
                     } else {
-                        let mut tx_pairs = HashMap::default();
+                        let mut tx_pairs = FastHashMap::default();
                         for (pair, price) in val.quote {
                             tx_pairs.insert(pair, price);
                         }
@@ -633,7 +853,7 @@ impl LibmdbxReadWriter {
     }
 }
 
-fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
+pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
     if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
         eth_usdt
     } else {

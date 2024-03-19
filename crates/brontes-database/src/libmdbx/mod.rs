@@ -3,15 +3,14 @@
 
 use std::path::Path;
 
-pub use brontes_types::db::traits::{LibmdbxReader, LibmdbxWriter};
+pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
 pub mod initialize;
 mod libmdbx_read_write;
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
-pub use libmdbx_read_write::LibmdbxReadWriter;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+pub use libmdbx_read_write::{determine_eth_prices, LibmdbxInit, LibmdbxReadWriter};
 use reth_db::{
     is_database_empty,
     mdbx::DatabaseArguments,
@@ -97,7 +96,7 @@ impl Libmdbx {
     }
 
     /// writes to a table
-    pub fn write_table<T, D>(&self, entries: &Vec<D>) -> Result<(), DatabaseError>
+    pub fn write_table<T, D>(&self, entries: &[D]) -> Result<(), DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -105,7 +104,7 @@ impl Libmdbx {
     {
         self.update_db(|tx| {
             entries
-                .par_iter()
+                .iter()
                 .map(|entry| {
                     let e = entry.into_key_val();
                     tx.put::<T>(e.key, e.value)

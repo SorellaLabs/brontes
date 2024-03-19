@@ -1,22 +1,22 @@
-use std::fmt::Debug;
+use std::{
+    fmt,
+    fmt::{Debug, Display},
+};
 
+use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
-use redefined::Redefined;
+#[allow(unused)]
+use clickhouse::fixed_string::FixedString;
+use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use sorella_db_databases::clickhouse::{fixed_string::FixedString, DbRow};
 
 use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::B256Redefined,
-    normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwapRedefined},
-};
-#[allow(unused_imports)]
-use crate::{
-    display::utils::display_sandwich,
-    normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
+    normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined},
     GasDetails,
 };
 
@@ -24,11 +24,51 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AtomicArb {
-    pub tx_hash: B256,
-    pub swaps: Vec<NormalizedSwap>,
+    pub tx_hash:     B256,
+    pub swaps:       Vec<NormalizedSwap>,
     #[redefined(same_fields)]
     pub gas_details: GasDetails,
+    #[redefined(same_fields)]
+    pub arb_type:    AtomicArbType,
 }
+/// Represents the different types of atomic arb
+/// A triangle arb is a simple arb that goes from token A -> B -> C -> A
+/// A cross pair arb is a more complex arb that goes from token A -> B -> C -> A
+
+#[derive(
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    rSerialize,
+    rDeserialize,
+    Archive,
+    Copy,
+)]
+pub enum AtomicArbType {
+    #[default]
+    Triangle,
+    CrossPair(usize),
+    StablecoinArb,
+    LongTail,
+}
+impl Display for AtomicArbType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AtomicArbType::Triangle => writeln!(f, "Triangular Arbitrage"),
+            AtomicArbType::CrossPair(_) => writeln!(f, "Cross Pair Arbitrage"),
+            AtomicArbType::StablecoinArb => writeln!(f, "Stablecoin Arbitrage"),
+            AtomicArbType::LongTail => writeln!(f, "LongTail Arbitrage"),
+        }
+    }
+}
+
+//TODO: Ludwig, add flashloan arb support
+
+self_convert_redefined!(AtomicArbType);
 
 impl Mev for AtomicArb {
     fn total_gas_paid(&self) -> u128 {
@@ -59,7 +99,7 @@ impl Serialize for AtomicArb {
     {
         let mut ser_struct = serializer.serialize_struct("AtomicArb", 34)?;
 
-        ser_struct.serialize_field("tx_hash", &FixedString::from(format!("{:?}", self.tx_hash)))?;
+        ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
 
         let swaps: ClickhouseVecNormalizedSwap = self.swaps.clone().into();
 

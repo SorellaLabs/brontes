@@ -1,27 +1,26 @@
-use std::{
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 use alloy_primitives::Address;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, Protocol};
+use crate::{
+    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, FastHashMap, Protocol,
+};
 
-#[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Redefined)]
+#[derive(Debug, Clone, Default, Serialize, PartialEq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct SubGraphsEntry(pub HashMap<u64, Vec<SubGraphEdge>>);
+pub struct SubGraphsEntry(pub FastHashMap<u64, Vec<SubGraphEdge>>);
 
 implement_table_value_codecs_with_zc!(SubGraphsEntryRedefined);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SubGraphEdge {
-    pub info: PoolPairInfoDirection,
+    pub info:                   PoolPairInfoDirection,
     pub distance_to_start_node: u8,
-    pub distance_to_end_node: u8,
+    pub distance_to_end_node:   u8,
 }
 impl Deref for SubGraphEdge {
     type Target = PoolPairInfoDirection;
@@ -42,39 +41,32 @@ impl SubGraphEdge {
         distance_to_start_node: u8,
         distance_to_end_node: u8,
     ) -> Self {
-        Self {
-            info,
-            distance_to_end_node,
-            distance_to_start_node,
-        }
+        Self { info, distance_to_end_node, distance_to_start_node }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash, Redefined)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash, Redefined, PartialOrd, Ord,
+)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PoolPairInformation {
     pub pool_addr: Address,
     #[redefined(same_fields)]
-    pub dex_type: Protocol,
-    pub token_0: Address,
-    pub token_1: Address,
+    pub dex_type:  Protocol,
+    pub token_0:   Address,
+    pub token_1:   Address,
 }
 
 impl PoolPairInformation {
     pub fn new(pool_addr: Address, dex_type: Protocol, token_0: Address, token_1: Address) -> Self {
-        Self {
-            pool_addr,
-            dex_type,
-            token_0,
-            token_1,
-        }
+        Self { pool_addr, dex_type, token_0, token_1 }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct PoolPairInfoDirection {
-    pub info: PoolPairInformation,
+    pub info:       PoolPairInformation,
     pub token_0_in: bool,
 }
 
