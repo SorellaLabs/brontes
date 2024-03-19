@@ -107,6 +107,11 @@ where
             .fetch_all_address_metadata()
             .expect("Failed to query address metadata table");
 
+        if address_metadata.is_empty() {
+            warn!("No MEV blocks fetched for the given range.");
+            return Ok(());
+        }
+
         let address_meta_batch = address_metadata_to_record_batch(address_metadata)
             .expect("Failed to convert Address Metadata to record batch");
 
