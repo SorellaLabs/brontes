@@ -111,6 +111,7 @@ fn get_list_string_array(values: Vec<&Vec<String>>) -> ListArray {
     for labels in values {
         let mut string_builder = StringBuilder::new();
         if labels.is_empty() {
+            builder.append_null();
             builder.append(false);
             continue;
         } else {
