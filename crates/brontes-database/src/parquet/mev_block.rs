@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{Float64Array, Float64Builder, StringArray, StringBuilder, UInt64Array, UInt64Builder},
+    array::{
+        Array, ArrayRef, Float64Array, Float64Builder, StringArray, StringBuilder, StructArray,
+        UInt64Builder,
+    },
     datatypes::{DataType, Field, Schema},
     error::ArrowError,
     record_batch::RecordBatch,
@@ -64,19 +67,6 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<&MevBlock>) -> Result<RecordBat
             .collect(),
     );
 
-    let (
-        proposer_fee_recipient_array,
-        proposer_profit_usd_array,
-        mev_count_array,
-        sandwich_count_array,
-        liquidation_count_array,
-        atomic_arb_count_array,
-        cex_dex_count_array,
-        jit_count_array,
-        jit_sandwich_count_array,
-        searcher_tx_count_array,
-    ) = build_mev_count_arrays(&mev_blocks);
-
     let proposer_mev_reward_array = u128_to_binary_array(
         mev_blocks
             .iter()
@@ -84,7 +74,11 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<&MevBlock>) -> Result<RecordBat
             .collect(),
     );
 
-    let schema = build_schema();
+    let mev_count_array = get_mev_count_array(&mev_blocks);
+    let (proposer_fee_recipient_array, proposer_profit_usd_array) =
+        get_proposer_arrays(&mev_blocks);
+
+    let schema = build_schema(&mev_count_array);
 
     build_record_batch(
         schema,
@@ -92,13 +86,6 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<&MevBlock>) -> Result<RecordBat
             Arc::new(block_hash_array),
             Arc::new(block_number_array),
             Arc::new(mev_count_array),
-            Arc::new(sandwich_count_array),
-            Arc::new(cex_dex_count_array),
-            Arc::new(jit_count_array),
-            Arc::new(jit_sandwich_count_array),
-            Arc::new(atomic_arb_count_array),
-            Arc::new(liquidation_count_array),
-            Arc::new(searcher_tx_count_array),
             Arc::new(eth_price_array),
             Arc::new(gas_used_array),
             Arc::new(priority_fee_array),
@@ -116,18 +103,11 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<&MevBlock>) -> Result<RecordBat
     )
 }
 
-fn build_schema() -> Schema {
+fn build_schema(mev_count_array: &StructArray) -> Schema {
     Schema::new(vec![
         Field::new("block_hash", DataType::Utf8, false),
         Field::new("block_number", DataType::UInt64, false),
-        Field::new("mev_count", DataType::UInt64, false),
-        Field::new("sandwich_count", DataType::UInt64, true),
-        Field::new("cex_dex_count", DataType::UInt64, true),
-        Field::new("jit_count", DataType::UInt64, true),
-        Field::new("jit_sandwich_count", DataType::UInt64, true),
-        Field::new("atomic_backrun_count", DataType::UInt64, true),
-        Field::new("liquidation_count", DataType::UInt64, true),
-        Field::new("searcher_tx_count", DataType::UInt64, true),
+        Field::new("mev_count", mev_count_array.data_type().clone(), false),
         Field::new("eth_price", DataType::Float64, false),
         Field::new("cumulative_gas_used", DataType::Binary, false),
         Field::new("cumulative_priority_fee", DataType::Binary, false),
@@ -144,32 +124,66 @@ fn build_schema() -> Schema {
     ])
 }
 
-fn build_mev_count_arrays(
-    mev_blocks: &Vec<&MevBlock>,
-) -> (
-    StringArray,
-    Float64Array,
-    UInt64Array,
-    UInt64Array,
-    UInt64Array,
-    UInt64Array,
-    UInt64Array,
-    UInt64Array,
-    UInt64Array,
-    UInt64Array,
-) {
+fn get_mev_count_array(mev_blocks: &Vec<&MevBlock>) -> StructArray {
+    let mut mev_count_builder = UInt64Builder::new();
+    let mut sandwich_count_builder = UInt64Builder::new();
+    let mut liquidation_count_builder = UInt64Builder::new();
+    let mut atomic_backrun_count_builder = UInt64Builder::new();
+    let mut cex_dex_count_builder = UInt64Builder::new();
+    let mut jit_count_builder = UInt64Builder::new();
+    let mut jit_sandwich_count_builder = UInt64Builder::new();
+    let mut searcher_tx_count_builder = UInt64Builder::new();
+
+    for block in mev_blocks {
+        mev_count_builder.append_value(block.mev_count.mev_count);
+        sandwich_count_builder.append_option(block.mev_count.sandwich_count);
+        liquidation_count_builder.append_option(block.mev_count.liquidation_count);
+        atomic_backrun_count_builder.append_option(block.mev_count.atomic_backrun_count);
+        cex_dex_count_builder.append_option(block.mev_count.cex_dex_count);
+        jit_count_builder.append_option(block.mev_count.jit_count);
+        jit_sandwich_count_builder.append_option(block.mev_count.jit_sandwich_count);
+        searcher_tx_count_builder.append_option(block.mev_count.searcher_tx_count);
+    }
+
+    let mev_count_array = mev_count_builder.finish();
+    let sandwich_count_array = sandwich_count_builder.finish();
+    let liquidation_count_array = liquidation_count_builder.finish();
+    let atomic_backrun_count_array = atomic_backrun_count_builder.finish();
+    let cex_dex_count_array = cex_dex_count_builder.finish();
+    let jit_count_array = jit_count_builder.finish();
+    let jit_sandwich_count_array = jit_sandwich_count_builder.finish();
+    let searcher_tx_count_array = searcher_tx_count_builder.finish();
+
+    let fields = vec![
+        Field::new("mev_count", DataType::UInt64, false),
+        Field::new("sandwich_count", DataType::UInt64, true),
+        Field::new("liquidation_count", DataType::UInt64, true),
+        Field::new("atomic_backrun_count", DataType::UInt64, true),
+        Field::new("cex_dex_count", DataType::UInt64, true),
+        Field::new("jit_count", DataType::UInt64, true),
+        Field::new("jit_sandwich_count", DataType::UInt64, true),
+        Field::new("searcher_tx_count", DataType::UInt64, true),
+    ];
+
+    let arrays = vec![
+        Arc::new(mev_count_array) as ArrayRef,
+        Arc::new(sandwich_count_array) as ArrayRef,
+        Arc::new(liquidation_count_array) as ArrayRef,
+        Arc::new(atomic_backrun_count_array) as ArrayRef,
+        Arc::new(cex_dex_count_array) as ArrayRef,
+        Arc::new(jit_count_array) as ArrayRef,
+        Arc::new(jit_sandwich_count_array) as ArrayRef,
+        Arc::new(searcher_tx_count_array) as ArrayRef,
+    ];
+
+    StructArray::try_new(fields.into(), arrays, None).expect("Failed to init struct arrays")
+}
+
+fn get_proposer_arrays(mev_blocks: &Vec<&MevBlock>) -> (StringArray, Float64Array) {
     let fee_recipient_data_capacity = mev_blocks[0].builder_address.len() * mev_blocks.len();
     let mut proposer_fee_recipient_builder =
         StringBuilder::with_capacity(mev_blocks.len(), fee_recipient_data_capacity);
     let mut proposer_profit_usd_builder = Float64Builder::with_capacity(mev_blocks.len());
-    let mut mev_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
-    let mut sandwich_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
-    let mut liquidation_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
-    let mut atomic_arb_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
-    let mut cex_dex_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
-    let mut jit_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
-    let mut jit_sandwich_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
-    let mut searcher_tx_count_builder = UInt64Builder::with_capacity(mev_blocks.len());
 
     for block in mev_blocks {
         proposer_fee_recipient_builder.append_option(
@@ -179,26 +193,7 @@ fn build_mev_count_arrays(
                 .map(|addr| addr.to_string()),
         );
         proposer_profit_usd_builder.append_option(block.proposer_profit_usd);
-        mev_count_builder.append_value(block.mev_count.mev_count);
-        sandwich_count_builder.append_option(block.mev_count.sandwich_count);
-        liquidation_count_builder.append_option(block.mev_count.liquidation_count);
-        atomic_arb_count_builder.append_option(block.mev_count.atomic_backrun_count);
-        cex_dex_count_builder.append_option(block.mev_count.cex_dex_count);
-        jit_count_builder.append_option(block.mev_count.jit_count);
-        jit_sandwich_count_builder.append_option(block.mev_count.jit_sandwich_count);
-        searcher_tx_count_builder.append_option(block.mev_count.searcher_tx_count);
     }
 
-    (
-        proposer_fee_recipient_builder.finish(),
-        proposer_profit_usd_builder.finish(),
-        mev_count_builder.finish(),
-        sandwich_count_builder.finish(),
-        liquidation_count_builder.finish(),
-        atomic_arb_count_builder.finish(),
-        cex_dex_count_builder.finish(),
-        jit_count_builder.finish(),
-        jit_sandwich_count_builder.finish(),
-        searcher_tx_count_builder.finish(),
-    )
+    (proposer_fee_recipient_builder.finish(), proposer_profit_usd_builder.finish())
 }
