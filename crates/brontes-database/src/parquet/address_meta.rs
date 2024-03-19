@@ -74,7 +74,7 @@ pub fn address_metadata_to_record_batch(
         Field::new(
             "labels",
             DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
-            false,
+            true,
         ),
         Field::new("address_type", DataType::Utf8, true),
         Field::new("ens", DataType::Utf8, true),
