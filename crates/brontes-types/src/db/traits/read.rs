@@ -51,6 +51,8 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
 
     fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<Option<AddressMetadata>>;
 
+    fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>>;
+
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes>;
 
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress>;
@@ -61,8 +63,13 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
 
     fn try_fetch_mev_blocks(
         &self,
-        start_block: u64,
+        start_block: Option<u64>,
         end_block: u64,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>>;
+
+    fn fetch_all_mev_blocks(
+        &self,
+        start_block: Option<u64>,
     ) -> eyre::Result<Vec<MevBlockWithClassified>>;
 
     fn protocols_created_before(

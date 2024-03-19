@@ -1,6 +1,11 @@
 #[cfg(feature = "local-clickhouse")]
 use std::str::FromStr;
-use std::{cmp::max, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{
+    cmp::max,
+    ops::{Bound, RangeInclusive},
+    path::Path,
+    sync::Arc,
+};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -514,18 +519,64 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn try_fetch_mev_blocks(
         &self,
-        start_block: u64,
+        start_block: Option<u64>,
         end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
         let tx = self.0.ro_tx()?;
         let mut cursor = tx.cursor_read::<MevBlocks>()?;
         let mut res = Vec::new();
 
-        for entry in cursor.walk_range(start_block..end_block)?.flatten() {
+        let range = if let Some(start) = start_block {
+            (Bound::Included(start), Bound::Excluded(end_block))
+        } else {
+            (Bound::Unbounded, Bound::Excluded(end_block))
+        };
+
+        for entry in cursor.walk_range(range)?.flatten() {
             res.push(entry.1);
         }
 
         Ok(res)
+    }
+
+    fn fetch_all_mev_blocks(
+        &self,
+        start_block: Option<u64>,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<MevBlocks>()?;
+
+        let mut res = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(start_block)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            res.push(row?.1);
+        }
+
+        Ok(res)
+    }
+
+    fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<AddressMeta>()?;
+
+        let mut result = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(None)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            let row = row?;
+            let address = row.0;
+            let metadata = row.1;
+            result.push((address, metadata));
+        }
+
+        Ok(result)
     }
 }
 
