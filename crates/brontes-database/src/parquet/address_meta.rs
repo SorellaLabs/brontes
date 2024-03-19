@@ -37,12 +37,10 @@ pub fn address_metadata_to_record_batch(
             .map(|am| am.1.nametag.as_deref())
             .collect_vec(),
     );
-    let labels_array = get_list_string_array(
-        address_metadata
-            .iter()
-            .map(|am| Some(&am.1.labels))
-            .collect_vec(),
-    );
+
+    let labels_array =
+        get_list_string_array(address_metadata.iter().map(|am| &am.1.labels).collect_vec());
+
     let address_type_array = get_string_array(
         address_metadata
             .iter()
@@ -73,11 +71,11 @@ pub fn address_metadata_to_record_batch(
         Field::new("address", DataType::Utf8, false),
         Field::new("entity_name", DataType::Utf8, true),
         Field::new("nametag", DataType::Utf8, true),
-        /*Field::new(
+        Field::new(
             "labels",
             DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
             false,
-        ),*/
+        ),
         Field::new("address_type", DataType::Utf8, true),
         Field::new("ens", DataType::Utf8, true),
         Field::new("contract_info", contract_info_array.data_type().clone(), true),
@@ -90,7 +88,7 @@ pub fn address_metadata_to_record_batch(
             Arc::new(address_array),
             Arc::new(entity_name_array),
             Arc::new(nametag_array),
-            //Arc::new(labels_array),
+            Arc::new(labels_array),
             Arc::new(address_type_array),
             Arc::new(ens_array),
             Arc::new(contract_info_array),
@@ -107,21 +105,20 @@ fn get_string_array(values: Vec<Option<&str>>) -> StringArray {
     builder.finish()
 }
 
-fn get_list_string_array(values: Vec<Option<&Vec<String>>>) -> ListArray {
+fn get_list_string_array(values: Vec<&Vec<String>>) -> ListArray {
     let mut builder = ListBuilder::new(StringBuilder::new());
 
-    for value in values {
-        match value {
-            Some(labels) => {
-                for label in labels {
-                    builder.values().append_value(label);
-                }
-                builder.append(true);
-            }
-            None => {
-                builder.append(false);
+    for labels in values {
+        let mut string_builder = StringBuilder::new();
+        if labels.is_empty() {
+            builder.append_null();
+            continue;
+        } else {
+            for label in labels {
+                string_builder.append_value(label);
             }
         }
+        builder.append_value(&string_builder.finish());
     }
 
     builder.finish()
