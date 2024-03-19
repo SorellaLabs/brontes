@@ -254,11 +254,11 @@ mod tests {
     #[test]
     // #[cfg(feature = "local")]
     fn test_v3_slot0() {
-        let db_path = Path::new(
-            &std::env::var("DB_PATH")
-                .map_err(|_| Box::new(std::env::VarError::NotPresent))
-                .unwrap(),
-        );
+        let path = std::env::var("DB_PATH")
+            .map_err(|_| Box::new(std::env::VarError::NotPresent))
+            .unwrap();
+
+        let db_path = Path::new(&path);
 
         let db = open_db_read_only(db_path, Default::default()).unwrap();
         let chain = MAINNET.clone();
@@ -298,11 +298,11 @@ mod tests {
     #[test]
     // #[cfg(feature = "local")]
     fn test_v3_liquidity() {
-        let db_path = Path::new(
-            &std::env::var("DB_PATH")
-                .map_err(|_| Box::new(std::env::VarError::NotPresent))
-                .unwrap(),
-        );
+        let path = std::env::var("DB_PATH")
+            .map_err(|_| Box::new(std::env::VarError::NotPresent))
+            .unwrap();
+
+        let db_path = Path::new(&path);
 
         let db = open_db_read_only(db_path, Default::default()).unwrap();
         let chain = MAINNET.clone();
