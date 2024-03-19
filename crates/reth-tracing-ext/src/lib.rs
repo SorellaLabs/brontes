@@ -9,7 +9,7 @@ use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
-use reth_db::DatabaseEnv;
+use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::EthEvmConfig;
 use reth_primitives::{BlockId, Bytes, PruneModes, MAINNET, U64};
@@ -33,9 +33,10 @@ use reth_rpc::{
         gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
         EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
     },
-    BlockingTaskGuard, BlockingTaskPool, EthApi, TraceApi,
+    EthApi, TraceApi,
 };
 use reth_rpc_types::{trace::parity::*, TransactionInfo};
+use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
@@ -66,9 +67,15 @@ impl TracingClient {
         db: Arc<DatabaseEnv>,
         max_tasks: u64,
         task_executor: BrontesTaskExecutor,
+        static_files_path: &Path,
     ) -> Self {
         let chain = MAINNET.clone();
-        let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
+        let provider_factory = ProviderFactory::new(
+            Arc::clone(&db),
+            Arc::clone(&chain),
+            static_files_path.to_path_buf(),
+        )
+        .expect("failed to start provider factory");
 
         let tree_externals = TreeExternals::new(
             provider_factory.clone(),
@@ -82,11 +89,7 @@ impl TracingClient {
             BlockchainTree::new(tree_externals, tree_config, Some(PruneModes::none())).unwrap(),
         );
 
-        let provider = BlockchainProvider::new(
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain)),
-            blockchain_tree,
-        )
-        .unwrap();
+        let provider = BlockchainProvider::new(provider_factory.clone(), blockchain_tree).unwrap();
 
         let state_cache = EthStateCache::spawn_with(
             provider.clone(),
@@ -134,7 +137,7 @@ impl TracingClient {
             EthEvmConfig::default(),
         );
 
-        let tracing_call_guard = BlockingTaskGuard::new(max_tasks as u32);
+        let tracing_call_guard = BlockingTaskGuard::new(max_tasks as usize);
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
@@ -143,7 +146,7 @@ impl TracingClient {
 
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
         let db = Arc::new(init_db(db_path).unwrap());
-        Self::new_with_db(db, max_tasks, task_executor)
+        Self::new_with_db(db, max_tasks, task_executor, db_path)
     }
 
     /// Replays all transactions in a block
@@ -157,7 +160,6 @@ impl TracingClient {
             record_state_diff:        false,
             record_stack_snapshots:   reth_revm::tracing::StackSnapshotType::None,
             record_memory_snapshots:  false,
-            record_call_return_data:  true,
             exclude_precompile_calls: true,
         };
 
@@ -445,7 +447,7 @@ pub struct StackStep {
 
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
-    reth_db::open_db(path.as_ref(), Default::default())
+    reth_db::open_db(path.as_ref(), DatabaseArguments::new(Default::default()))
 }
 
 #[cfg(all(test, feature = "local-reth"))]

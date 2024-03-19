@@ -45,7 +45,7 @@ alloy-primitives.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
 
-alloy-providers.workspace = true
+alloy-provider.workspace = true
 alloy-transport-http.workspace = true
 alloy-transport.workspace = true
 alloy-network.workspace = true

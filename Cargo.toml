@@ -62,7 +62,7 @@ reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-e
 reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "56d688b" }
 reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "56d688b" }
 reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "56d688b" }
-codecs-derive = { git = "https://github.com/paradigmxyz/reth", package = "codecs-derive", rev = "56d688b" }
+reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", rev = "56d688b" }
 
 # ruint
 ruint = "1.9.0"
