@@ -217,10 +217,17 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
     //TODO: JOE
     fn try_fetch_mev_blocks(
         &self,
-        _start_block: u64,
+        _start_block: Option<u64>,
         _end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        Ok(vec![])
+        todo!("Joe");
+    }
+
+    fn fetch_all_mev_blocks(
+        &self,
+        _start_block: Option<u64>,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        todo!("Joe");
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -232,6 +239,10 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
         self.inner.try_fetch_address_metadata(address)
+    }
+
+    fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
+        self.inner.fetch_all_address_metadata()
     }
 
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {

@@ -29,7 +29,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
     ) -> Result<(), eyre::Error> {
         let mut mev_stats = AggregateMevStats::default();
 
-        let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
+        let mev_blocks = self.db.try_fetch_mev_blocks(Some(start_block), end_block)?;
 
         let bundles: Vec<Bundle> = mev_blocks
             .into_par_iter()
