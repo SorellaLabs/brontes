@@ -171,7 +171,7 @@ pub fn filter_and_count_bundles(
             })
             .collect();
 
-        // Update count for this MEV type
+        // Update  for this MEV type
         let count = filtered_bundles.len() as u64;
         mev_count.mev_count += count; // Increment total MEV count
 
@@ -194,10 +194,12 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
         MevType::JitSandwich => mev_count.jit_sandwich_count = Some(count),
         MevType::AtomicArb => mev_count.atomic_backrun_count = Some(count),
         MevType::Liquidation => mev_count.liquidation_count = Some(count),
+        MevType::SearcherTx => mev_count.searcher_tx_count = Some(count),
         MevType::Unknown => (),
     }
 }
 
+//TODO: Change bundle header to store: revenue, gas & profit
 /// Calculate builder profit
 ///
 /// Accounts for ultrasound relay bid adjustments & vertically integrated

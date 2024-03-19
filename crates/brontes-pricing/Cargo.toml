@@ -86,6 +86,7 @@ reth-tracing-ext = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
+reth-provider.workspace = true
 rand = "0.8.5"
 eyre.workspace = true
 

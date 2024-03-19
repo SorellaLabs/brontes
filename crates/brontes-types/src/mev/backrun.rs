@@ -5,6 +5,7 @@ use std::{
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+use ahash::HashSet;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::{self_convert_redefined, Redefined};
@@ -17,19 +18,19 @@ use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::B256Redefined,
     normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined},
-    GasDetails,
+    GasDetails, Protocol,
 };
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AtomicArb {
-    pub tx_hash:     B256,
-    pub swaps:       Vec<NormalizedSwap>,
+    pub tx_hash: B256,
+    pub swaps: Vec<NormalizedSwap>,
     #[redefined(same_fields)]
     pub gas_details: GasDetails,
     #[redefined(same_fields)]
-    pub arb_type:    AtomicArbType,
+    pub arb_type: AtomicArbType,
 }
 /// Represents the different types of atomic arb
 /// A triangle arb is a simple arb that goes from token A -> B -> C -> A
@@ -89,6 +90,10 @@ impl Mev for AtomicArb {
 
     fn mev_type(&self) -> MevType {
         MevType::AtomicArb
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        self.swaps.iter().map(|swap| swap.protocol).collect()
     }
 }
 
