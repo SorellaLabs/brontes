@@ -405,7 +405,7 @@ pub async fn init_trace_parser(
         get_reth_db_handle(),
         max_tasks as u64,
         executor.executor(),
-        &db_path,
+        db_path,
     );
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
