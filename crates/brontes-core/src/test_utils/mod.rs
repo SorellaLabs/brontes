@@ -399,7 +399,7 @@ pub async fn init_trace_parser(
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
 
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-    let db_path = Path::new(&db_path);
+    let db_path = std::path::Path::new(&db_path);
 
     let client = TracingClient::new_with_db(
         get_reth_db_handle(),
