@@ -3,6 +3,7 @@ use std::env;
 use brontes_database::{parquet::ParquetExporter, Tables};
 use clap::Parser;
 use futures::stream::{FuturesUnordered, StreamExt};
+use tracing::error;
 
 use crate::{
     cli::{load_libmdbx, static_object},
@@ -40,7 +41,10 @@ impl Export {
         }
 
         while let Some(result) = futures.next().await {
-            result?;
+            if let Err(e) = result {
+                error!("Failed to export table: {}", e);
+                return Err(e);
+            }
         }
 
         Ok(())
