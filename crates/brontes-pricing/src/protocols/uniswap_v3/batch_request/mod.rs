@@ -17,10 +17,7 @@ sol!(
     IGetUniswapV3TickDataBatchRequest,
     "./src/protocols/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequestABI.json"
 );
-sol!(
-    IGetERC20DataRequest,
-    "./src/protocols/uniswap_v3/batch_request/GetERC20DataABI.json"
-);
+sol!(IGetERC20DataRequest, "./src/protocols/uniswap_v3/batch_request/GetERC20DataABI.json");
 
 sol!(
     struct ERC20Data {
@@ -257,7 +254,12 @@ mod tests {
     #[test]
     // #[cfg(feature = "local")]
     fn test_v3_slot0() {
-        let db_path = Path::new("/home/ubuntu/.local/share/reth/mainnet/db");
+        dotenv::dotenv().unwrap();
+        let path = std::env::var("DB_PATH")
+            .map_err(|_| Box::new(std::env::VarError::NotPresent))
+            .unwrap();
+
+        let db_path = Path::new(&path);
 
         let db = open_db_read_only(db_path, Default::default()).unwrap();
         let chain = MAINNET.clone();
@@ -297,7 +299,12 @@ mod tests {
     #[test]
     // #[cfg(feature = "local")]
     fn test_v3_liquidity() {
-        let db_path = Path::new("/home/ubuntu/.local/share/reth/mainnet/db");
+        dotenv::dotenv().unwrap();
+        let path = std::env::var("DB_PATH")
+            .map_err(|_| Box::new(std::env::VarError::NotPresent))
+            .unwrap();
+
+        let db_path = Path::new(&path);
 
         let db = open_db_read_only(db_path, Default::default()).unwrap();
         let chain = MAINNET.clone();

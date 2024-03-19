@@ -158,7 +158,7 @@ impl TracingProvider for LocalProvider {
             Some(number) => BlockId::Number(BlockNumberOrTag::Number(number)),
             None => BlockId::Number(BlockNumberOrTag::Latest),
         };
-        let bytes = self.provider.get_code_at(address, block_id).await?;
+        let bytes = self.provider.get_code_at(address, Some(block_id)).await?;
 
         let bytecode = Bytecode::new_raw(bytes);
         Ok(Some(bytecode))
