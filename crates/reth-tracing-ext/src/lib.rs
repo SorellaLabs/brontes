@@ -59,8 +59,8 @@ pub type RethTxPool = Pool<
 pub struct TracingClient {
     pub api:   EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
     pub trace: TraceApi<Provider, RethApi>,
+    pub provider_factory: ProviderFactory<Arc<DatabaseEnv>>,
 }
-
 impl TracingClient {
     pub fn new_with_db(
         db: Arc<DatabaseEnv>,
@@ -71,7 +71,7 @@ impl TracingClient {
         let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain));
 
         let tree_externals = TreeExternals::new(
-            provider_factory,
+            provider_factory.clone(),
             Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
             EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
         );
@@ -138,7 +138,11 @@ impl TracingClient {
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        Self { api, trace }
+        Self {
+            api,
+            trace,
+            provider_factory,
+        }
     }
 
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
