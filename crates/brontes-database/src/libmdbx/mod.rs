@@ -14,6 +14,7 @@ pub use libmdbx_read_write::{determine_eth_prices, LibmdbxInit, LibmdbxReadWrite
 use reth_db::{
     is_database_empty,
     mdbx::DatabaseArguments,
+    models::client_version::ClientVersion,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError,
 };
@@ -57,7 +58,7 @@ impl Libmdbx {
         let db = DatabaseEnv::open(
             rpath,
             DatabaseEnvKind::RW,
-            DatabaseArguments::default().log_level(log_level),
+            DatabaseArguments::new(ClientVersion::default()).with_log_level(log_level),
         )?;
 
         let this = Self(db);
