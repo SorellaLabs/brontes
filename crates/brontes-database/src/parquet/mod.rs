@@ -151,23 +151,18 @@ async fn write_to_parquet_async(record_batch: RecordBatch, file_path: PathBuf) -
     Ok(())
 }
 
-fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf, Error> {
+fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     let now = Local::now();
 
-    // M:D format for dir
-    let date_str = now.format("%m/%d").to_string();
-    // Hour:Minute:Second format for filename for example "14:30:01"
+    let date_str = now.format("%m-%d").to_string(); // Changed here
     let time_str = now.format("%H:%M:%S").to_string();
 
+    // Creates a flat directory structure
+    // "data_exports/address_metadata/03-19"
     let dir_path = PathBuf::from(base_dir.as_ref()).join(&date_str);
-
     fs::create_dir_all(&dir_path)?;
 
-    let file_path = dir_path.join(format!(
-        "{}_{}.parquet",
-        date_str.replace('/', "-"),
-        time_str.replace(':', "-")
-    ));
+    let file_path = dir_path.join(format!("{}_{}.parquet", date_str, time_str.replace(':', "-")));
 
     Ok(file_path)
 }
