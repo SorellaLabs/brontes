@@ -195,7 +195,7 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
 mod tests {
     use std::path::Path;
 
-    use reth_db::open_db_read_only;
+    use reth_db::{mdbx::DatabaseArguments, open_db_read_only};
     use reth_primitives::MAINNET;
     use reth_provider::providers::ProviderFactory;
     use test_bytecodes::{V2_DAI_MKR, V3_USDC_ETH, V3_WBTC_ETH};
@@ -260,10 +260,14 @@ mod tests {
             .unwrap();
 
         let db_path = Path::new(&path);
+        let db = open_db_read_only(path.as_ref(), DatabaseArguments::new(Default::default()))
+            .unwrap()
+            .into();
 
-        let db = open_db_read_only(db_path, Default::default()).unwrap();
         let chain = MAINNET.clone();
-        let provider_factory = ProviderFactory::new(Arc::new(db), Arc::clone(&chain));
+        let provider_factory =
+            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), db_path.to_path_buf())
+                .expect("failed to start provider factory");
 
         let block_number: u64 = 19450752;
         let provider = provider_factory
@@ -278,21 +282,15 @@ mod tests {
         println!("slot0_slot: {}", slot0_slot);
         let storage_value = provider.storage(pool_address, slot0_slot).unwrap();
 
-        match storage_value {
-            Some(value) => {
-                let slot0 = hex::encode::<[u8; 32]>(value.to_be_bytes());
-                let sqrt_price = U256::from_str_radix(&slot0[slot0.len() - 40..], 16).unwrap();
-                let tick = i32::from_str_radix(&slot0[slot0.len() - 46..][..6], 16).unwrap();
+        if let Some(value) = storage_value {
+            let slot0 = hex::encode::<[u8; 32]>(value.to_be_bytes());
+            let sqrt_price = U256::from_str_radix(&slot0[slot0.len() - 40..], 16).unwrap();
+            let tick = i32::from_str_radix(&slot0[slot0.len() - 46..][..6], 16).unwrap();
 
-                // Ref: https://evm.storage/eth/19450752/0xcbcdf9626bc03e24f779434178a73a0b4bad62ed/slot0#map
-                assert_eq!(
-                    sqrt_price,
-                    U256::from_str("34181474658983484482097063224900296").unwrap()
-                );
+            // Ref: https://evm.storage/eth/19450752/0xcbcdf9626bc03e24f779434178a73a0b4bad62ed/slot0#map
+            assert_eq!(sqrt_price, U256::from_str("34181474658983484482097063224900296").unwrap());
 
-                assert_eq!(tick, i32::from_str("259510").unwrap());
-            }
-            None => return,
+            assert_eq!(tick, i32::from_str("259510").unwrap());
         };
     }
 
@@ -306,9 +304,13 @@ mod tests {
 
         let db_path = Path::new(&path);
 
-        let db = open_db_read_only(db_path, Default::default()).unwrap();
+        let db = open_db_read_only(path.as_ref(), DatabaseArguments::new(Default::default()))
+            .unwrap()
+            .into();
         let chain = MAINNET.clone();
-        let provider_factory = ProviderFactory::new(Arc::new(db), Arc::clone(&chain));
+        let provider_factory =
+            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), db_path.to_path_buf())
+                .expect("failed to start provider factory");
 
         let block_number: u64 = 19450752;
         let provider = provider_factory
@@ -321,16 +323,12 @@ mod tests {
 
         let storage_value = provider.storage(pool_address, liquidity_slot).unwrap();
 
-        match storage_value {
-            Some(value) => {
-                let liquidity = hex::encode::<[u8; 32]>(value.to_be_bytes());
-                let liquidity =
-                    u128::from_str_radix(&liquidity[liquidity.len() - 16..], 16).unwrap();
+        if let Some(value) = storage_value {
+            let liquidity = hex::encode::<[u8; 32]>(value.to_be_bytes());
+            let liquidity = u128::from_str_radix(&liquidity[liquidity.len() - 16..], 16).unwrap();
 
-                // Ref: https://evm.storage/eth/19450752/0xcbcdf9626bc03e24f779434178a73a0b4bad62ed/liquidity#map
-                assert_eq!(liquidity, u128::from_str("1266853986742771321").unwrap());
-            }
-            None => return,
+            // Ref: https://evm.storage/eth/19450752/0xcbcdf9626bc03e24f779434178a73a0b4bad62ed/liquidity#map
+            assert_eq!(liquidity, u128::from_str("1266853986742771321").unwrap());
         };
     }
 }
