@@ -95,11 +95,16 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.subgraph_verifier.pool_dep_failure(pair);
     }
 
+    pub fn has_extension(&self, pair: &Pair) -> Option<Pair> {
+        self.sub_graph_registry.has_extension(pair)
+    }
+
     /// creates a subgraph returning the edges and the state to load.
     /// this is done so that this isn't mut and be ran in parallel
     pub fn create_subgraph(
         &self,
         block: u64,
+        first_hop: Pair,
         pair: Pair,
         ignore: FastHashSet<Pair>,
         connectivity_wight: usize,
@@ -112,7 +117,15 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         }
 
         self.all_pair_graph
-            .get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections, timeout)
+            .get_paths_ignoring(
+                pair,
+                first_hop,
+                &ignore,
+                block,
+                connectivity_wight,
+                connections,
+                timeout,
+            )
             .into_iter()
             .flatten()
             .flatten()

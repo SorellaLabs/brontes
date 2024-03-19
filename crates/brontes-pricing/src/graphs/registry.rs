@@ -40,10 +40,11 @@ impl SubGraphRegistry {
 
     // check's to see if a subgraph that shares an edge exists.
     // if one exists, returns the pair.
-    pub fn has_extension(&self, pair: &Pair) -> Option<Address> {
+    pub fn has_extension(&self, pair: &Pair) -> Option<Pair> {
         self.sub_graphs
             .keys()
-            .find_map(|cur_graphs| (cur_graphs.0 == pair.1).then_some(cur_graphs.0))
+            .find(|cur_graphs| cur_graphs.0 == pair.1)
+            .copied()
     }
 
     pub fn add_verified_subgraph(

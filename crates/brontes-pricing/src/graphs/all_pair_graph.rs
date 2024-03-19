@@ -198,6 +198,7 @@ impl AllPairGraph {
     pub fn get_paths_ignoring(
         &self,
         pair: Pair,
+        first_hop: Pair,
         ignore: &FastHashSet<Pair>,
         block: u64,
         connectivity_wight: usize,

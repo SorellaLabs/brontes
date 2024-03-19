@@ -591,6 +591,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn add_subgraph(
         &mut self,
         pair: Pair,
+        extends_to: Option<Pair>,
         block: u64,
         edges: Vec<SubGraphEdge>,
         frayed_ext: bool,
@@ -603,7 +604,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         } else {
             (
                 self.graph_manager
-                    .add_subgraph_for_verification(pair, block, edges),
+                    .add_subgraph_for_verification(pair, extends_to, block, edges),
                 None,
                 false,
             )
@@ -899,7 +900,8 @@ const fn make_fake_swap(pair: Pair) -> Actions {
     })
 }
 
-type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>);
+type GraphSeachParRes =
+    (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64, Option<Pair>)>>);
 
 fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -910,12 +912,14 @@ fn graph_search_par<DB: DBWriter + LibmdbxReader>(
         .into_par_iter()
         .filter_map(|msg| {
             let pair = msg.get_pair(quote)?;
+
             let pair0 = Pair(pair.0, quote);
             let pair1 = Pair(pair.1, quote);
 
             let (state, path) = on_new_pool_pair(
                 graph,
                 msg,
+                pair,
                 (!graph.has_subgraph(pair0)).then_some(pair0),
                 (!graph.has_subgraph(pair1)).then_some(pair1),
             );
@@ -973,11 +977,12 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .collect::<Vec<_>>()
 }
 
-type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>);
+type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64, Option<Pair>)>);
 
 fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     msg: PoolUpdate,
+    main_pair: Pair,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
 ) -> NewPoolPair {
@@ -998,11 +1003,14 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     // we load it
     trigger_update.logs = vec![];
 
+    // we want to ensure that our price includes the pool that is being swapped
+    // through.
+
     // add first pair
     if let Some(pair0) = pair0 {
         trigger_update.action = make_fake_swap(pair0);
         if let Some((buf, path)) =
-            queue_loading_returns(graph, block, pair0, trigger_update.clone())
+            queue_loading_returns(graph, block, main_pair, pair0, trigger_update.clone())
         {
             buf_pending.push(buf);
             path_pending.push(path);
@@ -1013,7 +1021,7 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     if let Some(pair1) = pair1 {
         trigger_update.action = make_fake_swap(pair1);
         if let Some((buf, path)) =
-            queue_loading_returns(graph, block, pair1, trigger_update.clone())
+            queue_loading_returns(graph, block, main_pair, pair1, trigger_update.clone())
         {
             buf_pending.push(buf);
             path_pending.push(path);
@@ -1023,11 +1031,12 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     (buf_pending, path_pending)
 }
 
-type LoadingReturns = Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64))>;
+type LoadingReturns = Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64, Option<Pair>))>;
 
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
+    must_include: Pair,
     pair: Pair,
     trigger_update: PoolUpdate,
 ) -> LoadingReturns {
@@ -1035,16 +1044,24 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         return None
     }
 
+    // if we know this is a ext, we can simply the search
+    let (pair, extend_to) = if let Some(ext) = graph.has_extension(&must_include) {
+        (must_include, Some(ext))
+    } else {
+        (pair, None)
+    };
+
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
         let subgraph = graph.create_subgraph(
             block,
+            must_include,
             pair,
             FastHashSet::default(),
             100,
             Some(5),
             Duration::from_millis(69),
         );
-        (subgraph, pair, trigger_update.block)
+        (subgraph, pair, trigger_update.block, extend_to)
     }))
 }
 
