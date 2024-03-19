@@ -60,6 +60,15 @@ pub fn address_metadata_to_record_batch(
         get_contract_info_array(address_metadata.iter().map(|am| &am.1).collect_vec());
     let socials_array = get_socials_array(address_metadata.iter().map(|am| &am.1).collect_vec());
 
+    println!("Address Array: {:?}", address_array);
+    println!("Entity Name Array: {:?}", entity_name_array);
+    println!("Nametag Array: {:?}", nametag_array);
+    println!("Labels Array: {:?}", labels_array);
+    println!("Address Type Array: {:?}", address_type_array);
+    println!("ENS Array: {:?}", ens_array);
+    println!("Contract Info Array: {:?}", contract_info_array);
+    println!("Socials Array: {:?}", socials_array);
+
     let schema = Schema::new(vec![
         Field::new("address", DataType::Utf8, false),
         Field::new("entity_name", DataType::Utf8, true),
