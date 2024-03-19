@@ -6,8 +6,7 @@ use brontes::{
 };
 use clap::Parser;
 use eyre::eyre;
-use tracing::{error, info, Level};
-use tracing_subscriber::filter::Directive;
+use tracing::{error, info};
 
 fn main() -> eyre::Result<()> {
     dotenv::dotenv().ok();
@@ -42,10 +41,9 @@ fn run() -> eyre::Result<()> {
 }
 
 fn init_tracing() {
-    let verbosity_level = Level::INFO;
-    let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+    let default_level = "info";
 
-    let layers = vec![brontes_tracing::stdout(directive)];
+    let layers = vec![brontes_tracing::stdout(default_level)];
 
     brontes_tracing::init(layers);
 }

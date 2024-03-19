@@ -39,7 +39,7 @@ pub struct RunArgs {
     pub inspectors:      Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
-    pub cex_exchanges:   Option<Vec<String>>,
+    pub cex_exchanges:   Vec<String>,
     /// If the dex pricing calculation should be run, even if we have the stored
     /// dex prices.
     #[arg(long, short, default_value = "false")]

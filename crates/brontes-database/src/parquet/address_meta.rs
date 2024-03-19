@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_primitives::Address;
 use arrow::{
     array::{
         Array, ArrayRef, BooleanBuilder, ListArray, ListBuilder, StringArray, StringBuilder,
@@ -10,42 +11,61 @@ use arrow::{
     record_batch::RecordBatch,
 };
 use brontes_types::db::address_metadata::AddressMetadata;
+use itertools::Itertools;
+
+use super::utils::build_string_array;
 
 pub fn address_metadata_to_record_batch(
-    address_metadata: &[AddressMetadata],
+    address_metadata: Vec<(Address, AddressMetadata)>,
 ) -> Result<RecordBatch, ArrowError> {
+    let address_array = build_string_array(
+        address_metadata
+            .iter()
+            .map(|am| am.0.to_string())
+            .collect_vec(),
+    );
+
     let entity_name_array = get_string_array(
         address_metadata
             .iter()
-            .map(|am| am.entity_name.clone())
-            .collect(),
+            .map(|am| am.1.entity_name.as_deref())
+            .collect_vec(),
     );
     let nametag_array = get_string_array(
         address_metadata
             .iter()
-            .map(|am| am.nametag.clone())
-            .collect(),
+            .map(|am| am.1.nametag.as_deref())
+            .collect_vec(),
     );
+
     let labels_array =
-        get_list_string_array(address_metadata.iter().map(|am| Some(&am.labels)).collect());
+        get_list_string_array(address_metadata.iter().map(|am| &am.1.labels).collect_vec());
+
     let address_type_array = get_string_array(
         address_metadata
             .iter()
-            .map(|am| am.address_type.clone())
-            .collect(),
+            .map(|am| am.1.address_type.as_deref())
+            .collect_vec(),
     );
-    let ens_array = get_string_array(address_metadata.iter().map(|am| am.ens.clone()).collect());
+    let ens_array = get_string_array(
+        address_metadata
+            .iter()
+            .map(|am| am.1.ens.as_deref())
+            .collect_vec(),
+    );
 
-    let contract_info_array = get_contract_info_array(address_metadata);
-    let socials_array = get_socials_array(address_metadata);
+    let contract_info_array =
+        get_contract_info_array(address_metadata.iter().map(|am| &am.1).collect_vec());
+    let socials_array = get_socials_array(address_metadata.iter().map(|am| &am.1).collect_vec());
 
     let schema = Schema::new(vec![
+        Field::new("address", DataType::Utf8, false),
         Field::new("entity_name", DataType::Utf8, true),
         Field::new("nametag", DataType::Utf8, true),
         Field::new(
             "labels",
-            DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
-            false,
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
+            true,
         ),
         Field::new("address_type", DataType::Utf8, true),
         Field::new("ens", DataType::Utf8, true),
@@ -56,6 +76,7 @@ pub fn address_metadata_to_record_batch(
     RecordBatch::try_new(
         Arc::new(schema),
         vec![
+            Arc::new(address_array),
             Arc::new(entity_name_array),
             Arc::new(nametag_array),
             Arc::new(labels_array),
@@ -67,7 +88,7 @@ pub fn address_metadata_to_record_batch(
     )
 }
 
-fn get_string_array(values: Vec<Option<String>>) -> StringArray {
+fn get_string_array(values: Vec<Option<&str>>) -> StringArray {
     let mut builder = StringBuilder::new();
     for value in values {
         builder.append_option(value);
@@ -75,27 +96,26 @@ fn get_string_array(values: Vec<Option<String>>) -> StringArray {
     builder.finish()
 }
 
-fn get_list_string_array(values: Vec<Option<&Vec<String>>>) -> ListArray {
+fn get_list_string_array(values: Vec<&Vec<String>>) -> ListArray {
     let mut builder = ListBuilder::new(StringBuilder::new());
 
-    for value in values {
-        match value {
-            Some(labels) => {
-                for label in labels {
-                    builder.values().append_value(label);
-                }
-                builder.append(true);
+    for labels in values {
+        let mut string_builder = StringBuilder::new();
+        if labels.is_empty() {
+            builder.append_null();
+            continue;
+        } else {
+            for label in labels {
+                string_builder.append_value(label);
             }
-            None => {
-                builder.append(false);
-            }
+            builder.append_value(&string_builder.finish());
         }
     }
 
     builder.finish()
 }
 
-fn get_contract_info_array(address_metadata: &[AddressMetadata]) -> StructArray {
+fn get_contract_info_array(address_metadata: Vec<&AddressMetadata>) -> StructArray {
     let mut verified_contract_builder = BooleanBuilder::new();
     let mut contract_creator_builder = StringBuilder::new();
     let mut reputation_builder = UInt8Builder::new();
@@ -133,10 +153,10 @@ fn get_contract_info_array(address_metadata: &[AddressMetadata]) -> StructArray 
         Arc::new(reputation_array) as ArrayRef,
     ];
 
-    StructArray::try_new(fields.into(), arrays, None).unwrap()
+    StructArray::try_new(fields.into(), arrays, None).expect("Failed to init struct arrays")
 }
 
-fn get_socials_array(address_metadata: &[AddressMetadata]) -> StructArray {
+fn get_socials_array(address_metadata: Vec<&AddressMetadata>) -> StructArray {
     let mut twitter_builder = StringBuilder::new();
     let mut twitter_followers_builder = UInt64Builder::new();
     let mut website_url_builder = StringBuilder::new();
@@ -173,5 +193,5 @@ fn get_socials_array(address_metadata: &[AddressMetadata]) -> StructArray {
         Arc::new(linkedin_array) as ArrayRef,
     ];
 
-    StructArray::try_new(fields.into(), arrays, None).unwrap()
+    StructArray::try_new(fields.into(), arrays, None).expect("Failed to init struct arrays")
 }
