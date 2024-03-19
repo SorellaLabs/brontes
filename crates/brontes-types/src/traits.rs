@@ -1,5 +1,7 @@
 use alloy_primitives::TxHash;
-use reth_primitives::{Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, B256};
+use reth_primitives::{
+    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, B256,
+};
 use reth_rpc_types::{state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest};
 
 use crate::structured_trace::TxTrace;
