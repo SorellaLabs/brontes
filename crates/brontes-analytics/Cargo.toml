@@ -10,6 +10,9 @@ brontes-types.workspace = true
 brontes-database.workspace = true
 reth-tracing-ext.workspace = true
 
+polars = { version = "0.38.2", features = ["lazy"]}
+arrow = "50.0.0"
+parquet = "50.0.0"
 
 # alloy 
 alloy-primitives.workspace = true
@@ -19,6 +22,8 @@ eyre.workspace = true
 
 # tracing
 tracing.workspace = true
+
+rayon.workspace = true
 
 [features]
 local-clickhouse = ["brontes-database/local-clickhouse"]
