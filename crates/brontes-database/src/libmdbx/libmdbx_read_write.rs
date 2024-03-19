@@ -591,6 +591,20 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    async fn write_address_meta(
+        &self,
+        address: Address,
+        metadata: AddressMetadata,
+    ) -> eyre::Result<()> {
+        let data = AddressMetaData::new(address, metadata);
+
+        self.0
+            .write_table::<AddressMeta, AddressMetaData>(&[data])
+            .expect("libmdx metadata write failure");
+
+        Ok(())
+    }
+
     async fn save_mev_blocks(
         &self,
         block_number: u64,

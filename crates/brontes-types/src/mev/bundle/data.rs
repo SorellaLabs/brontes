@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use ahash::HashSet;
 use clickhouse::InsertRow;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -7,17 +8,17 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize, Serializer};
 use strum::{Display, EnumIter};
 
-use crate::mev::*;
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
+use crate::{mev::*, Protocol};
 
 pub struct BundleDataWithRevenue {
     pub revenue: f64,
-    pub data:    BundleData,
+    pub data: BundleData,
 }
 
 #[derive(Debug, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]
@@ -96,6 +97,18 @@ impl Mev for BundleData {
             BundleData::CexDex(m) => m.mev_transaction_hashes(),
             BundleData::Liquidation(m) => m.mev_transaction_hashes(),
             BundleData::Unknown(s) => s.mev_transaction_hashes(),
+        }
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        match self {
+            BundleData::Sandwich(m) => m.protocols(),
+            BundleData::AtomicArb(m) => m.protocols(),
+            BundleData::JitSandwich(m) => m.protocols(),
+            BundleData::Jit(m) => m.protocols(),
+            BundleData::CexDex(m) => m.protocols(),
+            BundleData::Liquidation(m) => m.protocols(),
+            BundleData::Unknown(s) => s.protocols(),
         }
     }
 }
