@@ -28,7 +28,6 @@ pub fn init_threadpools(max_tasks: usize) {
 /// - tree
 /// - pricing
 /// - inspect
-/// - db
 #[macro_export]
 macro_rules! execute_on {
     (target=$t:tt, $block:block) => {

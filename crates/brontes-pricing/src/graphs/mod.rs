@@ -16,7 +16,7 @@ use brontes_types::{
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::One, Rational};
 pub use subgraph_verifier::VerificationResults;
 
 use self::{
@@ -67,7 +67,7 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: FastHashMap<(Address, Protocol), Pair>,
-        sub_graph_registry: FastHashMap<Pair, Vec<SubGraphEdge>>,
+        sub_graph_registry: FastHashMap<Pair, (Option<Pair>, Vec<SubGraphEdge>)>,
         db: &'static DB,
     ) -> Self {
         let graph = AllPairGraph::init_from_hash_map(all_pool_data);
@@ -122,11 +122,17 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn add_subgraph_for_verification(
         &mut self,
         pair: Pair,
+        extends_to: Option<Pair>,
         block: u64,
         edges: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
-        self.subgraph_verifier
-            .create_new_subgraph(pair, block, edges, &self.graph_state)
+        self.subgraph_verifier.create_new_subgraph(
+            pair,
+            extends_to,
+            block,
+            edges,
+            &self.graph_state,
+        )
     }
 
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
@@ -200,6 +206,25 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         pairs: Vec<(u64, Option<u64>, Pair)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
+        let pairs = pairs
+            .into_iter()
+            .map(|(a, b, pair)| {
+                self.subgraph_verifier
+                    .get_subgraph_extends(&pair)
+                    .map(|jump_pair| {
+                        (
+                            a,
+                            b,
+                            pair,
+                            self.sub_graph_registry
+                                .get_price(jump_pair, self.graph_state.finalized_state())
+                                .unwrap_or(Rational::ONE),
+                        )
+                    })
+                    .unwrap_or_else(|| (a, b, pair, Rational::ONE))
+            })
+            .collect_vec();
+
         self.subgraph_verifier.verify_subgraph(
             pairs,
             quote,

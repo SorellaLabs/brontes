@@ -27,12 +27,23 @@ pub struct SubGraphRegistry {
 }
 
 impl SubGraphRegistry {
-    pub fn new(subgraphs: FastHashMap<Pair, Vec<SubGraphEdge>>) -> Self {
+    pub fn new(subgraphs: FastHashMap<Pair, (Option<Pair>, Vec<SubGraphEdge>)>) -> Self {
         let sub_graphs = subgraphs
             .into_iter()
-            .map(|(pair, edges)| (pair.ordered(), PairSubGraph::init(pair, edges)))
+            .map(|(pair, (extends_to, edges))| {
+                (pair.ordered(), PairSubGraph::init(pair, extends_to, edges))
+            })
             .collect();
+
         Self { sub_graphs }
+    }
+
+    // check's to see if a subgraph that shares an edge exists.
+    // if one exists, returns the pair.
+    pub fn has_extension(&self, pair: &Pair) -> Option<Address> {
+        self.sub_graphs
+            .keys()
+            .find_map(|cur_graphs| (cur_graphs.0 == pair.1).then_some(cur_graphs.0))
     }
 
     pub fn add_verified_subgraph(

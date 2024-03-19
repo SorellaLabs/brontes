@@ -51,6 +51,12 @@ impl SubgraphVerifier {
         }
     }
 
+    pub fn get_subgraph_extends(&self, pair: &Pair) -> Option<Pair> {
+        self.pending_subgraphs
+            .get(pair)
+            .and_then(|graph| graph.subgraph.extends_to())
+    }
+
     pub fn all_pairs(&self) -> Vec<Pair> {
         self.pending_subgraphs.keys().copied().collect_vec()
     }
@@ -68,13 +74,14 @@ impl SubgraphVerifier {
     pub fn create_new_subgraph(
         &mut self,
         pair: Pair,
+        extends_to: Option<Pair>,
         block: u64,
         path: Vec<SubGraphEdge>,
         state_tracker: &StateTracker,
     ) -> Vec<PoolPairInfoDirection> {
         let query_state = state_tracker.missing_state(block, &path);
 
-        let subgraph = PairSubGraph::init(pair, path);
+        let subgraph = PairSubGraph::init(pair, extends_to, path);
         if self.pending_subgraphs.contains_key(&pair) {
             return vec![]
         };
@@ -153,7 +160,7 @@ impl SubgraphVerifier {
 
     pub fn verify_subgraph(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair)>,
+        pair: Vec<(u64, Option<u64>, Pair, Rational)>,
         quote: Address,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
@@ -201,13 +208,13 @@ impl SubgraphVerifier {
 
     fn get_subgraphs(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair)>,
-    ) -> Vec<(Pair, u64, bool, Subgraph)> {
+        pair: Vec<(u64, Option<u64>, Pair, Rational)>,
+    ) -> Vec<(Pair, u64, bool, Subgraph, Rational)> {
         pair.into_iter()
-            .map(|(block, frayed, pair)| {
-                (pair, block, frayed, self.pending_subgraphs.remove(&pair))
+            .map(|(block, frayed, pair, price)| {
+                (pair, block, frayed, self.pending_subgraphs.remove(&pair), price)
             })
-            .filter_map(|(pair, block, frayed, subgraph)| {
+            .filter_map(|(pair, block, frayed, subgraph, price)| {
                 let mut subgraph = subgraph?;
 
                 if let Some(frayed) = frayed {
@@ -236,21 +243,21 @@ impl SubgraphVerifier {
                 }
                 subgraph.iters += 1;
 
-                Some((pair, block, subgraph.in_rundown, subgraph))
+                Some((pair, block, subgraph.in_rundown, subgraph, price))
             })
             .collect_vec()
     }
 
     fn verify_par(
         &self,
-        pairs: Vec<(Pair, u64, bool, Subgraph)>,
+        pairs: Vec<(Pair, u64, bool, Subgraph, Rational)>,
         quote: Address,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<(Pair, u64, VerificationOutcome, Subgraph)> {
         pairs
             .into_par_iter()
-            .map(|(pair, block, rundown, mut subgraph)| {
+            .map(|(pair, block, rundown, mut subgraph, price)| {
                 let edge_state = state_tracker.state_for_verification(block);
                 let result = if rundown {
                     VerificationOutcome {
@@ -261,7 +268,7 @@ impl SubgraphVerifier {
                 } else {
                     subgraph
                         .subgraph
-                        .verify_subgraph(quote, edge_state, all_graph)
+                        .verify_subgraph(quote, price, edge_state, all_graph)
                 };
 
                 (pair, block, result, subgraph)
