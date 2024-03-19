@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
 use tracing::Subscriber;
-use tracing_subscriber::{prelude::*, registry::LookupSpan, *};
+use tracing_subscriber::{
+    prelude::__tracing_subscriber_SubscriberExt, registry::LookupSpan, Registry,
+};
 
 /// A boxed tracing Layer.
 pub type BoxedLayer<S> = Box<dyn Layer<S> + Send + Sync>;

@@ -73,11 +73,11 @@ pub fn address_metadata_to_record_batch(
         Field::new("address", DataType::Utf8, false),
         Field::new("entity_name", DataType::Utf8, true),
         Field::new("nametag", DataType::Utf8, true),
-        Field::new(
+        /*Field::new(
             "labels",
             DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
             false,
-        ),
+        ),*/
         Field::new("address_type", DataType::Utf8, true),
         Field::new("ens", DataType::Utf8, true),
         Field::new("contract_info", contract_info_array.data_type().clone(), true),
@@ -90,7 +90,7 @@ pub fn address_metadata_to_record_batch(
             Arc::new(address_array),
             Arc::new(entity_name_array),
             Arc::new(nametag_array),
-            Arc::new(labels_array),
+            //Arc::new(labels_array),
             Arc::new(address_type_array),
             Arc::new(ens_array),
             Arc::new(contract_info_array),
