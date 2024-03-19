@@ -87,13 +87,9 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     quote_token: Address,
     db: &'static DB,
     inspectors: Option<Vec<Inspectors>>,
-    cex_exchanges: Option<Vec<String>>,
+    cex_exchanges: Vec<String>,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
-    let cex_exchanges: Vec<CexExchange> = cex_exchanges
-        .unwrap_or_default()
-        .into_iter()
-        .map(|s| s.into())
-        .collect();
+    let cex_exchanges: Vec<CexExchange> = cex_exchanges.into_iter().map(|s| s.into()).collect();
 
     let mut res = Vec::new();
     for inspector in inspectors

@@ -23,7 +23,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
             (SearcherStats, FastHashSet<Address>),
         > = FastHashMap::default();
         let mut builder_map: FastHashMap<Address, BuilderStats> = FastHashMap::default();
-        let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
+        let mev_blocks = self.db.try_fetch_mev_blocks(Some(start_block), end_block)?;
 
         for mev_block in mev_blocks {
             for bundle in mev_block.mev {

@@ -1,7 +1,9 @@
 use std::env;
 
-use brontes_database::parquet::ParquetExporter;
+use brontes_database::{parquet::ParquetExporter, Tables};
 use clap::Parser;
+use futures::stream::{FuturesUnordered, StreamExt};
+use tracing::error;
 
 use crate::{
     cli::{load_libmdbx, static_object},
@@ -10,15 +12,19 @@ use crate::{
 
 #[derive(Debug, Parser)]
 pub struct Export {
-    /// that table to query
-    //#[arg(long, short)]
-    //pub table: Tables,
-    /// Start Block
+    /// Optional tables to exports, if omitted will export all supported tables
+    #[arg(long, short,default_values = &["MevBlocks", "AddressMeta"], value_delimiter = ',')]
+    pub tables:      Vec<Tables>,
+    /// Optional Start Block, if omitted it will export the entire range to
+    /// parquet
     #[arg(long, short)]
-    pub start_block: u64,
-    /// Optional End Block, if omitted it will export until last entry
+    pub start_block: Option<u64>,
+    /// Optional End Block
     #[arg(long, short)]
-    pub end_block:   u64,
+    pub end_block:   Option<u64>,
+    /// Optional path, will default to "data_exports/"
+    #[arg(long, short)]
+    pub path:        Option<String>,
 }
 
 impl Export {
@@ -26,12 +32,20 @@ impl Export {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx = static_object(load_libmdbx(brontes_db_endpoint)?);
 
-        let exporter = ParquetExporter::new(self.start_block, self.end_block, libmdbx);
+        let exporter = ParquetExporter::new(self.start_block, self.end_block, self.path, libmdbx);
 
-        exporter
-            .export_mev_blocks_and_bundles()
-            .await
-            .expect("Failed to export mev data to parquet");
+        let mut futures = FuturesUnordered::new();
+
+        for t in self.tables.iter() {
+            futures.push(t.export_to_parquet(&exporter));
+        }
+
+        while let Some(result) = futures.next().await {
+            if let Err(e) = result {
+                error!("Failed to export table: {}", e);
+                return Err(e);
+            }
+        }
 
         Ok(())
     }
