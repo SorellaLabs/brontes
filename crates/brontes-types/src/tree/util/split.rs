@@ -104,7 +104,13 @@ action_split!((A, RETA, FA));
 action_split!((A, RETA, FA), (B, RETB, FB));
 action_split!((A, RETA, FA), (B, RETB, FB), (C, RETC, FC));
 action_split!((A, RETA, FA), (B, RETB, FB), (C, RETC, FC), (D, RETD, FD));
-action_split!((A, RETA, FA), (B, RETB, FB), (C, RETC, FC), (D, RETD, FD), (E, RETE, FE));
+action_split!(
+    (A, RETA, FA),
+    (B, RETB, FB),
+    (C, RETC, FC),
+    (D, RETD, FD),
+    (E, RETE, FE)
+);
 action_split!(
     (A, RETA, FA),
     (B, RETB, FB),

@@ -79,8 +79,8 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             mev.to_string()
         );
 
-        if mev.header.mev_type == MevType::Unknown {
-            continue
+        if mev.header.mev_type == MevType::Unknown || mev.header.mev_type == MevType::SearcherTx {
+            continue;
         }
 
         let (eoa_info, contract_info) = database
