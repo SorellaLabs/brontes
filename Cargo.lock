@@ -1815,6 +1815,7 @@ dependencies = [
  "brontes-pricing",
  "brontes-types",
  "bytes",
+ "chrono",
  "clickhouse",
  "codecs-derive",
  "criterion",
