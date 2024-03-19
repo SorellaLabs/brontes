@@ -12,7 +12,7 @@ use parquet::{
     arrow::async_writer::AsyncArrowWriter, basic::Compression, file::properties::WriterProperties,
 };
 use tokio::fs::File;
-use tracing::warn;
+use tracing::error;
 
 #[allow(dead_code)]
 mod address_meta;
@@ -60,8 +60,8 @@ where
         };
 
         if mev_blocks.is_empty() {
-            warn!("No MEV blocks fetched for the given range.");
-            return Ok(());
+            error!("No MEV blocks fetched for the given range.");
+            return Err(Error::msg("No MEV blocks fetched for the given range."));
         }
         let block_batch =
             mev_block_to_record_batch(mev_blocks.iter().map(|mb| &mb.block).collect::<Vec<_>>())
@@ -108,8 +108,8 @@ where
             .expect("Failed to query address metadata table");
 
         if address_metadata.is_empty() {
-            warn!("No MEV blocks fetched for the given range.");
-            return Ok(());
+            error!("No MEV blocks fetched for the given range.");
+            return Err(Error::msg("No MEV blocks fetched for the given range."));
         }
 
         let address_meta_batch = address_metadata_to_record_batch(address_metadata)
