@@ -1,10 +1,12 @@
 use clap::{Parser, Subcommand};
 
 use crate::runner::CliContext;
+mod db_clear;
 mod db_insert;
 mod db_query;
 #[cfg(feature = "local-clickhouse")]
 mod ensure_test_traces;
+mod export;
 mod init;
 #[cfg(feature = "sorella-server")]
 mod tip_tracer;
@@ -20,10 +22,13 @@ pub struct Database {
 pub enum DatabaseCommands {
     /// Allows for inserting items into libmdbx
     #[command(name = "insert")]
-    DbInserts(db_insert::AddToDb),
+    DbInserts(db_insert::Insert),
     /// Query data from any libmdbx table and pretty print it in stdout
     #[command(name = "query")]
     DbQuery(db_query::DatabaseQuery),
+    /// Clear a libmdbx table
+    #[command(name = "clear")]
+    DbClear(db_clear::Clear),
     /// Generates traces and will store them in libmdbx (also clickhouse if
     /// --feature local-clickhouse)
     #[command(name = "generate-traces")]
@@ -32,6 +37,8 @@ pub enum DatabaseCommands {
     /// libmdbx.
     #[command(name = "init")]
     Init(init::Init),
+    #[command(name = "export")]
+    Export(export::Export),
     /// Traces all blocks needed for testing and inserts them into
     /// clickhouse
     #[cfg(feature = "local-clickhouse")]
@@ -49,6 +56,8 @@ impl Database {
             DatabaseCommands::DbQuery(cmd) => cmd.execute().await,
             DatabaseCommands::TraceRange(cmd) => cmd.execute(ctx).await,
             DatabaseCommands::Init(cmd) => cmd.execute(ctx).await,
+            DatabaseCommands::DbClear(cmd) => cmd.execute().await,
+            DatabaseCommands::Export(cmd) => cmd.execute(ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(ctx).await,
             #[cfg(feature = "sorella-server")]

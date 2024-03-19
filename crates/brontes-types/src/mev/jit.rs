@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use ahash::HashSet;
 use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -13,6 +14,7 @@ use serde_with::serde_as;
 use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::*, normalized_actions::*, tree::ClickhouseVecGasDetails,
+    Protocol,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -64,6 +66,15 @@ impl Mev for JitLiquidity {
             .unwrap_or(0)
             + self.backrun_burn_gas_details.coinbase_transfer.unwrap_or(0)
     }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        // Can just do frontrun mints because the extraction is symmetric + victims
+        // swaps only interesting as they relate to Jit
+        self.frontrun_mints
+            .iter()
+            .map(|swap| swap.protocol)
+            .collect()
+    }
 }
 
 impl Serialize for JitLiquidity {
@@ -98,8 +109,11 @@ impl Serialize for JitLiquidity {
         ser_struct.serialize_field("frontrun_mint_gas_details", &(frontrun_mint_gas_details))?;
 
         // victim swaps
-        let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
+        let victim_swaps: ClickhouseDoubleVecNormalizedSwap = (
+            self.victim_swaps_tx_hashes.clone(),
+            self.victim_swaps.clone(),
+        )
+            .into();
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
         ser_struct.serialize_field("victim_swaps.trace_idx", &victim_swaps.trace_index)?;
         ser_struct.serialize_field("victim_swaps.from", &victim_swaps.from)?;
@@ -120,8 +134,10 @@ impl Serialize for JitLiquidity {
             "victim_gas_details.coinbase_transfer",
             &victim_gas_details.coinbase_transfer,
         )?;
-        ser_struct
-            .serialize_field("victim_gas_details.priority_fee", &victim_gas_details.priority_fee)?;
+        ser_struct.serialize_field(
+            "victim_gas_details.priority_fee",
+            &victim_gas_details.priority_fee,
+        )?;
         ser_struct.serialize_field("victim_gas_details.gas_used", &victim_gas_details.gas_used)?;
         ser_struct.serialize_field(
             "victim_gas_details.effective_gas_price",
@@ -129,8 +145,10 @@ impl Serialize for JitLiquidity {
         )?;
 
         // backrun burn
-        ser_struct
-            .serialize_field("backrun_burn_tx_hash", &format!("{:?}", self.backrun_burn_tx_hash))?;
+        ser_struct.serialize_field(
+            "backrun_burn_tx_hash",
+            &format!("{:?}", self.backrun_burn_tx_hash),
+        )?;
 
         let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
 
