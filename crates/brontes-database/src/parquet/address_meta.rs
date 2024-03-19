@@ -156,7 +156,7 @@ fn get_contract_info_array(address_metadata: Vec<&AddressMetadata>) -> StructArr
         Arc::new(reputation_array) as ArrayRef,
     ];
 
-    StructArray::try_new(fields.into(), arrays, None).unwrap()
+    StructArray::try_new(fields.into(), arrays, None).expect("Failed to init struct arrays")
 }
 
 fn get_socials_array(address_metadata: Vec<&AddressMetadata>) -> StructArray {
@@ -196,5 +196,5 @@ fn get_socials_array(address_metadata: Vec<&AddressMetadata>) -> StructArray {
         Arc::new(linkedin_array) as ArrayRef,
     ];
 
-    StructArray::try_new(fields.into(), arrays, None).unwrap()
+    StructArray::try_new(fields.into(), arrays, None).expect("Failed to init struct arrays")
 }
