@@ -115,8 +115,6 @@ where
         let address_meta_batch = address_metadata_to_record_batch(address_metadata)
             .expect("Failed to convert Address Metadata to record batch");
 
-        println!("Converted metadata to batch");
-
         let metadata_path = if let Some(base_path) = &self.parquet_dir_path {
             let mut path = PathBuf::from(base_path);
             path.push("address_metadata");
@@ -134,7 +132,6 @@ where
 }
 
 async fn write_to_parquet_async(record_batch: RecordBatch, file_path: PathBuf) -> Result<()> {
-    println!("Writing to Parquet file: {}", file_path.display());
     let file = File::create(file_path.clone())
         .await
         .wrap_err_with(|| format!("Failed to create file at path: {}", file_path.display()))?;
@@ -171,7 +168,6 @@ fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     fs::create_dir_all(&dir_path)?;
 
     let file_path = dir_path.join(format!("{}.parquet", time_str.replace(':', "-")));
-    println!("Writing to Parquet file: {}", file_path.display());
 
     Ok(file_path)
 }
