@@ -43,7 +43,7 @@ alloy-sol-macro.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
-alloy-providers.workspace = true
+alloy-provider.workspace = true
 alloy-transport-http.workspace = true
 alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
 
