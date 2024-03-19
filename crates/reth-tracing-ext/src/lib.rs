@@ -57,8 +57,8 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
-    pub trace: TraceApi<Provider, RethApi>,
+    pub api:              EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
+    pub trace:            TraceApi<Provider, RethApi>,
     pub provider_factory: ProviderFactory<Arc<DatabaseEnv>>,
 }
 impl TracingClient {
@@ -138,11 +138,7 @@ impl TracingClient {
 
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        Self {
-            api,
-            trace,
-            provider_factory,
-        }
+        Self { api, trace, provider_factory }
     }
 
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
