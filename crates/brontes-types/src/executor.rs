@@ -33,7 +33,7 @@ pub struct BrontesTaskManager {
     /// Handle to the tokio runtime this task manager is associated with.
     ///
     /// See [`Handle`] docs.
-    handle:            Handle,
+    handle: Handle,
     /// Sender half for sending panic signals to this type
     panicked_tasks_tx: UnboundedSender<PanickedTaskError>,
     /// Listens for panicked tasks
@@ -41,11 +41,11 @@ pub struct BrontesTaskManager {
     /// The [Signal] to fire when all tasks should be shutdown.
     ///
     /// This is fired when dropped.
-    signal:            Option<Signal>,
+    signal: Option<Signal>,
     /// Receiver of the shutdown signal.
-    on_shutdown:       Shutdown,
+    on_shutdown: Shutdown,
     /// How many [GracefulShutdown] tasks are currently active
-    graceful_tasks:    Arc<AtomicUsize>,
+    graceful_tasks: Arc<AtomicUsize>,
 }
 
 impl BrontesTaskManager {
@@ -103,10 +103,10 @@ impl BrontesTaskManager {
     /// runtime this type is connected to.
     pub fn executor(&self) -> BrontesTaskExecutor {
         BrontesTaskExecutor {
-            handle:            self.handle.clone(),
-            on_shutdown:       self.on_shutdown.clone(),
+            handle: self.handle.clone(),
+            on_shutdown: self.on_shutdown.clone(),
             panicked_tasks_tx: self.panicked_tasks_tx.clone(),
-            graceful_tasks:    Arc::clone(&self.graceful_tasks),
+            graceful_tasks: Arc::clone(&self.graceful_tasks),
         }
     }
 
@@ -131,7 +131,7 @@ impl BrontesTaskManager {
                 .unwrap_or(false)
             {
                 debug!("graceful shutdown timed out");
-                return false
+                return false;
             }
             std::hint::spin_loop();
         }
@@ -155,13 +155,13 @@ pub struct BrontesTaskExecutor {
     /// Handle to the tokio runtime this task manager is associated with.
     ///
     /// See [`Handle`] docs.
-    handle:            Handle,
+    handle: Handle,
     /// Receiver of the shutdown signal.
-    on_shutdown:       Shutdown,
+    on_shutdown: Shutdown,
     /// Sender half for sending panic signals to this type
     panicked_tasks_tx: UnboundedSender<PanickedTaskError>,
     /// How many [GracefulShutdown] tasks are currently active
-    graceful_tasks:    Arc<AtomicUsize>,
+    graceful_tasks: Arc<AtomicUsize>,
 }
 
 impl BrontesTaskExecutor {
@@ -174,9 +174,10 @@ impl BrontesTaskExecutor {
 
     /// Causes a shutdown to occur.
     pub fn trigger_shutdown(&self, task_name: &'static str) {
-        let _ = self
-            .panicked_tasks_tx
-            .send(PanickedTaskError { error: None, task_name });
+        let _ = self.panicked_tasks_tx.send(PanickedTaskError {
+            error: None,
+            task_name,
+        });
     }
 
     /// Returns the [Handle] to the tokio runtime.
@@ -268,12 +269,7 @@ impl BrontesTaskExecutor {
     }
 
     /// Spawns a critical task depending on the given [TaskKind]
-    fn spawn_critical_as<F>(
-        &self,
-        name: &'static str,
-        fut: F,
-        task_kind: TaskKind,
-    ) -> JoinHandle<()>
+    fn spawn_critical_as<F>(&self, name: &'static str, fut: F, task_kind: TaskKind) -> JoinHandle<()>
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -518,7 +514,7 @@ pub fn signal() -> (Signal, Shutdown) {
 #[derive(Debug, thiserror::Error)]
 pub struct PanickedTaskError {
     task_name: &'static str,
-    error:     Option<String>,
+    error: Option<String>,
 }
 
 impl Display for PanickedTaskError {
@@ -560,12 +556,15 @@ enum TaskKind {
 #[derive(Debug)]
 pub struct LocalGracefulShutdown {
     _shutdown: Shutdown,
-    _guard:    Option<LocalGracefulShutdownGuard>,
+    _guard: Option<LocalGracefulShutdownGuard>,
 }
 
 impl LocalGracefulShutdown {
     pub fn new(shutdown: Shutdown, guard: LocalGracefulShutdownGuard) -> Self {
-        Self { _shutdown: shutdown, _guard: Some(guard) }
+        Self {
+            _shutdown: shutdown,
+            _guard: Some(guard),
+        }
     }
 }
 

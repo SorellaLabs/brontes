@@ -23,16 +23,16 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedLiquidation {
     #[redefined(same_fields)]
-    pub protocol:              Protocol,
-    pub trace_index:           u64,
-    pub pool:                  Address,
-    pub liquidator:            Address,
-    pub debtor:                Address,
-    pub collateral_asset:      TokenInfoWithAddress,
-    pub debt_asset:            TokenInfoWithAddress,
-    pub covered_debt:          Rational,
+    pub protocol: Protocol,
+    pub trace_index: u64,
+    pub pool: Address,
+    pub liquidator: Address,
+    pub debtor: Address,
+    pub collateral_asset: TokenInfoWithAddress,
+    pub debt_asset: TokenInfoWithAddress,
+    pub covered_debt: Rational,
     pub liquidated_collateral: Rational,
-    pub msg_value:             U256,
+    pub msg_value: U256,
 }
 
 impl TokenAccounting for NormalizedLiquidation {
@@ -40,8 +40,18 @@ impl TokenAccounting for NormalizedLiquidation {
         let debt_covered = self.covered_debt.clone();
         // Liquidator sends debt_asset to the pool, effectively swapping the debt asset
         // for the liquidatee's collateral
-        apply_delta(self.pool, self.debt_asset.address, debt_covered.clone(), delta_map);
-        apply_delta(self.liquidator, self.debt_asset.address, -debt_covered, delta_map);
+        apply_delta(
+            self.pool,
+            self.debt_asset.address,
+            debt_covered.clone(),
+            delta_map,
+        );
+        apply_delta(
+            self.liquidator,
+            self.debt_asset.address,
+            -debt_covered,
+            delta_map,
+        );
 
         // Pool sends collateral to the liquidator
         apply_delta(
@@ -100,7 +110,7 @@ impl NormalizedLiquidation {
                         // tbd tho
                         if transfer.to == self.liquidator {
                             self.liquidated_collateral = transfer.amount;
-                            return Some(index)
+                            return Some(index);
                         }
                     }
 
@@ -167,13 +177,13 @@ impl NormalizedLiquidation {
 }
 
 pub struct ClickhouseVecNormalizedLiquidation {
-    pub trace_index:           Vec<u64>,
-    pub pool:                  Vec<String>,
-    pub liquidator:            Vec<String>,
-    pub debtor:                Vec<String>,
-    pub collateral_asset:      Vec<String>,
-    pub debt_asset:            Vec<String>,
-    pub covered_debt:          Vec<([u8; 32], [u8; 32])>,
+    pub trace_index: Vec<u64>,
+    pub pool: Vec<String>,
+    pub liquidator: Vec<String>,
+    pub debtor: Vec<String>,
+    pub collateral_asset: Vec<String>,
+    pub debt_asset: Vec<String>,
+    pub covered_debt: Vec<([u8; 32], [u8; 32])>,
     pub liquidated_collateral: Vec<([u8; 32], [u8; 32])>,
 }
 
@@ -181,25 +191,25 @@ impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
     fn from(value: Vec<NormalizedLiquidation>) -> Self {
         ClickhouseVecNormalizedLiquidation {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
-            pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
-            liquidator:  value
+            pool: value.iter().map(|val| format!("{:?}", val.pool)).collect(),
+            liquidator: value
                 .iter()
                 .map(|val| format!("{:?}", val.liquidator))
                 .collect(),
-            debtor:      value
+            debtor: value
                 .iter()
                 .map(|val| format!("{:?}", val.debtor))
                 .collect(),
 
-            collateral_asset:      value
+            collateral_asset: value
                 .iter()
                 .map(|val| format!("{:?}", val.collateral_asset))
                 .collect(),
-            debt_asset:            value
+            debt_asset: value
                 .iter()
                 .map(|val| format!("{:?}", val.debt_asset))
                 .collect(),
-            covered_debt:          value
+            covered_debt: value
                 .iter()
                 .map(|val| rational_to_clickhouse_tuple(&val.covered_debt))
                 .collect(),
