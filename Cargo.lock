@@ -1993,6 +1993,7 @@ dependencies = [
  "reth-codecs",
  "reth-db",
  "reth-primitives",
+ "reth-provider",
  "reth-rpc-types",
  "reth-tracing-ext",
  "rkyv",

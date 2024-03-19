@@ -3,7 +3,10 @@ use std::sync::Arc;
 use alloy_providers::provider::{Provider, TempProvider};
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxHash, B256};
+use reth_primitives::{
+    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
+    B256,
+};
 use reth_rpc_types::{
     state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
 };
@@ -126,5 +129,38 @@ impl TracingProvider for LocalProvider {
         };
 
         Ok(Some(header))
+    }
+
+    async fn get_storage(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+        storage_key: B256,
+    ) -> eyre::Result<Option<StorageValue>> {
+        let block_id = match block_number {
+            Some(number) => BlockId::Number(BlockNumberOrTag::Number(number)),
+            None => BlockId::Number(BlockNumberOrTag::Latest),
+        };
+        let storage_value = self
+            .provider
+            .get_storage_at(address, storage_key.into(), Some(block_id))
+            .await?;
+
+        Ok(Some(storage_value))
+    }
+
+    async fn get_bytecode(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+    ) -> eyre::Result<Option<Bytecode>> {
+        let block_id = match block_number {
+            Some(number) => BlockId::Number(BlockNumberOrTag::Number(number)),
+            None => BlockId::Number(BlockNumberOrTag::Latest),
+        };
+        let bytes = self.provider.get_code_at(address, block_id).await?;
+
+        let bytecode = Bytecode::new_raw(bytes);
+        Ok(Some(bytecode))
     }
 }
