@@ -167,7 +167,7 @@ fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     let dir_path = PathBuf::from(base_dir.as_ref()).join(&date_str);
     fs::create_dir_all(&dir_path)?;
 
-    let file_path = dir_path.join(format!("{}_{}.parquet", date_str, time_str.replace(':', "-")));
+    let file_path = dir_path.join(format!("{}.parquet", time_str.replace(':', "-")));
 
     Ok(file_path)
 }
