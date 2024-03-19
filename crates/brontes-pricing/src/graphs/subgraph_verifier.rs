@@ -74,6 +74,7 @@ impl SubgraphVerifier {
     pub fn create_new_subgraph(
         &mut self,
         pair: Pair,
+        goes_through: Pair,
         extends_to: Option<Pair>,
         block: u64,
         path: Vec<SubGraphEdge>,
@@ -81,7 +82,7 @@ impl SubgraphVerifier {
     ) -> Vec<PoolPairInfoDirection> {
         let query_state = state_tracker.missing_state(block, &path);
 
-        let subgraph = PairSubGraph::init(pair, extends_to, path);
+        let subgraph = PairSubGraph::init(pair, goes_through, extends_to, path);
         if self.pending_subgraphs.contains_key(&pair) {
             return vec![]
         };
@@ -188,12 +189,14 @@ impl SubgraphVerifier {
                     .collect::<FastHashMap<_, _>>();
 
                 if result.should_requery {
+                    let goes_through = subgraph.subgraph.must_go_through();
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
                     tracing::debug!(?pair, "requerying",);
 
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
+                        goes_through,
                         block,
                         prune_state: removals,
                         ignore_state: ignores,
@@ -329,6 +332,7 @@ pub struct VerificationPass {
 #[derive(Debug)]
 pub struct VerificationFailed {
     pub pair:         Pair,
+    pub goes_through: Pair,
     pub block:        u64,
     // prunes the partial edges of this state.
     pub prune_state:  FastHashMap<Pair, FastHashSet<BadEdge>>,

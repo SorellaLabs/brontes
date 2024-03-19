@@ -72,11 +72,14 @@ const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
 /// information.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
-    pair:           Pair,
-    graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
-    token_to_index: FastHashMap<Address, u16>,
+    /// the pair represented
+    pair:            Pair,
+    /// the pair that trigged the need for pricing in the first place.
+    must_go_through: Pair,
+    graph:           DiGraph<(), Vec<SubGraphEdge>, u16>,
+    token_to_index:  FastHashMap<Address, u16>,
     /// if this subgraph relies on another pair to calcuate the price.
-    extends_to:     Option<Pair>,
+    extends_to:      Option<Pair>,
 
     /// if a nodes liquidity drops more than 50% from when validation
     /// was last ran on this subgraph. a re_query is triggered.
@@ -87,7 +90,12 @@ pub struct PairSubGraph {
 }
 
 impl PairSubGraph {
-    pub fn init(pair: Pair, extends_to: Option<Pair>, edges: Vec<SubGraphEdge>) -> Self {
+    pub fn init(
+        pair: Pair,
+        must_go_through: Pair,
+        extends_to: Option<Pair>,
+        edges: Vec<SubGraphEdge>,
+    ) -> Self {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, u16>::default();
         let mut token_to_index = FastHashMap::default();
 
@@ -134,12 +142,17 @@ impl PairSubGraph {
             end_node,
             token_to_index,
             extends_to,
+            must_go_through,
             start_nodes_liq: FastHashMap::default(),
         }
     }
 
     pub fn extends_to(&self) -> Option<Pair> {
         self.extends_to
+    }
+
+    pub fn must_go_through(&self) -> Pair {
+        self.must_go_through
     }
 
     pub fn save_last_verification_liquidity<T: ProtocolState>(
@@ -491,10 +504,6 @@ impl PairSubGraph {
         let mut visited = FastHashSet::default();
         let mut visit_next = VecDeque::new();
 
-        if let Some(extends) = self.extends_to.as_ref() {
-            sel
-        }
-
         let Some(start) = self.token_to_index.get(&start) else {
             error!(?start, "no start node for bfs with price");
             return R::default();
@@ -809,7 +818,7 @@ pub mod test {
         let e3 = build_edge(t3, t3, t4, 3, 4);
 
         let pair = Pair(t0, t4);
-        PairSubGraph::init(pair, None, vec![e0, e1, e2, e3])
+        PairSubGraph::init(pair, pair, None, vec![e0, e1, e2, e3])
     }
 
     #[test]

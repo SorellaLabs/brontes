@@ -135,12 +135,14 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn add_subgraph_for_verification(
         &mut self,
         pair: Pair,
+        goes_through: Pair,
         extends_to: Option<Pair>,
         block: u64,
         edges: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
         self.subgraph_verifier.create_new_subgraph(
             pair,
+            goes_through,
             extends_to,
             block,
             edges,

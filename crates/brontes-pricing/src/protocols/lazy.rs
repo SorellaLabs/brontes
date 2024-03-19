@@ -9,7 +9,7 @@ use itertools::Itertools;
 
 use crate::{errors::AmmError, protocols::LoadState, types::PoolState, Protocol};
 
-pub(crate) type PoolFetchError = (Address, Protocol, u64, Pair, AmmError);
+pub(crate) type PoolFetchError = (Address, Protocol, u64, Pair, Pair, AmmError);
 pub(crate) type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
 
 pub enum LoadResult {
@@ -21,6 +21,7 @@ pub enum LoadResult {
     PoolInitOnBlock,
     Err {
         protocol:     Protocol,
+        goes_through: Pair,
         pool_address: Address,
         pool_pair:    Pair,
         deps:         Vec<Pair>,
@@ -216,6 +217,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         &mut self,
         parent_pair: Pair,
         pool_pair: Pair,
+        goes_through: Pair,
         id: Option<u64>,
         address: Address,
         block_number: u64,
@@ -224,7 +226,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         let provider = self.provider.clone();
         self.add_state_trackers(block_number, id, address, parent_pair);
 
-        let fut = ex_type.try_load_state(address, provider, block_number, pool_pair);
+        let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, goes_through);
         self.pool_load_futures
             .add_future(block_number, Box::pin(fut));
     }
@@ -245,7 +247,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult { block, state: Some(state), load_result: load };
                     Poll::Ready(Some(res))
                 }
-                Err((pool_address, dex, block, pool_pair, _)) => {
+                Err((pool_address, dex, block, pool_pair, goes_through, _)) => {
                     let dependent_pairs = self.remove_state_trackers(block, &pool_address);
                     dependent_pairs.iter().for_each(|pair| {
                         self.on_state_fail(block, pair);
@@ -256,6 +258,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                         block,
                         load_result: LoadResult::Err {
                             pool_pair,
+                            goes_through,
                             pool_address,
                             block,
                             protocol: dex,
