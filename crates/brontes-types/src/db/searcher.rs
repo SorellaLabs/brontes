@@ -1,15 +1,18 @@
+use std::ops::Add;
+
 use alloy_primitives::Address;
 use clickhouse::Row;
 use redefined::{self_convert_redefined, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use serde_with::serde_as;
 use strum::Display;
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
-    mev::{BundleHeader, MevType},
+    mev::{BundleHeader, MevCount, MevType},
     serde_utils::{addresss, option_addresss},
 };
 
@@ -18,10 +21,10 @@ use crate::{
 pub struct SearcherInfo {
     #[redefined(same_fields)]
     #[serde(default)]
-    pub fund:    Fund,
+    pub fund: Fund,
     #[redefined(same_fields)]
     #[serde(default)]
-    pub mev:     Vec<MevType>,
+    pub mev: Vec<MevType>,
     /// If the searcher is vertically integrated, this will contain the
     /// corresponding builder's information.
     #[serde(with = "option_addresss")]
@@ -75,18 +78,22 @@ implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherStats {
-    pub pnl:          f64,
-    pub total_bribed: f64,
-    pub bundle_count: u64,
+    #[redefined(same_fields)]
+    pub pnl: ProfitByType,
+    #[redefined(same_fields)]
+    pub total_bribed: ProfitByType,
+    #[redefined(same_fields)]
+    pub bundle_count: MevCount,
     /// The block number of the most recent bundle involving this searcher.
-    pub last_active:  u64,
+    pub last_active: u64,
 }
 
+//TODO: Cleanup
 impl SearcherStats {
     pub fn update_with_bundle(&mut self, header: &BundleHeader) {
-        self.pnl += header.profit_usd;
-        self.total_bribed += header.bribe_usd;
-        self.bundle_count += 1;
+        self.pnl.account_by_type(header);
+        self.total_bribed.account_by_type(header);
+        self.bundle_count.increment_count(&header.mev_type);
         self.last_active = header.block_number;
     }
 }
@@ -96,11 +103,75 @@ implement_table_value_codecs_with_zc!(SearcherStatsRedefined);
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize)]
 pub struct SearcherStatsWithAddress {
     #[serde(with = "addresss")]
-    pub address:      Address,
-    pub pnl:          f64,
-    pub total_bribed: f64,
-    pub bundle_count: u64,
-    pub last_active:  u64,
+    pub address: Address,
+    pub pnl: ProfitByType,
+    pub total_bribed: ProfitByType,
+    pub bundle_count: MevCount,
+    pub last_active: u64,
+}
+#[serde_as]
+#[derive(
+    Debug, Deserialize, PartialEq, Serialize, Row, Clone, Default, rSerialize, rDeserialize, Archive,
+)]
+pub struct ProfitByType {
+    pub total_pnl: f64,
+    pub sandwich_pnl: Option<f64>,
+    pub cex_dex_pnl: Option<f64>,
+    pub jit_pnl: Option<f64>,
+    pub jit_sandwich_pnl: Option<f64>,
+    pub atomic_backrun_pnl: Option<f64>,
+    pub liquidation_pnl: Option<f64>,
+    pub searcher_tx_pnl: Option<f64>,
+}
+
+self_convert_redefined!(ProfitByType);
+
+impl ProfitByType {
+    pub fn account_by_type(&mut self, header: &BundleHeader) {
+        self.total_pnl += header.profit_usd;
+        match header.mev_type {
+            MevType::CexDex => {
+                self.cex_dex_pnl = Some(self.cex_dex_pnl.unwrap_or_default().add(header.profit_usd))
+            }
+            MevType::Sandwich => {
+                self.sandwich_pnl = Some(self.sandwich_pnl.unwrap_or_default().add(header.profit_usd))
+            }
+            MevType::AtomicArb => {
+                self.atomic_backrun_pnl = Some(
+                    self.atomic_backrun_pnl
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                )
+            }
+            MevType::Jit => {
+                self.jit_pnl = Some(self.jit_pnl.unwrap_or_default().add(header.profit_usd))
+            }
+            MevType::JitSandwich => {
+                self.jit_sandwich_pnl = Some(
+                    self.jit_sandwich_pnl
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                )
+            }
+            MevType::Liquidation => {
+                self.liquidation_pnl = Some(
+                    self.liquidation_pnl
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                )
+            }
+            MevType::SearcherTx => {
+
+                //TODO: For now we don't account searcher tx pnl
+                /*                 self.searcher_tx_pnl = Some(
+                    self.searcher_tx_pnl
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                ) */
+            }
+            _ => (),
+        }
+    }
 }
 
 impl SearcherStatsWithAddress {
@@ -115,9 +186,7 @@ impl SearcherStatsWithAddress {
     }
 }
 
-#[derive(
-    Debug, Default, Display, PartialEq, Eq, Clone, rSerialize, rDeserialize, Archive, Copy,
-)]
+#[derive(Debug, Default, Display, PartialEq, Eq, Clone, rSerialize, rDeserialize, Archive, Copy)]
 pub enum Fund {
     #[default]
     None,
@@ -125,6 +194,7 @@ pub enum Fund {
     Wintermute,
     JaneStreet,
     JumpTrading,
+    Kronos,
     FlowTraders,
     TokkaLabs,
     EthBuilder,
@@ -134,12 +204,13 @@ pub enum Fund {
 impl From<String> for Fund {
     fn from(value: String) -> Self {
         match value.as_str() {
-            "SymbolicCapitalPartners" => Self::SymbolicCapitalPartners,
+            "Symbolic Capital Partners" => Self::SymbolicCapitalPartners,
             "Wintermute" => Self::Wintermute,
-            "JaneStreet" => Self::JaneStreet,
-            "JumpTrading" => Self::JumpTrading,
-            "FlowTraders" => Self::FlowTraders,
-            "TokkaLabs" => Self::TokkaLabs,
+            "Jane Street" => Self::JaneStreet,
+            "Jump Trading" => Self::JumpTrading,
+            "Flow Traders" => Self::FlowTraders,
+            "Tokka Labs" => Self::TokkaLabs,
+            "Kronos Research" => Self::Kronos,
             "EthBuilder" => Self::EthBuilder,
             "ICANHAZBLOCK" => Self::ICANHAZBLOCK,
             _ => Self::None,
@@ -174,11 +245,11 @@ self_convert_redefined!(Fund);
 #[derive(Debug, Row, PartialEq, Clone, Serialize, Deserialize)]
 pub struct JoinedSearcherInfo {
     #[serde(with = "addresss")]
-    pub address:         Address,
-    pub fund:            Fund,
-    pub mev:             Vec<MevType>,
+    pub address: Address,
+    pub fund: Fund,
+    pub mev: Vec<MevType>,
     #[serde(with = "option_addresss")]
-    pub builder:         Option<Address>,
+    pub builder: Option<Address>,
     pub eoa_or_contract: SearcherEoaContract,
 }
 
@@ -207,6 +278,6 @@ impl JoinedSearcherInfo {
 #[derive(Debug, PartialEq, Clone, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
 pub enum SearcherEoaContract {
-    EOA      = 0,
+    EOA = 0,
     Contract = 1,
 }

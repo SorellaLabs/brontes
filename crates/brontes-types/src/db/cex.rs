@@ -12,7 +12,7 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
+use std::{default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -33,6 +33,7 @@ use crate::{
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
     utils::ToFloatNearest,
+    FastHashMap,
 };
 
 /// Centralized exchange price map organized by exchange.
@@ -51,26 +52,24 @@ use crate::{
 /// interpret the price in the correct direction & reciprocate the price (which
 /// is a rational) if need be.
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
-pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, CexQuote>>);
+pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, CexQuote>>);
 
-#[derive(
-    Debug, PartialEq, Clone, serde::Serialize, rSerialize, rDeserialize, Archive, Redefined,
-)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexPriceMap)]
 #[redefined_attr(
-    to_source = "CexPriceMap(self.map.into_iter().collect::<HashMap<_,_>>().to_source())",
+    to_source = "CexPriceMap(self.map.into_iter().collect::<FastHashMap<_,_>>().to_source())",
     from_source = "CexPriceMapRedefined::new(src.0)"
 )]
 pub struct CexPriceMapRedefined {
-    pub map: Vec<(CexExchange, HashMap<PairRedefined, CexQuoteRedefined>)>,
+    pub map: Vec<(CexExchange, FastHashMap<PairRedefined, CexQuoteRedefined>)>,
 }
 
 impl CexPriceMapRedefined {
-    fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
+    fn new(map: FastHashMap<CexExchange, FastHashMap<Pair, CexQuote>>) -> Self {
         Self {
             map: map
                 .into_iter()
-                .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
+                .map(|(exch, inner_map)| (exch, FastHashMap::from_source(inner_map)))
                 .collect::<Vec<_>>(),
         }
     }
@@ -86,7 +85,7 @@ impl Default for CexPriceMap {
 
 impl CexPriceMap {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(FastHashMap::default())
     }
 
     /// Retrieves a CEX quote for a specified token pair from a given exchange.
@@ -111,7 +110,10 @@ impl CexPriceMap {
     ///   price is reciprocated to match the requested pair ordering.
     pub fn get_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return Some(CexQuote {
+                price: (Rational::ONE, Rational::ONE),
+                ..Default::default()
+            });
         }
 
         self.0
@@ -136,24 +138,28 @@ impl CexPriceMap {
     /// exchanges.
     pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return Some(CexQuote {
+                price: (Rational::ONE, Rational::ONE),
+                ..Default::default()
+            });
         }
 
         let ordered_pair = pair.ordered();
         let sum_price = exchanges
             .iter()
             .filter_map(|exchange| self.get_quote(&ordered_pair, exchange))
-            .fold((Rational::default(), Rational::default(), 0), |acc, quote| {
-                (acc.0 + quote.price.0, acc.1 + quote.price.1, acc.2 + 1)
-            });
+            .fold(
+                (Rational::default(), Rational::default(), 0),
+                |acc, quote| (acc.0 + quote.price.0, acc.1 + quote.price.1, acc.2 + 1),
+            );
 
         if sum_price.2 > 0 {
             let count_rational = Rational::from(sum_price.2);
             Some(CexQuote {
-                exchange:  CexExchange::default(),
+                exchange: CexExchange::default(),
                 timestamp: 0,
-                price:     (sum_price.0 / &count_rational, sum_price.1 / count_rational),
-                token0:    pair.0,
+                price: (sum_price.0 / &count_rational, sum_price.1 / count_rational),
+                token0: pair.0,
             })
         } else {
             None
@@ -179,16 +185,19 @@ impl CexPriceMap {
                 let pair1 = Pair(pair.0, intermediary);
                 let pair2 = Pair(intermediary, pair.1);
 
-                if let (Some(quote1), Some(quote2)) =
-                    (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
-                {
-                    let combined_price =
-                        (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
+                if let (Some(quote1), Some(quote2)) = (
+                    self.get_quote(&pair1, exchange),
+                    self.get_quote(&pair2, exchange),
+                ) {
+                    let combined_price = (
+                        quote1.price.0 * quote2.price.0,
+                        quote1.price.1 * quote2.price.1,
+                    );
                     let combined_quote = CexQuote {
-                        exchange:  *exchange,
+                        exchange: *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
-                        price:     combined_price,
-                        token0:    pair.0,
+                        price: combined_price,
+                        token0: pair.0,
                     };
 
                     Some(combined_quote)
@@ -249,12 +258,12 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
     {
         let map: CexPriceMapDeser = serde::Deserialize::deserialize(deserializer)?;
 
-        let mut cex_price_map = HashMap::new();
+        let mut cex_price_map = FastHashMap::default();
 
         map.into_iter().for_each(|(exchange, meta)| {
             let exchange_map = cex_price_map
                 .entry(CexExchange::from(exchange.clone()))
-                .or_insert(HashMap::new());
+                .or_insert(FastHashMap::default());
             meta.into_iter().for_each(
                 |(
                     (base_token_addr, quote_token_addr),
@@ -324,26 +333,26 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
 ))]
 pub struct CexQuote {
     #[redefined(same_fields)]
-    pub exchange:  CexExchange,
+    pub exchange: CexExchange,
     pub timestamp: u64,
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
     /// propagated by the proposer)
-    pub price:     (Rational, Rational),
-    pub token0:    Address,
+    pub price: (Rational, Rational),
+    pub token0: Address,
 }
 
 pub struct ExchangeData {
     pub exchange: CexExchange,
-    pub quotes:   Vec<CexQuote>,
-    pub trades:   Vec<Trade>,
+    pub quotes: Vec<CexQuote>,
+    pub trades: Vec<Trade>,
 }
 
 pub struct Trade {
-    pub exchange:  CexExchange,
+    pub exchange: CexExchange,
     pub timestamp: u64,
-    pub price:     Rational,
-    pub amount:    Rational,
-    pub side:      TradeSide,
+    pub price: Rational,
+    pub amount: Rational,
+    pub side: TradeSide,
 }
 
 pub enum TradeSide {
@@ -486,7 +495,13 @@ impl CexExchange {
                 vec![WBTC_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, PAX_DOLLAR_ADDRESS]
             }
             CexExchange::BybitSpot => {
-                vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS, DAI_ADDRESS, WETH_ADDRESS]
+                vec![
+                    USDT_ADDRESS,
+                    USDC_ADDRESS,
+                    WBTC_ADDRESS,
+                    DAI_ADDRESS,
+                    WETH_ADDRESS,
+                ]
             }
             CexExchange::Coinbase => {
                 vec![
@@ -501,7 +516,13 @@ impl CexExchange {
             CexExchange::Deribit => vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS],
             CexExchange::GateIo => vec![USDT_ADDRESS, WETH_ADDRESS, WBTC_ADDRESS, USDC_ADDRESS],
             CexExchange::Gemini => {
-                vec![WBTC_ADDRESS, WETH_ADDRESS, GUSD_ADDRESS, DAI_ADDRESS, USDT_ADDRESS]
+                vec![
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    GUSD_ADDRESS,
+                    DAI_ADDRESS,
+                    USDT_ADDRESS,
+                ]
             }
             CexExchange::Huobi => {
                 vec![
@@ -518,7 +539,13 @@ impl CexExchange {
                 ]
             }
             CexExchange::Kraken => {
-                vec![WBTC_ADDRESS, WETH_ADDRESS, USDT_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
+                vec![
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    USDT_ADDRESS,
+                    USDC_ADDRESS,
+                    DAI_ADDRESS,
+                ]
             }
             CexExchange::Kucoin => {
                 vec![
@@ -542,7 +569,13 @@ impl CexExchange {
                 ]
             }
             CexExchange::Upbit => {
-                vec![WETH_ADDRESS, WBTC_ADDRESS, LINK_ADDRESS, EURT_ADDRESS, UNI_TOKEN]
+                vec![
+                    WETH_ADDRESS,
+                    WBTC_ADDRESS,
+                    LINK_ADDRESS,
+                    EURT_ADDRESS,
+                    UNI_TOKEN,
+                ]
             }
 
             _ => vec![],
@@ -562,9 +595,10 @@ impl CexExchange {
                 Rational::from_sci_string("-0.00025").unwrap(),
                 Rational::from_sci_string("0.00075").unwrap(),
             ),
-            CexExchange::Deribit => {
-                (Rational::from_sci_string("0").unwrap(), Rational::from_sci_string("0").unwrap())
-            }
+            CexExchange::Deribit => (
+                Rational::from_sci_string("0").unwrap(),
+                Rational::from_sci_string("0").unwrap(),
+            ),
             CexExchange::Okex => (
                 Rational::from_sci_string("-0.00005").unwrap(),
                 Rational::from_sci_string("0.00015").unwrap(),

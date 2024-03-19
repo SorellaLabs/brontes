@@ -1,10 +1,6 @@
 #[cfg(feature = "local-reth")]
 use std::sync::OnceLock;
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    env,
-    sync::Arc,
-};
+use std::{collections::hash_map::Entry, env, sync::Arc};
 
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
@@ -13,7 +9,10 @@ use brontes_database::clickhouse::ClickhouseHttpClient;
 pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
-use brontes_types::{db::metadata::Metadata, structured_trace::TxTrace, traits::TracingProvider};
+use brontes_types::{
+    db::metadata::Metadata, init_threadpools, structured_trace::TxTrace, traits::TracingProvider,
+    FastHashMap,
+};
 use futures::future::join_all;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
@@ -49,6 +48,7 @@ pub struct TraceLoader {
 impl TraceLoader {
     pub async fn new() -> Self {
         let handle = tokio::runtime::Handle::current();
+        init_threadpools(10);
         let libmdbx = get_db_handle(handle.clone()).await;
 
         let (a, b) = unbounded_channel();
@@ -207,7 +207,7 @@ impl TraceLoader {
         &self,
         tx_hashes: Vec<B256>,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
-        let mut flattened: HashMap<u64, BlockTracesWithHeaderAnd<()>> = HashMap::new();
+        let mut flattened: FastHashMap<u64, BlockTracesWithHeaderAnd<()>> = FastHashMap::default();
 
         for res in join_all(tx_hashes.into_iter().map(|tx_hash| async move {
             let (block, tx_idx) = self
@@ -336,7 +336,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             let _ = dotenv::dotenv();
             init_tracing();
             let brontes_db_endpoint =
-                env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+                env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
             let this = &*Box::leak(Box::new(
                 LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
                     .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint)),
@@ -397,8 +397,16 @@ pub async fn init_trace_parser(
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
-    let client =
-        TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
+
+    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+    let db_path = std::path::Path::new(&db_path);
+
+    let client = TracingClient::new_with_db(
+        get_reth_db_handle(),
+        max_tasks as u64,
+        executor.executor(),
+        db_path,
+    );
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 

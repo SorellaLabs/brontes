@@ -1,24 +1,25 @@
 use std::sync::Arc;
 
-use alloy_providers::provider::{Provider, TempProvider};
+use alloy_provider::{network::Ethereum, Provider, RootProvider};
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxHash, B256};
+use reth_primitives::{
+    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
+    B256,
+};
 use reth_rpc_types::{
     state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
 };
 
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
-    provider: Arc<Provider<Http<reqwest::Client>>>,
+    provider: Arc<RootProvider<Ethereum, Http<reqwest::Client>>>,
     retries:  u8,
 }
 
 impl LocalProvider {
     pub fn new(url: String, retries: u8) -> Self {
-        let http = Http::new(url.parse().unwrap());
-
-        Self { provider: Arc::new(Provider::new(http)), retries }
+        Self { provider: Arc::new(RootProvider::new_http(url.parse().unwrap())), retries }
     }
 }
 
@@ -37,7 +38,7 @@ impl TracingProvider for LocalProvider {
         // for tests, shit can get beefy
         let mut attempts = 0;
         loop {
-            let res = self.provider.call(request.clone(), block_number).await;
+            let res = self.provider.call(&request.clone(), block_number).await;
             if res.is_ok() || attempts > self.retries {
                 return res.map_err(Into::into)
             }
@@ -126,5 +127,38 @@ impl TracingProvider for LocalProvider {
         };
 
         Ok(Some(header))
+    }
+
+    async fn get_storage(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+        storage_key: B256,
+    ) -> eyre::Result<Option<StorageValue>> {
+        let block_id = match block_number {
+            Some(number) => BlockId::Number(BlockNumberOrTag::Number(number)),
+            None => BlockId::Number(BlockNumberOrTag::Latest),
+        };
+        let storage_value = self
+            .provider
+            .get_storage_at(address, storage_key.into(), Some(block_id))
+            .await?;
+
+        Ok(Some(storage_value))
+    }
+
+    async fn get_bytecode(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+    ) -> eyre::Result<Option<Bytecode>> {
+        let block_id = match block_number {
+            Some(number) => BlockId::Number(BlockNumberOrTag::Number(number)),
+            None => BlockId::Number(BlockNumberOrTag::Latest),
+        };
+        let bytes = self.provider.get_code_at(address, block_id).await?;
+
+        let bytecode = Bytecode::new_raw(bytes);
+        Ok(Some(bytecode))
     }
 }

@@ -11,10 +11,10 @@ use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
 pub use libmdbx_read_write::{determine_eth_prices, LibmdbxInit, LibmdbxReadWriter};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reth_db::{
     is_database_empty,
     mdbx::DatabaseArguments,
+    models::client_version::ClientVersion,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseEnv, DatabaseEnvKind, DatabaseError,
 };
@@ -58,7 +58,7 @@ impl Libmdbx {
         let db = DatabaseEnv::open(
             rpath,
             DatabaseEnvKind::RW,
-            DatabaseArguments::default().log_level(log_level),
+            DatabaseArguments::new(ClientVersion::default()).with_log_level(log_level),
         )?;
 
         let this = Self(db);
@@ -81,9 +81,7 @@ impl Libmdbx {
     }
 
     /// Clears a table in the database
-    /// Only called on initialization
-    #[allow(unused)]
-    fn clear_table<T>(&self) -> eyre::Result<()>
+    pub fn clear_table<T>(&self) -> eyre::Result<()>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -97,7 +95,7 @@ impl Libmdbx {
     }
 
     /// writes to a table
-    pub fn write_table<T, D>(&self, entries: &Vec<D>) -> Result<(), DatabaseError>
+    pub fn write_table<T, D>(&self, entries: &[D]) -> Result<(), DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -105,7 +103,7 @@ impl Libmdbx {
     {
         self.update_db(|tx| {
             entries
-                .par_iter()
+                .iter()
                 .map(|entry| {
                     let e = entry.into_key_val();
                     tx.put::<T>(e.key, e.value)

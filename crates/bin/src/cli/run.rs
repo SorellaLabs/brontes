@@ -3,7 +3,7 @@ use std::{env, path::Path};
 use brontes_core::decoding::Parser as DParser;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::constants::USDT_ADDRESS_STRING;
+use brontes_types::{constants::USDT_ADDRESS_STRING, init_threadpools};
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -17,10 +17,11 @@ use crate::{
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
-    /// Start Block
+    /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:     u64,
-    /// Optional End Block, if omitted it will continue to run until killed
+    pub start_block:     Option<u64>,
+    /// Optional End Block, if omitted it will run historically & at tip until
+    /// killed
     #[arg(long, short)]
     pub end_block:       Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
@@ -33,16 +34,19 @@ pub struct RunArgs {
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
     pub quote_asset:     String,
-    /// inspectors wanted for the run. If empty will run all inspectors
+    /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
     pub inspectors:      Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
-    pub cex_exchanges:   Option<Vec<String>>,
+    pub cex_exchanges:   Vec<String>,
     /// If the dex pricing calculation should be run, even if we have the stored
     /// dex prices.
     #[arg(long, short, default_value = "false")]
     pub run_dex_pricing: bool,
+    /// How many blocks behind chain tip to run.
+    #[arg(long, default_value = "2")]
+    pub behind_tip:      u64,
 }
 
 impl RunArgs {
@@ -56,6 +60,7 @@ impl RunArgs {
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
+        init_threadpools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
@@ -65,9 +70,9 @@ impl RunArgs {
 
         tracing::info!(target: "brontes", "starting database initialization");
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
-        tracing::info!(target: "brontes", "libmdbx init");
+        tracing::info!(target: "brontes", "Initialize Libmdbx");
         let clickhouse = static_object(load_clickhouse().await?);
-        tracing::info!(target: "brontes", "databases initialized");
+        tracing::info!(target: "brontes", "Databases initialized");
 
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
 
@@ -82,6 +87,7 @@ impl RunArgs {
                 if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
                     self.start_block,
                     self.end_block,
+                    self.behind_tip,
                     max_tasks,
                     self.min_batch_size,
                     quote_asset,

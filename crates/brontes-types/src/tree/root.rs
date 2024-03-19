@@ -45,12 +45,12 @@ impl<V: NormalizedAction> NodeData<V> {
 
 #[derive(Debug)]
 pub struct Root<V: NormalizedAction> {
-    pub head:        Node,
-    pub position:    usize,
-    pub tx_hash:     B256,
-    pub private:     bool,
+    pub head: Node,
+    pub position: usize,
+    pub tx_hash: B256,
+    pub private: bool,
     pub gas_details: GasDetails,
-    pub data_store:  NodeData<V>,
+    pub data_store: NodeData<V>,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -71,11 +71,19 @@ impl<V: NormalizedAction> Root<V> {
             .clone()
             .get_action()
             .get_to_address();
-
-        let is_verified_contract = database
+        let address_meta = database
             .try_fetch_address_metadata(to_address)
-            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
-            .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
+            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))?;
+
+        let (is_verified_contract, contract_type) = match address_meta {
+            Some(meta) => {
+                let verified = meta.is_verified();
+                let contract_type = meta.get_contract_type();
+
+                (verified, Some(contract_type))
+            }
+            None => (false, None),
+        };
 
         let is_classified = self
             .data_store
@@ -104,12 +112,19 @@ impl<V: NormalizedAction> Root<V> {
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if is_verified_contract || is_classified || emits_logs && searcher_contract_info.is_none() {
+        if is_verified_contract
+            || is_classified
+            || contract_type
+                .as_ref()
+                .map_or(false, |ct| !ct.could_be_mev_contract())
+            || emits_logs && searcher_contract_info.is_none()
+        {
             return Ok(TxInfo::new(
                 block_number,
                 self.position as u64,
                 self.head.address,
                 None,
+                contract_type,
                 self.tx_hash,
                 self.gas_details,
                 is_classified,
@@ -118,7 +133,7 @@ impl<V: NormalizedAction> Root<V> {
                 is_verified_contract,
                 searcher_eoa_info,
                 None,
-            ))
+            ));
         }
 
         Ok(TxInfo::new(
@@ -126,6 +141,7 @@ impl<V: NormalizedAction> Root<V> {
             self.position as u64,
             self.head.address,
             Some(to_address),
+            contract_type,
             self.tx_hash,
             self.gas_details,
             is_classified,
@@ -181,8 +197,12 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn collect(&self, call: &TreeSearchBuilder<V>) -> Vec<V> {
         let mut result = Vec::new();
-        self.head
-            .collect(&mut result, call, &|data| data.data.clone(), &self.data_store);
+        self.head.collect(
+            &mut result,
+            call,
+            &|data| data.data.clone(),
+            &self.data_store,
+        );
 
         result.sort_by_key(|a| a.get_trace_index());
 
@@ -233,9 +253,9 @@ impl<V: NormalizedAction> Root<V> {
     rkyv::Archive,
 )]
 pub struct GasDetails {
-    pub coinbase_transfer:   Option<u128>,
-    pub priority_fee:        u128,
-    pub gas_used:            u128,
+    pub coinbase_transfer: Option<u128>,
+    pub priority_fee: u128,
+    pub gas_used: u128,
     pub effective_gas_price: u128,
 }
 //TODO: Fix this
@@ -287,8 +307,14 @@ impl GasDetails {
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
             ("Gas Used", self.gas_used.to_string()),
-            ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
-            ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
+            (
+                "Effective Gas Price",
+                format!("{} Wei", self.effective_gas_price),
+            ),
+            (
+                "Total Gas Paid in ETH",
+                format!("{:.7} ETH", self.gas_paid() as f64 / 1e18),
+            ),
         ];
 
         let max_label_length = labels
@@ -322,10 +348,10 @@ impl GasDetails {
 }
 
 pub struct ClickhouseVecGasDetails {
-    pub tx_hash:             Vec<String>,
-    pub coinbase_transfer:   Vec<Option<u128>>,
-    pub priority_fee:        Vec<u128>,
-    pub gas_used:            Vec<u128>,
+    pub tx_hash: Vec<String>,
+    pub coinbase_transfer: Vec<Option<u128>>,
+    pub priority_fee: Vec<u128>,
+    pub gas_used: Vec<u128>,
     pub effective_gas_price: Vec<u128>,
 }
 
@@ -347,10 +373,10 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .collect::<Vec<_>>();
 
         ClickhouseVecGasDetails {
-            tx_hash:             vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
-            coinbase_transfer:   vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
-            priority_fee:        vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
-            gas_used:            vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
+            tx_hash: vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
+            coinbase_transfer: vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
+            priority_fee: vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
+            gas_used: vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
             effective_gas_price: vec_vals.iter().map(|val| val.4.to_owned()).collect_vec(),
         }
     }
@@ -369,3 +395,31 @@ impl From<(Vec<Vec<TxHash>>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
 pub enum FalsePositiveEntity {
     MaestroBots,
 }
+
+/*
+#[cfg(test)]
+pub mod test {
+    use std::sync::Arc;
+
+    use alloy_primitives::hex;
+    use brontes_classifier::test_utils::{get_db_handle, ClassifierTestUtils};
+    use brontes_types::{normalized_actions::Actions, tree::BlockTree};
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_tx_info_filters() {
+        let handle = tokio::runtime::Handle::current();
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let tx = hex!("d6aa973068528615f4bba657b9b3366166c1ea0f56ac1313afe7abd97668ae4f").into();
+
+        let tree: Arc<BlockTree<Actions>> =
+            Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
+
+        let info = tree
+            .get_tx_info(tx, classifier_utils.)
+            .unwrap();
+
+        assert_eq!(info.mev_contract, None)
+    }
+}*/

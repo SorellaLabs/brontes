@@ -1,31 +1,39 @@
 use alloy_primitives::{Address, TxHash};
 
-use crate::{db::searcher::SearcherInfo, mev::MevType, GasDetails};
+use crate::{
+    db::{address_metadata::ContractType, searcher::SearcherInfo},
+    mev::MevType,
+    GasDetails,
+};
 
 #[derive(Debug, Clone)]
 pub struct TxInfo {
-    pub block_number:           u64,
-    pub tx_index:               u64,
-    pub eoa:                    Address,
+    pub block_number: u64,
+    pub tx_index: u64,
+    pub eoa: Address,
+
     // is none if the contract is classified, or emits logs
     // or is verified
-    pub mev_contract:           Option<Address>,
-    pub tx_hash:                TxHash,
-    pub gas_details:            GasDetails,
-    pub is_classified:          bool,
-    pub is_cex_dex_call:        bool,
-    pub is_private:             bool,
-    pub is_verified_contract:   bool,
-    pub searcher_eoa_info:      Option<SearcherInfo>,
+    pub mev_contract: Option<Address>,
+    pub contract_type: Option<ContractType>,
+    pub tx_hash: TxHash,
+    pub gas_details: GasDetails,
+    pub is_classified: bool,
+    pub is_cex_dex_call: bool,
+    pub is_private: bool,
+    pub is_verified_contract: bool,
+    pub searcher_eoa_info: Option<SearcherInfo>,
     pub searcher_contract_info: Option<SearcherInfo>,
 }
 
 impl TxInfo {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         block_number: u64,
         tx_index: u64,
         eoa: Address,
         mev_contract: Option<Address>,
+        contract_type: Option<ContractType>,
         tx_hash: TxHash,
         gas_details: GasDetails,
         is_classified: bool,
@@ -39,6 +47,7 @@ impl TxInfo {
             tx_index,
             block_number,
             mev_contract,
+            contract_type,
             eoa,
             tx_hash,
             gas_details,

@@ -1,6 +1,11 @@
 #[cfg(feature = "local-clickhouse")]
 use std::str::FromStr;
-use std::{cmp::max, collections::HashMap, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{
+    cmp::max,
+    ops::{Bound, RangeInclusive},
+    path::Path,
+    sync::Arc,
+};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -27,7 +32,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    SubGraphsEntry,
+    FastHashMap, SubGraphsEntry,
 };
 use eyre::{eyre, ErrReport};
 use futures::Future;
@@ -400,11 +405,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn protocols_created_before(
         &self,
         block_num: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
+    ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
         let tx = self.0.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
+        let mut map = FastHashMap::default();
 
         for result in cursor.walk_range(0..=block_num)? {
             let res = result?.1;
@@ -429,11 +434,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<HashMap<u64, Vec<(Address, Protocol, Pair)>>> {
+    ) -> eyre::Result<FastHashMap<u64, Vec<(Address, Protocol, Pair)>>> {
         let tx = self.0.ro_tx()?;
 
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
-        let mut map = HashMap::default();
+        let mut map = FastHashMap::default();
 
         for result in cursor.walk_range(start_block..end_block)? {
             let result = result?;
@@ -514,18 +519,64 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn try_fetch_mev_blocks(
         &self,
-        start_block: u64,
+        start_block: Option<u64>,
         end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
         let tx = self.0.ro_tx()?;
         let mut cursor = tx.cursor_read::<MevBlocks>()?;
         let mut res = Vec::new();
 
-        for entry in cursor.walk_range(start_block..end_block)?.flatten() {
+        let range = if let Some(start) = start_block {
+            (Bound::Included(start), Bound::Excluded(end_block))
+        } else {
+            (Bound::Unbounded, Bound::Excluded(end_block))
+        };
+
+        for entry in cursor.walk_range(range)?.flatten() {
             res.push(entry.1);
         }
 
         Ok(res)
+    }
+
+    fn fetch_all_mev_blocks(
+        &self,
+        start_block: Option<u64>,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<MevBlocks>()?;
+
+        let mut res = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(start_block)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            res.push(row?.1);
+        }
+
+        Ok(res)
+    }
+
+    fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<AddressMeta>()?;
+
+        let mut result = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(None)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            let row = row?;
+            let address = row.0;
+            let metadata = row.1;
+            result.push((address, metadata));
+        }
+
+        Ok(result)
     }
 }
 
@@ -562,7 +613,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
         self.0
-            .write_table::<SearcherEOAs, SearcherEOAsData>(&vec![data])
+            .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
     }
@@ -574,7 +625,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = SearcherContractsData::new(searcher_contract, searcher_info);
         self.0
-            .write_table::<SearcherContracts, SearcherContractsData>(&vec![data])
+            .write_table::<SearcherContracts, SearcherContractsData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
     }
@@ -586,8 +637,22 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = SearcherStatisticsData::new(searcher_eoa, searcher_stats);
         self.0
-            .write_table::<SearcherStatistics, SearcherStatisticsData>(&vec![data])
+            .write_table::<SearcherStatistics, SearcherStatisticsData>(&[data])
             .expect("libmdbx write failure");
+        Ok(())
+    }
+
+    async fn write_address_meta(
+        &self,
+        address: Address,
+        metadata: AddressMetadata,
+    ) -> eyre::Result<()> {
+        let data = AddressMetaData::new(address, metadata);
+
+        self.0
+            .write_table::<AddressMeta, AddressMetaData>(&[data])
+            .expect("libmdx metadata write failure");
+
         Ok(())
     }
 
@@ -600,7 +665,7 @@ impl DBWriter for LibmdbxReadWriter {
         let data = MevBlocksData::new(block_number, MevBlockWithClassified { block, mev });
 
         self.0
-            .write_table::<MevBlocks, MevBlocksData>(&vec![data])
+            .write_table::<MevBlocks, MevBlocksData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
     }
@@ -657,7 +722,7 @@ impl DBWriter for LibmdbxReadWriter {
         symbol: String,
     ) -> eyre::Result<()> {
         self.0
-            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData::new(
+            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
                 address,
                 TokenInfo::new(decimals, symbol),
             )])
@@ -673,15 +738,15 @@ impl DBWriter for LibmdbxReadWriter {
 
             let data = SubGraphsData::new(pair, entry);
             self.0
-                .write_table::<SubGraphs, SubGraphsData>(&vec![data])
+                .write_table::<SubGraphs, SubGraphsData>(&[data])
                 .expect("libmdbx write failure");
         } else {
-            let mut map = HashMap::new();
+            let mut map = FastHashMap::default();
             map.insert(block, edges);
             let subgraph_entry = SubGraphsEntry(map);
             let data = SubGraphsData::new(pair, subgraph_entry);
             self.0
-                .write_table::<SubGraphs, SubGraphsData>(&vec![data])
+                .write_table::<SubGraphs, SubGraphsData>(&[data])
                 .expect("libmdbx write failure");
         }
 
@@ -700,7 +765,7 @@ impl DBWriter for LibmdbxReadWriter {
         let mut tokens = tokens.iter();
         let default = Address::ZERO;
         self.0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData::new(
                     address,
                     ProtocolInfo {
@@ -727,7 +792,7 @@ impl DBWriter for LibmdbxReadWriter {
 
         addrs.push(address);
         self.0
-            .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&vec![
+            .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
                 PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
             ])
             .expect("libmdbx write failure");
@@ -737,9 +802,7 @@ impl DBWriter for LibmdbxReadWriter {
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
-        self.0
-            .write_table(&vec![table])
-            .expect("libmdbx write failure");
+        self.0.write_table(&[table]).expect("libmdbx write failure");
 
         self.init_state_updating(block, TRACE_FLAG)
     }
@@ -751,7 +814,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = BuilderData::new(builder_address, builder_info);
         self.0
-            .write_table::<Builder, BuilderData>(&vec![data])
+            .write_table::<Builder, BuilderData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
     }
@@ -763,7 +826,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = BuilderStatisticsData::new(builder_address, builder_stats);
         self.0
-            .write_table::<BuilderStatistics, BuilderStatisticsData>(&vec![data])
+            .write_table::<BuilderStatistics, BuilderStatisticsData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
     }
@@ -775,9 +838,9 @@ impl LibmdbxReadWriter {
         let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
         state.set(flag);
         self.0
-            .write_table::<InitializedState, InitializedStateData>(&vec![
-                InitializedStateData::new(block, state),
-            ])?;
+            .write_table::<InitializedState, InitializedStateData>(&[InitializedStateData::new(
+                block, state,
+            )])?;
 
         Ok(())
     }
@@ -823,7 +886,7 @@ impl LibmdbxReadWriter {
     }
 
     pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
-        let mut dex_quotes: Vec<Option<HashMap<Pair, DexPrices>>> = Vec::new();
+        let mut dex_quotes: Vec<Option<FastHashMap<Pair, DexPrices>>> = Vec::new();
         let (start_range, end_range) = make_filter_key_range(block_num);
         let tx = self.0.ro_tx()?;
 
@@ -842,7 +905,7 @@ impl LibmdbxReadWriter {
                             tx.insert(pair, price);
                         }
                     } else {
-                        let mut tx_pairs = HashMap::default();
+                        let mut tx_pairs = FastHashMap::default();
                         for (pair, price) in val.quote {
                             tx_pairs.insert(pair, price);
                         }

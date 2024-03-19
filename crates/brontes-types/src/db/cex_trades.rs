@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    marker::PhantomData,
-};
+use std::marker::PhantomData;
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -20,6 +17,7 @@ use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    FastHashMap, FastHashSet,
 };
 
 /// TODO: lets prob not set this to 100%
@@ -34,7 +32,7 @@ const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(5, 100);
 pub struct ExchangePrice {
     // cex exchange with amount of volume executed on it
     pub exchanges: Vec<(CexExchange, Rational)>,
-    pub price:     Rational,
+    pub price: Rational,
 }
 
 type MakerTaker = (ExchangePrice, ExchangePrice);
@@ -43,12 +41,12 @@ type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
 
 // cex trades are sorted from lowest fill price to highest fill price
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CexTradeMap(pub HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>);
+pub struct CexTradeMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>);
 #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexTradeMap)]
 #[redefined_attr(
     to_source = "CexTradeMap(self.map.into_iter().map(|(k,v)| \
-                 (k,v.into_iter().collect::<HashMap<_,_>>())).collect::<HashMap<_,_>>().\
+                 (k,v.into_iter().collect::<FastHashMap<_,_>>())).collect::<FastHashMap<_,_>>().\
                  to_source())",
     from_source = "CexTradeMapRedefined::new(src.0)"
 )]
@@ -57,7 +55,7 @@ pub struct CexTradeMapRedefined {
 }
 
 impl CexTradeMapRedefined {
-    fn new(map: HashMap<CexExchange, HashMap<Pair, Vec<CexTrades>>>) -> Self {
+    fn new(map: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>) -> Self {
         Self {
             map: map
                 .into_iter()
@@ -82,7 +80,7 @@ impl CexTradeMapRedefined {
 
 implement_table_value_codecs_with_zc!(CexTradeMapRedefined);
 
-type FoldVWAM = HashMap<Address, Vec<MakerTaker>>;
+type FoldVWAM = FastHashMap<Address, Vec<MakerTaker>>;
 
 impl CexTradeMap {
     pub fn get_price(
@@ -91,7 +89,7 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
-        quality: Option<HashMap<CexExchange, HashMap<Pair, usize>>>,
+        quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
         self.get_vwam_no_intermediary(exchanges, pair, volume, baskets, quality.as_ref())
             .or_else(|| {
@@ -103,7 +101,7 @@ impl CexTradeMap {
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
-    ) -> HashSet<Address> {
+    ) -> FastHashSet<Address> {
         self.0
             .par_iter()
             .filter(|(k, _)| exchanges.contains(k))
@@ -119,7 +117,7 @@ impl CexTradeMap {
                     })
                     .collect_vec()
             })
-            .collect::<HashSet<_>>()
+            .collect::<FastHashSet<_>>()
     }
 
     fn get_vwam_via_intermediary(
@@ -128,7 +126,7 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
-        quality: Option<&HashMap<CexExchange, HashMap<Pair, usize>>>,
+        quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
         let fold_fn = |(mut pair0_vwam, mut pair1_vwam): (FoldVWAM, FoldVWAM), (iter_0, iter_1)| {
             for (k, v) in iter_0 {
@@ -159,14 +157,14 @@ impl CexTradeMap {
                 ))
             })
             .fold(
-                || (HashMap::new(), HashMap::new()),
+                || (FastHashMap::default(), FastHashMap::default()),
                 |(mut pair0_vwam, mut pair1_vwam), ((iter0, prices0), (iter1, prices1))| {
                     pair0_vwam.entry(iter0).or_insert(vec![]).push(prices0);
                     pair1_vwam.entry(iter1).or_insert(vec![]).push(prices1);
                     (pair0_vwam, pair1_vwam)
                 },
             )
-            .reduce(|| (HashMap::new(), HashMap::new()), fold_fn);
+            .reduce(|| (FastHashMap::default(), FastHashMap::default()), fold_fn);
 
         calculate_cross_pair(pair0_vwams, pair1_vwams)
     }
@@ -177,12 +175,12 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         baskets: usize,
-        quality: Option<&HashMap<CexExchange, HashMap<Pair, usize>>>,
+        quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
         let quality_pct = quality.map(|map| {
             map.iter()
                 .map(|(k, v)| (*k, v.get(pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         });
 
         let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
@@ -204,7 +202,7 @@ impl CexTradeMap {
             .collect::<Vec<_>>();
 
         if trades.is_empty() {
-            return None
+            return None;
         }
 
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
@@ -223,7 +221,9 @@ impl CexTradeMap {
         let mut cur_vol = Rational::ZERO;
 
         while volume_amount.gt(&cur_vol) {
-            let Some(next) = queue.next_best_trade() else { break };
+            let Some(next) = queue.next_best_trade() else {
+                break;
+            };
             // we do this due to the sheer amount of trades we have and to not have to copy.
             // all of this is safe
             cur_vol += &next.get().amount;
@@ -245,7 +245,7 @@ impl CexTradeMap {
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
         let mut trade_volume = Rational::ZERO;
-        let mut exchange_with_vol = HashMap::new();
+        let mut exchange_with_vol = FastHashMap::default();
 
         for trade in closest {
             let (m_fee, t_fee) = trade.get().exchange.fees();
@@ -260,14 +260,18 @@ impl CexTradeMap {
         }
 
         if trade_volume == Rational::ZERO {
-            return None
+            return None;
         }
         let exchanges = exchange_with_vol.into_iter().collect_vec();
 
-        let maker =
-            ExchangePrice { exchanges: exchanges.clone(), price: vxp_maker / &trade_volume };
-        let taker =
-            ExchangePrice { exchanges: exchanges.clone(), price: vxp_taker / &trade_volume };
+        let maker = ExchangePrice {
+            exchanges: exchanges.clone(),
+            price: vxp_maker / &trade_volume,
+        };
+        let taker = ExchangePrice {
+            exchanges: exchanges.clone(),
+            price: vxp_taker / &trade_volume,
+        };
 
         Some((maker, taker))
     }
@@ -288,22 +292,22 @@ impl CexTradeMap {
 pub struct CexTrades {
     #[redefined(same_fields)]
     pub exchange: CexExchange,
-    pub price:    Rational,
-    pub amount:   Rational,
+    pub price: Rational,
+    pub amount: Rational,
 }
 
 /// Its ok that we create 2 of these for pair price and intermediary price
 /// as it runs off of borrowed data so there is no overhead we occur
 pub struct PairTradeQueue<'a> {
-    exchange_depth: HashMap<CexExchange, usize>,
-    trades:         Vec<(CexExchange, Vec<&'a CexTrades>)>,
+    exchange_depth: FastHashMap<CexExchange, usize>,
+    trades: Vec<(CexExchange, Vec<&'a CexTrades>)>,
 }
 
 impl<'a> PairTradeQueue<'a> {
     /// Assumes the trades are sorted based off the side that's passed in
     pub fn new(
         trades: Vec<(CexExchange, Vec<&'a CexTrades>)>,
-        execution_quality_pct: Option<HashMap<CexExchange, usize>>,
+        execution_quality_pct: Option<FastHashMap<CexExchange, usize>>,
     ) -> Self {
         // calculate the starting index based of the quality pct for the given exchange
         // and pair.
@@ -316,12 +320,15 @@ impl<'a> PairTradeQueue<'a> {
                     let idx = length - (length * quality / 100);
                     (*exchange, idx)
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         } else {
-            HashMap::default()
+            FastHashMap::default()
         };
 
-        Self { exchange_depth, trades }
+        Self {
+            exchange_depth,
+            trades,
+        }
     }
 
     fn next_best_trade(&mut self) -> Option<CexTradePtr<'a>> {
@@ -333,7 +340,7 @@ impl<'a> PairTradeQueue<'a> {
 
             // hit max depth
             if exchange_depth > len {
-                continue
+                continue;
             }
 
             if let Some(trade) = trades.get(len - exchange_depth) {
@@ -360,13 +367,15 @@ impl<'a> PairTradeQueue<'a> {
 }
 
 fn calculate_cross_pair(
-    v0: HashMap<Address, Vec<MakerTaker>>,
-    mut v1: HashMap<Address, Vec<MakerTaker>>,
+    v0: FastHashMap<Address, Vec<MakerTaker>>,
+    mut v1: FastHashMap<Address, Vec<MakerTaker>>,
 ) -> Option<MakerTaker> {
     let (maker, taker): (Vec<_>, Vec<_>) = v0
         .into_iter()
         .flat_map(|(inter, vwam0)| {
-            let Some(vwam1) = v1.remove(&inter) else { return vec![] };
+            let Some(vwam1) = v1.remove(&inter) else {
+                return vec![];
+            };
 
             vwam0
                 .into_iter()
@@ -376,7 +385,7 @@ fn calculate_cross_pair(
                             .exchanges
                             .iter()
                             .chain(maker1.exchanges.iter())
-                            .fold(HashMap::new(), |mut a, b| {
+                            .fold(FastHashMap::default(), |mut a, b| {
                                 *a.entry(b.0).or_insert(Rational::ZERO) += &b.1;
                                 a
                             })
@@ -387,7 +396,7 @@ fn calculate_cross_pair(
                             .exchanges
                             .iter()
                             .chain(taker0.exchanges.iter())
-                            .fold(HashMap::new(), |mut a, b| {
+                            .fold(FastHashMap::default(), |mut a, b| {
                                 *a.entry(b.0).or_insert(Rational::ZERO) += &b.1;
                                 a
                             })
@@ -396,12 +405,12 @@ fn calculate_cross_pair(
 
                         let maker = ExchangePrice {
                             exchanges: maker_exchanges,
-                            price:     &maker0.price * &maker1.price,
+                            price: &maker0.price * &maker1.price,
                         };
 
                         let taker = ExchangePrice {
                             exchanges: taker_exchanges,
-                            price:     &taker0.price * &taker1.price,
+                            price: &taker0.price * &taker1.price,
                         };
                         (maker, taker)
                     })
@@ -438,12 +447,15 @@ fn closest<'a>(
 struct CexTradePtr<'ptr> {
     raw: *const CexTrades,
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
-    _p:  PhantomData<&'ptr u8>,
+    _p: PhantomData<&'ptr u8>,
 }
 
 impl<'ptr> CexTradePtr<'ptr> {
     fn new(raw: &CexTrades) -> Self {
-        Self { raw: raw as *const _, _p: PhantomData }
+        Self {
+            raw: raw as *const _,
+            _p: PhantomData,
+        }
     }
 
     fn get(&'ptr self) -> &'ptr CexTrades {

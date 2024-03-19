@@ -4,6 +4,7 @@ use brontes_database::{
     libmdbx::{cursor::CompressedCursor, Libmdbx},
     CompressedTable, IntoTableKey, Tables,
 };
+use brontes_types::init_threadpools;
 use clap::Parser;
 use itertools::Itertools;
 use reth_db::mdbx::RO;
@@ -11,7 +12,7 @@ use reth_interfaces::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]
 pub struct DatabaseQuery {
-    /// that table to be queried
+    /// that table to query
     #[arg(long, short)]
     pub table: Tables,
     /// the key of the table being queried. if a range is wanted use the rust
@@ -25,6 +26,7 @@ pub struct DatabaseQuery {
 impl DatabaseQuery {
     pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        init_threadpools(10);
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
         let tx = db.ro_tx()?;

@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use alloy_primitives::Address;
+use brontes_types::FastHashMap;
 use itertools::Itertools;
 use tracing::debug;
 
@@ -30,28 +29,31 @@ use crate::{
 #[derive(Debug)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
-    finalized_edge_state:    HashMap<Address, PoolState>,
+    finalized_edge_state:    FastHashMap<Address, PoolState>,
     /// state that verification is using
-    verification_edge_state: HashMap<Address, PoolStateWithBlock>,
+    verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
 }
 
 impl StateTracker {
     pub fn new() -> Self {
-        Self { finalized_edge_state: HashMap::new(), verification_edge_state: HashMap::new() }
+        Self {
+            finalized_edge_state:    FastHashMap::default(),
+            verification_edge_state: FastHashMap::default(),
+        }
     }
 
-    pub fn finalized_state(&self) -> &HashMap<Address, PoolState> {
+    pub fn finalized_state(&self) -> &FastHashMap<Address, PoolState> {
         &self.finalized_edge_state
     }
 
-    pub fn all_state(&self, block: u64) -> HashMap<Address, PoolState> {
+    pub fn all_state(&self, block: u64) -> FastHashMap<Address, PoolState> {
         self.state_for_verification(block)
             .into_iter()
             .chain(self.finalized_state().clone())
             .collect()
     }
 
-    pub fn state_for_verification(&self, block: u64) -> HashMap<Address, PoolState> {
+    pub fn state_for_verification(&self, block: u64) -> FastHashMap<Address, PoolState> {
         self.verification_edge_state
             .iter()
             .filter_map(|(addr, state)| Some((*addr, state.get_state(block)?.clone())))

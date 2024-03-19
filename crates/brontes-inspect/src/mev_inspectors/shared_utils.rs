@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
@@ -12,7 +9,7 @@ use brontes_types::{
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
     pair::Pair,
     utils::ToFloatNearest,
-    GasDetails, TxInfo,
+    FastHashMap, FastHashSet, GasDetails, TxInfo,
 };
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -33,8 +30,8 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
         SharedInspectorUtils { quote: quote_address, db }
     }
 }
-type TokenDeltas = HashMap<Address, Rational>;
-type AddressDeltas = HashMap<Address, TokenDeltas>;
+type TokenDeltas = FastHashMap<Address, Rational>;
+type AddressDeltas = FastHashMap<Address, TokenDeltas>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// Calculates the USD value of the token balance deltas by address
@@ -45,8 +42,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         deltas: &AddressDeltas,
         metadata: Arc<Metadata>,
         cex: bool,
-    ) -> Option<HashMap<Address, Rational>> {
-        let mut usd_deltas = HashMap::new();
+    ) -> Option<FastHashMap<Address, Rational>> {
+        let mut usd_deltas = FastHashMap::default();
 
         for (address, token_deltas) in deltas {
             for (token_addr, amount) in token_deltas {
@@ -146,7 +143,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let bribe_usd = gas_details
             .iter()
-            .map(|details| metadata.get_gas_price_usd(details.gas_paid()).to_float())
+            .map(|details| {
+                metadata
+                    .get_gas_price_usd(details.gas_paid(), self.quote)
+                    .to_float()
+            })
             .sum::<f64>();
 
         BundleHeader {
@@ -166,7 +167,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         tx_index: u64,
         at: PriceAt,
-        mev_addresses: HashSet<Address>,
+        mev_addresses: FastHashSet<Address>,
         deltas: &AddressDeltas,
         metadata: Arc<Metadata>,
     ) -> Option<Rational> {

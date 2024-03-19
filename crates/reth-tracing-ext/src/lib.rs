@@ -1,15 +1,11 @@
-use std::{
-    fmt::Debug,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{fmt::Debug, path::Path, sync::Arc};
 
 use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
-use reth_db::DatabaseEnv;
+use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::EthEvmConfig;
 use reth_primitives::{BlockId, PruneModes, MAINNET};
@@ -52,26 +48,27 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:   EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
-    pub trace: TraceApi<Provider, RethApi>,
+    pub api:              EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
+    pub trace:            TraceApi<Provider, RethApi>,
+    pub provider_factory: ProviderFactory<Arc<DatabaseEnv>>,
 }
-
 impl TracingClient {
     pub fn new_with_db(
         db: Arc<DatabaseEnv>,
         max_tasks: u64,
         task_executor: BrontesTaskExecutor,
+        static_files_path: &Path,
     ) -> Self {
         let chain = MAINNET.clone();
-        // some breaking changes were introduced in provider factory in the latest reth
-        // version, which required to pass the path to the provider factory, for now I
-        // have passed an empty path, but this should be fixed in the future see line 73
-        // and 88
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), PathBuf::new()).unwrap();
+        let provider_factory = ProviderFactory::new(
+            Arc::clone(&db),
+            Arc::clone(&chain),
+            static_files_path.to_path_buf(),
+        )
+        .expect("failed to start provider factory");
 
         let tree_externals = TreeExternals::new(
-            provider_factory,
+            provider_factory.clone(),
             Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
             EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
         );
@@ -82,11 +79,7 @@ impl TracingClient {
             BlockchainTree::new(tree_externals, tree_config, Some(PruneModes::none())).unwrap(),
         );
 
-        let provider = BlockchainProvider::new(
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), PathBuf::new()).unwrap(),
-            blockchain_tree,
-        )
-        .unwrap();
+        let provider = BlockchainProvider::new(provider_factory.clone(), blockchain_tree).unwrap();
 
         let state_cache = EthStateCache::spawn_with(
             provider.clone(),
@@ -134,16 +127,15 @@ impl TracingClient {
             EthEvmConfig::default(),
         );
 
-        let tracing_call_guard = BlockingTaskGuard::new((max_tasks as u32).try_into().unwrap());
-
+        let tracing_call_guard = BlockingTaskGuard::new(max_tasks as usize);
         let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
 
-        Self { api, trace }
+        Self { api, trace, provider_factory }
     }
 
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
         let db = Arc::new(init_db(db_path).unwrap());
-        Self::new_with_db(db, max_tasks, task_executor)
+        Self::new_with_db(db, max_tasks, task_executor, db_path)
     }
 
     /// Replays all transactions in a block using a custom inspector for each
@@ -191,7 +183,7 @@ pub struct StackStep {
 
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
-    reth_db::open_db(path.as_ref(), Default::default())
+    reth_db::open_db(path.as_ref(), DatabaseArguments::new(Default::default()))
 }
 
 #[cfg(all(test, feature = "local-reth"))]

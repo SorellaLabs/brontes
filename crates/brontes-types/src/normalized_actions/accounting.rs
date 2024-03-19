@@ -1,15 +1,13 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    hash::Hash,
-};
+use std::{collections::hash_map::Entry, hash::Hash};
 
 use alloy_primitives::Address;
 use malachite::Rational;
 
 use super::{comparison::ActionComparison, Actions};
+use crate::FastHashMap;
 
-pub type TokenDeltas = HashMap<Address, Rational>;
-pub type AddressDeltas = HashMap<Address, TokenDeltas>;
+pub type TokenDeltas = FastHashMap<Address, Rational>;
+pub type AddressDeltas = FastHashMap<Address, TokenDeltas>;
 
 /// apply's the given actions token deltas to the map;
 pub trait TokenAccounting {
@@ -51,7 +49,7 @@ impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
         for next in self {
             if !next.is_transfer() {
                 rem.push(next);
-                continue
+                continue;
             }
             accounting_calc(&mut accounting, next);
         }
@@ -66,7 +64,7 @@ impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
 
 /// Holds all accounting info.
 pub struct Accounting {
-    pub delta_map:             AddressDeltas,
+    pub delta_map: AddressDeltas,
     pub accounted_for_actions: Vec<Actions>,
 }
 impl Default for Accounting {
@@ -77,7 +75,10 @@ impl Default for Accounting {
 
 impl Accounting {
     pub fn new() -> Self {
-        Self { delta_map: HashMap::new(), accounted_for_actions: vec![] }
+        Self {
+            delta_map: FastHashMap::default(),
+            accounted_for_actions: vec![],
+        }
     }
 }
 
@@ -85,7 +86,7 @@ pub fn apply_delta<K: PartialEq + Hash + Eq>(
     address: K,
     token: K,
     amount: Rational,
-    delta_map: &mut HashMap<K, HashMap<K, Rational>>,
+    delta_map: &mut FastHashMap<K, FastHashMap<K, Rational>>,
 ) {
     match delta_map.entry(address).or_default().entry(token) {
         Entry::Occupied(mut o) => {

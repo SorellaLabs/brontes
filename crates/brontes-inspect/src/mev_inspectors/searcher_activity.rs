@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, SearcherTx},
     normalized_actions::{accounting::ActionAccounting, Actions},
     tree::BlockTree,
-    ActionIter, ToFloatNearest, TreeSearchBuilder,
+    ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -24,16 +24,12 @@ impl<'db, DB: LibmdbxReader> SearcherActivity<'db, DB> {
     }
 }
 
-#[async_trait::async_trait]
 impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
     type Result = Vec<Bundle>;
 
-    async fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        metadata: Arc<Metadata>,
-    ) -> Self::Result {
-        let search_args = TreeSearchBuilder::default().with_actions([Actions::is_transfer]);
+    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+        let search_args = TreeSearchBuilder::default()
+            .with_actions([Actions::is_transfer, Actions::is_eth_transfer]);
 
         let searcher_txs = tree.clone().collect_all(search_args).collect_vec();
 
@@ -50,7 +46,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                     || {
                         let deltas = transfers.clone().into_iter().account_for_actions();
 
-                        let mut searcher_address: HashSet<Address> = HashSet::new();
+                        let mut searcher_address: FastHashSet<Address> = FastHashSet::default();
                         searcher_address.insert(info.eoa);
                         if let Some(mev_contract) = info.mev_contract {
                             searcher_address.insert(mev_contract);
@@ -63,7 +59,8 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             &deltas,
                             metadata.clone(),
                         )?;
-                        let gas_paid = metadata.get_gas_price_usd(info.gas_details.gas_paid());
+                        let gas_paid = metadata
+                            .get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
                         let profit = rev_usd - gas_paid;
 
                         let header = self.utils.build_bundle_header(
@@ -74,7 +71,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             PriceAt::After,
                             &[info.gas_details],
                             metadata.clone(),
-                            MevType::Unknown,
+                            MevType::SearcherTx,
                         );
 
                         Some(Bundle {

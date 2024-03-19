@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fmt::Debug,
     path,
     sync::{Arc, Mutex},
@@ -9,15 +8,16 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
+        address_metadata::{AddressMetadata, ContractInfo, Socials},
         builder::BuilderInfo,
         searcher::SearcherInfo,
         traits::{DBWriter, LibmdbxReader},
     },
     traits::TracingProvider,
     unordered_buffer_map::BrontesStreamExt,
-    Protocol,
+    FastHashMap, Protocol,
 };
-use futures::{future::join_all, stream::iter, StreamExt};
+use futures::{future::join_all, join, stream::iter, StreamExt};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use toml::Table;
@@ -30,6 +30,7 @@ use crate::{
 };
 const CLASSIFIER_CONFIG_FILE_NAME: &str = "config/classifier_config.toml";
 const SEARCHER_BUILDER_CONFIG_FILE_NAME: &str = "config/searcher_builder_config.toml";
+const METADATA_CONFIG_FILE_NAME: &str = "config/metadata_config.toml";
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
@@ -61,9 +62,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
-
-        self.load_classifier_config_data().await;
-        self.load_searcher_builder_config_data().await;
+        join!(
+            self.load_classifier_config_data(),
+            self.load_searcher_builder_config_data(),
+            self.load_address_metadata_config(),
+        );
         Ok(())
     }
 
@@ -157,13 +160,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
             .filter_map(
-                |chk| {
-                    if !chk.is_empty() {
-                        Some((chk[0], chk[chk.len() - 1]))
-                    } else {
-                        None
-                    }
-                },
+                |chk| if !chk.is_empty() { Some((chk[0], chk[chk.len() - 1])) } else { None },
             )
             .collect_vec();
 
@@ -400,6 +397,39 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             }
         }
     }
+
+    async fn load_address_metadata_config(&self) {
+        let mut workspace_dir = workspace_dir();
+        workspace_dir.push(METADATA_CONFIG_FILE_NAME);
+
+        let config_str =
+            std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
+
+        let config: MetadataConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
+
+        for (address_str, toml_metadata) in config.metadata {
+            let address = address_str.parse().unwrap();
+            let metadata: AddressMetadata = toml_metadata.into_address_metadata();
+
+            let existing_info = self.libmdbx.try_fetch_address_metadata(address);
+
+            match existing_info.expect("Failed to query address metadata table") {
+                Some(mut existing) => {
+                    existing.merge(metadata);
+                    self.libmdbx
+                        .write_address_meta(address, existing)
+                        .await
+                        .expect("Failed to write address metadata");
+                }
+                None => {
+                    self.libmdbx
+                        .write_address_meta(address, metadata)
+                        .await
+                        .expect("Failed to write address metadata");
+                }
+            }
+        }
+    }
 }
 
 fn workspace_dir() -> path::PathBuf {
@@ -423,9 +453,66 @@ pub struct TokenInfoWithAddressToml {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BSConfig {
-    builders:           HashMap<String, BuilderInfo>,
-    searcher_eoas:      HashMap<String, SearcherInfo>,
-    searcher_contracts: HashMap<String, SearcherInfo>,
+    builders:           FastHashMap<String, BuilderInfo>,
+    searcher_eoas:      FastHashMap<String, SearcherInfo>,
+    searcher_contracts: FastHashMap<String, SearcherInfo>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AddressMetadataConfig {
+    pub entity_name:     Option<String>,
+    pub nametag:         Option<String>,
+    pub labels:          Vec<String>,
+    #[serde(rename = "type")]
+    pub address_type:    Option<String>,
+    #[serde(default)]
+    pub contract_info:   Option<ContractInfoConfig>,
+    pub ens:             Option<String>,
+    pub social_metadata: SocialsConfig,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ContractInfoConfig {
+    pub verified_contract: Option<bool>,
+    pub contract_creator:  Option<String>,
+    pub reputation:        Option<u8>,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct SocialsConfig {
+    pub twitter:           Option<String>,
+    pub twitter_followers: Option<u64>,
+    pub website_url:       Option<String>,
+    pub crunchbase:        Option<String>,
+    pub linkedin:          Option<String>,
+}
+#[derive(Serialize, Deserialize)]
+struct MetadataConfig {
+    pub metadata: FastHashMap<String, AddressMetadataConfig>,
+}
+
+impl AddressMetadataConfig {
+    fn into_address_metadata(self) -> AddressMetadata {
+        AddressMetadata {
+            entity_name:     self.entity_name,
+            nametag:         self.nametag,
+            labels:          self.labels,
+            address_type:    self.address_type,
+            contract_info:   self.contract_info.map(|config| ContractInfo {
+                verified_contract: config.verified_contract,
+                contract_creator:  config.contract_creator.map(|s| s.parse().unwrap()),
+                reputation:        config.reputation,
+            }),
+            ens:             self.ens,
+            social_metadata: Socials {
+                twitter:           self.social_metadata.twitter,
+                twitter_followers: self.social_metadata.twitter_followers,
+                website_url:       self.social_metadata.website_url,
+                crunchbase:        self.social_metadata.crunchbase,
+                linkedin:          self.social_metadata.linkedin,
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -434,6 +521,7 @@ mod tests {
     use brontes_database::libmdbx::{
         initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
     };
+    use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
 
     #[brontes_macros::test]
@@ -443,6 +531,7 @@ mod tests {
         let arbitrary_set = Box::leak(Box::new(vec![17000000, 17000010, 17000100]));
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        init_threadpools(10);
         let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
         let (tx, _rx) = unbounded_channel();
         let tracing_client =

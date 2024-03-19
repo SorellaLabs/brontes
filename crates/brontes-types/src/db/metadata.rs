@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -12,11 +10,12 @@ use serde_with::serde_as;
 use super::cex_trades::CexTradeMap;
 use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
 use crate::{
-    constants::{USDC_ADDRESS, WETH_ADDRESS},
+    constants::WETH_ADDRESS,
     db::redefined_types::primitives::*,
     implement_table_value_codecs_with_zc,
     pair::Pair,
     serde_utils::{option_addresss, u256, vec_txhash},
+    FastHashSet,
 };
 
 /// libmdbx type
@@ -36,15 +35,15 @@ use crate::{
 ))]
 pub struct BlockMetadataInner {
     #[serde(with = "u256")]
-    pub block_hash:             U256,
-    pub block_timestamp:        u64,
-    pub relay_timestamp:        Option<u64>,
-    pub p2p_timestamp:          Option<u64>,
+    pub block_hash: U256,
+    pub block_timestamp: u64,
+    pub relay_timestamp: Option<u64>,
+    pub p2p_timestamp: Option<u64>,
     #[serde(with = "option_addresss")]
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward:    Option<u128>,
+    pub proposer_mev_reward: Option<u128>,
     #[serde(with = "vec_txhash")]
-    pub private_flow:           Vec<TxHash>,
+    pub private_flow: Vec<TxHash>,
 }
 
 implement_table_value_codecs_with_zc!(BlockMetadataInnerRedefined);
@@ -55,20 +54,20 @@ pub struct Metadata {
     #[deref]
     #[as_ref]
     pub block_metadata: BlockMetadata,
-    pub cex_quotes:     CexPriceMap,
-    pub dex_quotes:     Option<DexQuotes>,
-    pub builder_info:   Option<BuilderInfo>,
+    pub cex_quotes: CexPriceMap,
+    pub dex_quotes: Option<DexQuotes>,
+    pub builder_info: Option<BuilderInfo>,
     #[cfg(feature = "cex-dex-markout")]
-    pub cex_trades:     Option<CexTradeMap>,
+    pub cex_trades: Option<CexTradeMap>,
 }
 
 impl Metadata {
-    pub fn get_gas_price_usd(&self, gas_used: u128) -> Rational {
+    pub fn get_gas_price_usd(&self, gas_used: u128, quote_token: Address) -> Rational {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
         let eth_price = if self.block_metadata.eth_prices == Rational::ZERO {
             if let Some(dex_quotes) = &self.dex_quotes {
                 dex_quotes
-                    .price_at_or_before(Pair(WETH_ADDRESS, USDC_ADDRESS), dex_quotes.0.len())
+                    .price_at_or_before(Pair(WETH_ADDRESS, quote_token), dex_quotes.0.len())
                     .map(|price| price.post_state)
                     .unwrap_or(Rational::ZERO)
             } else {
@@ -99,17 +98,17 @@ impl Metadata {
 /// Block Metadata
 #[derive(Debug, Clone, Default)]
 pub struct BlockMetadata {
-    pub block_num:              u64,
-    pub block_hash:             U256,
-    pub block_timestamp:        u64,
-    pub relay_timestamp:        Option<u64>,
-    pub p2p_timestamp:          Option<u64>,
+    pub block_num: u64,
+    pub block_hash: U256,
+    pub block_timestamp: u64,
+    pub relay_timestamp: Option<u64>,
+    pub p2p_timestamp: Option<u64>,
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward:    Option<u128>,
+    pub proposer_mev_reward: Option<u128>,
     /// Best ask at p2p timestamp
-    pub eth_prices:             Rational,
+    pub eth_prices: Rational,
     /// Tx
-    pub private_flow:           HashSet<TxHash>,
+    pub private_flow: FastHashSet<TxHash>,
 }
 
 impl BlockMetadata {
@@ -123,7 +122,7 @@ impl BlockMetadata {
         proposer_fee_recipient: Option<Address>,
         proposer_mev_reward: Option<u128>,
         eth_prices: Rational,
-        private_flow: HashSet<TxHash>,
+        private_flow: FastHashSet<TxHash>,
     ) -> Self {
         Self {
             block_num,
