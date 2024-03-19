@@ -37,7 +37,7 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
-    pub start_block:      u64,
+    pub start_block:      Option<u64>,
     pub end_block:        Option<u64>,
     pub back_from_tip:    u64,
     pub max_tasks:        u64,
@@ -57,7 +57,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        start_block: u64,
+        start_block: Option<u64>,
         end_block: Option<u64>,
         back_from_tip: u64,
         max_tasks: u64,
@@ -95,14 +95,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
-        let range = end_block - self.start_block;
+        let range = end_block - self.start_block.unwrap();
         let cpus_min = range / self.min_batch_size + 1;
 
         let cpus = std::cmp::min(cpus_min, self.max_tasks);
         let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
         join_all(
-            (self.start_block..=end_block)
+            (self.start_block.unwrap()..=end_block)
                 .chunks(chunk_size.try_into().unwrap())
                 .into_iter()
                 .enumerate()
@@ -220,7 +220,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         // these tables are super lightweight and as such, we init them for the entire
         // range
         if self.libmdbx.init_full_range_tables(self.clickhouse).await {
-            tracing::info!("initing critical range state");
+            tracing::info!("Initializing critical range state");
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,
@@ -238,91 +238,93 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .await?;
         }
 
-        tracing::info!(start_block=%self.start_block, %end_block, "Verifying db fetching state that is missing");
-        let state_to_init = self.libmdbx.state_to_initialize(
-            self.start_block,
-            end_block,
-            !self.with_dex_pricing,
-        )?;
+        if let Some(start_block) = self.start_block {
+            tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
+            let state_to_init =
+                self.libmdbx
+                    .state_to_initialize(start_block, end_block, !self.with_dex_pricing)?;
 
-        if state_to_init.is_empty() {
-            return Ok(())
-        }
+            if state_to_init.is_empty() {
+                return Ok(())
+            }
 
-        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
+            tracing::info!("Downloading missing {:#?} ranges", state_to_init);
 
-        let state_to_init_continuous = state_to_init
-            .clone()
+            let state_to_init_continuous = state_to_init
+                .clone()
+                .into_iter()
+                .filter(|range| range.clone().collect_vec().len() >= 1000)
+                .collect_vec();
+
+            tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
+
+            join_all(state_to_init_continuous.iter().map(|range| async move {
+                let start = range.start();
+                let end = range.end();
+
+                #[cfg(feature = "sorella-server")]
+                {
+                    self.libmdbx
+                        .initialize_tables(
+                            self.clickhouse,
+                            self.parser.get_tracer(),
+                            &[Tables::BlockInfo, Tables::CexPrice],
+                            false,
+                            Some((*start, *end)),
+                        )
+                        .await
+                }
+                #[cfg(not(feature = "sorella-server"))]
+                {
+                    self.libmdbx
+                        .initialize_tables(
+                            self.clickhouse,
+                            self.parser.get_tracer(),
+                            &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                            false,
+                            Some((*start, *end)),
+                        )
+                        .await
+                }
+            }))
+            .await
             .into_iter()
-            .filter(|range| range.clone().collect_vec().len() >= 1000)
-            .collect_vec();
+            .collect::<eyre::Result<_>>()?;
 
-        tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
+            tracing::info!(
+                "Downloading {} missing discontinuous ranges",
+                state_to_init.len() - state_to_init_continuous.len()
+            );
 
-        join_all(state_to_init_continuous.iter().map(|range| async move {
-            let start = range.start();
-            let end = range.end();
+            let state_to_init_disc = state_to_init
+                .into_iter()
+                .filter(|range| range.clone().collect_vec().len() < 1000)
+                .flatten()
+                .collect_vec();
 
             #[cfg(feature = "sorella-server")]
-            {
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice],
-                        false,
-                        Some((*start, *end)),
-                    )
-                    .await
-            }
+            self.libmdbx
+                .initialize_tables_arbitrary(
+                    self.clickhouse,
+                    self.parser.get_tracer(),
+                    &[Tables::BlockInfo, Tables::CexPrice],
+                    state_to_init_disc,
+                )
+                .await?;
             #[cfg(not(feature = "sorella-server"))]
-            {
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
-                        false,
-                        Some((*start, *end)),
-                    )
-                    .await
-            }
-        }))
-        .await
-        .into_iter()
-        .collect::<eyre::Result<_>>()?;
+            self.libmdbx
+                .initialize_tables_arbitrary(
+                    self.clickhouse,
+                    self.parser.get_tracer(),
+                    &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                    state_to_init_disc,
+                )
+                .await?;
 
-        tracing::info!(
-            "Downloading {} missing discontinuous ranges",
-            state_to_init.len() - state_to_init_continuous.len()
-        );
-
-        let state_to_init_disc = state_to_init
-            .into_iter()
-            .filter(|range| range.clone().collect_vec().len() < 1000)
-            .flatten()
-            .collect_vec();
-
-        #[cfg(feature = "sorella-server")]
-        self.libmdbx
-            .initialize_tables_arbitrary(
-                self.clickhouse,
-                self.parser.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
-                state_to_init_disc,
-            )
-            .await?;
-        #[cfg(not(feature = "sorella-server"))]
-        self.libmdbx
-            .initialize_tables_arbitrary(
-                self.clickhouse,
-                self.parser.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
-                state_to_init_disc,
-            )
-            .await?;
-
-        Ok(())
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 
     async fn get_end_block(&self) -> (bool, u64) {
@@ -345,31 +347,32 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
-        if had_end_block {
+        if had_end_block && self.start_block.is_some() {
             self.build_range_executors(executor.clone(), end_block)
                 .await
                 .into_iter()
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
-                        "range_executor",
+                        "Range Executor",
                         |shutdown| async move {
                             block_range.run_until_graceful_shutdown(shutdown).await
                         },
                     ));
                 });
         } else {
-            self.build_range_executors(executor.clone(), end_block)
-                .await
-                .into_iter()
-                .for_each(|block_range| {
-                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
-                        "range_executor",
-                        |shutdown| async move {
-                            block_range.run_until_graceful_shutdown(shutdown).await
-                        },
-                    ));
-                });
-
+            if self.start_block.is_some() {
+                self.build_range_executors(executor.clone(), end_block)
+                    .await
+                    .into_iter()
+                    .for_each(|block_range| {
+                        futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                            "Range Executor",
+                            |shutdown| async move {
+                                block_range.run_until_graceful_shutdown(shutdown).await
+                            },
+                        ));
+                    });
+            }
             let tip_inspector = self
                 .build_tip_inspector(executor.clone(), end_block, self.back_from_tip)
                 .await;
@@ -403,7 +406,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             }
         }
         tracing::info!(
-            "got shutdown signal during init process, clearing possibly bad
+            "Received shutdown signal during initialization process, clearing possibly corrupted
                            full range tables"
         );
 

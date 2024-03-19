@@ -3,6 +3,7 @@ use futures::Future;
 
 use crate::{
     db::{
+        address_metadata::AddressMetadata,
         builder::{BuilderInfo, BuilderStats},
         dex::DexQuotes,
         searcher::{SearcherInfo, SearcherStats},
@@ -104,6 +105,14 @@ pub trait DBWriter: Send + Unpin + 'static {
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
             .write_builder_stats(builder_address, builder_stats)
+    }
+
+    fn write_address_meta(
+        &self,
+        address: Address,
+        metadata: AddressMetadata,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().write_address_meta(address, metadata)
     }
 
     fn insert_pool(
