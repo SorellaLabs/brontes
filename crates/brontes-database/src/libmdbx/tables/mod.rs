@@ -20,6 +20,7 @@ use brontes_types::{
         searcher::{SearcherInfo, SearcherInfoRedefined, SearcherStats, SearcherStatsRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
+        traits::LibmdbxReader,
     },
     pair::Pair,
     price_graph_types::SubGraphsEntryRedefined,
@@ -32,6 +33,7 @@ use serde_with::serde_as;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData, LibmdbxReadWriter},
+    parquet::ParquetExporter,
 };
 mod const_sql;
 use alloy_primitives::Address;
@@ -256,6 +258,17 @@ impl Tables {
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
             Tables::CexTrades => Ok(()),
+        }
+    }
+
+    pub async fn export_to_parquet<DB>(&self, exporter: &ParquetExporter<DB>) -> eyre::Result<()>
+    where
+        DB: LibmdbxReader,
+    {
+        match self {
+            Self::AddressMeta => exporter.export_address_metadata().await,
+            Self::MevBlocks => exporter.export_mev_blocks().await,
+            _ => unreachable!("Parquet export not yet supported for this table"),
         }
     }
 }

@@ -1,8 +1,8 @@
 use alloy_primitives::TxHash;
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, B256};
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
+use reth_primitives::{
+    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, B256,
 };
+use reth_rpc_types::{state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest};
 
 use crate::structured_trace::TxTrace;
 
@@ -38,4 +38,18 @@ pub trait TracingProvider: Send + Sync + 'static {
     async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>>;
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)>;
+
+    // DB Access Methods
+    async fn get_storage(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+        storage_key: B256,
+    ) -> eyre::Result<Option<StorageValue>>;
+
+    async fn get_bytecode(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+    ) -> eyre::Result<Option<Bytecode>>;
 }
