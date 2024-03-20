@@ -397,8 +397,16 @@ pub async fn init_trace_parser(
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
-    let client =
-        TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
+
+    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+    let db_path = std::path::Path::new(&db_path);
+
+    let client = TracingClient::new_with_db(
+        get_reth_db_handle(),
+        max_tasks as u64,
+        executor.executor(),
+        db_path,
+    );
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 

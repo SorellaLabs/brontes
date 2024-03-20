@@ -43,7 +43,7 @@ alloy-rlp = { workspace = true, features = ["arrayvec"] }
 # pathfinding 
 pathfinding = "4.8.1"
 rustc-hash = "1.1.0"
-indexmap = "=2.2.2"
+indexmap = "2.2.2"
 
 # misc
 phf.workspace = true
@@ -59,7 +59,6 @@ derive_more.workspace = true
 async-trait.workspace = true
 num-bigfloat = "1.7.0"
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
-codecs-derive.workspace = true
 proptest = "1.4"
 proptest-derive = "0.4"
 arbitrary = "1.3"
@@ -86,6 +85,7 @@ reth-tracing-ext = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
+reth-provider.workspace = true
 rand = "0.8.5"
 eyre.workspace = true
 

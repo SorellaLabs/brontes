@@ -4,6 +4,7 @@
 #![feature(effects)]
 pub mod clickhouse;
 pub mod libmdbx;
+pub mod parquet;
 pub use libmdbx::{
     tables::*,
     types::{CompressedTable, IntoTableKey},
