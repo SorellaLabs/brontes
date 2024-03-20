@@ -38,7 +38,7 @@ impl SubGraphRegistry {
             .map(|(pair, (goes_through, extends_to, edges))| {
                 (
                     pair.ordered(),
-                    vec![(goes_through, PairSubGraph::init(goes_through, pair, extends_to, edges))],
+                    vec![(goes_through, PairSubGraph::init(pair, goes_through, extends_to, edges))],
                 )
             })
             .collect();
