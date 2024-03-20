@@ -1110,7 +1110,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
 
     // if we can extend another graph and we don't have a direct pair with a quote
     // asset, then we will extend.
-    let (pair, extend_to) = if let Some(ext) = graph.has_extension(&must_include, pair.1) {
+    let (n_pair, extend_to) = if let Some(ext) = graph.has_extension(&must_include, pair.1) {
         (must_include, Some(ext).filter(|_| must_include.1 != pair.1))
     } else {
         (pair, None)
@@ -1120,7 +1120,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         let subgraph = graph.create_subgraph(
             block,
             must_include,
-            pair,
+            n_pair,
             FastHashSet::default(),
             100,
             Some(5),
