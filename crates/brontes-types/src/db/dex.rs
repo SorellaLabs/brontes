@@ -89,15 +89,16 @@ impl DexQuotes {
         }
 
         if pair.0 == pair.1 {
-            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE });
+            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
         }
 
         loop {
             if let Some(price) = self.get_price(pair, tx) {
-                return Some(price.clone());
+                tracing::info!(%price, ?pair, "found price for pair");
+                return Some(price.clone())
             }
             if tx == 0 {
-                break;
+                break
             }
 
             tx -= 1;
