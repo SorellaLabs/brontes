@@ -198,8 +198,13 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.sub_graph_registry.has_subpool(&pair) || self.subgraph_verifier.is_verifying(&pair)
     }
 
-    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Pair) -> bool {
-        self.has_extension(&pair).is_some()
+    pub fn has_subgraph_goes_through(
+        &self,
+        pair: Pair,
+        goes_through: Pair,
+        quote: Address,
+    ) -> bool {
+        self.has_extension(&pair, quote).is_some()
             && self.sub_graph_registry.has_go_through(&pair, &goes_through)
     }
 
