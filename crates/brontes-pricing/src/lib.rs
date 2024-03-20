@@ -317,6 +317,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
+        tracing::info!(?tx_idx, ?pair0, "fetching price");
+        tracing::info!(?tx_idx, ?pair1, "fetching price");
+
         let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, "no price for token");
             return;
