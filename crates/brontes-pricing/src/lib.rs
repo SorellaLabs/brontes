@@ -211,7 +211,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     .graph_manager
                     .has_subgraph_goes_through(pair, must_include)
                 {
-                    error!(?pair, "already have pairs");
+                    tracing::debug!(?pair, "already have pairs");
                     return
                 }
 

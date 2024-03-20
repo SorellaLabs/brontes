@@ -97,7 +97,8 @@ impl SubGraphRegistry {
         let (next, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
-        next.and_then(|next| Some(self.get_price_all(next, edge_state)? * default_price))
+        next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
+            .or(Some(default_price))
     }
 
     fn get_price_once(
