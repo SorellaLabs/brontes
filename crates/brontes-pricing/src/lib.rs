@@ -118,6 +118,8 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
+    type RequeryPairs = (Pair, Pair, u64, FastHashSet<Pair>, Vec<Address>);
+
     pub fn new(
         finished: Arc<AtomicBool>,
         quote_asset: Address,
@@ -467,10 +469,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
-    fn requery_bad_state_par(
-        &mut self,
-        pairs: Vec<(Pair, Pair, u64, FastHashSet<Pair>, Vec<Address>)>,
-    ) {
+    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>) {
         if pairs.is_empty() {
             return
         }
@@ -969,10 +968,11 @@ fn graph_search_par<DB: DBWriter + LibmdbxReader>(
 }
 
 type ParStateQueryRes = Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>, Option<Pair>, Pair)>;
+type StateQueryArgs = (Pair, Pair, u64, FastHashSet<Pair>, Vec<Address>);
 
 fn par_state_query<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
-    pairs: Vec<(Pair, Pair, u64, FastHashSet<Pair>, Vec<Address>)>,
+    pairs: Vec<StateQueryArgs>,
 ) -> ParStateQueryRes {
     pairs
         .into_par_iter()
