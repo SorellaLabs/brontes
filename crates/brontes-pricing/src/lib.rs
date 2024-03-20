@@ -61,7 +61,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error};
+use tracing::debug;
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
@@ -1102,9 +1102,10 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         return None
     }
 
-    // if we know this is a ext, we can simply the search
+    // if we can extend another graph and we don't have a direct pair with a quote
+    // asset, then we will extend.
     let (pair, extend_to) = if let Some(ext) = graph.has_extension(&must_include) {
-        (must_include, Some(ext))
+        (must_include, Some(ext).filter(|_| must_include.1 != pair.1))
     } else {
         (pair, None)
     };

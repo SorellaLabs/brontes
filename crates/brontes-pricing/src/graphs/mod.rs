@@ -199,6 +199,9 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     }
 
     pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Pair) -> bool {
+        if pair.ordered() == goes_through.ordered() {
+            return false
+        }
         self.has_extension(&pair).is_some()
             && self.sub_graph_registry.has_go_through(&pair, &goes_through)
     }
