@@ -1,7 +1,7 @@
 #!/bin/sh
 
 setup() {
-  if rustup default nightly; then : ;else return 1; fi
+  if rustup default nightly; then : ; else return 1; fi
   git checkout $1
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"

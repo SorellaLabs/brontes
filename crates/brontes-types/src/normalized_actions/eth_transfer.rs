@@ -11,9 +11,9 @@ use crate::{constants::ETH_ADDRESS, ToScaledRational};
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedEthTransfer {
     pub trace_index: u64,
-    pub from: Address,
-    pub to: Address,
-    pub value: U256,
+    pub from:        Address,
+    pub to:          Address,
+    pub value:       U256,
 }
 
 impl TokenAccounting for NormalizedEthTransfer {

@@ -26,10 +26,10 @@ type SpansAll<V> = TreeIterator<V, std::vec::IntoIter<(B256, Vec<Vec<V>>)>>;
 
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots: Vec<Root<V>>,
-    pub header: Header,
+    pub tx_roots:             Vec<Root<V>>,
+    pub header:               Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee: f64,
+    pub avg_priority_fee:     f64,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -332,17 +332,11 @@ pub mod test {
 
         let burns = tree
             .clone()
-            .collect(
-                tx,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
-            )
+            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn))
             .collect::<Vec<_>>();
         assert_eq!(burns.len(), 1);
         let swaps = tree
-            .collect(
-                tx,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
-            )
+            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_swap))
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
     }
@@ -370,10 +364,7 @@ pub mod test {
         let tx = hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d").into();
         let tree = Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
         let mut actions = tree
-            .collect(
-                &tx,
-                TreeSearchBuilder::default().with_action(Actions::is_batch),
-            )
+            .collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch))
             .collect::<Vec<_>>();
         assert!(!actions.is_empty());
         let action = actions.remove(0);

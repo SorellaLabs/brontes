@@ -497,9 +497,7 @@ pub mod option_r_address {
         let data = des.map(|d| Address::from_str(&d));
 
         if let Some(d) = data {
-            Ok(Some(AddressRedefined::from_source(
-                d.map_err(serde::de::Error::custom)?,
-            )))
+            Ok(Some(AddressRedefined::from_source(d.map_err(serde::de::Error::custom)?)))
         } else {
             Ok(None)
         }
@@ -547,7 +545,10 @@ pub mod r_address {
 
     use crate::db::redefined_types::primitives::AddressRedefined;
 
-    pub fn serialize<S: Serializer>(u: &AddressRedefined, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(
+        u: &AddressRedefined,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
@@ -573,7 +574,10 @@ pub mod pools_libmdbx {
 
     use crate::db::pool_creation_block::PoolsToAddresses;
 
-    pub fn serialize<S: Serializer>(u: &PoolsToAddresses, serializer: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(
+        u: &PoolsToAddresses,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
         let st: Vec<String> =
             u.0.clone()
                 .into_iter()
@@ -637,13 +641,8 @@ pub mod socials {
     use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
-    type SocalDecode = (
-        Option<String>,
-        Option<u64>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-    );
+    type SocalDecode =
+        (Option<String>, Option<u64>, Option<String>, Option<String>, Option<String>);
 
     pub fn deserialize<'de, D, T: From<Socials>>(deserializer: D) -> Result<T, D::Error>
     where
@@ -652,24 +651,11 @@ pub mod socials {
         let (twitter, twitter_followers, website_url, crunchbase, linkedin): SocalDecode =
             Deserialize::deserialize(deserializer)?;
 
-        Ok(Socials {
-            twitter,
-            twitter_followers,
-            website_url,
-            crunchbase,
-            linkedin,
-        }
-        .into())
+        Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
     }
 
     pub fn serialize<S: Serializer>(u: &Socials, serializer: S) -> Result<S::Ok, S::Error> {
-        (
-            &u.twitter,
-            &u.twitter_followers,
-            &u.website_url,
-            &u.crunchbase,
-            &u.linkedin,
-        )
+        (&u.twitter, &u.twitter_followers, &u.website_url, &u.crunchbase, &u.linkedin)
             .serialize(serializer)
     }
 }
