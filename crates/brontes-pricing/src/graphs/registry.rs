@@ -120,8 +120,6 @@ impl SubGraphRegistry {
             })
             .map(|graph| (graph.get_unordered_pair(), graph))
             .and_then(|(default_pair, graph)| {
-                let extends_to = graph.extends_to();
-
                 Some((graph.extends_to(), default_pair, graph.fetch_price(edge_state)?))
             })
             .map(|(ext, default_pair, res)| {
