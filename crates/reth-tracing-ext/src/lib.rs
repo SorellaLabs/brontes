@@ -1,4 +1,8 @@
-use std::{fmt::Debug, path::Path, sync::Arc};
+use std::{
+    fmt::Debug,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
 use reth_beacon_consensus::BeaconConsensus;
@@ -57,15 +61,12 @@ impl TracingClient {
         db: Arc<DatabaseEnv>,
         max_tasks: u64,
         task_executor: BrontesTaskExecutor,
-        static_files_path: &Path,
+        static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
-        let provider_factory = ProviderFactory::new(
-            Arc::clone(&db),
-            Arc::clone(&chain),
-            static_files_path.to_path_buf(),
-        )
-        .expect("failed to start provider factory");
+        let provider_factory =
+            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), static_files_path)
+                .expect("failed to start provider factory");
 
         let tree_externals = TreeExternals::new(
             provider_factory.clone(),
@@ -135,7 +136,10 @@ impl TracingClient {
 
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
         let db = Arc::new(init_db(db_path).unwrap());
-        Self::new_with_db(db, max_tasks, task_executor, db_path)
+        let mut static_files = db_path.to_path_buf();
+        static_files.pop();
+        static_files.push("static_files");
+        Self::new_with_db(db, max_tasks, task_executor, static_files)
     }
 
     /// Replays all transactions in a block using a custom inspector for each
