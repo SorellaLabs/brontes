@@ -61,7 +61,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::debug;
+use tracing::{debug, info};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
@@ -305,7 +305,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let tx_idx = msg.tx_idx;
         let block = msg.block;
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
-            debug!(?addr, "failed to get pair for pool");
+            info!(?addr, "failed to get pair for pool");
             return;
         };
 
@@ -316,21 +316,21 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
         let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
-            debug!(?pair0, "no price for token");
+            info!(?pair0, "no price for token");
             return;
         };
         let Some(price1_pre) = self.get_dex_price(pair1, flipped_pool) else {
-            debug!(?pair1, "no price for token");
+            info!(?pair1, "no price for token");
             return;
         };
         self.graph_manager.update_state(addr, msg);
 
         let Some(price0_post) = self.get_dex_price(pair0, pool_pair) else {
-            debug!(?pair0, "no price for token");
+            info!(?pair0, "no price for token");
             return;
         };
         let Some(price1_post) = self.get_dex_price(pair1, flipped_pool) else {
-            debug!(?pair1, "no price for token");
+            info!(?pair1, "no price for token");
             return;
         };
 
