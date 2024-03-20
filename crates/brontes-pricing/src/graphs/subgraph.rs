@@ -96,6 +96,7 @@ impl PairSubGraph {
         extends_to: Option<Pair>,
         edges: Vec<SubGraphEdge>,
     ) -> Self {
+        tracing::info!(?pair, ?must_go_through, ?extends_to);
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, u16>::default();
         let mut token_to_index = FastHashMap::default();
 
