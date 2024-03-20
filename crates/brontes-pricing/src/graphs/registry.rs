@@ -93,6 +93,7 @@ impl SubGraphRegistry {
         goes_through: Pair,
         edge_state: &FastHashMap<Address, PoolState>,
     ) -> Option<Rational> {
+        tracing::info!(?unordered_pair, "getting, first hop price");
         let (next, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
         tracing::info!(?unordered_pair, ?goes_through, ?next, "got first hop price");

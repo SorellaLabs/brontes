@@ -103,7 +103,7 @@ impl DexQuotes {
 
             tx -= 1;
         }
-        error!(?pair, "no price for pair");
+        error!(?pair, before=?tx, "no price for pair");
         None
     }
 
