@@ -95,8 +95,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.subgraph_verifier.pool_dep_failure(pair);
     }
 
-    pub fn has_extension(&self, pair: &Pair) -> Option<Pair> {
-        self.sub_graph_registry.has_extension(pair)
+    pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
+        self.sub_graph_registry.has_extension(pair, quote)
     }
 
     /// creates a subgraph returning the edges and the state to load.
@@ -199,9 +199,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     }
 
     pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Pair) -> bool {
-        if pair.ordered() == goes_through.ordered() {
-            return false
-        }
         self.has_extension(&pair).is_some()
             && self.sub_graph_registry.has_go_through(&pair, &goes_through)
     }

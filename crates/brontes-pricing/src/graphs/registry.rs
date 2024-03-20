@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
+use brontes_types::{pair::Pair, price_graph_types::*, queries, FastHashMap};
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
@@ -47,11 +47,10 @@ impl SubGraphRegistry {
     }
 
     // check's to see if a subgraph that shares an edge exists.
-    // if one exists, returns the pair.
-    pub fn has_extension(&self, pair: &Pair) -> Option<Pair> {
+    pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
         self.sub_graphs
             .keys()
-            .find(|cur_graphs| cur_graphs.0 == pair.1)
+            .find(|cur_graphs| cur_graphs.0 == pair.1 && cur_graphs.1 == quote)
             .copied()
     }
 

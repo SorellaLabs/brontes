@@ -1002,7 +1002,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                         Some(5),
                         Duration::from_millis(69),
                     )],
-                    graph.has_extension(&first_hop),
+                    graph.has_extension(&first_hop, pair.1),
                     first_hop,
                 )
             }
@@ -1026,7 +1026,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                         )
                     })
                     .collect::<Vec<_>>(),
-                graph.has_extension(&first_hop),
+                graph.has_extension(&first_hop, pair.1),
                 first_hop,
             )
         })
@@ -1104,7 +1104,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
 
     // if we can extend another graph and we don't have a direct pair with a quote
     // asset, then we will extend.
-    let (pair, extend_to) = if let Some(ext) = graph.has_extension(&must_include) {
+    let (pair, extend_to) = if let Some(ext) = graph.has_extension(&must_include, pair.1) {
         (must_include, Some(ext).filter(|_| must_include.1 != pair.1))
     } else {
         (pair, None)
