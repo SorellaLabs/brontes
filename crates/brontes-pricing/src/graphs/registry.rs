@@ -96,6 +96,7 @@ impl SubGraphRegistry {
     ) -> Option<Rational> {
         let (next, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
+        tracing::info!(?unordered_pair, ?goes_through, ?next, "got first hop price");
 
         next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
             .or(Some(default_price))
