@@ -206,7 +206,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     return
                 }
 
-                if self.graph_manager.has_subgraph(pair) {
+                if self
+                    .graph_manager
+                    .has_subgraph_goes_through(pair, must_include)
+                {
                     error!(?pair, "already have pairs");
                     return
                 }
@@ -955,8 +958,8 @@ fn graph_search_par<DB: DBWriter + LibmdbxReader>(
                 graph,
                 msg,
                 pair,
-                (!graph.has_subgraph(pair0)).then_some(pair0),
-                (!graph.has_subgraph(pair1)).then_some(pair1),
+                (!graph.has_subgraph_goes_through(pair0, pair)).then_some(pair0),
+                (!graph.has_subgraph_goes_through(pair1, pair)).then_some(pair1),
             );
             Some((state, path))
         })

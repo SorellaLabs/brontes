@@ -47,6 +47,13 @@ impl SubGraphRegistry {
             .copied()
     }
 
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
+        self.sub_graphs
+            .get(pair)
+            .map(|g| g.must_go_through() == *goes_through)
+            .unwrap_or_default()
+    }
+
     pub fn add_verified_subgraph(
         &mut self,
         pair: Pair,

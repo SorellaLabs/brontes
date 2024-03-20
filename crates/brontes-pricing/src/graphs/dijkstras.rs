@@ -171,6 +171,7 @@ where
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
     parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
     let mut target_reached = None;
+
     while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
         if hops >= MAX_LEN {
             continue
