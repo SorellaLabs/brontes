@@ -67,7 +67,7 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: FastHashMap<(Address, Protocol), Pair>,
-        sub_graph_registry: FastHashMap<Pair, (Pair, Option<Pair>, Vec<SubGraphEdge>)>,
+        sub_graph_registry: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
         db: &'static DB,
     ) -> Self {
         let graph = AllPairGraph::init_from_hash_map(all_pool_data);
@@ -135,6 +135,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn add_subgraph_for_verification(
         &mut self,
         pair: Pair,
+        complete_pair: Pair,
         goes_through: Pair,
         extends_to: Option<Pair>,
         block: u64,
@@ -144,6 +145,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             pair,
             goes_through,
             extends_to,
+            complete_pair,
             block,
             edges,
             &self.graph_state,
@@ -158,11 +160,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         {
             tracing::error!(error=%e, "failed to save new subgraph pair");
         }
-        self.sub_graph_registry.add_verified_subgraph(
-            pair,
-            subgraph,
-            &self.graph_state.all_state(block),
-        )
+        self.sub_graph_registry
+            .add_verified_subgraph(subgraph, &self.graph_state.all_state(block))
     }
 
     pub fn remove_pair_graph_address(

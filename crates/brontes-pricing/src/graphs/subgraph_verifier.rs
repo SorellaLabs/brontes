@@ -76,13 +76,14 @@ impl SubgraphVerifier {
         pair: Pair,
         goes_through: Pair,
         extends_to: Option<Pair>,
+        complete_pair: Pair,
         block: u64,
         path: Vec<SubGraphEdge>,
         state_tracker: &StateTracker,
     ) -> Vec<PoolPairInfoDirection> {
         let query_state = state_tracker.missing_state(block, &path);
 
-        let subgraph = PairSubGraph::init(pair, goes_through, extends_to, path);
+        let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
         if self.pending_subgraphs.contains_key(&pair) {
             return vec![]
         };
@@ -189,12 +190,14 @@ impl SubgraphVerifier {
 
                 if result.should_requery {
                     let goes_through = subgraph.subgraph.must_go_through();
+                    let full_pair = subgraph.subgraph.complete_pair();
                     self.pending_subgraphs.insert(pair, subgraph);
                     // anything that was fully remove gets cached
-                    tracing::debug!(?pair, "requerying",);
+                    tracing::debug!(?pair, "requerying");
 
                     return VerificationResults::Failed(VerificationFailed {
                         pair,
+                        full_pair,
                         goes_through,
                         block,
                         prune_state: removals,
@@ -330,6 +333,7 @@ pub struct VerificationPass {
 #[derive(Debug)]
 pub struct VerificationFailed {
     pub pair:         Pair,
+    pub full_pair:    Pair,
     pub goes_through: Pair,
     pub block:        u64,
     // prunes the partial edges of this state.

@@ -1,5 +1,5 @@
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, price_graph_types::*, queries, FastHashMap};
+use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
@@ -32,13 +32,18 @@ pub struct SubGraphRegistry {
 }
 
 impl SubGraphRegistry {
-    pub fn new(subgraphs: FastHashMap<Pair, (Pair, Option<Pair>, Vec<SubGraphEdge>)>) -> Self {
+    pub fn new(
+        subgraphs: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
+    ) -> Self {
         let sub_graphs = subgraphs
             .into_iter()
-            .map(|(pair, (goes_through, extends_to, edges))| {
+            .map(|(pair, (goes_through, complete_pair, extends_to, edges))| {
                 (
                     pair.ordered(),
-                    vec![(goes_through, PairSubGraph::init(pair, goes_through, extends_to, edges))],
+                    vec![(
+                        goes_through,
+                        PairSubGraph::init(pair, complete_pair, goes_through, extends_to, edges),
+                    )],
                 )
             })
             .collect();
@@ -63,13 +68,12 @@ impl SubGraphRegistry {
 
     pub fn add_verified_subgraph(
         &mut self,
-        pair: Pair,
         mut subgraph: PairSubGraph,
         graph_state: &FastHashMap<Address, PoolState>,
     ) {
         subgraph.save_last_verification_liquidity(graph_state);
         self.sub_graphs
-            .entry(pair.ordered())
+            .entry(subgraph.complete_pair().ordered())
             .or_insert_with(|| vec![])
             .push((subgraph.must_go_through(), subgraph));
     }

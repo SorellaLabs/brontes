@@ -38,6 +38,7 @@ pub trait LoadState {
         block_number: u64,
         pool_pair: Pair,
         goes_through: Pair,
+        full_pair: Pair,
     ) -> impl Future<Output = Result<PoolFetchSuccess, PoolFetchError>> + Send;
 }
 
@@ -53,6 +54,7 @@ impl LoadState for Protocol {
         block_number: u64,
         pool_pair: Pair,
         gt: Pair,
+        full_pair: Pair,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
             Self::UniswapV2 | Self::SushiSwapV2 => {
@@ -67,7 +69,7 @@ impl LoadState for Protocol {
                             .await
                             .map_err(|e| {
                                 error!(?pool_pair,protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
-                                (address, Protocol::UniswapV2, block_number, pool_pair, gt, e)
+                                (address, Protocol::UniswapV2, block_number, pool_pair, gt,full_pair, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -95,7 +97,7 @@ impl LoadState for Protocol {
                             .await
                             .map_err(|e| {
                                 error!(?pool_pair, protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
-                                (address, Protocol::UniswapV3, block_number, pool_pair, gt, e)
+                                (address, Protocol::UniswapV3, block_number, pool_pair, gt,full_pair, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -113,7 +115,7 @@ impl LoadState for Protocol {
             }
             rest => {
                 error!(protocol=?rest, "no state updater is build for");
-                Err((address, self, block_number, pool_pair, gt, AmmError::UnsupportedProtocol))
+                Err((address, self, block_number, pool_pair, gt, full_pair, AmmError::UnsupportedProtocol))
             }
         }
     }

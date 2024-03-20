@@ -74,6 +74,7 @@ const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
 pub struct PairSubGraph {
     /// the pair represented
     pair:            Pair,
+    complete_pair:   Pair,
     /// the pair that trigged the need for pricing in the first place.
     must_go_through: Pair,
     graph:           DiGraph<(), Vec<SubGraphEdge>, u16>,
@@ -92,6 +93,7 @@ pub struct PairSubGraph {
 impl PairSubGraph {
     pub fn init(
         pair: Pair,
+        complete_pair: Pair,
         must_go_through: Pair,
         extends_to: Option<Pair>,
         edges: Vec<SubGraphEdge>,
@@ -140,6 +142,7 @@ impl PairSubGraph {
 
         Self {
             pair,
+            complete_pair,
             graph,
             start_node,
             end_node,
@@ -148,6 +151,10 @@ impl PairSubGraph {
             must_go_through,
             start_nodes_liq: FastHashMap::default(),
         }
+    }
+
+    pub fn complete_pair(&self) -> Pair {
+        self.complete_pair
     }
 
     pub fn extends_to(&self) -> Option<Pair> {
