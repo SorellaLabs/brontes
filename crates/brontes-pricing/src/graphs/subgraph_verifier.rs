@@ -161,13 +161,12 @@ impl SubgraphVerifier {
 
     pub fn verify_subgraph(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair, Rational)>,
-        quote: Address,
+        pair: Vec<(u64, Option<u64>, Pair, Rational, Address)>,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<VerificationResults> {
         let pairs = self.get_subgraphs(pair);
-        let res = self.verify_par(pairs, quote, all_graph, state_tracker);
+        let res = self.verify_par(pairs, all_graph, state_tracker);
 
         res.into_iter()
             .map(|(pair, block, result, subgraph)| {
@@ -211,13 +210,13 @@ impl SubgraphVerifier {
 
     fn get_subgraphs(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair, Rational)>,
-    ) -> Vec<(Pair, u64, bool, Subgraph, Rational)> {
+        pair: Vec<(u64, Option<u64>, Pair, Rational, Address)>,
+    ) -> Vec<(Pair, u64, bool, Subgraph, Rational, Address)> {
         pair.into_iter()
-            .map(|(block, frayed, pair, price)| {
-                (pair, block, frayed, self.pending_subgraphs.remove(&pair), price)
+            .map(|(block, frayed, pair, price, quote)| {
+                (pair, block, frayed, self.pending_subgraphs.remove(&pair), price, quote)
             })
-            .filter_map(|(pair, block, frayed, subgraph, price)| {
+            .filter_map(|(pair, block, frayed, subgraph, price, quote)| {
                 let mut subgraph = subgraph?;
 
                 if let Some(frayed) = frayed {
@@ -246,21 +245,20 @@ impl SubgraphVerifier {
                 }
                 subgraph.iters += 1;
 
-                Some((pair, block, subgraph.in_rundown, subgraph, price))
+                Some((pair, block, subgraph.in_rundown, subgraph, price, quote))
             })
             .collect_vec()
     }
 
     fn verify_par(
         &self,
-        pairs: Vec<(Pair, u64, bool, Subgraph, Rational)>,
-        quote: Address,
+        pairs: Vec<(Pair, u64, bool, Subgraph, Rational, Address)>,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<(Pair, u64, VerificationOutcome, Subgraph)> {
         pairs
             .into_par_iter()
-            .map(|(pair, block, rundown, mut subgraph, price)| {
+            .map(|(pair, block, rundown, mut subgraph, price, quote)| {
                 let edge_state = state_tracker.state_for_verification(block);
                 let result = if rundown {
                     VerificationOutcome {

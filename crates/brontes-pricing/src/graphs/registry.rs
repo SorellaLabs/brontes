@@ -129,7 +129,7 @@ impl SubGraphRegistry {
     }
 
     /// for the given pair, grabs the price for all go-through variants
-    fn get_price_all(
+    pub(crate) fn get_price_all(
         &self,
         unordered_pair: Pair,
         edge_state: &FastHashMap<Address, PoolState>,

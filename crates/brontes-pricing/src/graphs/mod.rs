@@ -237,24 +237,17 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                             b,
                             pair,
                             self.sub_graph_registry
-                                .get_price(
-                                    jump_pair,
-                                    goes_through,
-                                    self.graph_state.finalized_state(),
-                                )
+                                .get_price_all(jump_pair, self.graph_state.finalized_state())
                                 .unwrap_or(Rational::ONE),
+                            goes_through.1,
                         )
                     })
-                    .unwrap_or_else(|| (a, b, pair, Rational::ONE))
+                    .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote))
             })
             .collect_vec();
 
-        self.subgraph_verifier.verify_subgraph(
-            pairs,
-            quote,
-            &self.all_pair_graph,
-            &mut self.graph_state,
-        )
+        self.subgraph_verifier
+            .verify_subgraph(pairs, &self.all_pair_graph, &mut self.graph_state)
     }
 
     pub fn finalize_block(&mut self, block: u64) {
