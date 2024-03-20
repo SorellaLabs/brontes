@@ -65,6 +65,7 @@ use tracing::{debug, error};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
+type RequeryPairs = (Pair, Pair, u64, FastHashSet<Pair>, Vec<Address>);
 
 /// # Brontes Batch Pricer
 ///
@@ -118,8 +119,6 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
-    type RequeryPairs = (Pair, Pair, u64, FastHashSet<Pair>, Vec<Address>);
-
     pub fn new(
         finished: Arc<AtomicBool>,
         quote_asset: Address,
