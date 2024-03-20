@@ -281,6 +281,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // generate all variants of the price that might be used in the inspectors
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
+        tracing::info!(?tx_idx, ?pair0, "fetching price");
+        tracing::info!(?tx_idx, ?pair1, "fetching price");
 
         let flipped_pool = pool_pair.flip();
 
