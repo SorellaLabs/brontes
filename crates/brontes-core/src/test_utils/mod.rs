@@ -396,7 +396,6 @@ pub async fn init_trace_parser(
     libmdbx: &LibmdbxReadWriter,
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
-
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
 
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
