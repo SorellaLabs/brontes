@@ -110,6 +110,7 @@ where
 
 pub fn yen<N, C, E, FN, IN, FS, PV>(
     start: &N,
+    second: &N,
     successors: FN,
     success: FS,
     path_value: PV,
@@ -127,7 +128,8 @@ where
     FS: Fn(&N) -> bool + Send + Sync,
 {
     let iter_k = k.unwrap_or(usize::MAX);
-    let Some((e, n, c)) = dijkstra_internal(start, &successors, &path_value, &success, 20_000)
+    let Some((e, n, c)) =
+        dijkstra_internal(start, Some(second), &successors, &path_value, &success, 20_000)
     else {
         return vec![];
     };
@@ -185,6 +187,8 @@ where
                 // Let us find the spur path from the spur node to the sink using.
                 if let Some((values, spur_path, _)) = dijkstra_internal(
                     spur_node,
+                    // if first node, then we have a forced second node.
+                    (i == 0).then_some(second),
                     &filtered_successor,
                     &path_value,
                     &success,

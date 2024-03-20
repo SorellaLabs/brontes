@@ -27,11 +27,11 @@ pub struct SubGraphRegistry {
 }
 
 impl SubGraphRegistry {
-    pub fn new(subgraphs: FastHashMap<Pair, (Option<Pair>, Vec<SubGraphEdge>)>) -> Self {
+    pub fn new(subgraphs: FastHashMap<Pair, (Pair, Option<Pair>, Vec<SubGraphEdge>)>) -> Self {
         let sub_graphs = subgraphs
             .into_iter()
-            .map(|(pair, (extends_to, edges))| {
-                (pair.ordered(), PairSubGraph::init(pair, extends_to, edges))
+            .map(|(pair, (goes_through, extends_to, edges))| {
+                (pair.ordered(), PairSubGraph::init(goes_through, pair, extends_to, edges))
             })
             .collect();
 

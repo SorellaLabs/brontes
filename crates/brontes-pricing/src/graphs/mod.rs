@@ -67,7 +67,7 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: FastHashMap<(Address, Protocol), Pair>,
-        sub_graph_registry: FastHashMap<Pair, (Option<Pair>, Vec<SubGraphEdge>)>,
+        sub_graph_registry: FastHashMap<Pair, (Pair, Option<Pair>, Vec<SubGraphEdge>)>,
         db: &'static DB,
     ) -> Self {
         let graph = AllPairGraph::init_from_hash_map(all_pool_data);

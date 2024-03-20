@@ -11,6 +11,7 @@ use indexmap::{
 use pathfinding::num_traits::Zero;
 
 type FxIndexMap<K, V> = IndexMap<K, V, FastHasher>;
+
 const MAX_LEN: usize = 4;
 
 /// Compute a shortest path using the [Dijkstra search
@@ -118,6 +119,7 @@ const MAX_LEN: usize = 4;
 
 pub(crate) fn dijkstra_internal<N, C, E, FN, IN, FS, PV>(
     start: &N,
+    second: Option<&N>,
     successors: &FN,
     path_value: &PV,
     success: &FS,
@@ -132,7 +134,7 @@ where
     IN: IntoIterator<Item = (N, C)>,
     FS: Fn(&N) -> bool,
 {
-    let (parents, reached) = run_dijkstra(start, successors, path_value, success, max_iter);
+    let (parents, reached) = run_dijkstra(start, second, successors, path_value, success, max_iter);
     reached.map(|target| {
         (
             reverse_path(&parents, |&(p, ..)| p, |_, (_, _, e)| e, target),
@@ -143,8 +145,10 @@ where
 }
 
 type DijkstrasRes<N, C, E> = (FxIndexMap<N, (usize, C, E)>, Option<usize>);
+
 fn run_dijkstra<N, C, E, FN, IN, FS, PV>(
     start: &N,
+    second: Option<&N>,
     successors: &FN,
     path_value: &PV,
     stop: &FS,
@@ -160,6 +164,7 @@ where
     FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
+    let mut checked_second = second.is_none();
     let mut visited = FastHashSet::default();
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
@@ -189,6 +194,15 @@ where
         let base_node = node.clone();
 
         for (successor, move_cost) in successors {
+            if !checked_second {
+                let second = second.cloned().unwrap();
+                checked_second = successor == second;
+
+                if !checked_second {
+                    continue
+                }
+            }
+
             i += 1;
 
             if visited.contains(&successor) {
