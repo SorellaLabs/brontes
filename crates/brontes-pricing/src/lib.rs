@@ -219,11 +219,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             });
     }
 
-    fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
+    fn get_dex_price(&self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
-        self.graph_manager.get_price(pool_pair)
+        self.graph_manager.get_price(pool_pair, goes_through)
     }
 
     /// For a given block number and tx idx, finds the path to the following
@@ -280,12 +280,15 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // generate all variants of the price that might be used in the inspectors
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
-        let Some(price0) = self.get_dex_price(pair0) else {
+
+        let flipped_pool = pool_pair.flip();
+
+        let Some(price0) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, "no price for token");
             return;
         };
 
-        let Some(price1) = self.get_dex_price(pair1) else {
+        let Some(price1) = self.get_dex_price(pair1, flipped_pool) else {
             debug!(?pair1, "no price for token");
             return;
         };
@@ -305,25 +308,27 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             return;
         };
 
+        let flipped_pool = pool_pair.flip();
+
         // add price post state
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-        let Some(price0_pre) = self.get_dex_price(pair0) else {
+        let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, "no price for token");
             return;
         };
-        let Some(price1_pre) = self.get_dex_price(pair1) else {
+        let Some(price1_pre) = self.get_dex_price(pair1, flipped_pool) else {
             debug!(?pair1, "no price for token");
             return;
         };
         self.graph_manager.update_state(addr, msg);
 
-        let Some(price0_post) = self.get_dex_price(pair0) else {
+        let Some(price0_post) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, "no price for token");
             return;
         };
-        let Some(price1_post) = self.get_dex_price(pair1) else {
+        let Some(price1_post) = self.get_dex_price(pair1, flipped_pool) else {
             debug!(?pair1, "no price for token");
             return;
         };
@@ -405,7 +410,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the failed pair for requery. After processing the verification
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
-    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair)>) {
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Pair)>) {
         let requery = self
             .graph_manager
             .verify_subgraph(pairs, self.quote_asset)
@@ -500,7 +505,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 if force_rundown {
                     self.rundown(pair, goes_through, block);
                 } else if !need_state {
-                    recusing.push((block, id, pair))
+                    recusing.push((block, id, pair, goes_through))
                 }
             });
 
@@ -597,7 +602,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             };
 
             if !need_state {
-                execute_on!(target = pricing, self.try_verify_subgraph(vec![(block, id, pair)]));
+                execute_on!(
+                    target = pricing,
+                    self.try_verify_subgraph(vec![(block, id, pair, goes_through)])
+                );
             }
         }
         tracing::debug!(?pair, ?block, "finished rundown");
@@ -671,8 +679,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 );
                 triggered = true;
             } else {
-                self.lazy_loader
-                    .add_protocol_parent(block, id, pool_info.pool_addr, pair);
+                self.lazy_loader.add_protocol_parent(
+                    block,
+                    id,
+                    pool_info.pool_addr,
+                    pair,
+                    goes_through,
+                );
                 triggered = true;
             }
         }

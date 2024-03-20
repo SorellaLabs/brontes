@@ -181,9 +181,9 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .verify_subgraph_on_new_path_failure(pair)
     }
 
-    pub fn get_price(&self, pair: Pair) -> Option<Rational> {
+    pub fn get_price(&self, pair: Pair, goes_through: Pair) -> Option<Rational> {
         self.sub_graph_registry
-            .get_price(pair, self.graph_state.finalized_state())
+            .get_price(pair, goes_through, self.graph_state.finalized_state())
     }
 
     pub fn new_state(&mut self, address: Address, state: PoolState) {
@@ -223,12 +223,12 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn verify_subgraph(
         &mut self,
-        pairs: Vec<(u64, Option<u64>, Pair)>,
+        pairs: Vec<(u64, Option<u64>, Pair, Pair)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
         let pairs = pairs
             .into_iter()
-            .map(|(a, b, pair)| {
+            .map(|(a, b, pair, goes_through)| {
                 self.subgraph_verifier
                     .get_subgraph_extends(&pair)
                     .map(|jump_pair| {
@@ -237,7 +237,11 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                             b,
                             pair,
                             self.sub_graph_registry
-                                .get_price(jump_pair, self.graph_state.finalized_state())
+                                .get_price(
+                                    jump_pair,
+                                    goes_through,
+                                    self.graph_state.finalized_state(),
+                                )
                                 .unwrap_or(Rational::ONE),
                         )
                     })

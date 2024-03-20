@@ -44,6 +44,7 @@ pub struct PairStateLoadingProgress {
     pub block:         u64,
     pub id:            Option<u64>,
     pub pending_pools: FastHashSet<Address>,
+    pub swap_pair:     Pair,
 }
 
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
@@ -97,12 +98,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.pool_buf.get(k).cloned()
     }
 
-    pub fn pairs_to_verify(&mut self) -> Vec<(u64, Option<u64>, Pair)> {
+    pub fn pairs_to_verify(&mut self) -> Vec<(u64, Option<u64>, Pair, Pair)> {
         let mut res = Vec::new();
         self.parent_pair_state_loading.retain(
-            |pair, PairStateLoadingProgress { block, id, pending_pools }| {
+            |pair, PairStateLoadingProgress { block, id, pending_pools, swap_pair }| {
                 if pending_pools.is_empty() {
-                    res.push((*block, *id, *pair));
+                    res.push((*block, *id, *pair, *swap_pair));
                     return false
                 }
                 true
@@ -118,11 +119,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         id: Option<u64>,
         address: Address,
         parent_pair: Pair,
+        goes_through: Pair,
     ) {
         *self.req_per_block.entry(block).or_default() += 1;
         self.pool_buf.entry(address).or_default().push(block);
 
-        self.add_protocol_parent(block, id, address, parent_pair);
+        self.add_protocol_parent(block, id, address, parent_pair, goes_through);
     }
 
     pub fn add_protocol_parent(
@@ -131,6 +133,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         id: Option<u64>,
         address: Address,
         parent_pair: Pair,
+        goes_through: Pair,
     ) {
         self.protocol_address_to_parent_pairs
             .entry(address)
@@ -141,7 +144,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
             Entry::Vacant(v) => {
                 let mut set = FastHashSet::default();
                 set.insert(address);
-                v.insert(PairStateLoadingProgress { block: parent_block, id, pending_pools: set });
+                v.insert(PairStateLoadingProgress {
+                    block: parent_block,
+                    id,
+                    pending_pools: set,
+                    swap_pair: goes_through,
+                });
             }
             Entry::Occupied(mut o) => {
                 let PairStateLoadingProgress { block, pending_pools, .. } = o.get_mut();
@@ -224,7 +232,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         ex_type: Protocol,
     ) {
         let provider = self.provider.clone();
-        self.add_state_trackers(block_number, id, address, parent_pair);
+        self.add_state_trackers(block_number, id, address, parent_pair, goes_through);
 
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, goes_through);
         self.pool_load_futures
