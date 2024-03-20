@@ -4,7 +4,10 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
     db::token_info::TokenInfoWithAddress,
-    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap},
+    normalized_actions::{
+        NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedPoolConfigUpdate,
+        NormalizedSwap,
+    },
     structured_trace::CallInfo,
     ToScaledRational,
 };
@@ -142,35 +145,35 @@ action_impl!(
     }
 );
 
-// action_impl!(
-//     Protocol::BalancerV2,
-//     crate::BalancerV2Vault::registerPoolCall,
-//     NewPool,
-//     [..PoolRegistered],
-//     logs: true,
-//     |info: CallInfo, log_data: BalancerV2RegisterPoolCallLogs, _| {
-//         let logs = log_data.pool_registered_field?;
+action_impl!(
+    Protocol::BalancerV2,
+    crate::BalancerV2Vault::registerPoolCall,
+    NewPool,
+    [..PoolRegistered],
+    logs: true,
+    |info: CallInfo, log_data: BalancerV2RegisterPoolCallLogs, _| {
+        let logs = log_data.pool_registered_field?;
 
-//         Ok(NormalizedNewPool {
-//             trace_index: info.trace_idx,
-//             protocol: Protocol::BalancerV2,
-//             pool_address: logs.poolAddress,
-//             tokens: vec![],
-//         })
-//     }
-// );
+        Ok(NormalizedNewPool {
+            trace_index: info.trace_idx,
+            protocol: Protocol::BalancerV2,
+            pool_address: logs.poolAddress,
+            tokens: vec![],
+        })
+    }
+);
 
 action_impl!(
     Protocol::BalancerV2,
     crate::BalancerV2Vault::registerTokensCall,
-    NewPool,
+    PoolConfigUpdate,
     [..TokensRegistered],
     logs: true,
     |info: CallInfo, log_data: BalancerV2RegisterTokensCallLogs, _| {
         let logs = log_data.tokens_registered_field?;
         let pool_address = pool_id_to_address(logs.poolId);
 
-        Ok(NormalizedNewPool{
+        Ok(NormalizedPoolConfigUpdate{
             trace_index: info.trace_idx,
             protocol: Protocol::BalancerV2,
             pool_address,

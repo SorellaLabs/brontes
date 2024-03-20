@@ -270,6 +270,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             if results.1.is_new_pool() {
                 let Actions::NewPool(p) = &results.1 else { unreachable!() };
                 self.insert_new_pool(block, p).await;
+            } else if results.1.is_pool_config_update() {
+                let Actions::PoolConfigUpdate(p) = &results.1 else { unreachable!() };
+                if self
+                    .libmdbx
+                    .insert_pool(block, p.pool_address, p.tokens.as_slice(), None, p.protocol)
+                    .await
+                    .is_err()
+                {
+                    error!(pool=?p.pool_address,"failed to update pool config");
+                }
             }
 
             (vec![results.0], results.1)
