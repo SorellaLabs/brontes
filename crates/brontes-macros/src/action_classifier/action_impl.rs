@@ -58,19 +58,7 @@ impl ActionMacro {
         let dex_price_return = if action_type.to_string().to_lowercase().as_str()
             == "poolconfigupdate"
         {
-            quote!(
-                if db_tx.insert_pool(block,
-                    pool.pool_address,
-                    pool.tokens,
-                    pool.protocol).is_err() {
-                ::tracing::error!(
-                    pool=?pool.pool_address,
-                                  block,
-                                  "failed to update pool config");
-            }
-
-            Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result))
-            )
+            quote!(Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result)))
         } else {
             quote!(
                 Ok(::brontes_pricing::types::DexPriceMsg::Update(

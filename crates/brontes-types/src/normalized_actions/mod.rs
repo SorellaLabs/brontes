@@ -379,6 +379,10 @@ impl Actions {
         matches!(self, Actions::NewPool(_))
     }
 
+    pub const fn is_pool_config_update(&self) -> bool {
+        matches!(self, Actions::PoolConfigUpdate(_))
+    }
+
     pub const fn is_unclassified(&self) -> bool {
         matches!(self, Actions::Unclassified(_))
     }
