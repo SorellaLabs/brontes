@@ -122,8 +122,13 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .and_then(|f| {
-                f.iter()
-                    .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph))
+                let f = f
+                    .iter()
+                    .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph));
+                if f.is_none() {
+                    tracing::error!(?goes_through, ?unordered_pair, "no findo");
+                }
+                f
             })
             .and_then(|graph| {
                 Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
