@@ -122,9 +122,9 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .and_then(|f| {
-                let f = f
-                    .iter()
-                    .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph));
+                let f = f.iter().find_map(|(gt, graph)| {
+                    (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
+                });
                 if f.is_none() {
                     tracing::error!(?goes_through, ?unordered_pair, "no findo");
                 }
