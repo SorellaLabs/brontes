@@ -16,7 +16,7 @@ use brontes_types::{
     Protocol,
 };
 use db_interfaces::{
-    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient, errors::ClickhouseError},
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
     Database,
 };
 use futures::future::join_all;
@@ -234,13 +234,13 @@ impl ClickhouseHandle for Clickhouse {
     async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self
             .client
-            .query_one::<BlockInfoData>(BLOCK_INFO, &(block_num))
+            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
             .await?
             .value;
 
         let cex_quotes = self
             .client
-            .query_one::<CexPriceData>(CEX_PRICE, &(block_num))
+            .query_one::<CexPriceData, _>(CEX_PRICE, &(block_num))
             .await?
             .value;
 
@@ -273,7 +273,7 @@ impl ClickhouseHandle for Clickhouse {
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         self.client
-            .query_many::<D>(
+            .query_many::<D, _>(
                 T::INIT_QUERY.expect("no init query found for clickhouse query"),
                 &(start_block, end_block),
             )
@@ -297,7 +297,7 @@ impl ClickhouseHandle for Clickhouse {
         );
 
         self.client
-            .query_many::<D>(&query, &())
+            .query_many::<D, _>(&query, &())
             .await
             .map_err(Into::into)
     }
@@ -309,7 +309,10 @@ impl ClickhouseHandle for Clickhouse {
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         self.client
-            .query_many::<D>(T::INIT_QUERY.expect("no init query found for clickhouse query"), &())
+            .query_many::<D, _>(
+                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                &(),
+            )
             .await
             .map_err(Into::into)
     }
@@ -401,7 +404,7 @@ mod tests {
             .unwrap();
 
         let query = "SELECT * FROM brontes.builder_stats";
-        let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
+        let queried: BuilderStatsWithAddress = db.query_one(query, ()).await.unwrap();
 
         assert_eq!(queried, case0);
     }

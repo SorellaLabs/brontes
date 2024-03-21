@@ -111,7 +111,7 @@ impl LibmdbxReadWriter {
     {
         let (min, max) = clickhouse
             .inner()
-            .query_one::<(String, String)>(query, &())
+            .query_one::<(String, String), _>(query, &())
             .await?;
 
         let Ok(min_parsed) = min.parse::<TB::Key>() else {
