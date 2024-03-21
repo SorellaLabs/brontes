@@ -169,7 +169,11 @@ where
         // the first node.
         if let Some(s) = second {
             let next = successors(s);
-            next.into_iter().all(|(next_i, _)| &next_i == start)
+            let all_bad = next.into_iter().all(|(next_i, _)| &next_i == start);
+            if all_bad {
+                tracing::info!("second only loops back");
+            }
+            all_bad
         } else {
             true
         }
