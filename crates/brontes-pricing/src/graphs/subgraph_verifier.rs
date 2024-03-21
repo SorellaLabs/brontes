@@ -111,6 +111,7 @@ impl SubgraphVerifier {
         {
             return vec![]
         };
+        tracing::info!(?pair, ?goes_through, ?complete_pair, "adding to verifier");
 
         self.pending_subgraphs.entry(pair).or_insert(vec![]).push((
             goes_through,
