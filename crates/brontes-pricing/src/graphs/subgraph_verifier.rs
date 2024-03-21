@@ -35,12 +35,12 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   system.
 #[derive(Debug)]
 pub struct SubgraphVerifier {
-    pending_subgraphs:           FastHashMap<Pair, Subgraph>,
+    pending_subgraphs:           FastHashMap<Pair, Vec<(Pair, Subgraph)>>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
-    subgraph_verification_state: FastHashMap<Pair, SubgraphVerificationState>,
+    subgraph_verification_state: FastHashMap<Pair, Vec<(Pair, SubgraphVerificationState)>>,
 }
 
 impl SubgraphVerifier {
@@ -51,18 +51,23 @@ impl SubgraphVerifier {
         }
     }
 
-    pub fn get_subgraph_extends(&self, pair: &Pair) -> Option<Pair> {
-        self.pending_subgraphs
-            .get(pair)
-            .and_then(|graph| graph.subgraph.extends_to())
+    pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
+        self.pending_subgraphs.get(pair).and_then(|graph| {
+            graph
+                .into_iter()
+                .find_map(|(pair, _)| (pair == goes_through).then_some(*pair))
+        })
     }
 
     pub fn all_pairs(&self) -> Vec<Pair> {
         self.pending_subgraphs.keys().copied().collect_vec()
     }
 
-    pub fn is_verifying(&self, pair: &Pair) -> bool {
-        self.pending_subgraphs.contains_key(pair)
+    pub fn is_verifying(&self, pair: &Pair, goes_through: &Pair) -> bool {
+        self.pending_subgraphs
+            .get(pair)
+            .and_then(|a| a.into_iter().find(|(p, _)| p == goes_through))
+            .is_some()
     }
 
     pub fn pool_dep_failure(&mut self, pair: Pair) {
@@ -88,8 +93,8 @@ impl SubgraphVerifier {
             return vec![]
         };
 
-        self.pending_subgraphs.insert(
-            pair,
+        self.pending_subgraphs.entry(pair).or_insert(vec![]).push((
+            goes_through,
             Subgraph {
                 subgraph,
                 frayed_end_extensions: FastHashMap::default(),
@@ -97,14 +102,29 @@ impl SubgraphVerifier {
                 in_rundown: false,
                 iters: 0,
             },
-        );
+        ));
 
         query_state
     }
 
-    pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
-        let state = self.subgraph_verification_state.get_mut(&pair)?;
-        self.pending_subgraphs.get_mut(&pair)?.in_rundown = true;
+    pub fn verify_subgraph_on_new_path_failure(
+        &mut self,
+        pair: Pair,
+        goes_through: &Pair,
+    ) -> Option<Vec<Pair>> {
+        self.pending_subgraphs
+            .get_mut(&pair)?
+            .iter_mut()
+            .find(|(p, _)| p == goes_through)?
+            .1
+            .in_rundown = true;
+
+        let state = &self
+            .subgraph_verification_state
+            .get_mut(&pair)?
+            .iter_mut()
+            .find(|(p, _)| p == goes_through)?
+            .1;
 
         Some(state.sorted_ignore_nodes_by_liquidity())
     }
@@ -112,6 +132,7 @@ impl SubgraphVerifier {
     fn store_edges_with_liq(
         &mut self,
         pair: Pair,
+        goes_through: Pair,
         removals: &FastHashMap<Pair, FastHashSet<BadEdge>>,
         all_graph: &AllPairGraph,
     ) {
@@ -134,12 +155,20 @@ impl SubgraphVerifier {
                 // cache all edges that have been completey removed
                 self.subgraph_verification_state
                     .entry(pair)
-                    .or_default()
+                    .or_insert_with(|| vec![(goes_through, SubgraphVerificationState::default())])
+                    .iter_mut()
+                    .find(|(p, _)| *p == goes_through)
+                    .unwrap()
+                    .1
                     .add_edge_with_liq(edge.pair.0, edge.clone());
 
                 self.subgraph_verification_state
                     .entry(pair)
-                    .or_default()
+                    .or_insert_with(|| vec![(goes_through, SubgraphVerificationState::default())])
+                    .iter_mut()
+                    .find(|(p, _)| *p == goes_through)
+                    .unwrap()
+                    .1
                     .add_edge_with_liq(edge.pair.1, edge.clone());
             });
     }
