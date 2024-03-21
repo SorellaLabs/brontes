@@ -209,10 +209,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                      block,
                      edges,
                  }| {
-                    if edges.is_empty() {
-                        debug!(?pair, ?complete_pair, ?must_include, "new pool has no graph edges");
-                        return
-                    }
+                    // if edges.is_empty() {
+                    //     debug!(?pair, ?complete_pair, ?must_include, "new pool has no graph edges");
+                    //     return
+                    // }
 
                     if self.graph_manager.has_subgraph_goes_through(
                         pair,
@@ -442,7 +442,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Pair)>) {
-        tracing::info!("verifying subgraph: {:#?}", pairs);
+        if !pairs.is_empty() {
+            tracing::info!("verifying subgraph: {:#?}", pairs);
+        }
         let requery = self
             .graph_manager
             .verify_subgraph(pairs, self.quote_asset)
