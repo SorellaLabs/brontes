@@ -223,8 +223,8 @@ impl SubgraphVerifier {
                 // state that we want to be ignored on the next graph search.
                 let state = &self
                     .subgraph_verification_state
-                    .get(&pair)
-                    .unwrap()
+                    .entry(pair)
+                    .or_insert(vec![(goes_through, Default::default())])
                     .iter()
                     .find(|(p, _)| *p == goes_through)
                     .unwrap()
