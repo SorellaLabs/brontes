@@ -72,6 +72,7 @@ impl SubGraphRegistry {
         mut subgraph: PairSubGraph,
         graph_state: &FastHashMap<Address, PoolState>,
     ) {
+        tracing::info!(?subgraph.pair, ?subgraph.complete_pair, "adding subgraph");
         subgraph.save_last_verification_liquidity(graph_state);
         self.sub_graphs
             .entry(subgraph.complete_pair().ordered())

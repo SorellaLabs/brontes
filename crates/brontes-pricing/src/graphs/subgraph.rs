@@ -73,14 +73,14 @@ const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
     /// the pair represented
-    pair:            Pair,
-    complete_pair:   Pair,
+    pub(crate) pair:          Pair,
+    pub(crate) complete_pair: Pair,
     /// the pair that trigged the need for pricing in the first place.
-    must_go_through: Pair,
-    graph:           DiGraph<(), Vec<SubGraphEdge>, u16>,
-    token_to_index:  FastHashMap<Address, u16>,
+    must_go_through:          Pair,
+    graph:                    DiGraph<(), Vec<SubGraphEdge>, u16>,
+    token_to_index:           FastHashMap<Address, u16>,
     /// if this subgraph relies on another pair to calcuate the price.
-    extends_to:      Option<Pair>,
+    extends_to:               Option<Pair>,
 
     /// if a nodes liquidity drops more than 50% from when validation
     /// was last ran on this subgraph. a re_query is triggered.
