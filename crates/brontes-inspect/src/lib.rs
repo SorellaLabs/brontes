@@ -90,7 +90,7 @@ pub use mev_inspectors::*;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
