@@ -1134,7 +1134,7 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 
     // add first pair
     if let Some(pair0) = pair0 {
-        trigger_update.action = make_fake_swap(pair0);
+        trigger_update.action = make_fake_swap(main_pair);
         if let Some((buf, path)) =
             queue_loading_returns(graph, block, main_pair, pair0, trigger_update.clone())
         {
@@ -1145,7 +1145,7 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 
     // add second direction
     if let Some(pair1) = pair1 {
-        trigger_update.action = make_fake_swap(pair1);
+        trigger_update.action = make_fake_swap(main_pair);
         if let Some((buf, path)) =
             queue_loading_returns(graph, block, main_pair.flip(), pair1, trigger_update.clone())
         {
