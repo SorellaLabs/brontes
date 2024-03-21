@@ -164,7 +164,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                     );
                 }
                 *block = parent_block;
-                goes_through.push(goes_through_new);
+                // goes_through.push(goes_through_new);
                 pending_pools.insert(address);
             }
         }
