@@ -210,7 +210,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                      edges,
                  }| {
                     if edges.is_empty() {
-                        debug!(?pair, "new pool has no graph edges");
+                        debug!(?pair, ?complete_pair, ?must_include, "new pool has no graph edges");
                         return
                     }
 
