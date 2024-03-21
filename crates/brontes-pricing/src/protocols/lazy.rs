@@ -136,6 +136,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         parent_pair: Pair,
         goes_through_new: Pair,
     ) {
+        tracing::info!(?parent_pair, "adding parent");
         self.protocol_address_to_parent_pairs
             .entry(address)
             .or_default()
