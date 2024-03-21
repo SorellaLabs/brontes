@@ -126,7 +126,7 @@ impl SubGraphRegistry {
                     (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
                 });
                 if f.is_none() {
-                    tracing::error!(?goes_through, ?unordered_pair, "no findo {:#?}", g);
+                    tracing::error!(?goes_through, ?unordered_pair, "no findo");
                 }
                 f
             })
