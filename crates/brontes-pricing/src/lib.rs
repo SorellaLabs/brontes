@@ -1178,6 +1178,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         (pair, None)
     };
     if pair == must_include {
+        tracing::info!("pair == must_include");
         must_include = pair;
     }
 
