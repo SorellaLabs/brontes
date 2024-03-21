@@ -196,44 +196,33 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .push_back((addr, update));
         });
 
-        pools
-            .into_iter()
-            .flatten()
-            .unique_by(|NewGraphDetails { pair, must_include, .. }| (*pair, *must_include))
-            .for_each(
-                |NewGraphDetails {
-                     must_include,
-                     complete_pair,
-                     pair,
-                     extends_pair,
-                     block,
-                     edges,
-                 }| {
-                    // if edges.is_empty() {
-                    //     debug!(?pair, ?complete_pair, ?must_include, "new pool has no graph edges");
-                    //     return
-                    // }
+        pools.into_iter().flatten().for_each(
+            |NewGraphDetails { must_include, complete_pair, pair, extends_pair, block, edges }| {
+                if edges.is_empty() {
+                    debug!(?pair, ?complete_pair, ?must_include, "new pool has no graph edges");
+                    return
+                }
 
-                    if self.graph_manager.has_subgraph_goes_through(
-                        pair,
-                        must_include,
-                        self.quote_asset,
-                    ) {
-                        tracing::debug!(?pair, "already have pairs");
-                        return
-                    }
+                if self.graph_manager.has_subgraph_goes_through(
+                    pair,
+                    must_include,
+                    self.quote_asset,
+                ) {
+                    tracing::debug!(?pair, "already have pairs");
+                    return
+                }
 
-                    self.add_subgraph(
-                        pair,
-                        complete_pair,
-                        must_include,
-                        extends_pair,
-                        block,
-                        edges,
-                        false,
-                    );
-                },
-            );
+                self.add_subgraph(
+                    pair,
+                    complete_pair,
+                    must_include,
+                    extends_pair,
+                    block,
+                    edges,
+                    false,
+                );
+            },
+        );
     }
 
     fn get_dex_price(&self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
