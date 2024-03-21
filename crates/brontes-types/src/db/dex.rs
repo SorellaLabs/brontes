@@ -87,6 +87,7 @@ impl DexQuotes {
         if pair.1 == ETH_ADDRESS {
             pair.1 = WETH_ADDRESS;
         }
+        let s_idx = tx;
 
         if pair.0 == pair.1 {
             return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
@@ -103,7 +104,7 @@ impl DexQuotes {
 
             tx -= 1;
         }
-        error!(?pair, before=?tx, "no price for pair");
+        error!(?pair, before=?s_idx, "no price for pair");
         None
     }
 
