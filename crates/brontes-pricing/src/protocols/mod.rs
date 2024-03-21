@@ -115,7 +115,15 @@ impl LoadState for Protocol {
             }
             rest => {
                 error!(protocol=?rest, "no state updater is build for");
-                Err((address, self, block_number, pool_pair, gt, full_pair, AmmError::UnsupportedProtocol))
+                Err((
+                    address,
+                    self,
+                    block_number,
+                    pool_pair,
+                    gt,
+                    full_pair,
+                    AmmError::UnsupportedProtocol,
+                ))
             }
         }
     }

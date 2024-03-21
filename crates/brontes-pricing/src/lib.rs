@@ -216,7 +216,15 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     return
                 }
 
-                self.add_subgraph(pair,complete_pair,must_include, ext, block, graph_edges, false);
+                self.add_subgraph(
+                    pair,
+                    complete_pair,
+                    must_include,
+                    ext,
+                    block,
+                    graph_edges,
+                    false,
+                );
             });
     }
 
@@ -489,28 +497,34 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
 
         let mut recusing = Vec::new();
-        new_state
-            .into_iter()
-            .for_each(|(pair, block, missing_paths, extends_to, goes_through, complete_pair)| {
+        new_state.into_iter().for_each(
+            |(pair, block, missing_paths, extends_to, goes_through, complete_pair)| {
                 let edges = missing_paths.into_iter().flatten().unique().collect_vec();
                 // add regularly
                 if edges.is_empty() {
-                    self.rundown(pair,complete_pair, goes_through, block);
+                    self.rundown(pair, complete_pair, goes_through, block);
                     return
                 }
 
-                let Some((id, need_state, force_rundown)) =
-                    self.add_subgraph(pair,complete_pair, goes_through, extends_to, block, edges, true)
-                else {
+                let Some((id, need_state, force_rundown)) = self.add_subgraph(
+                    pair,
+                    complete_pair,
+                    goes_through,
+                    extends_to,
+                    block,
+                    edges,
+                    true,
+                ) else {
                     return;
                 };
 
                 if force_rundown {
-                    self.rundown(pair,complete_pair, goes_through, block);
+                    self.rundown(pair, complete_pair, goes_through, block);
                 } else if !need_state {
                     recusing.push((block, id, pair, goes_through))
                 }
-            });
+            },
+        );
 
         if !recusing.is_empty() {
             execute_on!(target = pricing, self.try_verify_subgraph(recusing));
@@ -524,7 +538,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
     fn rundown(&mut self, pair: Pair, complete_pair: Pair, goes_through: Pair, block: u64) {
-        let Some(ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
+        let Some(ignores) = self
+            .graph_manager
+            .verify_subgraph_on_new_path_failure(pair, &goes_through)
+        else {
             return;
         };
 
@@ -577,7 +594,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 let query = ignores
                     .iter()
                     .copied()
-                    .map(|_| (pair, goes_through, complete_pair, block, FastHashSet::default(), vec![]))
+                    .map(|_| {
+                        (pair, goes_through, complete_pair, block, FastHashSet::default(), vec![])
+                    })
                     .collect_vec();
 
                 let (edges, mut extend): (Vec<_>, Vec<_>) =
@@ -640,9 +659,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         frayed_ext: bool,
     ) -> Option<(Option<u64>, bool, bool)> {
         let (needed_state, id, force_rundown) = if frayed_ext {
-            let (need, id, force_rundown) = self
-                .graph_manager
-                .add_frayed_end_extension(pair, block, edges)?;
+            let (need, id, force_rundown) =
+                self.graph_manager
+                    .add_frayed_end_extension(pair, &goes_through, block, edges)?;
             (need, Some(id), force_rundown)
         } else {
             (
@@ -956,8 +975,10 @@ const fn make_fake_swap(pair: Pair) -> Actions {
     })
 }
 
-type GraphSeachParRes =
-    (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64, Option<Pair>, Pair, Pair)>>);
+type GraphSeachParRes = (
+    Vec<Vec<(Address, PoolUpdate)>>,
+    Vec<Vec<(Vec<SubGraphEdge>, Pair, u64, Option<Pair>, Pair, Pair)>>,
+);
 
 fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -987,7 +1008,7 @@ fn graph_search_par<DB: DBWriter + LibmdbxReader>(
 }
 
 type ParStateQueryRes = Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>, Option<Pair>, Pair, Pair)>;
-type StateQueryArgs = (Pair, Pair,Pair, u64, FastHashSet<Pair>, Vec<Address>);
+type StateQueryArgs = (Pair, Pair, Pair, u64, FastHashSet<Pair>, Vec<Address>);
 
 fn par_state_query<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -995,7 +1016,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
 ) -> ParStateQueryRes {
     pairs
         .into_par_iter()
-        .map(|(pair, first_hop,complete_pair, block, ignore, frayed_ends)| {
+        .map(|(pair, first_hop, complete_pair, block, ignore, frayed_ends)| {
             if frayed_ends.is_empty() {
                 return (
                     pair,
@@ -1036,7 +1057,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     .collect::<Vec<_>>(),
                 graph.has_extension(&first_hop, pair.1),
                 first_hop,
-                complete_pair
+                complete_pair,
             )
         })
         .collect::<Vec<_>>()

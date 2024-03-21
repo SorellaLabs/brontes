@@ -175,9 +175,13 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     /// Returns all pairs that have been ignored from lowest to highest
     /// liquidity
-    pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
+    pub fn verify_subgraph_on_new_path_failure(
+        &mut self,
+        pair: Pair,
+        goes_through: &Pair,
+    ) -> Option<Vec<Pair>> {
         self.subgraph_verifier
-            .verify_subgraph_on_new_path_failure(pair)
+            .verify_subgraph_on_new_path_failure(pair, goes_through)
     }
 
     pub fn get_price(&self, pair: Pair, goes_through: Pair) -> Option<Rational> {
@@ -193,8 +197,9 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.graph_state.update_pool_state(address, update);
     }
 
-    pub fn has_subgraph(&self, pair: Pair) -> bool {
-        self.sub_graph_registry.has_subpool(&pair) || self.subgraph_verifier.is_verifying(&pair)
+    pub fn has_subgraph(&self, pair: Pair, goes_through: Pair) -> bool {
+        self.sub_graph_registry.has_subpool(&pair)
+            || self.subgraph_verifier.is_verifying(&pair, &goes_through)
     }
 
     pub fn has_subgraph_goes_through(
@@ -214,11 +219,13 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn add_frayed_end_extension(
         &mut self,
         pair: Pair,
+        goes_through: &Pair,
         block: u64,
         frayed_end_extensions: Vec<SubGraphEdge>,
     ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         self.subgraph_verifier.add_frayed_end_extension(
             pair,
+            goes_through,
             block,
             &self.graph_state,
             frayed_end_extensions,
@@ -234,7 +241,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .into_iter()
             .map(|(a, b, pair, goes_through)| {
                 self.subgraph_verifier
-                    .get_subgraph_extends(&pair)
+                    .get_subgraph_extends(&pair, &goes_through)
                     .map(|jump_pair| {
                         (
                             a,
@@ -244,9 +251,10 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                                 .get_price_all(jump_pair, self.graph_state.finalized_state())
                                 .unwrap_or(Rational::ONE),
                             goes_through.1,
+                            goes_through,
                         )
                     })
-                    .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote))
+                    .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote, goes_through))
             })
             .collect_vec();
 

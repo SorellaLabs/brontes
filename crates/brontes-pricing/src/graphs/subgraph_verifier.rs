@@ -176,6 +176,7 @@ impl SubgraphVerifier {
     pub fn add_frayed_end_extension(
         &mut self,
         pair: Pair,
+        goes_through: &Pair,
         block: u64,
         state_tracker: &StateTracker,
         frayed_end_extensions: Vec<SubGraphEdge>,
@@ -184,6 +185,9 @@ impl SubgraphVerifier {
             state_tracker.missing_state(block, &frayed_end_extensions),
             self.pending_subgraphs
                 .get_mut(&pair)?
+                .iter_mut()
+                .find(|(p, _)| p == goes_through)?
+                .1
                 .add_extension(frayed_end_extensions),
             true,
         ))
@@ -191,7 +195,7 @@ impl SubgraphVerifier {
 
     pub fn verify_subgraph(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair, Rational, Address)>,
+        pair: Vec<(u64, Option<u64>, Pair, Rational, Address, Pair)>,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<VerificationResults> {
@@ -200,14 +204,20 @@ impl SubgraphVerifier {
 
         res.into_iter()
             .map(|(pair, block, result, subgraph)| {
-                self.store_edges_with_liq(pair, &result.removals, all_graph);
+                let goes_through = subgraph.subgraph.must_go_through();
+                self.store_edges_with_liq(pair, goes_through, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
-                let ignores = self
+                let state = &self
                     .subgraph_verification_state
-                    .entry(pair)
-                    .or_default()
-                    .get_nodes_to_ignore();
+                    .get(&pair)
+                    .unwrap()
+                    .iter()
+                    .find(|(p, _)| *p == goes_through)
+                    .unwrap()
+                    .1;
+
+                let ignores = state.get_nodes_to_ignore();
 
                 //  all results that should be pruned from our main graph.
                 let removals = result
@@ -220,7 +230,11 @@ impl SubgraphVerifier {
                 if result.should_requery {
                     let goes_through = subgraph.subgraph.must_go_through();
                     let full_pair = subgraph.subgraph.complete_pair();
-                    self.pending_subgraphs.insert(pair, subgraph);
+
+                    self.pending_subgraphs
+                        .entry(pair)
+                        .or_insert(vec![])
+                        .push((goes_through, subgraph));
                     // anything that was fully remove gets cached
                     tracing::debug!(?pair, "requerying");
 
@@ -242,19 +256,47 @@ impl SubgraphVerifier {
 
     fn get_subgraphs(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair, Rational, Address)>,
+        pair: Vec<(u64, Option<u64>, Pair, Rational, Address, Pair)>,
     ) -> Vec<(Pair, u64, bool, Subgraph, Rational, Address)> {
         pair.into_iter()
-            .map(|(block, frayed, pair, price, quote)| {
-                (pair, block, frayed, self.pending_subgraphs.remove(&pair), price, quote)
+            .map(|(block, frayed, pair, price, quote, goes_through)| {
+                (
+                    pair,
+                    block,
+                    frayed,
+                    self.pending_subgraphs.get_mut(&pair).and_then(|inner| {
+                        let mut idx = None;
+                        for (i, (pair, _)) in inner.iter().enumerate() {
+                            if pair == &goes_through {
+                                idx = Some(i);
+                                break
+                            }
+                        }
+
+                        if let Some(idx) = idx {
+                            return Some(inner.remove(idx))
+                        }
+                        return None
+                    }),
+                    price,
+                    quote,
+                )
             })
             .filter_map(|(pair, block, frayed, subgraph, price, quote)| {
-                let mut subgraph = subgraph?;
+                let (_, mut subgraph) = subgraph?;
+                let goes_through = subgraph.subgraph.must_go_through();
 
                 if let Some(frayed) = frayed {
                     let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
                     if subgraph.in_rundown {
-                        let state = self.subgraph_verification_state.get(&pair).unwrap();
+                        let state = &self
+                            .subgraph_verification_state
+                            .get(&pair)
+                            .unwrap()
+                            .iter()
+                            .find(|(p, _)| *p == goes_through)
+                            .unwrap()
+                            .1;
 
                         let ignored = state.get_nodes_to_ignore();
 
