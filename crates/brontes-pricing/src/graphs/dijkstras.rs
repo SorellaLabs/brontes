@@ -208,11 +208,13 @@ where
         for (successor, move_cost) in successors {
             let break_after = if !checked_second {
                 let second = second.cloned().unwrap();
+                if stop(&second) {}
                 checked_second = successor == second;
 
-                if !checked_second {
+                if !(checked_second || stop(&second)) {
                     continue
                 }
+
                 true
             } else {
                 false
