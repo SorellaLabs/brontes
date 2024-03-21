@@ -404,7 +404,7 @@ mod tests {
             .unwrap();
 
         let query = "SELECT * FROM brontes.builder_stats";
-        let queried: BuilderStatsWithAddress = db.query_one(query, ()).await.unwrap();
+        let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
     }

@@ -36,6 +36,8 @@ possible_mev/
 # Libmdbx files
 data/*
 
+.cargo
+
 p.sql
 
 # Misc 
