@@ -158,7 +158,7 @@ impl SubGraphRegistry {
                 };
                 cnt += Rational::ONE;
             }
-            (cnt != Rational::ZERO).then(|| (acc / cnt).reciprocal())
+            (cnt != Rational::ZERO).then(|| acc / cnt)
         })
     }
 }
