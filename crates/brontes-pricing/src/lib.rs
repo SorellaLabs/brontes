@@ -1120,36 +1120,18 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     // add default pair to buffer to make sure that we price all pairs and apply the
     // state diff. we don't wan't to actually do a graph search for this pair
     // though.
-    buf_pending.push((msg.get_pool_address(), msg.clone()));
-
-    // we add support for fetching the pair as well as each individual token with
-    // the given quote asset
-    let mut trigger_update = msg;
-    // we want to make sure no updates occur to the state of the virtual pool when
-    // we load it
-    trigger_update.logs = vec![];
-
-    // we want to ensure that our price includes the pool that is being swapped
-    // through.
+    buf_pending.push((msg.get_pool_address(), msg));
 
     // add first pair
     if let Some(pair0) = pair0 {
-        trigger_update.action = make_fake_swap(main_pair);
-        if let Some((buf, path)) =
-            queue_loading_returns(graph, block, main_pair, pair0, trigger_update.clone())
-        {
-            buf_pending.push(buf);
+        if let Some(path) = queue_loading_returns(graph, block, main_pair, pair0) {
             path_pending.push(path);
         }
     }
 
     // add second direction
     if let Some(pair1) = pair1 {
-        trigger_update.action = make_fake_swap(main_pair);
-        if let Some((buf, path)) =
-            queue_loading_returns(graph, block, main_pair.flip(), pair1, trigger_update.clone())
-        {
-            buf_pending.push(buf);
+        if let Some(path) = queue_loading_returns(graph, block, main_pair.flip(), pair1) {
             path_pending.push(path);
         }
     }
@@ -1157,15 +1139,12 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     (buf_pending, path_pending)
 }
 
-type LoadingReturns = Option<((Address, PoolUpdate), NewGraphDetails)>;
-
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
     mut must_include: Pair,
     pair: Pair,
-    trigger_update: PoolUpdate,
-) -> LoadingReturns {
+) -> Option<NewGraphDetails> {
     if pair.0 == pair.1 {
         return None
     }
@@ -1182,7 +1161,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         must_include = pair;
     }
 
-    Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
+    Some({
         let subgraph = graph.create_subgraph(
             block,
             must_include,
@@ -1196,11 +1175,11 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             complete_pair: pair,
             pair: n_pair,
             must_include,
-            block: trigger_update.block,
+            block,
             edges: subgraph,
             extends_pair: extend_to,
         }
-    }))
+    })
 }
 
 #[cfg(feature = "tests")]
