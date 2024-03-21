@@ -200,32 +200,41 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         pools
             .into_iter()
             .flatten()
-            .unique_by(|(_, p, ..)| *p)
-            .for_each(|(graph_edges, pair, block, ext, must_include, complete_pair)| {
-                if graph_edges.is_empty() {
-                    debug!(?pair, "new pool has no graph edges");
-                    return
-                }
+            .unique_by(|NewGraphDetails { pair, must_include, .. }| (*pair, *must_include))
+            .for_each(
+                |NewGraphDetails {
+                     must_include,
+                     complete_pair,
+                     pair,
+                     extends_pair,
+                     block,
+                     edges,
+                 }| {
+                    if edges.is_empty() {
+                        debug!(?pair, "new pool has no graph edges");
+                        return
+                    }
 
-                if self.graph_manager.has_subgraph_goes_through(
-                    pair,
-                    must_include,
-                    self.quote_asset,
-                ) {
-                    tracing::debug!(?pair, "already have pairs");
-                    return
-                }
+                    if self.graph_manager.has_subgraph_goes_through(
+                        pair,
+                        must_include,
+                        self.quote_asset,
+                    ) {
+                        tracing::debug!(?pair, "already have pairs");
+                        return
+                    }
 
-                self.add_subgraph(
-                    pair,
-                    complete_pair,
-                    must_include,
-                    ext,
-                    block,
-                    graph_edges,
-                    false,
-                );
-            });
+                    self.add_subgraph(
+                        pair,
+                        complete_pair,
+                        must_include,
+                        extends_pair,
+                        block,
+                        edges,
+                        false,
+                    );
+                },
+            );
     }
 
     fn get_dex_price(&self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
@@ -975,10 +984,7 @@ const fn make_fake_swap(pair: Pair) -> Actions {
     })
 }
 
-type GraphSeachParRes = (
-    Vec<Vec<(Address, PoolUpdate)>>,
-    Vec<Vec<(Vec<SubGraphEdge>, Pair, u64, Option<Pair>, Pair, Pair)>>,
-);
+type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
 
 fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -1063,8 +1069,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .collect::<Vec<_>>()
 }
 
-type NewPoolPair =
-    (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64, Option<Pair>, Pair, Pair)>);
+type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<NewGraphDetails>);
 
 fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -1118,8 +1123,16 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     (buf_pending, path_pending)
 }
 
-type LoadingReturns =
-    Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64, Option<Pair>, Pair, Pair))>;
+type LoadingReturns = Option<((Address, PoolUpdate), NewGraphDetails)>;
+
+pub struct NewGraphDetails {
+    pub must_include:  Pair,
+    pub complete_pair: Pair,
+    pub pair:          Pair,
+    pub extends_pair:  Option<Pair>,
+    pub block:         u64,
+    pub edges:         Vec<SubGraphEdge>,
+}
 
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -1150,7 +1163,14 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             Some(5),
             Duration::from_millis(69),
         );
-        (subgraph, n_pair, trigger_update.block, extend_to, must_include, pair)
+        NewGraphDetails {
+            complete_pair: pair,
+            pair: n_pair,
+            must_include,
+            block: trigger_update.block,
+            edges: subgraph,
+            extends_pair: extend_to,
+        }
     }))
 }
 
