@@ -15,12 +15,12 @@ use brontes_types::{
     structured_trace::TxTrace,
     Protocol,
 };
-use futures::future::join_all;
-use serde::Deserialize;
-use sorella_db_databases::{
+use db_interfaces::{
     clickhouse::{config::ClickhouseConfig, db::ClickhouseClient, errors::ClickhouseError},
     Database,
 };
+use futures::future::join_all;
+use serde::Deserialize;
 
 use super::{dbms::*, ClickhouseHandle};
 use crate::{
@@ -335,7 +335,7 @@ mod tests {
         pair::Pair,
         FastHashMap, GasDetails,
     };
-    use sorella_db_databases::{
+    use db_interfaces::{
         clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
         test_utils::TestDatabase,
     };

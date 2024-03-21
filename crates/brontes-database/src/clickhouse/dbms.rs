@@ -9,7 +9,7 @@ use brontes_types::{
     mev::*,
     structured_trace::TxTrace,
 };
-use sorella_db_databases::{
+use db_interfaces::{
     clickhouse::{
         errors::ClickhouseError,
         tables::{ClickhouseTable, ClickhouseTableType},
