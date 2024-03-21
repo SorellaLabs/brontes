@@ -430,7 +430,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the failed pair for requery. After processing the verification
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
-    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Pair)>) {
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>) {
         if !pairs.is_empty() {
             tracing::info!("verifying subgraph: {:#?}", pairs);
         }
@@ -534,7 +534,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 if force_rundown {
                     self.rundown(pair, full_pair, goes_through, block);
                 } else if !need_state {
-                    recusing.push((block, id, pair, goes_through))
+                    recusing.push((block, id, pair, vec![goes_through]))
                 }
             },
         );
@@ -642,7 +642,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if !need_state {
                 execute_on!(
                     target = pricing,
-                    self.try_verify_subgraph(vec![(block, id, pair, goes_through)])
+                    self.try_verify_subgraph(vec![(block, id, pair, vec![goes_through])])
                 );
             }
         }

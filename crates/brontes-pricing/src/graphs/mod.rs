@@ -234,27 +234,35 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn verify_subgraph(
         &mut self,
-        pairs: Vec<(u64, Option<u64>, Pair, Pair)>,
+        pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
         let pairs = pairs
             .into_iter()
-            .map(|(a, b, pair, goes_through)| {
-                self.subgraph_verifier
-                    .get_subgraph_extends(&pair, &goes_through)
-                    .map(|jump_pair| {
-                        (
-                            a,
-                            b,
-                            pair,
-                            self.sub_graph_registry
-                                .get_price_all(jump_pair, self.graph_state.finalized_state())
-                                .unwrap_or(Rational::ONE),
-                            goes_through.1,
-                            goes_through,
-                        )
+            .flat_map(|(a, b, pair, goes_throughs)| {
+                goes_throughs
+                    .into_iter()
+                    .map(|goes_through| {
+                        self.subgraph_verifier
+                            .get_subgraph_extends(&pair, &goes_through)
+                            .map(|jump_pair| {
+                                (
+                                    a,
+                                    b,
+                                    pair,
+                                    self.sub_graph_registry
+                                        .get_price_all(
+                                            jump_pair,
+                                            self.graph_state.finalized_state(),
+                                        )
+                                        .unwrap_or(Rational::ONE),
+                                    goes_through.1,
+                                    goes_through,
+                                )
+                            })
+                            .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote, goes_through))
                     })
-                    .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote, goes_through))
+                    .collect_vec()
             })
             .collect_vec();
 

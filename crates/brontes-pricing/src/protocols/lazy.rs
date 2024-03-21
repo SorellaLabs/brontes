@@ -45,7 +45,7 @@ pub struct PairStateLoadingProgress {
     pub block:         u64,
     pub id:            Option<u64>,
     pub pending_pools: FastHashSet<Address>,
-    pub swap_pair:     Pair,
+    pub goes_through:  Vec<Pair>,
 }
 
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
@@ -99,12 +99,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.pool_buf.get(k).cloned()
     }
 
-    pub fn pairs_to_verify(&mut self) -> Vec<(u64, Option<u64>, Pair, Pair)> {
+    pub fn pairs_to_verify(&mut self) -> Vec<(u64, Option<u64>, Pair, Vec<Pair>)> {
         let mut res = Vec::new();
         self.parent_pair_state_loading.retain(
-            |pair, PairStateLoadingProgress { block, id, pending_pools, swap_pair }| {
+            |pair, PairStateLoadingProgress { block, id, pending_pools, goes_through }| {
                 if pending_pools.is_empty() {
-                    res.push((*block, *id, *pair, *swap_pair));
+                    res.push((*block, *id, *pair, goes_through.clone()));
                     return false
                 }
                 true
@@ -134,9 +134,8 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         id: Option<u64>,
         address: Address,
         parent_pair: Pair,
-        goes_through: Pair,
+        goes_through_new: Pair,
     ) {
-        tracing::info!(?parent_pair, ?goes_through, "adding protocol parent");
         self.protocol_address_to_parent_pairs
             .entry(address)
             .or_default()
@@ -150,11 +149,12 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                     block: parent_block,
                     id,
                     pending_pools: set,
-                    swap_pair: goes_through,
+                    goes_through: vec![goes_through_new],
                 });
             }
             Entry::Occupied(mut o) => {
-                let PairStateLoadingProgress { block, pending_pools, .. } = o.get_mut();
+                let PairStateLoadingProgress { block, pending_pools, goes_through, .. } =
+                    o.get_mut();
                 if *block != parent_block {
                     tracing::error!(
                         %block,
@@ -164,6 +164,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
                     );
                 }
                 *block = parent_block;
+                goes_through.push(goes_through_new);
                 pending_pools.insert(address);
             }
         }
