@@ -12,7 +12,7 @@ use pathfinding::num_traits::Zero;
 
 type FxIndexMap<K, V> = IndexMap<K, V, FastHasher>;
 
-const MAX_LEN: usize = 5;
+const MAX_LEN: usize = 6;
 
 /// Compute a shortest path using the [Dijkstra search
 /// algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
