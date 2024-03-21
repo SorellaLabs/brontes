@@ -297,6 +297,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // generate all variants of the price that might be used in the inspectors
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
+        tracing::info!(?pair0, ?pair1, ?pool_pair, "getting price");
 
         let flipped_pool = pool_pair.flip();
 
@@ -325,11 +326,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             return;
         };
 
-        let flipped_pool = pool_pair.flip();
-
         // add price post state
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
+        tracing::info!(?pair0, ?pair1, ?pool_pair, "getting price");
+
+        let flipped_pool = pool_pair.flip();
+
 
         let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, "no price for token");
