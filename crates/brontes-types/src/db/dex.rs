@@ -104,7 +104,13 @@ impl DexQuotes {
 
             tx -= 1;
         }
+
+        let a = self.price_at_or_before(pair, 400);
+        if a.is_some() {
+            error!(?pair, found=?tx,"price for pair but was at index");
+        }
         error!(?pair, before=?s_idx, "no price for pair");
+
         None
     }
 
