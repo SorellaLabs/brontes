@@ -102,7 +102,13 @@ impl SubgraphVerifier {
         let query_state = state_tracker.missing_state(block, &path);
 
         let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
-        if self.pending_subgraphs.contains_key(&pair) {
+        // if we find a subgraph that is the same, we return.
+        if self
+            .pending_subgraphs
+            .get(&pair)
+            .and_then(|v| v.iter().find(|(p, _)| *p == goes_through))
+            .is_some()
+        {
             return vec![]
         };
 
