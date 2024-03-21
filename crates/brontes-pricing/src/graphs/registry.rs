@@ -1,5 +1,6 @@
 use alloy_primitives::Address;
 use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
+use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
@@ -126,7 +127,8 @@ impl SubGraphRegistry {
                     (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
                 });
                 if f.is_none() {
-                    tracing::error!(?goes_through, ?unordered_pair, "no findo");
+                    let has = g.iter().map(|(g, _)| *g).collect_vec();
+                    tracing::error!(?goes_through, ?unordered_pair, "no findo: {:#?}", has);
                 }
                 f
             })
