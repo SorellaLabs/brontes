@@ -70,9 +70,15 @@ impl SubgraphVerifier {
             .is_some()
     }
 
-    pub fn pool_dep_failure(&mut self, pair: Pair) {
-        self.subgraph_verification_state.remove(&pair);
-        self.pending_subgraphs.remove(&pair);
+    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: &Pair) {
+        self.subgraph_verification_state.retain(|_, v| {
+            v.retain(|(k, _)| k != goes_through);
+            !v.is_empty()
+        });
+        self.pending_subgraphs.retain(|_, v| {
+            v.retain(|(k, _)| k != goes_through);
+            !v.is_empty()
+        });
     }
 
     // creates a new subgraph returning
@@ -359,8 +365,15 @@ impl SubgraphVerifier {
         removals: FastHashMap<Pair, FastHashSet<BadEdge>>,
         state_tracker: &mut StateTracker,
     ) -> VerificationResults {
+        let goes_through = subgraph.subgraph.must_go_through();
+
+        self.subgraph_verification_state.retain(|_, v| {
+            v.retain(|(p, _)| *p != goes_through);
+
+            !v.is_empty()
+        });
+
         // remove state for pair
-        let _ = self.subgraph_verification_state.remove(&pair);
         // mark used state finalized
         let subgraph = subgraph.subgraph;
         subgraph.get_all_pools().flatten().for_each(|pool| {
