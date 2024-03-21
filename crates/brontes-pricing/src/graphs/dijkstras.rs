@@ -195,14 +195,17 @@ where
         let base_node = node.clone();
 
         for (successor, move_cost) in successors {
-            if !checked_second {
+            let break_after = if !checked_second {
                 let second = second.cloned().unwrap();
                 checked_second = successor == second;
 
                 if !checked_second {
                     continue
                 }
-            }
+                true
+            } else {
+                false
+            };
 
             i += 1;
 
@@ -229,6 +232,10 @@ where
             }
 
             to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
+
+            if break_after {
+                break
+            }
         }
         visited.insert(base_node);
     }
