@@ -36,5 +36,7 @@ possible_mev/
 # Libmdbx files
 data/*
 
+p.sql
+
 # Misc 
 .vscode/
