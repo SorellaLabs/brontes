@@ -123,17 +123,20 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .and_then(|g| {
-                let f = g.iter().find_map(|(gt, graph)| {
+                g.iter().find_map(|(gt, graph)| {
                     (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
-                });
-                if f.is_none() {
-                    let has = g.iter().map(|(g, _)| *g).collect_vec();
-                    tracing::error!(?goes_through, ?unordered_pair, "no findo: {:#?}", has);
-                }
-                f
+                })
             })
             .and_then(|graph| {
                 Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
+            })
+            // this can happen when we have pools with a token that only has that one pool.
+            // this causes a one way and we can't process price. Instead, in this case
+            // we take the average price on non-extended graphs and return the price
+            // that way
+            .or_else(|| {
+                self.get_price_all(unordered_pair, edge_state)
+                    .map(|price| (None, unordered_pair, price))
             })
     }
 
