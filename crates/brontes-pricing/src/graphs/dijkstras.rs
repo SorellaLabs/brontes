@@ -191,6 +191,7 @@ where
             target_reached = Some(index);
             break
         }
+
         let successors = successors(node);
         let base_node = node.clone();
 
@@ -238,6 +239,7 @@ where
             to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
 
             if break_after {
+                tracing::debug!("break after");
                 break
             }
         }
