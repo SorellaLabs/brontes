@@ -71,11 +71,18 @@ impl SubgraphVerifier {
     }
 
     pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: &Pair) {
-        self.subgraph_verification_state.retain(|_, v| {
+        self.subgraph_verification_state.retain(|k, v| {
+            if *k != pair {
+                return true
+            }
+
             v.retain(|(k, _)| k != goes_through);
             !v.is_empty()
         });
-        self.pending_subgraphs.retain(|_, v| {
+        self.pending_subgraphs.retain(|k, v| {
+            if *k != pair {
+                return true
+            }
             v.retain(|(k, _)| k != goes_through);
             !v.is_empty()
         });
@@ -367,9 +374,12 @@ impl SubgraphVerifier {
     ) -> VerificationResults {
         let goes_through = subgraph.subgraph.must_go_through();
 
-        self.subgraph_verification_state.retain(|_, v| {
-            v.retain(|(p, _)| *p != goes_through);
+        self.subgraph_verification_state.retain(|k, v| {
+            if *k != pair {
+                return true
+            }
 
+            v.retain(|(p, _)| *p != goes_through);
             !v.is_empty()
         });
 

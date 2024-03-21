@@ -400,7 +400,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let failed_queries = deps
                 .into_iter()
                 .map(|v| {
-                    self.graph_manager.pool_dep_failure(v);
+                    self.graph_manager.pool_dep_failure(v, goes_through);
                     (v, goes_through, full_pair, block, Default::default(), Default::default())
                 })
                 .collect_vec();
