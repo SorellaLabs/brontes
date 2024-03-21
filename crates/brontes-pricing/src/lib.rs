@@ -333,7 +333,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let flipped_pool = pool_pair.flip();
 
-
         let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, "no price for token");
             return;
@@ -1145,7 +1144,7 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
-    mut must_include: Pair,
+    must_include: Pair,
     pair: Pair,
 ) -> Option<NewGraphDetails> {
     if pair.0 == pair.1 {
@@ -1159,10 +1158,6 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     } else {
         (pair, None)
     };
-    if pair == must_include {
-        tracing::info!("pair == must_include");
-        must_include = pair;
-    }
 
     Some({
         let subgraph = graph.create_subgraph(
