@@ -127,6 +127,10 @@ impl SubGraphRegistry {
                     (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
                 })
             })
+            .or_else(|| {
+                tracing::info!(?unordered_pair, "no pair in subgraph found");
+                None
+            })
             .and_then(|graph| {
                 Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
             })
