@@ -213,6 +213,10 @@ where
                 continue
             }
 
+            if break_after && stop(&successor) {
+                target_reached = Some(index);
+            }
+
             let new_cost = cost + move_cost;
             let value = path_value(&base_node, &successor);
             let n;
