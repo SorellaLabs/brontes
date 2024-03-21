@@ -394,7 +394,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             protocol,
             deps,
             full_pair,
-            goes_through,
         } = load_result
         {
             self.new_graph_pairs
@@ -402,13 +401,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
             let failed_queries = deps
                 .into_iter()
-                .map(|v| {
-                    self.graph_manager.pool_dep_failure(v, goes_through);
+                .map(|(pair, goes_through)| {
+                    self.graph_manager.pool_dep_failure(pair, goes_through);
                     RequeryPairs {
                         full_pair,
                         block,
                         goes_through,
-                        pair: v,
+                        pair,
                         frayed_ends: Default::default(),
                         ignore_state: Default::default(),
                     }

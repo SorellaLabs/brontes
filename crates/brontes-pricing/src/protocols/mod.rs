@@ -37,7 +37,6 @@ pub trait LoadState {
         provider: Arc<T>,
         block_number: u64,
         pool_pair: Pair,
-        goes_through: Pair,
         full_pair: Pair,
     ) -> impl Future<Output = Result<PoolFetchSuccess, PoolFetchError>> + Send;
 }
@@ -53,7 +52,6 @@ impl LoadState for Protocol {
         provider: Arc<T>,
         block_number: u64,
         pool_pair: Pair,
-        gt: Pair,
         full_pair: Pair,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
@@ -69,7 +67,7 @@ impl LoadState for Protocol {
                             .await
                             .map_err(|e| {
                                 error!(?pool_pair,protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
-                                (address, Protocol::UniswapV2, block_number, pool_pair, gt,full_pair, e)
+                                (address, Protocol::UniswapV2, block_number, pool_pair, full_pair, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -97,7 +95,7 @@ impl LoadState for Protocol {
                             .await
                             .map_err(|e| {
                                 error!(?pool_pair, protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
-                                (address, Protocol::UniswapV3, block_number, pool_pair, gt,full_pair, e)
+                                (address, Protocol::UniswapV3, block_number, pool_pair, full_pair, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -120,7 +118,6 @@ impl LoadState for Protocol {
                     self,
                     block_number,
                     pool_pair,
-                    gt,
                     full_pair,
                     AmmError::UnsupportedProtocol,
                 ))

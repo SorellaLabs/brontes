@@ -242,6 +242,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .flat_map(|(a, b, pair, goes_throughs)| {
                 goes_throughs
                     .into_iter()
+                    .unique()
                     .map(|goes_through| {
                         self.subgraph_verifier
                             .get_subgraph_extends(&pair, &goes_through)
