@@ -164,7 +164,17 @@ where
     FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
-    let mut checked_second = second.is_none();
+    let mut checked_second = {
+        // we only check second if we know that the second node has edges that aren't
+        // the first node.
+        if let Some(s) = second {
+            let next = successors(s);
+            next.into_iter().all(|(next_i, _)| &next_i == start)
+        } else {
+            true
+        }
+    };
+
     let mut visited = FastHashSet::default();
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
@@ -214,10 +224,6 @@ where
                 continue
             }
 
-            if break_after && stop(&successor) {
-                target_reached = Some(index);
-            }
-
             let new_cost = cost + move_cost;
             let value = path_value(&base_node, &successor);
             let n;
@@ -239,7 +245,6 @@ where
             to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
 
             if break_after {
-                tracing::debug!("break after");
                 break
             }
         }
