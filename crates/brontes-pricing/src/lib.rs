@@ -1162,7 +1162,7 @@ type LoadingReturns = Option<((Address, PoolUpdate), NewGraphDetails)>;
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
-    must_include: Pair,
+    mut must_include: Pair,
     pair: Pair,
     trigger_update: PoolUpdate,
 ) -> LoadingReturns {
@@ -1177,6 +1177,9 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     } else {
         (pair, None)
     };
+    if pair == must_include {
+        must_include = pair;
+    }
 
     Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
         let subgraph = graph.create_subgraph(
