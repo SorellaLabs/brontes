@@ -97,10 +97,17 @@ impl SubGraphRegistry {
         goes_through: Pair,
         edge_state: &FastHashMap<Address, PoolState>,
     ) -> Option<Rational> {
-        let (next, default_price) =
+        let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
+            .map(|price| {
+                if unordered_pair.eq_unordered(&complete_pair) {
+                    price
+                } else {
+                    price.reciprocal()
+                }
+            })
             .or(Some(default_price))
     }
 
@@ -109,7 +116,7 @@ impl SubGraphRegistry {
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, PoolState>,
-    ) -> Option<(Option<Pair>, Rational)> {
+    ) -> Option<(Option<Pair>, Pair, Rational)> {
         let pair = unordered_pair.ordered();
 
         self.sub_graphs
@@ -118,16 +125,8 @@ impl SubGraphRegistry {
                 f.iter()
                     .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph))
             })
-            .map(|graph| (graph.get_unordered_pair(), graph))
-            .and_then(|(default_pair, graph)| {
-                Some((graph.extends_to(), default_pair, graph.fetch_price(edge_state)?))
-            })
-            .map(|(ext, default_pair, res)| {
-                if !unordered_pair.eq_unordered(&default_pair) {
-                    (ext, res.reciprocal())
-                } else {
-                    (ext, res)
-                }
+            .and_then(|graph| {
+                Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
             })
     }
 

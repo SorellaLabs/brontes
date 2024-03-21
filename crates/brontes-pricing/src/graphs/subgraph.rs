@@ -98,9 +98,6 @@ impl PairSubGraph {
         extends_to: Option<Pair>,
         edges: Vec<SubGraphEdge>,
     ) -> Self {
-        if extends_to.is_some() {
-            tracing::info!(?complete_pair, ?pair, ?extends_to, "new extended subgraph");
-        }
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, u16>::default();
         let mut token_to_index = FastHashMap::default();
 
@@ -163,6 +160,10 @@ impl PairSubGraph {
 
     pub fn must_go_through(&self) -> Pair {
         self.must_go_through
+    }
+
+    pub fn get_unordered_pair(&self) -> Pair {
+        self.pair
     }
 
     pub fn save_last_verification_liquidity<T: ProtocolState>(
@@ -249,10 +250,6 @@ impl PairSubGraph {
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
-    }
-
-    pub fn get_unordered_pair(&self) -> Pair {
-        self.pair
     }
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
@@ -831,7 +828,7 @@ pub mod test {
         let e3 = build_edge(t3, t3, t4, 3, 4);
 
         let pair = Pair(t0, t4);
-        PairSubGraph::init(pair, pair, None, vec![e0, e1, e2, e3])
+        PairSubGraph::init(pair, pair, pair, None, vec![e0, e1, e2, e3])
     }
 
     #[test]
