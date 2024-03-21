@@ -39,6 +39,10 @@ impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    fn get_id(&self) -> &str {
+        "Jit"
+    }
+
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         self.possible_jit_set(tree.clone())
             .into_iter()

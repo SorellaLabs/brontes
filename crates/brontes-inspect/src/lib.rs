@@ -90,7 +90,7 @@ pub use mev_inspectors::*;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
@@ -111,6 +111,7 @@ use sandwich::SandwichInspector;
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
+    fn get_id(&self) -> &str;
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result;
 }
 

@@ -27,6 +27,10 @@ impl<'db, DB: LibmdbxReader> SearcherActivity<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
     type Result = Vec<Bundle>;
 
+    fn get_id(&self) -> &str {
+        "SearcherActivity"
+    }
+
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let search_args = TreeSearchBuilder::default()
             .with_actions([Actions::is_transfer, Actions::is_eth_transfer]);
