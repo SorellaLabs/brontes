@@ -75,7 +75,6 @@ impl BrontesPricingBencher {
                 block_number,
                 pool_pair,
                 pool_pair,
-                pool_pair,
             ))
             .unwrap()
             .2;
@@ -103,7 +102,6 @@ impl BrontesPricingBencher {
                             pool,
                             self.inner.get_tracing_provider(),
                             block_number,
-                            pool_pair,
                             pool_pair,
                             pool_pair,
                         )
