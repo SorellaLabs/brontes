@@ -145,6 +145,7 @@ impl SubGraphRegistry {
             // we take the average price on non-extended graphs and return the price
             // that way
             .or_else(|| {
+                tracing::info!("price all");
                 self.get_price_all(unordered_pair, edge_state)
                     .map(|price| (None, unordered_pair, price))
             })
