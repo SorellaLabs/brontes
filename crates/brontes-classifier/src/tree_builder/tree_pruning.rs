@@ -82,24 +82,24 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // remove swaps that originate from a transfer. This event only occurs
     // when a tax token is transfered and the taxed amount is swapped into
     // a more stable currency
-    // tree.modify_node_if_contains_childs(
-    //     TreeSearchBuilder::default()
-    //         .with_action(Actions::is_transfer)
-    //         .child_nodes_contain([Actions::is_swap, Actions::is_transfer]),
-    //     |node, data| {
-    //         let mut swap_idx = Vec::new();
-    //         node.collect(
-    //             &mut swap_idx,
-    //             &TreeSearchBuilder::default().with_action(Actions::is_swap),
-    //             &|node| node.node.index,
-    //             data,
-    //         );
-    //
-    //         swap_idx.into_iter().for_each(|idx| {
-    //             node.remove_node_and_children(idx, data);
-    //         })
-    //     },
-    // );
+    tree.modify_node_if_contains_childs(
+        TreeSearchBuilder::default()
+            .with_action(Actions::is_transfer)
+            .child_nodes_contain([Actions::is_swap, Actions::is_transfer]),
+        |node, data| {
+            let mut swap_idx = Vec::new();
+            node.collect(
+                &mut swap_idx,
+                &TreeSearchBuilder::default().with_action(Actions::is_swap),
+                &|node| node.node.index,
+                data,
+            );
+
+            swap_idx.into_iter().for_each(|idx| {
+                node.remove_node_and_children(idx, data);
+            })
+        },
+    );
 }
 
 #[cfg(test)]
