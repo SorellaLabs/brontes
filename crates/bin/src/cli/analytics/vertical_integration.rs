@@ -10,6 +10,9 @@ use crate::{
     cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
     runner::CliContext,
 };
+// Convert to polars notebook code:
+// bundle count by mev_type by builder
+// bundle value by mev_type by builder
 
 #[derive(Debug, Parser)]
 pub struct SearcherBuilder {

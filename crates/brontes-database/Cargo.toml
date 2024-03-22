@@ -42,9 +42,9 @@ bytes = "1.5"
 zstd = "0.13"
 chrono = "0.4.35"
 
-polars = { version = "0.38.2", features = ["lazy"] }
-arrow = { version = "51.0.0" }
-parquet = { version = "51.0.0", features = ["async"] }
+polars.workspace = true
+arrow.workspace = true
+parquet = { workspace = true, features = ["async"] }
 
 
 # numbers

@@ -11,6 +11,7 @@ use crate::{
     runner::CliContext,
 };
 
+//TODO: Convert to notebooks searcher + builder profit stats
 #[derive(Debug, Parser)]
 pub struct GetStats {
     /// Start Block

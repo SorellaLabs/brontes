@@ -1,6 +1,7 @@
 use std::{
     fmt::{Debug, Display},
     str::FromStr,
+    sync::Arc,
 };
 
 use brontes_pricing::SubGraphsEntry;
@@ -261,7 +262,10 @@ impl Tables {
         }
     }
 
-    pub async fn export_to_parquet<DB>(&self, exporter: &ParquetExporter<DB>) -> eyre::Result<()>
+    pub async fn export_to_parquet<DB>(
+        &self,
+        exporter: Arc<ParquetExporter<DB>>,
+    ) -> eyre::Result<()>
     where
         DB: LibmdbxReader,
     {

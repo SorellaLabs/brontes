@@ -86,9 +86,8 @@ alloy-rlp-derive = { version = "0.3.4" }
 alloy-primitives = { version = "0.6.0", features = ["rlp"] }
 alloy-json-abi = "0.6.0"
 alloy-dyn-abi = "0.6.0 "
+
 # Alloy core
-
-
 alloy-provider = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
 alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
 alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
@@ -170,6 +169,11 @@ rkyv = { git = "https://github.com/rkyv/rkyv.git", branch = "0.7-hashbrown-0.14"
 num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
+
+arrow = "51.0.0"
+polars = { version = "0.38.3", features = ["lazy"]}
+parquet = {version = "51.0.0", features = ["async"] }
+
 
 [profile.dev]
 opt-level = 0
