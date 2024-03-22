@@ -193,11 +193,6 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-
-    use reth_db::{mdbx::DatabaseArguments, open_db_read_only};
-    use reth_primitives::MAINNET;
-    use reth_provider::providers::ProviderFactory;
     use test_bytecodes::{V2_DAI_MKR, V3_USDC_ETH, V3_WBTC_ETH};
 
     use super::*;
