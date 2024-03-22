@@ -55,7 +55,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T, DB>) {
         let tx = self.tx.clone();
         let fut = Box::pin(async move {
-            let res = pricer.next().await;
+            let block = pricer.current_block_processing();
+            let res = pricer
+                .next()
+                .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
+                .await;
             let _ = tx.try_send((pricer, res));
         });
 

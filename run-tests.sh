@@ -1,7 +1,7 @@
 #!/bin/sh
 
 setup() {
-  if rustup default nightly; then : ;else return 1; fi
+  if rustup default nightly; then : ; else return 1; fi
   git checkout $1
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"
@@ -46,11 +46,11 @@ if [ "$3" = "$IT" ]; then
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  if cargo +nightly test --features $4; then : ;else  teardown $2; exit 1; fi
+  if cargo test --features $4; then : ;else  teardown $2; exit 1; fi
 fi
 
 if [ "$3" = "$BENCH" ]; then 
-  if cargo +nightly bench --features $4; then : ; else teardown $2; exit 1; fi
+  if cargo bench --features $4; then : ; else teardown $2; exit 1; fi
 fi 
 
 teardown $2

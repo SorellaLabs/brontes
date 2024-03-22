@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use super::{DedupOperation, Dedups, InTupleFnOutVec, SplitIterZip};
 use crate::{
-    normalized_actions::NormalizedAction, ActionSplit, BlockTree, FilterMapTree, FilterTree, IntoZip,
-    MergeIter,
+    normalized_actions::NormalizedAction, ActionSplit, BlockTree, FilterMapTree, FilterTree,
+    IntoZip, MergeIter,
 };
 
 impl<T: Sized + Iterator, V: NormalizedAction> TreeBase<V> for T {}
@@ -61,10 +61,7 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         Zip: SplitIterZip<std::vec::IntoIter<V>>,
     {
         let tree = self.tree();
-        TreeIterator::new(
-            tree,
-            DedupOperation::dedup(self, parent_actions, possible_prune_actions),
-        )
+        TreeIterator::new(tree, DedupOperation::dedup(self, parent_actions, possible_prune_actions))
     }
 
     fn t_full_map<R, F>(self, f: F) -> R
@@ -110,12 +107,7 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         F: FnMut(Arc<BlockTree<V>>, &Self) -> bool,
     {
         let tree = self.tree();
-        FilterTree {
-            tree,
-            iter: std::iter::once(self),
-            f,
-        }
-        .next()
+        FilterTree { tree, iter: std::iter::once(self), f }.next()
     }
 
     fn t_filter<F>(self, f: F) -> TreeIterator<V, FilterTree<V, Self, F>>
@@ -124,14 +116,7 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         F: for<'a> FnMut(Arc<BlockTree<V>>, &Self::Item) -> bool,
     {
         let tree = self.tree();
-        TreeIterator::new(
-            tree.clone(),
-            FilterTree {
-                tree,
-                iter: self,
-                f,
-            },
-        )
+        TreeIterator::new(tree.clone(), FilterTree { tree, iter: self, f })
     }
 
     fn t_filter_map<R, F>(self, f: F) -> TreeIterator<V, FilterMapTree<V, Self, F>>
@@ -140,14 +125,7 @@ pub trait TreeBase<V: NormalizedAction>: Iterator {
         F: FnMut(Arc<BlockTree<V>>, Self::Item) -> Option<R>,
     {
         let tree = self.tree();
-        TreeIterator::new(
-            tree.clone(),
-            FilterMapTree {
-                tree,
-                iter: self,
-                f,
-            },
-        )
+        TreeIterator::new(tree.clone(), FilterMapTree { tree, iter: self, f })
     }
 
     fn tree_zip_with<O>(self, other: O) -> TreeIterator<V, Self::Out>

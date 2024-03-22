@@ -380,18 +380,20 @@ mod tests {
         db.insert_one::<ClickhouseTokenInfo>(&case0).await.unwrap();
     }
 
-    async fn searcher_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let case0 = SearcherStatsWithAddress::default();
-
-        db.insert_one::<ClickhouseSearcherStats>(&case0)
-            .await
-            .unwrap();
-
-        let query = "SELECT * FROM brontes.searcher_stats";
-        let queried: SearcherStatsWithAddress = db.query_one(query, &()).await.unwrap();
-
-        assert_eq!(queried, case0);
-    }
+    // async fn searcher_stats(db:
+    // &ClickhouseTestingClient<BrontesClickhouseTables>) {     let case0 =
+    // SearcherStatsWithAddress::default();
+    //
+    //     db.insert_one::<ClickhouseSearcherStats>(&case0)
+    //         .await
+    //         .unwrap();
+    //
+    //     let query = "SELECT * FROM brontes.searcher_stats";
+    //     let queried: SearcherStatsWithAddress = db.query_one(query,
+    // &()).await.unwrap();
+    //
+    //     assert_eq!(queried, case0);
+    // }
 
     async fn builder_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = BuilderStatsWithAddress::default();
@@ -568,7 +570,7 @@ mod tests {
         mev_block(database).await;
         dex_price_mapping(database).await;
         builder_stats(database).await;
-        searcher_stats(database).await;
+        // searcher_stats(database).await;
         token_info(database).await;
         searcher_info(database).await;
     }

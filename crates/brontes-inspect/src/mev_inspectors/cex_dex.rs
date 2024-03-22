@@ -86,6 +86,10 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    fn get_id(&self) -> &str {
+        "CexDex"
+    }
+
     /// Processes the block tree to find CEX-DEX arbitrage
     /// opportunities. This is the entry point for the inspection process,
     /// identifying transactions that include swap actions.

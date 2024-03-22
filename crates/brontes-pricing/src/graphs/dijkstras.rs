@@ -11,7 +11,9 @@ use indexmap::{
 use pathfinding::num_traits::Zero;
 
 type FxIndexMap<K, V> = IndexMap<K, V, FastHasher>;
+
 const MAX_LEN: usize = 4;
+const MAX_OTHER_PATHS: usize = 3;
 
 /// Compute a shortest path using the [Dijkstra search
 /// algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
@@ -118,6 +120,7 @@ const MAX_LEN: usize = 4;
 
 pub(crate) fn dijkstra_internal<N, C, E, FN, IN, FS, PV>(
     start: &N,
+    second: Option<&N>,
     successors: &FN,
     path_value: &PV,
     success: &FS,
@@ -129,10 +132,10 @@ where
     E: Clone + Default,
     FN: Fn(&N) -> IN,
     PV: Fn(&N, &N) -> E,
-    IN: IntoIterator<Item = (N, C)>,
+    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool,
 {
-    let (parents, reached) = run_dijkstra(start, successors, path_value, success, max_iter);
+    let (parents, reached) = run_dijkstra(start, second, successors, path_value, success, max_iter);
     reached.map(|target| {
         (
             reverse_path(&parents, |&(p, ..)| p, |_, (_, _, e)| e, target),
@@ -143,8 +146,10 @@ where
 }
 
 type DijkstrasRes<N, C, E> = (FxIndexMap<N, (usize, C, E)>, Option<usize>);
+
 fn run_dijkstra<N, C, E, FN, IN, FS, PV>(
     start: &N,
+    second: Option<&N>,
     successors: &FN,
     path_value: &PV,
     stop: &FS,
@@ -156,16 +161,32 @@ where
     E: Clone + Default,
     FN: Fn(&N) -> IN,
     PV: Fn(&N, &N) -> E,
-    IN: IntoIterator<Item = (N, C)>,
+    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
+    let mut checked_second = {
+        // we only check second if we know that the second node has edges that aren't
+        // the first node.
+        if let Some(s) = second {
+            let next = successors(s);
+
+            next.into_iter()
+                .filter(|(next_i, _)| next_i != start)
+                .count()
+                <= MAX_OTHER_PATHS
+        } else {
+            true
+        }
+    };
+
     let mut visited = FastHashSet::default();
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
     parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
     let mut target_reached = None;
+
     while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
         if hops >= MAX_LEN {
             continue
@@ -185,10 +206,23 @@ where
             target_reached = Some(index);
             break
         }
+
         let successors = successors(node);
         let base_node = node.clone();
 
-        for (successor, move_cost) in successors {
+        for (successor, move_cost) in successors.clone() {
+            let break_after = if !checked_second {
+                let second = second.cloned().unwrap();
+                checked_second = successor == second;
+
+                if !checked_second {
+                    continue
+                }
+                true
+            } else {
+                false
+            };
+
             i += 1;
 
             if visited.contains(&successor) {
@@ -214,7 +248,59 @@ where
             }
 
             to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
+
+            if break_after {
+                break
+            }
         }
+
+        if !checked_second {
+            checked_second = true;
+            for (successor, move_cost) in successors {
+                let break_after = if !checked_second {
+                    let second = second.cloned().unwrap();
+                    checked_second = successor == second;
+
+                    if !checked_second {
+                        continue
+                    }
+                    true
+                } else {
+                    false
+                };
+
+                i += 1;
+
+                if visited.contains(&successor) {
+                    continue
+                }
+
+                let new_cost = cost + move_cost;
+                let value = path_value(&base_node, &successor);
+                let n;
+                match parents.entry(successor) {
+                    Vacant(e) => {
+                        n = e.index();
+                        e.insert((index, new_cost, value));
+                    }
+                    Occupied(mut e) => {
+                        if e.get().1 > new_cost {
+                            n = e.index();
+                            e.insert((index, new_cost, value));
+                        } else {
+                            continue
+                        }
+                    }
+                }
+
+                to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
+
+                if break_after {
+                    break
+                }
+            }
+        }
+
         visited.insert(base_node);
     }
     (parents, target_reached)
