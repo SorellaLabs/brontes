@@ -116,7 +116,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         });
 
         if !res.is_empty() {
-            tracing::info!("{:#?}", self.parent_pair_state_loading);
+            tracing::info!("state {:#?}", self.parent_pair_state_loading);
         }
 
         res

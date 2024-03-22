@@ -431,7 +431,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// verification.
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>) {
         if !pairs.is_empty() {
-            tracing::info!("verifying subgraph: {:#?}", pairs);
+            // tracing::info!("verifying subgraph: {:#?}", pairs);
         }
         let requery = self
             .graph_manager
