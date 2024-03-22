@@ -103,6 +103,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     let root_trace = trace.trace.remove(0);
                     let address = root_trace.get_from_addr();
                     let trace_idx = root_trace.trace_idx;
+
                     let classification = self
                         .process_classification(
                             header.number,
