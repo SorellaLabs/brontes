@@ -13,6 +13,7 @@ use pathfinding::num_traits::Zero;
 type FxIndexMap<K, V> = IndexMap<K, V, FastHasher>;
 
 const MAX_LEN: usize = 4;
+const MIN_OTHER_PATHS: usize = 3;
 
 /// Compute a shortest path using the [Dijkstra search
 /// algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
@@ -169,7 +170,10 @@ where
         // the first node.
         if let Some(s) = second {
             let next = successors(s);
-            next.into_iter().all(|(next_i, _)| &next_i == start)
+            next.into_iter()
+                .filter(|(next_i, _)| next_i != start)
+                .count()
+                < MIN_OTHER_PATHS
         } else {
             true
         }
