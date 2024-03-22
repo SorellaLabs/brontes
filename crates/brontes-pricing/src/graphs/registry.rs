@@ -1,9 +1,5 @@
 use alloy_primitives::Address;
-use brontes_types::{
-    pair::Pair,
-    price_graph_types::*,
-    FastHashMap,
-};
+use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,

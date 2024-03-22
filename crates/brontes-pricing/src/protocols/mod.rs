@@ -52,7 +52,7 @@ impl LoadState for Protocol {
         provider: Arc<T>,
         block_number: u64,
         pool_pair: Pair,
-        full_pair: Pair,
+        fp: Pair,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
             Self::UniswapV2 | Self::SushiSwapV2 => {
@@ -67,7 +67,7 @@ impl LoadState for Protocol {
                             .await
                             .map_err(|e| {
                                 error!(?pool_pair,protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
-                                (address, Protocol::UniswapV2, block_number, pool_pair, full_pair, e)
+                                (address, Protocol::UniswapV2, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -95,7 +95,7 @@ impl LoadState for Protocol {
                             .await
                             .map_err(|e| {
                                 error!(?pool_pair, protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
-                                (address, Protocol::UniswapV3, block_number, pool_pair, full_pair, e)
+                                (address, Protocol::UniswapV3, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -113,14 +113,7 @@ impl LoadState for Protocol {
             }
             rest => {
                 error!(protocol=?rest, "no state updater is build for");
-                Err((
-                    address,
-                    self,
-                    block_number,
-                    pool_pair,
-                    full_pair,
-                    AmmError::UnsupportedProtocol,
-                ))
+                Err((address, self, block_number, pool_pair, fp, AmmError::UnsupportedProtocol))
             }
         }
     }

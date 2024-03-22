@@ -175,10 +175,7 @@ impl SubgraphVerifier {
             .flatten()
             .for_each(|edge| {
                 // cache all edges that have been completey removed
-                let entry = self
-                    .subgraph_verification_state
-                    .entry(pair)
-                    .or_default();
+                let entry = self.subgraph_verification_state.entry(pair).or_default();
 
                 if let Some(state) = entry.iter_mut().find(|(p, _)| *p == goes_through) {
                     state.1.add_edge_with_liq(edge.pair.0, edge.clone());
@@ -227,10 +224,7 @@ impl SubgraphVerifier {
                 self.store_edges_with_liq(pair, goes_through, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
-                let v = self
-                    .subgraph_verification_state
-                    .entry(pair)
-                    .or_default();
+                let v = self.subgraph_verification_state.entry(pair).or_default();
 
                 let default = Default::default();
                 let state = if let Some(state) = &v.iter().find(|(p, _)| *p == goes_through) {

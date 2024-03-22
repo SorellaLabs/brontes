@@ -51,10 +51,7 @@ use brontes_types::{
 use futures::{Stream, StreamExt};
 pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
 use itertools::Itertools;
-use malachite::{
-    num::basic::traits::{One},
-    Rational,
-};
+use malachite::{num::basic::traits::One, Rational};
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
