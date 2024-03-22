@@ -7,7 +7,7 @@ use brontes_types::{
     tree::root::NodeData,
     ToScaledRational,
 };
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
