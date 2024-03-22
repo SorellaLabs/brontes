@@ -71,6 +71,13 @@ impl SubGraphRegistry {
             .is_some()
     }
 
+    pub fn sufficient_pairs(&self, pair: &Pair) -> bool {
+        self.sub_graphs
+            .get(pair)
+            .map(|f| f.len() > 4)
+            .unwrap_or_default()
+    }
+
     pub fn add_verified_subgraph(
         &mut self,
         mut subgraph: PairSubGraph,

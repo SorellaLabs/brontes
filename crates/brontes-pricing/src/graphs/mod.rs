@@ -210,6 +210,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     ) -> bool {
         self.has_extension(&pair, quote).is_some()
             && self.sub_graph_registry.has_go_through(&pair, &goes_through)
+            || self.sub_graph_registry.sufficient_pairs(&pair)
     }
 
     pub fn remove_state(&mut self, address: &Address) {

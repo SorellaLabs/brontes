@@ -290,13 +290,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let flipped_pool = pool_pair.flip();
 
         let Some(price0) = self.get_dex_price(pair0, pool_pair) else {
-             tracing::info!(?pair0, ?pair1, ?pool_pair, "getting price");
             debug!(?pair0, "no price for token");
             return;
         };
 
         let Some(price1) = self.get_dex_price(pair1, flipped_pool) else {
-             tracing::info!(?pair0, ?pair1, ?flipped_pool, "getting price");
             debug!(?pair1, "no price for token");
             return;
         };
@@ -323,24 +321,20 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let flipped_pool = pool_pair.flip();
 
         let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
-            tracing::info!(?pair0, ?pair1, ?pool_pair, "getting price");
             debug!(?pair0, "no price for token");
             return;
         };
         let Some(price1_pre) = self.get_dex_price(pair1, flipped_pool) else {
-             tracing::info!(?pair0, ?pair1, ?flipped_pool, "getting price");
             debug!(?pair1, "no price for token");
             return;
         };
         self.graph_manager.update_state(addr, msg);
 
         let Some(price0_post) = self.get_dex_price(pair0, pool_pair) else {
-            tracing::info!(?pair0, ?pair1, ?pool_pair, "getting price");
             debug!(?pair0, "no price for token");
             return;
         };
         let Some(price1_post) = self.get_dex_price(pair1, flipped_pool) else {
-             tracing::info!(?pair0, ?pair1, ?flipped_pool, "getting price");
             debug!(?pair1, "no price for token");
             return;
         };

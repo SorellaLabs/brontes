@@ -414,8 +414,8 @@ impl PairSubGraph {
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN
-                        // && self.must_go_through != pair
-                        // && self.must_go_through != pair.flip()
+                    // && self.must_go_through != pair
+                    // && self.must_go_through != pair.flip()
                     {
                         Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
                     } else {
@@ -515,7 +515,6 @@ impl PairSubGraph {
         let mut visit_next = VecDeque::new();
 
         let Some(start) = self.token_to_index.get(&start) else {
-
             error!(?start, ?start_price,?self.pair, ?self.complete_pair, ?self.must_go_through, "no start node for bfs with price");
             return R::default();
         };
