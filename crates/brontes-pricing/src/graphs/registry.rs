@@ -104,13 +104,6 @@ impl SubGraphRegistry {
     ) -> Option<Rational> {
         let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
-        if unordered_pair.0 == WETH_ADDRESS
-            && unordered_pair.1 == USDT_ADDRESS
-            && default_price > Rational::from(10000)
-        {
-            tracing::info!(?unordered_pair, ?goes_through, ?default_price, "Shits fucked");
-        }
-
         next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
             .map(|price| {
                 if unordered_pair.eq_unordered(&complete_pair) {
@@ -145,7 +138,6 @@ impl SubGraphRegistry {
             // we take the average price on non-extended graphs and return the price
             // that way
             .or_else(|| {
-                tracing::info!("price all");
                 self.get_price_all(unordered_pair, edge_state)
                     .map(|price| (None, unordered_pair, price))
             })
