@@ -198,6 +198,7 @@ impl AllPairGraph {
     pub fn get_paths_ignoring(
         &self,
         pair: Pair,
+        first_hop: Pair,
         ignore: &FastHashSet<Pair>,
         block: u64,
         connectivity_wight: usize,
@@ -209,11 +210,17 @@ impl AllPairGraph {
             return vec![]
         }
 
-        let Some(start_idx) = self.token_to_index.get(&pair.0) else {
-            let addr = pair.0;
+        let Some(start_idx) = self.token_to_index.get(&first_hop.0) else {
+            let addr = first_hop.0;
             debug!(?addr, "no node for address");
             return vec![];
         };
+        let Some(second_idx) = self.token_to_index.get(&first_hop.1) else {
+            let addr = first_hop.1;
+            debug!(?addr, "no node for address");
+            return vec![];
+        };
+
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
             debug!(?addr, "no node for address");
@@ -222,6 +229,7 @@ impl AllPairGraph {
 
         yen(
             start_idx,
+            second_idx,
             |cur_node| {
                 let cur_node: NodeIndex<usize> = (*cur_node).into();
                 let edges = self.graph.edges(cur_node).collect_vec();

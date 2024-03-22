@@ -260,7 +260,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 block_tracking += 1;
 
                 if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
-                    tracing::error!("block is missing dex pricing");
+                    tracing::error!("block is missing dex pricing {block}");
                     return Err(eyre::eyre!(
                         "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                     ))
@@ -278,7 +278,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
         if block_tracking - 1 != end_block {
             if needs_dex_price {
-                tracing::error!("block is missing dex pricing");
+                tracing::error!("end block != block tracing - 1, dex price lol");
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                 ))
