@@ -235,7 +235,7 @@ impl SubgraphVerifier {
                     .entry(pair)
                     .or_insert(vec![(goes_through, Default::default())]);
 
-                tracing::info!(?v, "s");
+                tracing::info!(?goes_through, ?pair, "{:#?}", v);
                 let state = &v.iter().find(|(p, _)| *p == goes_through).unwrap().1;
 
                 let ignores = state.get_nodes_to_ignore();
