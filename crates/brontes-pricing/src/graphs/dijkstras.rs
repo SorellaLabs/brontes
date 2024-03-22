@@ -248,6 +248,8 @@ where
                 break
             }
         }
+
+
         visited.insert(base_node);
     }
     (parents, target_reached)
