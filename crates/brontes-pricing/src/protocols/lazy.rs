@@ -40,6 +40,7 @@ pub struct LazyResult {
     pub load_result: LoadResult,
 }
 
+#[derive(Debug)]
 pub struct PairStateLoadingProgress {
     pub block:         u64,
     pub id:            Option<u64>,
@@ -113,6 +114,10 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 
             !entries.is_empty()
         });
+
+        if !res.is_empty() {
+            tracing::info!("{:#?}", self.parent_pair_state_loading);
+        }
 
         res
     }
