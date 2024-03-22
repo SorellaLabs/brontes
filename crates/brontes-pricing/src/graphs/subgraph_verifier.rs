@@ -330,12 +330,13 @@ impl SubgraphVerifier {
 
                         tracing::debug!(
                             ?pair,
-                            "connected with {:#?}",
+                            "connected with {:#?}\n {:#?}",
+                            &ignored,
                             ignored
-                                .into_iter()
+                                .iter()
                                 .filter(|i| ex.contains(i))
-                                .map(|i| state.highest_liq_for_pair(i))
-                                .collect_vec()
+                                .map(|i| state.highest_liq_for_pair(*i))
+                                .collect_vec(),
                         );
                     }
                     subgraph.subgraph.extend_subgraph(extensions);
