@@ -52,11 +52,14 @@ impl SubgraphVerifier {
     }
 
     pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
-        self.pending_subgraphs.get(pair).and_then(|graph| {
-            graph
-                .into_iter()
-                .find_map(|(pair, _)| (pair == goes_through).then_some(*pair))
-        })
+        self.pending_subgraphs
+            .get(pair)
+            .and_then(|graph| {
+                graph
+                    .into_iter()
+                    .find_map(|(pair, s)| (pair == goes_through).then(|| s.subgraph.extends_to()))
+            })
+            .flatten()
     }
 
     pub fn all_pairs(&self) -> Vec<Pair> {
