@@ -131,7 +131,7 @@ where
     E: Clone + Default,
     FN: Fn(&N) -> IN,
     PV: Fn(&N, &N) -> E,
-    IN: IntoIterator<Item = (N, C)>,
+    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool,
 {
     let (parents, reached) = run_dijkstra(start, second, successors, path_value, success, max_iter);
@@ -160,7 +160,7 @@ where
     E: Clone + Default,
     FN: Fn(&N) -> IN,
     PV: Fn(&N, &N) -> E,
-    IN: IntoIterator<Item = (N, C)>,
+    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
@@ -205,7 +205,7 @@ where
         let successors = successors(node);
         let base_node = node.clone();
 
-        for (successor, move_cost) in successors {
+        for (successor, move_cost) in successors.clone() {
             let break_after = if !checked_second {
                 let second = second.cloned().unwrap();
                 checked_second = successor == second;
@@ -249,6 +249,52 @@ where
             }
         }
 
+        if !checked_second {
+            checked_second = true;
+            for (successor, move_cost) in successors {
+                let break_after = if !checked_second {
+                    let second = second.cloned().unwrap();
+                    checked_second = successor == second;
+
+                    if !checked_second {
+                        continue
+                    }
+                    true
+                } else {
+                    false
+                };
+
+                i += 1;
+
+                if visited.contains(&successor) {
+                    continue
+                }
+
+                let new_cost = cost + move_cost;
+                let value = path_value(&base_node, &successor);
+                let n;
+                match parents.entry(successor) {
+                    Vacant(e) => {
+                        n = e.index();
+                        e.insert((index, new_cost, value));
+                    }
+                    Occupied(mut e) => {
+                        if e.get().1 > new_cost {
+                            n = e.index();
+                            e.insert((index, new_cost, value));
+                        } else {
+                            continue
+                        }
+                    }
+                }
+
+                to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
+
+                if break_after {
+                    break
+                }
+            }
+        }
 
         visited.insert(base_node);
     }

@@ -124,7 +124,7 @@ where
     C: Zero + Ord + Copy + Send + Sync,
     FN: Fn(&N) -> IN + Send + Sync,
     PV: Fn(&N, &N) -> E + Send + Sync,
-    IN: IntoIterator<Item = (N, C)>,
+    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool + Send + Sync,
 {
     let iter_k = k.unwrap_or(usize::MAX);
