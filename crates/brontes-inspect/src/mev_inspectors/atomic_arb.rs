@@ -167,6 +167,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             metadata.clone(),
             MevType::AtomicArb,
         );
+        tracing::debug!(?header);
 
         Some(Bundle { header, data })
     }
