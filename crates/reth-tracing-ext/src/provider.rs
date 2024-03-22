@@ -54,7 +54,7 @@ impl TracingProvider for TracingClient {
         &self,
         block_id: BlockId,
     ) -> eyre::Result<Option<Vec<TxTrace>>> {
-        self.replay_block_transactions(block_id)
+        self.replay_block_transactions_with_inspector(block_id)
             .await
             .map_err(Into::into)
     }

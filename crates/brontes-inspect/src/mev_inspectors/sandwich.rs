@@ -42,6 +42,10 @@ pub struct PossibleSandwich {
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    fn get_id(&self) -> &str {
+        "Sandwich"
+    }
+
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let search_args = TreeSearchBuilder::default().with_actions([
             Actions::is_swap,

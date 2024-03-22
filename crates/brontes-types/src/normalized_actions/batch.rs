@@ -11,13 +11,13 @@ use crate::{db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Proto
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBatch {
-    pub protocol: Protocol,
-    pub trace_index: u64,
-    pub solver: Address,
+    pub protocol:            Protocol,
+    pub trace_index:         u64,
+    pub solver:              Address,
     pub settlement_contract: Address,
-    pub user_swaps: Vec<NormalizedSwap>,
-    pub solver_swaps: Option<Vec<NormalizedSwap>>,
-    pub msg_value: U256,
+    pub user_swaps:          Vec<NormalizedSwap>,
+    pub solver_swaps:        Option<Vec<NormalizedSwap>>,
+    pub msg_value:           U256,
 }
 
 impl NormalizedBatch {
@@ -72,10 +72,7 @@ impl NormalizedBatch {
                     }
                 }
                 _ => {
-                    error!(
-                        "Unexpected action in final batch classification: {:?}",
-                        action
-                    );
+                    error!("Unexpected action in final batch classification: {:?}", action);
                 }
             }
         }
@@ -87,18 +84,8 @@ impl NormalizedBatch {
 impl TokenAccounting for NormalizedBatch {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         self.user_swaps.iter().for_each(|swap| {
-            apply_delta(
-                self.solver,
-                swap.token_in.address,
-                swap.amount_in.clone(),
-                delta_map,
-            );
-            apply_delta(
-                self.solver,
-                swap.token_out.address,
-                -swap.amount_out.clone(),
-                delta_map,
-            );
+            apply_delta(self.solver, swap.token_in.address, swap.amount_in.clone(), delta_map);
+            apply_delta(self.solver, swap.token_out.address, -swap.amount_out.clone(), delta_map);
 
             swap.apply_token_deltas(delta_map);
         });

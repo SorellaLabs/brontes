@@ -1,12 +1,11 @@
 use std::{panic::AssertUnwindSafe, sync::Arc};
 
 use itertools::Itertools;
-use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, span, Level};
 
-use crate::{db::traits::LibmdbxReader, execute_on};
+use crate::db::traits::LibmdbxReader;
 pub mod node;
 mod types;
 #[allow(unused_parens)]
@@ -26,10 +25,10 @@ type SpansAll<V> = TreeIterator<V, std::vec::IntoIter<(B256, Vec<Vec<V>>)>>;
 
 #[derive(Debug)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots: Vec<Root<V>>,
-    pub header: Header,
+    pub tx_roots:             Vec<Root<V>>,
+    pub header:               Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee: f64,
+    pub avg_priority_fee:     f64,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -43,16 +42,14 @@ impl<V: NormalizedAction> BlockTree<V> {
     }
 
     pub fn get_tx_info<DB: LibmdbxReader>(&self, tx_hash: B256, database: &DB) -> Option<TxInfo> {
-        execute_on!(target = tree, {
-            self.tx_roots
-                .par_iter()
-                .find_any(|r| r.tx_hash == tx_hash)
-                .and_then(|root| {
-                    root.get_tx_info(self.header.number, database)
-                        .map_err(|e| error!(block=%self.header.number,"Database Error: {}", e ))
-                        .ok()
-                })
-        })
+        self.tx_roots
+            .iter()
+            .find(|r| r.tx_hash == tx_hash)
+            .and_then(|root| {
+                root.get_tx_info(self.header.number, database)
+                    .map_err(|e| error!(block=%self.header.number,"Database Error: {}", e ))
+                    .ok()
+            })
     }
 
     pub fn get_root(&self, tx_hash: B256) -> Option<&Root<V>> {
@@ -86,7 +83,7 @@ impl<V: NormalizedAction> BlockTree<V> {
             if this.tx_roots.is_empty() {
                 error!(block = this.header.number, "The block tree is empty");
                 this.tx_roots.iter_mut().for_each(|root| root.finalize());
-                return;
+                return
             }
 
             // Initialize accumulator for total priority fee and vector of priority fees
@@ -135,16 +132,14 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// transaction that contain the wanted actions.
     pub fn collect_spans_all(self: Arc<Self>, call: TreeSearchBuilder<V>) -> SpansAll<V> {
         self.run_in_span_ref(|this| {
-            execute_on!(target = tree, {
-                TreeIterator::new(
-                    this.clone(),
-                    this.tx_roots
-                        .par_iter()
-                        .map(|r| (r.tx_hash, r.collect_spans(&call)))
-                        .collect::<Vec<(_, _)>>()
-                        .into_iter(),
-                )
-            })
+            TreeIterator::new(
+                this.clone(),
+                this.tx_roots
+                    .iter()
+                    .map(|r| (r.tx_hash, r.collect_spans(&call)))
+                    .collect::<Vec<(_, _)>>()
+                    .into_iter(),
+            )
         })
     }
 
@@ -155,10 +150,8 @@ impl<V: NormalizedAction> BlockTree<V> {
         F: Fn(Vec<&mut Node>, &mut NodeData<V>) + Send + Sync,
     {
         self.run_in_span_mut(|this| {
-            execute_on!(target = tree, {
-                this.tx_roots.par_iter_mut().for_each(|root| {
-                    root.modify_spans(&find, &modify);
-                });
+            this.tx_roots.iter_mut().for_each(|root| {
+                root.modify_spans(&find, &modify);
             });
         })
     }
@@ -186,16 +179,14 @@ impl<V: NormalizedAction> BlockTree<V> {
         call: TreeSearchBuilder<V>,
     ) -> TreeIterator<V, std::vec::IntoIter<(B256, Vec<V>)>> {
         self.run_in_span_ref(|this| {
-            execute_on!(target = tree, {
-                TreeIterator::new(
-                    this.clone(),
-                    this.tx_roots
-                        .par_iter()
-                        .map(|r| (r.tx_hash, r.collect(&call)))
-                        .collect::<Vec<(_, _)>>()
-                        .into_iter(),
-                )
-            })
+            TreeIterator::new(
+                this.clone(),
+                this.tx_roots
+                    .iter()
+                    .map(|r| (r.tx_hash, r.collect(&call)))
+                    .collect::<Vec<(_, _)>>()
+                    .into_iter(),
+            )
         })
     }
 
@@ -205,15 +196,13 @@ impl<V: NormalizedAction> BlockTree<V> {
         call: TreeSearchBuilder<V>,
     ) -> TreeIterator<V, std::vec::IntoIter<Vec<V>>> {
         self.run_in_span_ref(|this| {
-            execute_on!(target = tree, {
-                TreeIterator::new(
-                    this.clone(),
-                    txes.par_iter()
-                        .map(|tx| this.clone().collect(tx, call.clone()).collect_vec())
-                        .collect::<Vec<_>>()
-                        .into_iter(),
-                )
-            })
+            TreeIterator::new(
+                this.clone(),
+                txes.iter()
+                    .map(|tx| this.clone().collect(tx, call.clone()).collect_vec())
+                    .collect::<Vec<_>>()
+                    .into_iter(),
+            )
         })
     }
 
@@ -223,20 +212,13 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// the classification function of the action index node.
     pub fn collect_and_classify(&mut self, search_params: &[Option<(usize, Vec<u64>)>]) {
         self.run_in_span_mut(|this| {
-            let mut roots_with_search_params = this
-                .tx_roots
+            this.tx_roots
                 .iter_mut()
                 .zip(search_params.iter())
-                .collect::<Vec<_>>();
-
-            execute_on!(target = tree, {
-                roots_with_search_params
-                    .par_iter_mut()
-                    .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
-                    .for_each(|(root, (_, subtraces))| {
-                        root.collect_child_traces_and_classify(subtraces);
-                    });
-            });
+                .filter_map(|(root, opt)| Some((root, opt.as_ref()?)))
+                .for_each(|(root, (_, subtraces))| {
+                    root.collect_child_traces_and_classify(subtraces);
+                });
         })
     }
 
@@ -248,11 +230,9 @@ impl<V: NormalizedAction> BlockTree<V> {
         F: Fn(&mut Node, &mut NodeData<V>) + Send + Sync,
     {
         self.run_in_span_mut(|this| {
-            execute_on!(target = tree, {
-                this.tx_roots
-                    .par_iter_mut()
-                    .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
-            })
+            this.tx_roots
+                .iter_mut()
+                .for_each(|r| r.modify_node_if_contains_childs(&find, &modify));
         })
     }
 
@@ -332,17 +312,11 @@ pub mod test {
 
         let burns = tree
             .clone()
-            .collect(
-                tx,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
-            )
+            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn))
             .collect::<Vec<_>>();
         assert_eq!(burns.len(), 1);
         let swaps = tree
-            .collect(
-                tx,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
-            )
+            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_swap))
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
     }
@@ -370,10 +344,7 @@ pub mod test {
         let tx = hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d").into();
         let tree = Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
         let mut actions = tree
-            .collect(
-                &tx,
-                TreeSearchBuilder::default().with_action(Actions::is_batch),
-            )
+            .collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch))
             .collect::<Vec<_>>();
         assert!(!actions.is_empty());
         let action = actions.remove(0);

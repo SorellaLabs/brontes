@@ -29,8 +29,8 @@ use crate::{
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
 pub struct NormalizedSwapWithFee {
-    pub swap: NormalizedSwap,
-    pub fee_token: TokenInfoWithAddress,
+    pub swap:       NormalizedSwap,
+    pub fee_token:  TokenInfoWithAddress,
     pub fee_amount: Rational,
 }
 
@@ -51,18 +51,18 @@ impl DerefMut for NormalizedSwapWithFee {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedSwap {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:    Protocol,
     pub trace_index: u64,
-    pub from: Address,
-    pub recipient: Address,
+    pub from:        Address,
+    pub recipient:   Address,
     /// For batch swaps (e.g. UniswapX, CowSwap), the pool address is the
     /// address of the settlement contract
-    pub pool: Address,
-    pub token_in: TokenInfoWithAddress,
-    pub token_out: TokenInfoWithAddress,
-    pub amount_in: Rational,
-    pub amount_out: Rational,
-    pub msg_value: U256,
+    pub pool:        Address,
+    pub token_in:    TokenInfoWithAddress,
+    pub token_out:   TokenInfoWithAddress,
+    pub amount_in:   Rational,
+    pub amount_out:  Rational,
+    pub msg_value:   U256,
 }
 
 impl NormalizedSwap {
@@ -103,55 +103,45 @@ impl TokenAccounting for NormalizedSwap {
         let amount_in = self.amount_in.clone();
         let amount_out = self.amount_out.clone();
 
-        apply_delta(
-            self.from,
-            self.token_in.address,
-            -amount_in.clone(),
-            delta_map,
-        );
-        apply_delta(
-            self.recipient,
-            self.token_out.address,
-            amount_out,
-            delta_map,
-        );
+        apply_delta(self.from, self.token_in.address, -amount_in.clone(), delta_map);
+        apply_delta(self.recipient, self.token_out.address, amount_out, delta_map);
     }
 }
 
 pub struct ClickhouseVecNormalizedSwap {
     pub trace_index: Vec<u64>,
-    pub from: Vec<String>,
-    pub recipient: Vec<String>,
-    pub pool: Vec<String>,
-    pub token_in: Vec<String>,
-    pub token_out: Vec<String>,
-    pub amount_in: Vec<([u8; 32], [u8; 32])>,
-    pub amount_out: Vec<([u8; 32], [u8; 32])>,
+    pub from:        Vec<String>,
+    pub recipient:   Vec<String>,
+    pub pool:        Vec<String>,
+    pub token_in:    Vec<String>,
+    pub token_out:   Vec<String>,
+    pub amount_in:   Vec<([u8; 32], [u8; 32])>,
+    pub amount_out:  Vec<([u8; 32], [u8; 32])>,
 }
 
 impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
     fn from(value: Vec<NormalizedSwap>) -> Self {
         ClickhouseVecNormalizedSwap {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
-            from: value.iter().map(|val| format!("{:?}", val.from)).collect(),
-            recipient: value
+            from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
+            recipient:   value
                 .iter()
                 .map(|val| format!("{:?}", val.recipient))
                 .collect(),
-            pool: value.iter().map(|val| format!("{:?}", val.pool)).collect(),
-            token_in: value
+            pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
+            token_in:    value
                 .iter()
                 .map(|val| format!("{:?}", val.token_in))
                 .collect(),
-            token_out: value
+            token_out:   value
                 .iter()
                 .map(|val| format!("{:?}", val.token_out))
                 .collect(),
-            amount_in: value
+            amount_in:   value
                 .iter()
                 .map(|val| rational_to_clickhouse_tuple(&val.amount_in))
                 .collect(),
-            amount_out: value
+            amount_out:  value
                 .iter()
                 .map(|val| rational_to_clickhouse_tuple(&val.amount_out))
                 .collect(),
@@ -161,15 +151,15 @@ impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
 
 #[derive(Default)]
 pub struct ClickhouseDoubleVecNormalizedSwap {
-    pub tx_hash: Vec<String>,
+    pub tx_hash:     Vec<String>,
     pub trace_index: Vec<u64>,
-    pub from: Vec<String>,
-    pub recipient: Vec<String>,
-    pub pool: Vec<String>,
-    pub token_in: Vec<String>,
-    pub token_out: Vec<String>,
-    pub amount_in: Vec<([u8; 32], [u8; 32])>,
-    pub amount_out: Vec<([u8; 32], [u8; 32])>,
+    pub from:        Vec<String>,
+    pub recipient:   Vec<String>,
+    pub pool:        Vec<String>,
+    pub token_in:    Vec<String>,
+    pub token_out:   Vec<String>,
+    pub amount_in:   Vec<([u8; 32], [u8; 32])>,
+    pub amount_out:  Vec<([u8; 32], [u8; 32])>,
 }
 
 impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
@@ -223,10 +213,10 @@ impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecN
 
 #[derive(Default)]
 pub struct ClickhouseStatArbDetails {
-    pub cex_exchanges: Vec<String>,
-    pub cex_price: ([u8; 32], [u8; 32]),
-    pub dex_exchange: String,
-    pub dex_price: ([u8; 32], [u8; 32]),
+    pub cex_exchanges:    Vec<String>,
+    pub cex_price:        ([u8; 32], [u8; 32]),
+    pub dex_exchange:     String,
+    pub dex_price:        ([u8; 32], [u8; 32]),
     pub pnl_maker_profit: ([u8; 32], [u8; 32]),
     pub pnl_taker_profit: ([u8; 32], [u8; 32]),
 }
@@ -234,14 +224,14 @@ pub struct ClickhouseStatArbDetails {
 impl From<StatArbDetails> for ClickhouseStatArbDetails {
     fn from(value: StatArbDetails) -> Self {
         Self {
-            cex_exchanges: value
+            cex_exchanges:    value
                 .cex_exchanges
                 .into_iter()
                 .map(|e| format!("{:?}", e))
                 .collect_vec(),
-            cex_price: rational_to_u256_bytes(value.cex_price),
-            dex_exchange: value.dex_exchange.to_string(),
-            dex_price: rational_to_u256_bytes(value.dex_price),
+            cex_price:        rational_to_u256_bytes(value.cex_price),
+            dex_exchange:     value.dex_exchange.to_string(),
+            dex_price:        rational_to_u256_bytes(value.dex_price),
             pnl_maker_profit: rational_to_u256_bytes(value.pnl_pre_gas.maker_profit),
             pnl_taker_profit: rational_to_u256_bytes(value.pnl_pre_gas.taker_profit),
         }
@@ -250,10 +240,10 @@ impl From<StatArbDetails> for ClickhouseStatArbDetails {
 
 #[derive(Default)]
 pub struct ClickhouseVecStatArbDetails {
-    pub cex_exchanges: Vec<Vec<String>>,
-    pub cex_price: Vec<([u8; 32], [u8; 32])>,
-    pub dex_exchange: Vec<String>,
-    pub dex_price: Vec<([u8; 32], [u8; 32])>,
+    pub cex_exchanges:    Vec<Vec<String>>,
+    pub cex_price:        Vec<([u8; 32], [u8; 32])>,
+    pub dex_exchange:     Vec<String>,
+    pub dex_price:        Vec<([u8; 32], [u8; 32])>,
     pub pnl_maker_profit: Vec<([u8; 32], [u8; 32])>,
     pub pnl_taker_profit: Vec<([u8; 32], [u8; 32])>,
 }

@@ -13,15 +13,15 @@ use crate::{
 #[derive(Debug, Default, Row, PartialEq, Clone, Eq, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AddressMetadata {
-    pub entity_name: Option<String>,
-    pub nametag: Option<String>,
-    pub labels: Vec<String>,
+    pub entity_name:     Option<String>,
+    pub nametag:         Option<String>,
+    pub labels:          Vec<String>,
     #[serde(rename = "type")]
-    pub address_type: Option<String>,
+    pub address_type:    Option<String>,
     #[serde(deserialize_with = "option_contract_info::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "option_contract_info::Serialize"))]
-    pub contract_info: Option<ContractInfo>,
-    pub ens: Option<String>,
+    pub contract_info:   Option<ContractInfo>,
+    pub ens:             Option<String>,
     #[serde(deserialize_with = "socials::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
     #[redefined(same_fields)]
@@ -171,8 +171,8 @@ implement_table_value_codecs_with_zc!(AddressMetadataRedefined);
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ContractInfo {
     pub verified_contract: Option<bool>,
-    pub contract_creator: Option<Address>,
-    pub reputation: Option<u8>,
+    pub contract_creator:  Option<Address>,
+    pub reputation:        Option<u8>,
 }
 
 impl ContractInfo {
@@ -195,11 +195,11 @@ impl ContractInfo {
     Debug, Default, PartialEq, Clone, Eq, Serialize, Deserialize, rSerialize, rDeserialize, Archive,
 )]
 pub struct Socials {
-    pub twitter: Option<String>,
+    pub twitter:           Option<String>,
     pub twitter_followers: Option<u64>,
-    pub website_url: Option<String>,
-    pub crunchbase: Option<String>,
-    pub linkedin: Option<String>,
+    pub website_url:       Option<String>,
+    pub crunchbase:        Option<String>,
+    pub linkedin:          Option<String>,
 }
 
 impl Socials {

@@ -5,7 +5,7 @@ use crate::{normalized_actions::NormalizedAction, BlockTree};
 pub struct FilterMapTree<V: NormalizedAction, I, F> {
     pub tree: Arc<BlockTree<V>>,
     pub iter: I,
-    pub f: F,
+    pub f:    F,
 }
 
 impl<V: NormalizedAction, B, I: Iterator, F> Iterator for FilterMapTree<V, I, F>

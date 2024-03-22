@@ -24,46 +24,34 @@ pub struct TokenInfoWithAddress {
     pub address: Address,
     #[redefined(same_fields)]
     #[serde(deserialize_with = "token_info_des::deserialize")]
-    pub inner: TokenInfo,
+    pub inner:   TokenInfo,
 }
 
 impl TokenInfoWithAddress {
     pub fn native_eth() -> Self {
         Self {
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "ETH".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "ETH".to_string() },
             address: WETH_ADDRESS,
         }
     }
 
     pub fn weth() -> Self {
         Self {
-            inner: TokenInfo {
-                decimals: 18,
-                symbol: "WETH".to_string(),
-            },
+            inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
             address: WETH_ADDRESS,
         }
     }
 
     pub fn usdt() -> Self {
         Self {
-            inner: TokenInfo {
-                decimals: 6,
-                symbol: "USDT".to_string(),
-            },
+            inner:   TokenInfo { decimals: 6, symbol: "USDT".to_string() },
             address: USDT_ADDRESS,
         }
     }
 
     pub fn usdc() -> Self {
         Self {
-            inner: TokenInfo {
-                decimals: 6,
-                symbol: "USDC".to_string(),
-            },
+            inner:   TokenInfo { decimals: 6, symbol: "USDC".to_string() },
             address: USDC_ADDRESS,
         }
     }
@@ -124,7 +112,7 @@ impl DbRow for TokenInfoWithAddress {
 )]
 pub struct TokenInfo {
     pub decimals: u8,
-    pub symbol: String,
+    pub symbol:   String,
 }
 
 impl TokenInfo {

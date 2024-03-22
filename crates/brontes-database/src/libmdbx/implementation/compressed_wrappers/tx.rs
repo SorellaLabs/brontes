@@ -61,7 +61,7 @@ impl<K: TransactionKind> CompressedLibmdbxTx<K> {
         Ok(CompressedCursor::new(self.0.new_cursor()?))
     }
 
-    pub fn entries<T: CompressedTable>(&self) -> Result<usize, DatabaseError>
+    pub fn entries<T>(&self) -> Result<usize, DatabaseError>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
