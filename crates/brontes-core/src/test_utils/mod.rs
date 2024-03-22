@@ -338,8 +338,9 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             let brontes_db_endpoint =
                 env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
-                    .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint)),
+                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None).unwrap_or_else(|e| {
+                    panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
+                }),
             ));
 
             let (tx, _rx) = unbounded_channel();
