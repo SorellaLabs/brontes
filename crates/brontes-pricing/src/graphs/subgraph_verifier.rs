@@ -175,23 +175,20 @@ impl SubgraphVerifier {
             .flatten()
             .for_each(|edge| {
                 // cache all edges that have been completey removed
-                self.subgraph_verification_state
+                let entry = self
+                    .subgraph_verification_state
                     .entry(pair)
-                    .or_insert_with(|| vec![(goes_through, SubgraphVerificationState::default())])
-                    .iter_mut()
-                    .find(|(p, _)| *p == goes_through)
-                    .unwrap()
-                    .1
-                    .add_edge_with_liq(edge.pair.0, edge.clone());
+                    .or_insert_with(|| vec![]);
 
-                self.subgraph_verification_state
-                    .entry(pair)
-                    .or_insert_with(|| vec![(goes_through, SubgraphVerificationState::default())])
-                    .iter_mut()
-                    .find(|(p, _)| *p == goes_through)
-                    .unwrap()
-                    .1
-                    .add_edge_with_liq(edge.pair.1, edge.clone());
+                if let Some(state) = entry.iter_mut().find(|(p, _)| *p == goes_through) {
+                    state.1.add_edge_with_liq(edge.pair.0, edge.clone());
+                    state.1.add_edge_with_liq(edge.pair.1, edge.clone());
+                } else {
+                    let mut state = SubgraphVerificationState::default();
+                    state.add_edge_with_liq(edge.pair.0, edge.clone());
+                    state.add_edge_with_liq(edge.pair.1, edge.clone());
+                    entry.push((goes_through, state));
+                };
             });
     }
 
