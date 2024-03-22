@@ -6,8 +6,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedFlashLoan, NormalizedSwap,
-        NormalizedTransfer,
+        accounting::ActionAccounting, eth_transfer, Actions, NormalizedEthTransfer,
+        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
     },
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
@@ -77,10 +77,13 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 self.process_swaps(
                     info,
                     meta_data.clone(),
-                    actions.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
-                        Actions::try_swaps_merged,
-                        Actions::try_transfer,
-                    )),
+                    actions
+                        .into_iter()
+                        .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
+                            Actions::try_swaps_merged,
+                            Actions::try_transfer,
+                            Actions::try_eth_transfer,
+                        )),
                 )
             })
             .collect::<Vec<_>>()
@@ -92,9 +95,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>),
+        data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
     ) -> Option<Bundle> {
-        let (swaps, transfers) = data;
+        let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
         let mev_addresses: FastHashSet<Address> = vec![info.eoa]
             .into_iter()
@@ -109,6 +112,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
+            .chain(eth_transfers.into_iter().map(Actions::from))
             .account_for_actions();
 
         let rev_usd = self.utils.get_deltas_usd(
