@@ -140,7 +140,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         parent_pair: Pair,
         goes_through_new: Pair,
     ) {
-        tracing::info!(?parent_pair, "adding parent");
         self.protocol_address_to_parent_pairs
             .entry(address)
             .or_default()
@@ -264,7 +263,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         block_number: u64,
         ex_type: Protocol,
     ) {
-        tracing::info!(?parent_pair, "lazy loading");
         let provider = self.provider.clone();
         self.add_state_trackers(block_number, id, address, parent_pair, goes_through);
 
