@@ -31,6 +31,8 @@
 use std::sync::Arc;
 
 use brontes_types::{mev::Mev, FastHashMap};
+use tracing::{span, Level};
+
 mod mev_filters;
 mod utils;
 use brontes_types::{
@@ -85,7 +87,12 @@ fn run_inspectors(
     // Remove the classified mev txes from the possibly missed tx list
     let results = orchestra
         .par_iter()
-        .flat_map(|inspector| inspector.process_tree(tree.clone(), metadata.clone()))
+        .flat_map(|inspector| {
+            let span = span!(Level::ERROR, "Inspector", inspector = %inspector.get_id(),block=&metadata.block_num);
+            span.in_scope(|| {
+                inspector.process_tree(tree.clone(), metadata.clone())
+            })
+        })
         .collect::<Vec<_>>();
 
     results.iter().for_each(|bundle| {

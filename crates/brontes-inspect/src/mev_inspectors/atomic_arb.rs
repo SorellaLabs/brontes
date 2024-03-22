@@ -30,6 +30,10 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    fn get_id(&self) -> &str {
+        "AtomicArb"
+    }
+
     fn process_tree(
         &self,
         tree: Arc<BlockTree<Actions>>,

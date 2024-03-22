@@ -45,12 +45,12 @@ impl<V: NormalizedAction> NodeData<V> {
 
 #[derive(Debug)]
 pub struct Root<V: NormalizedAction> {
-    pub head: Node,
-    pub position: usize,
-    pub tx_hash: B256,
-    pub private: bool,
+    pub head:        Node,
+    pub position:    usize,
+    pub tx_hash:     B256,
+    pub private:     bool,
     pub gas_details: GasDetails,
-    pub data_store: NodeData<V>,
+    pub data_store:  NodeData<V>,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -197,12 +197,8 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn collect(&self, call: &TreeSearchBuilder<V>) -> Vec<V> {
         let mut result = Vec::new();
-        self.head.collect(
-            &mut result,
-            call,
-            &|data| data.data.clone(),
-            &self.data_store,
-        );
+        self.head
+            .collect(&mut result, call, &|data| data.data.clone(), &self.data_store);
 
         result.sort_by_key(|a| a.get_trace_index());
 
@@ -253,9 +249,9 @@ impl<V: NormalizedAction> Root<V> {
     rkyv::Archive,
 )]
 pub struct GasDetails {
-    pub coinbase_transfer: Option<u128>,
-    pub priority_fee: u128,
-    pub gas_used: u128,
+    pub coinbase_transfer:   Option<u128>,
+    pub priority_fee:        u128,
+    pub gas_used:            u128,
     pub effective_gas_price: u128,
 }
 //TODO: Fix this
@@ -307,14 +303,8 @@ impl GasDetails {
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
             ("Gas Used", self.gas_used.to_string()),
-            (
-                "Effective Gas Price",
-                format!("{} Wei", self.effective_gas_price),
-            ),
-            (
-                "Total Gas Paid in ETH",
-                format!("{:.7} ETH", self.gas_paid() as f64 / 1e18),
-            ),
+            ("Effective Gas Price", format!("{} Wei", self.effective_gas_price)),
+            ("Total Gas Paid in ETH", format!("{:.7} ETH", self.gas_paid() as f64 / 1e18)),
         ];
 
         let max_label_length = labels
@@ -348,10 +338,10 @@ impl GasDetails {
 }
 
 pub struct ClickhouseVecGasDetails {
-    pub tx_hash: Vec<String>,
-    pub coinbase_transfer: Vec<Option<u128>>,
-    pub priority_fee: Vec<u128>,
-    pub gas_used: Vec<u128>,
+    pub tx_hash:             Vec<String>,
+    pub coinbase_transfer:   Vec<Option<u128>>,
+    pub priority_fee:        Vec<u128>,
+    pub gas_used:            Vec<u128>,
     pub effective_gas_price: Vec<u128>,
 }
 
@@ -373,10 +363,10 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .collect::<Vec<_>>();
 
         ClickhouseVecGasDetails {
-            tx_hash: vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
-            coinbase_transfer: vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
-            priority_fee: vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
-            gas_used: vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
+            tx_hash:             vec_vals.iter().map(|val| val.0.to_owned()).collect_vec(),
+            coinbase_transfer:   vec_vals.iter().map(|val| val.1.to_owned()).collect_vec(),
+            priority_fee:        vec_vals.iter().map(|val| val.2.to_owned()).collect_vec(),
+            gas_used:            vec_vals.iter().map(|val| val.3.to_owned()).collect_vec(),
             effective_gas_price: vec_vals.iter().map(|val| val.4.to_owned()).collect_vec(),
         }
     }

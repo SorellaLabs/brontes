@@ -309,8 +309,4 @@ tree_dedup!(([RI0, RT0, RR0], [RI1, RT1, RR1], KT0, KK0));
 tree_dedup!(([RI0, RT0, RR0], [RI1, RT1, RR1], [RI2, RT2, RR2], KT0, KK0));
 
 tree_dedup!(([RI0, RT0, RR0], KT0, KK0), ([RI1, RT1, RR1], KT1, KK1));
-tree_dedup!(
-    ([RI0, RT0, RR0], KT0, KK0),
-    ([RI1, RT1, RR1], KT1, KK1),
-    ([RI2, RT2, RR2], KT2, KK2)
-);
+tree_dedup!(([RI0, RT0, RR0], KT0, KK0), ([RI1, RT1, RR1], KT1, KK1), ([RI2, RT2, RR2], KT2, KK2));
