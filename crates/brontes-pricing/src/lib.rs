@@ -20,7 +20,7 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
-use alloy_primitives::U256;
+
 use brontes_types::{execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate};
 mod graphs;
 pub mod protocols;
@@ -42,10 +42,8 @@ pub use brontes_types::price_graph_types::{
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
-        token_info::TokenInfoWithAddress,
         traits::{DBWriter, LibmdbxReader},
     },
-    normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     traits::TracingProvider,
     FastHashMap, FastHashSet,
@@ -54,7 +52,7 @@ use futures::{Stream, StreamExt};
 pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::basic::traits::{One},
     Rational,
 };
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
@@ -951,33 +949,6 @@ impl StateBuffer {
     pub fn new() -> Self {
         Self { updates: FastHashMap::default(), overrides: FastHashMap::default() }
     }
-}
-
-/// Makes a swap for initializing a virtual pool with the quote token.
-/// this swap is empty such that we don't effect the state
-const fn make_fake_swap(pair: Pair) -> Actions {
-    let t_in = TokenInfoWithAddress {
-        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
-        address: pair.0,
-    };
-
-    let t_out = TokenInfoWithAddress {
-        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
-        address: pair.1,
-    };
-
-    Actions::Swap(NormalizedSwap {
-        protocol:    Protocol::Unknown,
-        trace_index: 0,
-        from:        Address::ZERO,
-        recipient:   Address::ZERO,
-        pool:        Address::ZERO,
-        token_in:    t_in,
-        token_out:   t_out,
-        amount_in:   Rational::ZERO,
-        amount_out:  Rational::ZERO,
-        msg_value:   U256::ZERO,
-    })
 }
 
 type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);

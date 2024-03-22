@@ -152,6 +152,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         )
     }
 
+    // feature flagged
+    #[allow(unused_variables)]
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
         #[cfg(not(feature = "tests"))]
         if let Err(e) =

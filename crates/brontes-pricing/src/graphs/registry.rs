@@ -1,6 +1,5 @@
 use alloy_primitives::Address;
 use brontes_types::{
-    constants::{USDT_ADDRESS, WETH_ADDRESS},
     pair::Pair,
     price_graph_types::*,
     FastHashMap,
@@ -67,7 +66,7 @@ impl SubGraphRegistry {
     pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
         self.sub_graphs
             .get(pair)
-            .filter(|g| g.iter().find(|(gt, _)| gt == goes_through).is_some())
+            .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
             .is_some()
     }
 
@@ -86,7 +85,7 @@ impl SubGraphRegistry {
         subgraph.save_last_verification_liquidity(graph_state);
         self.sub_graphs
             .entry(subgraph.complete_pair().ordered())
-            .or_insert_with(|| vec![])
+            .or_default()
             .push((subgraph.must_go_through(), subgraph));
     }
 

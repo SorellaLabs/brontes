@@ -56,7 +56,7 @@ impl SubgraphVerifier {
             .get(pair)
             .and_then(|graph| {
                 graph
-                    .into_iter()
+                    .iter()
                     .find_map(|(pair, s)| (pair == goes_through).then(|| s.subgraph.extends_to()))
             })
             .flatten()
@@ -69,7 +69,7 @@ impl SubgraphVerifier {
     pub fn is_verifying(&self, pair: &Pair, goes_through: &Pair) -> bool {
         self.pending_subgraphs
             .get(pair)
-            .and_then(|a| a.into_iter().find(|(p, _)| p == goes_through))
+            .and_then(|a| a.iter().find(|(p, _)| p == goes_through))
             .is_some()
     }
 
@@ -115,7 +115,7 @@ impl SubgraphVerifier {
             return vec![]
         };
 
-        self.pending_subgraphs.entry(pair).or_insert(vec![]).push((
+        self.pending_subgraphs.entry(pair).or_default().push((
             goes_through,
             Subgraph {
                 subgraph,
@@ -178,7 +178,7 @@ impl SubgraphVerifier {
                 let entry = self
                     .subgraph_verification_state
                     .entry(pair)
-                    .or_insert_with(|| vec![]);
+                    .or_default();
 
                 if let Some(state) = entry.iter_mut().find(|(p, _)| *p == goes_through) {
                     state.1.add_edge_with_liq(edge.pair.0, edge.clone());
@@ -230,7 +230,7 @@ impl SubgraphVerifier {
                 let v = self
                     .subgraph_verification_state
                     .entry(pair)
-                    .or_insert(vec![]);
+                    .or_default();
 
                 let default = Default::default();
                 let state = if let Some(state) = &v.iter().find(|(p, _)| *p == goes_through) {
@@ -256,7 +256,7 @@ impl SubgraphVerifier {
 
                     self.pending_subgraphs
                         .entry(pair)
-                        .or_insert(vec![])
+                        .or_default()
                         .push((goes_through, subgraph));
                     // anything that was fully remove gets cached
                     tracing::debug!(?pair, "requerying");
@@ -299,7 +299,7 @@ impl SubgraphVerifier {
                         if let Some(idx) = idx {
                             return Some(inner.remove(idx))
                         }
-                        return None
+                        None
                     }),
                     price,
                     quote,
