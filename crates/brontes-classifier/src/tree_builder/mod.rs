@@ -340,7 +340,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         }
 
                         let token_info = self.libmdbx.try_fetch_token_info(addr).ok()?;
-                        let decimals = token_info.decimals;
                         let amount = amount.to_scaled_rational(token_info.decimals);
 
                         return Some((
