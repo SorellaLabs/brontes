@@ -1,5 +1,10 @@
 use alloy_primitives::Address;
-use brontes_types::{constants::WETH_ADDRESS, pair::Pair, price_graph_types::*, FastHashMap};
+use brontes_types::{
+    constants::{USDT_ADDRESS, WETH_ADDRESS},
+    pair::Pair,
+    price_graph_types::*,
+    FastHashMap,
+};
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
@@ -99,7 +104,10 @@ impl SubGraphRegistry {
     ) -> Option<Rational> {
         let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
-        if unordered_pair.0 == WETH_ADDRESS && default_price > Rational::from(10000) {
+        if unordered_pair.0 == WETH_ADDRESS
+            && unordered_pair.1 == USDT_ADDRESS
+            && default_price > Rational::from(10000)
+        {
             tracing::info!(?unordered_pair, ?goes_through, ?default_price, "Shits fucked");
         }
 
@@ -162,6 +170,7 @@ impl SubGraphRegistry {
                 };
                 let default_pair = graph.get_unordered_pair();
 
+                // ensure all graph pairs are accumulated in the same way
                 acc += if !unordered_pair.eq_unordered(&default_pair) {
                     next.reciprocal()
                 } else {
