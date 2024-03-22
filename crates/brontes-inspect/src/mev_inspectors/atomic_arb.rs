@@ -301,4 +301,70 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn assert_no_false_positive() {
+        // 19493098
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let tx = hex!("48ca4e712f30f8ebd1d2cab868236a0ecf92b373498baa3d211c43339e1e9a6e").into();
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![tx])
+            .needs_token(hex!("c18360217d8f7ab5e7c516566761ea12ce7f9d72").into())
+            .with_dex_prices();
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn ensure_proper_calculation() {
+        // https://etherscan.io/tx/0x5f9c889b8d6cad5100cc2e6f4a7a59bb53d1cd67f0895320cdb3b25ff43c8fa4
+        // 0.08 eth
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "5f9c889b8d6cad5100cc2e6f4a7a59bb53d1cd67f0895320cdb3b25ff43c8fa4"
+            )
+            .into()])
+            .with_dex_prices()
+            .with_expected_profit_usd(0.188588)
+            .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn ensure_proper_calculation2() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "c79494def0565dd49f46c2b7c0221f7eba218ca07638aac3277efe6ab3a2dd66"
+            )
+            .into()])
+            .with_dex_prices()
+            .with_expected_profit_usd(20.0)
+            .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+        // 0xc79494def0565dd49f46c2b7c0221f7eba218ca07638aac3277efe6ab3a2dd66
+        // ~20usdc rev
+    }
+    #[brontes_macros::test]
+    async fn ensure_proper_calculation3() {
+        // https://etherscan.io/tx/0x422f93a77885001df4576d31c4891fb2e461b6ec201eb47156acaa31dd9ac583
+        // 50$ usdc rev
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "422f93a77885001df4576d31c4891fb2e461b6ec201eb47156acaa31dd9ac583"
+            )
+            .into()])
+            .with_dex_prices()
+            .with_expected_profit_usd(50.0)
+            .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
