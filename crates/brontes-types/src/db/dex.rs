@@ -95,7 +95,6 @@ impl DexQuotes {
 
         loop {
             if let Some(price) = self.get_price(pair, tx) {
-                tracing::info!(%price, ?pair, "found price for pair");
                 return Some(price.clone())
             }
             if tx == 0 {
