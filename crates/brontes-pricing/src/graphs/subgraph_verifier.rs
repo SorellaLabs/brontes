@@ -327,11 +327,12 @@ impl SubgraphVerifier {
                             .iter()
                             .map(|e| Pair(e.token_0, e.token_1))
                             .collect::<FastHashSet<_>>();
+                        let extends_to = subgraph.subgraph.extends_to();
 
                         tracing::debug!(
                             ?pair,
-                            "connected with {:#?}\n {:#?}",
-                            &ignored,
+                            ?extends_to,
+                            "connected with \n {:#?}",
                             ignored
                                 .iter()
                                 .filter(|i| ex.contains(i))
