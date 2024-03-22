@@ -205,8 +205,8 @@ impl DbRow for BundleHeader {
         "profit_usd",
         "bribe_usd",
         "mev_type",
-        "balance_deltas.address",
         "balance_deltas.tx_hash",
+        "balance_deltas.address",
         "balance_deltas.name",
         "balance_deltas.token_deltas",
     ];
