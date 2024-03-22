@@ -34,6 +34,8 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, SubGraphsEntry,
 };
+#[cfg(feature = "local-clickhouse")]
+use db_interfaces::Database;
 use eyre::{eyre, ErrReport};
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
@@ -41,8 +43,6 @@ use futures::{FutureExt, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
-#[cfg(feature = "local-clickhouse")]
-use sorella_db_databases::Database;
 use tracing::info;
 
 #[cfg(feature = "local-clickhouse")]
@@ -111,7 +111,7 @@ impl LibmdbxReadWriter {
     {
         let (min, max) = clickhouse
             .inner()
-            .query_one::<(String, String)>(query, &())
+            .query_one::<(String, String), _>(query, &())
             .await?;
 
         let Ok(min_parsed) = min.parse::<TB::Key>() else {
