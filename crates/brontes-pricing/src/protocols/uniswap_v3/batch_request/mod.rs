@@ -251,9 +251,9 @@ mod tests {
         );
     }
 
-    #[test]
+    #[brontes_macros::test]
     #[cfg(feature = "local-reth")]
-    fn test_v3_slot0() {
+    async fn test_v3_slot0() {
         dotenv::dotenv().unwrap();
         let path = std::env::var("DB_PATH")
             .map_err(|_| Box::new(std::env::VarError::NotPresent))
@@ -269,9 +269,8 @@ mod tests {
         buf.push("static_files");
 
         let chain = MAINNET.clone();
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), buf)
-                .expect("failed to start provider factory");
+        let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), buf)
+            .expect("failed to start provider factory");
 
         let block_number: u64 = 19450752;
         let provider = provider_factory
@@ -298,9 +297,9 @@ mod tests {
         };
     }
 
-    #[test]
+    #[brontes_macros::test]
     #[cfg(feature = "local-reth")]
-    fn test_v3_liquidity() {
+    async fn test_v3_liquidity() {
         dotenv::dotenv().unwrap();
         let path = std::env::var("DB_PATH")
             .map_err(|_| Box::new(std::env::VarError::NotPresent))
