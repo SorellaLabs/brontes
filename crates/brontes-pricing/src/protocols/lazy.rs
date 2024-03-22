@@ -191,7 +191,15 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 
     pub fn on_state_fail(&mut self, block: u64, pair: &Pair, goes_through: &Pair) {
-        self.parent_pair_state_loading.remove(pair);
+        self.parent_pair_state_loading.retain(|k, v| {
+            if pair != k {
+                return true
+            };
+
+            v.retain(|(gt, _)| gt != goes_through);
+            !v.is_empty()
+        });
+
         self.protocol_address_to_parent_pairs.retain(|_, v| {
             v.retain(|(b, p, gt)| !(*b == block && p == pair && gt == goes_through));
             !v.is_empty()
