@@ -230,14 +230,13 @@ impl SubgraphVerifier {
                 self.store_edges_with_liq(pair, goes_through, &result.removals, all_graph);
 
                 // state that we want to be ignored on the next graph search.
-                let state = &self
+                let v = self
                     .subgraph_verification_state
                     .entry(pair)
-                    .or_insert(vec![(goes_through, Default::default())])
-                    .iter()
-                    .find(|(p, _)| *p == goes_through)
-                    .unwrap()
-                    .1;
+                    .or_insert(vec![(goes_through, Default::default())]);
+
+                tracing::info!(?v, "s");
+                let state = &v.iter().find(|(p, _)| *p == goes_through).unwrap().1;
 
                 let ignores = state.get_nodes_to_ignore();
 
