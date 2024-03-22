@@ -540,7 +540,7 @@ impl CallTraceStep {
         };
 
         if opts.is_stack_enabled() {
-            log.stack = self.stack.clone();
+            log.stack.clone_from(&self.stack);
         }
 
         if opts.is_memory_enabled() {

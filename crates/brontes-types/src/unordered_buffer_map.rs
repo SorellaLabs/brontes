@@ -29,10 +29,10 @@ where
     F: FnMut(St::Item) -> R,
 {
     #[pin]
-    stream: Fuse<St>,
+    stream:            Fuse<St>,
     in_progress_queue: FuturesUnordered<R>,
-    map: F,
-    max: usize,
+    map:               F,
+    max:               usize,
 }
 
 impl<St, F, R> UnorderedBufferMap<St, F, R>
@@ -42,12 +42,7 @@ where
     F: FnMut(St::Item) -> R,
 {
     pub fn new(stream: St, map: F, max: usize) -> Self {
-        Self {
-            stream: stream.fuse(),
-            in_progress_queue: FuturesUnordered::default(),
-            map,
-            max,
-        }
+        Self { stream: stream.fuse(), in_progress_queue: FuturesUnordered::default(), map, max }
     }
 }
 

@@ -27,6 +27,10 @@ impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    fn get_id(&self) -> &str {
+        "Liquidation"
+    }
+
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let liq_txs = tree
             .clone()
