@@ -29,7 +29,7 @@
 # Parquet exports
 /data_exports/**
 
-.cargo/
+
 
 stuff
 possible_mev/
