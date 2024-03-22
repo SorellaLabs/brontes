@@ -515,7 +515,8 @@ impl PairSubGraph {
         let mut visit_next = VecDeque::new();
 
         let Some(start) = self.token_to_index.get(&start) else {
-            error!(?start, ?start_price, "no start node for bfs with price");
+
+            error!(?start, ?start_price,?self.pair, ?self.complete_pair, "no start node for bfs with price");
             return R::default();
         };
 
