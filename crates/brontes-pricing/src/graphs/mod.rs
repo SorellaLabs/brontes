@@ -253,7 +253,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                                     pair,
                                     self.sub_graph_registry
                                         .get_price_all(
-                                            jump_pair,
+                                            jump_pair.flip(),
                                             self.graph_state.finalized_state(),
                                         )
                                         .unwrap_or(Rational::ONE),
