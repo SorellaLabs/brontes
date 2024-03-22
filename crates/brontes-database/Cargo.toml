@@ -51,10 +51,9 @@ parquet = { version = "51.0.0", features = ["async"] }
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
-sorella-db-databases = { git = "https://github.com/SorellaLabs/Database", rev = "21f873b", optional = true, features = [
+db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", optional = true, features = [
   "test-utils",
 ] }
-sorella-db-types = { git = "https://github.com/SorellaLabs/Database", rev = "21f873b", optional = true }
 clickhouse = { workspace = true, features = ["tls"] }
 
 # serde
@@ -135,7 +134,6 @@ local-reth = [
 ]
 
 local-clickhouse = [
-  "sorella-db-databases",
-  "sorella-db-types",
+  "db-interfaces",
   "brontes-core/local-clickhouse",
 ]
