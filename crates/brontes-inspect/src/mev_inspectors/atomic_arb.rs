@@ -271,7 +271,7 @@ mod tests {
     use alloy_primitives::hex;
 
     use crate::{
-        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS, WETH_ADDRESS},
         Inspectors,
     };
 
@@ -327,6 +327,10 @@ mod tests {
             )
             .into()])
             .with_dex_prices()
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
+            ])
             .with_expected_profit_usd(0.188588)
             .with_gas_paid_usd(71.632668);
 
@@ -343,6 +347,10 @@ mod tests {
             )
             .into()])
             .with_dex_prices()
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
+            ])
             .with_expected_profit_usd(20.0)
             .with_gas_paid_usd(71.632668);
 
@@ -362,6 +370,10 @@ mod tests {
             )
             .into()])
             .with_dex_prices()
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
+            ])
             .with_expected_profit_usd(50.0)
             .with_gas_paid_usd(71.632668);
 
