@@ -262,7 +262,7 @@ mod tests {
         let slot0_slot: FixedBytes<32> = FixedBytes::new([0u8; 32]);
 
         let storage_value = provider
-            .get_storage(Some(block), pool_address, slot0_slot)
+            .get_storage(Some(block_number), pool_address, slot0_slot)
             .await
             .unwrap();
 
@@ -288,7 +288,7 @@ mod tests {
 
         let liquidity_slot: FixedBytes<32> = FixedBytes::with_last_byte(4);
         let storage_value = provider
-            .get_storage(Some(block), pool_address, liquidity_slot)
+            .get_storage(Some(block_number), pool_address, liquidity_slot)
             .await
             .unwrap();
 
