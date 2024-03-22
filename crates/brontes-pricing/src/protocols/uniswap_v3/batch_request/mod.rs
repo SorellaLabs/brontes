@@ -263,6 +263,7 @@ mod tests {
 
         let storage_value = provider
             .get_storage(Some(block), pool_address, slot0_slot)
+            .await
             .unwrap();
 
         if let Some(value) = storage_value {
@@ -288,6 +289,7 @@ mod tests {
         let liquidity_slot: FixedBytes<32> = FixedBytes::with_last_byte(4);
         let storage_value = provider
             .get_storage(Some(block), pool_address, liquidity_slot)
+            .await
             .unwrap();
 
         if let Some(value) = storage_value {
