@@ -233,10 +233,15 @@ impl SubgraphVerifier {
                 let v = self
                     .subgraph_verification_state
                     .entry(pair)
-                    .or_insert(vec![(goes_through, Default::default())]);
+                    .or_insert(vec![]);
 
-                tracing::info!(?goes_through, ?pair, "{:#?}", v);
-                let state = &v.iter().find(|(p, _)| *p == goes_through).unwrap().1;
+                let default = Default::default();
+                let state = if let Some(state) = &v.iter().find(|(p, _)| *p == goes_through) {
+                    &state.1
+                } else {
+                    v.push((goes_through, Default::default()));
+                    &default
+                };
 
                 let ignores = state.get_nodes_to_ignore();
 
