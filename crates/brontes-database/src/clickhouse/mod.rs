@@ -21,13 +21,13 @@ use brontes_types::db::metadata::Metadata;
 #[cfg(feature = "local-clickhouse")]
 pub use const_sql::*;
 #[cfg(feature = "local-clickhouse")]
+use db_interfaces::clickhouse::client::ClickhouseClient;
+#[cfg(feature = "local-clickhouse")]
 pub use dbms::BrontesClickhouseTables;
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
 pub use middleware::*;
 use serde::Deserialize;
-#[cfg(feature = "local-clickhouse")]
-use sorella_db_databases::clickhouse::db::ClickhouseClient;
 
 use crate::{libmdbx::types::LibmdbxData, CompressedTable};
 
