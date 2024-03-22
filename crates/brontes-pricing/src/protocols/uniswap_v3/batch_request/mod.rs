@@ -252,7 +252,7 @@ mod tests {
     }
 
     #[test]
-    // #[cfg(feature = "local")]
+    #[cfg(feature = "local-reth")]
     fn test_v3_slot0() {
         dotenv::dotenv().unwrap();
         let path = std::env::var("DB_PATH")
@@ -264,9 +264,13 @@ mod tests {
             .unwrap()
             .into();
 
+        let mut buf = db_path.to_path_buf();
+        buf.pop();
+        buf.push("static_files");
+
         let chain = MAINNET.clone();
         let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), db_path.to_path_buf())
+            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), buf)
                 .expect("failed to start provider factory");
 
         let block_number: u64 = 19450752;
@@ -295,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    // #[cfg(feature = "local")]
+    #[cfg(feature = "local-reth")]
     fn test_v3_liquidity() {
         dotenv::dotenv().unwrap();
         let path = std::env::var("DB_PATH")
@@ -308,9 +312,12 @@ mod tests {
             .unwrap()
             .into();
         let chain = MAINNET.clone();
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), db_path.to_path_buf())
-                .expect("failed to start provider factory");
+        let mut buf = db_path.to_path_buf();
+        buf.pop();
+        buf.push("static_files");
+
+        let provider_factory = ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), buf)
+            .expect("failed to start provider factory");
 
         let block_number: u64 = 19450752;
         let provider = provider_factory
