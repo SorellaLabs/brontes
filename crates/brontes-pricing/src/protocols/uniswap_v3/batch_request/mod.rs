@@ -127,6 +127,12 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
 
     // Extract token0, token1, fee, tick_spacing from bytecode
     if let Some(pool_bytecode) = pool_bytecode {
+        if pool_bytecode.is_empty() {
+            return Err(AmmError::CallError(eyre::eyre!(
+                "pool bytecode was empty {:?}",
+                pool.address
+            )))
+        }
         let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode.as_ref()));
         let (token0, token1, fee, tick_spacing) = extract_uni_v3_immutables(pool_bytecode);
         pool.fee = fee;
@@ -193,11 +199,6 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-
-    use reth_db::{mdbx::DatabaseArguments, open_db_read_only};
-    use reth_primitives::MAINNET;
-    use reth_provider::providers::ProviderFactory;
     use test_bytecodes::{V2_DAI_MKR, V3_USDC_ETH, V3_WBTC_ETH};
 
     use super::*;
@@ -251,36 +252,20 @@ mod tests {
         );
     }
 
-    #[test]
-    // #[cfg(feature = "local")]
-    fn test_v3_slot0() {
-        dotenv::dotenv().unwrap();
-        let path = std::env::var("DB_PATH")
-            .map_err(|_| Box::new(std::env::VarError::NotPresent))
-            .unwrap();
-
-        let db_path = Path::new(&path);
-        let db = open_db_read_only(path.as_ref(), DatabaseArguments::new(Default::default()))
-            .unwrap()
-            .into();
-
-        let chain = MAINNET.clone();
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), db_path.to_path_buf())
-                .expect("failed to start provider factory");
+    #[brontes_macros::test]
+    #[cfg(feature = "local-reth")]
+    async fn test_v3_slot0() {
+        let loader = brontes_core::test_utils::TraceLoader::new().await;
+        let provider = loader.get_provider();
 
         let block_number: u64 = 19450752;
-        let provider = provider_factory
-            .history_by_block_number(block_number)
-            .unwrap();
-
         let pool_address = Address::from_str("0xcbcdf9626bc03e24f779434178a73a0b4bad62ed").unwrap();
-
         let slot0_slot: FixedBytes<32> = FixedBytes::new([0u8; 32]);
 
-        println!("pool_address: {}", pool_address);
-        println!("slot0_slot: {}", slot0_slot);
-        let storage_value = provider.storage(pool_address, slot0_slot).unwrap();
+        let storage_value = provider
+            .get_storage(Some(block_number), pool_address, slot0_slot)
+            .await
+            .unwrap();
 
         if let Some(value) = storage_value {
             let slot0 = hex::encode::<[u8; 32]>(value.to_be_bytes());
@@ -294,34 +279,19 @@ mod tests {
         };
     }
 
-    #[test]
-    // #[cfg(feature = "local")]
-    fn test_v3_liquidity() {
-        dotenv::dotenv().unwrap();
-        let path = std::env::var("DB_PATH")
-            .map_err(|_| Box::new(std::env::VarError::NotPresent))
-            .unwrap();
-
-        let db_path = Path::new(&path);
-
-        let db = open_db_read_only(path.as_ref(), DatabaseArguments::new(Default::default()))
-            .unwrap()
-            .into();
-        let chain = MAINNET.clone();
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), db_path.to_path_buf())
-                .expect("failed to start provider factory");
-
+    #[brontes_macros::test]
+    #[cfg(feature = "local-reth")]
+    async fn test_v3_liquidity() {
+        let loader = brontes_core::test_utils::TraceLoader::new().await;
+        let provider = loader.get_provider();
         let block_number: u64 = 19450752;
-        let provider = provider_factory
-            .history_by_block_number(block_number)
-            .unwrap();
-
-        let pool_address = Address::from_str("0xcbcdf9626bc03e24f779434178a73a0b4bad62ed").unwrap();
+        let pool_address = Address::new(hex!("cbcdf9626bc03e24f779434178a73a0b4bad62ed"));
 
         let liquidity_slot: FixedBytes<32> = FixedBytes::with_last_byte(4);
-
-        let storage_value = provider.storage(pool_address, liquidity_slot).unwrap();
+        let storage_value = provider
+            .get_storage(Some(block_number), pool_address, liquidity_slot)
+            .await
+            .unwrap();
 
         if let Some(value) = storage_value {
             let liquidity = hex::encode::<[u8; 32]>(value.to_be_bytes());

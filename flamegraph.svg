@@ -5986,7 +5986,7 @@
 <text  x="55.33" y="479.5" ></text>
 </g>
 <g >
-<title>&lt;sorella_db_databases::clickhouse::db::ClickhouseClient&lt;D&gt; as sorella_db_databases::Database&gt;::query_many::{{closure}} (1,691,945,015 samples, 0.03%)</title><rect x="951.0" y="453" width="0.4" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<title>&lt;db_interfaces::clickhouse::db::ClickhouseClient&lt;D&gt; as db_interfaces::Database&gt;::query_many::{{closure}} (1,691,945,015 samples, 0.03%)</title><rect x="951.0" y="453" width="0.4" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
 <text  x="954.02" y="463.5" ></text>
 </g>
 <g >

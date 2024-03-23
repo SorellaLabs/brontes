@@ -9,15 +9,7 @@ use brontes_types::{
     mev::*,
     structured_trace::TxTrace,
 };
-use sorella_db_databases::{
-    clickhouse::{
-        errors::ClickhouseError,
-        tables::{ClickhouseTable, ClickhouseTableType},
-    },
-    clickhouse_dbms, database_table, remote_clickhouse_table, Database, DatabaseTable,
-};
-
-use crate::clickhouse::ClickhouseClient;
+use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
 clickhouse_dbms!(
     BrontesClickhouseTables,

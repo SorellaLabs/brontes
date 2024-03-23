@@ -39,7 +39,7 @@ use crate::{
     Archive
 ))]
 pub struct DexPrices {
-    pub pre_state: Rational,
+    pub pre_state:  Rational,
     pub post_state: Rational,
 }
 
@@ -47,16 +47,8 @@ impl Display for DexPrices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut opt = ToSciOptions::default();
         opt.set_scale(9);
-        writeln!(
-            f,
-            "pre state price: {}",
-            self.pre_state.to_sci_with_options(opt)
-        )?;
-        writeln!(
-            f,
-            "post state price: {}",
-            self.post_state.to_sci_with_options(opt)
-        )?;
+        writeln!(f, "pre state price: {}", self.pre_state.to_sci_with_options(opt))?;
+        writeln!(f, "post state price: {}", self.post_state.to_sci_with_options(opt))?;
         Ok(())
     }
 }
@@ -95,25 +87,25 @@ impl DexQuotes {
         if pair.1 == ETH_ADDRESS {
             pair.1 = WETH_ADDRESS;
         }
+        let s_idx = tx;
 
         if pair.0 == pair.1 {
-            return Some(DexPrices {
-                pre_state: Rational::ONE,
-                post_state: Rational::ONE,
-            });
+            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
         }
 
         loop {
             if let Some(price) = self.get_price(pair, tx) {
-                return Some(price.clone());
+                return Some(price.clone())
             }
             if tx == 0 {
-                break;
+                break
             }
 
             tx -= 1;
         }
-        error!(?pair, "no price for pair");
+
+        error!(?pair, before=?s_idx, "no price for pair");
+
         None
     }
 
@@ -140,11 +132,7 @@ impl Display for DexQuotes {
         for (i, val) in self.0.iter().enumerate() {
             if let Some(val) = val.as_ref() {
                 for (pair, am) in val {
-                    writeln!(
-                        f,
-                        "----Price at tx_index: {i}, pair {:?}-----\n {}",
-                        pair, am
-                    )?;
+                    writeln!(f, "----Price at tx_index: {i}, pair {:?}-----\n {}", pair, am)?;
                 }
             }
         }
@@ -174,7 +162,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
 ))]
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
-    pub quote: Vec<(Pair, DexPrices)>,
+    pub quote:  Vec<(Pair, DexPrices)>,
 }
 
 impl From<DexQuote> for Vec<(Pair, DexPrices)> {
@@ -230,9 +218,9 @@ pub fn make_filter_key_range(block_number: u64) -> (DexKey, DexKey) {
 #[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
 pub struct DexQuotesWithBlockNumber {
     pub block_number: u64,
-    pub tx_idx: u64,
+    pub tx_idx:       u64,
     #[serde(with = "dex_quote")]
-    pub quote: Option<FastHashMap<Pair, DexPrices>>,
+    pub quote:        Option<FastHashMap<Pair, DexPrices>>,
 }
 
 impl DexQuotesWithBlockNumber {
@@ -241,11 +229,7 @@ impl DexQuotesWithBlockNumber {
             .0
             .into_iter()
             .enumerate()
-            .map(|(i, quote)| DexQuotesWithBlockNumber {
-                block_number,
-                tx_idx: i as u64,
-                quote,
-            })
+            .map(|(i, quote)| DexQuotesWithBlockNumber { block_number, tx_idx: i as u64, quote })
             .collect_vec()
     }
 }

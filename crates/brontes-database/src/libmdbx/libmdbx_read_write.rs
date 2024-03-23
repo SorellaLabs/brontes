@@ -34,6 +34,8 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, SubGraphsEntry,
 };
+#[cfg(feature = "local-clickhouse")]
+use db_interfaces::Database;
 use eyre::{eyre, ErrReport};
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
@@ -41,8 +43,6 @@ use futures::{FutureExt, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
-#[cfg(feature = "local-clickhouse")]
-use sorella_db_databases::Database;
 use tracing::info;
 
 #[cfg(feature = "local-clickhouse")]
@@ -111,7 +111,7 @@ impl LibmdbxReadWriter {
     {
         let (min, max) = clickhouse
             .inner()
-            .query_one::<(String, String)>(query, &())
+            .query_one::<(String, String), _>(query, &())
             .await?;
 
         let Ok(min_parsed) = min.parse::<TB::Key>() else {
@@ -260,7 +260,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 block_tracking += 1;
 
                 if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
-                    tracing::error!("block is missing dex pricing");
+                    tracing::error!("block is missing dex pricing {block}");
                     return Err(eyre::eyre!(
                         "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                     ))
@@ -278,7 +278,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
         if block_tracking - 1 != end_block {
             if needs_dex_price {
-                tracing::error!("block is missing dex pricing");
+                tracing::error!("end block != block tracing - 1, dex price lol");
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                 ))

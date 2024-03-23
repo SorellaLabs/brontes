@@ -22,31 +22,21 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedMint {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:    Protocol,
     pub trace_index: u64,
-    pub from: Address,
-    pub recipient: Address,
-    pub pool: Address,
-    pub token: Vec<TokenInfoWithAddress>,
-    pub amount: Vec<Rational>,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 impl TokenAccounting for NormalizedMint {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         self.amount.iter().enumerate().for_each(|(index, amount)| {
             let amount_minted = -amount.clone();
-            apply_delta(
-                self.from,
-                self.token[index].address,
-                amount_minted,
-                delta_map,
-            );
-            apply_delta(
-                self.pool,
-                self.token[index].address,
-                amount.clone(),
-                delta_map,
-            );
+            apply_delta(self.from, self.token[index].address, amount_minted, delta_map);
+            apply_delta(self.pool, self.token[index].address, amount.clone(), delta_map);
         });
     }
 }
@@ -55,31 +45,21 @@ impl TokenAccounting for NormalizedMint {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedBurn {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:    Protocol,
     pub trace_index: u64,
-    pub from: Address,
-    pub recipient: Address,
-    pub pool: Address,
-    pub token: Vec<TokenInfoWithAddress>,
-    pub amount: Vec<Rational>,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 impl TokenAccounting for NormalizedBurn {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         self.amount.iter().enumerate().for_each(|(index, amount)| {
             let amount_burned = -amount.clone();
-            apply_delta(
-                self.pool,
-                self.token[index].address,
-                amount_burned,
-                delta_map,
-            );
-            apply_delta(
-                self.recipient,
-                self.token[index].address,
-                amount.clone(),
-                delta_map,
-            );
+            apply_delta(self.pool, self.token[index].address, amount_burned, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
         });
     }
 }
@@ -88,31 +68,21 @@ impl TokenAccounting for NormalizedBurn {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedCollect {
     #[redefined(same_fields)]
-    pub protocol: Protocol,
+    pub protocol:    Protocol,
     pub trace_index: u64,
-    pub from: Address,
-    pub recipient: Address,
-    pub pool: Address,
-    pub token: Vec<TokenInfoWithAddress>,
-    pub amount: Vec<Rational>,
+    pub from:        Address,
+    pub recipient:   Address,
+    pub pool:        Address,
+    pub token:       Vec<TokenInfoWithAddress>,
+    pub amount:      Vec<Rational>,
 }
 
 impl TokenAccounting for NormalizedCollect {
     fn apply_token_deltas(&self, delta_map: &mut AddressDeltas) {
         self.amount.iter().enumerate().for_each(|(index, amount)| {
             let amount_collected = -amount.clone();
-            apply_delta(
-                self.pool,
-                self.token[index].address,
-                amount_collected,
-                delta_map,
-            );
-            apply_delta(
-                self.recipient,
-                self.token[index].address,
-                amount.clone(),
-                delta_map,
-            );
+            apply_delta(self.pool, self.token[index].address, amount_collected, delta_map);
+            apply_delta(self.recipient, self.token[index].address, amount.clone(), delta_map);
         });
     }
 }
@@ -120,11 +90,11 @@ impl TokenAccounting for NormalizedCollect {
 #[derive(Default)]
 pub struct ClickhouseVecNormalizedMintOrBurn {
     pub trace_index: Vec<u64>,
-    pub from: Vec<String>,
-    pub pool: Vec<String>,
-    pub recipient: Vec<String>,
-    pub tokens: Vec<Vec<String>>,
-    pub amounts: Vec<Vec<([u8; 32], [u8; 32])>>,
+    pub from:        Vec<String>,
+    pub pool:        Vec<String>,
+    pub recipient:   Vec<String>,
+    pub tokens:      Vec<Vec<String>>,
+    pub amounts:     Vec<Vec<([u8; 32], [u8; 32])>>,
 }
 
 impl fmt::Display for NormalizedMint {
@@ -141,12 +111,7 @@ impl fmt::Display for NormalizedMint {
             })
             .collect();
 
-        write!(
-            f,
-            "Added [{}] Liquidity on {}",
-            mint_info.join(", "),
-            protocol
-        )
+        write!(f, "Added [{}] Liquidity on {}", mint_info.join(", "), protocol)
     }
 }
 
@@ -164,12 +129,7 @@ impl fmt::Display for NormalizedBurn {
             })
             .collect();
 
-        write!(
-            f,
-            "Removed [{}] Liquidity on {}",
-            mint_info.join(", "),
-            protocol
-        )
+        write!(f, "Removed [{}] Liquidity on {}", mint_info.join(", "), protocol)
     }
 }
 
@@ -195,14 +155,14 @@ impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
     fn from(value: Vec<NormalizedMint>) -> Self {
         ClickhouseVecNormalizedMintOrBurn {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
-            from: value.iter().map(|val| format!("{:?}", val.from)).collect(),
-            pool: value.iter().map(|val| format!("{:?}", val.pool)).collect(),
-            recipient: value
+            from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
+            pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
+            recipient:   value
                 .iter()
                 .map(|val| format!("{:?}", val.recipient))
                 .collect(),
 
-            tokens: value
+            tokens:  value
                 .iter()
                 .map(|val| val.token.iter().map(|t| format!("{:?}", t)).collect_vec())
                 .collect(),
@@ -223,14 +183,14 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
     fn from(value: Vec<NormalizedBurn>) -> Self {
         ClickhouseVecNormalizedMintOrBurn {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
-            from: value.iter().map(|val| format!("{:?}", val.from)).collect(),
-            pool: value.iter().map(|val| format!("{:?}", val.pool)).collect(),
-            recipient: value
+            from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
+            pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
+            recipient:   value
                 .iter()
                 .map(|val| format!("{:?}", val.recipient))
                 .collect(),
 
-            tokens: value
+            tokens:  value
                 .iter()
                 .map(|val| val.token.iter().map(|t| format!("{:?}", t)).collect_vec())
                 .collect(),
@@ -249,13 +209,13 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
 
 #[derive(Default)]
 pub struct ClickhouseVecNormalizedMintOrBurnWithTxHash {
-    pub tx_hash: Vec<String>,
+    pub tx_hash:     Vec<String>,
     pub trace_index: Vec<u64>,
-    pub from: Vec<String>,
-    pub pool: Vec<String>,
-    pub recipient: Vec<String>,
-    pub tokens: Vec<Vec<String>>,
-    pub amounts: Vec<Vec<([u8; 32], [u8; 32])>>,
+    pub from:        Vec<String>,
+    pub pool:        Vec<String>,
+    pub recipient:   Vec<String>,
+    pub tokens:      Vec<Vec<String>>,
+    pub amounts:     Vec<Vec<([u8; 32], [u8; 32])>>,
 }
 
 // (tx_hashes, mints)
@@ -268,7 +228,9 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
             .0
             .into_iter()
             .enumerate()
-            .filter_map(|(idx, tx_hash)| value.1[idx].as_ref().map(|mints| (tx_hash, mints.clone())))
+            .filter_map(|(idx, tx_hash)| {
+                value.1[idx].as_ref().map(|mints| (tx_hash, mints.clone()))
+            })
             .map(|(tx_hash, mint)| {
                 let tx_hashes_repeated: Vec<String> = [tx_hash]
                     .repeat(mint.len())
