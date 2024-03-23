@@ -6,8 +6,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedEthTransfer,
-        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedFlashLoan,
+        NormalizedSwap, NormalizedTransfer,
     },
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
