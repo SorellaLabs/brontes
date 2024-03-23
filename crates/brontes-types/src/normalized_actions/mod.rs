@@ -452,6 +452,7 @@ extra_impls!(
     (Swap, NormalizedSwap),
     (SwapWithFee, NormalizedSwapWithFee),
     (Transfer, NormalizedTransfer),
+    (EthTransfer, NormalizedEthTransfer),
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan),
     (Aggregator, NormalizedAggregator),
