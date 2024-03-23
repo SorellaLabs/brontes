@@ -229,16 +229,12 @@ impl Actions {
     }
 
     pub fn force_transfer(self) -> NormalizedTransfer {
-        let Actions::Transfer(transfer) = self else {
-            unreachable!("not transfer")
-        };
+        let Actions::Transfer(transfer) = self else { unreachable!("not transfer") };
         transfer
     }
 
     pub fn force_transfer_mut(&mut self) -> &mut NormalizedTransfer {
-        let Actions::Transfer(transfer) = self else {
-            unreachable!("not transfer")
-        };
+        let Actions::Transfer(transfer) = self else { unreachable!("not transfer") };
         transfer
     }
 
@@ -460,6 +456,7 @@ extra_impls!(
     (Swap, NormalizedSwap),
     (SwapWithFee, NormalizedSwapWithFee),
     (Transfer, NormalizedTransfer),
+    (EthTransfer, NormalizedEthTransfer),
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan),
     (Aggregator, NormalizedAggregator),

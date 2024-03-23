@@ -111,6 +111,7 @@ use sandwich::SandwichInspector;
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
+    fn get_id(&self) -> &str;
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result;
 }
 

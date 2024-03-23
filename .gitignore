@@ -29,12 +29,17 @@
 # Parquet exports
 /data_exports/**
 
+.cargo/
 
 stuff
 possible_mev/
 
 # Libmdbx files
 data/*
+
+.cargo/
+
+p.sql
 
 # Misc 
 .vscode/

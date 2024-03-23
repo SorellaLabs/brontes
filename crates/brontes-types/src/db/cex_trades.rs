@@ -32,7 +32,7 @@ const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(5, 100);
 pub struct ExchangePrice {
     // cex exchange with amount of volume executed on it
     pub exchanges: Vec<(CexExchange, Rational)>,
-    pub price: Rational,
+    pub price:     Rational,
 }
 
 type MakerTaker = (ExchangePrice, ExchangePrice);
@@ -264,14 +264,10 @@ impl CexTradeMap {
         }
         let exchanges = exchange_with_vol.into_iter().collect_vec();
 
-        let maker = ExchangePrice {
-            exchanges: exchanges.clone(),
-            price: vxp_maker / &trade_volume,
-        };
-        let taker = ExchangePrice {
-            exchanges: exchanges.clone(),
-            price: vxp_taker / &trade_volume,
-        };
+        let maker =
+            ExchangePrice { exchanges: exchanges.clone(), price: vxp_maker / &trade_volume };
+        let taker =
+            ExchangePrice { exchanges: exchanges.clone(), price: vxp_taker / &trade_volume };
 
         Some((maker, taker))
     }
@@ -292,15 +288,15 @@ impl CexTradeMap {
 pub struct CexTrades {
     #[redefined(same_fields)]
     pub exchange: CexExchange,
-    pub price: Rational,
-    pub amount: Rational,
+    pub price:    Rational,
+    pub amount:   Rational,
 }
 
 /// Its ok that we create 2 of these for pair price and intermediary price
 /// as it runs off of borrowed data so there is no overhead we occur
 pub struct PairTradeQueue<'a> {
     exchange_depth: FastHashMap<CexExchange, usize>,
-    trades: Vec<(CexExchange, Vec<&'a CexTrades>)>,
+    trades:         Vec<(CexExchange, Vec<&'a CexTrades>)>,
 }
 
 impl<'a> PairTradeQueue<'a> {
@@ -325,10 +321,7 @@ impl<'a> PairTradeQueue<'a> {
             FastHashMap::default()
         };
 
-        Self {
-            exchange_depth,
-            trades,
-        }
+        Self { exchange_depth, trades }
     }
 
     fn next_best_trade(&mut self) -> Option<CexTradePtr<'a>> {
@@ -405,12 +398,12 @@ fn calculate_cross_pair(
 
                         let maker = ExchangePrice {
                             exchanges: maker_exchanges,
-                            price: &maker0.price * &maker1.price,
+                            price:     &maker0.price * &maker1.price,
                         };
 
                         let taker = ExchangePrice {
                             exchanges: taker_exchanges,
-                            price: &taker0.price * &taker1.price,
+                            price:     &taker0.price * &taker1.price,
                         };
                         (maker, taker)
                     })
@@ -447,15 +440,12 @@ fn closest<'a>(
 struct CexTradePtr<'ptr> {
     raw: *const CexTrades,
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
-    _p: PhantomData<&'ptr u8>,
+    _p:  PhantomData<&'ptr u8>,
 }
 
 impl<'ptr> CexTradePtr<'ptr> {
     fn new(raw: &CexTrades) -> Self {
-        Self {
-            raw: raw as *const _,
-            _p: PhantomData,
-        }
+        Self { raw: raw as *const _, _p: PhantomData }
     }
 
     fn get(&'ptr self) -> &'ptr CexTrades {
