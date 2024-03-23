@@ -6,8 +6,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, eth_transfer, Actions, NormalizedEthTransfer,
-        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedFlashLoan,
+        NormalizedSwap, NormalizedTransfer,
     },
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
@@ -270,6 +270,7 @@ fn is_stable_pair(token_in: &str, token_out: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
+    use brontes_types::constants::USDT_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS, WETH_ADDRESS},
@@ -354,5 +355,17 @@ mod tests {
             .with_gas_paid_usd(19.7);
 
         inspector_util.run_inspector(config, None).await.unwrap();
+    }
+    #[brontes_macros::test]
+    async fn assert_no_false_positive_first_eth_transfer_inc() {
+        // 0xee41ef09d88bf43e9983325da9fc44ac87276b13f71ac71f87bdf55d82f170d4
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let tx = hex!("ee41ef09d88bf43e9983325da9fc44ac87276b13f71ac71f87bdf55d82f170d4").into();
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![tx])
+            .needs_token(USDT_ADDRESS)
+            .with_dex_prices();
+
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }
