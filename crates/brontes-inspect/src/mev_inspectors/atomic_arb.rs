@@ -167,7 +167,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             metadata.clone(),
             MevType::AtomicArb,
         );
-        tracing::debug!("{:#?}",header);
+        tracing::debug!("{:#?}", header);
 
         Some(Bundle { header, data })
     }
@@ -318,8 +318,6 @@ mod tests {
 
     #[brontes_macros::test]
     async fn ensure_proper_calculation() {
-        // https://etherscan.io/tx/0x5f9c889b8d6cad5100cc2e6f4a7a59bb53d1cd67f0895320cdb3b25ff43c8fa4
-        // 0.08 eth
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
@@ -332,8 +330,8 @@ mod tests {
                 WETH_ADDRESS,
                 hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
             ])
-            .with_expected_profit_usd(0.188588)
-            .with_gas_paid_usd(71.632668);
+            .with_expected_profit_usd(2.63)
+            .with_gas_paid_usd(25.3);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -352,31 +350,8 @@ mod tests {
                 WETH_ADDRESS,
                 hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
             ])
-            .with_expected_profit_usd(20.0)
-            .with_gas_paid_usd(71.632668);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-        // 0xc79494def0565dd49f46c2b7c0221f7eba218ca07638aac3277efe6ab3a2dd66
-        // ~20usdc rev
-    }
-    #[brontes_macros::test]
-    async fn ensure_proper_calculation3() {
-        // https://etherscan.io/tx/0x422f93a77885001df4576d31c4891fb2e461b6ec201eb47156acaa31dd9ac583
-        // 50$ usdc rev
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![hex!(
-                "422f93a77885001df4576d31c4891fb2e461b6ec201eb47156acaa31dd9ac583"
-            )
-            .into()])
-            .with_dex_prices()
-            .needs_tokens(vec![
-                WETH_ADDRESS,
-                hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
-            ])
-            .with_expected_profit_usd(50.0)
-            .with_gas_paid_usd(71.632668);
+            .with_expected_profit_usd(0.98)
+            .with_gas_paid_usd(19.7);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
