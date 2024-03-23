@@ -6,7 +6,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, eth_transfer, Actions, NormalizedEthTransfer,
+        accounting::ActionAccounting, Actions, NormalizedEthTransfer,
         NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
     },
     tree::BlockTree,
