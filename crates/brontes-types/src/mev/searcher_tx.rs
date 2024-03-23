@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use ::serde::ser::Serializer;
+use ahash::{HashSet, HashSetExt};
 use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -12,6 +13,7 @@ use crate::{
     db::redefined_types::primitives::*,
     mev::{Mev, MevType},
     normalized_actions::*,
+    Protocol,
 };
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::NormalizedTransfer, GasDetails};
@@ -45,6 +47,10 @@ impl Mev for SearcherTx {
 
     fn bribe(&self) -> u128 {
         self.gas_details.coinbase_transfer.unwrap_or(0)
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        HashSet::new()
     }
 }
 

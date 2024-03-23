@@ -17,7 +17,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         for next in self.iter.by_ref() {
             if let Some(i) = (self.f)(self.tree.clone(), next) {
-                return Some(i)
+                return Some(i);
             }
         }
 

@@ -25,6 +25,7 @@ pub struct AddressMetadata {
     #[serde(deserialize_with = "socials::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
     #[redefined(same_fields)]
+    //TODO: Joe make option on table
     pub social_metadata: Socials,
 }
 
@@ -111,6 +112,39 @@ impl AddressMetadata {
             }
         })
     }
+
+    pub fn merge(&mut self, other: Self) {
+        if other.entity_name.is_some() {
+            self.entity_name = other.entity_name;
+        }
+
+        for label in other.labels.into_iter() {
+            if !self.labels.iter().any(|l| l.eq_ignore_ascii_case(&label)) {
+                self.labels.push(label);
+            }
+        }
+
+        if other.nametag.is_some() {
+            self.nametag = other.nametag
+        }
+
+        if other.address_type.is_some() {
+            self.address_type = other.address_type
+        }
+
+        if other.ens.is_some() {
+            self.ens = other.ens
+        }
+
+        if let Some(other_contract_info) = other.contract_info {
+            match &mut self.contract_info {
+                Some(c) => c.merge(other_contract_info),
+                None => self.contract_info = Some(other_contract_info),
+            }
+        }
+
+        self.social_metadata.merge(other.social_metadata);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +175,22 @@ pub struct ContractInfo {
     pub reputation:        Option<u8>,
 }
 
+impl ContractInfo {
+    fn merge(&mut self, other: ContractInfo) {
+        if let Some(verified_contract) = other.verified_contract {
+            self.verified_contract = Some(verified_contract);
+        }
+
+        if let Some(contract_creator) = other.contract_creator {
+            self.contract_creator = Some(contract_creator);
+        }
+
+        if let Some(reputation) = other.reputation {
+            self.reputation = Some(reputation);
+        }
+    }
+}
+
 #[derive(
     Debug, Default, PartialEq, Clone, Eq, Serialize, Deserialize, rSerialize, rDeserialize, Archive,
 )]
@@ -150,6 +200,26 @@ pub struct Socials {
     pub website_url:       Option<String>,
     pub crunchbase:        Option<String>,
     pub linkedin:          Option<String>,
+}
+
+impl Socials {
+    fn merge(&mut self, other: Socials) {
+        if let Some(twitter) = other.twitter {
+            self.twitter = Some(twitter);
+        }
+        if let Some(twitter_followers) = other.twitter_followers {
+            self.twitter_followers = Some(twitter_followers);
+        }
+        if let Some(website_url) = other.website_url {
+            self.website_url = Some(website_url);
+        }
+        if let Some(crunchbase) = other.crunchbase {
+            self.crunchbase = Some(crunchbase);
+        }
+        if let Some(linkedin) = other.linkedin {
+            self.linkedin = Some(linkedin);
+        }
+    }
 }
 
 self_convert_redefined!(Socials);

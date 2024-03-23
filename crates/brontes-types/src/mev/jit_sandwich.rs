@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
+use ahash::HashSet;
 #[allow(unused)]
 use clickhouse::row::*;
 use redefined::Redefined;
@@ -12,6 +13,7 @@ use serde_with::serde_as;
 use super::{Bundle, BundleData, BundleHeader, JitLiquidity, Mev, MevType, Sandwich};
 use crate::{
     db::redefined_types::primitives::*, normalized_actions::*, tree::ClickhouseVecGasDetails,
+    Protocol,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -81,6 +83,25 @@ impl Mev for JitLiquiditySandwich {
         txs.extend(self.victim_swaps_tx_hashes.iter().flatten().copied());
         txs.push(self.backrun_tx_hash);
         txs
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        let mut protocols: HashSet<Protocol> = self
+            .frontrun_swaps
+            .iter()
+            .flatten()
+            .map(|swap| swap.protocol)
+            .collect();
+
+        self.victim_swaps.iter().flatten().for_each(|swap| {
+            protocols.insert(swap.protocol);
+        });
+
+        self.backrun_swaps.iter().for_each(|swap| {
+            protocols.insert(swap.protocol);
+        });
+
+        protocols
     }
 }
 

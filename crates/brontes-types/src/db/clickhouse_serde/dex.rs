@@ -57,7 +57,7 @@ pub mod dex_quote {
         let des: DexPriceQuotesVec = Deserialize::deserialize(deserializer)?;
 
         if des.is_empty() {
-            return Ok(None)
+            return Ok(None);
         }
 
         let val = des

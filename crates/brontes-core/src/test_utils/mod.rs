@@ -338,8 +338,9 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             let brontes_db_endpoint =
                 env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None)
-                    .unwrap_or_else(|_| panic!("failed to open db path {}", brontes_db_endpoint)),
+                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None).unwrap_or_else(|e| {
+                    panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
+                }),
             ));
 
             let (tx, _rx) = unbounded_channel();
@@ -397,8 +398,19 @@ pub async fn init_trace_parser(
     max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
-    let client =
-        TracingClient::new_with_db(get_reth_db_handle(), max_tasks as u64, executor.executor());
+
+    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+    let db_path = std::path::Path::new(&db_path);
+    let mut static_files = db_path.to_path_buf();
+    static_files.pop();
+    static_files.push("static_files");
+
+    let client = TracingClient::new_with_db(
+        get_reth_db_handle(),
+        max_tasks as u64,
+        executor.executor(),
+        static_files,
+    );
     handle.spawn(executor);
     let tracer = Box::new(client) as Box<dyn TracingProvider>;
 

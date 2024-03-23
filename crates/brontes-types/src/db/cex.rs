@@ -112,7 +112,7 @@ impl CexPriceMap {
     ///   price is reciprocated to match the requested pair ordering.
     pub fn get_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
         }
 
         self.0
@@ -137,7 +137,7 @@ impl CexPriceMap {
     /// exchanges.
     pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
         }
 
         let ordered_pair = pair.ordered();

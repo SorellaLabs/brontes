@@ -202,7 +202,7 @@ impl CexTradeMap {
             .collect::<Vec<_>>();
 
         if trades.is_empty() {
-            return None
+            return None;
         }
 
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
@@ -221,7 +221,9 @@ impl CexTradeMap {
         let mut cur_vol = Rational::ZERO;
 
         while volume_amount.gt(&cur_vol) {
-            let Some(next) = queue.next_best_trade() else { break };
+            let Some(next) = queue.next_best_trade() else {
+                break;
+            };
             // we do this due to the sheer amount of trades we have and to not have to copy.
             // all of this is safe
             cur_vol += &next.get().amount;
@@ -258,7 +260,7 @@ impl CexTradeMap {
         }
 
         if trade_volume == Rational::ZERO {
-            return None
+            return None;
         }
         let exchanges = exchange_with_vol.into_iter().collect_vec();
 
@@ -331,7 +333,7 @@ impl<'a> PairTradeQueue<'a> {
 
             // hit max depth
             if exchange_depth > len {
-                continue
+                continue;
             }
 
             if let Some(trade) = trades.get(len - exchange_depth) {
@@ -364,7 +366,9 @@ fn calculate_cross_pair(
     let (maker, taker): (Vec<_>, Vec<_>) = v0
         .into_iter()
         .flat_map(|(inter, vwam0)| {
-            let Some(vwam1) = v1.remove(&inter) else { return vec![] };
+            let Some(vwam1) = v1.remove(&inter) else {
+                return vec![];
+            };
 
             vwam0
                 .into_iter()

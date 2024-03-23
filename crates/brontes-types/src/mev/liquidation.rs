@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+use ahash::HashSet;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
@@ -11,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::db::redefined_types::primitives::*;
+use crate::{db::redefined_types::primitives::*, Protocol};
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
@@ -46,6 +47,20 @@ impl Mev for Liquidation {
 
     fn bribe(&self) -> u128 {
         self.gas_details.coinbase_transfer.unwrap_or(0)
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        let mut protocols: HashSet<Protocol> = self
+            .liquidation_swaps
+            .iter()
+            .map(|swap| swap.protocol)
+            .collect();
+
+        self.liquidations.iter().for_each(|liquidation| {
+            protocols.insert(liquidation.protocol);
+        });
+
+        protocols
     }
 }
 

@@ -1,6 +1,11 @@
 #[cfg(feature = "local-clickhouse")]
 use std::str::FromStr;
-use std::{cmp::max, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{
+    cmp::max,
+    ops::{Bound, RangeInclusive},
+    path::Path,
+    sync::Arc,
+};
 
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
@@ -29,6 +34,8 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, SubGraphsEntry,
 };
+#[cfg(feature = "local-clickhouse")]
+use db_interfaces::Database;
 use eyre::{eyre, ErrReport};
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
@@ -36,8 +43,6 @@ use futures::{FutureExt, StreamExt};
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
-#[cfg(feature = "local-clickhouse")]
-use sorella_db_databases::Database;
 use tracing::info;
 
 #[cfg(feature = "local-clickhouse")]
@@ -106,7 +111,7 @@ impl LibmdbxReadWriter {
     {
         let (min, max) = clickhouse
             .inner()
-            .query_one::<(String, String)>(query, &())
+            .query_one::<(String, String), _>(query, &())
             .await?;
 
         let Ok(min_parsed) = min.parse::<TB::Key>() else {
@@ -255,7 +260,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 block_tracking += 1;
 
                 if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
-                    tracing::error!("block is missing dex pricing");
+                    tracing::error!("block is missing dex pricing {block}");
                     return Err(eyre::eyre!(
                         "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                     ))
@@ -273,7 +278,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
         if block_tracking - 1 != end_block {
             if needs_dex_price {
-                tracing::error!("block is missing dex pricing");
+                tracing::error!("end block != block tracing - 1, dex price lol");
                 return Err(eyre::eyre!(
                     "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
                 ))
@@ -514,18 +519,64 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn try_fetch_mev_blocks(
         &self,
-        start_block: u64,
+        start_block: Option<u64>,
         end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
         let tx = self.0.ro_tx()?;
         let mut cursor = tx.cursor_read::<MevBlocks>()?;
         let mut res = Vec::new();
 
-        for entry in cursor.walk_range(start_block..end_block)?.flatten() {
+        let range = if let Some(start) = start_block {
+            (Bound::Included(start), Bound::Excluded(end_block))
+        } else {
+            (Bound::Unbounded, Bound::Excluded(end_block))
+        };
+
+        for entry in cursor.walk_range(range)?.flatten() {
             res.push(entry.1);
         }
 
         Ok(res)
+    }
+
+    fn fetch_all_mev_blocks(
+        &self,
+        start_block: Option<u64>,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<MevBlocks>()?;
+
+        let mut res = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(start_block)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            res.push(row?.1);
+        }
+
+        Ok(res)
+    }
+
+    fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<AddressMeta>()?;
+
+        let mut result = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(None)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            let row = row?;
+            let address = row.0;
+            let metadata = row.1;
+            result.push((address, metadata));
+        }
+
+        Ok(result)
     }
 }
 
@@ -588,6 +639,20 @@ impl DBWriter for LibmdbxReadWriter {
         self.0
             .write_table::<SearcherStatistics, SearcherStatisticsData>(&[data])
             .expect("libmdbx write failure");
+        Ok(())
+    }
+
+    async fn write_address_meta(
+        &self,
+        address: Address,
+        metadata: AddressMetadata,
+    ) -> eyre::Result<()> {
+        let data = AddressMetaData::new(address, metadata);
+
+        self.0
+            .write_table::<AddressMeta, AddressMetaData>(&[data])
+            .expect("libmdx metadata write failure");
+
         Ok(())
     }
 

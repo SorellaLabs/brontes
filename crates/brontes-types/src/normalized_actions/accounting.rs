@@ -49,7 +49,7 @@ impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
         for next in self {
             if !next.is_transfer() {
                 rem.push(next);
-                continue
+                continue;
             }
             accounting_calc(&mut accounting, next);
         }

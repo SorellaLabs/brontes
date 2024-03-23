@@ -5,6 +5,7 @@ use std::{
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+use ahash::HashSet;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::{self_convert_redefined, Redefined};
@@ -17,7 +18,7 @@ use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::B256Redefined,
     normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined},
-    GasDetails,
+    GasDetails, Protocol,
 };
 
 #[serde_as]
@@ -89,6 +90,10 @@ impl Mev for AtomicArb {
 
     fn mev_type(&self) -> MevType {
         MevType::AtomicArb
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        self.swaps.iter().map(|swap| swap.protocol).collect()
     }
 }
 

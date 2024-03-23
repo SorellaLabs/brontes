@@ -22,7 +22,6 @@ use crate::uniswap_v3::batch_request::get_uniswap_v3_tick_data_batch_request;
 use crate::uniswap_v3::uniswap_v3_math::tick_math::{MAX_TICK, MIN_TICK};
 use crate::{
     errors::{AmmError, ArithmeticError, EventLogError},
-    uniswap_v2::IErc20,
     UpdatableProtocol,
 };
 

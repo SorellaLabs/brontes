@@ -23,13 +23,14 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
             (SearcherStats, FastHashSet<Address>),
         > = FastHashMap::default();
         let mut builder_map: FastHashMap<Address, BuilderStats> = FastHashMap::default();
-        let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
+        let mev_blocks = self.db.try_fetch_mev_blocks(Some(start_block), end_block)?;
 
         for mev_block in mev_blocks {
             for bundle in mev_block.mev {
                 if let Some(types) = &mev_type {
                     if !types.contains(&bundle.mev_type())
                         || bundle.get_searcher_contract().is_none()
+                        || bundle.mev_type() == MevType::SearcherTx
                     {
                         continue
                     }
@@ -65,7 +66,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         let single_builder_searchers: FastHashMap<Address, Address> = searcher_to_builder_map
             .into_iter()
             .filter_map(|(searcher, (searcher_stats, builders))| {
-                if searcher_stats.bundle_count > 10 && builders.len() == 1 {
+                if searcher_stats.bundle_count.mev_count > 10 && builders.len() == 1 {
                     builders.iter().next().map(|builder| (searcher, *builder))
                 } else {
                     None

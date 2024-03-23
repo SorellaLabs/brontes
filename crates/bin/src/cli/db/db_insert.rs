@@ -5,7 +5,7 @@ use brontes_types::init_threadpools;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
-pub struct AddToDb {
+pub struct Insert {
     /// that table to be queried
     #[arg(long, short)]
     pub table: Tables,
@@ -17,7 +17,7 @@ pub struct AddToDb {
     pub value: String,
 }
 
-impl AddToDb {
+impl Insert {
     pub async fn execute(self) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;

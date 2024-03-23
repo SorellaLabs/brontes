@@ -323,5 +323,5 @@ fund = "Kronos Research"
 mev = ["Sandwich, CexDex"]
 
 [searcher_contracts."0xe8cFAd4C75a5e1CaF939Fd80AfCf837DdE340a69"]
-fund = "Kronos Research"
+fund = "Beelder"
 mev = ["CexDex"]

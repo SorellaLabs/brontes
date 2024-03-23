@@ -12,7 +12,7 @@ use reth_interfaces::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]
 pub struct DatabaseQuery {
-    /// that table to be queried
+    /// that table to query
     #[arg(long, short)]
     pub table: Tables,
     /// the key of the table being queried. if a range is wanted use the rust

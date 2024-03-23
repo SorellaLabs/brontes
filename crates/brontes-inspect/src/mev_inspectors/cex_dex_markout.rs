@@ -32,6 +32,10 @@ impl<'db, DB: LibmdbxReader> CexDexMarkoutInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    fn get_id(&self) -> &str {
+        "CexDexMarkout"
+    }
+
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         let swap_txes = tree
             .clone()

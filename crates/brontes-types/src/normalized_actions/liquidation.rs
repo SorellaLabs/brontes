@@ -100,7 +100,7 @@ impl NormalizedLiquidation {
                         // tbd tho
                         if transfer.to == self.liquidator {
                             self.liquidated_collateral = transfer.amount;
-                            return Some(index)
+                            return Some(index);
                         }
                     }
 

@@ -26,7 +26,7 @@ impl<
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(extra) = self.extra.pop() {
-            return Some(extra)
+            return Some(extra);
         }
 
         self.iter.next().and_then(|item| {

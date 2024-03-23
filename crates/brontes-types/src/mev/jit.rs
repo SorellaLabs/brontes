@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use ahash::HashSet;
 use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -13,6 +14,7 @@ use serde_with::serde_as;
 use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::*, normalized_actions::*, tree::ClickhouseVecGasDetails,
+    Protocol,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -63,6 +65,15 @@ impl Mev for JitLiquidity {
             .coinbase_transfer
             .unwrap_or(0)
             + self.backrun_burn_gas_details.coinbase_transfer.unwrap_or(0)
+    }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        // Can just do frontrun mints because the extraction is symmetric + victims
+        // swaps only interesting as they relate to Jit
+        self.frontrun_mints
+            .iter()
+            .map(|swap| swap.protocol)
+            .collect()
     }
 }
 
