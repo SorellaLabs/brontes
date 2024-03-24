@@ -305,7 +305,10 @@ impl SubgraphVerifier {
                 let goes_through = subgraph.subgraph.must_go_through();
 
                 if let Some(frayed) = frayed {
-                    let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
+                    let extensions = subgraph
+                        .frayed_end_extensions
+                        .remove(&frayed)
+                        .unwrap_or_default();
                     if subgraph.in_rundown {
                         let state = &self
                             .subgraph_verification_state
