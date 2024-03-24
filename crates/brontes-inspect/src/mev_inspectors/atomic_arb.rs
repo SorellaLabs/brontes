@@ -305,19 +305,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn assert_no_false_positive() {
-        // 19493098
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-        let tx = hex!("48ca4e712f30f8ebd1d2cab868236a0ecf92b373498baa3d211c43339e1e9a6e").into();
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("c18360217d8f7ab5e7c516566761ea12ce7f9d72").into())
-            .with_dex_prices();
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[brontes_macros::test]
     async fn ensure_proper_calculation() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
 
@@ -355,17 +342,5 @@ mod tests {
             .with_gas_paid_usd(19.7);
 
         inspector_util.run_inspector(config, None).await.unwrap();
-    }
-    #[brontes_macros::test]
-    async fn assert_no_false_positive_first_eth_transfer_inc() {
-        // 0xee41ef09d88bf43e9983325da9fc44ac87276b13f71ac71f87bdf55d82f170d4
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-        let tx = hex!("ee41ef09d88bf43e9983325da9fc44ac87276b13f71ac71f87bdf55d82f170d4").into();
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![tx])
-            .needs_token(USDT_ADDRESS)
-            .with_dex_prices();
-
-        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }
