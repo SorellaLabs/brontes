@@ -129,9 +129,8 @@ where
 {
     let iter_k = k.unwrap_or(usize::MAX);
     let Some((e, n, c)) =
-        dijkstra_internal(start, Some(second), &successors, &path_value, &success, 50_000)
+        dijkstra_internal(start, Some(second), &successors, &path_value, &success, 25_000)
     else {
-        tracing::debug!("no path found");
         return vec![];
     };
 
