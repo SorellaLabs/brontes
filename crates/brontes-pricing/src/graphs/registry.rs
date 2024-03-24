@@ -108,18 +108,17 @@ impl SubGraphRegistry {
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         next.and_then(|next| {
-            tracing::info!(?next, "grabing next edge state");
+            tracing::info!(?unordered_pair,?goes_through, ?next, "grabing next edge state");
             Some(self.get_price_all(next, edge_state)? * &default_price)
         })
-        .map(
-            |price| {
-                if unordered_pair.eq_unordered(&complete_pair) {
-                    price
-                } else {
-                    price.reciprocal()
-                }
-            },
-        )
+        .map(|price| {
+            tracing::info!("finish next edge state calcs");
+            if unordered_pair.eq_unordered(&complete_pair) {
+                price
+            } else {
+                price.reciprocal()
+            }
+        })
         .or(Some(default_price))
     }
 
