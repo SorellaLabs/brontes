@@ -107,19 +107,15 @@ impl SubGraphRegistry {
         let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
-        next.and_then(|next| {
-            tracing::info!(?unordered_pair,?goes_through, ?next, "grabing next edge state");
-            Some(self.get_price_all(next, edge_state)? * &default_price)
-        })
-        .map(|price| {
-            tracing::info!("finish next edge state calcs");
-            if unordered_pair.eq_unordered(&complete_pair) {
-                price
-            } else {
-                price.reciprocal()
-            }
-        })
-        .or(Some(default_price))
+        next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
+            .map(|price| {
+                if unordered_pair.eq_unordered(&complete_pair) {
+                    price
+                } else {
+                    price.reciprocal()
+                }
+            })
+            .or(Some(default_price))
     }
 
     fn get_price_once(
@@ -145,7 +141,6 @@ impl SubGraphRegistry {
             // we take the average price on non-extended graphs and return the price
             // that way
             .or_else(|| {
-                tracing::info!(?unordered_pair, "get price all");
                 self.get_price_all(unordered_pair, edge_state)
                     .map(|price| (None, unordered_pair, price))
             })
@@ -178,9 +173,6 @@ impl SubGraphRegistry {
                     next
                 };
                 cnt += Rational::ONE;
-            }
-            if cnt == Rational::ZERO {
-                tracing::info!(?unordered_pair, "no pricing for this shit");
             }
             (cnt != Rational::ZERO).then(|| acc / cnt)
         })
