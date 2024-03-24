@@ -45,7 +45,7 @@ pub struct RunArgs {
     #[arg(long, short, default_value = "false")]
     pub run_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
-    #[arg(long, default_value = "2")]
+    #[arg(long, default_value = "3")]
     pub behind_tip:      u64,
 }
 
