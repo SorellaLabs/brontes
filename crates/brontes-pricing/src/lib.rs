@@ -316,7 +316,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let flipped_pool = pool_pair.flip();
 
         let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
-            deubg!(?pair0, ?pool_pair, "no price for token");
+            debug!(?pair0, ?pool_pair, "no price for token");
             return;
         };
         let Some(price1_pre) = self.get_dex_price(pair1, flipped_pool) else {
