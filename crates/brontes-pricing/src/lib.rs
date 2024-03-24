@@ -806,6 +806,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             }
         }
 
+        self.graph_manager.finalize_block(self.completed_block);
+
         let block = self.completed_block;
 
         let res = self
