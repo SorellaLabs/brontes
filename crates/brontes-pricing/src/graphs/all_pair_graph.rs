@@ -8,7 +8,7 @@ use alloy_primitives::Address;
 use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use petgraph::prelude::*;
-use tracing::{debug, error, info};
+use tracing::{ error, info, warn};
 
 use super::yens::yen;
 use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
@@ -212,18 +212,18 @@ impl AllPairGraph {
 
         let Some(start_idx) = self.token_to_index.get(&first_hop.0) else {
             let addr = first_hop.0;
-            debug!(?addr, "no node for address");
+            warn!(?addr, "no node for address");
             return vec![];
         };
         let Some(second_idx) = self.token_to_index.get(&first_hop.1) else {
             let addr = first_hop.1;
-            debug!(?addr, "no node for address");
+            warn!(?addr, "no node for address");
             return vec![];
         };
 
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
-            debug!(?addr, "no node for address");
+            warn!(?addr, "no node for address");
             return vec![];
         };
 
