@@ -64,10 +64,8 @@ impl SubgraphVerifier {
 
     // debuging
     pub fn all_current_pending(&self) {
-        tracing::info!("{:#?}", self.pending_subgraphs);
-
+        tracing::info!("pending_subgraphs: {:#?}", self.pending_subgraphs);
     }
-
 
     pub fn all_pairs(&self) -> Vec<Pair> {
         self.pending_subgraphs.keys().copied().collect_vec()
@@ -110,6 +108,7 @@ impl SubgraphVerifier {
         path: Vec<SubGraphEdge>,
         state_tracker: &StateTracker,
     ) -> Vec<PoolPairInfoDirection> {
+        tracing::info!(?pair, ?goes_through, "new_subgraph");
         let query_state = state_tracker.missing_state(block, &path);
 
         let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
