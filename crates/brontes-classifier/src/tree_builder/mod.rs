@@ -288,7 +288,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
     async fn classify_transfer(
         &self,
-        tx_idx: u64,
+        _tx_idx: u64,
         trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
