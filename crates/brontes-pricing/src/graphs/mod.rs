@@ -83,11 +83,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         }
     }
 
-    pub fn all_current_pending(&self) {
-        self.subgraph_verifier.all_current_pending();
-
-    }
-
     pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {
         self.all_pair_graph.add_node(pair, pool_addr, dex, block);
     }

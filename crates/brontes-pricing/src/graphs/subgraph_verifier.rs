@@ -62,11 +62,6 @@ impl SubgraphVerifier {
             .flatten()
     }
 
-    // debuging
-    pub fn all_current_pending(&self) {
-        tracing::info!("pending_subgraphs: {:#?}", self.pending_subgraphs);
-    }
-
     pub fn all_pairs(&self) -> Vec<Pair> {
         self.pending_subgraphs.keys().copied().collect_vec()
     }

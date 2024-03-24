@@ -763,7 +763,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 self.update_known_state(address, update);
             }
         }
-        self.graph_manager.all_current_pending();
 
         let block = self.completed_block;
 
@@ -805,8 +804,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 self.update_known_state(address, update);
             }
         }
-
-        self.graph_manager.all_current_pending();
 
         let block = self.completed_block;
 
