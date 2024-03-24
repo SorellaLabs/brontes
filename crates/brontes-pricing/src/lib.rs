@@ -194,7 +194,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         pools.into_iter().flatten().for_each(
             |NewGraphDetails { must_include, complete_pair, pair, extends_pair, block, edges }| {
                 if edges.is_empty() {
-                    debug!(?pair, ?complete_pair, ?must_include, "new pool has no graph edges");
+                    tracing::warn!(?pair, ?complete_pair, ?must_include, "new pool has no graph edges");
                     return
                 }
 
