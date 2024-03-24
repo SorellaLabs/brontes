@@ -353,17 +353,23 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                         let token_info = self.libmdbx.try_fetch_token_info(addr).ok()?;
                         let amount = amount.to_scaled_rational(token_info.decimals);
+                        let transfer = NormalizedTransfer {
+                            amount,
+                            token: token_info,
+                            to,
+                            from,
+                            fee: Rational::ZERO,
+                            trace_index: trace_idx,
+                        };
 
                         return Some((
-                            vec![],
-                            Actions::Transfer(NormalizedTransfer {
-                                amount,
-                                token: token_info,
-                                to,
-                                from,
-                                fee: Rational::ZERO,
-                                trace_index: trace_idx,
-                            }),
+                            vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                                block,
+                                tx_idx,
+                                logs: trace.logs.clone(),
+                                action: Actions::Transfer(transfer.clone()),
+                            })],
+                            Actions::Transfer(transfer),
                         ))
                     }
                 }
