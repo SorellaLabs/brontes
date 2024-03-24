@@ -82,6 +82,7 @@ impl SubgraphVerifier {
             v.retain(|(k, _)| k != goes_through);
             !v.is_empty()
         });
+
         self.pending_subgraphs.retain(|k, v| {
             if *k != pair {
                 return true
