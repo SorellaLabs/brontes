@@ -17,7 +17,7 @@ impl From<&Root<Actions>> for TransactionRoot {
     fn from(value: &Root<Actions>) -> Self {
         let tx_data = &value.data_store.0;
         let mut trace_nodes = Vec::new();
-        make_trace_nodes(&value.head, &tx_data, &mut trace_nodes);
+        make_trace_nodes(&value.head, tx_data, &mut trace_nodes);
 
         Self {
             tx_hash: value.tx_hash,
@@ -87,7 +87,7 @@ fn make_trace_nodes(node: &Node, actions: &[Option<Actions>], trace_nodes: &mut 
     trace_nodes.push((node, actions).into());
 
     for n in &node.inner {
-        make_trace_nodes(&n, actions, trace_nodes)
+        make_trace_nodes(n, actions, trace_nodes)
     }
 }
 
