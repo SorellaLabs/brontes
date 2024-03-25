@@ -112,7 +112,6 @@ pub mod test {
 
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{normalized_actions::Actions, BlockTree, TreeSearchBuilder};
 
     use super::*;
 
@@ -137,7 +136,7 @@ pub mod test {
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
 
-        let root = tree.tx_roots[0];
+        let root = tree.clone().tx_roots[0];
 
         let tx_root = TransactionRoot::from(&root);
 
