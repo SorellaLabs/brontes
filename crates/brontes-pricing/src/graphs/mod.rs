@@ -236,14 +236,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             >= SUFFICIENT_PAIRS
     }
 
-    pub fn has_subgraph_goes_through(
-        &self,
-        pair: Pair,
-        goes_through: Option<Pair>,
-        quote: Address,
-    ) -> bool {
-        self.has_go_through(&pair, &goes_through)
-            || self.sufficient_pairs(&pair)
+    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Option<Pair>) -> bool {
+        self.has_go_through(&pair, &goes_through) || self.sufficient_pairs(&pair)
     }
 
     pub fn remove_state(&mut self, address: &Address) {
@@ -318,5 +312,3 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .audit_subgraphs(self.graph_state.finalized_state())
     }
 }
-
-
