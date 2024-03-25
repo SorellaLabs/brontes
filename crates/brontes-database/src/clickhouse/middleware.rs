@@ -142,7 +142,7 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
     }
 
     async fn insert_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
-        self.client.insert_tree(tree).await?;
+        self.client.insert_tree(tree.clone()).await?;
 
         self.inner().insert_tree(tree).await?;
 
