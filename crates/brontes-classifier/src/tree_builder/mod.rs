@@ -1,11 +1,13 @@
 use std::{cmp::min, sync::Arc};
 
 use alloy_primitives::U256;
+use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
-    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
+    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer, NormalizedTransfer},
     tree::root::NodeData,
     ToScaledRational,
 };
+use malachite::{num::basic::traits::Zero, Rational};
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -103,6 +105,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     let root_trace = trace.trace.remove(0);
                     let address = root_trace.get_from_addr();
                     let trace_idx = root_trace.trace_idx;
+
                     let classification = self
                         .process_classification(
                             header.number,
@@ -329,7 +332,31 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 // Return the adjusted transfer as an action
                 Some((vec![], Actions::Transfer(transfer)))
             }
-            Err(_) => None,
+            Err(_) => {
+                for log in &trace.logs {
+                    if let Some((addr, from, to, amount)) = decode_transfer(log) {
+                        if self.libmdbx.try_fetch_token_info(addr).is_err() {
+                            load_missing_token_info(&self.provider, self.libmdbx, block, addr).await
+                        }
+
+                        let token_info = self.libmdbx.try_fetch_token_info(addr).ok()?;
+                        let amount = amount.to_scaled_rational(token_info.decimals);
+
+                        return Some((
+                            vec![],
+                            Actions::Transfer(NormalizedTransfer {
+                                amount,
+                                token: token_info,
+                                to,
+                                from,
+                                fee: Rational::ZERO,
+                                trace_index: trace_idx,
+                            }),
+                        ))
+                    }
+                }
+                None
+            }
         }
     }
 
