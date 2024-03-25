@@ -118,6 +118,8 @@ pub mod test {
         BlockTree, TreeSearchBuilder,
     };
 
+    //use crate::db::normalized_actions::TransactionRoot;
+
     async fn load_tree() -> Arc<BlockTree<Actions>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
@@ -141,7 +143,7 @@ pub mod test {
 
         let root = &tree.clone().tx_roots[0];
 
-        let tx_root = TransactionRoot::from(&root);
+        let tx_root = TransactionRoot::from(root);
 
         let burns = tx_root
             .trace_nodes
