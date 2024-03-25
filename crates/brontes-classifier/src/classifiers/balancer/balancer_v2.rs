@@ -28,6 +28,7 @@ action_impl!(
     call_data: true,
     return_data: true,
     |info: CallInfo, call_data: onSwap_0Call, return_data: onSwap_0Return, db: &DB| {
+        tracing::info!("swap0");
         let pool = pool_id_to_address(call_data.swapRequest.poolId);
         let token_in = db.try_fetch_token_info(call_data.swapRequest.tokenIn)?;
         let token_out = db.try_fetch_token_info(call_data.swapRequest.tokenOut)?;
@@ -57,6 +58,7 @@ action_impl!(
     call_data: true,
     return_data: true,
     |info: CallInfo, call_data: onSwap_1Call, return_data: onSwap_1Return, db: &DB| {
+        tracing::info!("swap1");
         let pool = pool_id_to_address(call_data.swapRequest.poolId);
         let token_in = db.try_fetch_token_info(call_data.swapRequest.tokenIn)?;
         let token_out = db.try_fetch_token_info(call_data.swapRequest.tokenOut)?;
