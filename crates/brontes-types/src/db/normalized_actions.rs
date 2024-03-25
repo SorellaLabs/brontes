@@ -1,7 +1,7 @@
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
 
-use crate::{normalized_actions::Actions, GasDetails, Node, Root};
+use crate::{normalized_actions::Actions, tree::Root, GasDetails, Node};
 
 pub struct TransactionRoot {
     pub tx_hash:     B256,
@@ -139,7 +139,7 @@ pub mod test {
 
         let root = tree.tx_roots[0];
 
-        let tx_root: TransactionRoot = (&root).into();
+        let tx_root = TransactionRoot::from(&root);
 
         let burns = tx_root
             .trace_nodes
