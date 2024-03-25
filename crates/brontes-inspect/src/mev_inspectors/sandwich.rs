@@ -267,6 +267,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
+        tracing::info!("{:#?}\n {:#?}", searcher_deltas, mev_addresses);
         let rev_usd = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
@@ -275,7 +276,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             metadata.clone(),
         )?;
 
-        tracing::info!("{:#?}", searcher_deltas);
         tracing::info!(?rev_usd, ?gas_used);
 
         let profit_usd = (rev_usd - &gas_used).to_float();
