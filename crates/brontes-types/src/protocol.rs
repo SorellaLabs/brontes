@@ -116,7 +116,7 @@ impl Protocol {
             Protocol::BalancerV1 => ("Balancer", "V1"),
             Protocol::BalancerV1CRP => ("Balancer", "V1SmartPool"),
             Protocol::UniswapX => ("Uniswap", "X"),
-            Protocol::Cowswap => todo!(),
+            Protocol::Cowswap => ("Cowswap", ""),
             Protocol::CurveBasePool2 => ("Curve.fi", "Base"),
             Protocol::CurveBasePool3 => ("Curve.fi", "Base"),
             Protocol::CurveBasePool4 => ("Curve.fi", "Base"),
