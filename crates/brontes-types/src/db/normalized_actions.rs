@@ -137,7 +137,7 @@ pub mod test {
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
 
-        let root = &tree.tx_roots[0];
+        let root = tree.tx_roots[0];
 
         let tx_root: TransactionRoot = (&root).into();
 
