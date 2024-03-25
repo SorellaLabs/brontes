@@ -10,7 +10,7 @@ CREATE TABLE brontes.tree ON CLUSTER eth_cluster0
     ),
     `trace_nodes` Nested(
         `trace_idx` UInt64,
-        `trace_address` String,
+        `trace_address` Array(UInt64),
         `action_kind` Nullable(String),
         `action` Nullable(String)
     ),

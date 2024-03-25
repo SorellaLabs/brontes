@@ -94,7 +94,7 @@ fn make_trace_nodes(node: &Node, actions: &[Option<Actions>], trace_nodes: &mut 
 #[derive(Debug, Clone)]
 pub struct TraceNode {
     pub trace_idx:     u64,
-    pub trace_address: Vec<usize>,
+    pub trace_address: Vec<u64>,
     pub action_kind:   Option<ActionKind>,
     pub action:        Option<Actions>,
 }
@@ -111,7 +111,12 @@ impl From<(&Node, &[Option<Actions>])> for TraceNode {
             .flatten();
         Self {
             trace_idx: node.index,
-            trace_address: node.trace_address.clone(),
+            trace_address: node
+                .trace_address
+                .iter()
+                .map(|i| *i as u64)
+                .collect::<Vec<_>>()
+                .clone(),
             action_kind: action.as_ref().map(Into::into),
             action,
         }
@@ -179,7 +184,7 @@ pub mod test {
     use brontes_types::{
         db::normalized_actions::{ActionKind, TransactionRoot},
         normalized_actions::Actions,
-        BlockTree, TreeSearchBuilder,
+        BlockTree,
     };
 
     async fn load_tree() -> Arc<BlockTree<Actions>> {
