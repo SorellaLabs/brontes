@@ -260,6 +260,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
             .account_for_actions();
 
+        tracing::info!("{:#?}",possible_front_runs_info);
         let mev_addresses: FastHashSet<Address> = possible_front_runs_info
             .iter()
             .chain(iter::once(&backrun_info))
