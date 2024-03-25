@@ -119,7 +119,7 @@ pub mod test {
     async fn load_tree() -> Arc<BlockTree<Actions>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-        classifier_utils.build_tree_tx(tx).await.unwrap().into()
+        classifier_utils.build_tree_tx(tx).await.unwrap()
     }
 
     #[brontes_macros::test]
@@ -137,7 +137,7 @@ pub mod test {
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
 
-        let root = tree.clone().tx_roots[0];
+        let root = &tree.clone().tx_roots[0];
 
         let tx_root = TransactionRoot::from(&root);
 
