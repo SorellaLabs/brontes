@@ -38,16 +38,20 @@ pub fn wait_for_tests<F: Fn() + std::panic::RefUnwindSafe + std::panic::UnwindSa
     }
 
     // run test capturing unwind
-    let _ = std::panic::catch_unwind(&test_fn);
+    let e = std::panic::catch_unwind(&test_fn);
 
     // decrement resources
     loop {
         if let Ok(mut running_tests) = ri.try_lock() {
             running_tests.0 -= threads;
             running_tests.1 -= 1;
-            return
+            break
         } else {
             std::hint::spin_loop()
         }
+    }
+
+    if Err(_) = e {
+        panic!("test failed");
     }
 }
