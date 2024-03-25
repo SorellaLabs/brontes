@@ -198,32 +198,33 @@ impl AllPairGraph {
     pub fn get_paths_ignoring(
         &self,
         pair: Pair,
-        first_hop: Pair,
+        first_hop: Option<Pair>,
         ignore: &FastHashSet<Pair>,
         block: u64,
         connectivity_wight: usize,
         connections: Option<usize>,
         timeout: Duration,
+        is_extension: bool,
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
             return vec![]
         }
 
-        let Some(start_idx) = self.token_to_index.get(&first_hop.0) else {
-            let addr = first_hop.0;
-            debug!(?addr, "no node for address");
-            return vec![];
+        let Some(start_idx) = first_hop
+            .and_then(|fh| self.token_to_index.get(&fh.0))
+            .or_else(|| self.token_to_index.get(&pair.0))
+        else {
+            let addr = pair.0;
+            debug!(?addr, "no start node for address");
+            return vec![]
         };
-        let Some(second_idx) = self.token_to_index.get(&first_hop.1) else {
-            let addr = first_hop.1;
-            debug!(?addr, "no node for address");
-            return vec![];
-        };
+
+        let second_idx = first_hop.and_then(|fh| self.token_to_index.get(&fh.1));
 
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
-            debug!(?addr, "no node for address");
+            debug!(?addr, "no end node for address");
             return vec![];
         };
 
@@ -257,6 +258,7 @@ impl AllPairGraph {
             connections,
             10_000,
             timeout,
+            is_extension,
         )
         .into_iter()
         .map(|(nodes, _)| {

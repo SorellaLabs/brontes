@@ -110,13 +110,14 @@ where
 
 pub fn yen<N, C, E, FN, IN, FS, PV>(
     start: &N,
-    second: &N,
+    second: Option<&N>,
     successors: FN,
     success: FS,
     path_value: PV,
     k: Option<usize>,
     max_iters: usize,
     extra_path_timeout: Duration,
+    is_extension: bool,
 ) -> Vec<(Vec<E>, C)>
 where
     N: Eq + Hash + Clone + Send + Sync,
@@ -127,16 +128,24 @@ where
     IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool + Send + Sync,
 {
-    let iter_k = k.unwrap_or(usize::MAX);
     let Some((e, n, c)) =
-        dijkstra_internal(start, Some(second), &successors, &path_value, &success, 20_000)
+        dijkstra_internal(start, second, &successors, &path_value, &success, 25_000)
     else {
         return vec![];
     };
 
-    let visited = DashSet::with_hasher(FastHasher::new());
+    // if we are extending another pair, we don't need any other routes as
+    // the extension route has done most of the heavy lifting
+    if is_extension {
+        return vec![(e, c)]
+    }
+
     // A vector containing our paths.
     let mut routes = vec![Path { nodes: n, weights: e, cost: c }];
+
+    let visited = DashSet::with_hasher(FastHasher::new());
+    let iter_k = k.unwrap_or(usize::MAX);
+
     // A min-heap to store our lowest-cost route candidate
     let mut k_routes = BinaryHeap::new();
     let start = SystemTime::now();
@@ -188,7 +197,7 @@ where
                 if let Some((values, spur_path, _)) = dijkstra_internal(
                     spur_node,
                     // if first node, then we have a forced second node.
-                    (i == 0).then_some(second),
+                    second.filter(|_| i == 0),
                     &filtered_successor,
                     &path_value,
                     &success,
