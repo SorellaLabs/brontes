@@ -17,7 +17,7 @@ use brontes_types::{
     normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
-    FastHashMap, Protocol, SubGraphEdge,
+    BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
 
 use super::Clickhouse;
