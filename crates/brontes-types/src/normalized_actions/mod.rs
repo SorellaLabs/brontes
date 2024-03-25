@@ -207,7 +207,8 @@ impl serde::Serialize for Actions {
             Actions::SelfDestruct(sd) => sd.serialize(serializer),
             Actions::EthTransfer(et) => et.serialize(serializer),
             Actions::Unclassified(trace) => (trace).serialize(serializer),
-            action => unreachable!("no action serialization for {action:?}"),
+            action => format!("{:?}", action).serialize(serializer),
+            //action => unreachable!("no action serialization for {action:?}"),
         }
     }
 }
