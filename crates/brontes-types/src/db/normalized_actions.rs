@@ -1,13 +1,16 @@
+use clickhouse::DbRow;
+use itertools::MultiUnzip;
 use reth_primitives::B256;
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
 use crate::{normalized_actions::Actions, GasDetails, Node, Root};
 
+#[derive(Debug, Clone)]
 pub struct TransactionRoot {
     pub tx_hash:     B256,
     pub tx_idx:      usize,
     pub gas_details: GasDetails,
-    pub trace_nodes: Vec<TransactionNode>,
+    pub trace_nodes: Vec<TraceNode>,
 }
 
 impl From<&Root<Actions>> for TransactionRoot {
@@ -25,11 +28,62 @@ impl From<&Root<Actions>> for TransactionRoot {
     }
 }
 
-fn make_trace_nodes(
-    node: &Node,
-    actions: &[Option<Actions>],
-    trace_nodes: &mut Vec<TransactionNode>,
-) {
+impl Serialize for TransactionRoot {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser_struct = serializer.serialize_struct("TransactionRoot", 7)?;
+
+        ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
+        ser_struct.serialize_field("tx_idx", &self.tx_idx)?;
+        ser_struct.serialize_field(
+            "gas_details",
+            &(
+                self.gas_details.coinbase_transfer,
+                self.gas_details.priority_fee,
+                self.gas_details.gas_used,
+                self.gas_details.effective_gas_price,
+            ),
+        )?;
+
+        let (trace_idx, trace_address, action_kind, action): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
+            self.trace_nodes
+                .iter()
+                .map(|node| {
+                    (
+                        node.trace_idx,
+                        node.trace_address.clone(),
+                        node.action_kind,
+                        node.action
+                            .as_ref()
+                            .map(|a| serde_json::to_string(a).unwrap()),
+                    )
+                })
+                .multiunzip();
+
+        ser_struct.serialize_field("trace_nodes.trace_idx", &trace_idx)?;
+        ser_struct.serialize_field("trace_nodes.trace_address", &trace_address)?;
+        ser_struct.serialize_field("trace_nodes.action_kind", &action_kind)?;
+        ser_struct.serialize_field("trace_nodes.action", &action)?;
+
+        ser_struct.end()
+    }
+}
+
+impl DbRow for TransactionRoot {
+    const COLUMN_NAMES: &'static [&'static str] = &[
+        "tx_hash",
+        "tx_idx",
+        "gas_details",
+        "trace_nodes.trace_idx",
+        "trace_nodes.trace_address",
+        "trace_nodes.action_kind",
+        "trace_nodes.action",
+    ];
+}
+
+fn make_trace_nodes(node: &Node, actions: &[Option<Actions>], trace_nodes: &mut Vec<TraceNode>) {
     trace_nodes.push((node, actions).into());
 
     for n in &node.inner {
@@ -37,14 +91,15 @@ fn make_trace_nodes(
     }
 }
 
-pub struct TransactionNode {
+#[derive(Debug, Clone)]
+pub struct TraceNode {
     pub trace_idx:     u64,
     pub trace_address: Vec<usize>,
     pub action_kind:   Option<ActionKind>,
     pub action:        Option<Actions>,
 }
 
-impl From<(&Node, &[Option<Actions>])> for TransactionNode {
+impl From<(&Node, &[Option<Actions>])> for TraceNode {
     fn from(value: (&Node, &[Option<Actions>])) -> Self {
         let (node, actions) = value;
         let action = actions
@@ -63,7 +118,7 @@ impl From<(&Node, &[Option<Actions>])> for TransactionNode {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub enum ActionKind {
     Swap,
     SwapWithFee,
@@ -106,6 +161,15 @@ impl From<&Actions> for ActionKind {
     }
 }
 
+impl Serialize for ActionKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        format!("{:?}", self).serialize(serializer)
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use std::sync::Arc;
@@ -118,8 +182,6 @@ pub mod test {
         BlockTree, TreeSearchBuilder,
     };
 
-    //use crate::db::normalized_actions::TransactionRoot;
-
     async fn load_tree() -> Arc<BlockTree<Actions>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
@@ -128,22 +190,8 @@ pub mod test {
 
     #[brontes_macros::test]
     async fn test_into_tx_root() {
-        let tx = &hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
         let tree = load_tree().await;
-
-        let burns = tree
-            .clone()
-            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn))
-            .collect::<Vec<_>>();
-        assert_eq!(burns.len(), 1);
-        let swaps = tree
-            .clone()
-            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_swap))
-            .collect::<Vec<_>>();
-        assert_eq!(swaps.len(), 3);
-
         let root = &tree.clone().tx_roots[0];
-
         let tx_root = TransactionRoot::from(root);
 
         let burns = tx_root
