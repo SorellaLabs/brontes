@@ -112,8 +112,7 @@ pub mod test {
 
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
-
-    use crate::{
+    use brontes_types::{
         db::normalized_actions::{ActionKind, TransactionRoot},
         normalized_actions::Actions,
         BlockTree, TreeSearchBuilder,
@@ -128,7 +127,7 @@ pub mod test {
     #[brontes_macros::test]
     async fn test_into_tx_root() {
         let tx = &hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-        let tree: Arc<BlockTree<Actions>> = load_tree().await;
+        let tree = load_tree().await;
 
         let burns = tree
             .clone()
