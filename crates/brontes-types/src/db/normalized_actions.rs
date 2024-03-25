@@ -114,6 +114,7 @@ pub mod test {
     use brontes_classifier::test_utils::ClassifierTestUtils;
 
     use super::*;
+    use crate::{BlockTree, TreeSearchBuilder};
 
     async fn load_tree() -> Arc<BlockTree<Actions>> {
         let classifier_utils = ClassifierTestUtils::new().await;
