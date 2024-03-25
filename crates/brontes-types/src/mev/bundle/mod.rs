@@ -14,7 +14,7 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use strum::{Display, EnumIter};
+use strum::{AsRefStr, Display, EnumIter};
 
 use crate::{display::utils::*, Protocol};
 #[allow(unused_imports)]
@@ -81,6 +81,7 @@ impl fmt::Display for Bundle {
     Default,
     Display,
     ValueEnum,
+    AsRefStr,
 )]
 pub enum MevType {
     CexDex,

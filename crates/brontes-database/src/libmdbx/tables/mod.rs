@@ -272,6 +272,8 @@ impl Tables {
         match self {
             Self::AddressMeta => exporter.export_address_metadata().await,
             Self::MevBlocks => exporter.export_mev_blocks().await,
+            Self::SearcherContracts | Self::SearcherEOAs => exporter.export_searcher_info().await,
+            Self::Builder => exporter.export_builder_info().await,
             _ => unreachable!("Parquet export not yet supported for this table"),
         }
     }

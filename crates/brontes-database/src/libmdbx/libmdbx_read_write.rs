@@ -402,6 +402,46 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .map_err(ErrReport::from)
     }
 
+    fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<SearcherEOAs>()?;
+
+        let mut result = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(None)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            let row = row?;
+            let address = row.0;
+            let searcher_info = row.1;
+            result.push((address, searcher_info));
+        }
+
+        Ok(result)
+    }
+
+    fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<SearcherContracts>()?;
+
+        let mut result = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(None)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            let row = row?;
+            let address = row.0;
+            let searcher_info = row.1;
+            result.push((address, searcher_info));
+        }
+
+        Ok(result)
+    }
+
     fn protocols_created_before(
         &self,
         block_num: u64,
@@ -515,6 +555,26 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .ro_tx()?
             .get::<Builder>(builder_coinbase_addr)
             .map_err(ErrReport::from)
+    }
+
+    fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
+        let tx = self.0.ro_tx()?;
+        let mut cursor = tx.cursor_read::<Builder>()?;
+
+        let mut result = Vec::new();
+
+        // Start the walk from the first key-value pair
+        let walker = cursor.walk(None)?;
+
+        // Iterate over all the key-value pairs using the walker
+        for row in walker {
+            let row = row?;
+            let address = row.0;
+            let searcher_info = row.1;
+            result.push((address, searcher_info));
+        }
+
+        Ok(result)
     }
 
     fn try_fetch_mev_blocks(

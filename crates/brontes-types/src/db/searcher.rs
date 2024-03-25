@@ -7,7 +7,7 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
-use strum::Display;
+use strum::{AsRefStr, Display};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
@@ -186,7 +186,9 @@ impl SearcherStatsWithAddress {
     }
 }
 
-#[derive(Debug, Default, Display, PartialEq, Eq, Clone, rSerialize, rDeserialize, Archive, Copy)]
+#[derive(
+    Debug, Default, Display, PartialEq, Eq, Clone, rSerialize, rDeserialize, Archive, Copy, AsRefStr,
+)]
 pub enum Fund {
     #[default]
     None,

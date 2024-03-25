@@ -10,7 +10,7 @@ use crate::{
     structured_trace::TxTrace,
     FastHashMap, Protocol, SubGraphEdge,
 };
-
+pub type AllSearcherInfo = (Vec<(Address, SearcherInfo)>, Vec<(Address, SearcherInfo)>);
 pub type ProtocolCreatedRange = FastHashMap<u64, Vec<(Address, Protocol, Pair)>>;
 
 #[auto_impl::auto_impl(&)]
@@ -32,6 +32,17 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         }
     }
 
+    fn fetch_all_searcher_info(&self) -> eyre::Result<AllSearcherInfo> {
+        let eoa_info = self.fetch_all_searcher_eoa_info()?;
+        let contract_info = self.fetch_all_searcher_contract_info()?;
+
+        Ok((eoa_info, contract_info))
+    }
+
+    fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>>;
+
+    fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>>;
+
     fn try_fetch_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
@@ -46,6 +57,8 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         &self,
         builder_coinbase_addr: Address,
     ) -> eyre::Result<Option<BuilderInfo>>;
+
+    fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>>;
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata>;
 

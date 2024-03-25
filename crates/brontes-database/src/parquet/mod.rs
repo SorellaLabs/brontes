@@ -16,17 +16,23 @@ use tracing::error;
 
 #[allow(dead_code)]
 mod address_meta;
+mod builder;
 mod bundle_header;
 mod mev_block;
+mod searcher;
 pub mod utils;
 
 use address_meta::address_metadata_to_record_batch;
+use builder::builder_info_to_record_batch;
 use bundle_header::bundle_headers_to_record_batch;
 use mev_block::mev_block_to_record_batch;
+use searcher::searcher_info_to_record_batch;
 
 pub const DEFAULT_BUNDLE_DIR: &str = "data_exports/bundles";
 pub const DEFAULT_BLOCK_DIR: &str = "data_exports/blocks";
 pub const DEFAULT_METADATA_DIR: &str = "data_exports/address_metadata";
+pub const DEFAULT_SEARCHER_INFO_DIR: &str = "data_exports/searcher_info";
+pub const DEFAULT_BUILDER_INFO_DIR: &str = "data_exports/builder-info";
 
 pub struct ParquetExporter<DB: LibmdbxReader> {
     pub start_block:      Option<u64>,
@@ -126,6 +132,64 @@ where
         write_to_parquet_async(address_meta_batch, metadata_path)
             .await
             .expect("Failed to write address metadata to parquet file");
+
+        Ok(())
+    }
+
+    pub async fn export_searcher_info(&self) -> Result<(), Error> {
+        let (eoa_info, contract_info) = self
+            .db
+            .fetch_all_searcher_info()
+            .expect("Failed to query searcher eoa or contract table");
+
+        if eoa_info.is_empty() && contract_info.is_empty() {
+            error!("Searcher EOA & Contracts tables are empty.");
+            return Err(Error::msg("No indexed searcher"));
+        }
+
+        let searcher_info_batch = searcher_info_to_record_batch(eoa_info, contract_info)
+            .expect("Failed to convert Searcher Info to record batch");
+
+        let metadata_path = if let Some(base_path) = &self.parquet_dir_path {
+            let mut path = PathBuf::from(base_path);
+            path.push("searcher-info");
+            create_file_path(path)?
+        } else {
+            create_file_path(DEFAULT_SEARCHER_INFO_DIR)?
+        };
+
+        write_to_parquet_async(searcher_info_batch, metadata_path)
+            .await
+            .expect("Failed to write searcher info to parquet file");
+
+        Ok(())
+    }
+
+    pub async fn export_builder_info(&self) -> Result<(), Error> {
+        let builder_info = self
+            .db
+            .fetch_all_builder_info()
+            .expect("Failed to query builder table");
+
+        if builder_info.is_empty() {
+            error!("Builder table is empty.");
+            return Err(Error::msg("No builder info"));
+        }
+
+        let builder_info_batch = builder_info_to_record_batch(builder_info)
+            .expect("Failed to convert Searcher Info to record batch");
+
+        let metadata_path = if let Some(base_path) = &self.parquet_dir_path {
+            let mut path = PathBuf::from(base_path);
+            path.push("builder-info");
+            create_file_path(path)?
+        } else {
+            create_file_path(DEFAULT_BUILDER_INFO_DIR)?
+        };
+
+        write_to_parquet_async(builder_info_batch, metadata_path)
+            .await
+            .expect("Failed to write builder info to parquet file");
 
         Ok(())
     }
