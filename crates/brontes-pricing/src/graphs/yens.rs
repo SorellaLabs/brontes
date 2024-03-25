@@ -188,7 +188,7 @@ where
                 if let Some((values, spur_path, _)) = dijkstra_internal(
                     spur_node,
                     // if first node, then we have a forced second node.
-                    (i == 0).then_some(second),
+                    second.filter(|_| i == 0),
                     &filtered_successor,
                     &path_value,
                     &success,
