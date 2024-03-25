@@ -173,12 +173,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 swaps.push(swap_with_profit.swap.clone());
                 arb_details.push(StatArbDetails {
-                    cex_exchanges: most_profitable_leg
+                    cex_exchanges: /*most_profitable_leg
                         .maker_price
                         .exchanges
                         .iter()
                         .map(|(a, _)| *a)
-                        .collect_vec(),
+                        .collect_vec()*/
+                    most_profitable_leg.maker_price.exchanges[0].clone(),
                     cex_price:     most_profitable_leg.maker_price.price.clone(),
                     dex_exchange:  swap_with_profit.swap.protocol,
                     dex_price:     swap_with_profit.swap.swap_rate(),

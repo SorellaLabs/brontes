@@ -90,7 +90,7 @@ impl Serialize for CexDex {
         let stat_arb_details: ClickhouseVecStatArbDetails = self.stat_arb_details.clone().into();
 
         ser_struct
-            .serialize_field("stat_arb_details.cex_exchanges", &stat_arb_details.cex_exchanges)?;
+            .serialize_field("stat_arb_details.cex_exchange", &stat_arb_details.cex_exchanges)?;
         ser_struct.serialize_field("stat_arb_details.cex_price", &stat_arb_details.cex_price)?;
         ser_struct
             .serialize_field("stat_arb_details.dex_exchange", &stat_arb_details.dex_exchange)?;
@@ -160,13 +160,13 @@ impl DbRow for CexDex {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct StatArbDetails {
     #[redefined(same_fields)]
-    pub cex_exchanges: Vec<CexExchange>,
-    pub cex_price:     Rational,
+    pub cex_exchange: CexExchange,
+    pub cex_price:    Rational,
     #[redefined(same_fields)]
-    pub dex_exchange:  Protocol,
-    pub dex_price:     Rational,
+    pub dex_exchange: Protocol,
+    pub dex_price:    Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
-    pub pnl_pre_gas:   StatArbPnl,
+    pub pnl_pre_gas:  StatArbPnl,
 }
 
 impl fmt::Display for StatArbDetails {
@@ -175,7 +175,7 @@ impl fmt::Display for StatArbDetails {
         writeln!(
             f,
             "   - Price on {:#?}: {}",
-            self.cex_exchanges,
+            self.cex_exchange,
             self.cex_price.clone().to_float()
         )?;
         writeln!(f, "   - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;

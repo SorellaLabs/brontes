@@ -2,8 +2,8 @@ use std::{fmt::Display, sync::Arc};
 
 use arrow::{
     array::{
-        Array, BinaryArray, BinaryBuilder, Float64Array, ListArray, ListBuilder, StringArray,
-        StringBuilder, UInt64Array,
+        Array, BinaryArray, BinaryBuilder, Float64Array, Float64Builder, ListArray, ListBuilder,
+        StringArray, StringBuilder, UInt64Array,
     },
     datatypes::Schema,
     error::ArrowError,
@@ -47,7 +47,7 @@ where
     let mut builder = ListBuilder::new(StringBuilder::new());
 
     for v in values {
-        let mut string_builder = StringBuilder::new();
+        let string_builder = builder.values();
         if v.is_empty() {
             builder.append_null();
             continue;
@@ -55,7 +55,7 @@ where
             for label in v {
                 string_builder.append_value(label);
             }
-            builder.append_value(&string_builder.finish());
+            builder.append(true)
         }
     }
 
@@ -69,7 +69,7 @@ where
     let mut builder = ListBuilder::new(StringBuilder::new());
 
     for v in values {
-        let mut string_builder = StringBuilder::new();
+        let string_builder = builder.values();
         if v.is_empty() {
             builder.append_null();
             continue;
@@ -77,7 +77,26 @@ where
             for label in v {
                 string_builder.append_value(label);
             }
-            builder.append_value(&string_builder.finish());
+            builder.append(true)
+        }
+    }
+
+    builder.finish()
+}
+
+pub fn get_list_float_array_from_owned(values: Vec<Vec<f64>>) -> ListArray {
+    let mut builder = ListBuilder::new(Float64Builder::new());
+
+    for v in values {
+        let float_builder = builder.values();
+        if v.is_empty() {
+            builder.append_null();
+            continue;
+        } else {
+            for float in v {
+                float_builder.append_value(float);
+            }
+            builder.append(true)
         }
     }
 

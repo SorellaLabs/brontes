@@ -39,6 +39,7 @@ pub struct BundleHeader {
     #[serde(with = "option_addresss")]
     pub mev_contract:   Option<Address>,
     pub profit_usd:     f64,
+    // Total tx cost in USD
     pub bribe_usd:      f64,
     #[redefined(same_fields)]
     pub mev_type:       MevType,

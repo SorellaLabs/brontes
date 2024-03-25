@@ -19,6 +19,8 @@ mod address_meta;
 mod builder;
 mod bundle_header;
 mod mev_block;
+mod mev_data;
+mod normalized_actions;
 mod searcher;
 pub mod utils;
 
@@ -73,13 +75,13 @@ where
             mev_block_to_record_batch(mev_blocks.iter().map(|mb| &mb.block).collect::<Vec<_>>())
                 .wrap_err("Failed to convert MEV block data to record batch")?;
 
-        let bundle_batch = bundle_headers_to_record_batch(
-            mev_blocks
-                .iter()
-                .flat_map(|mb| mb.mev.iter().map(|bundle| &bundle.header))
-                .collect::<Vec<_>>(),
-        )
-        .wrap_err("Failed to convert bundle headers to record batch")?;
+        let bundle_headers = mev_blocks
+            .iter()
+            .flat_map(|mb| mb.mev.iter().map(|bundle| &bundle.header))
+            .collect::<Vec<_>>();
+
+        let bundle_batch = bundle_headers_to_record_batch(bundle_headers)
+            .wrap_err("Failed to convert bundle headers to record batch")?;
 
         let block_path = if let Some(base_path) = &self.parquet_dir_path {
             let mut path = PathBuf::from(base_path);
