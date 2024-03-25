@@ -1,4 +1,4 @@
-use std::{cmp::max, fmt::Debug, sync::Arc};
+use std::{cmp::max, fmt::Debug};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -344,21 +344,17 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::{
-            dex::DexPrices,
-            normalized_actions::{ActionKind, TransactionRoot},
-            searcher::SearcherEoaContract,
-        },
+        db::{dex::DexPrices, normalized_actions::TransactionRoot, searcher::SearcherEoaContract},
         init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
             MevType, PossibleMev, PossibleMevCollection, Sandwich,
         },
         normalized_actions::{
-            Actions, NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+            NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
         },
         pair::Pair,
-        BlockTree, FastHashMap, GasDetails, TreeSearchBuilder,
+        FastHashMap, GasDetails,
     };
     use db_interfaces::{
         clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
