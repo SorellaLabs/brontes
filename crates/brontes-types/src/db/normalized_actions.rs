@@ -114,8 +114,9 @@ pub mod test {
     use brontes_classifier::test_utils::ClassifierTestUtils;
 
     use crate::{
-        db::normalized_actions::ActionKind, normalized_actions::Actions, BlockTree,
-        TreeSearchBuilder,
+        db::normalized_actions::{ActionKind, TransactionRoot},
+        normalized_actions::Actions,
+        BlockTree, TreeSearchBuilder,
     };
 
     async fn load_tree() -> Arc<BlockTree<Actions>> {
