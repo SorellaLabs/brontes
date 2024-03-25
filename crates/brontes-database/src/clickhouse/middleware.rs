@@ -145,6 +145,8 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         self.client.insert_tree(tree).await?;
 
         self.inner().insert_tree(tree).await?;
+
+        Ok(())
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
