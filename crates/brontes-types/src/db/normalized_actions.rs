@@ -119,7 +119,7 @@ pub mod test {
     async fn load_tree() -> Arc<BlockTree<Actions>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-        classifier_utils.build_tree_tx(tx).await.unwrap()
+        Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap())
     }
 
     #[brontes_macros::test]
