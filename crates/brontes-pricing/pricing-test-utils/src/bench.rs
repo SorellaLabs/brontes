@@ -1,13 +1,15 @@
 use std::{
-    sync::{atomic::Ordering::SeqCst, Arc},
+    sync::{atomic::Ordering::SeqCst, Arc, Mutex},
     time::{Duration, Instant},
 };
 
 use alloy_primitives::Address;
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
-use brontes_pricing::{types::ProtocolState, LoadState};
+use brontes_core::decoding::TracingProvider;
+use brontes_database::libmdbx::LibmdbxReadWriter;
+use brontes_pricing::{types::ProtocolState, BrontesBatchPricer, LoadState};
 use brontes_types::{pair::Pair, Protocol};
-use criterion::{black_box, Criterion};
+use criterion::{black_box, BenchmarkId, Criterion};
 use futures::StreamExt;
 
 pub struct BrontesPricingBencher {
@@ -69,6 +71,61 @@ impl BrontesPricingBencher {
         bench_past_n_blocks: u64,
         c: &mut Criterion,
     ) -> Result<(), ClassifierTestUtilsError> {
+        // get upto date
+        let (dex_pricer, tx, ctr) = self
+            .rt
+            .block_on(self.inner.setup_pricing_for_bench_post_init(
+                start_block_number,
+                bench_past_n_blocks - 1,
+                self.quote_asset,
+                vec![],
+            ))
+            .unwrap();
+
+        // snapshot current state
+        let (reg, ver, state) = dex_pricer.snapshot_graph_state();
+        let dex_pricer = Mutex::new(dex_pricer);
+
+        c.bench_with_input(
+            BenchmarkId::new("benching_dex_pricing_post_init", bench_name),
+            &(dex_pricer, tx, ctr, reg, ver, state),
+            |b, (dex_pricer, tx, ctr, reg, ver, state)| {
+                b.to_async(&self.rt).iter_custom(|iters| {
+                    let inner = self.inner.clone();
+                    async move {
+                        let mut dex_pricer = dex_pricer.lock().unwrap();
+                        // snapshot current state
+                        ctr.store(false, SeqCst);
+
+                        let mut total_dur = Duration::ZERO;
+                        tracing::info!("starting post init bench");
+                        for _ in 0..iters {
+                            // setup traces for block
+                            inner
+                                .send_traces_for_block(
+                                    start_block_number + bench_past_n_blocks,
+                                    tx.clone(),
+                                )
+                                .await
+                                .unwrap();
+
+                            ctr.store(true, SeqCst);
+                            let start = Instant::now();
+                            black_box(dex_pricer.next().await);
+                            total_dur += start.elapsed();
+
+                            // reset for next block
+                            ctr.store(false, SeqCst);
+
+                            dex_pricer.set_state(reg.clone(), ver.clone(), state.clone());
+                            *dex_pricer.completed_block() -= 1;
+                        }
+                        total_dur
+                    }
+                })
+            },
+        );
+
         c.bench_function(bench_name, |b| {
             b.to_async(&self.rt).iter_custom(|iters| {
                 let inner = self.inner.clone();
@@ -88,6 +145,7 @@ impl BrontesPricingBencher {
                     ctr.store(false, SeqCst);
 
                     let mut total_dur = Duration::ZERO;
+                    tracing::info!("starting post init bench");
                     for _ in 0..iters {
                         // setup traces for block
                         inner
