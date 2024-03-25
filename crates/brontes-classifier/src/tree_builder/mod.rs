@@ -338,7 +338,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
                         block,
                         tx_idx,
-                        logs: trace.logs.clone(),
+                        logs: vec![],
                         action: Actions::Transfer(transfer.clone()),
                     })],
                     Actions::Transfer(transfer),
@@ -366,7 +366,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
                                 block,
                                 tx_idx,
-                                logs: trace.logs.clone(),
+                                logs: vec![],
                                 action: Actions::Transfer(transfer.clone()),
                             })],
                             Actions::Transfer(transfer),
