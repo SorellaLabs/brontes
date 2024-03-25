@@ -46,13 +46,12 @@ pub fn wait_for_tests<F: Fn() + std::panic::RefUnwindSafe + std::panic::UnwindSa
             running_tests.0 -= threads;
             running_tests.1 -= 1;
             break
-
         } else {
             std::hint::spin_loop()
         }
     }
 
-    if let Err(e) = e {
-        panic!("shit failed");
+    if let Err(_) = e {
+        panic!("test failed");
     }
 }
