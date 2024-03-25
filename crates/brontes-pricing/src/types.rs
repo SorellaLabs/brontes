@@ -151,6 +151,10 @@ impl PoolUpdate {
         self.action.get_to_address()
     }
 
+    pub fn is_transfer(&self) -> bool {
+        self.action.is_transfer()
+    }
+
     // we currently only use this in order to fetch the pair for when its new or to
     // fetch all pairs of it. this
     pub fn get_pair(&self, quote: Address) -> Option<Pair> {
