@@ -5,9 +5,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
-use brontes_core::decoding::TracingProvider;
-use brontes_database::libmdbx::LibmdbxReadWriter;
-use brontes_pricing::{types::ProtocolState, BrontesBatchPricer, LoadState};
+use brontes_pricing::{types::ProtocolState, LoadState};
 use brontes_types::{pair::Pair, Protocol};
 use criterion::{black_box, BenchmarkId, Criterion};
 use futures::StreamExt;
