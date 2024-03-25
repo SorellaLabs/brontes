@@ -2,6 +2,8 @@
 #![feature(trivial_bounds)]
 #![feature(const_type_id)]
 
+pub mod test_limiter;
+pub use test_limiter::*;
 pub mod hasher;
 pub mod rayon_utils;
 pub use hasher::*;
