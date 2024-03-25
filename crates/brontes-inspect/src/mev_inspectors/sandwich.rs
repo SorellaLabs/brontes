@@ -274,6 +274,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             metadata.clone(),
         )?;
 
+        tracing::info!(?rev_usd);
+
         let profit_usd = (rev_usd - &gas_used).to_float();
 
         let gas_details: Vec<_> = possible_front_runs_info
