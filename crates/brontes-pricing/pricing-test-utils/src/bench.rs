@@ -69,7 +69,6 @@ impl BrontesPricingBencher {
         bench_past_n_blocks: u64,
         c: &mut Criterion,
     ) -> Result<(), ClassifierTestUtilsError> {
-
         c.bench_function(bench_name, |b| {
             b.to_async(&self.rt).iter_custom(|iters| {
                 let inner = self.inner.clone();
