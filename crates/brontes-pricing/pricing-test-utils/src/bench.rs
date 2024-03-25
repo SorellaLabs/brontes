@@ -126,52 +126,6 @@ impl BrontesPricingBencher {
             },
         );
 
-        c.bench_function(bench_name, |b| {
-            b.to_async(&self.rt).iter_custom(|iters| {
-                let inner = self.inner.clone();
-                async move {
-                    let (mut dex_pricer, tx, ctr) = inner
-                        .setup_pricing_for_bench_post_init(
-                            start_block_number,
-                            bench_past_n_blocks - 1,
-                            self.quote_asset,
-                            vec![],
-                        )
-                        .await
-                        .unwrap();
-
-                    // snapshot current state
-                    let (reg, ver, state) = dex_pricer.snapshot_graph_state();
-                    ctr.store(false, SeqCst);
-
-                    let mut total_dur = Duration::ZERO;
-                    tracing::info!("starting post init bench");
-                    for _ in 0..iters {
-                        // setup traces for block
-                        inner
-                            .send_traces_for_block(
-                                start_block_number + bench_past_n_blocks,
-                                tx.clone(),
-                            )
-                            .await
-                            .unwrap();
-
-                        ctr.store(true, SeqCst);
-                        let start = Instant::now();
-                        black_box(dex_pricer.next().await);
-                        total_dur += start.elapsed();
-
-                        // reset for next block
-                        ctr.store(false, SeqCst);
-
-                        dex_pricer.set_state(reg.clone(), ver.clone(), state.clone());
-                        *dex_pricer.completed_block() -= 1;
-                    }
-                    total_dur
-                }
-            })
-        });
-
         Ok(())
     }
 
