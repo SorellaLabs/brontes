@@ -1,7 +1,7 @@
 use reth_primitives::B256;
 use serde::{Deserialize, Serialize};
 
-use crate::{normalized_actions::Actions, tree::Root, GasDetails, Node};
+use crate::{normalized_actions::Actions, GasDetails, Node, Root};
 
 pub struct TransactionRoot {
     pub tx_hash:     B256,
@@ -113,13 +113,15 @@ pub mod test {
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
 
-    use super::*;
-    use crate::{BlockTree, TreeSearchBuilder};
+    use crate::{
+        db::normalized_actions::ActionKind, normalized_actions::Actions, BlockTree,
+        TreeSearchBuilder,
+    };
 
     async fn load_tree() -> Arc<BlockTree<Actions>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-        Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap())
+        classifier_utils.build_tree_tx(tx).await.unwrap().into()
     }
 
     #[brontes_macros::test]

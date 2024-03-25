@@ -84,6 +84,7 @@ tests = [
   "thiserror",
   "criterion",
   "brontes-pricing/tests",
+  "brontes-types/tests",
 ]
 local-reth = [
   "brontes-core/local-reth",
