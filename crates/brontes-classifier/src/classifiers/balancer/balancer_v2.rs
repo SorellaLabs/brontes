@@ -210,6 +210,11 @@ mod tests {
         let swap =
             B256::from(hex!("da10a5e3cb8c34c77634cb9a1cfe02ec2b23029f1f288d79b6252b2f8cae20d3"));
 
+        classifier_utils.ensure_token(TokenInfoWithAddress {
+            address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
+            inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
+        });
+
         // Minimal swap
         let eq_action = Actions::Swap(NormalizedSwap {
             protocol:    BalancerV2,
@@ -249,6 +254,11 @@ mod tests {
         let mint =
             B256::from(hex!("ffed34d6f2d9e239b5cd3985840a37f1fa0c558edcd1a2f3d2b8bd7f314ef6a3"));
 
+        classifier_utils.ensure_token(TokenInfoWithAddress {
+            address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
+            inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+        });
+
         let eq_action = Actions::Mint(NormalizedMint {
             protocol:    Protocol::BalancerV2,
             trace_index: 0,
@@ -280,6 +290,21 @@ mod tests {
         let classifier_utils = ClassifierTestUtils::new().await;
         let burn =
             B256::from(hex!("ad13973ee8e507b36adc5d28dc53b77d58d00d5ac6a09aa677936be8aaf6c8a1"));
+
+        classifier_utils.ensure_token(TokenInfoWithAddress {
+            address: Address::new(hex!("bf5495efe5db9ce00f80364c8b423567e58d2110")),
+            inner:   TokenInfo { decimals: 18, symbol: "ezETH".to_string() },
+        });
+
+        classifier_utils.ensure_token(TokenInfoWithAddress {
+            address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
+            inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+        });
+
+        classifier_utils.ensure_token(TokenInfoWithAddress {
+            address: Address::new(hex!("fae103dc9cf190ed75350761e95403b7b8afa6c0")),
+            inner:   TokenInfo { decimals: 18, symbol: "rswETH".to_string() },
+        });
 
         let eq_action = Actions::Burn(NormalizedBurn {
             protocol:    Protocol::BalancerV2,
