@@ -63,7 +63,7 @@ impl From<(&Node, &[Option<Actions>])> for TransactionNode {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ActionKind {
     Swap,
     SwapWithFee,
@@ -137,6 +137,7 @@ pub mod test {
             .collect::<Vec<_>>();
         assert_eq!(burns.len(), 1);
         let swaps = tree
+            .clone()
             .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_swap))
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
