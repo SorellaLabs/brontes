@@ -260,7 +260,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
             .account_for_actions();
 
-        tracing::info!("{:#?}",possible_front_runs_info);
         let mev_addresses: FastHashSet<Address> = possible_front_runs_info
             .iter()
             .chain(iter::once(&backrun_info))
@@ -268,7 +267,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        tracing::info!("{:#?}\n {:#?}", searcher_deltas, mev_addresses);
         let rev_usd = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
@@ -276,8 +274,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &searcher_deltas,
             metadata.clone(),
         )?;
-
-        tracing::info!(?rev_usd, ?gas_used);
 
         let profit_usd = (rev_usd - &gas_used).to_float();
 
@@ -319,7 +315,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
-        tracing::info!("{:#?}", header);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
