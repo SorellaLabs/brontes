@@ -157,12 +157,12 @@ pub enum Actions {
     Burn(NormalizedBurn),
     Collect(NormalizedCollect),
     Liquidation(NormalizedLiquidation),
-    Unclassified(TransactionTraceWithLogs),
     SelfDestruct(SelfdestructWithIndex),
     EthTransfer(NormalizedEthTransfer),
     NewPool(NormalizedNewPool),
     PoolConfigUpdate(NormalizedPoolConfigUpdate),
     Aggregator(NormalizedAggregator),
+    Unclassified(TransactionTraceWithLogs),
     Revert,
 }
 
@@ -264,7 +264,7 @@ impl Actions {
     pub fn get_calldata(&self) -> Option<Bytes> {
         if let Actions::Unclassified(u) = &self {
             if let Action::Call(call) = &u.trace.action {
-                return Some(call.input.clone());
+                return Some(call.input.clone())
             }
         }
 
@@ -389,7 +389,7 @@ impl Actions {
 
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
-            return u.is_static_call();
+            return u.is_static_call()
         }
         false
     }

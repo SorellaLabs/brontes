@@ -240,7 +240,6 @@ impl ClassifierTestUtils {
         (
             BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
             UnboundedSender<DexPriceMsg>,
-            // Vec<
             Arc<AtomicBool>,
         ),
         ClassifierTestUtilsError,

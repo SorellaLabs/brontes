@@ -379,7 +379,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     }
 
     fn classify_eth_transfer(&self, trace: TransactionTraceWithLogs, trace_index: u64) -> Actions {
-        if trace.get_calldata().is_empty() && trace.get_msg_value() > U256::ZERO {
+        if trace.get_msg_value() > U256::ZERO {
             Actions::EthTransfer(NormalizedEthTransfer {
                 from: trace.get_from_addr(),
                 to: trace.get_to_address(),
