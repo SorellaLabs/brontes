@@ -10,6 +10,10 @@ use malachite::{
 
 use super::{subgraph::PairSubGraph, PoolState};
 
+/// After we have this amount of graphs for
+/// a given pair, we won't query, goes_through
+const SUFFICIENT_PAIRS: usize = 1;
+
 /// Manages subgraphs in the BrontesBatchPricer module, crucial for DEX pricing.
 ///
 /// [`SubGraphRegistry`] handles dynamic management and maintenance of verified
@@ -74,7 +78,7 @@ impl SubGraphRegistry {
     pub fn sufficient_pairs(&self, pair: &Pair) -> bool {
         self.sub_graphs
             .get(pair)
-            .map(|f| f.len() > 4)
+            .map(|f| f.len() >= SUFFICIENT_PAIRS)
             .unwrap_or_default()
     }
 
