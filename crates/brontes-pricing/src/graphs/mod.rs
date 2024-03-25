@@ -207,7 +207,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn has_subgraph_goes_through(
         &self,
         pair: Pair,
-        goes_through: Pair,
+        goes_through: Option<Pair>,
         quote: Address,
     ) -> bool {
         self.has_extension(&pair, quote).is_some()

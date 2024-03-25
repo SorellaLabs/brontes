@@ -206,7 +206,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                 if self.graph_manager.has_subgraph_goes_through(
                     pair,
-                    must_include,
+                    (!must_include.is_zero()).then_some(must_include),
                     self.quote_asset,
                 ) {
                     tracing::debug!(?pair, "already have pairs");
@@ -929,6 +929,10 @@ enum PollResult {
     DiscoveredPool,
 }
 
+/// We use this pair to indicate that the event that generated this pair
+/// is a transfer and as such we don't have a must go through param.
+const TRANSFER_PAIR: Pair = Pair(Address::ZERO, Address::ZERO);
+
 /// a ordered buffer for holding state transitions for a block while the lazy
 /// loading of pools is being applied
 pub struct StateBuffer {
@@ -965,9 +969,12 @@ fn graph_search_par<DB: DBWriter + LibmdbxReader>(
         .into_par_iter()
         .filter_map(|msg| {
             let pair = msg.get_pair(quote)?;
+            let is_transfer = msg.is_transfer();
 
             let pair0 = Pair(pair.0, quote);
             let pair1 = Pair(pair.1, quote);
+
+            let pair = Some(pair).filter(|_| !is_transfer);
 
             let (state, path) = on_new_pool_pair(
                 graph,
@@ -1028,7 +1035,8 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     full_pair,
                     edges: vec![graph.create_subgraph(
                         block,
-                        goes_through,
+                        // if not zero, then we have a go, through
+                        (!goes_through.is_zero()).then_some(goes_through),
                         pair,
                         ignore_state,
                         100,
@@ -1046,7 +1054,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     .map(|(end, start)| {
                         graph.create_subgraph(
                             block,
-                            goes_through,
+                            (!goes_through.is_zero()).then_some(goes_through),
                             Pair(start, end),
                             ignore_state.clone(),
                             0,
@@ -1070,7 +1078,7 @@ type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<NewGraphDetails>);
 fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     msg: PoolUpdate,
-    main_pair: Pair,
+    main_pair: Option<Pair>,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
 ) -> NewPoolPair {
@@ -1093,7 +1101,8 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 
     // add second direction
     if let Some(pair1) = pair1 {
-        if let Some(path) = queue_loading_returns(graph, block, main_pair.flip(), pair1) {
+        if let Some(path) = queue_loading_returns(graph, block, main_pair.map(|f| f.flip()), pair1)
+        {
             path_pending.push(path);
         }
     }
@@ -1104,7 +1113,7 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
-    must_include: Pair,
+    must_include: Option<Pair>,
     pair: Pair,
 ) -> Option<NewGraphDetails> {
     if pair.0 == pair.1 {
@@ -1113,11 +1122,13 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
 
     // if we can extend another graph and we don't have a direct pair with a quote
     // asset, then we will extend.
-    let (n_pair, extend_to) = if let Some(ext) = graph.has_extension(&must_include, pair.1) {
-        (must_include, Some(ext).filter(|_| must_include.1 != pair.1))
-    } else {
-        (pair, None)
-    };
+    let (n_pair, extend_to) = must_include
+        .and_then(|must_include| {
+            graph
+                .has_extension(&must_include, pair.1)
+                .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
+        })
+        .unwrap_or_else(|| (pair, None));
 
     Some({
         let subgraph = graph.create_subgraph(
@@ -1132,7 +1143,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         NewGraphDetails {
             complete_pair: pair,
             pair: n_pair,
-            must_include,
+            must_include: must_include.unwrap_or_default(),
             block,
             edges: subgraph,
             extends_pair: extend_to,

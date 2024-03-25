@@ -53,6 +53,10 @@ impl PartialEq for Pair {
 // }
 
 impl Pair {
+    pub fn is_zero(&self) -> bool {
+        self.0 == Address::ZERO && self.1 == Address::ZERO
+    }
+
     pub fn flip(self) -> Self {
         Pair(self.1, self.0)
     }

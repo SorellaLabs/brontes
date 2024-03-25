@@ -59,11 +59,15 @@ impl SubGraphRegistry {
             .copied()
     }
 
-    pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
-        self.sub_graphs
-            .get(pair)
-            .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
-            .is_some()
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
+        if let Some(goes_through) = goes_through {
+            self.sub_graphs
+                .get(pair)
+                .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
+                .is_some()
+        } else {
+            self.sub_graphs.get(pair).is_some()
+        }
     }
 
     // if we have more than 4 extensions, this is enough of a market outlook
