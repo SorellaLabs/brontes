@@ -335,13 +335,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                 // Return the adjusted transfer as an action
                 Some((
-                    // vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
-                    //     block,
-                    //     tx_idx,
-                    //     logs: vec![],
-                    //     action: Actions::Transfer(transfer.clone()),
-                    // })],
-                    vec![],
+                    vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                        block,
+                        tx_idx,
+                        logs: vec![],
+                        action: Actions::Transfer(transfer.clone()),
+                    })],
                     Actions::Transfer(transfer),
                 ))
             }
@@ -364,13 +363,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         };
 
                         return Some((
-                            // vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
-                            //     block,
-                            //     tx_idx,
-                            //     logs: vec![],
-                            //     action: Actions::Transfer(transfer.clone()),
-                            // })],
-                            vec![],
+                            vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                                block,
+                                tx_idx,
+                                logs: vec![],
+                                action: Actions::Transfer(transfer.clone()),
+                            })],
                             Actions::Transfer(transfer),
                         ))
                     }

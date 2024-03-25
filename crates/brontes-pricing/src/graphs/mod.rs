@@ -25,6 +25,10 @@ pub use self::{
 use super::PoolUpdate;
 use crate::{types::PoolState, Protocol};
 
+/// After we have this amount of graphs for
+/// a given pair, we won't query, goes_through
+const SUFFICIENT_PAIRS: usize = 4;
+
 /// [`GraphManager`] Is the manager for everything graph related. It is
 /// responsible for creating, updating, and maintaining the main token graph as
 /// well as its derived subgraphs.
@@ -222,15 +226,24 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             || self.subgraph_verifier.is_verifying(&pair, &goes_through)
     }
 
+    fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
+        self.sub_graph_registry.has_go_through(pair, goes_through)
+            || self.subgraph_verifier.has_go_through(pair, goes_through)
+    }
+
+    fn sufficient_pairs(&self, pair: &Pair) -> bool {
+        self.subgraph_verifier.current_pairs(pair) + self.sub_graph_registry.current_pairs(pair)
+            >= SUFFICIENT_PAIRS
+    }
+
     pub fn has_subgraph_goes_through(
         &self,
         pair: Pair,
         goes_through: Option<Pair>,
         quote: Address,
     ) -> bool {
-        self.has_extension(&pair, quote).is_some()
-            && self.sub_graph_registry.has_go_through(&pair, &goes_through)
-            || self.sub_graph_registry.sufficient_pairs(&pair)
+        (self.has_extension(&pair, quote).is_some() && self.has_go_through(&pair, &goes_through))
+            || self.sufficient_pairs(&pair)
     }
 
     pub fn remove_state(&mut self, address: &Address) {
