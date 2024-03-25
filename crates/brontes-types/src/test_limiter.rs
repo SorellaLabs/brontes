@@ -26,7 +26,6 @@ pub fn wait_for_tests<F: Fn() -> () + std::panic::RefUnwindSafe>(threads: usize,
                 tracing::info!("running_tests");
                 *test_count += 1;
                 *lock += threads;
-
                 break
             }
         }
@@ -38,8 +37,12 @@ pub fn wait_for_tests<F: Fn() -> () + std::panic::RefUnwindSafe>(threads: usize,
     let _ = std::panic::catch_unwind(|| test_fn());
 
     // decrement resources
+    tracing::info!("test ran");
     let mut running_tests = tc.lock().unwrap();
+    tracing::info!("got running lock");
     *running_tests -= 1;
     let mut thread_count = thc.lock().unwrap();
+    tracing::info!("got tc lock");
     *thread_count -= threads;
+    tracing::info!("exiting");
 }
