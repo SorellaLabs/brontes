@@ -16,7 +16,6 @@ use brontes_types::{
 use futures::future::join_all;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
-use reth_db::Tables;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
