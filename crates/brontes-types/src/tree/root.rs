@@ -112,10 +112,12 @@ impl<V: NormalizedAction> Root<V> {
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if (is_verified_contract || is_classified || emits_logs && searcher_contract_info.is_none())
-            && contract_type
+        if is_verified_contract
+            || is_classified
+            || emits_logs && searcher_contract_info.is_none()
+            || contract_type
                 .as_ref()
-                .map_or(true, |ct| !ct.could_be_mev_contract())
+                .map_or(false, |ct| !ct.could_be_mev_contract())
         {
             return Ok(TxInfo::new(
                 block_number,
