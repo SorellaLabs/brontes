@@ -26,12 +26,18 @@ use crate::{
 /// verification completion. This careful management of pool states is essential
 /// for the BrontesBatchPricer system to provide accurate and current pricing
 /// information for tokens on decentralized exchanges.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
     finalized_edge_state:    FastHashMap<Address, PoolState>,
     /// state that verification is using
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
+}
+
+impl Default for StateTracker {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl StateTracker {
