@@ -1,4 +1,4 @@
-use std::{cmp::max, fmt::Debug};
+use std::{cmp::max, fmt::Debug, sync::Arc};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -12,8 +12,9 @@ use brontes_types::{
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, BundleData, MevBlock},
+    normalized_actions::Actions,
     structured_trace::TxTrace,
-    Protocol,
+    BlockTree, Protocol,
 };
 use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
@@ -181,6 +182,10 @@ impl Clickhouse {
                 .await?;
         }
 
+        Ok(())
+    }
+
+    pub async fn write_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
         Ok(())
     }
 
