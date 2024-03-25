@@ -275,7 +275,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             metadata.clone(),
         )?;
 
-        tracing::info!(?rev_usd);
+        tracing::info!("{:#?}", searcher_deltas);
 
         let profit_usd = (rev_usd - &gas_used).to_float();
 
