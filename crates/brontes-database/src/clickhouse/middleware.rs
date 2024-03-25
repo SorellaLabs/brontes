@@ -138,6 +138,15 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
             .await
     }
 
+    async fn insert_tree(
+        &self,
+        tree: Arc<BlockTree<Actions>>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.client.insert_tree(tree).await?;
+
+        self.inner().insert_tree(tree).await?;
+    }
+
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         self.client.save_traces(block, traces.clone()).await?;
 

@@ -186,7 +186,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn write_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+    pub async fn insert_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
