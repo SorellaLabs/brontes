@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
 pub use brontes_types::{queries::make_call_request, Protocol};
 use malachite::Rational;
-use tracing::error;
+use tracing::{debug, warn};
 
 use crate::{
     lazy::{PoolFetchError, PoolFetchSuccess},
@@ -66,7 +66,7 @@ impl LoadState for Protocol {
                         UniswapV2Pool::new_load_on_block(address, provider, block_number)
                             .await
                             .map_err(|e| {
-                                error!(?pool_pair,protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
+                                debug!(?pool_pair,protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
                                 (address, Protocol::UniswapV2, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
@@ -94,7 +94,7 @@ impl LoadState for Protocol {
                         UniswapV3Pool::new_from_address(address, block_number, provider)
                             .await
                             .map_err(|e| {
-                                error!(?pool_pair, protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
+                                debug!(?pool_pair, protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
                                 (address, Protocol::UniswapV3, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
@@ -112,7 +112,7 @@ impl LoadState for Protocol {
                 ))
             }
             rest => {
-                error!(protocol=?rest, "no state updater is build for");
+                warn!(protocol=?rest, "no state updater is build for");
                 Err((address, self, block_number, pool_pair, fp, AmmError::UnsupportedProtocol))
             }
         }

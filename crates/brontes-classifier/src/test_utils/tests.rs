@@ -214,6 +214,76 @@ impl ClassifierTestUtils {
         Ok((pricer, tx))
     }
 
+    pub async fn send_traces_for_block(
+        &self,
+        block: u64,
+        tx: UnboundedSender<DexPriceMsg>,
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let BlockTracesWithHeaderAnd { traces, header, .. } = self
+            .trace_loader
+            .get_block_traces_with_header(block)
+            .await?;
+
+        let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
+        let _tree = classifier.build_block_tree(traces, header).await;
+
+        Ok(())
+    }
+
+    pub async fn setup_pricing_for_bench_post_init(
+        &self,
+        block: u64,
+        past_n: u64,
+        quote_asset: Address,
+        needs_tokens: Vec<Address>,
+    ) -> Result<
+        (
+            BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+            UnboundedSender<DexPriceMsg>,
+            Arc<AtomicBool>,
+        ),
+        ClassifierTestUtilsError,
+    > {
+        let mut range_traces = self
+            .trace_loader
+            .get_block_traces_with_header_range(block, block + past_n)
+            .await?;
+
+        let (tx, rx) = unbounded_channel();
+
+        let BlockTracesWithHeaderAnd { traces, header, .. } = range_traces.remove(0);
+
+        let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
+        let _tree = classifier.build_block_tree(traces, header).await;
+
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
+
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+
+        // send rest of updates
+        for BlockTracesWithHeaderAnd { traces, header, .. } in range_traces {
+            classifier.build_block_tree(traces, header).await;
+        }
+
+        ctr.store(true, SeqCst);
+        while (pricer.next().await).is_some() {}
+        ctr.store(false, SeqCst);
+
+        Ok((pricer, tx, ctr))
+    }
+
     pub async fn build_tree_tx_with_pricing(
         &self,
         tx_hash: TxHash,

@@ -3,6 +3,7 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         builder::{BuilderInfoWithAddress, BuilderStatsWithAddress},
         dex::DexQuotesWithBlockNumber,
+        normalized_actions::TransactionRoot,
         searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
         token_info::TokenInfoWithAddress,
     },
@@ -30,7 +31,8 @@ clickhouse_dbms!(
         ClickhouseSearcherStats,
         ClickhouseBuilderStats,
         ClickhousePools,
-        ClickhouseBuilderInfo
+        ClickhouseBuilderInfo,
+        ClickhouseTree
     ]
 );
 
@@ -167,5 +169,13 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseBuilderInfo,
     BuilderInfoWithAddress,
+    "crates/brontes-database/src/clickhouse/tables/"
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "brontes",
+    ClickhouseTree,
+    TransactionRoot,
     "crates/brontes-database/src/clickhouse/tables/"
 );

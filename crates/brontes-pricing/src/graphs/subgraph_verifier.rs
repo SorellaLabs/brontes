@@ -33,7 +33,7 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   the current state of the DEX, checking liquidity parameters and pool
 ///   states. This method is vital in maintaining the integrity of the pricing
 ///   system.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubgraphVerifier {
     pending_subgraphs:           FastHashMap<Pair, Vec<(Pair, Subgraph)>>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
@@ -41,6 +41,12 @@ pub struct SubgraphVerifier {
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
     subgraph_verification_state: FastHashMap<Pair, Vec<(Pair, SubgraphVerificationState)>>,
+}
+
+impl Default for SubgraphVerifier {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SubgraphVerifier {
@@ -60,6 +66,24 @@ impl SubgraphVerifier {
                     .find_map(|(pair, s)| (pair == goes_through).then(|| s.subgraph.extends_to()))
             })
             .flatten()
+    }
+
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
+        if let Some(goes_through) = goes_through {
+            self.pending_subgraphs
+                .get(pair)
+                .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
+                .unwrap_or(false)
+        } else {
+            self.pending_subgraphs.get(pair).is_some()
+        }
+    }
+
+    pub fn current_pairs(&self, pair: &Pair) -> usize {
+        self.pending_subgraphs
+            .get(pair)
+            .map(|f| f.len())
+            .unwrap_or_default()
     }
 
     pub fn all_pairs(&self) -> Vec<Pair> {
@@ -82,6 +106,7 @@ impl SubgraphVerifier {
             v.retain(|(k, _)| k != goes_through);
             !v.is_empty()
         });
+
         self.pending_subgraphs.retain(|k, v| {
             if *k != pair {
                 return true
@@ -304,7 +329,11 @@ impl SubgraphVerifier {
                 let goes_through = subgraph.subgraph.must_go_through();
 
                 if let Some(frayed) = frayed {
-                    let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
+                    let extensions = subgraph
+                        .frayed_end_extensions
+                        .remove(&frayed)
+                        .unwrap_or_default();
+
                     if subgraph.in_rundown {
                         let state = &self
                             .subgraph_verification_state
@@ -405,7 +434,7 @@ impl SubgraphVerifier {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Subgraph {
     pub subgraph:              PairSubGraph,
     pub frayed_end_extensions: FastHashMap<u64, Vec<SubGraphEdge>>,
@@ -459,7 +488,7 @@ impl VerificationResults {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
@@ -523,5 +552,5 @@ impl SubgraphVerificationState {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EdgesWithLiq(FastHashMap<Address, FastHashSet<BadEdge>>);

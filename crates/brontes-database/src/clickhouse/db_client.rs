@@ -8,12 +8,14 @@ use brontes_types::{
         builder::{BuilderInfo, BuilderInfoWithAddress, BuilderStats, BuilderStatsWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
+        normalized_actions::TransactionRoot,
         searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, BundleData, MevBlock},
+    normalized_actions::Actions,
     structured_trace::TxTrace,
-    Protocol,
+    BlockTree, Protocol,
 };
 use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
@@ -184,6 +186,18 @@ impl Clickhouse {
         Ok(())
     }
 
+    pub async fn insert_tree(&self, tree: std::sync::Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+        let roots: Vec<TransactionRoot> = tree
+            .tx_roots
+            .iter()
+            .map(|root| root.into())
+            .collect::<Vec<_>>();
+
+        self.client.insert_many::<ClickhouseTree>(&roots).await?;
+
+        Ok(())
+    }
+
     pub async fn write_token_info(
         &self,
         address: Address,
@@ -324,9 +338,13 @@ impl ClickhouseHandle for Clickhouse {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use alloy_primitives::hex;
+    use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::{dex::DexPrices, searcher::SearcherEoaContract},
+        db::{dex::DexPrices, normalized_actions::TransactionRoot, searcher::SearcherEoaContract},
         init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
@@ -345,6 +363,12 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
+
+    async fn load_tree() -> Arc<BlockTree<Actions>> {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
+        classifier_utils.build_tree_tx(tx).await.unwrap().into()
+    }
 
     async fn tx_traces(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let libmdbx = get_db_handle(tokio::runtime::Handle::current()).await;
@@ -559,6 +583,18 @@ mod tests {
             .unwrap();
     }
 
+    async fn tree(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+        let tree = load_tree().await;
+
+        let roots: Vec<TransactionRoot> = tree
+            .tx_roots
+            .iter()
+            .map(|root| root.into())
+            .collect::<Vec<_>>();
+
+        db.insert_many::<ClickhouseTree>(&roots).await.unwrap();
+    }
+
     async fn run_all(database: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         tx_traces(database).await;
         builder_info(database).await;
@@ -576,6 +612,7 @@ mod tests {
         // searcher_stats(database).await;
         token_info(database).await;
         searcher_info(database).await;
+        tree(database).await;
     }
 
     #[brontes_macros::test]
