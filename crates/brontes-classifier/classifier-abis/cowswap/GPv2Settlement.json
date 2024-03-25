@@ -294,7 +294,7 @@
     {
       "inputs": [
         {
-          "internalType": "contract IERC20[]",
+          "internalType": "address[]",
           "name": "tokens",
           "type": "address[]"
         },
@@ -383,7 +383,7 @@
               "type": "bytes"
             }
           ],
-          "internalType": "struct GPv2Interaction.Data[][3]",
+          "internalType": "tuple[][3]",
           "name": "interactions",
           "type": "tuple[][3]"
         }
@@ -471,12 +471,12 @@
               "type": "bytes"
             }
           ],
-          "internalType": "struct IVault.BatchSwapStep[]",
+          "internalType": "tuple[]",
           "name": "swaps",
           "type": "tuple[]"
         },
         {
-          "internalType": "contract IERC20[]",
+          "internalType": "address[]",
           "name": "tokens",
           "type": "address[]"
         },
