@@ -617,6 +617,7 @@ mod tests {
         // token_info(database).await;
         // searcher_info(database).await;
         tree(database).await;
+        panic!("stopping");
     }
 
     #[brontes_macros::test]
