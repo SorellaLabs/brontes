@@ -123,7 +123,7 @@ pub mod test {
     }
 
     #[brontes_macros::test]
-    async fn test_into_() {
+    async fn test_into_tx_root() {
         let tx = &hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
         let tree: Arc<BlockTree<Actions>> = load_tree().await;
 
@@ -139,7 +139,7 @@ pub mod test {
 
         let root = &tree.tx_roots[0];
 
-        let tx_root: TransactionRoot = root.into();
+        let tx_root: TransactionRoot = (&root).into();
 
         let burns = tx_root
             .trace_nodes
