@@ -21,9 +21,9 @@ pub fn wait_for_tests<F: Fn() -> () + std::panic::RefUnwindSafe>(threads: usize,
     // wait until we have available resources to run the test
     loop {
         if let Ok(mut lock) = thc.try_lock() {
-            tracing::info!("test got lock");
             let mut test_count = tc.lock().unwrap();
             if *lock + threads < MAX_TEST_THREADS || *test_count == 0 {
+                tracing::info!("running_tests");
                 *test_count += 1;
                 *lock += threads;
 
