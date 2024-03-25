@@ -1150,7 +1150,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
                 .has_extension(&must_include, pair.1)
                 .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
         })
-        .unwrap_or_else(|| (pair, None));
+        .unwrap_or((pair, None));
 
     Some({
         let subgraph = graph.create_subgraph(

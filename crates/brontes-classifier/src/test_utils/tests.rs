@@ -278,7 +278,7 @@ impl ClassifierTestUtils {
         }
 
         ctr.store(true, SeqCst);
-        while let Some(_) = pricer.next().await {}
+        while (pricer.next().await).is_some() {}
         ctr.store(false, SeqCst);
 
         Ok((pricer, tx, ctr))

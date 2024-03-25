@@ -62,6 +62,7 @@ impl BrontesPricingBencher {
     }
 
     /// benches price generation after n amount of blocks
+    #[allow(clippy::await_holding_lock)]
     pub fn bench_pricing_post_init(
         &self,
         bench_name: &str,

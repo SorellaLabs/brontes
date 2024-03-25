@@ -34,6 +34,12 @@ pub struct StateTracker {
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
 }
 
+impl Default for StateTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StateTracker {
     pub fn new() -> Self {
         Self {

@@ -43,6 +43,12 @@ pub struct SubgraphVerifier {
     subgraph_verification_state: FastHashMap<Pair, Vec<(Pair, SubgraphVerificationState)>>,
 }
 
+impl Default for SubgraphVerifier {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SubgraphVerifier {
     pub fn new() -> Self {
         Self {
