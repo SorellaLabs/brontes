@@ -12,7 +12,9 @@ use itertools::Itertools;
 
 use crate::parquet::utils::{build_float64_array, get_string_array_from_owned};
 
-fn get_normalized_burn_list_array(normalized_burns_list: &[Vec<NormalizedBurn>]) -> ListArray {
+pub fn get_normalized_burn_list_array(
+    normalized_burns_list: Vec<&Vec<NormalizedBurn>>,
+) -> ListArray {
     let fields = vec![
         Field::new("protocol", DataType::Utf8, false),
         Field::new("trace_index", DataType::UInt16, false),

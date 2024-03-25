@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use arrow::{
     array::{
         ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
@@ -7,13 +5,10 @@ use arrow::{
     },
     datatypes::{DataType, Field},
 };
-use brontes_types::{normalized_actions::NormalizedBurn, ToFloatNearest};
-use itertools::Itertools;
+use brontes_types::{normalized_actions::NormalizedLiquidation, ToFloatNearest};
 
-use crate::parquet::utils::{build_float64_array, get_string_array_from_owned};
-
-fn get_normalized_liquidation_list_array(
-    normalized_liquidations_list: &[Vec<NormalizedLiquidation>],
+pub fn get_normalized_liquidation_list_array(
+    normalized_liquidations_list: Vec<Vec<&NormalizedLiquidation>>,
 ) -> ListArray {
     let fields = vec![
         Field::new("protocol", DataType::Utf8, false),
@@ -28,8 +23,7 @@ fn get_normalized_liquidation_list_array(
         Field::new("msg_value", DataType::Float64, false),
     ];
 
-    let builder_array = vec![
-        Box::new(StringBuilder::new()),
+    let builder_array: Vec<Box<dyn ArrayBuilder>> = vec![
         Box::new(UInt16Builder::new()),
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
@@ -46,29 +40,54 @@ fn get_normalized_liquidation_list_array(
     for normalized_liquidations in normalized_liquidations_list {
         let struct_builder = list_builder.values();
 
-        let protocol_array = struct_builder.field_builder::<StringBuilder>(0).unwrap();
-        let trace_index_array = struct_builder.field_builder::<UInt16Builder>(1).unwrap();
-        let pool_array = struct_builder.field_builder::<StringBuilder>(2).unwrap();
-        let liquidator_array = struct_builder.field_builder::<StringBuilder>(3).unwrap();
-        let debtor_array = struct_builder.field_builder::<StringBuilder>(4).unwrap();
-        let collateral_asset_array = struct_builder.field_builder::<StringBuilder>(5).unwrap();
-        let debt_asset_array = struct_builder.field_builder::<StringBuilder>(6).unwrap();
-        let covered_debt_array = struct_builder.field_builder::<Float64Builder>(7).unwrap();
-        let liquidated_collateral_array =
-            struct_builder.field_builder::<Float64Builder>(8).unwrap();
-        let msg_value_array = struct_builder.field_builder::<Float64Builder>(9).unwrap();
-
         for liquidation in normalized_liquidations {
-            protocol_array.append_value(liquidation.protocol.to_string());
-            trace_index_array.append_value(liquidation.trace_index as u16);
-            pool_array.append_value(liquidation.pool.to_string());
-            liquidator_array.append_value(liquidation.liquidator.to_string());
-            debtor_array.append_value(liquidation.debtor.to_string());
-            collateral_asset_array.append_value(liquidation.collateral_asset.address.to_string());
-            debt_asset_array.append_value(liquidation.debt_asset.address.to_string());
-            covered_debt_array.append_value(liquidation.covered_debt.to_float());
-            liquidated_collateral_array.append_value(liquidation.liquidated_collateral.to_float());
-            msg_value_array.append_value(liquidation.msg_value.as_u64() as f64);
+            struct_builder
+                .field_builder::<StringBuilder>(0)
+                .unwrap()
+                .append_value(liquidation.protocol.to_string());
+            struct_builder
+                .field_builder::<UInt16Builder>(1)
+                .unwrap()
+                .append_value(liquidation.trace_index as u16);
+
+            struct_builder
+                .field_builder::<StringBuilder>(2)
+                .unwrap()
+                .append_value(liquidation.pool.to_string());
+
+            struct_builder
+                .field_builder::<StringBuilder>(3)
+                .unwrap()
+                .append_value(liquidation.liquidator.to_string());
+
+            struct_builder
+                .field_builder::<StringBuilder>(4)
+                .unwrap()
+                .append_value(liquidation.debtor.to_string());
+            struct_builder
+                .field_builder::<StringBuilder>(5)
+                .unwrap()
+                .append_value(liquidation.collateral_asset.address.to_string());
+
+            struct_builder
+                .field_builder::<StringBuilder>(6)
+                .unwrap()
+                .append_value(liquidation.debt_asset.address.to_string());
+
+            struct_builder
+                .field_builder::<Float64Builder>(7)
+                .unwrap()
+                .append_value(liquidation.covered_debt.clone().to_float());
+
+            struct_builder
+                .field_builder::<Float64Builder>(8)
+                .unwrap()
+                .append_value(liquidation.liquidated_collateral.clone().to_float());
+
+            struct_builder
+                .field_builder::<Float64Builder>(9)
+                .unwrap()
+                .append_value(liquidation.msg_value.to::<u128>() as f64);
         }
 
         list_builder.append(true);

@@ -2,17 +2,19 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        ArrayBuilder, ArrayRef, Float64Builder, ListArray, ListBuilder, StringBuilder, StructArray,
-        StructBuilder, UInt16Builder, UInt64Builder,
+        ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
+        UInt64Builder,
     },
     datatypes::{DataType, Field},
 };
 use brontes_types::{normalized_actions::NormalizedMint, ToFloatNearest};
 use itertools::Itertools;
 
-use crate::parquet::utils::{get_list_float_array_from_owned, get_list_string_array_from_owned};
+use crate::parquet::utils::{build_float64_array, get_string_array_from_owned};
 
-fn get_normalized_mint_list_array(normalized_mints_list: Vec<&Vec<NormalizedMint>>) -> ListArray {
+pub fn get_normalized_mint_list_array(
+    normalized_mints_list: Vec<Vec<&NormalizedMint>>,
+) -> ListArray {
     let fields = normalized_mint_fields();
     let builder_array = normalized_mint_struct_builder();
 
@@ -47,31 +49,30 @@ fn get_normalized_mint_list_array(normalized_mints_list: Vec<&Vec<NormalizedMint
                 .unwrap()
                 .append_value(normalized_mint.pool.to_string());
 
-            let token_array =
-                get_list_string_array_from_owned(normalized_mints_list.iter().map(|nm| {
-                    {
-                        nm.iter()
-                            .map(|m| m.token.iter().map(|t| t.address.to_string()).collect_vec())
-                            .collect_vec()
-                    }
-                    .collect_vec()
-                }));
-            struct_builder
-                .field_builder::<ListArray>(5)
-                .unwrap()
-                .append_value(&token_array);
+            let token_list_array = get_string_array_from_owned(
+                normalized_mint
+                    .token
+                    .iter()
+                    .map(|token| Some(token.address.to_string()))
+                    .collect_vec(),
+            );
 
-            let amount_array = get_decimal_list_array(
+            struct_builder
+                .field_builder::<ListBuilder<StringBuilder>>(5)
+                .unwrap()
+                .append_value(&token_list_array);
+
+            let amount_list_array = build_float64_array(
                 normalized_mint
                     .amount
                     .iter()
-                    .map(|a| a.clone().to_decimal())
-                    .collect(),
+                    .map(|a| a.clone().to_float())
+                    .collect_vec(),
             );
             struct_builder
-                .field_builder::<ListArray>(6)
+                .field_builder::<ListBuilder<Float64Builder>>(6)
                 .unwrap()
-                .append_value(&amount_array);
+                .append_value(&amount_list_array);
         }
 
         list_builder.append(true);
@@ -88,13 +89,13 @@ fn normalized_mint_fields() -> Vec<Field> {
         Field::new("recipient", DataType::Utf8, false),
         Field::new("pool", DataType::Utf8, false),
         Field::new(
-            "token",
-            DataType::List(Box::new(Field::new("item", DataType::Struct(vec![]), false))),
+            "tokens",
+            DataType::List(Arc::new(Field::new("address", DataType::Utf8, false))),
             false,
         ),
         Field::new(
-            "amount",
-            DataType::List(Box::new(Field::new("item", DataType::Decimal128(38, 0), false))),
+            "amounts",
+            DataType::List(Arc::new(Field::new("amount", DataType::Float64, false))),
             false,
         ),
     ]
@@ -107,7 +108,7 @@ fn normalized_mint_struct_builder() -> Vec<Box<dyn ArrayBuilder>> {
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
-        Box::new(ListBuilder::new(StructBuilder::new())),
+        Box::new(ListBuilder::new(StringBuilder::new())),
         Box::new(ListBuilder::new(Float64Builder::new())),
     ]
 }
