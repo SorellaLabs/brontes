@@ -25,6 +25,9 @@ pub use compound::*;
 pub mod maker;
 pub use maker::*;
 
+pub mod cowswap;
+pub use cowswap::*;
+
 pub mod oneinch;
 pub use oneinch::*;
 
@@ -157,5 +160,7 @@ action_dispatch!(
     ClipperExchangeSellEthForTokenCall,
     ClipperExchangeSellTokenForEthCall,
     ClipperExchangeTransmitAndSwapCall,
-    ClipperExchangeTransmitAndSellTokenForEthCall
+    ClipperExchangeTransmitAndSellTokenForEthCall,
+    CowswapSettleCall,
+    CowswapSwapCall
 );
