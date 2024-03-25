@@ -26,6 +26,6 @@ pub fn bench_block_pricing_after_10_blocks(c: &mut Criterion) {
 pub fn bench_block_pricing_after_20_blocks(c: &mut Criterion) {
     let bencher = BrontesPricingBencher::new(USDC_ADDRESS);
     bencher
-        .bench_pricing_post_init("pricing after 20 blocks, start = 18500018", 18500018, 10, c)
+        .bench_pricing_post_init("pricing after 20 blocks, start = 18500018", 18500018, 20, c)
         .unwrap();
 }
