@@ -147,7 +147,7 @@ pub mod test {
             .filter_map(|node| node.action_kind)
             .filter(|action| matches!(action, ActionKind::Burn))
             .count();
-        assert_eq!(burns.len(), 1);
+        assert_eq!(burns, 1);
 
         let swaps = tx_root
             .trace_nodes
@@ -155,6 +155,6 @@ pub mod test {
             .filter_map(|node| node.action_kind)
             .filter(|action| matches!(action, ActionKind::Swap))
             .count();
-        assert_eq!(swaps.len(), 3);
+        assert_eq!(swaps, 3);
     }
 }
