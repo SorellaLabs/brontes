@@ -242,7 +242,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         goes_through: Option<Pair>,
         quote: Address,
     ) -> bool {
-        (self.has_extension(&pair, quote).is_some() && self.has_go_through(&pair, &goes_through))
+        self.has_go_through(&pair, &goes_through)
             || self.sufficient_pairs(&pair)
     }
 
@@ -318,3 +318,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .audit_subgraphs(self.graph_state.finalized_state())
     }
 }
+
+const 
+
