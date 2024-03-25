@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use ahash::RandomState;
 
 pub type FastHasher = RandomState;
-/// FastHashMap using xx hash
+/// FastHashMap using ahash
 pub type FastHashMap<K, V> = HashMap<K, V, FastHasher>;
-/// FastHashSet using xx hash
+/// FastHashSet using ahash
 pub type FastHashSet<V> = HashSet<V, FastHasher>;

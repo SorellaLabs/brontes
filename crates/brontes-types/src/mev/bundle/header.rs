@@ -29,19 +29,19 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
-    pub block_number: u64,
-    pub tx_index: u64,
+    pub block_number:   u64,
+    pub tx_index:       u64,
     #[serde(with = "txhash")]
     // For a sandwich this is always the first frontrun tx hash
     pub tx_hash: B256,
     #[serde(with = "addresss")]
-    pub eoa: Address,
+    pub eoa:            Address,
     #[serde(with = "option_addresss")]
-    pub mev_contract: Option<Address>,
-    pub profit_usd: f64,
-    pub bribe_usd: f64,
+    pub mev_contract:   Option<Address>,
+    pub profit_usd:     f64,
+    pub bribe_usd:      f64,
     #[redefined(same_fields)]
-    pub mev_type: MevType,
+    pub mev_type:       MevType,
     pub balance_deltas: Vec<TransactionAccounting>,
 }
 
@@ -49,7 +49,7 @@ pub struct BundleHeader {
 #[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TransactionAccounting {
-    pub tx_hash: B256,
+    pub tx_hash:        B256,
     pub address_deltas: Vec<AddressBalanceDeltas>,
 }
 
@@ -69,8 +69,8 @@ impl Display for TransactionAccounting {
 #[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AddressBalanceDeltas {
-    pub address: Address,
-    pub name: Option<String>,
+    pub address:      Address,
+    pub name:         Option<String>,
     pub token_deltas: Vec<TokenBalanceDelta>,
 }
 
@@ -78,19 +78,15 @@ pub struct AddressBalanceDeltas {
 #[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct TokenBalanceDelta {
-    pub token: TokenInfoWithAddress,
-    pub amount: f64,
+    pub token:     TokenInfoWithAddress,
+    pub amount:    f64,
     pub usd_value: f64,
 }
 
 impl Display for AddressBalanceDeltas {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let header = if let Some(name) = &self.name {
-            format!(
-                "Address Balance Changes for {}: {}",
-                name.bold(),
-                self.address
-            )
+            format!("Address Balance Changes for {}: {}", name.bold(), self.address)
         } else {
             format!("Address Balance Changes for {}", self.address)
         };
@@ -128,10 +124,8 @@ impl Serialize for BundleHeader {
         ser_struct.serialize_field("tx_index", &self.tx_index)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", &self.tx_hash))?;
         ser_struct.serialize_field("eoa", &format!("{:?}", &self.eoa))?;
-        ser_struct.serialize_field(
-            "mev_contract",
-            &self.mev_contract.map(|a| format!("{:?}", a)),
-        )?;
+        ser_struct
+            .serialize_field("mev_contract", &self.mev_contract.map(|a| format!("{:?}", a)))?;
         ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
         ser_struct.serialize_field("bribe_usd", &self.bribe_usd)?;
         ser_struct.serialize_field("mev_type", &self.mev_type)?;
@@ -205,8 +199,8 @@ impl DbRow for BundleHeader {
         "profit_usd",
         "bribe_usd",
         "mev_type",
-        "balance_deltas.address",
         "balance_deltas.tx_hash",
+        "balance_deltas.address",
         "balance_deltas.name",
         "balance_deltas.token_deltas",
     ];

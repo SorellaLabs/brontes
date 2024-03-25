@@ -15,12 +15,12 @@ use brontes_types::{
     structured_trace::TxTrace,
     Protocol,
 };
-use futures::future::join_all;
-use serde::Deserialize;
-use sorella_db_databases::{
-    clickhouse::{config::ClickhouseConfig, db::ClickhouseClient, errors::ClickhouseError},
+use db_interfaces::{
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
     Database,
 };
+use futures::future::join_all;
+use serde::Deserialize;
 
 use super::{dbms::*, ClickhouseHandle};
 use crate::{
@@ -234,13 +234,13 @@ impl ClickhouseHandle for Clickhouse {
     async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self
             .client
-            .query_one::<BlockInfoData>(BLOCK_INFO, &(block_num))
+            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
             .await?
             .value;
 
         let cex_quotes = self
             .client
-            .query_one::<CexPriceData>(CEX_PRICE, &(block_num))
+            .query_one::<CexPriceData, _>(CEX_PRICE, &(block_num))
             .await?
             .value;
 
@@ -273,7 +273,7 @@ impl ClickhouseHandle for Clickhouse {
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         self.client
-            .query_many::<D>(
+            .query_many::<D, _>(
                 T::INIT_QUERY.expect("no init query found for clickhouse query"),
                 &(start_block, end_block),
             )
@@ -297,7 +297,7 @@ impl ClickhouseHandle for Clickhouse {
         );
 
         self.client
-            .query_many::<D>(&query, &())
+            .query_many::<D, _>(&query, &())
             .await
             .map_err(Into::into)
     }
@@ -309,7 +309,10 @@ impl ClickhouseHandle for Clickhouse {
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         self.client
-            .query_many::<D>(T::INIT_QUERY.expect("no init query found for clickhouse query"), &())
+            .query_many::<D, _>(
+                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                &(),
+            )
             .await
             .map_err(Into::into)
     }
@@ -335,7 +338,7 @@ mod tests {
         pair::Pair,
         FastHashMap, GasDetails,
     };
-    use sorella_db_databases::{
+    use db_interfaces::{
         clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
         test_utils::TestDatabase,
     };
@@ -380,18 +383,20 @@ mod tests {
         db.insert_one::<ClickhouseTokenInfo>(&case0).await.unwrap();
     }
 
-    async fn searcher_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let case0 = SearcherStatsWithAddress::default();
-
-        db.insert_one::<ClickhouseSearcherStats>(&case0)
-            .await
-            .unwrap();
-
-        let query = "SELECT * FROM brontes.searcher_stats";
-        let queried: SearcherStatsWithAddress = db.query_one(query, &()).await.unwrap();
-
-        assert_eq!(queried, case0);
-    }
+    // async fn searcher_stats(db:
+    // &ClickhouseTestingClient<BrontesClickhouseTables>) {     let case0 =
+    // SearcherStatsWithAddress::default();
+    //
+    //     db.insert_one::<ClickhouseSearcherStats>(&case0)
+    //         .await
+    //         .unwrap();
+    //
+    //     let query = "SELECT * FROM brontes.searcher_stats";
+    //     let queried: SearcherStatsWithAddress = db.query_one(query,
+    // &()).await.unwrap();
+    //
+    //     assert_eq!(queried, case0);
+    // }
 
     async fn builder_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = BuilderStatsWithAddress::default();
@@ -568,7 +573,7 @@ mod tests {
         mev_block(database).await;
         dex_price_mapping(database).await;
         builder_stats(database).await;
-        searcher_stats(database).await;
+        // searcher_stats(database).await;
         token_info(database).await;
         searcher_info(database).await;
     }

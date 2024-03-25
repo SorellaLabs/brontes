@@ -3814,7 +3814,7 @@
 <text  x="23.32" y="447.5" ></text>
 </g>
 <g >
-<title>&lt;sorella_db_databases::clickhouse::db::ClickhouseClient&lt;D&gt; as sorella_db_databases::Database&gt;::query_many::{{closure}} (8,174,565,682 samples, 0.13%)</title><rect x="1130.0" y="373" width="1.5" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<title>&lt;db_interfaces::clickhouse::db::ClickhouseClient&lt;D&gt; as db_interfaces::Database&gt;::query_many::{{closure}} (8,174,565,682 samples, 0.13%)</title><rect x="1130.0" y="373" width="1.5" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
 <text  x="1132.97" y="383.5" ></text>
 </g>
 <g >
@@ -4174,7 +4174,7 @@
 <text  x="28.41" y="351.5" ></text>
 </g>
 <g >
-<title>&lt;sorella_db_databases::clickhouse::db::ClickhouseClient&lt;D&gt; as sorella_db_databases::Database&gt;::insert_many::{{closure}} (2,293,724,563 samples, 0.04%)</title><rect x="971.2" y="485" width="0.4" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<title>&lt;db_interfaces::clickhouse::db::ClickhouseClient&lt;D&gt; as db_interfaces::Database&gt;::insert_many::{{closure}} (2,293,724,563 samples, 0.04%)</title><rect x="971.2" y="485" width="0.4" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
 <text  x="974.20" y="495.5" ></text>
 </g>
 <g >
@@ -12986,7 +12986,7 @@
 <text  x="311.95" y="351.5" ></text>
 </g>
 <g >
-<title>&lt;sorella_db_databases::clickhouse::db::ClickhouseClient&lt;D&gt; as sorella_db_databases::Database&gt;::query_many::{{closure}} (1,853,117,903 samples, 0.03%)</title><rect x="955.0" y="453" width="0.3" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<title>&lt;db_interfaces::clickhouse::db::ClickhouseClient&lt;D&gt; as db_interfaces::Database&gt;::query_many::{{closure}} (1,853,117,903 samples, 0.03%)</title><rect x="955.0" y="453" width="0.3" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
 <text  x="958.00" y="463.5" ></text>
 </g>
 <g >

@@ -3,8 +3,9 @@ use alloy_primitives::Address;
 use crate::{
     db::{
         address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo, dex::DexQuotes, metadata::Metadata, mev_block::MevBlockWithClassified,
-        searcher::SearcherInfo, token_info::TokenInfoWithAddress,
+        builder::BuilderInfo, dex::DexQuotes, metadata::Metadata,
+        mev_block::MevBlockWithClassified, searcher::SearcherInfo,
+        token_info::TokenInfoWithAddress,
     },
     pair::Pair,
     structured_trace::TxTrace,
@@ -62,7 +63,8 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata>;
 
-    fn try_fetch_address_metadata(&self, address: Address) -> eyre::Result<Option<AddressMetadata>>;
+    fn try_fetch_address_metadata(&self, address: Address)
+        -> eyre::Result<Option<AddressMetadata>>;
 
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>>;
 
@@ -96,8 +98,11 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         end_block: u64,
     ) -> eyre::Result<ProtocolCreatedRange>;
 
-    fn try_load_pair_before(&self, block: u64, pair: Pair)
-        -> eyre::Result<(Pair, Vec<SubGraphEdge>)>;
+    fn try_load_pair_before(
+        &self,
+        block: u64,
+        pair: Pair,
+    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)>;
 
     fn get_protocol(&self, address: Address) -> eyre::Result<Protocol> {
         self.get_protocol_details(address).map(|res| res.protocol)

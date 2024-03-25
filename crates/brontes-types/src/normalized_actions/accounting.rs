@@ -64,7 +64,7 @@ impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
 
 /// Holds all accounting info.
 pub struct Accounting {
-    pub delta_map: AddressDeltas,
+    pub delta_map:             AddressDeltas,
     pub accounted_for_actions: Vec<Actions>,
 }
 impl Default for Accounting {
@@ -75,10 +75,7 @@ impl Default for Accounting {
 
 impl Accounting {
     pub fn new() -> Self {
-        Self {
-            delta_map: FastHashMap::default(),
-            accounted_for_actions: vec![],
-        }
+        Self { delta_map: FastHashMap::default(), accounted_for_actions: vec![] }
     }
 }
 

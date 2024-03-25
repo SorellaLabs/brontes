@@ -33,12 +33,12 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDex {
-    pub tx_hash: B256,
-    pub swaps: Vec<NormalizedSwap>,
+    pub tx_hash:          B256,
+    pub swaps:            Vec<NormalizedSwap>,
     pub stat_arb_details: Vec<StatArbDetails>,
-    pub pnl: StatArbPnl,
+    pub pnl:              StatArbPnl,
     #[redefined(same_fields)]
-    pub gas_details: GasDetails,
+    pub gas_details:      GasDetails,
 }
 
 impl Mev for CexDex {
@@ -89,15 +89,11 @@ impl Serialize for CexDex {
 
         let stat_arb_details: ClickhouseVecStatArbDetails = self.stat_arb_details.clone().into();
 
-        ser_struct.serialize_field(
-            "stat_arb_details.cex_exchanges",
-            &stat_arb_details.cex_exchanges,
-        )?;
+        ser_struct
+            .serialize_field("stat_arb_details.cex_exchanges", &stat_arb_details.cex_exchanges)?;
         ser_struct.serialize_field("stat_arb_details.cex_price", &stat_arb_details.cex_price)?;
-        ser_struct.serialize_field(
-            "stat_arb_details.dex_exchange",
-            &stat_arb_details.dex_exchange,
-        )?;
+        ser_struct
+            .serialize_field("stat_arb_details.dex_exchange", &stat_arb_details.dex_exchange)?;
         ser_struct.serialize_field("stat_arb_details.dex_price", &stat_arb_details.dex_price)?;
         ser_struct.serialize_field(
             "stat_arb_details.pre_gas_maker_profit",
@@ -165,12 +161,12 @@ impl DbRow for CexDex {
 pub struct StatArbDetails {
     #[redefined(same_fields)]
     pub cex_exchanges: Vec<CexExchange>,
-    pub cex_price: Rational,
+    pub cex_price:     Rational,
     #[redefined(same_fields)]
-    pub dex_exchange: Protocol,
-    pub dex_price: Rational,
+    pub dex_exchange:  Protocol,
+    pub dex_price:     Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
-    pub pnl_pre_gas: StatArbPnl,
+    pub pnl_pre_gas:   StatArbPnl,
 }
 
 impl fmt::Display for StatArbDetails {
@@ -182,12 +178,7 @@ impl fmt::Display for StatArbDetails {
             self.cex_exchanges,
             self.cex_price.clone().to_float()
         )?;
-        writeln!(
-            f,
-            "   - Price on {}: {}",
-            self.dex_exchange,
-            self.dex_price.clone().to_float()
-        )?;
+        writeln!(f, "   - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;
         write!(f, "   - Pnl pre-gas: {}", self.pnl_pre_gas)
     }
 }

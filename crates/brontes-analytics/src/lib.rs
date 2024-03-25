@@ -1,5 +1,6 @@
 mod builder;
 use alloy_primitives::Address;
+#[allow(unused_imports)]
 use brontes_database::{
     libmdbx::LibmdbxInit,
     parquet::{DEFAULT_BUILDER_INFO_DIR, DEFAULT_BUNDLE_DIR, DEFAULT_SEARCHER_INFO_DIR},
@@ -43,7 +44,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
     ) -> Result<(), eyre::Error> {
         let df = LazyFrame::scan_parquet(DEFAULT_BUNDLE_DIR, Default::default())?;
 
-        let aggregate = df
+        let _aggregate = df
             .lazy()
             .group_by([col("mev_contract")])
             .agg([

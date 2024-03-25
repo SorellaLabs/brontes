@@ -6,8 +6,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedFlashLoan, NormalizedSwap,
-        NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedFlashLoan,
+        NormalizedSwap, NormalizedTransfer,
     },
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
@@ -29,6 +29,10 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
 
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     type Result = Vec<Bundle>;
+
+    fn get_id(&self) -> &str {
+        "AtomicArb"
+    }
 
     fn process_tree(
         &self,
@@ -73,10 +77,13 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 self.process_swaps(
                     info,
                     meta_data.clone(),
-                    actions.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
-                        Actions::try_swaps_merged,
-                        Actions::try_transfer,
-                    )),
+                    actions
+                        .into_iter()
+                        .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
+                            Actions::try_swaps_merged,
+                            Actions::try_transfer,
+                            Actions::try_eth_transfer,
+                        )),
                 )
             })
             .collect::<Vec<_>>()
@@ -88,9 +95,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         &self,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>),
+        data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
     ) -> Option<Bundle> {
-        let (swaps, transfers) = data;
+        let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
         let mev_addresses: FastHashSet<Address> = vec![info.eoa]
             .into_iter()
@@ -105,6 +112,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
+            .chain(eth_transfers.into_iter().map(Actions::from))
             .account_for_actions();
 
         let rev_usd = self.utils.get_deltas_usd(
@@ -159,6 +167,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             metadata.clone(),
             MevType::AtomicArb,
         );
+        tracing::debug!("{:#?}", header);
 
         Some(Bundle { header, data })
     }
@@ -259,7 +268,7 @@ mod tests {
     use alloy_primitives::hex;
 
     use crate::{
-        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS},
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS, WETH_ADDRESS},
         Inspectors,
     };
 
@@ -288,5 +297,45 @@ mod tests {
             .with_dex_prices();
 
         inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn ensure_proper_calculation() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "5f9c889b8d6cad5100cc2e6f4a7a59bb53d1cd67f0895320cdb3b25ff43c8fa4"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
+            ])
+            .with_expected_profit_usd(2.63)
+            .with_gas_paid_usd(25.3);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn ensure_proper_calculation2() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "c79494def0565dd49f46c2b7c0221f7eba218ca07638aac3277efe6ab3a2dd66"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
+            ])
+            .with_expected_profit_usd(0.98)
+            .with_gas_paid_usd(19.7);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
