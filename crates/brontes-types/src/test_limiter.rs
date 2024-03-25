@@ -38,11 +38,25 @@ pub fn wait_for_tests<F: Fn() -> () + std::panic::RefUnwindSafe>(threads: usize,
 
     // decrement resources
     tracing::info!("test ran");
-    let mut running_tests = tc.lock().unwrap();
-    tracing::info!("got running lock");
-    *running_tests -= 1;
-    let mut thread_count = thc.lock().unwrap();
-    tracing::info!("got tc lock");
-    *thread_count -= threads;
-    tracing::info!("exiting");
+
+    // need todo this to avoid blocking
+    loop {
+        if let Ok(mut running_tests) = tc.try_lock() {
+            tracing::info!("got running lock");
+            *running_tests -= 1;
+            loop {
+                if let Ok(mut thread_count) = thc.try_lock() {
+                    tracing::info!("got tc lock");
+                    *thread_count -= threads;
+                    tracing::info!("exiting");
+
+                    return
+                } else {
+                    std::hint::spin_loop()
+                }
+            }
+        } else {
+            std::hint::spin_loop()
+        }
+    }
 }
