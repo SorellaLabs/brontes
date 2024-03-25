@@ -110,6 +110,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         connectivity_wight: usize,
         connections: Option<usize>,
         timeout: Duration,
+        is_extension: bool,
     ) -> Vec<SubGraphEdge> {
         #[cfg(not(feature = "tests"))]
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
@@ -125,6 +126,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 connectivity_wight,
                 connections,
                 timeout,
+                is_extension,
             )
             .into_iter()
             .flatten()

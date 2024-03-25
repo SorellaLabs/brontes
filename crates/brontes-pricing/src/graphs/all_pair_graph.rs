@@ -204,6 +204,7 @@ impl AllPairGraph {
         connectivity_wight: usize,
         connections: Option<usize>,
         timeout: Duration,
+        is_extension: bool,
     ) -> Vec<Vec<Vec<SubGraphEdge>>> {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
@@ -257,6 +258,7 @@ impl AllPairGraph {
             connections,
             10_000,
             timeout,
+            is_extension,
         )
         .into_iter()
         .map(|(nodes, _)| {

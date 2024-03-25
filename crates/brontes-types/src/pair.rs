@@ -44,14 +44,6 @@ impl PartialEq for Pair {
     }
 }
 
-// impl Eq for ArchivedPairRedefined {}
-
-// impl PartialEq for ArchivedPairRedefined {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.0 == other.0 && self.1 == other.1
-//     }
-// }
-
 impl Pair {
     pub fn is_zero(&self) -> bool {
         self.0 == Address::ZERO && self.1 == Address::ZERO

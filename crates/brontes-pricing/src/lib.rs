@@ -929,10 +929,6 @@ enum PollResult {
     DiscoveredPool,
 }
 
-/// We use this pair to indicate that the event that generated this pair
-/// is a transfer and as such we don't have a must go through param.
-const TRANSFER_PAIR: Pair = Pair(Address::ZERO, Address::ZERO);
-
 /// a ordered buffer for holding state transitions for a block while the lazy
 /// loading of pools is being applied
 pub struct StateBuffer {
@@ -1026,9 +1022,10 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
     pairs
         .into_par_iter()
         .map(|RequeryPairs { pair, goes_through, full_pair, block, ignore_state, frayed_ends }| {
+            let extends_pair = graph.has_extension(&goes_through, pair.1);
             if frayed_ends.is_empty() {
                 return StateQueryRes {
-                    extends_pair: graph.has_extension(&goes_through, pair.1),
+                    extends_pair,
                     pair,
                     block,
                     goes_through,
@@ -1042,6 +1039,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                         100,
                         Some(5),
                         Duration::from_millis(69),
+                        extends_pair.is_some(),
                     )],
                 }
             }
@@ -1060,6 +1058,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                             0,
                             None,
                             Duration::from_millis(325),
+                            extends_pair.is_some(),
                         )
                     })
                     .collect::<Vec<_>>(),
@@ -1067,7 +1066,7 @@ fn par_state_query<DB: DBWriter + LibmdbxReader>(
                 goes_through,
                 pair,
                 block,
-                extends_pair: graph.has_extension(&goes_through, pair.1),
+                extends_pair,
             }
         })
         .collect::<Vec<_>>()
@@ -1139,6 +1138,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             100,
             Some(5),
             Duration::from_millis(69),
+            extend_to.is_some(),
         );
         NewGraphDetails {
             complete_pair: pair,
