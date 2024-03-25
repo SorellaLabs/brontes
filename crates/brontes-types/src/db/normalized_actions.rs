@@ -137,8 +137,24 @@ pub mod test {
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
 
-        let root = tree.root;
+        let root = &tree.tx_roots[0];
 
         let tx_root: TransactionRoot = root.into();
+
+        let burns = tx_root
+            .trace_nodes
+            .iter()
+            .filter_map(|node| node.action_kind)
+            .filter(|action| matches!(action, ActionKind::Burn))
+            .count();
+        assert_eq!(burns.len(), 1);
+
+        let swaps = tx_root
+            .trace_nodes
+            .iter()
+            .filter_map(|node| node.action_kind)
+            .filter(|action| matches!(action, ActionKind::Swap))
+            .count();
+        assert_eq!(swaps.len(), 3);
     }
 }
