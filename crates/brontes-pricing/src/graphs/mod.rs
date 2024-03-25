@@ -17,9 +17,8 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
-pub use subgraph_verifier::VerificationResults;
 
-use self::{
+pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
     subgraph_verifier::*,
 };
@@ -81,6 +80,23 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             db,
             subgraph_verifier,
         }
+    }
+
+    /// used for testing and benching
+    pub fn snapshot_state(&self) -> (SubGraphRegistry, SubgraphVerifier, StateTracker) {
+        (self.sub_graph_registry.clone(), self.subgraph_verifier.clone(), self.graph_state.clone())
+    }
+
+    /// used for testing and benching
+    pub fn set_state(
+        &mut self,
+        sub_graph_registry: SubGraphRegistry,
+        verifier: SubgraphVerifier,
+        state: StateTracker,
+    ) {
+        self.sub_graph_registry = sub_graph_registry;
+        self.subgraph_verifier = verifier;
+        self.graph_state = state;
     }
 
     pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {

@@ -33,7 +33,7 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   the current state of the DEX, checking liquidity parameters and pool
 ///   states. This method is vital in maintaining the integrity of the pricing
 ///   system.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubgraphVerifier {
     pending_subgraphs:           FastHashMap<Pair, Vec<(Pair, Subgraph)>>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
@@ -410,7 +410,7 @@ impl SubgraphVerifier {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Subgraph {
     pub subgraph:              PairSubGraph,
     pub frayed_end_extensions: FastHashMap<u64, Vec<SubGraphEdge>>,
@@ -464,7 +464,7 @@ impl VerificationResults {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
@@ -528,5 +528,5 @@ impl SubgraphVerificationState {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EdgesWithLiq(FastHashMap<Address, FastHashSet<BadEdge>>);

@@ -25,7 +25,7 @@ use super::{subgraph::PairSubGraph, PoolState};
 /// Mainly functioning within the BrontesBatchPricer system, it plays a key role
 /// in providing up-to-date and reliable pricing data in the decentralized
 /// exchange context.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubGraphRegistry {
     /// all currently known sub-graphs
     sub_graphs: FastHashMap<Pair, Vec<(Pair, PairSubGraph)>>,

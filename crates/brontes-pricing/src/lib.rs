@@ -49,7 +49,10 @@ use brontes_types::{
     FastHashMap, FastHashSet,
 };
 use futures::{Stream, StreamExt};
-pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
+pub use graphs::{
+    AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,
+    VerificationResults,
+};
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
@@ -139,6 +142,27 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     pub fn current_block_processing(&self) -> u64 {
         self.completed_block
+    }
+
+    /// testing / benching utils
+    pub fn completed_block(&mut self) -> &mut u64 {
+        &mut self.completed_block
+    }
+
+    /// testing / benching utils
+    pub fn snapshot_graph_state(&self) -> (SubGraphRegistry, SubgraphVerifier, StateTracker) {
+        self.graph_manager.snapshot_state()
+    }
+
+    /// testing / benching utils
+    pub fn set_state(
+        &mut self,
+        sub_graph_registry: SubGraphRegistry,
+        verifier: SubgraphVerifier,
+        state: StateTracker,
+    ) {
+        self.graph_manager
+            .set_state(sub_graph_registry, verifier, state)
     }
 
     /// Handles pool updates for the BrontesBatchPricer system.

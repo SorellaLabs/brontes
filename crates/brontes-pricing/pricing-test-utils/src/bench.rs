@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    sync::{atomic::Ordering::SeqCst, Arc},
+    time::{Duration, Instant},
+};
 
 use alloy_primitives::Address;
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
@@ -53,6 +56,64 @@ impl BrontesPricingBencher {
                 |(mut data, _tx)| async move { black_box(data.next().await) },
                 criterion::BatchSize::LargeInput,
             )
+        });
+
+        Ok(())
+    }
+
+    /// benches price generation after n amount of blocks
+    pub fn bench_pricing_post_init(
+        &self,
+        bench_name: &str,
+        start_block_number: u64,
+        bench_past_n_blocks: u64,
+        c: &mut Criterion,
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let inner = self.inner.clone();
+
+        c.bench_function(bench_name, |b| {
+            b.to_async(&self.rt).iter_custom(|iters| {
+                let (mut dex_pricer, tx, ctr) = self
+                    .rt
+                    .block_on(inner.setup_pricing_for_bench_post_init(
+                        start_block_number,
+                        bench_past_n_blocks - 1,
+                        self.quote_asset,
+                        vec![],
+                    ))
+                    .unwrap();
+
+                // snapshot current state
+                let (reg, ver, state) = dex_pricer.snapshot_graph_state();
+                ctr.store(false, SeqCst);
+                let inner = self.inner.clone();
+
+                async move {
+                    let mut total_dur = Duration::ZERO;
+                    for _ in 0..iters {
+                        // setup traces for block
+                        inner
+                            .send_traces_for_block(
+                                start_block_number + bench_past_n_blocks,
+                                tx.clone(),
+                            )
+                            .await
+                            .unwrap();
+
+                        ctr.store(true, SeqCst);
+                        let start = Instant::now();
+                        black_box(dex_pricer.next().await);
+                        total_dur += start.elapsed();
+
+                        // reset for next block
+                        ctr.store(false, SeqCst);
+
+                        dex_pricer.set_state(reg.clone(), ver.clone(), state.clone());
+                        *dex_pricer.completed_block() -= 1;
+                    }
+                    total_dur
+                }
+            })
         });
 
         Ok(())
