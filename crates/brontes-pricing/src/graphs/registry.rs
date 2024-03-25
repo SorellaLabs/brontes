@@ -66,6 +66,7 @@ impl SubGraphRegistry {
             .is_some()
     }
 
+    // if we have more than 4 extensions, this is enough of a market outlook
     pub fn sufficient_pairs(&self, pair: &Pair) -> bool {
         self.sub_graphs
             .get(pair)

@@ -288,7 +288,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
     async fn classify_transfer(
         &self,
-        _tx_idx: u64,
+        tx_idx: u64,
         trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
@@ -335,13 +335,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                 // Return the adjusted transfer as an action
                 Some((
-                    // vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
-                    //     block,
-                    //     tx_idx,
-                    //     logs: trace.logs.clone(),
-                    //     action: Actions::Transfer(transfer.clone()),
-                    // })],
-                    vec![],
+                    vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                        block,
+                        tx_idx,
+                        logs: trace.logs.clone(),
+                        action: Actions::Transfer(transfer.clone()),
+                    })],
                     Actions::Transfer(transfer),
                 ))
             }
@@ -364,13 +363,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         };
 
                         return Some((
-                            // vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
-                            //     block,
-                            //     tx_idx,
-                            //     logs: trace.logs.clone(),
-                            //     action: Actions::Transfer(transfer.clone()),
-                            // })],
-                            vec![],
+                            vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                                block,
+                                tx_idx,
+                                logs: trace.logs.clone(),
+                                action: Actions::Transfer(transfer.clone()),
+                            })],
                             Actions::Transfer(transfer),
                         ))
                     }

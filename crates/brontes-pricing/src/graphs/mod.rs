@@ -104,7 +104,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn create_subgraph(
         &self,
         block: u64,
-        first_hop: Pair,
+        first_hop: Option<Pair>,
         pair: Pair,
         ignore: FastHashSet<Pair>,
         connectivity_wight: usize,

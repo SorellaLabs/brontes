@@ -110,7 +110,7 @@ where
 
 pub fn yen<N, C, E, FN, IN, FS, PV>(
     start: &N,
-    second: &N,
+    second: Option<&N>,
     successors: FN,
     success: FS,
     path_value: PV,
@@ -129,7 +129,7 @@ where
 {
     let iter_k = k.unwrap_or(usize::MAX);
     let Some((e, n, c)) =
-        dijkstra_internal(start, Some(second), &successors, &path_value, &success, 25_000)
+        dijkstra_internal(start, second, &successors, &path_value, &success, 25_000)
     else {
         return vec![];
     };
