@@ -7,25 +7,22 @@ use std::sync::Mutex;
 use once_cell::sync::OnceCell;
 
 const MAX_TEST_THREADS: usize = 12;
-static RUNNING_THREAD_COUNT: OnceCell<Mutex<usize>> = OnceCell::new();
-static RUNNING_TEST_COUNT: OnceCell<Mutex<usize>> = OnceCell::new();
+
+static RUNNING_INFO: OnceCell<Mutex<(usize, usize)>> = OnceCell::new();
 
 /// Continuously tries to fetch the thread count lock
 pub fn wait_for_tests<F: Fn() -> () + std::panic::RefUnwindSafe>(threads: usize, test_fn: F) {
-    RUNNING_THREAD_COUNT.get_or_init(|| Mutex::new(0));
-    RUNNING_TEST_COUNT.get_or_init(|| Mutex::new(0));
-
-    let thc = RUNNING_THREAD_COUNT.get().unwrap();
-    let tc = RUNNING_TEST_COUNT.get().unwrap();
+    RUNNING_INFO.get_or_init(|| Mutex::new((0, 0)));
+    let ri = RUNNING_INFO.get().unwrap();
 
     // wait until we have available resources to run the test
     loop {
-        if let Ok(mut lock) = thc.try_lock() {
-            let mut test_count = tc.lock().unwrap();
-            if *lock + threads <= MAX_TEST_THREADS || *test_count == 0 {
+        if let Ok(mut lock) = ri.try_lock() {
+            if lock.0 + threads <= MAX_TEST_THREADS || lock.1 == 0 {
                 tracing::info!("running_tests");
-                *test_count += 1;
-                *lock += threads;
+
+                lock.0 += threads;
+                lock.1 += 1;
                 break
             }
         }
@@ -38,23 +35,13 @@ pub fn wait_for_tests<F: Fn() -> () + std::panic::RefUnwindSafe>(threads: usize,
 
     // decrement resources
     tracing::info!("test ran");
-
-    // need todo this to avoid blocking
     loop {
-        if let Ok(mut running_tests) = tc.try_lock() {
+        if let Ok(mut running_tests) = ri.try_lock() {
             tracing::info!("got running lock");
-            *running_tests -= 1;
-            loop {
-                if let Ok(mut thread_count) = thc.try_lock() {
-                    tracing::info!("got tc lock");
-                    *thread_count -= threads;
-                    tracing::info!("exiting");
-
-                    return
-                } else {
-                    std::hint::spin_loop()
-                }
-            }
+            running_tests.0 -= threads;
+            running_tests.1 -= 1;
+            tracing::info!("decremented resources");
+            return
         } else {
             std::hint::spin_loop()
         }
