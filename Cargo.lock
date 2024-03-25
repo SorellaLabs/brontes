@@ -1807,6 +1807,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "bincode 2.0.0-rc.3",
+ "brontes-classifier",
  "brontes-core",
  "brontes-database",
  "brontes-macros",
