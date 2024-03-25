@@ -29,10 +29,11 @@ use brontes_types::{
         traits::{DBWriter, LibmdbxReader},
     },
     mev::{Bundle, MevBlock},
+    normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    FastHashMap, SubGraphsEntry,
+    BlockTree, FastHashMap, SubGraphsEntry,
 };
 #[cfg(feature = "local-clickhouse")]
 use db_interfaces::Database;
@@ -816,6 +817,10 @@ impl DBWriter for LibmdbxReadWriter {
         self.0
             .write_table::<Builder, BuilderData>(&[data])
             .expect("libmdbx write failure");
+        Ok(())
+    }
+
+    async fn insert_tree(&self, _tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
         Ok(())
     }
 
