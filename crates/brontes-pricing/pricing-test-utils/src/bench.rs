@@ -69,26 +69,25 @@ impl BrontesPricingBencher {
         bench_past_n_blocks: u64,
         c: &mut Criterion,
     ) -> Result<(), ClassifierTestUtilsError> {
-        let inner = self.inner.clone();
 
         c.bench_function(bench_name, |b| {
             b.to_async(&self.rt).iter_custom(|iters| {
-                let (mut dex_pricer, tx, ctr) = self
-                    .rt
-                    .block_on(inner.setup_pricing_for_bench_post_init(
-                        start_block_number,
-                        bench_past_n_blocks - 1,
-                        self.quote_asset,
-                        vec![],
-                    ))
-                    .unwrap();
-
-                // snapshot current state
-                let (reg, ver, state) = dex_pricer.snapshot_graph_state();
-                ctr.store(false, SeqCst);
                 let inner = self.inner.clone();
-
                 async move {
+                    let (mut dex_pricer, tx, ctr) = inner
+                        .setup_pricing_for_bench_post_init(
+                            start_block_number,
+                            bench_past_n_blocks - 1,
+                            self.quote_asset,
+                            vec![],
+                        )
+                        .await
+                        .unwrap();
+
+                    // snapshot current state
+                    let (reg, ver, state) = dex_pricer.snapshot_graph_state();
+                    ctr.store(false, SeqCst);
+
                     let mut total_dur = Duration::ZERO;
                     for _ in 0..iters {
                         // setup traces for block
