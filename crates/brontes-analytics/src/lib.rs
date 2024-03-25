@@ -1,6 +1,9 @@
 mod builder;
 use alloy_primitives::Address;
-use brontes_database::libmdbx::LibmdbxInit;
+use brontes_database::{
+    libmdbx::LibmdbxInit,
+    parquet::{DEFAULT_BUILDER_INFO_DIR, DEFAULT_BUNDLE_DIR, DEFAULT_SEARCHER_INFO_DIR},
+};
 use brontes_types::{
     db::searcher::{Fund, ProfitByType, SearcherStats},
     mev::{Bundle, Mev, MevCount, MevType},
@@ -8,6 +11,7 @@ use brontes_types::{
     FastHashMap, Protocol,
 };
 use eyre::Ok;
+use polars::prelude::*;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 pub struct BrontesAnalytics<T: TracingProvider, DB: LibmdbxInit> {
     pub db:             &'static DB,
@@ -19,6 +23,16 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         Self { db, tracing_client }
     }
 
+    //TODO: make utils function that fetches most recent parquet file by date if no
+    // path has been passed
+
+    //TODO: Build polars expression that is equivalent to filter_bundle
+    //TODO: Try and figure out how to add enum types instead of strings for enum
+
+    //TODO: Profit by searcher, with:
+    // Profit by mev type, mev type count, mev type average bribe
+    // Profit by protocol
+
     pub async fn get_searcher_stats(
         &self,
         start_block: u64,
@@ -27,6 +41,21 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         protocols: Option<Vec<Protocol>>,
         funds: Option<Vec<Fund>>,
     ) -> Result<(), eyre::Error> {
+        let df = LazyFrame::scan_parquet(DEFAULT_BUNDLE_DIR, Default::default())?;
+
+        let aggregate = df
+            .lazy()
+            .group_by([col("mev_contract")])
+            .agg([
+                col("tx_index").median().alias("median_tx_index"),
+                col("eoa").unique().alias("unique_eoas"),
+                col("profit_usd").sum().alias("total_profit"),
+                col("profit_usd").mean().alias("profit_mean"),
+                col("bribe_usd").sum().alias("total_bribed"),
+                col("bribe_usd").mean().alias("bribe_mean"),
+            ])
+            .collect();
+
         let mut mev_stats = AggregateMevStats::default();
 
         let mev_blocks = self.db.try_fetch_mev_blocks(Some(start_block), end_block)?;

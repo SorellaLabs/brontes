@@ -12,7 +12,7 @@ reth-tracing-ext.workspace = true
 
 arrow.workspace = true
 parquet.workspace = true
-
+polars = {features = ["lazy", "parquet", "group_by_list"], workspace = true}
 # alloy 
 alloy-primitives.workspace = true
 
