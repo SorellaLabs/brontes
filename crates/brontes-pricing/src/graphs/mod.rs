@@ -319,5 +319,4 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     }
 }
 
-const 
 
