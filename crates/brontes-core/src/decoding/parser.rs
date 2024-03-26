@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
@@ -62,13 +64,21 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
             .await;
 
-        if self
+        let mut cnt = 0;
+
+        while self
             .libmdbx
             .save_traces(block_num, traces.0.clone())
             .await
             .is_err()
         {
-            error!(%block_num, "failed to store traces for block");
+            cnt += 1;
+            if cnt > 5 {
+                error!(%block_num, "attempted 6 inserts for db but all failed");
+                break
+            }
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
         }
     }
 
