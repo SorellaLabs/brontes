@@ -57,7 +57,10 @@ impl TipTraceArgs {
         let catchup = ctx.task_executor.spawn_critical("catchup", async move {
             futures::stream::iter(start_block..=end_block)
                 .unordered_buffer_map(100, |i| parser.trace_for_clickhouse(i))
-                .map(|_res| ())
+                .map(|res| {
+                    drop(res);
+                    return
+                })
                 .collect::<Vec<_>>()
                 .await;
         });
