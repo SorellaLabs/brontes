@@ -50,6 +50,12 @@ impl Clickhouse {
         &self.client
     }
 
+    pub async fn max_traced_block(&self) -> eyre::Result<u64> {
+        self.client
+            .query_one::<u64, _>("select max(block_number) from brontes_api.tx_traces", &())
+            .await?
+    }
+
     // inserts
     pub async fn write_searcher_eoa_info(
         &self,

@@ -48,6 +48,30 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         Some((traces, self.tracer.header_by_number(block_num).await.ok()??))
     }
 
+    pub async fn trace_clickhouse_block(&self, block_num: u64) {
+        let parity_trace = self.trace_block(block_num).await;
+        let receipts = self.get_receipts(block_num).await;
+
+        if parity_trace.0.is_none() && receipts.0.is_none() {
+            let _ = self
+                .metrics_tx
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
+            return
+        }
+        let traces = self
+            .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
+            .await;
+
+        if self
+            .libmdbx
+            .save_traces(block_num, traces.0.clone())
+            .await
+            .is_err()
+        {
+            error!(%block_num, "failed to store traces for block");
+        }
+    }
+
     /// executes the tracing of a given block
     #[allow(unreachable_code)]
     pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
