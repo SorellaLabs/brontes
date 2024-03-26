@@ -24,7 +24,7 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
         })
         .ok()
         .flatten()
-        .unwrap_or(4);
+        .unwrap_or(3);
 
     let attrs = item.attrs;
     let vis = item.vis;
@@ -43,15 +43,17 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
         {
             dotenv::dotenv().expect("failed to load env");
             ::brontes_core::test_utils::init_tracing();
-            std::thread::spawn(move || {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .worker_threads(#threads)
-                .build()
-                .unwrap()
-                .block_on(async move #block)
+            ::brontes_types::wait_for_tests(#threads, || {
+                std::thread::spawn(move || {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .worker_threads(#threads)
+                    .build()
+                    .unwrap()
+                    .block_on(async move #block)
 
-            }).join().unwrap();
+                }).join().unwrap();
+            });
         }
     ))
 }

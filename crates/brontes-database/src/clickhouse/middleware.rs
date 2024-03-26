@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
@@ -12,9 +14,10 @@ use brontes_types::{
         traits::{DBWriter, LibmdbxReader, ProtocolCreatedRange},
     },
     mev::{Bundle, MevBlock},
+    normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
-    FastHashMap, Protocol, SubGraphEdge,
+    BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
 
 use super::Clickhouse;
@@ -136,6 +139,14 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         self.inner()
             .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await
+    }
+
+    async fn insert_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+        self.client.insert_tree(tree.clone()).await?;
+
+        self.inner().insert_tree(tree).await?;
+
+        Ok(())
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {

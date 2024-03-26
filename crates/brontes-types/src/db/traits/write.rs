@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use alloy_primitives::Address;
 use futures::Future;
 
@@ -9,9 +11,10 @@ use crate::{
         searcher::{SearcherInfo, SearcherStats},
     },
     mev::{Bundle, MevBlock},
+    normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
-    Protocol, SubGraphEdge,
+    BlockTree, Protocol, SubGraphEdge,
 };
 
 #[auto_impl::auto_impl(&)]
@@ -125,6 +128,13 @@ pub trait DBWriter: Send + Unpin + 'static {
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
             .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
+    }
+
+    fn insert_tree(
+        &self,
+        tree: Arc<BlockTree<Actions>>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().insert_tree(tree)
     }
 
     fn save_traces(
