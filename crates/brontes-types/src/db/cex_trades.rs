@@ -83,6 +83,29 @@ implement_table_value_codecs_with_zc!(CexTradeMapRedefined);
 type FoldVWAM = FastHashMap<Address, Vec<MakerTaker>>;
 
 impl CexTradeMap {
+    // Calculates VWAPs for the given pair across all provided exchanges - this
+    // will assess trades across each exchange
+    //
+    // For non-intermediary dependant pairs the following process is followed:
+    // - 1. Adjust each exchanges trade set by the assumed execution quality for the
+    //   given pair on the exchange, we assess a larger percent of trades if
+    //   execution quality is assumed to be lower
+    // - 2. Exclude trades that have volume too large to be considered as potential
+    //   hedging trades
+    // - 3. Order all trades for each exchange by price
+    // - 4. Finally we pick a vec of trades whose total volume is closest to the
+    //   swap volume
+    // - 5. Calculates VWAP for the chosen set of trades
+
+    // For non-intermediary dependant pairs
+    // - 1. Calculate VWAPs for all potential intermediary pairs (using above
+    //   process)
+    // -- Pair's with insufficient volume will be filtered out here which will
+    // filter the route in the next step
+    // - 2. Combines VWAP's to assess potential routes
+    // - 3. Selects most profitable route and returns it as the Price
+    // -- It should be noted here that this will not aggregate multiple possible
+    // routes
     pub fn get_price(
         &self,
         exchanges: &[CexExchange],
@@ -139,6 +162,9 @@ impl CexTradeMap {
             (pair0_vwam, pair1_vwam)
         };
 
+        // calculates vwam's and mutates iterator so quotes can be reasonably
+        // compared. We calculate vwaps for pairs of all possible intermediary
+        // paths and later exclude unlikely ones
         let (pair0_vwams, pair1_vwams) = self
             .calculate_intermediary_addresses(exchanges, pair)
             .into_par_iter()
@@ -166,6 +192,7 @@ impl CexTradeMap {
             )
             .reduce(|| (FastHashMap::default(), FastHashMap::default()), fold_fn);
 
+        // calculates best possible cross_pair execution price
         calculate_cross_pair(pair0_vwams, pair1_vwams)
     }
 
@@ -177,12 +204,22 @@ impl CexTradeMap {
         baskets: usize,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
+        // Populate Map of Assumed Execution Quality by Exchange
+        // - We're making the assumption that the stat arber isn't hitting *every* good
+        //   markout for each pair on each exchange.
+        // - Quality percent adjusts the total percent of "good" trades the arber is
+        //   capturing for the relevant pair on a given exchange.
         let quality_pct = quality.map(|map| {
             map.iter()
                 .map(|(k, v)| (*k, v.get(pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
                 .collect::<FastHashMap<_, _>>()
         });
 
+        // Filter Exchange Trades Based On Volume
+        // - This filters trades used to calculate the VWAM by excluding trades that
+        //   have significantly more volume than the needed inventory offset
+        // - The assumption here is the stat arber is trading just for this arb and
+        //   isn't offsetting inventory for other purposes at the same time
         let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
         let trades = self
             .0
@@ -204,8 +241,13 @@ impl CexTradeMap {
         if trades.is_empty() {
             return None;
         }
-
+        // Populate trade queue per exchange
+        // - This utilizes the quality percent number to set the number of trades that
+        //   will be assessed in picking a bucket to calculate the vwam with. A lower
+        //   quality percent will cause us to examine more trades (go deeper into the
+        //   vec) - resulting in a potentially worse price
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
+
         self.get_most_accurate_basket(trade_queue, volume, baskets)
     }
 
@@ -217,9 +259,11 @@ impl CexTradeMap {
     ) -> Option<MakerTaker> {
         let mut trades = Vec::new();
 
+        // multiply volume by baskets to assess more potential baskets of trades
         let volume_amount = volume * Rational::from(baskets);
         let mut cur_vol = Rational::ZERO;
 
+        // Populates an ordered vec of trades from best to worst price
         while volume_amount.gt(&cur_vol) {
             let Some(next) = queue.next_best_trade() else {
                 break;
@@ -230,23 +274,28 @@ impl CexTradeMap {
 
             trades.push(next);
         }
-
-        let closest = closest(
-            trades.iter().map(|t| vec![t]).chain(
-                trades
-                    .iter()
-                    .combinations(2)
-                    .chain(trades.iter().combinations(3))
-                    .chain(trades.iter().combinations(4)),
-            ),
-            volume,
-        )?;
+        // Groups trades into a set of iterators, first including all trades, then all
+        // combinations of 2 trades, then all combinations of 3 trades, then all
+        // combinations of 4 trades
+        // - The assumption here is we don't frequently need to evaluate more than a set
+        //   of 4 trades
+        let trade_buckets_iterator = trades.iter().map(|t| vec![t]).chain(
+            trades
+                .iter()
+                .combinations(2)
+                .chain(trades.iter().combinations(3))
+                .chain(trades.iter().combinations(4)),
+        );
+        // Gets the vec of trades that's closest to the volume of the stat arb swap
+        // Will not return a vec that does not have enough volume to fill the arb
+        let closest = closest(trade_buckets_iterator, volume)?;
 
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
         let mut trade_volume = Rational::ZERO;
         let mut exchange_with_vol = FastHashMap::default();
 
+        // For the closest basket sum volume and volume weighted prices
         for trade in closest {
             let (m_fee, t_fee) = trade.get().exchange.fees();
 
@@ -305,8 +354,13 @@ impl<'a> PairTradeQueue<'a> {
         trades: Vec<(CexExchange, Vec<&'a CexTrades>)>,
         execution_quality_pct: Option<FastHashMap<CexExchange, usize>>,
     ) -> Self {
-        // calculate the starting index based of the quality pct for the given exchange
-        // and pair.
+        // calculate the ending index (depth) based of the quality pct for the given
+        // exchange and pair.
+        // -- quality percent is the assumed percent of good trades the arber is
+        // capturing for the relevant pair on a given exchange
+        // -- a lower quality percent means we need to assess more trades because it's
+        // possible the arber was getting bad execution. Vice versa for a high quality
+        // percent
         let exchange_depth = if let Some(quality_pct) = execution_quality_pct {
             trades
                 .iter()
@@ -423,6 +477,7 @@ fn closest<'a>(
     vol: &Rational,
 ) -> Option<Vec<&'a CexTradePtr<'a>>> {
     // sort from lowest to highest volume returning the first
+    // does not return a vec that does not have enough volume to fill the arb
     iter.sorted_by(|a, b| {
         a.iter()
             .map(|t| &t.get().amount)
