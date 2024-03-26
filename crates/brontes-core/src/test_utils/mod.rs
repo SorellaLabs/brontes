@@ -354,7 +354,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                         Tables::PoolCreationBlocks,
                         Tables::TokenDecimals,
                         Tables::AddressToProtocolInfo,
-                        // Tables::AddressMeta,
+                        Tables::AddressMeta,
                     ],
                     false,
                     None,
