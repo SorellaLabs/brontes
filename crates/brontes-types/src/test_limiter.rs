@@ -51,7 +51,7 @@ pub fn wait_for_tests<F: Fn() + std::panic::RefUnwindSafe + std::panic::UnwindSa
         }
     }
 
-    if let Err(_) = e {
+    if e.is_err() {
         panic!("test failed");
     }
 }

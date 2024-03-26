@@ -47,7 +47,10 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
 
 impl NormalizedAction for Actions {
     fn is_classified(&self) -> bool {
-        !matches!(self, Actions::Unclassified(_))
+        !matches!(
+            self,
+            Actions::Unclassified(_) | Actions::EthTransfer(..) | Actions::SelfDestruct(..)
+        )
     }
 
     /// Only relevant for unclassified actions
