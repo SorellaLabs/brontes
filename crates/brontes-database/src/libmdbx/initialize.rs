@@ -54,13 +54,17 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
     ) -> eyre::Result<()> {
-        futures::stream::iter(tables)
-            .map(|table| table.initialize_table(self, block_range, clear_tables))
+        futures::stream::iter(tables.to_vec())
+            .map(|table| async move {
+                table
+                    .initialize_table(self, block_range, clear_tables)
+                    .await
+            })
             .buffered(2)
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .collect::<eyre::Result<_>>()?;
+            .collect::<eyre::Result<()>>()?;
 
         join!(
             self.load_classifier_config_data(),
