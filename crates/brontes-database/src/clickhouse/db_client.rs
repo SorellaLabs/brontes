@@ -344,7 +344,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::{dex::DexPrices, normalized_actions::TransactionRoot, searcher::SearcherEoaContract},
+        db::{dex::DexPrices, searcher::SearcherEoaContract},
         init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
