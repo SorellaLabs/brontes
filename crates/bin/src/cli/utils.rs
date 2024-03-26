@@ -41,7 +41,7 @@ pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<L
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 pub fn load_read_only_database(
     db_endpoint: String,
-) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
+) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
     let clickhouse = Clickhouse::default();
     Ok(ReadOnlyMiddleware::new(clickhouse, inner))
