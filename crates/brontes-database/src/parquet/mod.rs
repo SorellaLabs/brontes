@@ -133,8 +133,10 @@ where
 
         let base_dir_path = self.base_dir_path.clone();
 
-        let bundle_futures = vec![
-            tokio::task::spawn_blocking({
+        let mut bundle_futures = Vec::new();
+
+        if !blocks.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let block_batch = mev_block_to_record_batch(blocks)
@@ -144,8 +146,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Unknown))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !cex_dex_arbs.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let cex_dex_batch = cex_dex_to_record_batch(cex_dex_arbs)
@@ -155,8 +160,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::CexDex))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !atomic_arbs.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let atomic_arb_batch = atomic_arb_to_record_batch(atomic_arbs)
@@ -166,8 +174,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::AtomicArb))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !jit.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let jit_batch = jit_to_record_batch(jit)
@@ -177,8 +188,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Jit))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !sandwich.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let sandwich_batch = sandwich_to_record_batch(sandwich)
@@ -188,8 +202,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Sandwich))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !jit_sandwich.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let jit_sandwich_batch = jit_sandwich_to_record_batch(jit_sandwich)
@@ -199,8 +216,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::JitSandwich))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !searcher_tx.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let searcher_tx_batch = searcher_tx_to_record_batch(searcher_tx)
@@ -210,8 +230,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::SearcherTx))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !liquidation.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let liquidation_batch = liquidation_to_record_batch(liquidation)
@@ -221,8 +244,11 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Liquidation))?,
                     )
                 }
-            }),
-            tokio::task::spawn_blocking({
+            }));
+        }
+
+        if !bundle_headers.is_empty() {
+            bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
                     let bundle_batch = bundle_headers_to_record_batch(bundle_headers)
@@ -232,8 +258,8 @@ where
                         get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Unknown))?,
                     )
                 }
-            }),
-        ];
+            }));
+        }
 
         try_join_all(bundle_futures).await?;
         Ok(())
