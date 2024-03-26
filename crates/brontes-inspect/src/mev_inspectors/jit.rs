@@ -69,10 +69,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<Vec<Actions>>>();
-                    tracing::debug!(?frontrun_tx, ?backrun_tx, "checking if jit");
+                    tracing::trace!(?frontrun_tx, ?backrun_tx, "checking if jit");
 
                     if searcher_actions.is_empty() {
-                        tracing::debug!("no searcher actions found");
+                        tracing::trace!("no searcher actions found");
                         return None
                     }
 
@@ -87,7 +87,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .filter(|d| !d.is_revert())
                         .any(|d| mev_executor_contract == d.get_to_address())
                     {
-                        tracing::debug!("victim address is same as mev executor contract");
+                        tracing::trace!("victim address is same as mev executor contract");
                         return None
                     }
 
@@ -104,7 +104,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         .collect_vec();
 
                     if victim_actions.iter().any(|inner| inner.is_empty()) {
-                        tracing::debug!("no victim actions found");
+                        tracing::trace!("no victim actions found");
                         return None
                     }
 
@@ -145,7 +145,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .action_split((Actions::try_mint, Actions::try_burn, Actions::try_collect));
 
         if mints.is_empty() || burns.is_empty() {
-            tracing::debug!("missing mints & burns");
+            tracing::trace!("missing mints & burns");
             return None
         }
 
