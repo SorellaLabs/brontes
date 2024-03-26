@@ -47,7 +47,11 @@ impl TipTraceArgs {
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
         let mut end_block = parser.get_latest_block_number().unwrap();
 
-        let start_block = libmdbx.client.max_traced_block().await.unwrap();
+        let start_block = if let Some(s) = self.start_block {
+            s
+        } else {
+            libmdbx.client.max_traced_block().await.unwrap()
+        };
 
         // trace up to chaintip
         let catchup = ctx.task_executor.spawn_critical("catchup", async move {
