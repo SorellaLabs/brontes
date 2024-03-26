@@ -65,7 +65,6 @@ impl Display for TransactionAccounting {
         Ok(())
     }
 }
-
 #[serde_as]
 #[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -74,7 +73,6 @@ pub struct AddressBalanceDeltas {
     pub name:         Option<String>,
     pub token_deltas: Vec<TokenBalanceDelta>,
 }
-
 #[serde_as]
 #[derive(Debug, Deserialize, Row, PartialEq, Clone, Default, Serialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
