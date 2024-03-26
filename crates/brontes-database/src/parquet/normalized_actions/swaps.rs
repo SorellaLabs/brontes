@@ -77,6 +77,7 @@ pub fn get_normalized_swap_list_array(
     list_builder.finish()
 }
 
+#[allow(dead_code)]
 fn get_normalized_swap_array(normalized_swaps: Vec<NormalizedSwap>) -> StructArray {
     let mut protocol_builder = StringBuilder::new();
     let mut trace_index_builder = UInt16Builder::new();

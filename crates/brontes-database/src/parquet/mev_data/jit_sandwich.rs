@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::{
     array::Array,
-    datatypes::{DataType, Field, Schema},
+    datatypes::{Field, Schema},
     error::ArrowError,
     record_batch::RecordBatch,
 };
@@ -19,8 +19,8 @@ use crate::parquet::{
     utils::{get_list_string_array_from_owned, get_string_array_from_owned},
 };
 
-fn jit_liquidity_sandwich_to_record_batch(
-    jit_liquidity_sandwiches: &[JitLiquiditySandwich],
+pub fn jit_sandwich_to_record_batch(
+    jit_liquidity_sandwiches: Vec<JitLiquiditySandwich>,
 ) -> Result<RecordBatch, ArrowError> {
     let frontrun_tx_hash_array = get_list_string_array_from_owned(
         jit_liquidity_sandwiches

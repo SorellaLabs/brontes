@@ -1,18 +1,24 @@
 use std::{
-    fs,
+    fs::File,
     path::{Path, PathBuf},
 };
 
 use arrow::record_batch::RecordBatch;
-use brontes_types::db::traits::LibmdbxReader;
+use brontes_types::{
+    db::traits::LibmdbxReader,
+    mev::{BundleData, MevType},
+};
 use chrono::Local;
 use eyre::{Error, Ok, Result, WrapErr};
-use futures::try_join;
+use futures::future::try_join_all;
 use parquet::{
-    arrow::async_writer::AsyncArrowWriter, basic::Compression, file::properties::WriterProperties,
+    arrow::{async_writer::AsyncArrowWriter, ArrowWriter},
+    basic::Compression,
+    file::properties::WriterProperties,
 };
-use tokio::fs::File;
 use tracing::error;
+
+use crate::Tables;
 
 #[allow(dead_code)]
 mod address_meta;
@@ -28,19 +34,14 @@ use address_meta::address_metadata_to_record_batch;
 use builder::builder_info_to_record_batch;
 use bundle_header::bundle_headers_to_record_batch;
 use mev_block::mev_block_to_record_batch;
+use mev_data::*;
 use searcher::searcher_info_to_record_batch;
 
-pub const DEFAULT_BUNDLE_DIR: &str = "data_exports/bundles";
-pub const DEFAULT_BLOCK_DIR: &str = "data_exports/blocks";
-pub const DEFAULT_METADATA_DIR: &str = "data_exports/address_metadata";
-pub const DEFAULT_SEARCHER_INFO_DIR: &str = "data_exports/searcher_info";
-pub const DEFAULT_BUILDER_INFO_DIR: &str = "data_exports/builder-info";
-
 pub struct ParquetExporter<DB: LibmdbxReader> {
-    pub start_block:      Option<u64>,
-    pub end_block:        Option<u64>,
-    pub parquet_dir_path: Option<String>,
-    pub db:               &'static DB,
+    pub start_block:   Option<u64>,
+    pub end_block:     Option<u64>,
+    pub base_dir_path: Option<String>,
+    pub db:            &'static DB,
 }
 
 impl<DB> ParquetExporter<DB>
@@ -50,11 +51,14 @@ where
     pub fn new(
         start_block: Option<u64>,
         end_block: Option<u64>,
-        parquet_dir_path: Option<String>,
+        base_dir_path: Option<String>,
         db: &'static DB,
     ) -> Self {
-        Self { start_block, end_block, parquet_dir_path, db }
+        Self { start_block, end_block, base_dir_path, db }
     }
+
+    //TODO: Optimize bundle data export process + test exports
+    //TODO: Impl analytics using polars with notebook visualizations
 
     pub async fn export_mev_blocks(&self) -> Result<(), Error> {
         let mev_blocks = if let Some(end_block) = self.end_block {
@@ -71,41 +75,167 @@ where
             error!("No MEV blocks fetched for the given range.");
             return Err(Error::msg("No MEV blocks fetched for the given range."));
         }
-        let block_batch =
-            mev_block_to_record_batch(mev_blocks.iter().map(|mb| &mb.block).collect::<Vec<_>>())
-                .wrap_err("Failed to convert MEV block data to record batch")?;
 
-        let bundle_headers = mev_blocks
-            .iter()
-            .flat_map(|mb| mb.mev.iter().map(|bundle| &bundle.header))
-            .collect::<Vec<_>>();
+        let mev_blocks_iter = mev_blocks.into_iter();
+        let (
+            blocks,
+            bundle_headers,
+            cex_dex_arbs,
+            atomic_arbs,
+            jit,
+            sandwich,
+            jit_sandwich,
+            searcher_tx,
+            liquidation,
+        ) = {
+            let mut blocks = Vec::new();
+            let mut bundle_headers = Vec::new();
+            let mut cex_dex_arbs = Vec::new();
+            let mut atomic_arbs = Vec::new();
+            let mut jit = Vec::new();
+            let mut sandwich = Vec::new();
+            let mut jit_sandwich = Vec::new();
+            let mut searcher_tx = Vec::new();
+            let mut liquidation = Vec::new();
 
-        let bundle_batch = bundle_headers_to_record_batch(bundle_headers)
-            .wrap_err("Failed to convert bundle headers to record batch")?;
+            for mb in mev_blocks_iter {
+                blocks.push(mb.block);
+                for bundle in mb.mev {
+                    bundle_headers.push(bundle.header);
+                    match bundle.data {
+                        BundleData::CexDex(cex_dex) => cex_dex_arbs.push(cex_dex),
+                        BundleData::AtomicArb(atomic_arb) => atomic_arbs.push(atomic_arb),
+                        BundleData::Jit(jit_data) => jit.push(jit_data),
+                        BundleData::Sandwich(sandwich_data) => sandwich.push(sandwich_data),
+                        BundleData::JitSandwich(jit_sandwich_data) => {
+                            jit_sandwich.push(jit_sandwich_data)
+                        }
+                        BundleData::Unknown(searcher_tx_data) => searcher_tx.push(searcher_tx_data),
+                        BundleData::Liquidation(liquidation_data) => {
+                            liquidation.push(liquidation_data)
+                        }
+                    }
+                }
+            }
 
-        let block_path = if let Some(base_path) = &self.parquet_dir_path {
-            let mut path = PathBuf::from(base_path);
-            path.push("blocks");
-            create_file_path(path)?
-        } else {
-            create_file_path(DEFAULT_BLOCK_DIR)?
+            (
+                blocks,
+                bundle_headers,
+                cex_dex_arbs,
+                atomic_arbs,
+                jit,
+                sandwich,
+                jit_sandwich,
+                searcher_tx,
+                liquidation,
+            )
         };
 
-        let block_write = write_to_parquet_async(block_batch, block_path);
+        let base_dir_path = self.base_dir_path.clone();
 
-        let bundle_path = if let Some(base_path) = &self.parquet_dir_path {
-            let mut path = PathBuf::from(base_path);
-            path.push("bundles");
-            create_file_path(path)?
-        } else {
-            create_file_path(DEFAULT_BUNDLE_DIR)?
-        };
+        let bundle_futures = vec![
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let block_batch = mev_block_to_record_batch(blocks)
+                        .wrap_err("Failed to convert MEV block data to record batch")?;
+                    sync_write_parquet(
+                        block_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Unknown))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let cex_dex_batch = cex_dex_to_record_batch(cex_dex_arbs)
+                        .wrap_err("Failed to convert CEX-DEX data to record batch")?;
+                    sync_write_parquet(
+                        cex_dex_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::CexDex))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let atomic_arb_batch = atomic_arb_to_record_batch(atomic_arbs)
+                        .wrap_err("Failed to convert AtomicArb data to record batch")?;
+                    sync_write_parquet(
+                        atomic_arb_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::AtomicArb))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let jit_batch = jit_to_record_batch(jit)
+                        .wrap_err("Failed to convert JIT data to record batch")?;
+                    sync_write_parquet(
+                        jit_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Jit))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let sandwich_batch = sandwich_to_record_batch(sandwich)
+                        .wrap_err("Failed to convert Sandwich data to record batch")?;
+                    sync_write_parquet(
+                        sandwich_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Sandwich))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let jit_sandwich_batch = jit_sandwich_to_record_batch(jit_sandwich)
+                        .wrap_err("Failed to convert JIT Sandwich data to record batch")?;
+                    sync_write_parquet(
+                        jit_sandwich_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::JitSandwich))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let searcher_tx_batch = searcher_tx_to_record_batch(searcher_tx)
+                        .wrap_err("Failed to convert Searcher Tx data to record batch")?;
+                    sync_write_parquet(
+                        searcher_tx_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::SearcherTx))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let liquidation_batch = liquidation_to_record_batch(liquidation)
+                        .wrap_err("Failed to convert Liquidation data to record batch")?;
+                    sync_write_parquet(
+                        liquidation_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Liquidation))?,
+                    )
+                }
+            }),
+            tokio::task::spawn_blocking({
+                let base_dir_path = base_dir_path.clone();
+                move || {
+                    let bundle_batch = bundle_headers_to_record_batch(bundle_headers)
+                        .wrap_err("Failed to convert bundle headers to record batch")?;
+                    sync_write_parquet(
+                        bundle_batch,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Unknown))?,
+                    )
+                }
+            }),
+        ];
 
-        let bundle_write = write_to_parquet_async(bundle_batch, bundle_path);
-
-        try_join!(block_write, bundle_write)
-            .wrap_err("Failed to write MEV blocks and bundles to Parquet files")?;
-
+        try_join_all(bundle_futures).await?;
         Ok(())
     }
 
@@ -123,17 +253,12 @@ where
         let address_meta_batch = address_metadata_to_record_batch(address_metadata)
             .expect("Failed to convert Address Metadata to record batch");
 
-        let metadata_path = if let Some(base_path) = &self.parquet_dir_path {
-            let mut path = PathBuf::from(base_path);
-            path.push("address_metadata");
-            create_file_path(path)?
-        } else {
-            create_file_path(DEFAULT_METADATA_DIR)?
-        };
-
-        write_to_parquet_async(address_meta_batch, metadata_path)
-            .await
-            .expect("Failed to write address metadata to parquet file");
+        write_parquet(
+            address_meta_batch,
+            get_path(self.base_dir_path.clone(), Tables::AddressMeta, None)?,
+        )
+        .await
+        .expect("Failed to write address metadata to parquet file");
 
         Ok(())
     }
@@ -152,17 +277,12 @@ where
         let searcher_info_batch = searcher_info_to_record_batch(eoa_info, contract_info)
             .expect("Failed to convert Searcher Info to record batch");
 
-        let metadata_path = if let Some(base_path) = &self.parquet_dir_path {
-            let mut path = PathBuf::from(base_path);
-            path.push("searcher-info");
-            create_file_path(path)?
-        } else {
-            create_file_path(DEFAULT_SEARCHER_INFO_DIR)?
-        };
-
-        write_to_parquet_async(searcher_info_batch, metadata_path)
-            .await
-            .expect("Failed to write searcher info to parquet file");
+        write_parquet(
+            searcher_info_batch,
+            get_path(self.base_dir_path.clone(), Tables::SearcherEOAs, None)?,
+        )
+        .await
+        .expect("Failed to write searcher info to parquet file");
 
         Ok(())
     }
@@ -181,24 +301,19 @@ where
         let builder_info_batch = builder_info_to_record_batch(builder_info)
             .expect("Failed to convert Searcher Info to record batch");
 
-        let metadata_path = if let Some(base_path) = &self.parquet_dir_path {
-            let mut path = PathBuf::from(base_path);
-            path.push("builder-info");
-            create_file_path(path)?
-        } else {
-            create_file_path(DEFAULT_BUILDER_INFO_DIR)?
-        };
-
-        write_to_parquet_async(builder_info_batch, metadata_path)
-            .await
-            .expect("Failed to write builder info to parquet file");
+        write_parquet(
+            builder_info_batch,
+            get_path(self.base_dir_path.clone(), Tables::Builder, None)?,
+        )
+        .await
+        .expect("Failed to write builder info to parquet file");
 
         Ok(())
     }
 }
 
-async fn write_to_parquet_async(record_batch: RecordBatch, file_path: PathBuf) -> Result<()> {
-    let file = File::create(file_path.clone())
+async fn write_parquet(record_batch: RecordBatch, file_path: PathBuf) -> Result<()> {
+    let file = tokio::fs::File::create(file_path.clone())
         .await
         .wrap_err_with(|| format!("Failed to create file at path: {}", file_path.display()))?;
 
@@ -222,6 +337,45 @@ async fn write_to_parquet_async(record_batch: RecordBatch, file_path: PathBuf) -
     Ok(())
 }
 
+fn sync_write_parquet(record_batch: RecordBatch, file_path: PathBuf) -> Result<()> {
+    let file = File::create(file_path.clone())
+        .wrap_err_with(|| format!("Failed to create file at path: {}", file_path.display()))?;
+
+    let props = WriterProperties::builder()
+        .set_compression(Compression::SNAPPY)
+        .build();
+
+    let mut writer = ArrowWriter::try_new(file, record_batch.schema(), Some(props))
+        .wrap_err("Failed to initialize Parquet writer")?;
+
+    writer
+        .write(&record_batch)
+        .wrap_err("Failed to write record batch to Parquet file")?;
+
+    writer.close().wrap_err("Failed to close Parquet writer")?;
+
+    Ok(())
+}
+
+pub fn get_path(
+    custom_path: Option<String>,
+    batch_type: Tables,
+    mev_type: Option<MevType>,
+) -> Result<PathBuf> {
+    let base_path = custom_path.as_deref().unwrap_or("brontes-exports");
+
+    let mut path = PathBuf::from(base_path);
+    path.push(batch_type.get_default_path());
+
+    if batch_type == Tables::MevBlocks && mev_type.is_none() {
+        path.push("blocks");
+    } else if let Some(mev_type) = mev_type {
+        path.push("bundles");
+        path.push(mev_type.get_parquet_path());
+    }
+    create_file_path(path)
+}
+
 fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     let now = Local::now();
 
@@ -231,9 +385,27 @@ fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     // Creates a flat directory structure
     // "data_exports/address_metadata/03-19"
     let dir_path = PathBuf::from(base_dir.as_ref()).join(date_str);
-    fs::create_dir_all(&dir_path)?;
+    std::fs::create_dir_all(&dir_path)?;
 
     let file_path = dir_path.join(format!("{}.parquet", time_str.replace(':', "-")));
 
     Ok(file_path)
 }
+
+impl Tables {
+    fn get_default_path(&self) -> &'static str {
+        match self {
+            Tables::MevBlocks => DEFAULT_BLOCK_DIR,
+            Tables::AddressMeta => DEFAULT_METADATA_DIR,
+            Tables::SearcherEOAs => DEFAULT_SEARCHER_INFO_DIR,
+            Tables::SearcherContracts => DEFAULT_SEARCHER_INFO_DIR,
+            Tables::Builder => DEFAULT_BUILDER_INFO_DIR,
+            _ => panic!("Unsupported table type"),
+        }
+    }
+}
+
+pub const DEFAULT_BLOCK_DIR: &str = "mev";
+pub const DEFAULT_METADATA_DIR: &str = "address_metadata";
+pub const DEFAULT_SEARCHER_INFO_DIR: &str = "searcher_info";
+pub const DEFAULT_BUILDER_INFO_DIR: &str = "builder-info";

@@ -18,7 +18,7 @@ use crate::parquet::{
     utils::{get_list_string_array_from_owned, get_string_array_from_owned},
 };
 
-fn jit_to_record_batch(jit_liquidity: &[JitLiquidity]) -> Result<RecordBatch, ArrowError> {
+pub fn jit_to_record_batch(jit_liquidity: Vec<JitLiquidity>) -> Result<RecordBatch, ArrowError> {
     let frontrun_tx_hash_array = get_list_string_array_from_owned(
         jit_liquidity
             .iter()

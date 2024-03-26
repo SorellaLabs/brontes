@@ -21,7 +21,7 @@ use crate::parquet::{
     utils::{build_float64_array, get_string_array_from_owned},
 };
 
-fn cex_dex_to_record_batch(cex_dex_arbs: &[CexDex]) -> Result<RecordBatch, ArrowError> {
+pub fn cex_dex_to_record_batch(cex_dex_arbs: Vec<CexDex>) -> Result<RecordBatch, ArrowError> {
     let tx_hash_array = get_string_array_from_owned(
         cex_dex_arbs
             .iter()
@@ -32,7 +32,7 @@ fn cex_dex_to_record_batch(cex_dex_arbs: &[CexDex]) -> Result<RecordBatch, Arrow
     let swaps_array = get_normalized_swap_list_array(
         cex_dex_arbs
             .iter()
-            .map(|cd| cd.swaps.iter().map(|swap| swap).collect_vec())
+            .map(|cd| cd.swaps.iter().collect_vec())
             .collect_vec(),
     );
 

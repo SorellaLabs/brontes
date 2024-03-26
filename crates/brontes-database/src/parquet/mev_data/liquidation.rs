@@ -18,7 +18,7 @@ use crate::parquet::{
 };
 
 pub fn liquidation_to_record_batch(
-    liquidations: &[Liquidation],
+    liquidations: Vec<Liquidation>,
 ) -> Result<RecordBatch, ArrowError> {
     let liquidation_tx_hash_array = get_string_array_from_owned(
         liquidations

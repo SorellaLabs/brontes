@@ -108,6 +108,19 @@ impl MevType {
             MevType::CexDex => true,
         }
     }
+
+    pub fn get_parquet_path(&self) -> &'static str {
+        match self {
+            MevType::CexDex => "cex-dex",
+            MevType::AtomicArb => "atomic-arb",
+            MevType::Jit => "jit",
+            MevType::Sandwich => "sandwich",
+            MevType::JitSandwich => "jit-sandwich",
+            MevType::SearcherTx => "searcher-tx",
+            MevType::Liquidation => "liquidation",
+            MevType::Unknown => "header",
+        }
+    }
 }
 
 impl From<String> for MevType {

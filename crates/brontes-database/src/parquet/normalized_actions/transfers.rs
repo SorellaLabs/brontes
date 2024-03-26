@@ -1,7 +1,7 @@
 use arrow::{
     array::{
-        ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructArray,
-        StructBuilder, UInt16Builder,
+        ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
+        UInt16Builder,
     },
     datatypes::{DataType, Field},
 };

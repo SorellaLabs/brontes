@@ -16,7 +16,7 @@ use crate::parquet::{
     utils::get_string_array_from_owned,
 };
 
-fn atomic_arb_to_record_batch(atomic_arbs: &[AtomicArb]) -> Result<RecordBatch, ArrowError> {
+pub fn atomic_arb_to_record_batch(atomic_arbs: Vec<AtomicArb>) -> Result<RecordBatch, ArrowError> {
     let tx_hash_array = get_string_array_from_owned(
         atomic_arbs
             .iter()
@@ -27,7 +27,7 @@ fn atomic_arb_to_record_batch(atomic_arbs: &[AtomicArb]) -> Result<RecordBatch, 
     let swaps_array = get_normalized_swap_list_array(
         atomic_arbs
             .iter()
-            .map(|arb| arb.swaps.iter().map(|swap| swap).collect_vec())
+            .map(|arb| arb.swaps.iter().collect_vec())
             .collect_vec(),
     );
 

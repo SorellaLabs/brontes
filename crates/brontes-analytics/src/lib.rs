@@ -3,7 +3,7 @@ use alloy_primitives::Address;
 #[allow(unused_imports)]
 use brontes_database::{
     libmdbx::LibmdbxInit,
-    parquet::{DEFAULT_BUILDER_INFO_DIR, DEFAULT_BUNDLE_DIR, DEFAULT_SEARCHER_INFO_DIR},
+    parquet::{DEFAULT_BUILDER_INFO_DIR, DEFAULT_SEARCHER_INFO_DIR},
 };
 use brontes_types::{
     db::searcher::{Fund, ProfitByType, SearcherStats},
@@ -42,7 +42,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         protocols: Option<Vec<Protocol>>,
         funds: Option<Vec<Fund>>,
     ) -> Result<(), eyre::Error> {
-        let df = LazyFrame::scan_parquet(DEFAULT_BUNDLE_DIR, Default::default())?;
+        let df = LazyFrame::scan_parquet(DEFAULT_BUILDER_INFO_DIR, Default::default())?;
 
         let _aggregate = df
             .lazy()

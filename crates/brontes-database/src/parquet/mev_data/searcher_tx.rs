@@ -16,7 +16,9 @@ use crate::parquet::{
     utils::get_string_array_from_owned,
 };
 
-fn searcher_tx_to_record_batch(searcher_txs: &[SearcherTx]) -> Result<RecordBatch, ArrowError> {
+pub fn searcher_tx_to_record_batch(
+    searcher_txs: Vec<SearcherTx>,
+) -> Result<RecordBatch, ArrowError> {
     let tx_hash_array = get_string_array_from_owned(
         searcher_txs
             .iter()

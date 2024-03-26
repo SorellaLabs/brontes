@@ -197,7 +197,18 @@ impl SearcherStatsWithAddress {
 }
 
 #[derive(
-    Debug, Default, Display, PartialEq, Eq, Clone, rSerialize, rDeserialize, Archive, Copy, AsRefStr,
+    Debug,
+    Default,
+    Display,
+    PartialEq,
+    Eq,
+    Clone,
+    rSerialize,
+    rDeserialize,
+    Archive,
+    Copy,
+    AsRefStr,
+    PartialOrd,
 )]
 pub enum Fund {
     #[default]

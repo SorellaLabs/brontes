@@ -17,7 +17,7 @@ use crate::parquet::{
     utils::{get_list_string_array_from_owned, get_string_array_from_owned},
 };
 
-fn sandwich_to_record_batch(sandwiches: &[Sandwich]) -> Result<RecordBatch, ArrowError> {
+pub fn sandwich_to_record_batch(sandwiches: Vec<Sandwich>) -> Result<RecordBatch, ArrowError> {
     let frontrun_tx_hash_array = get_list_string_array_from_owned(
         sandwiches
             .iter()
@@ -80,7 +80,7 @@ fn sandwich_to_record_batch(sandwiches: &[Sandwich]) -> Result<RecordBatch, Arro
     let backrun_swaps_array = get_normalized_swap_list_array(
         sandwiches
             .iter()
-            .map(|s| s.backrun_swaps.iter().map(|swap| swap).collect_vec())
+            .map(|s| s.backrun_swaps.iter().collect_vec())
             .collect_vec(),
     );
 
