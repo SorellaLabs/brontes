@@ -303,6 +303,12 @@ pub struct ReadOnlyMiddleware<I: DBWriter> {
     inner:      I,
 }
 
+impl<I: DBWriter> ReadOnlyMiddleware<I> {
+    pub fn new(client: Clickhouse, inner: I) -> Self {
+        Self { inner, client }
+    }
+}
+
 impl<I: DBWriter + Send + Sync> DBWriter for ReadOnlyMiddleware<I> {
     type Inner = Self;
 
