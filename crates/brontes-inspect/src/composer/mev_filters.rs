@@ -91,8 +91,9 @@ macro_rules! define_mev_precedence {
     };
 }
 define_mev_precedence!(
-    CexDex => AtomicArb;
-    AtomicArb, CexDex => Sandwich;
-    AtomicArb, CexDex => Jit;
-    AtomicArb, CexDex, Sandwich => JitSandwich;
+    Unknown => CexDex;
+    Unknown, CexDex => AtomicArb;
+    Unknown, AtomicArb, CexDex => Sandwich;
+    Unknown, AtomicArb, CexDex => Jit;
+    Unknown, AtomicArb, CexDex, Sandwich => JitSandwich;
 );

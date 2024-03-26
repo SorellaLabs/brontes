@@ -24,7 +24,7 @@ tracing.workspace = true
 
 # async
 rayon.workspace = true
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 futures.workspace = true
 
 # numbers
@@ -38,7 +38,7 @@ serde_with.workspace = true
 serde_repr.workspace = true
 
 # database
-clickhouse.workspace = true
+clickhouse = { workspace = true, features = ["tls"] }
 
 # misc
 phf.workspace = true
@@ -61,18 +61,25 @@ indoc = "2"
 zstd = "0.13"
 paste = "1.0.14"
 pin-project = "1.1.4"
-clap.workspace = true 
+clap.workspace = true
 
 # stats
 statrs = "0.16"
 
 # errors
 eyre.workspace = true
+thiserror.workspace = true
+
+# hashing
+ahash = "0.8.11"
+once_cell = "1.19.0"
 
 [dev-dependencies]
 dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
+brontes-macros.workspace = true
+brontes-types = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
@@ -82,4 +89,15 @@ reth-tracing-ext.workspace = true
 [features]
 default = []
 tests = []
-local-reth = ["brontes-core/local-reth", "reth-tracing-ext/local-reth"]
+cex-dex-markout = []
+
+local-clickhouse = [
+  "brontes-database/local-clickhouse",
+  "brontes-classifier/local-clickhouse",
+]
+
+local-reth = [
+  "brontes-core/local-reth",
+  "brontes-classifier/local-reth",
+  "reth-tracing-ext/local-reth",
+]

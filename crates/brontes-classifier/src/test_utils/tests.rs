@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
@@ -23,16 +22,14 @@ use brontes_pricing::{
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
-        traits::DBWriter,
     },
     normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
     pair::Pair,
     structured_trace::TraceActions,
     tree::BlockTree,
-    TreeSearchBuilder,
+    FastHashMap, TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
@@ -58,6 +55,10 @@ impl ClassifierTestUtils {
         Self { classifier, trace_loader, dex_pricing_receiver: rx }
     }
 
+    pub fn get_tracing_provider(&self) -> Arc<Box<dyn TracingProvider>> {
+        self.get_provider()
+    }
+
     pub fn get_token_info(&self, address: Address) -> TokenInfoWithAddress {
         self.libmdbx.try_fetch_token_info(address).unwrap()
     }
@@ -77,7 +78,8 @@ impl ClassifierTestUtils {
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, HashMap::default(), self.libmdbx);
+        let pair_graph =
+            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
@@ -90,9 +92,9 @@ impl ClassifierTestUtils {
                         .map(|(addr, protocol, pair)| (addr, (protocol, pair)))
                         .collect::<Vec<_>>()
                 })
-                .collect::<HashMap<_, _>>()
+                .collect::<FastHashMap<_, _>>()
         } else {
-            HashMap::new()
+            FastHashMap::default()
         };
         let ctr = Arc::new(AtomicBool::new(false));
 
@@ -162,50 +164,6 @@ impl ClassifierTestUtils {
         .await)
     }
 
-    /// returns true if we need to query dex tokens
-    fn need_dex_quotes(
-        &self,
-        block: u64,
-        quote_token: Address,
-        quotes: Option<&DexQuotes>,
-        needs_tokens: &[Address],
-        tx: UnboundedSender<DexPriceMsg>,
-    ) -> bool {
-        if let Some(quote) = quotes {
-            needs_tokens
-                .iter()
-                .zip(vec![quote_token].into_iter().cycle())
-                .map(|(token, quote)| Pair(*token, quote))
-                .filter(|pair| !quote.has_quote(pair, 0))
-                .map(|pair| {
-                    let update = DexPriceMsg::Update(PoolUpdate {
-                        block,
-                        tx_idx: 0,
-                        logs: vec![],
-                        action: make_fake_swap(pair),
-                    });
-                    tx.send(update).unwrap();
-                })
-                .count()
-                != 0
-        } else {
-            needs_tokens
-                .iter()
-                .zip(vec![quote_token].into_iter().cycle())
-                .map(|(token, quote)| Pair(*token, quote))
-                .for_each(|pair| {
-                    let update = DexPriceMsg::Update(PoolUpdate {
-                        block,
-                        tx_idx: 0,
-                        logs: vec![],
-                        action: make_fake_swap(pair),
-                    });
-                    tx.send(update).unwrap();
-                });
-            true
-        }
-    }
-
     pub async fn build_tree_tx(
         &self,
         tx_hash: TxHash,
@@ -213,6 +171,117 @@ impl ClassifierTestUtils {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
         Ok(self.classifier.build_block_tree(vec![trace], header).await)
+    }
+
+    pub async fn setup_pricing_for_bench(
+        &self,
+        block: u64,
+        quote_asset: Address,
+        needs_tokens: Vec<Address>,
+    ) -> Result<
+        (
+            BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+            UnboundedSender<DexPriceMsg>,
+        ),
+        ClassifierTestUtilsError,
+    > {
+        let BlockTracesWithHeaderAnd { traces, header, block, .. } = self
+            .trace_loader
+            .get_block_traces_with_header(block)
+            .await?;
+        let (tx, rx) = unbounded_channel();
+
+        let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
+        let _tree = classifier.build_block_tree(traces, header).await;
+
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
+        let (ctr, pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
+
+        Ok((pricer, tx))
+    }
+
+    pub async fn send_traces_for_block(
+        &self,
+        block: u64,
+        tx: UnboundedSender<DexPriceMsg>,
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let BlockTracesWithHeaderAnd { traces, header, .. } = self
+            .trace_loader
+            .get_block_traces_with_header(block)
+            .await?;
+
+        let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
+        let _tree = classifier.build_block_tree(traces, header).await;
+
+        Ok(())
+    }
+
+    pub async fn setup_pricing_for_bench_post_init(
+        &self,
+        block: u64,
+        past_n: u64,
+        quote_asset: Address,
+        needs_tokens: Vec<Address>,
+    ) -> Result<
+        (
+            BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+            UnboundedSender<DexPriceMsg>,
+            Arc<AtomicBool>,
+        ),
+        ClassifierTestUtilsError,
+    > {
+        let mut range_traces = self
+            .trace_loader
+            .get_block_traces_with_header_range(block, block + past_n)
+            .await?;
+
+        let (tx, rx) = unbounded_channel();
+
+        let BlockTracesWithHeaderAnd { traces, header, .. } = range_traces.remove(0);
+
+        let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
+        let _tree = classifier.build_block_tree(traces, header).await;
+
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
+
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+
+        // send rest of updates
+        for BlockTracesWithHeaderAnd { traces, header, .. } in range_traces {
+            classifier.build_block_tree(traces, header).await;
+        }
+
+        ctr.store(true, SeqCst);
+        while (pricer.next().await).is_some() {}
+        ctr.store(false, SeqCst);
+
+        Ok((pricer, tx, ctr))
     }
 
     pub async fn build_tree_tx_with_pricing(
@@ -228,27 +297,28 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header).await;
 
-        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
+        // triggers close
 
-        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx) {
-            let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
-            classifier.close();
-
-            ctr.store(true, SeqCst);
-            // triggers close
-            drop(classifier);
-
-            if let Some((p_block, pricing)) = pricer.next().await {
-                self.libmdbx
-                    .write_dex_quotes(p_block, Some(pricing.clone()))
-                    .await
-                    .unwrap();
-                Some(pricing)
-            } else {
-                return Err(ClassifierTestUtilsError::DexPricingError);
-            }
+        let price = if let Some((_p_block, pricing)) = pricer.next().await {
+            Some(pricing)
         } else {
-            price
+            return Err(ClassifierTestUtilsError::DexPricingError)
         };
 
         Ok((tree, price))
@@ -303,52 +373,33 @@ impl ClassifierTestUtils {
             trees.push(tree);
         }
 
-        let mut possible_price = Vec::new();
-        let mut failed = false;
+        (start_block..=end_block).for_each(|block| {
+            needs_tokens
+                .iter()
+                .zip(vec![quote_asset].into_iter().cycle())
+                .map(|(token, quote)| Pair(*token, quote))
+                .for_each(|pair| {
+                    let update = DexPriceMsg::Update(PoolUpdate {
+                        block,
+                        tx_idx: 0,
+                        logs: vec![],
+                        action: make_fake_swap(pair),
+                    });
+                    tx.send(update).unwrap();
+                });
+        });
 
-        for block_num in start_block..=end_block {
-            match self.libmdbx.fetch_dex_quotes(block_num) {
-                Ok(dex_quotes) => {
-                    possible_price.push((block_num, dex_quotes));
-                }
-                Err(_) => {
-                    failed = true;
-                    break;
-                }
-            }
+        let (ctr, mut pricer) = self
+            .init_dex_pricer(start_block, None, quote_asset, rx)
+            .await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
+
+        let mut prices = Vec::new();
+
+        while let Some((_p_block, quotes)) = pricer.next().await {
+            prices.push(quotes);
         }
-
-        let prices = if possible_price
-            .iter()
-            .map(|(block, price)| {
-                self.need_dex_quotes(*block, quote_asset, Some(price), &needs_tokens, tx.clone())
-            })
-            .any(|f| f)
-            || failed
-        {
-            let (ctr, mut pricer) = self
-                .init_dex_pricer(start_block, None, quote_asset, rx)
-                .await?;
-            classifier.close();
-
-            ctr.store(true, SeqCst);
-            // triggers close
-            drop(classifier);
-
-            let mut prices = Vec::new();
-
-            while let Some((p_block, quotes)) = pricer.next().await {
-                self.libmdbx
-                    .write_dex_quotes(p_block, Some(quotes.clone()))
-                    .await
-                    .unwrap();
-
-                prices.push(quotes);
-            }
-            prices
-        } else {
-            possible_price.into_iter().map(|(_, q)| q).collect_vec()
-        };
 
         Ok(trees.into_iter().zip(prices.into_iter()).collect())
     }
@@ -381,28 +432,28 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(traces, header).await;
 
-        let price = if let Ok(m) = self.libmdbx.get_dex_quotes(block) { Some(m) } else { None };
+        needs_tokens
+            .iter()
+            .zip(vec![quote_asset].into_iter().cycle())
+            .map(|(token, quote)| Pair(*token, quote))
+            .for_each(|pair| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_swap(pair),
+                });
+                tx.send(update).unwrap();
+            });
 
-        let price = if self.need_dex_quotes(block, quote_asset, price.as_ref(), &needs_tokens, tx) {
-            let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
-            classifier.close();
+        let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
+        classifier.close();
+        ctr.store(true, SeqCst);
 
-            ctr.store(true, SeqCst);
-            // triggers close
-            drop(classifier);
-
-            if let Some((p_block, pricing)) = pricer.next().await {
-                // because we have pricing for full block. we store it
-                self.libmdbx
-                    .write_dex_quotes(p_block, Some(pricing.clone()))
-                    .await
-                    .unwrap();
-                Some(pricing)
-            } else {
-                return Err(ClassifierTestUtilsError::DexPricingError);
-            }
+        let price = if let Some((_p_block, pricing)) = pricer.next().await {
+            Some(pricing)
         } else {
-            price
+            return Err(ClassifierTestUtilsError::DexPricingError)
         };
 
         Ok((tree, price))
@@ -416,6 +467,7 @@ impl ClassifierTestUtils {
         tree_collect_builder: TreeSearchBuilder<Actions>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
+
         assert!(!tree.tx_roots.is_empty(), "empty tree. most likely a invalid hash");
 
         let root = tree.tx_roots.remove(0);
@@ -457,7 +509,7 @@ impl ClassifierTestUtils {
         // write protocol to libmdbx
         self.libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
 
@@ -501,7 +553,7 @@ impl ClassifierTestUtils {
         if trace_addr.len() > 1 {
             trace_addr.pop().unwrap();
         } else {
-            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool));
+            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))
         };
 
         let p_trace = trace
@@ -531,7 +583,7 @@ impl ClassifierTestUtils {
         protocol: Protocol,
         address: Address,
         token0: Address,
-        token1: Address,
+        token1: Option<Address>,
         token2: Option<Address>,
         token3: Option<Address>,
         token4: Option<Address>,
@@ -540,13 +592,13 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&vec![
+            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData {
                     key:   address,
                     value: ProtocolInfo {
                         protocol,
                         token0,
-                        token1,
+                        token1: token1.unwrap_or_default(),
                         token2,
                         token3,
                         token4,
@@ -564,7 +616,7 @@ impl ClassifierTestUtils {
         if let Err(e) = self
             .libmdbx
             .0
-            .write_table::<TokenDecimals, TokenDecimalsData>(&vec![TokenDecimalsData {
+            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData {
                 key:   token.address,
                 value: brontes_types::db::token_info::TokenInfo {
                     decimals: token.decimals,

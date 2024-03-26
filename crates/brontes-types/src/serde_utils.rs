@@ -215,8 +215,11 @@ pub mod u256 {
     where
         D: Deserializer<'de>,
     {
-        let data: String = Deserialize::deserialize(deserializer)?;
+        let mut data: String = Deserialize::deserialize(deserializer)?;
 
+        if data.ends_with("_U256") {
+            data = data[..data.len() - 5].to_string()
+        }
         Ok(U256::from_str(&data)
             .map_err(serde::de::Error::custom)?
             .into())
@@ -299,6 +302,7 @@ pub mod address {
         let st: String = format!("{:?}", u.clone());
         st.serialize(serializer)
     }
+
     #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
     where
@@ -311,8 +315,6 @@ pub mod address {
 }
 
 pub mod static_bindings {
-
-    use std::str::FromStr;
 
     use serde::{
         de::{Deserialize, Deserializer},
@@ -333,7 +335,7 @@ pub mod static_bindings {
     {
         let address: Option<String> = Deserialize::deserialize(deserializer)?;
 
-        Ok(Protocol::from_str(&address.unwrap()).unwrap())
+        Ok(Protocol::from_db_string(&address.unwrap()))
     }
 }
 
@@ -434,6 +436,35 @@ pub mod vec_txhash {
             .into_iter()
             .map(|t| t.into())
             .collect())
+    }
+}
+
+pub mod txhash {
+
+    use std::{fmt::Debug, str::FromStr};
+
+    use alloy_primitives::TxHash;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    #[allow(dead_code)]
+    pub fn serialize<S: Serializer, D: Into<TxHash> + Debug>(
+        u: &D,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let data = format!("{:?}", u);
+
+        data.serialize(serializer)
+    }
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D, T: From<TxHash>>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(TxHash::from_str(&data).unwrap().into())
     }
 }
 
@@ -575,7 +606,11 @@ pub mod option_contract_info {
     use std::str::FromStr;
 
     use alloy_primitives::Address;
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{
+        de::Deserialize,
+        ser::{Serialize, Serializer},
+        Deserializer,
+    };
 
     use crate::db::address_metadata::ContractInfo;
 
@@ -595,11 +630,15 @@ pub mod option_contract_info {
             reputation,
         }))
     }
+
+    pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
+        (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
+    }
 }
 
 pub mod socials {
 
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 
     use crate::db::address_metadata::Socials;
     type SocalDecode =
@@ -613,6 +652,11 @@ pub mod socials {
             Deserialize::deserialize(deserializer)?;
 
         Ok(Socials { twitter, twitter_followers, website_url, crunchbase, linkedin }.into())
+    }
+
+    pub fn serialize<S: Serializer>(u: &Socials, serializer: S) -> Result<S::Ok, S::Error> {
+        (&u.twitter, &u.twitter_followers, &u.website_url, &u.crunchbase, &u.linkedin)
+            .serialize(serializer)
     }
 }
 

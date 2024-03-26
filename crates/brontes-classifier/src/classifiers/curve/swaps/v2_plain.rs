@@ -12,9 +12,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplexchange_0CallLogs,
+    log: CurveV2PlainPoolImplExchange_0CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -66,9 +66,9 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplexchange_1CallLogs,
+    log: CurveV2PlainPoolImplExchange_1CallLogs,
     db_tx: &DB|{
-        let log = log.TokenExchange_field;
+        let log = log.token_exchange_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
 
@@ -121,7 +121,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -133,7 +133,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
@@ -191,7 +191,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,

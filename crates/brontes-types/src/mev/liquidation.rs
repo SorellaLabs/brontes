@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
+use ahash::HashSet;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
@@ -11,10 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::{
-    db::redefined_types::primitives::*,
-    normalized_actions::{ClickhouseVecNormalizedLiquidation, ClickhouseVecNormalizedSwap},
-};
+use crate::{db::redefined_types::primitives::*, Protocol};
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
@@ -50,6 +48,20 @@ impl Mev for Liquidation {
     fn bribe(&self) -> u128 {
         self.gas_details.coinbase_transfer.unwrap_or(0)
     }
+
+    fn protocols(&self) -> HashSet<Protocol> {
+        let mut protocols: HashSet<Protocol> = self
+            .liquidation_swaps
+            .iter()
+            .map(|swap| swap.protocol)
+            .collect();
+
+        self.liquidations.iter().for_each(|liquidation| {
+            protocols.insert(liquidation.protocol);
+        });
+
+        protocols
+    }
 }
 
 impl Serialize for Liquidation {
@@ -60,10 +72,8 @@ impl Serialize for Liquidation {
         let mut ser_struct = serializer.serialize_struct("Liquidation", 34)?;
 
         // frontrun
-        ser_struct.serialize_field(
-            "liquidation_tx_hash",
-            &FixedString::from(format!("{:?}", self.liquidation_tx_hash)),
-        )?;
+        ser_struct
+            .serialize_field("liquidation_tx_hash", &format!("{:?}", self.liquidation_tx_hash))?;
 
         let liquidation_swaps: ClickhouseVecNormalizedSwap = self.liquidation_swaps.clone().into();
 

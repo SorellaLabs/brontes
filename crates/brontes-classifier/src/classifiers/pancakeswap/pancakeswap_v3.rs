@@ -162,13 +162,13 @@ action_impl!(
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
         Protocol::PancakeSwapV3,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -180,7 +180,7 @@ mod tests {
             Protocol::PancakeSwapV3,
             Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
             Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
-            TokenInfoWithAddress::usdt().address,
+            Some(TokenInfoWithAddress::usdt().address),
             None,
             None,
             None,

@@ -12,16 +12,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -53,16 +54,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -92,16 +94,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_imbalance_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_imbalance_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -131,16 +134,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV2PlainPoolImplremove_liquidity_imbalance_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_imbalance_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -171,10 +175,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_0Call,
-    log: CurveV2PlainPoolImplremove_liquidity_one_coin_0CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_one_coin_0CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -216,10 +220,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coin_1Call,
-    log: CurveV2PlainPoolImplremove_liquidity_one_coin_1CallLogs,
+    log: CurveV2PlainPoolImplRemove_liquidity_one_coin_1CallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let protocol = details.protocol;
@@ -258,7 +262,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -270,7 +274,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
@@ -324,7 +328,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,
@@ -378,7 +382,7 @@ mod tests {
             Protocol::CurveV2PlainPool,
             Address::new(hex!("9D0464996170c6B9e75eED71c68B99dDEDf279e8")),
             Address::new(hex!("D533a949740bb3306d119CC777fa900bA034cd52")),
-            Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7")),
+            Some(Address::new(hex!("62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7"))),
             None,
             None,
             None,

@@ -293,7 +293,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
 }
 
 pub mod tx_traces_inner {
-    use std::{collections::HashMap, str::FromStr};
+    use std::str::FromStr;
 
     use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256, U64};
     use itertools::Itertools;
@@ -306,13 +306,14 @@ pub mod tx_traces_inner {
     use crate::{
         db::traces::TxTracesInner,
         structured_trace::{DecodedCallData, DecodedParams, TransactionTraceWithLogs, TxTrace},
+        FastHashMap,
     };
 
     type TxTraceClickhouseTuple = (
         u64,
         (
             Vec<(u64, String, Option<String>, u64, Vec<u64>)>, // meta
-            Vec<(u64, String, Vec<(String, String, String)>, Vec<(String, String, String)>)>, /* decoded data */
+            Vec<(u64, String, Vec<(String, String, String)>, Vec<(String, String, String)>)>,
             Vec<(u64, u64, String, Vec<String>, String)>, // logs
             Vec<(u64, String, u64, String, [u8; 32])>,    // create action
             Vec<(u64, String, String, u64, String, String, [u8; 32])>, // call action
@@ -376,7 +377,7 @@ pub mod tx_traces_inner {
         tx_trace.tx_index = tx_index;
         tx_trace.is_success = is_success;
 
-        let mut map = HashMap::new();
+        let mut map = FastHashMap::default();
 
         // meta
         meta.into_iter()
@@ -420,10 +421,10 @@ pub mod tx_traces_inner {
             });
 
         // logs
-        let mut log_map = HashMap::new();
+        let mut log_map = FastHashMap::default();
         logs.into_iter()
             .for_each(|(trace_idx, log_idx, address, topics, data)| {
-                let log_entry = log_map.entry(trace_idx).or_insert(HashMap::new());
+                let log_entry = log_map.entry(trace_idx).or_insert(FastHashMap::default());
 
                 log_entry.insert(
                     log_idx,

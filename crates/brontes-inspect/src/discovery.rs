@@ -14,6 +14,10 @@ use brontes_types::{
     tree::BlockTree,
 };
 
+// Add new inspector that checks for Know searchers by checking the from & to
+// address in the searcher eoa & searcher contract table & classify it as a know
+// searcher transaction type & do the profit deltas on the tx
+
 pub struct DiscoveryInspector {
     std_dev_threshold: f64,
 }

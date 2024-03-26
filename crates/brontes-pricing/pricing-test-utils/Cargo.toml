@@ -1,0 +1,90 @@
+[package]
+name = "pricing-test-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+#brontes 
+itertools = "0.12.0"
+redefined.workspace = true
+
+futures.workspace = true
+thiserror.workspace = true
+
+# reth 
+reth-rpc-types.workspace = true
+reth-primitives.workspace = true
+reth-db.workspace = true
+reth-codecs.workspace = true
+
+# tracing
+tracing.workspace = true
+# async
+rayon.workspace = true
+
+# numbers
+malachite = { workspace = true, features = ["enable_serde"] }
+
+# serde
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+erased-serde = "0.3.31"
+serde_with.workspace = true
+serde_repr.workspace = true
+alloy-rlp = { workspace = true, features = ["arrayvec"] }
+
+# pathfinding 
+pathfinding = "4.8.1"
+rustc-hash = "1.1.0"
+
+# misc
+phf.workspace = true
+strum = { workspace = true, features = ["derive"] }
+auto_impl.workspace = true
+alloy-primitives = { workspace = true, features = ["serde"] }
+alloy-sol-types.workspace = true
+alloy-sol-macro = { workspace = true, features = ["json"] }
+alloy-dyn-abi.workspace = true
+parking_lot.workspace = true
+petgraph = "0.6.4"
+derive_more.workspace = true
+async-trait.workspace = true
+num-bigfloat = "1.7.0"
+parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
+proptest = "1.4"
+proptest-derive = "0.4"
+arbitrary = "1.3"
+modular-bitfield = "0.11.2"
+bytes = "1.5"
+rkyv.workspace = true
+dashmap = "5.5.3"
+
+criterion = { version = "0.5", features = ["async", "async_tokio"] }
+brontes-pricing = { workspace = true, features = ["tests"] }
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-database = { workspace = true, features = ["tests"] }
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-types = { workspace = true, features = ["tests"] }
+reth-tracing-ext = { workspace = true, features = ["tests"] }
+brontes-macros.workspace = true
+dotenv.workspace = true
+tokio.workspace = true
+rand = "0.8.5"
+eyre.workspace = true
+
+[features]
+default = []
+uni-v3-ticks = []
+local-reth = [
+  "reth-tracing-ext/local-reth",
+  "brontes-types/local-reth",
+  "brontes-core/local-reth",
+  "brontes-classifier/local-reth",
+  "brontes-database/local-reth",
+]
+local-clickhouse = [
+  "reth-tracing-ext/local-clickhouse",
+  "brontes-core/local-clickhouse",
+  "brontes-classifier/local-clickhouse",
+  "brontes-database/local-clickhouse",
+]

@@ -1,7 +1,7 @@
 use reth_primitives::Address;
 use tracing::error;
 
-use super::NodeData;
+use super::{types::NodeWithDataRef, NodeData};
 use crate::{normalized_actions::NormalizedAction, TreeSearchArgs, TreeSearchBuilder};
 
 #[derive(Debug, Clone)]
@@ -73,13 +73,9 @@ impl Node {
             self.collect(
                 &mut results,
                 &collect_fn,
-                &|a, data| (a.index, data.get_ref(a.data).cloned()),
+                &|data| (data.node.index, data.data.clone()),
                 nodes,
             );
-            let results = results
-                .into_iter()
-                .filter_map(|(a, b)| Some((a, b?)))
-                .collect::<Vec<_>>();
 
             // Now that we have the child actions of interest we can finalize the parent
             // node's classification which mutates the parents data in place & returns the
@@ -151,7 +147,7 @@ impl Node {
         data: &mut NodeData<V>,
     ) -> bool
     where
-        F: Fn(&mut Self, &mut NodeData<V>),
+        F: Fn(&mut Node, &mut NodeData<V>),
     {
         let TreeSearchArgs { collect_current_node, child_node_to_collect } =
             find.generate_search_args(self, &*data);
@@ -188,7 +184,10 @@ impl Node {
     where
         F: Fn(Vec<&mut Self>, &mut NodeData<V>),
     {
-        if !find.generate_search_args(self, &*data).collect_current_node {
+        if !find
+            .generate_search_args(self, &*data)
+            .child_node_to_collect
+        {
             return false;
         }
 
@@ -358,7 +357,7 @@ impl Node {
         data: &NodeData<V>,
     ) -> bool {
         // the previous sub-action was the last one to meet the criteria
-        if !call.generate_search_args(self, data).collect_current_node {
+        if !call.generate_search_args(self, data).child_node_to_collect {
             return false;
         }
 
@@ -368,7 +367,7 @@ impl Node {
             .map(|i| i.collect_spans(result, call, data))
             .collect::<Vec<bool>>();
 
-        let lower_has_better = lower_has_better_collect.into_iter().any(|f| f);
+        let lower_has_better = lower_has_better_collect.into_iter().all(|f| f);
 
         // if all child nodes don't have a best sub-action. Then the current node is the
         // best.
@@ -394,12 +393,14 @@ impl Node {
         wanted_data: &T,
         data: &NodeData<V>,
     ) where
-        T: Fn(&Node, &NodeData<V>) -> R,
+        T: Fn(NodeWithDataRef<'_, V>) -> R,
     {
         let TreeSearchArgs { collect_current_node, child_node_to_collect } =
             call.generate_search_args(self, data);
         if collect_current_node {
-            results.push(wanted_data(self, data))
+            if let Some(data) = data.get_ref(self.data) {
+                results.push(wanted_data(NodeWithDataRef::new(self, data)))
+            }
         }
 
         if child_node_to_collect {

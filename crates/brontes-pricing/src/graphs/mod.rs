@@ -4,7 +4,9 @@ mod registry;
 mod state_tracker;
 mod subgraph;
 mod yens;
-use std::collections::{HashMap, HashSet};
+use std::time::Duration;
+
+use brontes_types::{FastHashMap, FastHashSet};
 mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
@@ -14,16 +16,18 @@ use brontes_types::{
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };
 use itertools::Itertools;
-use malachite::Rational;
-pub use subgraph_verifier::VerificationResults;
-use tracing::info;
+use malachite::{num::basic::traits::One, Rational};
 
-use self::{
+pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
     subgraph_verifier::*,
 };
 use super::PoolUpdate;
 use crate::{types::PoolState, Protocol};
+
+/// After we have this amount of graphs for
+/// a given pair, we won't query, goes_through
+const SUFFICIENT_PAIRS: usize = 4;
 
 /// [`GraphManager`] Is the manager for everything graph related. It is
 /// responsible for creating, updating, and maintaining the main token graph as
@@ -58,17 +62,18 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
     subgraph_verifier:  SubgraphVerifier,
     /// tracks all state needed for our subgraphs
     graph_state:        StateTracker,
+    #[allow(dead_code)] // we don't db on tests which causes dead code
     /// allows us to save a load subgraphs.
     db:                 &'static DB,
 }
 
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
-        all_pool_data: HashMap<(Address, Protocol), Pair>,
-        sub_graph_registry: HashMap<Pair, Vec<SubGraphEdge>>,
+        all_pool_data: FastHashMap<(Address, Protocol), Pair>,
+        sub_graph_registry: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
         db: &'static DB,
     ) -> Self {
-        let graph = AllPairGraph::init_from_hashmap(all_pool_data);
+        let graph = AllPairGraph::init_from_hash_map(all_pool_data);
         let registry = SubGraphRegistry::new(sub_graph_registry);
         let subgraph_verifier = SubgraphVerifier::new();
 
@@ -81,6 +86,23 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         }
     }
 
+    /// used for testing and benching
+    pub fn snapshot_state(&self) -> (SubGraphRegistry, SubgraphVerifier, StateTracker) {
+        (self.sub_graph_registry.clone(), self.subgraph_verifier.clone(), self.graph_state.clone())
+    }
+
+    /// used for testing and benching
+    pub fn set_state(
+        &mut self,
+        sub_graph_registry: SubGraphRegistry,
+        verifier: SubgraphVerifier,
+        state: StateTracker,
+    ) {
+        self.sub_graph_registry = sub_graph_registry;
+        self.subgraph_verifier = verifier;
+        self.graph_state = state;
+    }
+
     pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {
         self.all_pair_graph.add_node(pair, pool_addr, dex, block);
     }
@@ -89,22 +111,43 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.subgraph_verifier.all_pairs()
     }
 
+    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: Pair) {
+        self.subgraph_verifier.pool_dep_failure(pair, &goes_through);
+    }
+
+    pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
+        self.sub_graph_registry.has_extension(pair, quote)
+    }
+
     /// creates a subgraph returning the edges and the state to load.
     /// this is done so that this isn't mut and be ran in parallel
     pub fn create_subgraph(
         &self,
         block: u64,
+        first_hop: Option<Pair>,
         pair: Pair,
-        ignore: HashSet<Pair>,
+        ignore: FastHashSet<Pair>,
         connectivity_wight: usize,
-        connections: usize,
+        connections: Option<usize>,
+        timeout: Duration,
+        is_extension: bool,
     ) -> Vec<SubGraphEdge> {
+        #[cfg(not(feature = "tests"))]
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
-            return edges;
+            return edges
         }
 
         self.all_pair_graph
-            .get_paths_ignoring(pair, &ignore, block, connectivity_wight, connections)
+            .get_paths_ignoring(
+                pair,
+                first_hop,
+                &ignore,
+                block,
+                connectivity_wight,
+                connections,
+                timeout,
+                is_extension,
+            )
             .into_iter()
             .flatten()
             .flatten()
@@ -114,66 +157,35 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn add_subgraph_for_verification(
         &mut self,
         pair: Pair,
+        complete_pair: Pair,
+        goes_through: Pair,
+        extends_to: Option<Pair>,
         block: u64,
         edges: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
-        self.subgraph_verifier
-            .create_new_subgraph(pair, block, edges, &self.graph_state)
+        self.subgraph_verifier.create_new_subgraph(
+            pair,
+            goes_through,
+            extends_to,
+            complete_pair,
+            block,
+            edges,
+            &self.graph_state,
+        )
     }
 
-    /// creates a subpool for the pair returning all pools that need to be
-    /// loaded
-    pub fn create_subgraph_mut(
-        &mut self,
-        block: u64,
-        pair: Pair,
-        connectivity_wight: usize,
-        connections: usize,
-    ) -> Vec<PoolPairInfoDirection> {
-        if let Ok((pair, edges)) = self.db.try_load_pair_before(block, pair) {
-            return self.subgraph_verifier.create_new_subgraph(
-                pair,
-                block,
-                edges,
-                &self.graph_state,
-            );
-        }
-
-        let paths = self
-            .all_pair_graph
-            // We want to use the unordered pair as we always
-            // want to run the search from the unkown token to the quote.
-            // We want this beacuse our algorithm favors heavily connected
-            // nodes which most times our base token is not. This small
-            // change speeds up yens algo by a good amount.
-            .get_paths(pair, block, connectivity_wight, connections)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .collect_vec();
-
-        // search failed
-        if paths.is_empty() {
-            info!(?pair, "empty search path");
-            return vec![];
-        }
-
-        self.subgraph_verifier
-            .create_new_subgraph(pair, block, paths, &self.graph_state)
-    }
-
+    // feature flagged
+    #[allow(unused_variables)]
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
+        #[cfg(not(feature = "tests"))]
         if let Err(e) =
             self.db
                 .save_pair_at(block, pair, subgraph.get_all_pools().flatten().cloned().collect())
         {
             tracing::error!(error=%e, "failed to save new subgraph pair");
         }
-        self.sub_graph_registry.add_verified_subgraph(
-            pair,
-            subgraph,
-            &self.graph_state.all_state(block),
-        )
+        self.sub_graph_registry
+            .add_verified_subgraph(subgraph, &self.graph_state.all_state(block))
     }
 
     pub fn remove_pair_graph_address(
@@ -187,14 +199,18 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     /// Returns all pairs that have been ignored from lowest to highest
     /// liquidity
-    pub fn verify_subgraph_on_new_path_failure(&mut self, pair: Pair) -> Option<Vec<Pair>> {
+    pub fn verify_subgraph_on_new_path_failure(
+        &mut self,
+        pair: Pair,
+        goes_through: &Pair,
+    ) -> Option<Vec<Pair>> {
         self.subgraph_verifier
-            .verify_subgraph_on_new_path_failure(pair)
+            .verify_subgraph_on_new_path_failure(pair, goes_through)
     }
 
-    pub fn get_price(&self, pair: Pair) -> Option<Rational> {
+    pub fn get_price(&self, pair: Pair, goes_through: Pair) -> Option<Rational> {
         self.sub_graph_registry
-            .get_price(pair, self.graph_state.finalized_state())
+            .get_price(pair, goes_through, self.graph_state.finalized_state())
     }
 
     pub fn new_state(&mut self, address: Address, state: PoolState) {
@@ -205,8 +221,23 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.graph_state.update_pool_state(address, update);
     }
 
-    pub fn has_subgraph(&self, pair: Pair) -> bool {
-        self.sub_graph_registry.has_subpool(&pair) || self.subgraph_verifier.is_verifying(&pair)
+    pub fn has_subgraph(&self, pair: Pair, goes_through: Pair) -> bool {
+        self.sub_graph_registry.has_subpool(&pair)
+            || self.subgraph_verifier.is_verifying(&pair, &goes_through)
+    }
+
+    fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
+        self.sub_graph_registry.has_go_through(pair, goes_through)
+            || self.subgraph_verifier.has_go_through(pair, goes_through)
+    }
+
+    fn sufficient_pairs(&self, pair: &Pair) -> bool {
+        self.subgraph_verifier.current_pairs(pair) + self.sub_graph_registry.current_pairs(pair)
+            >= SUFFICIENT_PAIRS
+    }
+
+    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Option<Pair>) -> bool {
+        self.has_go_through(&pair, &goes_through) || self.sufficient_pairs(&pair)
     }
 
     pub fn remove_state(&mut self, address: &Address) {
@@ -216,11 +247,13 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn add_frayed_end_extension(
         &mut self,
         pair: Pair,
+        goes_through: &Pair,
         block: u64,
         frayed_end_extensions: Vec<SubGraphEdge>,
     ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         self.subgraph_verifier.add_frayed_end_extension(
             pair,
+            goes_through,
             block,
             &self.graph_state,
             frayed_end_extensions,
@@ -229,15 +262,41 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn verify_subgraph(
         &mut self,
-        pairs: Vec<(u64, Option<u64>, Pair)>,
+        pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
-        self.subgraph_verifier.verify_subgraph(
-            pairs,
-            quote,
-            &self.all_pair_graph,
-            &mut self.graph_state,
-        )
+        let pairs = pairs
+            .into_iter()
+            .flat_map(|(a, b, pair, goes_throughs)| {
+                goes_throughs
+                    .into_iter()
+                    .unique()
+                    .map(|goes_through| {
+                        self.subgraph_verifier
+                            .get_subgraph_extends(&pair, &goes_through)
+                            .map(|jump_pair| {
+                                (
+                                    a,
+                                    b,
+                                    pair,
+                                    self.sub_graph_registry
+                                        .get_price_all(
+                                            jump_pair.flip(),
+                                            self.graph_state.finalized_state(),
+                                        )
+                                        .unwrap_or(Rational::ONE),
+                                    goes_through.1,
+                                    goes_through,
+                                )
+                            })
+                            .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote, goes_through))
+                    })
+                    .collect_vec()
+            })
+            .collect_vec();
+
+        self.subgraph_verifier
+            .verify_subgraph(pairs, &self.all_pair_graph, &mut self.graph_state)
     }
 
     pub fn finalize_block(&mut self, block: u64) {

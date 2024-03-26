@@ -12,15 +12,16 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool4add_liquidityCallLogs,
+    log: CurveBasePool4Add_liquidityCallLogs,
     db_tx: &DB
     |{
-        let log = log.AddLiquidity_field;
+        let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;

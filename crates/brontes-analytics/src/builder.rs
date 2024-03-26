@@ -1,11 +1,10 @@
-use std::collections::{HashMap, HashSet};
-
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_types::{
     db::{builder::BuilderStats, searcher::SearcherStats},
     mev::bundle::MevType,
     traits::TracingProvider,
+    FastHashMap, FastHashSet,
 };
 use eyre::Result;
 use tracing::info;
@@ -19,24 +18,27 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         end_block: u64,
         mev_type: Option<Vec<MevType>>,
     ) -> Result<(), eyre::Error> {
-        let mut searcher_to_builder_map: HashMap<Address, (SearcherStats, HashSet<Address>)> =
-            HashMap::new();
-        let mut builder_map: HashMap<Address, BuilderStats> = HashMap::new();
-        let mev_blocks = self.db.try_fetch_mev_blocks(start_block, end_block)?;
+        let mut searcher_to_builder_map: FastHashMap<
+            Address,
+            (SearcherStats, FastHashSet<Address>),
+        > = FastHashMap::default();
+        let mut builder_map: FastHashMap<Address, BuilderStats> = FastHashMap::default();
+        let mev_blocks = self.db.try_fetch_mev_blocks(Some(start_block), end_block)?;
 
         for mev_block in mev_blocks {
             for bundle in mev_block.mev {
                 if let Some(types) = &mev_type {
                     if !types.contains(&bundle.mev_type())
                         || bundle.get_searcher_contract().is_none()
+                        || bundle.mev_type() == MevType::SearcherTx
                     {
-                        continue;
+                        continue
                     }
                 }
 
                 let (stats, builders) = searcher_to_builder_map
                     .entry(bundle.get_searcher_contract().unwrap())
-                    .or_insert_with(|| (SearcherStats::default(), HashSet::new()));
+                    .or_insert_with(|| (SearcherStats::default(), FastHashSet::default()));
 
                 stats.update_with_bundle(&bundle.header);
 
@@ -61,10 +63,10 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 .await?;
         }
 
-        let single_builder_searchers: HashMap<Address, Address> = searcher_to_builder_map
+        let single_builder_searchers: FastHashMap<Address, Address> = searcher_to_builder_map
             .into_iter()
             .filter_map(|(searcher, (searcher_stats, builders))| {
-                if searcher_stats.bundle_count > 10 && builders.len() == 1 {
+                if searcher_stats.bundle_count.mev_count > 10 && builders.len() == 1 {
                     builders.iter().next().map(|builder| (searcher, *builder))
                 } else {
                     None

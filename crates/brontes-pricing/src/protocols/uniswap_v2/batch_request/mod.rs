@@ -54,7 +54,7 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
 
     let res = middleware
         .eth_call(req, block.map(|i| i.into()), None, None)
-        .map_err(|_| eyre::eyre!("v2 state call failed"))
+        .map_err(|e| eyre::eyre!("v2 state call failed, err={}", e))
         .await?;
 
     let mut return_data = data_constructorCall::abi_decode_returns(&res, false)?;

@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fmt::Debug,
     path,
     sync::{Arc, Mutex},
@@ -9,15 +8,16 @@ use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 use brontes_types::{
     db::{
+        address_metadata::{AddressMetadata, ContractInfo, Socials},
         builder::BuilderInfo,
         searcher::SearcherInfo,
         traits::{DBWriter, LibmdbxReader},
     },
     traits::TracingProvider,
     unordered_buffer_map::BrontesStreamExt,
-    Protocol,
+    FastHashMap, Protocol,
 };
-use futures::{future::join_all, stream::iter, StreamExt};
+use futures::{future::join_all, join, stream::iter, StreamExt};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use toml::Table;
@@ -30,6 +30,7 @@ use crate::{
 };
 const CLASSIFIER_CONFIG_FILE_NAME: &str = "config/classifier_config.toml";
 const SEARCHER_BUILDER_CONFIG_FILE_NAME: &str = "config/searcher_builder_config.toml";
+const METADATA_CONFIG_FILE_NAME: &str = "config/metadata_config.toml";
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
@@ -61,6 +62,27 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
+        join!(
+            self.load_classifier_config_data(),
+            self.load_searcher_builder_config_data(),
+            self.load_address_metadata_config(),
+        );
+        Ok(())
+    }
+
+    pub async fn initialize_arbitrary_state(
+        &self,
+        tables: &[Tables],
+        block_range: &'static [u64],
+    ) -> eyre::Result<()> {
+        join_all(
+            tables
+                .iter()
+                .map(|table| table.initialize_table_arbitrary_state(self, block_range)),
+        )
+        .await
+        .into_iter()
+        .collect::<eyre::Result<_>>()?;
 
         self.load_classifier_config_data().await;
         self.load_searcher_builder_config_data().await;
@@ -74,7 +96,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
         if clear_table {
             self.libmdbx.0.clear_table::<T>()?;
@@ -101,7 +130,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Sync + Debug + 'static,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
     {
         if clear_table {
             self.libmdbx.0.clear_table::<T>()?;
@@ -124,13 +160,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
             .filter_map(
-                |chk| {
-                    if !chk.is_empty() {
-                        Some((chk[0], chk[chk.len() - 1]))
-                    } else {
-                        None
-                    }
-                },
+                |chk| if !chk.is_empty() { Some((chk[0], chk[chk.len() - 1])) } else { None },
             )
             .collect_vec();
 
@@ -147,9 +177,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
 
                 match data {
-                    Ok(d) => libmdbx.0.write_table(&d)?,
+                    Ok(d) => {
+                        libmdbx.0.write_table(&d)?;
+                    }
                     Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                     }
                 }
 
@@ -176,6 +208,70 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         Ok(())
     }
 
+    pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
+        &self,
+        block_range: &'static [u64],
+        mark_init: Option<u8>,
+    ) -> eyre::Result<()>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
+    {
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
+
+        let num_chunks = Arc::new(Mutex::new(ranges.len()));
+
+        info!(target: "brontes::init::missing_state", "{} -- Starting Initialization Missing State With {} Chunks", T::NAME, ranges.len());
+
+        iter(ranges.into_iter().map(|inner_range| {
+            let num_chunks = num_chunks.clone();
+            let clickhouse = self.clickhouse;
+            let libmdbx = self.libmdbx;
+
+            async move {
+                let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
+
+                match data {
+                    Ok(d) => {
+                        libmdbx.0.write_table(&d)?;
+                    }
+                    Err(e) => {
+                        info!(target: "brontes::init::missing_state", "{} -- Error Writing -- {:?}", T::NAME,  e)
+                    }
+                }
+
+                let num = {
+                    let mut n = num_chunks.lock().unwrap();
+                    *n -= 1;
+                    *n + 1
+                };
+
+                info!(target: "brontes::init::missing_state", "{} -- Finished Chunk {}", T::NAME, num);
+
+                if let Some(flag) = mark_init {
+                    libmdbx.inited_range(inner_range.iter().copied(), flag)?;
+                }
+
+                Ok::<(), eyre::Report>(())
+            }
+        }))
+        .unordered_buffer_map(4, tokio::spawn)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(())
+    }
+
     /// loads up the `classifier_config.toml` and ensures the values are in the
     /// database
     async fn load_classifier_config_data(&self) {
@@ -184,10 +280,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         let Ok(config) = toml::from_str::<Table>(&{
             let Ok(path) = std::fs::read_to_string(workspace_dir) else {
+                tracing::error!(target: "brontes::init", "failed to read classifier_config");
                 return;
             };
             path
         }) else {
+            tracing::error!(target: "brontes::init", "failed to load toml");
             return;
         };
 
@@ -217,7 +315,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 };
 
                 self.libmdbx
-                    .insert_pool(init_block, token_addr, token_addrs, protocol)
+                    .insert_pool(init_block, token_addr, &token_addrs, None, protocol)
                     .await
                     .unwrap();
             }
@@ -299,6 +397,39 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             }
         }
     }
+
+    async fn load_address_metadata_config(&self) {
+        let mut workspace_dir = workspace_dir();
+        workspace_dir.push(METADATA_CONFIG_FILE_NAME);
+
+        let config_str =
+            std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
+
+        let config: MetadataConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
+
+        for (address_str, toml_metadata) in config.metadata {
+            let address = address_str.parse().unwrap();
+            let metadata: AddressMetadata = toml_metadata.into_address_metadata();
+
+            let existing_info = self.libmdbx.try_fetch_address_metadata(address);
+
+            match existing_info.expect("Failed to query address metadata table") {
+                Some(mut existing) => {
+                    existing.merge(metadata);
+                    self.libmdbx
+                        .write_address_meta(address, existing)
+                        .await
+                        .expect("Failed to write address metadata");
+                }
+                None => {
+                    self.libmdbx
+                        .write_address_meta(address, metadata)
+                        .await
+                        .expect("Failed to write address metadata");
+                }
+            }
+        }
+    }
 }
 
 fn workspace_dir() -> path::PathBuf {
@@ -322,47 +453,93 @@ pub struct TokenInfoWithAddressToml {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BSConfig {
-    builders:           HashMap<String, BuilderInfo>,
-    searcher_eoas:      HashMap<String, SearcherInfo>,
-    searcher_contracts: HashMap<String, SearcherInfo>,
+    builders:           FastHashMap<String, BuilderInfo>,
+    searcher_eoas:      FastHashMap<String, SearcherInfo>,
+    searcher_contracts: FastHashMap<String, SearcherInfo>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AddressMetadataConfig {
+    pub entity_name:     Option<String>,
+    pub nametag:         Option<String>,
+    pub labels:          Vec<String>,
+    #[serde(rename = "type")]
+    pub address_type:    Option<String>,
+    #[serde(default)]
+    pub contract_info:   Option<ContractInfoConfig>,
+    pub ens:             Option<String>,
+    pub social_metadata: SocialsConfig,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ContractInfoConfig {
+    pub verified_contract: Option<bool>,
+    pub contract_creator:  Option<String>,
+    pub reputation:        Option<u8>,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct SocialsConfig {
+    pub twitter:           Option<String>,
+    pub twitter_followers: Option<u64>,
+    pub website_url:       Option<String>,
+    pub crunchbase:        Option<String>,
+    pub linkedin:          Option<String>,
+}
+#[derive(Serialize, Deserialize)]
+struct MetadataConfig {
+    pub metadata: FastHashMap<String, AddressMetadataConfig>,
+}
+
+impl AddressMetadataConfig {
+    fn into_address_metadata(self) -> AddressMetadata {
+        AddressMetadata {
+            entity_name:     self.entity_name,
+            nametag:         self.nametag,
+            labels:          self.labels,
+            address_type:    self.address_type,
+            contract_info:   self.contract_info.map(|config| ContractInfo {
+                verified_contract: config.verified_contract,
+                contract_creator:  config.contract_creator.map(|s| s.parse().unwrap()),
+                reputation:        config.reputation,
+            }),
+            ens:             self.ens,
+            social_metadata: Socials {
+                twitter:           self.social_metadata.twitter,
+                twitter_followers: self.social_metadata.twitter_followers,
+                website_url:       self.social_metadata.website_url,
+                crunchbase:        self.social_metadata.crunchbase,
+                linkedin:          self.social_metadata.linkedin,
+            },
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use brontes_core::test_utils::{get_db_handle, init_trace_parser, init_tracing};
-    #[cfg(feature = "local-clickhouse")]
-    use brontes_database::clickhouse::Clickhouse;
-    use brontes_database::libmdbx::{initialize::LibmdbxInitializer, tables::*};
+    use brontes_core::test_utils::{get_db_handle, init_trace_parser};
+    use brontes_database::libmdbx::{
+        initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
+    };
+    use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
-
-    #[cfg(feature = "local-clickhouse")]
-    pub fn load_clickhouse() -> Clickhouse {
-        Clickhouse::default()
-    }
-
-    #[cfg(not(feature = "local-clickhouse"))]
-    pub fn load_clickhouse() -> brontes_database::clickhouse::ClickhouseHttpClient {
-        let clickhouse_api = std::env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
-        let clickhouse_api_key =
-            std::env::var("CLICKHOUSE_API_KEY").expect("No CLICKHOUSE_API_KEY in .env");
-        brontes_database::clickhouse::ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key)
-    }
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
-        init_tracing();
-        let block_range = (17000000, 17000100);
+        //let block_range = (17000000, 17000100);
+        let block_range = (17000000, 17000002);
+        let arbitrary_set = Box::leak(Box::new(vec![17000000, 17000010, 17000100]));
 
-        let clickhouse = Box::leak(Box::new(load_clickhouse()));
-        let libmdbx = get_db_handle();
+        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        init_threadpools(10);
+        let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
         let (tx, _rx) = unbounded_channel();
         let tracing_client =
             init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        //let tables = Tables::ALL;
-        let tables = [Tables::TxTraces];
+        let tables = Tables::ALL;
 
         intializer
             .initialize(&tables, false, Some(block_range))
@@ -383,9 +560,15 @@ mod tests {
         CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
+        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
 
         // Metadata
         BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
             .await
             .unwrap();
 
@@ -406,6 +589,9 @@ mod tests {
 
         // TxTraces
         TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
             .await
             .unwrap();
     }

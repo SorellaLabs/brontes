@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -15,11 +14,11 @@ use brontes_types::{
     },
     normalized_actions::Actions,
     tree::BlockTree,
+    BrontesTaskExecutor, FastHashMap,
 };
 use futures::{Stream, StreamExt};
-use reth_tasks::TaskExecutor;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tracing::info;
+use tracing::{info, span, Instrument, Level};
 
 pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
 pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
@@ -28,21 +27,25 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     receiver: PricingReceiver<T, DB>,
     tx:       PricingSender<T, DB>,
 
-    pub(crate) pending_trees: HashMap<u64, (BlockTree<Actions>, Metadata)>,
-    task_executor:            TaskExecutor,
+    pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Actions>, Metadata)>,
+    task_executor:            BrontesTaskExecutor,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
-    pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: TaskExecutor) -> Self {
+    pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
         let (tx, rx) = channel(2);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
-            let res = pricer.next().await;
+            let block = pricer.current_block_processing();
+            let res = pricer
+                .next()
+                .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
+                .await;
             tx_clone.try_send((pricer, res)).unwrap();
         });
 
         task_executor.spawn_critical("dex pricer", fut);
-        Self { pending_trees: HashMap::default(), task_executor, tx, receiver: rx }
+        Self { pending_trees: FastHashMap::default(), task_executor, tx, receiver: rx }
     }
 
     pub fn is_done(&self) -> bool {
@@ -52,7 +55,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
     fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T, DB>) {
         let tx = self.tx.clone();
         let fut = Box::pin(async move {
-            let res = pricer.next().await;
+            let block = pricer.current_block_processing();
+            let res = pricer
+                .next()
+                .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
+                .await;
             let _ = tx.try_send((pricer, res));
         });
 
@@ -90,10 +97,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
                 let finalized_meta = meta.into_full_metadata(prices);
 
-                return Poll::Ready(Some((tree, finalized_meta)));
+                return Poll::Ready(Some((tree, finalized_meta)))
             } else {
                 // means we have completed chunks
-                return Poll::Ready(None);
+                return Poll::Ready(None)
             }
         }
 

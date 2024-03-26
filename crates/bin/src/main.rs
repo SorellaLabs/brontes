@@ -5,15 +5,19 @@ use brontes::{
     runner,
 };
 use clap::Parser;
-use tracing::{error, info, Level};
-use tracing_subscriber::filter::Directive;
+use eyre::eyre;
+use tracing::{error, info};
 
-fn main() {
+fn main() -> eyre::Result<()> {
     dotenv::dotenv().ok();
     init_tracing();
+    fdlimit::raise_fd_limit().unwrap();
 
     match run() {
-        Ok(()) => info!(target: "brontes", "SUCCESS!"),
+        Ok(()) => {
+            info!(target: "brontes", "successful shutdown");
+            Ok(())
+        }
         Err(e) => {
             error!("Error: {:?}", e);
 
@@ -22,6 +26,7 @@ fn main() {
                 error!("Caused by: {:?}", err);
                 source = err.source();
             }
+            Err(eyre!("program exited via error"))
         }
     }
 }
@@ -30,18 +35,15 @@ fn run() -> eyre::Result<()> {
     let opt = Args::parse();
     match opt.command {
         Commands::Run(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
-        Commands::QueryDb(command) => runner::run_command_until_exit(|_| command.execute()),
-        Commands::AddToDb(command) => runner::run_command_until_exit(|_| command.execute()),
-        Commands::TraceRange(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
+        Commands::Database(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
     }
 }
 
 fn init_tracing() {
-    let verbosity_level = Level::INFO;
-    let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+    let default_level = "info";
 
-    let layers = vec![brontes_tracing::stdout(directive)];
+    let layers = vec![brontes_tracing::stdout(default_level)];
 
     brontes_tracing::init(layers);
 }

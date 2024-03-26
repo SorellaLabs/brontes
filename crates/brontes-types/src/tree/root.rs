@@ -1,10 +1,9 @@
-use std::{collections::HashSet, fmt, fmt::Display};
+use std::{fmt, fmt::Display};
 
 use alloy_primitives::TxHash;
-use clickhouse::{fixed_string::FixedString, Row};
+use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use redefined::self_convert_redefined;
 use reth_primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
@@ -55,6 +54,11 @@ pub struct Root<V: NormalizedAction> {
 }
 
 impl<V: NormalizedAction> Root<V> {
+    //TODO: Add field for reinit bool flag
+    //TODO: Once metadata table is updated
+    //TODO: Filter out know entities from address metadata enum variant or contract
+    // info struct
+
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,
@@ -67,11 +71,19 @@ impl<V: NormalizedAction> Root<V> {
             .clone()
             .get_action()
             .get_to_address();
-
-        let is_verified_contract = database
+        let address_meta = database
             .try_fetch_address_metadata(to_address)
-            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))
-            .map(|metadata| metadata.map_or(false, |m| m.is_verified()))?;
+            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))?;
+
+        let (is_verified_contract, contract_type) = match address_meta {
+            Some(meta) => {
+                let verified = meta.is_verified();
+                let contract_type = meta.get_contract_type();
+
+                (verified, Some(contract_type))
+            }
+            None => (false, None),
+        };
 
         let is_classified = self
             .data_store
@@ -85,6 +97,8 @@ impl<V: NormalizedAction> Root<V> {
             .unwrap()
             .get_action()
             .emitted_logs();
+
+        // TODO: get rid of this once searcher db is working & tested
         let is_cex_dex_call = matches!(
             self.data_store.get_ref(self.head.data).unwrap().get_action(),
             Actions::Unclassified(data) if data.is_cex_dex_call()
@@ -92,15 +106,25 @@ impl<V: NormalizedAction> Root<V> {
 
         let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
 
+        let searcher_contract_info =
+            database.try_fetch_searcher_contract_info(self.get_to_address())?;
+
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of
         // protocol addresses as mev contracts
-        if is_verified_contract || is_classified || emits_logs {
+        if is_verified_contract
+            || is_classified
+            || emits_logs && searcher_contract_info.is_none()
+            || contract_type
+                .as_ref()
+                .map_or(false, |ct| !ct.could_be_mev_contract())
+        {
             return Ok(TxInfo::new(
                 block_number,
                 self.position as u64,
                 self.head.address,
                 None,
+                contract_type,
                 self.tx_hash,
                 self.gas_details,
                 is_classified,
@@ -109,17 +133,15 @@ impl<V: NormalizedAction> Root<V> {
                 is_verified_contract,
                 searcher_eoa_info,
                 None,
-            ));
+            ))
         }
-
-        let searcher_contract_info =
-            database.try_fetch_searcher_contract_info(self.get_to_address())?;
 
         Ok(TxInfo::new(
             block_number,
             self.position as u64,
             self.head.address,
             Some(to_address),
+            contract_type,
             self.tx_hash,
             self.gas_details,
             is_classified,
@@ -175,12 +197,8 @@ impl<V: NormalizedAction> Root<V> {
 
     pub fn collect(&self, call: &TreeSearchBuilder<V>) -> Vec<V> {
         let mut result = Vec::new();
-        self.head.collect(
-            &mut result,
-            call,
-            &|data, info| info.get_ref(data.data).unwrap().clone(),
-            &self.data_store,
-        );
+        self.head
+            .collect(&mut result, call, &|data| data.data.clone(), &self.data_store);
 
         result.sort_by_key(|a| a.get_trace_index());
 
@@ -199,35 +217,6 @@ impl<V: NormalizedAction> Root<V> {
         heads.iter().for_each(|search_head| {
             self.head
                 .get_all_children_for_complex_classification(*search_head, &mut self.data_store)
-        });
-    }
-
-    pub fn remove_duplicate_data<C, T, R>(
-        &mut self,
-        find: &TreeSearchBuilder<V>,
-        classify: &C,
-        info: &T,
-        removal: &TreeSearchBuilder<V>,
-    ) where
-        T: Fn(&Node, &NodeData<V>) -> R + Sync,
-        C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
-    {
-        let mut find_res = Vec::new();
-        self.head
-            .collect(&mut find_res, find, &|data, _| data.clone(), &self.data_store);
-
-        let indexes = find_res
-            .into_par_iter()
-            .flat_map(|node| {
-                let mut bad_res = Vec::new();
-                node.collect(&mut bad_res, removal, info, &self.data_store);
-                classify(&bad_res, &node, &self.data_store)
-            })
-            .collect::<HashSet<_>>();
-
-        indexes.into_iter().for_each(|index| {
-            self.head
-                .remove_node_and_children(index, &mut self.data_store)
         });
     }
 
@@ -309,7 +298,7 @@ impl GasDetails {
             (
                 "Coinbase Transfer",
                 self.coinbase_transfer
-                    .map(|amount| format!("{} ETH", amount))
+                    .map(|amount| format!("{:.18} ETH", amount as f64 / 1e18))
                     .unwrap_or_else(|| "None".to_string()),
             ),
             ("Priority Fee", format!("{} Wei", self.priority_fee)),
@@ -349,7 +338,7 @@ impl GasDetails {
 }
 
 pub struct ClickhouseVecGasDetails {
-    pub tx_hash:             Vec<FixedString>,
+    pub tx_hash:             Vec<String>,
     pub coinbase_transfer:   Vec<Option<u128>>,
     pub priority_fee:        Vec<u128>,
     pub gas_used:            Vec<u128>,
@@ -364,7 +353,7 @@ impl From<(Vec<TxHash>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
             .zip(value.1)
             .map(|(tx, gas)| {
                 (
-                    FixedString::from(format!("{:?}", tx)),
+                    format!("{:?}", tx),
                     gas.coinbase_transfer,
                     gas.priority_fee,
                     gas.gas_used,
@@ -392,3 +381,35 @@ impl From<(Vec<Vec<TxHash>>, Vec<GasDetails>)> for ClickhouseVecGasDetails {
         (tx_hashes, gas_details).into()
     }
 }
+
+pub enum FalsePositiveEntity {
+    MaestroBots,
+}
+
+/*
+#[cfg(test)]
+pub mod test {
+    use std::sync::Arc;
+
+    use alloy_primitives::hex;
+    use brontes_classifier::test_utils::{get_db_handle, ClassifierTestUtils};
+    use brontes_types::{normalized_actions::Actions, tree::BlockTree};
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_tx_info_filters() {
+        let handle = tokio::runtime::Handle::current();
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let tx = hex!("d6aa973068528615f4bba657b9b3366166c1ea0f56ac1313afe7abd97668ae4f").into();
+
+        let tree: Arc<BlockTree<Actions>> =
+            Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
+
+        let info = tree
+            .get_tx_info(tx, classifier_utils.)
+            .unwrap();
+
+        assert_eq!(info.mev_contract, None)
+    }
+}*/

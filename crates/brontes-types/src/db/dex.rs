@@ -1,22 +1,30 @@
 use std::{
     cmp::{max, min},
-    collections::HashMap,
+    fmt::Display,
 };
 
 use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
 use clickhouse::Row;
 use itertools::Itertools;
-use malachite::{num::basic::traits::One, Rational};
+use malachite::{
+    num::{
+        basic::traits::One,
+        conversion::{string::options::ToSciOptions, traits::ToSci},
+    },
+    Rational,
+};
 use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::{
+    constants::{ETH_ADDRESS, WETH_ADDRESS},
     db::{clickhouse_serde::dex::dex_quote, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    FastHashMap,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize, Redefined)]
@@ -33,6 +41,16 @@ use crate::{
 pub struct DexPrices {
     pub pre_state:  Rational,
     pub post_state: Rational,
+}
+
+impl Display for DexPrices {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut opt = ToSciOptions::default();
+        opt.set_scale(9);
+        writeln!(f, "pre state price: {}", self.pre_state.to_sci_with_options(opt))?;
+        writeln!(f, "post state price: {}", self.post_state.to_sci_with_options(opt))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -57,27 +75,37 @@ impl DexPrices {
 }
 
 #[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
-pub struct DexQuotes(pub Vec<Option<HashMap<Pair, DexPrices>>>);
+pub struct DexQuotes(pub Vec<Option<FastHashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {
     /// checks for price at the given tx index. if it isn't found, will look for
     /// the price at all previous indexes in the block
-    pub fn price_at_or_before(&self, pair: Pair, mut tx: usize) -> Option<DexPrices> {
+    pub fn price_at_or_before(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
+        if pair.0 == ETH_ADDRESS {
+            pair.0 = WETH_ADDRESS;
+        }
+        if pair.1 == ETH_ADDRESS {
+            pair.1 = WETH_ADDRESS;
+        }
+        let s_idx = tx;
+
         if pair.0 == pair.1 {
-            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE });
+            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
         }
 
         loop {
             if let Some(price) = self.get_price(pair, tx) {
-                return Some(price.clone());
+                return Some(price.clone())
             }
             if tx == 0 {
-                break;
+                break
             }
 
             tx -= 1;
         }
-        error!(?pair, "no price for pair");
+
+        error!(?pair, before=?s_idx, "no price for pair");
+
         None
     }
 
@@ -88,13 +116,32 @@ impl DexQuotes {
             .unwrap_or(false)
     }
 
-    fn get_price(&self, pair: Pair, tx: usize) -> Option<&DexPrices> {
+    fn get_price(&self, mut pair: Pair, tx: usize) -> Option<&DexPrices> {
+        if pair.0 == ETH_ADDRESS {
+            pair.0 = WETH_ADDRESS;
+        }
+        if pair.1 == ETH_ADDRESS {
+            pair.1 = WETH_ADDRESS;
+        }
         self.0.get(tx)?.as_ref()?.get(&pair)
     }
 }
 
+impl Display for DexQuotes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, val) in self.0.iter().enumerate() {
+            if let Some(val) = val.as_ref() {
+                for (pair, am) in val {
+                    writeln!(f, "----Price at tx_index: {i}, pair {:?}-----\n {}", pair, am)?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DexQuote(pub HashMap<Pair, DexPrices>);
+pub struct DexQuote(pub FastHashMap<Pair, DexPrices>);
 
 impl From<DexQuoteWithIndex> for DexQuote {
     fn from(value: DexQuoteWithIndex) -> Self {
@@ -102,7 +149,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
 #[redefined_attr(derive(
     Debug,
     Clone,
@@ -173,7 +220,7 @@ pub struct DexQuotesWithBlockNumber {
     pub block_number: u64,
     pub tx_idx:       u64,
     #[serde(with = "dex_quote")]
-    pub quote:        Option<HashMap<Pair, DexPrices>>,
+    pub quote:        Option<FastHashMap<Pair, DexPrices>>,
 }
 
 impl DexQuotesWithBlockNumber {

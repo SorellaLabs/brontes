@@ -8,19 +8,21 @@ action_impl!(
     Protocol::CurveBasePool2,
     crate::CurveBase2::remove_liquidityCall,
     Burn,
-    [..RemoveLiquidity],
+    [RemoveLiquidity],
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool2remove_liquidityCallLogs,
+    log: CurveBasePool2Remove_liquidityCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidity_field;
+        let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details
+            .into_iter()
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -47,19 +49,22 @@ action_impl!(
     Protocol::CurveBasePool2,
     crate::CurveBase2::remove_liquidity_imbalanceCall,
     Burn,
-    [..RemoveLiquidityImbalance],
+    [RemoveLiquidityImbalance],
     logs: true,
     |
     info: CallInfo,
-    log: CurveBasePool2remove_liquidity_imbalanceCallLogs,
+    log: CurveBasePool2Remove_liquidity_imbalanceCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityImbalance_field;
+        let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = details
+            .into_iter()
+            .enumerate()
+            .map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -90,10 +95,10 @@ action_impl!(
     |
     info: CallInfo,
     call_data: remove_liquidity_one_coinCall,
-    log: CurveBasePool2remove_liquidity_one_coinCallLogs,
+    log: CurveBasePool2Remove_liquidity_one_coinCallLogs,
     db_tx: &DB
     |{
-        let log = log.RemoveLiquidityOne_field;
+        let log = log.remove_liquidity_one_field?;
 
         let details = db_tx.get_protocol_details(info.target_address)?;
 

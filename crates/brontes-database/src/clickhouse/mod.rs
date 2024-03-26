@@ -21,13 +21,13 @@ use brontes_types::db::metadata::Metadata;
 #[cfg(feature = "local-clickhouse")]
 pub use const_sql::*;
 #[cfg(feature = "local-clickhouse")]
+use db_interfaces::clickhouse::client::ClickhouseClient;
+#[cfg(feature = "local-clickhouse")]
 pub use dbms::BrontesClickhouseTables;
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
 pub use middleware::*;
 use serde::Deserialize;
-#[cfg(feature = "local-clickhouse")]
-use sorella_db_databases::clickhouse::db::ClickhouseClient;
 
 use crate::{libmdbx::types::LibmdbxData, CompressedTable};
 
@@ -43,13 +43,22 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static;
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + Unpin + 'static;
+
+    fn query_many_arbitrary<T, D>(
+        &self,
+        range: &'static [u64],
+    ) -> impl Future<Output = eyre::Result<Vec<D>>> + Send
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + Unpin + 'static;
 
     fn query_many<T, D>(&self) -> impl Future<Output = eyre::Result<Vec<D>>> + Send
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static;
+        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + Unpin + 'static;
 
     #[cfg(feature = "local-clickhouse")]
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables>;

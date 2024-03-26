@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    ToScaledRational, TreeSearchBuilder,
+    FastHashMap, ToScaledRational, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
@@ -120,14 +120,17 @@ pub(crate) fn build_mev_header(
 /// `BundleHeader` and a `BundleData`. It returns a HashMap where the keys are
 /// `MevType` and the values are vectors of tuples (same as input). Each vector
 /// contains all the MEVs of the corresponding type.
-pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> HashMap<MevType, Vec<Bundle>> {
+pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> FastHashMap<MevType, Vec<Bundle>> {
     orchestra_data
         .into_iter()
         .map(|bundle| (bundle.header.mev_type, bundle))
-        .fold(HashMap::default(), |mut acc: HashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
-            acc.entry(mev_type).or_default().push(v);
-            acc
-        })
+        .fold(
+            FastHashMap::default(),
+            |mut acc: FastHashMap<MevType, Vec<Bundle>>, (mev_type, v)| {
+                acc.entry(mev_type).or_default().push(v);
+                acc
+            },
+        )
 }
 
 /// Finds the index of the first classified mev in the list whose transaction
@@ -151,7 +154,7 @@ pub(crate) fn find_mev_with_matching_tx_hashes(
 }
 
 pub fn filter_and_count_bundles(
-    sorted_mev: HashMap<MevType, Vec<Bundle>>,
+    sorted_mev: FastHashMap<MevType, Vec<Bundle>>,
 ) -> (MevCount, Vec<Bundle>) {
     let mut mev_count = MevCount::default();
     let mut all_filtered_bundles = Vec::new();
@@ -168,7 +171,7 @@ pub fn filter_and_count_bundles(
             })
             .collect();
 
-        // Update count for this MEV type
+        // Update  for this MEV type
         let count = filtered_bundles.len() as u64;
         mev_count.mev_count += count; // Increment total MEV count
 
@@ -191,10 +194,12 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
         MevType::JitSandwich => mev_count.jit_sandwich_count = Some(count),
         MevType::AtomicArb => mev_count.atomic_backrun_count = Some(count),
         MevType::Liquidation => mev_count.liquidation_count = Some(count),
+        MevType::SearcherTx => mev_count.searcher_tx_count = Some(count),
         MevType::Unknown => (),
     }
 }
 
+//TODO: Change bundle header to store: revenue, gas & profit
 /// Calculate builder profit
 ///
 /// Accounts for ultrasound relay bid adjustments & vertically integrated
@@ -211,20 +216,26 @@ pub fn calculate_builder_profit(
 
     if metadata.proposer_fee_recipient.is_none() | metadata.proposer_mev_reward.is_none() {
         debug!("Isn't an mev-boost block");
-        return (builder_payments, 0.0);
+        return (builder_payments, 0.0)
     }
 
-    let builder_sponsorships = tree.collect_all(
+    let builder_sponsorships = tree.clone().collect_all(
         TreeSearchBuilder::default()
             .with_action(Actions::is_eth_transfer)
             .with_from_address(builder_address),
     );
 
     let builder_sponsorship_amount: i128 = builder_sponsorships
-        .values()
-        .flatten()
+        .flat_map(|(_, v)| v)
         .map(|action| match action {
-            Actions::EthTransfer(transfer) => transfer.value.to(),
+            Actions::EthTransfer(transfer) => {
+                // So we don't double count when deducting proposer mev reward below
+                if Some(transfer.to) == metadata.proposer_fee_recipient {
+                    0
+                } else {
+                    transfer.value.to()
+                }
+            }
             _ => 0,
         })
         .sum::<i128>();
@@ -236,9 +247,9 @@ pub fn calculate_builder_profit(
             return (
                 builder_payments
                     - builder_sponsorship_amount
-                    - metadata.proposer_mev_reward.unwrap() as i128,
+                    - metadata.proposer_mev_reward.unwrap_or_default() as i128,
                 0.0,
-            );
+            )
         }
     };
     // Calculate the builder's mev profit from it's associated vertically integrated
@@ -272,7 +283,7 @@ pub fn calculate_builder_profit(
                     - builder_sponsorship_amount
                     - metadata.proposer_mev_reward.unwrap() as i128,
                 mev_searching_profit,
-            );
+            )
         }
     };
 

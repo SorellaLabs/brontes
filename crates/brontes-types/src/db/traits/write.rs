@@ -1,16 +1,20 @@
+use std::sync::Arc;
+
 use alloy_primitives::Address;
 use futures::Future;
 
 use crate::{
     db::{
+        address_metadata::AddressMetadata,
         builder::{BuilderInfo, BuilderStats},
         dex::DexQuotes,
         searcher::{SearcherInfo, SearcherStats},
     },
     mev::{Bundle, MevBlock},
+    normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
-    Protocol, SubGraphEdge,
+    BlockTree, Protocol, SubGraphEdge,
 };
 
 #[auto_impl::auto_impl(&)]
@@ -106,15 +110,31 @@ pub trait DBWriter: Send + Unpin + 'static {
             .write_builder_stats(builder_address, builder_stats)
     }
 
+    fn write_address_meta(
+        &self,
+        address: Address,
+        metadata: AddressMetadata,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().write_address_meta(address, metadata)
+    }
+
     fn insert_pool(
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
+    }
+
+    fn insert_tree(
+        &self,
+        tree: Arc<BlockTree<Actions>>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send {
+        self.inner().insert_tree(tree)
     }
 
     fn save_traces(

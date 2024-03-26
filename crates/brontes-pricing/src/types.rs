@@ -92,8 +92,8 @@ impl PoolState {
 
 #[derive(Debug, Clone)]
 pub enum PoolVariants {
-    UniswapV2(UniswapV2Pool), // 104
-    UniswapV3(UniswapV3Pool), // 192,
+    UniswapV2(Box<UniswapV2Pool>),
+    UniswapV3(Box<UniswapV3Pool>),
 }
 
 impl PoolVariants {
@@ -151,14 +151,24 @@ impl PoolUpdate {
         self.action.get_to_address()
     }
 
+    pub fn is_transfer(&self) -> bool {
+        self.action.is_transfer()
+    }
+
     // we currently only use this in order to fetch the pair for when its new or to
     // fetch all pairs of it. this
     pub fn get_pair(&self, quote: Address) -> Option<Pair> {
         match &self.action {
             Actions::Swap(s) => Some(Pair(s.token_in.address, s.token_out.address)),
-            Actions::Mint(m) => Some(Pair(m.token[0].address, m.token[1].address)),
-            Actions::Burn(b) => Some(Pair(b.token[0].address, b.token[1].address)),
-            Actions::Collect(b) => Some(Pair(b.token[0].address, b.token[1].address)),
+            Actions::Mint(m) => {
+                Some(Pair(m.token[0].address, m.token.get(1).map(|t| t.address).unwrap_or(quote)))
+            }
+            Actions::Burn(b) => {
+                Some(Pair(b.token[0].address, b.token.get(1).map(|t| t.address).unwrap_or(quote)))
+            }
+            Actions::Collect(b) => {
+                Some(Pair(b.token[0].address, b.token.get(1).map(|t| t.address).unwrap_or(quote)))
+            }
             Actions::Transfer(t) => Some(Pair(t.token.address, quote)),
             Actions::Liquidation(l) => Some(Pair(l.collateral_asset.address, l.debt_asset.address)),
             Actions::SwapWithFee(s) => Some(Pair(s.token_in.address, s.token_out.address)),

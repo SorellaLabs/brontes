@@ -12,16 +12,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImpladd_liquidity_0CallLogs,
+    log: CurveV1MetapoolImplAdd_liquidity_0CallLogs,
     db_tx: &DB|{
-        let log = log.AddLiquidity_field;
+        let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -51,16 +52,17 @@ action_impl!(
     logs: true,
     |
     info: CallInfo,
-    log: CurveV1MetapoolImpladd_liquidity_1CallLogs,
+    log: CurveV1MetapoolImplAdd_liquidity_1CallLogs,
     db_tx: &DB|{
-        let log = log.AddLiquidity_field;
+        let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
         let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
-        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter().enumerate().map(|(i, t)|
+        let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter()
+.enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -89,7 +91,7 @@ mod tests {
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::Actions,
-        ToScaledRational, TreeSearchBuilder,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -101,7 +103,7 @@ mod tests {
             Protocol::CurveV1MetaPool,
             Address::new(hex!("A77d09743F77052950C4eb4e6547E9665299BecD")),
             Address::new(hex!("6967299e9F3d5312740Aa61dEe6E9ea658958e31")),
-            Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F")),
+            Some(Address::new(hex!("6B175474E89094C44Da98b954EedeAC495271d0F"))),
             Some(Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))),
             Some(Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
             None,

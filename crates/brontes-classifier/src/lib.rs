@@ -31,6 +31,7 @@ sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
 sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveBase2, "./classifier-abis/CurveBase2.json");
+//sol!(CurveLido2, "./classifier-abis/CurveBase2Lido.json");
 sol!(CurveBase3, "./classifier-abis/CurveBase3.json");
 sol!(CurveBase4, "./classifier-abis/CurveBase4.json");
 sol!(CurveV1MetapoolImpl, "./classifier-abis/CurveV1MetapoolImpl.json");
@@ -43,6 +44,12 @@ sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/MakerPSM.json");
+sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
+sol!(OneInchAggregationRouterV5, "./classifier-abis/OneInchAggregationRouterV5.json");
+sol!(OneInchFusionSettlement, "./classifier-abis/OneInchFusionSettlement.json");
+sol!(ClipperExchange, "./classifier-abis/ClipperExchange.json");
+
+sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
 
 sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
 
@@ -56,6 +63,11 @@ sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
 sol!(CurveCryptoSwapFactory, "./classifier-abis/CurveCryptoSwapFactory.json");
 sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
 sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
+sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
+sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
+sol!(BalancerV1CorePoolFactory, "./classifier-abis/BalancerV1Factory.json");
+sol!(BalancerV1SmartPoolFactory, "./classifier-abis/BalancerV1CrpFactory.json");
+
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);
     function name() public view returns (string);

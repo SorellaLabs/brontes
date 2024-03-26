@@ -23,28 +23,38 @@ reth-beacon-consensus.workspace = true
 reth-revm.workspace = true
 reth-interfaces.workspace = true
 alloy-primitives.workspace = true
+alloy-sol-types.workspace = true
+alloy-rpc-trace-types = { git = "https://github.com/alloy-rs/alloy", rev = "52bf712" }
+alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
 futures.workspace = true
 brontes-types.workspace = true
 tracing.workspace = true
 
 num_cpus.workspace = true
-
-revm = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
-  "std",
-  "secp256k1",
-], default-features = false }
-revm-primitives = { git = "https://github.com/bluealloy/revm", branch = "main", features = [
-  "std",
-], default-features = false }
+revm-primitives.workspace = true
+revm-inspectors.workspace = true
 bitflags = "2.4"
 
+revm.workspace = true
 # error
 eyre = "0.6.8"
+
+serde.workspace = true
+serde_json.workspace = true
 
 # Async
 tokio = { version = "1.28.2", features = ["full"] }
 
+[dev-dependencies]
+brontes-core = { workspace = true, features = ["tests"] }
+reth-tracing-ext = { workspace = true, features = ["tests"] }
+brontes-macros.workspace = true
+dotenv.workspace = true
 
 [features]
 tests = []
-local-reth = ["brontes-types/local-reth"]
+local-reth = ["brontes-types/local-reth", "brontes-core/local-reth"]
+local-clickhouse = [
+  "brontes-core/local-clickhouse",
+  "brontes-types/local-clickhouse",
+]

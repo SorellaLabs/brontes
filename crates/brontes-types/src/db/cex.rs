@@ -12,7 +12,7 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-use std::{collections::HashMap, default::Default, ops::MulAssign, str::FromStr};
+use std::{default::Default, ops::MulAssign, str::FromStr};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -25,13 +25,15 @@ use malachite::{
 };
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::Serialize;
+use serde::{ser::SerializeSeq, Serialize};
 
 use crate::{
     constants::*,
     db::redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    utils::ToFloatNearest,
+    FastHashMap,
 };
 
 /// Centralized exchange price map organized by exchange.
@@ -49,25 +51,27 @@ use crate::{
 /// This provides us with the actual token0 when the map is queried so we can
 /// interpret the price in the correct direction & reciprocate the price (which
 /// is a rational) if need be.
-#[derive(Debug, Clone, Row, PartialEq, Eq, serde::Serialize)]
-pub struct CexPriceMap(pub HashMap<CexExchange, HashMap<Pair, CexQuote>>);
+#[derive(Debug, Clone, Row, PartialEq, Eq)]
+pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, CexQuote>>);
 
-#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
+#[derive(
+    Debug, PartialEq, Clone, serde::Serialize, rSerialize, rDeserialize, Archive, Redefined,
+)]
 #[redefined(CexPriceMap)]
 #[redefined_attr(
-    to_source = "CexPriceMap(self.map.into_iter().collect::<HashMap<_,_>>().to_source())",
+    to_source = "CexPriceMap(self.map.into_iter().collect::<FastHashMap<_,_>>().to_source())",
     from_source = "CexPriceMapRedefined::new(src.0)"
 )]
 pub struct CexPriceMapRedefined {
-    pub map: Vec<(CexExchange, HashMap<PairRedefined, CexQuoteRedefined>)>,
+    pub map: Vec<(CexExchange, FastHashMap<PairRedefined, CexQuoteRedefined>)>,
 }
 
 impl CexPriceMapRedefined {
-    fn new(map: HashMap<CexExchange, HashMap<Pair, CexQuote>>) -> Self {
+    fn new(map: FastHashMap<CexExchange, FastHashMap<Pair, CexQuote>>) -> Self {
         Self {
             map: map
                 .into_iter()
-                .map(|(exch, inner_map)| (exch, HashMap::from_source(inner_map)))
+                .map(|(exch, inner_map)| (exch, FastHashMap::from_source(inner_map)))
                 .collect::<Vec<_>>(),
         }
     }
@@ -83,7 +87,7 @@ impl Default for CexPriceMap {
 
 impl CexPriceMap {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(FastHashMap::default())
     }
 
     /// Retrieves a CEX quote for a specified token pair from a given exchange.
@@ -209,6 +213,34 @@ impl CexPriceMap {
 }
 
 type CexPriceMapDeser = Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)>;
+
+impl Serialize for CexPriceMap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        for (ex, v) in &self.0 {
+            let inner_vec = v
+                .iter()
+                .map(|(a, b)| {
+                    let ordered = a.ordered();
+                    (
+                        (format!("{}", ordered.0), format!("{}", ordered.1)),
+                        (
+                            b.timestamp,
+                            (b.price.0.clone().to_float(), b.price.1.clone().to_float()),
+                            format!("{:?}", b.token0),
+                        ),
+                    )
+                })
+                .collect::<Vec<_>>();
+            seq.serialize_element(&(ex.to_string(), inner_vec))?;
+        }
+
+        seq.end()
+    }
+}
 //TODO: Joe remove the extra string for token_0 it should just be
 // base_token_addr
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
@@ -218,12 +250,12 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
     {
         let map: CexPriceMapDeser = serde::Deserialize::deserialize(deserializer)?;
 
-        let mut cex_price_map = HashMap::new();
+        let mut cex_price_map = FastHashMap::default();
 
         map.into_iter().for_each(|(exchange, meta)| {
             let exchange_map = cex_price_map
                 .entry(CexExchange::from(exchange.clone()))
-                .or_insert(HashMap::new());
+                .or_insert(FastHashMap::default());
             meta.into_iter().for_each(
                 |(
                     (base_token_addr, quote_token_addr),
@@ -299,6 +331,25 @@ pub struct CexQuote {
     /// propagated by the proposer)
     pub price:     (Rational, Rational),
     pub token0:    Address,
+}
+
+pub struct ExchangeData {
+    pub exchange: CexExchange,
+    pub quotes:   Vec<CexQuote>,
+    pub trades:   Vec<Trade>,
+}
+
+pub struct Trade {
+    pub exchange:  CexExchange,
+    pub timestamp: u64,
+    pub price:     Rational,
+    pub amount:    Rational,
+    pub side:      TradeSide,
+}
+
+pub enum TradeSide {
+    Buy,
+    Sell,
 }
 
 impl CexQuote {

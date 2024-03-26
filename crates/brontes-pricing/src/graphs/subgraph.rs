@@ -2,13 +2,13 @@ use std::{
     cmp::Ordering,
     collections::{
         hash_map::Entry::{Occupied, Vacant},
-        BinaryHeap, HashMap, HashSet, VecDeque,
+        BinaryHeap, VecDeque,
     },
     hash::Hash,
 };
 
 use alloy_primitives::Address;
-use brontes_types::price_graph_types::*;
+use brontes_types::{price_graph_types::*, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -19,18 +19,17 @@ use malachite::{
 };
 use petgraph::{
     algo::connected_components,
-    graph::{DiGraph, EdgeReference, Edges},
+    graph::{EdgeReference, Edges},
     prelude::*,
-    visit::{IntoEdgeReferences, IntoEdges, VisitMap, Visitable},
+    visit::{VisitMap, Visitable},
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::error;
 
 use crate::{types::ProtocolState, AllPairGraph, Pair};
 
 pub struct VerificationOutcome {
     pub should_requery: bool,
-    pub removals:       HashMap<Pair, HashSet<BadEdge>>,
+    pub removals:       FastHashMap<Pair, FastHashSet<BadEdge>>,
     pub frayed_ends:    Vec<Address>,
 }
 
@@ -45,7 +44,7 @@ pub struct BadEdge {
 
 #[derive(Debug, Default)]
 struct BfsArgs {
-    pub removal_state: HashMap<Pair, HashSet<BadEdge>>,
+    pub removal_state: FastHashMap<Pair, FastHashSet<BadEdge>>,
 }
 
 const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
@@ -73,24 +72,36 @@ const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
 /// information.
 #[derive(Debug, Clone)]
 pub struct PairSubGraph {
-    pair:           Pair,
-    graph:          DiGraph<(), Vec<SubGraphEdge>, u16>,
-    token_to_index: HashMap<Address, u16>,
+    /// the pair represented
+    pub(crate) pair:          Pair,
+    pub(crate) complete_pair: Pair,
+    /// the pair that trigged the need for pricing in the first place.
+    must_go_through:          Pair,
+    graph:                    DiGraph<(), Vec<SubGraphEdge>, u16>,
+    token_to_index:           FastHashMap<Address, u16>,
+    /// if this subgraph relies on another pair to calcuate the price.
+    extends_to:               Option<Pair>,
 
     /// if a nodes liquidity drops more than 50% from when validation
     /// was last ran on this subgraph. a re_query is triggered.
-    start_nodes_liq: HashMap<Address, Rational>,
+    start_nodes_liq: FastHashMap<Address, Rational>,
 
     start_node: u16,
     end_node:   u16,
 }
 
 impl PairSubGraph {
-    pub fn init(pair: Pair, edges: Vec<SubGraphEdge>) -> Self {
+    pub fn init(
+        pair: Pair,
+        complete_pair: Pair,
+        must_go_through: Pair,
+        extends_to: Option<Pair>,
+        edges: Vec<SubGraphEdge>,
+    ) -> Self {
         let mut graph = DiGraph::<(), Vec<SubGraphEdge>, u16>::default();
-        let mut token_to_index = HashMap::new();
+        let mut token_to_index = FastHashMap::default();
 
-        let mut connections: HashMap<(u16, u16), Vec<SubGraphEdge>> = HashMap::new();
+        let mut connections: FastHashMap<(u16, u16), Vec<SubGraphEdge>> = FastHashMap::default();
         for edge in edges.into_iter() {
             let token_0 = edge.token_0;
             let token_1 = edge.token_1;
@@ -115,7 +126,7 @@ impl PairSubGraph {
 
         graph.extend_with_edges(
             connections
-                .into_par_iter()
+                .into_iter()
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
@@ -126,12 +137,38 @@ impl PairSubGraph {
         let comp = connected_components(&graph);
         assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
 
-        Self { pair, graph, start_node, end_node, token_to_index, start_nodes_liq: HashMap::new() }
+        Self {
+            pair,
+            complete_pair,
+            graph,
+            start_node,
+            end_node,
+            token_to_index,
+            extends_to,
+            must_go_through,
+            start_nodes_liq: FastHashMap::default(),
+        }
+    }
+
+    pub fn complete_pair(&self) -> Pair {
+        self.complete_pair
+    }
+
+    pub fn extends_to(&self) -> Option<Pair> {
+        self.extends_to
+    }
+
+    pub fn must_go_through(&self) -> Pair {
+        self.must_go_through
+    }
+
+    pub fn get_unordered_pair(&self) -> Pair {
+        self.pair
     }
 
     pub fn save_last_verification_liquidity<T: ProtocolState>(
         &mut self,
-        state: &HashMap<Address, T>,
+        state: &FastHashMap<Address, T>,
     ) {
         let init_tvl = self
             .graph
@@ -144,14 +181,14 @@ impl PairSubGraph {
                     Some((edge.pool_addr, tvl_added))
                 })
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<FastHashMap<_, _>>();
 
         self.start_nodes_liq = init_tvl;
     }
 
     /// checks to see if the liquidity of any pool has dropped by over 50%.
     /// if this has happened, will send the pair for reverification
-    pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &HashMap<Address, T>) -> bool {
+    pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &FastHashMap<Address, T>) -> bool {
         self.graph
             .edge_weights()
             .map(|weight| {
@@ -174,7 +211,7 @@ impl PairSubGraph {
     }
 
     pub fn extend_subgraph(&mut self, edges: Vec<SubGraphEdge>) {
-        let mut connections: HashMap<(u16, u16), Vec<SubGraphEdge>> = HashMap::new();
+        let mut connections: FastHashMap<(u16, u16), Vec<SubGraphEdge>> = FastHashMap::default();
 
         for edge in edges {
             let token_0 = edge.token_0;
@@ -201,7 +238,7 @@ impl PairSubGraph {
                 if !edge_weight.contains(&edge) {
                     edge_weight.push(edge);
                 }
-                continue;
+                continue
             }
 
             connections.entry((addr0, addr1)).or_default().push(edge);
@@ -209,14 +246,10 @@ impl PairSubGraph {
 
         self.graph.extend_with_edges(
             connections
-                .into_par_iter()
+                .into_iter()
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
-    }
-
-    pub fn get_unordered_pair(&self) -> Pair {
-        self.pair
     }
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
@@ -245,7 +278,7 @@ impl PairSubGraph {
 
     pub fn fetch_price<T: ProtocolState>(
         &self,
-        edge_state: &HashMap<Address, T>,
+        edge_state: &FastHashMap<Address, T>,
     ) -> Option<Rational> {
         dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
     }
@@ -270,9 +303,9 @@ impl PairSubGraph {
         let node1 = (*n1).into();
 
         if let Some(edge) = self.graph.find_edge(node0, node1) {
-            return add_edge(&mut self.graph, edge, edge_info, true);
+            return add_edge(&mut self.graph, edge, edge_info, true)
         } else if let Some(edge) = self.graph.find_edge(node1, node0) {
-            return add_edge(&mut self.graph, edge, edge_info, false);
+            return add_edge(&mut self.graph, edge, edge_info, false)
         } else {
             // find the edge with shortest path
             let Some(to_start) = self
@@ -294,7 +327,7 @@ impl PairSubGraph {
             };
 
             if !(to_start <= 1 && to_end <= 1) {
-                return false;
+                return false
             }
 
             let d0 = PoolPairInfoDirection { info: edge_info, token_0_in: true };
@@ -312,18 +345,12 @@ impl PairSubGraph {
     pub fn verify_subgraph<T: ProtocolState>(
         &mut self,
         start: Address,
-        state: HashMap<Address, T>,
+        start_price: Rational,
+        state: FastHashMap<Address, T>,
         _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
         tracing::debug!(?self.pair, "verification starting");
-        if dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
-            .is_none()
-        {
-            tracing::error!("invalid subgraph was given");
-        }
-        tracing::debug!(?self.pair, "confirmed graph is currently connected");
-
-        let result = self.run_bfs_with_liquidity_params(start, &state);
+        let result = self.run_bfs_with_liquidity_params(start, start_price, &state);
 
         tracing::debug!(?self.pair, "completed bfs with liq");
 
@@ -351,60 +378,69 @@ impl PairSubGraph {
     fn run_bfs_with_liquidity_params<T: ProtocolState>(
         &self,
         start: Address,
-        state: &HashMap<Address, T>,
+        start_price: Rational,
+        state: &FastHashMap<Address, T>,
     ) -> BfsArgs {
-        self.bfs_with_price(start, |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
-            let mut pxw = Rational::ZERO;
-            let mut weight = Rational::ZERO;
+        self.bfs_with_price(
+            start,
+            start_price,
+            |is_outgoing, edge, prev_price, removal_map: &mut BfsArgs| {
+                let mut pxw = Rational::ZERO;
+                let mut weight = Rational::ZERO;
 
-            let node_weights = edge.weight();
-            if node_weights.is_empty() {
-                tracing::error!("found a node with no weight");
-            }
-
-            for info in node_weights {
-                let pair = Pair(info.token_0, info.token_1);
-
-                let Some(pool_state) = state.get(&info.pool_addr) else {
-                    Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
-
-                    continue;
-                };
-                let Ok(pool_price) = pool_state.price(info.get_token_with_direction(is_outgoing))
-                else {
-                    Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
-                    continue;
-                };
-
-                let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
-                let liq0 = prev_price.clone().reciprocal() * &t0;
-
-                // check if below liquidity and that if we remove we don't make the graph
-                // disjoint.
-                if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN {
-                    Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
-                } else {
-                    let t0xt1 = &t0 * &t1;
-                    pxw += pool_price * &t0xt1;
-                    weight += t0xt1;
+                let node_weights = edge.weight();
+                if node_weights.is_empty() {
+                    tracing::error!("found a node with no weight");
                 }
-            }
 
-            if weight == Rational::ZERO {
-                return None;
-            }
+                for info in node_weights {
+                    let pair = Pair(info.token_0, info.token_1);
 
-            let local_weighted_price = pxw / weight;
+                    let Some(pool_state) = state.get(&info.pool_addr) else {
+                        Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
+                        continue;
+                    };
 
-            Some(local_weighted_price)
-        })
+                    let Ok(pool_price) =
+                        pool_state.price(info.get_token_with_direction(is_outgoing))
+                    else {
+                        Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
+                        continue;
+                    };
+
+                    let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
+                    let liq0 = prev_price.clone().reciprocal() * &t0;
+
+                    // check if below liquidity and that if we remove we don't make the graph
+                    // disjoint.
+                    if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN
+                    // && self.must_go_through != pair
+                    // && self.must_go_through != pair.flip()
+                    {
+                        Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
+                    } else {
+                        let t0xt1 = &t0 * &t1;
+                        pxw += pool_price * &t0xt1;
+                        weight += t0xt1;
+                    }
+                }
+
+                if weight == Rational::ZERO {
+                    return None
+                }
+
+                let local_weighted_price = pxw / weight;
+
+                Some(local_weighted_price)
+            },
+        )
     }
 
     fn bad_state(
         pair: Pair,
         info: &SubGraphEdge,
         liq: Rational,
-        map: &mut HashMap<Pair, HashSet<BadEdge>>,
+        map: &mut FastHashMap<Pair, FastHashSet<BadEdge>>,
     ) {
         let bad_edge = BadEdge {
             pair,
@@ -416,7 +452,7 @@ impl PairSubGraph {
         map.entry(pair).or_default().insert(bad_edge);
     }
 
-    fn prune_subgraph(&mut self, removal_state: &HashMap<Pair, HashSet<BadEdge>>) {
+    fn prune_subgraph(&mut self, removal_state: &FastHashMap<Pair, FastHashSet<BadEdge>>) {
         removal_state.iter().for_each(|(k, v)| {
             let Some(n0) = self.token_to_index.get(&k.0) else {
                 tracing::error!("no token 0 in token to index");
@@ -466,6 +502,7 @@ impl PairSubGraph {
     fn bfs_with_price<R: Default>(
         &self,
         start: Address,
+        start_price: Rational,
         mut collect_data_fn: impl for<'a> FnMut(
             bool,
             EdgeReference<'a, Vec<SubGraphEdge>, u16>,
@@ -474,11 +511,11 @@ impl PairSubGraph {
         ) -> Option<Rational>,
     ) -> R {
         let mut result = R::default();
-        let mut visited = HashSet::new();
+        let mut visited = FastHashSet::default();
         let mut visit_next = VecDeque::new();
 
         let Some(start) = self.token_to_index.get(&start) else {
-            error!(?start, "no start node for bfs with price");
+            error!(?start, ?start_price,?self.pair, ?self.complete_pair, ?self.must_go_through, "no start node for bfs with price");
             return R::default();
         };
 
@@ -486,13 +523,13 @@ impl PairSubGraph {
 
         visit_next.extend(
             self.next_edges_directed(*start, direction)
-                .zip(vec![Rational::ONE].into_iter().cycle()),
+                .zip(vec![start_price].into_iter().cycle()),
         );
 
         while let Some((next_edge, prev_price)) = visit_next.pop_front() {
             let id = next_edge.id();
             if visited.contains(&id) {
-                continue;
+                continue
             }
             visited.insert(id);
 
@@ -516,7 +553,7 @@ impl PairSubGraph {
     fn disjoint_furthest_nodes(&self) -> Vec<Address> {
         tracing::debug!(?self.pair, "grabing frayed ends");
         let mut frayed_ends = Vec::new();
-        let mut visited = HashSet::new();
+        let mut visited = FastHashSet::default();
         let mut visit_next = VecDeque::new();
 
         visit_next.extend(
@@ -527,7 +564,7 @@ impl PairSubGraph {
         while let Some(next_edge) = visit_next.pop_front() {
             let id = next_edge.id();
             if visited.contains(&id) {
-                continue;
+                continue
             }
             visited.insert(id);
 
@@ -546,7 +583,7 @@ impl PairSubGraph {
                         .unwrap()
                         .0,
                 );
-                continue;
+                continue
             }
             visit_next.extend(next_edges);
         }
@@ -564,7 +601,7 @@ fn add_edge(
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
     if weights.iter().any(|w| w.pool_addr == edge_info.pool_addr) {
-        return false;
+        return false
     }
 
     let first = weights.first().unwrap();
@@ -573,7 +610,7 @@ fn add_edge(
     let to_end = first.distance_to_end_node;
 
     if !(to_start <= 1 && to_end <= 1) {
-        return false;
+        return false
     }
 
     let new_edge = SubGraphEdge::new(
@@ -586,21 +623,18 @@ fn add_edge(
     true
 }
 
-pub fn dijkstra_path<G, T>(
-    graph: G,
-    start: G::NodeId,
-    goal: G::NodeId,
-    state: &HashMap<Address, T>,
+pub fn dijkstra_path<T>(
+    graph: &DiGraph<(), Vec<SubGraphEdge>, u16>,
+    start: NodeIndex<u16>,
+    goal: NodeIndex<u16>,
+    state: &FastHashMap<Address, T>,
 ) -> Option<Rational>
 where
     T: ProtocolState,
-    G: IntoEdgeReferences<EdgeWeight = Vec<SubGraphEdge>>,
-    G: IntoEdges + Visitable,
-    G::NodeId: Eq + Hash,
 {
     let mut visited = graph.visit_map();
-    let mut scores = HashMap::new();
-    let mut node_price = HashMap::new();
+    let mut scores = FastHashMap::default();
+    let mut node_price = FastHashMap::default();
     let mut visit_next = BinaryHeap::new();
     let zero_score = Rational::ZERO;
     scores.insert(start, zero_score.clone());
@@ -608,17 +642,17 @@ where
 
     while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
         if visited.is_visited(&node) {
-            continue;
+            continue
         }
 
         if goal == node {
-            break;
+            break
         }
 
         for edge in graph.edges(node) {
             let next = edge.target();
             if visited.is_visited(&next) {
-                continue;
+                continue
             }
 
             let mut pxw = Rational::ZERO;
@@ -649,7 +683,7 @@ where
             }
 
             if weight == Rational::ZERO {
-                continue;
+                continue
             }
 
             let local_weighted_price = pxw / weight;
@@ -733,7 +767,6 @@ impl<K: PartialOrd, T> Ord for MinScored<K, T> {
 
 #[cfg(test)]
 pub mod test {
-    use alloy_primitives::Address;
     use brontes_types::Protocol;
 
     use super::*;
@@ -795,14 +828,14 @@ pub mod test {
         let e3 = build_edge(t3, t3, t4, 3, 4);
 
         let pair = Pair(t0, t4);
-        PairSubGraph::init(pair, vec![e0, e1, e2, e3])
+        PairSubGraph::init(pair, pair, pair, None, vec![e0, e1, e2, e3])
     }
 
     #[test]
     fn test_dijkstra_pricing() {
         addresses!(t0, t1, t2, t3, _t4);
         let graph = make_simple_graph();
-        let mut state_map = HashMap::new();
+        let mut state_map = FastHashMap::default();
 
         // t1 / t0 == 10
         let e0_price =

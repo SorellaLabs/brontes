@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::sync::Arc;
 
 use alloy_primitives::Address;
 use brontes_types::{
@@ -14,15 +14,17 @@ use brontes_types::{
         traits::{DBWriter, LibmdbxReader, ProtocolCreatedRange},
     },
     mev::{Bundle, MevBlock},
+    normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
-    Protocol, SubGraphEdge,
+    BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
 
 use super::Clickhouse;
 use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
+    #[allow(dead_code)] // on tests feature
     client: Clickhouse,
     inner:  I,
 }
@@ -108,29 +110,43 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
             .await
     }
 
-    //TODO: JOE
     async fn write_builder_info(
         &self,
-        _builder_coinbase_addr: Address,
-        _builder_info: BuilderInfo,
+        builder_coinbase_addr: Address,
+        builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        Ok(())
+        self.client
+            .write_builder_info(builder_coinbase_addr, builder_info.clone())
+            .await?;
+
+        self.inner()
+            .write_builder_info(builder_coinbase_addr, builder_info)
+            .await
     }
 
     async fn insert_pool(
         &self,
         block: u64,
         address: Address,
-        tokens: [Address; 2],
+        tokens: &[Address],
+        curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
         self.client
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await?;
 
         self.inner()
-            .insert_pool(block, address, tokens, classifier_name)
+            .insert_pool(block, address, tokens, curve_lp_token, classifier_name)
             .await
+    }
+
+    async fn insert_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+        self.client.insert_tree(tree.clone()).await?;
+
+        self.inner().insert_tree(tree).await?;
+
+        Ok(())
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
@@ -151,6 +167,21 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
     ) -> eyre::Result<()> {
         self.inner
             .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
+            .await
+    }
+
+    async fn initialize_tables_arbitrary<
+        T: brontes_types::traits::TracingProvider,
+        CH: ClickhouseHandle,
+    >(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: std::sync::Arc<T>,
+        tables: &[crate::Tables],
+        block_range: Vec<u64>,
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range)
             .await
     }
 
@@ -197,10 +228,17 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
     //TODO: JOE
     fn try_fetch_mev_blocks(
         &self,
-        _start_block: u64,
+        _start_block: Option<u64>,
         _end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        Ok(vec![])
+        todo!("Joe");
+    }
+
+    fn fetch_all_mev_blocks(
+        &self,
+        _start_block: Option<u64>,
+    ) -> eyre::Result<Vec<MevBlockWithClassified>> {
+        todo!("Joe");
     }
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -214,6 +252,10 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.try_fetch_address_metadata(address)
     }
 
+    fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
+        self.inner.fetch_all_address_metadata()
+    }
+
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
         self.inner.get_dex_quotes(block)
     }
@@ -225,7 +267,7 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
     fn protocols_created_before(
         &self,
         start_block: u64,
-    ) -> eyre::Result<HashMap<(Address, Protocol), Pair>> {
+    ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
         self.inner.protocols_created_before(start_block)
     }
 

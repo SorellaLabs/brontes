@@ -7,11 +7,12 @@ use brontes_inspect::{
 };
 use brontes_types::{
     db::metadata::Metadata,
-    mev::{Bundle, MevBlock},
+    execute_on,
+    mev::{Bundle, MevBlock, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use tracing::{error, info};
+use tracing::info;
 
 use crate::Processor;
 
@@ -27,14 +28,20 @@ impl Processor for MevProcessor {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) {
-        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
-            compose_mev_results(inspectors, tree, metadata.clone()).await;
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
+            target = inspect,
+            compose_mev_results(inspectors, tree.clone(), metadata.clone())
+        );
 
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
         {
             tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
+        }
+
+        if let Err(e) = db.insert_tree(tree).await {
+            tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert tree into db");
         }
 
         insert_mev_results(db, block_details, mev_details).await;
@@ -52,6 +59,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         block_details.to_string()
     );
 
+    let block_number = block_details.block_number;
     output_mev_and_update_searcher_info(database, &mev_details).await;
 
     // Attempt to save the MEV block details
@@ -59,10 +67,13 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .await
     {
-        error!("Failed to insert classified data into libmdbx: {:?}", e);
+        tracing::error!(
+            "Failed to insert classified data into libmdbx: {:?} at block: {}",
+            e,
+            block_number
+        );
     }
 }
-
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
     mev_details: &Vec<Bundle>,
@@ -73,6 +84,10 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             "mev details\n {}",
             mev.to_string()
         );
+
+        if mev.header.mev_type == MevType::Unknown || mev.header.mev_type == MevType::SearcherTx {
+            continue;
+        }
 
         let (eoa_info, contract_info) = database
             .try_fetch_searcher_info(mev.header.eoa, mev.header.mev_contract)
@@ -98,7 +113,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
             )
             .await
         {
-            error!("Failed to update searcher info in the database: {:?}", e);
+            tracing::error!("Failed to update searcher info in the database: {:?}", e);
         }
     }
 }

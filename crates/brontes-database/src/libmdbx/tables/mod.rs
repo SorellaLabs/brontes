@@ -10,15 +10,17 @@ use brontes_types::{
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
         builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
+        cex_trades::{CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG},
+        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG, TRACE_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
         searcher::{SearcherInfo, SearcherInfoRedefined, SearcherStats, SearcherStatsRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
+        traits::LibmdbxReader,
     },
     pair::Pair,
     price_graph_types::SubGraphsEntryRedefined,
@@ -31,6 +33,7 @@ use serde_with::serde_as;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData, LibmdbxReadWriter},
+    parquet::ParquetExporter,
 };
 mod const_sql;
 use alloy_primitives::Address;
@@ -40,7 +43,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 16;
+pub const NUM_TABLES: usize = 17;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -167,7 +170,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<TxTraces, TxTracesData>(
                         block_range,
                         clear_table,
-                        Some(META_FLAG),
+                        Some(TRACE_FLAG),
                     )
                     .await
             }
@@ -186,6 +189,86 @@ impl Tables {
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
+            Tables::CexTrades => Ok(()),
+        }
+    }
+
+    pub(crate) async fn initialize_table_arbitrary_state<
+        T: TracingProvider,
+        CH: ClickhouseHandle,
+    >(
+        &self,
+        initializer: &LibmdbxInitializer<T, CH>,
+        block_range: &'static [u64],
+    ) -> eyre::Result<()> {
+        match self {
+            Tables::TokenDecimals => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for token decimals"
+                );
+            }
+            Tables::AddressToProtocolInfo => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for AddressToProtocolInfo"
+                );
+            }
+            Tables::PoolCreationBlocks => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for PoolCreationBlocks"
+                );
+            }
+            Tables::CexPrice => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
+                        block_range,
+                        Some(CEX_FLAG),
+                    )
+                    .await
+            }
+            Tables::BlockInfo => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
+                        block_range,
+                        Some(META_FLAG),
+                    )
+                    .await
+            }
+            Tables::DexPrice => Ok(()),
+            Tables::MevBlocks => Ok(()),
+            Tables::SubGraphs => Ok(()),
+            Tables::TxTraces => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
+                        block_range,
+                        Some(TRACE_FLAG),
+                    )
+                    .await
+            }
+            Tables::Builder => {
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for Builder");
+            }
+            Tables::AddressMeta => {
+                unimplemented!(
+                    "'initialize_table_arbitrary_state' not implemented for AddressMeta"
+                );
+            }
+            Tables::SearcherEOAs => Ok(()),
+            Tables::SearcherContracts => Ok(()),
+            Tables::SearcherStatistics => Ok(()),
+            Tables::BuilderStatistics => Ok(()),
+            Tables::InitializedState => Ok(()),
+            Tables::CexTrades => Ok(()),
+        }
+    }
+
+    pub async fn export_to_parquet<DB>(&self, exporter: &ParquetExporter<DB>) -> eyre::Result<()>
+    where
+        DB: LibmdbxReader,
+    {
+        match self {
+            Self::AddressMeta => exporter.export_address_metadata().await,
+            Self::MevBlocks => exporter.export_mev_blocks().await,
+            _ => unreachable!("Parquet export not yet supported for this table"),
         }
     }
 }
@@ -206,7 +289,8 @@ tables!(
     SearcherContracts,
     InitializedState,
     SearcherStatistics,
-    BuilderStatistics
+    BuilderStatistics,
+    CexTrades
 );
 
 /// Must be in this order when defining
@@ -257,7 +341,18 @@ macro_rules! compressed_table {
             ) -> eyre::Result<()> {
                 paste::paste!{
                     crate::libmdbx::test_utils::compare_clickhouse_libmdbx_data
-                        ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
+                    ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
+                }
+            }
+
+            pub async fn test_initialized_arbitrary_data<CH: ClickhouseHandle>(
+                clickhouse: &CH,
+                libmdbx: &crate::libmdbx::LibmdbxReadWriter,
+                block_range: &'static [u64]
+            ) -> eyre::Result<()> {
+                paste::paste!{
+                    crate::libmdbx::test_utils::compare_clickhouse_libmdbx_arbitrary_data
+                    ::<$table_name,[<$table_name Data>], CH>(clickhouse, libmdbx, block_range).await
                 }
             }
         }
@@ -292,7 +387,7 @@ macro_rules! compressed_table {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $val, $key {
         $($acc)*
         paste!(
-        #[derive(Debug, Clone, clickhouse::Row, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, Default, clickhouse::Row, serde::Serialize, serde::Deserialize)]
         $(#[$dattrs])*
         pub struct [<$table_name Data>] {
             $(#[$kattrs])*
@@ -352,12 +447,13 @@ macro_rules! compressed_table {
             type DecompressedValue = $decompressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = Some(paste! {[<$table_name InitQuery>]});
-            const HTTP_ENDPOINT: Option<&'static str> = Some($http_endpoint);
+            const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
         }
         } $($tail)*);
     };
     ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
-     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Other },
+     { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Other,
+     http_endpoint: $http_endpoint:expr  },
      $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
             $($acc)*
@@ -365,7 +461,7 @@ macro_rules! compressed_table {
             type DecompressedValue = $decompressed_value;
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = None;
-            const HTTP_ENDPOINT: Option<&'static str> = None;
+            const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
         }
         } $($tail)*);
     };
@@ -418,7 +514,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("token-decimals")
         },
         CLI {
             can_insert: False
@@ -439,7 +535,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("protocol-info")
         },
         CLI {
             can_insert: False
@@ -455,15 +551,14 @@ compressed_table!(
         compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(10_000),
+            init_size: Some(50_000),
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("cex-price")
         },
         CLI {
             can_insert: False
         }
     }
-
 );
 
 compressed_table!(
@@ -475,9 +570,9 @@ compressed_table!(
             compressed_value: BlockMetadataInnerRedefined
         },
         Init {
-            init_size: Some(50_000),
+            init_size: Some(500_000),
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("block-info")
         },
         CLI {
             can_insert: False
@@ -494,7 +589,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Other
+            init_method: Other,
+            http_endpoint: Some("dex-pricing")
         },
         CLI {
             can_insert: False
@@ -514,7 +610,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("pool-creation-blocks")
         },
         CLI {
             can_insert: False
@@ -531,7 +627,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Other
+            init_method: Other,
+            http_endpoint: None
         },
         CLI {
             can_insert: False
@@ -548,7 +645,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Other
+            init_method: Other,
+            http_endpoint: None
         },
         CLI {
             can_insert: False
@@ -566,9 +664,9 @@ compressed_table!(
             compressed_value: TxTracesInnerRedefined
         },
         Init {
-            init_size: Some(10_000),
+            init_size: Some(50_000),
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("tx-traces")
         },
         CLI {
             can_insert: False
@@ -588,7 +686,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("builder")
         },
         CLI {
             can_insert: False
@@ -606,7 +704,8 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Other
+            init_method: Other,
+            http_endpoint: None
         },
         CLI {
             can_insert: False
@@ -625,7 +724,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: Some("address-meta")
         },
         CLI {
             can_insert: False
@@ -644,7 +743,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: None
         },
         CLI {
             can_insert: False
@@ -663,7 +762,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: None
         },
         CLI {
             can_insert: False
@@ -682,7 +781,7 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: ""
+            http_endpoint: None
         },
         CLI {
             can_insert: False
@@ -699,7 +798,26 @@ compressed_table!(
         },
         Init {
             init_size: None,
-            init_method: Other
+            init_method: Other,
+            http_endpoint: None
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table CexTrades {
+        Data {
+        key: u64,
+        value: CexTradeMap,
+        compressed_value: CexTradeMapRedefined
+        },
+        Init {
+            init_size: Some(50_000),
+            init_method: Clickhouse,
+            http_endpoint: None
         },
         CLI {
             can_insert: False

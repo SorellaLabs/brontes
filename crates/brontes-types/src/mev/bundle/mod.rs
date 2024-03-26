@@ -2,6 +2,7 @@ pub mod data;
 pub mod header;
 use std::fmt::{self, Debug};
 
+use ahash::HashSet;
 use alloy_primitives::Address;
 use clap::ValueEnum;
 use clickhouse::Row;
@@ -15,10 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use strum::{Display, EnumIter};
 
-use crate::display::utils::{
-    display_atomic_backrun, display_jit_liquidity, display_jit_liquidity_sandwich,
-    display_liquidation,
-};
+use crate::{display::utils::*, Protocol};
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_cex_dex, display_sandwich},
@@ -39,6 +37,14 @@ impl Bundle {
         self.header.mev_contract
     }
 
+    pub fn get_searcher_contract_or_eoa(&self) -> Address {
+        if let Some(contract) = self.header.mev_contract {
+            contract
+        } else {
+            self.header.eoa
+        }
+    }
+
     pub fn mev_type(&self) -> MevType {
         self.header.mev_type
     }
@@ -53,7 +59,8 @@ impl fmt::Display for Bundle {
             MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
             MevType::JitSandwich => display_jit_liquidity_sandwich(self, f)?,
-            _ => writeln!(f, "{:#?}", self)?,
+            MevType::SearcherTx => display_searcher_tx(self, f)?,
+            MevType::Unknown => (),
         }
 
         Ok(())
@@ -82,6 +89,7 @@ pub enum MevType {
     JitSandwich,
     Liquidation,
     AtomicArb,
+    SearcherTx,
     #[default]
     Unknown,
 }
@@ -95,6 +103,7 @@ impl MevType {
             | MevType::AtomicArb
             | MevType::Liquidation
             | MevType::Unknown => false,
+            MevType::SearcherTx => false,
             MevType::CexDex => true,
         }
     }
@@ -111,6 +120,7 @@ impl From<String> for MevType {
             "Liquidation" => MevType::Liquidation,
             "JitSandwich" => MevType::JitSandwich,
             "AtomicArb" => MevType::AtomicArb,
+            "SearcherTx" => MevType::SearcherTx,
             _ => MevType::Unknown,
         }
     }
@@ -153,6 +163,8 @@ pub trait Mev: erased_serde::Serialize + Send + Sync + Debug + 'static + DynClon
 
     fn bribe(&self) -> u128;
     fn mev_transaction_hashes(&self) -> Vec<B256>;
+
+    fn protocols(&self) -> HashSet<Protocol>;
 }
 
 dyn_clone::clone_trait_object!(Mev);

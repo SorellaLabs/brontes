@@ -10,11 +10,11 @@ use async_trait::async_trait;
 use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
 pub use brontes_types::{queries::make_call_request, Protocol};
 use malachite::Rational;
-use tracing::error;
+use tracing::{debug, warn};
 
 use crate::{
     lazy::{PoolFetchError, PoolFetchSuccess},
-    protocols::errors::{AmmError, ArithmeticError, EventLogError},
+    protocols::errors::{AmmError, ArithmeticError},
     uniswap_v2::UniswapV2Pool,
     uniswap_v3::UniswapV3Pool,
     LoadResult, PoolState,
@@ -25,8 +25,8 @@ pub trait UpdatableProtocol {
     fn address(&self) -> Address;
     fn tokens(&self) -> Vec<Address>;
     fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError>;
-    fn sync_from_action(&mut self, action: Actions) -> Result<(), EventLogError>;
-    fn sync_from_log(&mut self, log: Log) -> Result<(), EventLogError>;
+    fn sync_from_action(&mut self, action: Actions) -> Result<(), AmmError>;
+    fn sync_from_log(&mut self, log: Log) -> Result<(), AmmError>;
 }
 
 pub trait LoadState {
@@ -37,6 +37,7 @@ pub trait LoadState {
         provider: Arc<T>,
         block_number: u64,
         pool_pair: Pair,
+        full_pair: Pair,
     ) -> impl Future<Output = Result<PoolFetchSuccess, PoolFetchError>> + Send;
 }
 
@@ -51,6 +52,7 @@ impl LoadState for Protocol {
         provider: Arc<T>,
         block_number: u64,
         pool_pair: Pair,
+        fp: Pair,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
             Self::UniswapV2 | Self::SushiSwapV2 => {
@@ -64,7 +66,8 @@ impl LoadState for Protocol {
                         UniswapV2Pool::new_load_on_block(address, provider, block_number)
                             .await
                             .map_err(|e| {
-                                (address, Protocol::UniswapV2, block_number, pool_pair, e)
+                                debug!(?pool_pair,protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
+                                (address, Protocol::UniswapV2, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -73,7 +76,10 @@ impl LoadState for Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV2(pool), block_number),
+                    PoolState::new(
+                        crate::types::PoolVariants::UniswapV2(Box::new(pool)),
+                        block_number,
+                    ),
                     res,
                 ))
             }
@@ -88,7 +94,8 @@ impl LoadState for Protocol {
                         UniswapV3Pool::new_from_address(address, block_number, provider)
                             .await
                             .map_err(|e| {
-                                (address, Protocol::UniswapV3, block_number, pool_pair, e)
+                                debug!(?pool_pair, protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
+                                (address, Protocol::UniswapV3, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
                     )
@@ -97,13 +104,16 @@ impl LoadState for Protocol {
                 Ok((
                     block_number,
                     address,
-                    PoolState::new(crate::types::PoolVariants::UniswapV3(pool), block_number),
+                    PoolState::new(
+                        crate::types::PoolVariants::UniswapV3(Box::new(pool)),
+                        block_number,
+                    ),
                     res,
                 ))
             }
             rest => {
-                error!(protocol=?rest, "no state updater is build for");
-                Err((address, self, block_number, pool_pair, AmmError::UnsupportedProtocol))
+                warn!(protocol=?rest, "no state updater is build for");
+                Err((address, self, block_number, pool_pair, fp, AmmError::UnsupportedProtocol))
             }
         }
     }

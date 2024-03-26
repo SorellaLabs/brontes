@@ -1,6 +1,9 @@
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
-use reth_primitives::{BlockId, BlockNumber, BlockNumberOrTag, Bytes, Header, TxHash, B256};
+use reth_primitives::{
+    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
+    B256,
+};
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
@@ -35,7 +38,7 @@ impl TracingProvider for TracingClient {
     fn best_block_number(&self) -> eyre::Result<u64> {
         self.trace
             .provider()
-            .best_block_number()
+            .last_block_number()
             .map_err(Into::into)
     }
 
@@ -43,7 +46,7 @@ impl TracingProvider for TracingClient {
     async fn best_block_number(&self) -> eyre::Result<u64> {
         self.trace
             .provider()
-            .best_block_number()
+            .last_block_number()
             .map_err(Into::into)
     }
 
@@ -51,7 +54,7 @@ impl TracingProvider for TracingClient {
         &self,
         block_id: BlockId,
     ) -> eyre::Result<Option<Vec<TxTrace>>> {
-        self.replay_block_transactions(block_id)
+        self.replay_block_transactions_with_inspector(block_id)
             .await
             .map_err(Into::into)
     }
@@ -79,5 +82,37 @@ impl TracingProvider for TracingClient {
             .provider()
             .header_by_number(number)
             .map_err(Into::into)
+    }
+
+    // DB Access Methods
+    async fn get_storage(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+        storage_key: B256,
+    ) -> eyre::Result<Option<StorageValue>> {
+        let provider = match block_number {
+            Some(block_number) => self.provider_factory.history_by_block_number(block_number),
+            None => self.provider_factory.latest(),
+        }?;
+
+        let storage_value = provider.storage(address, storage_key)?;
+
+        Ok(storage_value)
+    }
+
+    async fn get_bytecode(
+        &self,
+        block_number: Option<u64>,
+        address: Address,
+    ) -> eyre::Result<Option<Bytecode>> {
+        let provider = match block_number {
+            Some(block_number) => self.provider_factory.history_by_block_number(block_number),
+            None => self.provider_factory.latest(),
+        }?;
+
+        let bytecode = provider.account_code(address)?;
+
+        Ok(bytecode)
     }
 }

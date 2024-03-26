@@ -20,20 +20,19 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
-use alloy_primitives::U256;
-use brontes_types::normalized_actions::pool::NormalizedPoolConfigUpdate;
+
+use brontes_types::{execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate};
 mod graphs;
 pub mod protocols;
 pub mod types;
-use std::sync::atomic::Ordering::SeqCst;
-
-#[cfg(test)]
-pub mod test_utils;
-
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
-    sync::{atomic::AtomicBool, Arc},
+    collections::{hash_map::Entry, VecDeque},
+    sync::{
+        atomic::{AtomicBool, Ordering::SeqCst},
+        Arc,
+    },
     task::{Context, Poll},
+    time::Duration,
 };
 
 use alloy_primitives::Address;
@@ -43,25 +42,24 @@ pub use brontes_types::price_graph_types::{
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
-        token_info::TokenInfoWithAddress,
         traits::{DBWriter, LibmdbxReader},
     },
-    normalized_actions::{Actions, NormalizedSwap},
     pair::Pair,
     traits::TracingProvider,
+    FastHashMap, FastHashSet,
 };
 use futures::{Stream, StreamExt};
-pub use graphs::{AllPairGraph, GraphManager, VerificationResults};
-use itertools::Itertools;
-use malachite::{
-    num::basic::traits::{One, Zero},
-    Rational,
+pub use graphs::{
+    AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,
+    VerificationResults,
 };
+use itertools::Itertools;
+use malachite::{num::basic::traits::One, Rational};
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::error;
+use tracing::{debug, info};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
@@ -106,12 +104,12 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
+    new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
     graph_manager:   GraphManager<DB>,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
-    dex_quotes:      HashMap<u64, DexQuotes>,
+    dex_quotes:      FastHashMap<u64, DexQuotes>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
     overlap_update:  Option<PoolUpdate>,
@@ -125,7 +123,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         update_rx: UnboundedReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
-        new_graph_pairs: HashMap<Address, (Protocol, Pair)>,
+        new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     ) -> Self {
         Self {
             finished,
@@ -134,12 +132,37 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             buffer: StateBuffer::new(),
             update_rx,
             graph_manager,
-            dex_quotes: HashMap::default(),
+            dex_quotes: FastHashMap::default(),
             lazy_loader: LazyExchangeLoader::new(provider),
             current_block,
             completed_block: current_block,
             overlap_update: None,
         }
+    }
+
+    pub fn current_block_processing(&self) -> u64 {
+        self.completed_block
+    }
+
+    /// testing / benching utils
+    pub fn completed_block(&mut self) -> &mut u64 {
+        &mut self.completed_block
+    }
+
+    /// testing / benching utils
+    pub fn snapshot_graph_state(&self) -> (SubGraphRegistry, SubgraphVerifier, StateTracker) {
+        self.graph_manager.snapshot_state()
+    }
+
+    /// testing / benching utils
+    pub fn set_state(
+        &mut self,
+        sub_graph_registry: SubGraphRegistry,
+        verifier: SubgraphVerifier,
+        state: StateTracker,
+    ) {
+        self.graph_manager
+            .set_state(sub_graph_registry, verifier, state)
     }
 
     /// Handles pool updates for the BrontesBatchPricer system.
@@ -157,7 +180,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the decentralized exchange pricing mechanism.
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
-            return;
+            return
         };
 
         if let Some(msg) = updates.first() {
@@ -178,7 +201,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             });
 
         tracing::debug!("search triggered by on pool updates");
-        let (state, pools) = graph_search_par(&self.graph_manager, self.quote_asset, updates);
+        let (state, pools) = execute_on!(target = pricing, {
+            graph_search_par(&self.graph_manager, self.quote_asset, updates)
+        });
         tracing::debug!("search triggered by on pool updates completed");
 
         state.into_iter().flatten().for_each(|(addr, update)| {
@@ -190,30 +215,45 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .push_back((addr, update));
         });
 
-        pools
-            .into_iter()
-            .flatten()
-            .unique_by(|(_, p, _)| *p)
-            .for_each(|(graph_edges, pair, block)| {
-                if graph_edges.is_empty() {
-                    error!(?pair, "new pool has no graph edges");
-                    return;
+        pools.into_iter().flatten().for_each(
+            |NewGraphDetails { must_include, complete_pair, pair, extends_pair, block, edges }| {
+                if edges.is_empty() {
+                    tracing::debug!(
+                        ?pair,
+                        ?complete_pair,
+                        ?must_include,
+                        ?extends_pair,
+                        "new pool has no graph edges"
+                    );
+                    return
                 }
 
-                if self.graph_manager.has_subgraph(pair) {
-                    error!(?pair, "already have pairs");
-                    return;
+                if self.graph_manager.has_subgraph_goes_through(
+                    pair,
+                    (!must_include.is_zero()).then_some(must_include),
+                ) {
+                    tracing::debug!(?pair, "already have pairs");
+                    return
                 }
 
-                self.add_subgraph(pair, block, graph_edges, false);
-            });
+                self.add_subgraph(
+                    pair,
+                    complete_pair,
+                    must_include,
+                    extends_pair,
+                    block,
+                    edges,
+                    false,
+                );
+            },
+        );
     }
 
-    fn get_dex_price(&self, pool_pair: Pair) -> Option<Rational> {
+    fn get_dex_price(&self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
         if pool_pair.0 == pool_pair.1 {
-            return Some(Rational::ONE);
+            return Some(Rational::ONE)
         }
-        self.graph_manager.get_price(pool_pair)
+        self.graph_manager.get_price(pool_pair, goes_through)
     }
 
     /// For a given block number and tx idx, finds the path to the following
@@ -233,7 +273,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 if let Some(tx) = tx.as_mut() {
                     tx.insert(pool_pair, prices);
                 } else {
-                    let mut tx_pairs = HashMap::default();
+                    let mut tx_pairs = FastHashMap::default();
                     tx_pairs.insert(pool_pair, prices);
                     *tx = Some(tx_pairs)
                 }
@@ -245,7 +285,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     vec.push(None);
                 }
                 // insert
-                let mut map = HashMap::new();
+                let mut map = FastHashMap::default();
                 map.insert(pool_pair, prices);
 
                 let entry = vec.get_mut(tx_idx as usize).unwrap();
@@ -263,20 +303,23 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let block = msg.block;
 
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
-            error!(?addr, "failed to get pair for pool");
+            info!(?addr, "failed to get pair for pool");
             return;
         };
 
         // generate all variants of the price that might be used in the inspectors
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
-        let Some(price0) = self.get_dex_price(pair0) else {
-            error!(?pair0, "no price for token");
+
+        let flipped_pool = pool_pair.flip();
+
+        let Some(price0) = self.get_dex_price(pair0, pool_pair) else {
+            debug!(?pair0, "no price for token");
             return;
         };
 
-        let Some(price1) = self.get_dex_price(pair1) else {
-            error!(?pair1, "no price for token");
+        let Some(price1) = self.get_dex_price(pair1, flipped_pool) else {
+            debug!(?pair1, "no price for token");
             return;
         };
 
@@ -291,7 +334,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let tx_idx = msg.tx_idx;
         let block = msg.block;
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
-            error!(?addr, "failed to get pair for pool");
+            info!(?addr, "failed to get pair for pool");
             return;
         };
 
@@ -299,22 +342,24 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
-        let Some(price0_pre) = self.get_dex_price(pair0) else {
-            error!(?pair0, "no price for token");
+        let flipped_pool = pool_pair.flip();
+
+        let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
+            debug!(?pair0, ?pool_pair, "no price for token");
             return;
         };
-        let Some(price1_pre) = self.get_dex_price(pair1) else {
-            error!(?pair1, "no price for token");
+        let Some(price1_pre) = self.get_dex_price(pair1, flipped_pool) else {
+            debug!(?pair1, ?flipped_pool, "no price for token");
             return;
         };
         self.graph_manager.update_state(addr, msg);
 
-        let Some(price0_post) = self.get_dex_price(pair0) else {
-            error!(?pair0, "no price for token");
+        let Some(price0_post) = self.get_dex_price(pair0, pool_pair) else {
+            debug!(?pair0, "no price for token");
             return;
         };
-        let Some(price1_post) = self.get_dex_price(pair1) else {
-            error!(?pair1, "no price for token");
+        let Some(price1_post) = self.get_dex_price(pair1, flipped_pool) else {
+            debug!(?pair1, "no price for token");
             return;
         };
 
@@ -360,9 +405,34 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else if let LoadResult::Err { pool_address, pool_pair, protocol } = load_result {
+        } else if let LoadResult::Err {
+            block,
+            pool_address,
+            pool_pair,
+            protocol,
+            deps,
+            full_pair,
+        } = load_result
+        {
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
+
+            let failed_queries = deps
+                .into_iter()
+                .map(|(pair, goes_through)| {
+                    self.graph_manager.pool_dep_failure(pair, goes_through);
+                    RequeryPairs {
+                        full_pair,
+                        block,
+                        goes_through,
+                        pair,
+                        frayed_ends: Default::default(),
+                        ignore_state: Default::default(),
+                    }
+                })
+                .collect_vec();
+
+            self.requery_bad_state_par(failed_queries)
         }
     }
 
@@ -377,7 +447,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the failed pair for requery. After processing the verification
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
-    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair)>) {
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>) {
         let requery = self
             .graph_manager
             .verify_subgraph(pairs, self.quote_asset)
@@ -414,7 +484,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         }
                     });
 
-                    Some((failed.pair, failed.block, failed.ignore_state, failed.frayed_ends))
+                    Some(RequeryPairs {
+                        pair:         failed.pair,
+                        goes_through: failed.goes_through,
+                        block:        failed.block,
+                        frayed_ends:  failed.frayed_ends,
+                        full_pair:    failed.full_pair,
+                        ignore_state: failed.ignore_state,
+                    })
                 }
             })
             .collect_vec();
@@ -434,43 +511,50 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
-    fn requery_bad_state_par(&mut self, pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>) {
+    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>) {
         if pairs.is_empty() {
-            return;
+            return
         }
         tracing::debug!("requerying bad state");
 
-        let new_state = par_state_query(&self.graph_manager, pairs);
+        let new_state = execute_on!(target = pricing, par_state_query(&self.graph_manager, pairs));
+
         if new_state.is_empty() {
             tracing::error!("requery bad state returned nothing");
         }
 
         let mut recusing = Vec::new();
-        new_state
-            .into_iter()
-            .for_each(|(pair, block, missing_paths)| {
-                let edges = missing_paths.into_iter().flatten().unique().collect_vec();
+        new_state.into_iter().for_each(
+            |StateQueryRes { pair, block, edges, extends_pair, goes_through, full_pair }| {
+                let edges = edges.into_iter().flatten().unique().collect_vec();
                 // add regularly
                 if edges.is_empty() {
-                    self.rundown(pair, block);
-                    return;
+                    self.rundown(pair, full_pair, goes_through, block);
+                    return
                 }
 
-                let Some((id, need_state, force_rundown)) =
-                    self.add_subgraph(pair, block, edges, true)
-                else {
+                let Some((id, need_state, force_rundown)) = self.add_subgraph(
+                    pair,
+                    full_pair,
+                    goes_through,
+                    extends_pair,
+                    block,
+                    edges,
+                    true,
+                ) else {
                     return;
                 };
 
                 if force_rundown {
-                    self.rundown(pair, block);
+                    self.rundown(pair, full_pair, goes_through, block);
                 } else if !need_state {
-                    recusing.push((block, id, pair))
+                    recusing.push((block, id, pair, vec![goes_through]))
                 }
-            });
+            },
+        );
 
         if !recusing.is_empty() {
-            self.try_verify_subgraph(recusing);
+            execute_on!(target = pricing, self.try_verify_subgraph(recusing));
         }
         tracing::debug!("finished requerying bad state");
     }
@@ -480,8 +564,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// of the low liquidity nodes and generate all unique paths through each
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
-    fn rundown(&mut self, pair: Pair, block: u64) {
-        let Some(ignores) = self.graph_manager.verify_subgraph_on_new_path_failure(pair) else {
+    fn rundown(&mut self, pair: Pair, complete_pair: Pair, goes_through: Pair, block: u64) {
+        let Some(ignores) = self
+            .graph_manager
+            .verify_subgraph_on_new_path_failure(pair, &goes_through)
+        else {
             return;
         };
 
@@ -499,53 +586,78 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .iter()
                 .copied()
                 .combinations(ignores.len() - 1)
-                .map(|ignores| (pair, block, ignores.into_iter().collect::<HashSet<_>>(), vec![]))
+                .map(|ignores| RequeryPairs {
+                    pair,
+                    goes_through,
+                    full_pair: complete_pair,
+                    block,
+                    ignore_state: ignores.into_iter().collect::<FastHashSet<_>>(),
+                    frayed_ends: vec![],
+                })
                 .collect_vec()
         } else {
-            ignores
-                .iter()
-                .copied()
-                .map(|_| (pair, block, HashSet::new(), vec![]))
-                .collect_vec()
+            vec![RequeryPairs {
+                goes_through,
+                pair,
+                block,
+                full_pair: complete_pair,
+                ignore_state: FastHashSet::default(),
+                frayed_ends: vec![],
+            }]
         };
 
         tracing::debug!(?pair, ?block, subgraph_variations = queries.len(), "starting rundown");
 
-        let edges = par_state_query(&self.graph_manager, queries)
-            .into_iter()
-            .flat_map(|e| e.2)
-            .flatten()
-            .unique()
-            .collect_vec();
+        let (edges, extend) = execute_on!(target = pricing, {
+            let (edges, mut extend): (Vec<_>, Vec<_>) =
+                par_state_query(&self.graph_manager, queries)
+                    .into_iter()
+                    .map(|e| (e.edges, e.extends_pair))
+                    .unzip();
 
-        // if we done have any edges, lets run with no ignores.
-        let edges = if edges.is_empty() {
-            let query = ignores
-                .iter()
-                .copied()
-                .map(|_| (pair, block, HashSet::new(), vec![]))
-                .collect_vec();
+            let edges = edges.into_iter().flatten().flatten().unique().collect_vec();
 
-            par_state_query(&self.graph_manager, query)
-                .into_iter()
-                .flat_map(|e| e.2)
-                .flatten()
-                .unique()
-                .collect_vec()
-        } else {
-            edges
-        };
+            // if we dont have any edges, lets run with no ignores.
+            if edges.is_empty() {
+                let query = vec![RequeryPairs {
+                    goes_through,
+                    pair,
+                    block,
+                    full_pair: complete_pair,
+                    ignore_state: FastHashSet::default(),
+                    frayed_ends: vec![],
+                }];
+
+                let (edges, mut extend): (Vec<_>, Vec<_>) =
+                    par_state_query(&self.graph_manager, query)
+                        .into_iter()
+                        .map(|e| (e.edges, e.extends_pair))
+                        .unzip();
+
+                (
+                    edges.into_iter().flatten().flatten().unique().collect_vec(),
+                    extend.pop().flatten(),
+                )
+            } else {
+                (edges, extend.pop().flatten())
+            }
+        });
 
         if edges.is_empty() {
             tracing::error!(?pair, ?block, "failed to find connection for graph");
-            return;
+            return
         } else {
-            let Some((id, need_state, _)) = self.add_subgraph(pair, block, edges, true) else {
+            let Some((id, need_state, _)) =
+                self.add_subgraph(pair, complete_pair, goes_through, extend, block, edges, true)
+            else {
                 return;
             };
 
             if !need_state {
-                self.try_verify_subgraph(vec![(block, id, pair)]);
+                execute_on!(
+                    target = pricing,
+                    self.try_verify_subgraph(vec![(block, id, pair, vec![goes_through])])
+                );
             }
         }
         tracing::debug!(?pair, ?block, "finished rundown");
@@ -568,19 +680,28 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn add_subgraph(
         &mut self,
         pair: Pair,
+        complete_pair: Pair,
+        goes_through: Pair,
+        extends_to: Option<Pair>,
         block: u64,
         edges: Vec<SubGraphEdge>,
         frayed_ext: bool,
     ) -> Option<(Option<u64>, bool, bool)> {
         let (needed_state, id, force_rundown) = if frayed_ext {
-            let (need, id, force_rundown) = self
-                .graph_manager
-                .add_frayed_end_extension(pair, block, edges)?;
+            let (need, id, force_rundown) =
+                self.graph_manager
+                    .add_frayed_end_extension(pair, &goes_through, block, edges)?;
             (need, Some(id), force_rundown)
         } else {
             (
-                self.graph_manager
-                    .add_subgraph_for_verification(pair, block, edges),
+                self.graph_manager.add_subgraph_for_verification(
+                    pair,
+                    complete_pair,
+                    goes_through,
+                    extends_to,
+                    block,
+                    edges,
+                ),
                 None,
                 false,
             )
@@ -604,6 +725,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),
+                    goes_through,
+                    complete_pair,
                     id,
                     pool_info.pool_addr,
                     block,
@@ -611,8 +734,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 );
                 triggered = true;
             } else {
-                self.lazy_loader
-                    .add_protocol_parent(block, id, pool_info.pool_addr, pair);
+                self.lazy_loader.add_protocol_parent(
+                    block,
+                    id,
+                    pool_info.pool_addr,
+                    pair,
+                    goes_through,
+                );
                 triggered = true;
             }
         }
@@ -636,7 +764,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
         if !self.can_progress() {
-            return None;
+            return None
         }
 
         self.graph_manager.finalize_block(self.completed_block);
@@ -680,7 +808,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
         if self.completed_block > self.current_block {
-            return None;
+            return None
         }
 
         self.graph_manager.finalize_block(self.completed_block);
@@ -728,7 +856,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
 
         let pairs = self.lazy_loader.pairs_to_verify();
-        self.try_verify_subgraph(pairs);
+
+        execute_on!(target = pricing, self.try_verify_subgraph(pairs));
 
         // check if we can progress to the next block.
         self.try_resolve_block()
@@ -751,15 +880,15 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             work -= 1;
             if work == 0 {
                 cx.waker().wake_by_ref();
-                return Poll::Pending;
+                return Poll::Pending
             }
 
             if let Some(new_prices) = self.poll_state_processing(cx) {
-                return new_prices;
+                return new_prices
             }
 
             if !self.process_future_blocks() {
-                continue;
+                continue
             }
 
             let mut block_updates = Vec::new();
@@ -791,7 +920,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                                 block_updates.push(update);
                             } else {
                                 self.overlap_update = Some(update);
-                                break;
+                                break
                             }
                         }
                     }
@@ -801,19 +930,19 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
-                            return Poll::Ready(self.on_close());
+                            return Poll::Ready(self.on_close())
                         }
-                        break;
+                        break
                     }
                 }
 
                 // we poll here to continuously progress state fetches as they are slow
                 if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                    self.on_pool_resolve(state)
+                    self.on_pool_resolve(state);
                 }
             }
 
-            self.on_pool_updates(block_updates);
+            execute_on!(target = pricing, self.on_pool_updates(block_updates));
         }
     }
 }
@@ -827,13 +956,13 @@ enum PollResult {
 /// loading of pools is being applied
 pub struct StateBuffer {
     /// updates for a given block in order that they occur
-    pub updates:   HashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    pub updates:   FastHashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     /// when we have a override for a given address at a block. it means that
     /// we don't want to apply any pool updates for the block. This is useful
     /// for when a pool is initted at a block and we can only query the end
     /// of block state. we can override all pool updates for the init block
     /// to ensure our pool state is in sync
-    pub overrides: HashMap<u64, HashSet<Address>>,
+    pub overrides: FastHashMap<u64, FastHashSet<Address>>,
 }
 
 impl Default for StateBuffer {
@@ -844,38 +973,11 @@ impl Default for StateBuffer {
 
 impl StateBuffer {
     pub fn new() -> Self {
-        Self { updates: HashMap::default(), overrides: HashMap::default() }
+        Self { updates: FastHashMap::default(), overrides: FastHashMap::default() }
     }
 }
 
-/// Makes a swap for initializing a virtual pool with the quote token.
-/// this swap is empty such that we don't effect the state
-const fn make_fake_swap(pair: Pair) -> Actions {
-    let t_in = TokenInfoWithAddress {
-        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
-        address: pair.0,
-    };
-
-    let t_out = TokenInfoWithAddress {
-        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
-        address: pair.1,
-    };
-
-    Actions::Swap(NormalizedSwap {
-        protocol:    Protocol::Unknown,
-        trace_index: 0,
-        from:        Address::ZERO,
-        recipient:   Address::ZERO,
-        pool:        Address::ZERO,
-        token_in:    t_in,
-        token_out:   t_out,
-        amount_in:   Rational::ZERO,
-        amount_out:  Rational::ZERO,
-        msg_value:   U256::ZERO,
-    })
-}
-
-type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<(Vec<SubGraphEdge>, Pair, u64)>>);
+type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
 
 fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
@@ -886,14 +988,19 @@ fn graph_search_par<DB: DBWriter + LibmdbxReader>(
         .into_par_iter()
         .filter_map(|msg| {
             let pair = msg.get_pair(quote)?;
+            let is_transfer = msg.is_transfer();
+
             let pair0 = Pair(pair.0, quote);
             let pair1 = Pair(pair.1, quote);
+
+            let pair = Some(pair).filter(|_| !is_transfer);
 
             let (state, path) = on_new_pool_pair(
                 graph,
                 msg,
-                (!graph.has_subgraph(pair0)).then_some(pair0),
-                (!graph.has_subgraph(pair1)).then_some(pair1),
+                pair,
+                (!graph.has_subgraph_goes_through(pair0, pair)).then_some(pair0),
+                (!graph.has_subgraph_goes_through(pair1, pair)).then_some(pair1),
             );
             Some((state, path))
         })
@@ -902,40 +1009,98 @@ fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     (state, pools)
 }
 
-type ParStateQueryRes = Vec<(Pair, u64, Vec<Vec<SubGraphEdge>>)>;
+type ParStateQueryRes = Vec<StateQueryRes>;
+
+pub struct RequeryPairs {
+    pub pair:         Pair,
+    pub goes_through: Pair,
+    pub full_pair:    Pair,
+    pub block:        u64,
+    pub ignore_state: FastHashSet<Pair>,
+    pub frayed_ends:  Vec<Address>,
+}
+
+pub struct NewGraphDetails {
+    pub must_include:  Pair,
+    pub complete_pair: Pair,
+    pub pair:          Pair,
+    pub extends_pair:  Option<Pair>,
+    pub block:         u64,
+    pub edges:         Vec<SubGraphEdge>,
+}
+
+pub struct StateQueryRes {
+    pair:         Pair,
+    block:        u64,
+    edges:        Vec<Vec<SubGraphEdge>>,
+    extends_pair: Option<Pair>,
+    goes_through: Pair,
+    full_pair:    Pair,
+}
 
 fn par_state_query<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
-    pairs: Vec<(Pair, u64, HashSet<Pair>, Vec<Address>)>,
+    pairs: Vec<RequeryPairs>,
 ) -> ParStateQueryRes {
     pairs
         .into_par_iter()
-        .map(|(pair, block, ignore, frayed_ends)| {
+        .map(|RequeryPairs { pair, goes_through, full_pair, block, ignore_state, frayed_ends }| {
+            let extends_pair = graph.has_extension(&goes_through, pair.1);
             if frayed_ends.is_empty() {
-                return (pair, block, vec![graph.create_subgraph(block, pair, ignore, 100, 3)]);
+                return StateQueryRes {
+                    extends_pair,
+                    pair,
+                    block,
+                    goes_through,
+                    full_pair,
+                    edges: vec![graph.create_subgraph(
+                        block,
+                        // if not zero, then we have a go, through
+                        (!goes_through.is_zero()).then_some(goes_through),
+                        pair,
+                        ignore_state,
+                        100,
+                        Some(5),
+                        Duration::from_millis(69),
+                        extends_pair.is_some(),
+                    )],
+                }
             }
-            (
-                pair,
-                block,
-                frayed_ends
+            StateQueryRes {
+                edges: frayed_ends
                     .into_iter()
                     .zip(vec![pair.0].into_iter().cycle())
                     .collect_vec()
                     .into_par_iter()
                     .map(|(end, start)| {
-                        graph.create_subgraph(block, Pair(start, end), ignore.clone(), 0, 12)
+                        graph.create_subgraph(
+                            block,
+                            (!goes_through.is_zero()).then_some(goes_through),
+                            Pair(start, end),
+                            ignore_state.clone(),
+                            0,
+                            None,
+                            Duration::from_millis(325),
+                            extends_pair.is_some(),
+                        )
                     })
                     .collect::<Vec<_>>(),
-            )
+                full_pair,
+                goes_through,
+                pair,
+                block,
+                extends_pair,
+            }
         })
         .collect::<Vec<_>>()
 }
 
-type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<(Vec<SubGraphEdge>, Pair, u64)>);
+type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<NewGraphDetails>);
 
 fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     msg: PoolUpdate,
+    main_pair: Option<Pair>,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
 ) -> NewPoolPair {
@@ -947,33 +1112,19 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     // add default pair to buffer to make sure that we price all pairs and apply the
     // state diff. we don't wan't to actually do a graph search for this pair
     // though.
-    buf_pending.push((msg.get_pool_address(), msg.clone()));
-
-    // we add support for fetching the pair as well as each individual token with
-    // the given quote asset
-    let mut trigger_update = msg;
-    // we want to make sure no updates occur to the state of the virtual pool when
-    // we load it
-    trigger_update.logs = vec![];
+    buf_pending.push((msg.get_pool_address(), msg));
 
     // add first pair
     if let Some(pair0) = pair0 {
-        trigger_update.action = make_fake_swap(pair0);
-        if let Some((buf, path)) =
-            queue_loading_returns(graph, block, pair0, trigger_update.clone())
-        {
-            buf_pending.push(buf);
+        if let Some(path) = queue_loading_returns(graph, block, main_pair, pair0) {
             path_pending.push(path);
         }
     }
 
     // add second direction
     if let Some(pair1) = pair1 {
-        trigger_update.action = make_fake_swap(pair1);
-        if let Some((buf, path)) =
-            queue_loading_returns(graph, block, pair1, trigger_update.clone())
+        if let Some(path) = queue_loading_returns(graph, block, main_pair.map(|f| f.flip()), pair1)
         {
-            buf_pending.push(buf);
             path_pending.push(path);
         }
     }
@@ -981,25 +1132,49 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     (buf_pending, path_pending)
 }
 
-type LoadingReturns = Option<((Address, PoolUpdate), (Vec<SubGraphEdge>, Pair, u64))>;
-
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
+    must_include: Option<Pair>,
     pair: Pair,
-    trigger_update: PoolUpdate,
-) -> LoadingReturns {
+) -> Option<NewGraphDetails> {
     if pair.0 == pair.1 {
-        return None;
+        return None
     }
 
-    Some(((trigger_update.get_pool_address(), trigger_update.clone()), {
-        let subgraph = graph.create_subgraph(block, pair, HashSet::new(), 100, 5);
-        (subgraph, pair, trigger_update.block)
-    }))
+    // if we can extend another graph and we don't have a direct pair with a quote
+    // asset, then we will extend.
+    let (n_pair, extend_to) = must_include
+        .and_then(|must_include| {
+            graph
+                .has_extension(&must_include, pair.1)
+                .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
+        })
+        .unwrap_or((pair, None));
+
+    Some({
+        let subgraph = graph.create_subgraph(
+            block,
+            must_include,
+            n_pair,
+            FastHashSet::default(),
+            100,
+            Some(5),
+            Duration::from_millis(69),
+            extend_to.is_some(),
+        );
+        NewGraphDetails {
+            complete_pair: pair,
+            pair: n_pair,
+            must_include: must_include.unwrap_or_default(),
+            block,
+            edges: subgraph,
+            extends_pair: extend_to,
+        }
+    })
 }
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "tests")]
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn get_lazy_loader(&mut self) -> &mut LazyExchangeLoader<T> {
         &mut self.lazy_loader
@@ -1010,11 +1185,118 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "local-reth"))]
 pub mod test {
+    use std::sync::Arc;
 
-    use alloy_primitives::{hex, Address, FixedBytes};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        constants::USDC_ADDRESS,
+        db::dex::{DexPrices, DexQuotes},
+        pair::Pair,
+        ToFloatNearest,
+    };
+    use futures::future::join_all;
+    use itertools::Itertools;
+    use malachite::Rational;
 
-    pub const USDC_ADDRESS: Address =
-        Address(FixedBytes::<20>(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")));
+    use crate::FastHashMap;
+
+    // takes to long if using http
+    #[brontes_macros::test(threads = 11)]
+    async fn test_pricing_variance() {
+        let utils = Arc::new(ClassifierTestUtils::new().await);
+        let bad_block = 18500018;
+        let mut dex_quotes: Vec<DexQuotes> = join_all((0..4).map(|_| {
+            let c = utils.clone();
+            tokio::spawn(async move {
+                c.build_block_tree_with_pricing(bad_block, USDC_ADDRESS, vec![])
+                    .await
+                    .unwrap()
+                    .1
+                    .unwrap()
+            })
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+        // generate a bitmap of all locations that are valid
+        let last = dex_quotes.pop().unwrap();
+        let mut expected = vec![0u8; last.0.len()];
+
+        last.0.iter().enumerate().for_each(|(i, p_entry)| {
+            if p_entry.is_some() {
+                expected[i / 8] |= 1 << (i % 8);
+            }
+        });
+
+        // verify all align
+        dex_quotes.iter().for_each(|quotes| {
+            quotes.0.iter().enumerate().for_each(|(i, p_entry)| {
+                if p_entry.is_some() {
+                    assert!(
+                        expected[i / 8] & 1 << (i % 8) != 0,
+                        "have a entry where another generation doesn't: tx {i}"
+                    )
+                } else {
+                    assert!(
+                        expected[i / 8] & 1 << (i % 8) == 0,
+                        "missing a entry where another generation has one: tx {i}"
+                    )
+                }
+            });
+        });
+
+        let pair_to_batch_to_dex_price = dex_quotes
+            .iter()
+            .chain([last].iter())
+            .map(|i| &i.0)
+            .flat_map(|quotes: &Vec<Option<FastHashMap<Pair, DexPrices>>>| {
+                quotes
+                    .iter()
+                    .filter_map(|a| a.as_ref())
+                    .flat_map(|a| a.iter().map(|(p, b)| (*p, b.clone())))
+                    .into_group_map()
+                    .into_iter()
+            })
+            .into_group_map();
+
+        // check to make sure all prices are within 1% of each other over the batches
+        pair_to_batch_to_dex_price
+            .into_iter()
+            .for_each(|(pair, prices)| {
+                // with prices, its
+                // [batch [ position in batch ]]
+                // calcuate the average for each index of prices
+                let inner_len = prices[0].len();
+                for i in 0..inner_len {
+                    let mut pre_prices = vec![];
+                    let mut post_prices = vec![];
+                    for price in &prices {
+                        pre_prices.push(price[i].pre_state.clone());
+                        post_prices.push(price[i].post_state.clone());
+                    }
+                    // // check min max diff is below th
+                    let pre_min = pre_prices.iter().min().unwrap();
+                    let pre_max = pre_prices.iter().max().unwrap();
+
+                    let diff = (pre_max - pre_min) / pre_max * Rational::from(100);
+
+                    if diff > Rational::const_from_unsigneds(1, 10000) {
+                        panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
+                    }
+
+                    let post_min = pre_prices.iter().min().unwrap();
+                    let post_max = pre_prices.iter().max().unwrap();
+
+                    let diff = (post_max - post_min) / post_max * Rational::from(100);
+
+                    if diff > Rational::const_from_unsigneds(1, 10000) {
+                        panic!("{:?} pre state had a diff of: {}%", pair, diff.to_float());
+                    }
+                }
+            })
+    }
 }
