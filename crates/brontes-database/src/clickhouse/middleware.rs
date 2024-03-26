@@ -445,6 +445,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
             .state_to_initialize(start_block, end_block, needs_dex_price)
     }
 }
+
 impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         self.inner.get_metadata_no_dex_price(block_num)

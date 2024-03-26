@@ -1,6 +1,6 @@
 use std::{env, path::Path};
 
-use brontes_core::{decoding::Parser as DParser, DBWriter};
+use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{init_threadpools, unordered_buffer_map::BrontesStreamExt};
 use clap::Parser;
