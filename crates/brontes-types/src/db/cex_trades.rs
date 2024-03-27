@@ -12,7 +12,7 @@ use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use super::cex::CexExchange;
+use super::{cex::CexExchange, clickhouse_serde::dex::dex_quote::deserialize};
 use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
@@ -40,8 +40,43 @@ type MakerTaker = (ExchangePrice, ExchangePrice);
 type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
 
 // cex trades are sorted from lowest fill price to highest fill price
-#[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize)]
 pub struct CexTradeMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>);
+
+type ClickhouseTradeMap = Vec<(CexExchange, Vec<(Pair, Vec<CexTrades>)>)>;
+
+impl<'de> Deserialize<'de> for CexTradeMap {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let data: ClickhouseTradeMap = Deserialize::deserialize(deserializer)?;
+
+        Ok(data.into_iter().fold(
+            FastHashMap::default(),
+            |mut acc: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>, (key, value)| {
+                if acc
+                    .insert(
+                        key,
+                        value.into_iter().fold(
+                            FastHashMap::default(),
+                            |mut acc, (pair, trades)| {
+                                acc.entry(pair).or_default().extend(trades);
+                                acc
+                            },
+                        ),
+                    )
+                    .is_some()
+                {
+                    panic!("shouldnt' happen");
+                };
+
+                acc
+            },
+        ))
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexTradeMap)]
 #[redefined_attr(
@@ -239,7 +274,7 @@ impl CexTradeMap {
             .collect::<Vec<_>>();
 
         if trades.is_empty() {
-            return None;
+            return None
         }
         // Populate trade queue per exchange
         // - This utilizes the quality percent number to set the number of trades that
@@ -309,7 +344,7 @@ impl CexTradeMap {
         }
 
         if trade_volume == Rational::ZERO {
-            return None;
+            return None
         }
         let exchanges = exchange_with_vol.into_iter().collect_vec();
 
@@ -387,7 +422,7 @@ impl<'a> PairTradeQueue<'a> {
 
             // hit max depth
             if exchange_depth > len {
-                continue;
+                continue
             }
 
             if let Some(trade) = trades.get(len - exchange_depth) {
