@@ -221,10 +221,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         if let Some(start_block) = self.start_block {
             tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
-            let state_to_init = self.libmdbx.state_to_initialize(
-                start_block,
-                end_block,
-            )?;
+            let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
             if state_to_init.is_empty() {
                 return Ok(())
