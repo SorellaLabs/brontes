@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use arrow::{
     array::{
-        ArrayBuilder, ArrayRef, Float64Builder, ListArray, ListBuilder, StringBuilder, StructArray,
-        StructBuilder, UInt16Builder, UInt64Builder,
+        ArrayBuilder, ArrayRef, Decimal128Builder, Float64Builder, ListArray, ListBuilder,
+        StringBuilder, StructArray, StructBuilder, UInt16Builder, UInt64Builder,
     },
     datatypes::{DataType, Field},
 };
@@ -67,7 +65,7 @@ pub fn get_normalized_swap_list_array(
                 .append_value(swap.amount_out.clone().to_float());
 
             struct_builder
-                .field_builder::<UInt64Builder>(9)
+                .field_builder::<Decimal128Builder>(9)
                 .unwrap()
                 .append_value(swap.msg_value.to());
         }
@@ -102,7 +100,7 @@ fn fields() -> Vec<Field> {
         Field::new("token_out", DataType::Utf8, false),
         Field::new("amount_in", DataType::Float64, false),
         Field::new("amount_out", DataType::Float64, false),
-        Field::new("msg_value", DataType::UInt64, false),
+        Field::new("msg_value", DataType::Decimal128(38, 0), false),
     ]
 }
 
@@ -117,6 +115,6 @@ fn struct_builder() -> Vec<Box<dyn ArrayBuilder>> {
         Box::new(StringBuilder::new()),
         Box::new(Float64Builder::new()),
         Box::new(Float64Builder::new()),
-        Box::new(UInt64Builder::new()),
+        Box::new(Decimal128Builder::new()),
     ]
 }
