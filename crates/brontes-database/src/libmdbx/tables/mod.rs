@@ -153,6 +153,15 @@ impl Tables {
                     )
                     .await
             }
+            Tables::CexTrades => {
+                initializer
+                    .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
+                        block_range,
+                        clear_table,
+                        None,
+                    )
+                    .await
+            }
             Tables::BlockInfo => {
                 initializer
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
@@ -189,7 +198,6 @@ impl Tables {
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
-            Tables::CexTrades => Ok(()),
         }
     }
 
