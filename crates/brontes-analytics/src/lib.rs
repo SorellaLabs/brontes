@@ -51,7 +51,12 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 col("profit_usd").mean().alias("profit_mean"),
                 col("bribe_usd").sum().alias("total_bribed"),
                 col("bribe_usd").mean().alias("bribe_mean"),
+                col("mev_contract").count().alias("bundle_count"),
             ])
+            .sort(
+                "total_profit",
+                SortOptions { descending: true, nulls_last: true, ..Default::default() },
+            )
             .collect()?;
 
         print!("{:?}", aggregate);
