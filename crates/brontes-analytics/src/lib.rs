@@ -104,12 +104,12 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                     )
                 }
                 MevType::Sandwich | MevType::Jit | MevType::JitSandwich => {
-                    JoinBuilder::new(bundle_header_df.clone())
-                        .with(bundle_data_df)
-                        .left_on([col("tx_hash")])
-                        .right_on([col("frontrun_tx_hashes").list().first()])
-                        .how(JoinType::Inner)
-                        .finish()
+                    bundle_header_df.clone().join(
+                        bundle_data_df,
+                        [col("tx_hash")],
+                        [col("frontrun_tx_hashes").list().first()],
+                        JoinArgs::new(JoinType::Inner),
+                    )
                 }
                 MevType::Liquidation => bundle_header_df.clone().join(
                     bundle_data_df,
