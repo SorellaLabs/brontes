@@ -55,22 +55,14 @@ impl<'de> Deserialize<'de> for CexTradeMap {
         Ok(CexTradeMap(data.into_iter().fold(
             FastHashMap::default(),
             |mut acc: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>, (key, value)| {
-                if acc
-                    .insert(
-                        key,
-                        value.into_iter().fold(
-                            FastHashMap::default(),
-                            |mut acc, (pair, trades)| {
-                                let pair = Pair(pair.0.parse().unwrap(), pair.1.parse().unwrap());
-                                acc.entry(pair).or_default().extend(trades);
-                                acc
-                            },
-                        ),
-                    )
-                    .is_some()
-                {
-                    panic!("shouldnt' happen");
-                };
+                acc.entry(key).or_default().extend(value.into_iter().fold(
+                    FastHashMap::default(),
+                    |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
+                        let pair = Pair(pair.0.parse().unwrap(), pair.1.parse().unwrap());
+                        acc.entry(pair).or_default().extend(trades);
+                        acc
+                    },
+                ));
 
                 acc
             },
