@@ -50,7 +50,7 @@ pub fn extract_curve_stable_pool_immutables(bytecode: Bytes) -> (Address, Vec<U2
     let original_rates = from_utf8(original_rates_slice).unwrap();
 
     let base_pool = Address::from_str(base_pool).unwrap();
-    let original_pool_rates = U256::from_str_radix(future_a_gamma_time, 16).unwrap();
+    //original rates are of type Vec<U256>
 
     (base_pool, original_pool_rates)
 }
