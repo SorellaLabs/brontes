@@ -90,12 +90,12 @@ fn normalized_mint_fields() -> Vec<Field> {
         Field::new("pool", DataType::Utf8, false),
         Field::new(
             "tokens",
-            DataType::List(Arc::new(Field::new("address", DataType::Utf8, false))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
             false,
         ),
         Field::new(
             "amounts",
-            DataType::List(Arc::new(Field::new("amount", DataType::Float64, false))),
+            DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
             false,
         ),
     ]

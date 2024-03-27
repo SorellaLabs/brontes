@@ -1,52 +1,49 @@
 mod builder;
-use alloy_primitives::Address;
-#[allow(unused_imports)]
-use brontes_database::{
-    libmdbx::LibmdbxInit,
-    parquet::{DEFAULT_BUILDER_INFO_DIR, DEFAULT_SEARCHER_INFO_DIR},
+use std::{
+    fs::{self},
+    path::PathBuf,
 };
+
+use brontes_database::{libmdbx::LibmdbxInit, parquet::create_file_path, Tables};
 use brontes_types::{
-    db::searcher::{Fund, ProfitByType, SearcherStats},
-    mev::{Bundle, Mev, MevCount, MevType},
+    db::searcher::Fund,
+    mev::{Bundle, Mev, MevType},
     traits::TracingProvider,
-    FastHashMap, Protocol,
+    Protocol,
 };
-use eyre::Ok;
+use eyre::{Ok, Result};
 use polars::prelude::*;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+
 pub struct BrontesAnalytics<T: TracingProvider, DB: LibmdbxInit> {
     pub db:             &'static DB,
     pub tracing_client: T,
+    pub custom_path:    Option<String>,
 }
 
+//TODO: make utils function that fetches most recent parquet file by date if no
+// path has been passed
+
 impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
-    pub fn new(db: &'static DB, tracing_client: T) -> Self {
-        Self { db, tracing_client }
+    pub fn new(db: &'static DB, tracing_client: T, custom_path: Option<String>) -> Self {
+        Self { db, tracing_client, custom_path }
     }
 
-    //TODO: make utils function that fetches most recent parquet file by date if no
-    // path has been passed
-
-    //TODO: Build polars expression that is equivalent to filter_bundle
-    //TODO: Try and figure out how to add enum types instead of strings for enum
-
-    //TODO: Profit by searcher, with:
-    // Profit by mev type, mev type count, mev type average bribe
-    // Profit by protocol
-
-    pub async fn get_searcher_stats(
+    pub async fn get_searcher_stats_by_mev_type(
         &self,
-        start_block: u64,
-        end_block: u64,
-        mev_types: Option<Vec<MevType>>,
-        protocols: Option<Vec<Protocol>>,
-        funds: Option<Vec<Fund>>,
+        _start_block: u64,
+        _end_block: u64,
+        _mev_types: Option<Vec<MevType>>,
+        _protocols: Option<Vec<Protocol>>,
+        _funds: Option<Vec<Fund>>,
     ) -> Result<(), eyre::Error> {
-        let df = LazyFrame::scan_parquet(DEFAULT_BUILDER_INFO_DIR, Default::default())?;
+        let df = LazyFrame::scan_parquet(
+            self.get_most_recent_parquet_file(Tables::MevBlocks, Some(MevType::Unknown))?,
+            Default::default(),
+        )?;
 
-        let _aggregate = df
+        let mut aggregate = df
             .lazy()
-            .group_by([col("mev_contract")])
+            .group_by([col("mev_contract"), col("mev_type")])
             .agg([
                 col("tx_index").median().alias("median_tx_index"),
                 col("eoa").unique().alias("unique_eoas"),
@@ -55,32 +52,100 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 col("bribe_usd").sum().alias("total_bribed"),
                 col("bribe_usd").mean().alias("bribe_mean"),
             ])
-            .collect();
+            .collect()?;
 
-        let mut mev_stats = AggregateMevStats::default();
+        print!("{:?}", aggregate);
 
-        let mev_blocks = self.db.try_fetch_mev_blocks(Some(start_block), end_block)?;
+        let path = get_analytics_path(None, "searcher_stats".to_string())?;
+        let file = std::fs::File::create(&path)?;
 
-        let bundles: Vec<Bundle> = mev_blocks
-            .into_par_iter()
-            .filter(|mev_block| !mev_block.mev.is_empty())
-            .map(|block| {
-                block
-                    .mev
-                    .iter()
-                    .filter_map(|bundle| self.filter_bundle(bundle, &mev_types, &protocols, &funds))
-                    .collect::<Vec<Bundle>>()
-            })
-            .flatten()
-            .collect();
-
-        for bundle in &bundles {
-            mev_stats.account(bundle)
-        }
+        ParquetWriter::new(file).finish(&mut aggregate)?;
 
         Ok(())
     }
 
+    // TODO: Optimise
+    pub fn get_detailed_stats(
+        &self,
+        mev_types: Option<Vec<MevType>>,
+        include_metadata: bool,
+    ) -> Result<Vec<DataFrame>> {
+        let bundle_header_path =
+            self.get_most_recent_parquet_file(Tables::MevBlocks, Some(MevType::Unknown))?;
+        let bundle_header_df = LazyFrame::scan_parquet(&bundle_header_path, Default::default())?;
+
+        let mut joined_dfs = Vec::new();
+
+        let mev_types = match mev_types {
+            Some(types) => types,
+            None => vec![
+                MevType::CexDex,
+                MevType::Sandwich,
+                MevType::Jit,
+                MevType::JitSandwich,
+                MevType::Liquidation,
+                MevType::AtomicArb,
+                MevType::SearcherTx,
+            ],
+        };
+
+        for mev_type in mev_types {
+            let bundle_data_path =
+                self.get_most_recent_parquet_file(Tables::MevBlocks, Some(mev_type))?;
+            let bundle_data_df = LazyFrame::scan_parquet(&bundle_data_path, Default::default())?;
+
+            let joined_df = match mev_type {
+                MevType::CexDex | MevType::AtomicArb | MevType::SearcherTx => {
+                    bundle_header_df.clone().join(
+                        bundle_data_df,
+                        [col("tx_hash")],
+                        [col("tx_hash")],
+                        JoinArgs::new(JoinType::Inner),
+                    )
+                }
+                MevType::Sandwich | MevType::Jit | MevType::JitSandwich => {
+                    JoinBuilder::new(bundle_header_df.clone())
+                        .with(bundle_data_df)
+                        .left_on([col("tx_hash")])
+                        .right_on([col("frontrun_tx_hashes").list().first()])
+                        .how(JoinType::Inner)
+                        .finish()
+                }
+                MevType::Liquidation => bundle_header_df.clone().join(
+                    bundle_data_df,
+                    [col("tx_hash")],
+                    [col("liquidation_tx_hash")],
+                    JoinArgs::new(JoinType::Inner),
+                ),
+                MevType::Unknown => panic!("Unknown MEV type is not supported"),
+            };
+
+            if include_metadata {
+                let address_metadata_path =
+                    self.get_most_recent_parquet_file(Tables::AddressMeta, None)?;
+                let address_metadata_df =
+                    LazyFrame::scan_parquet(&address_metadata_path, Default::default())?
+                        .collect()?;
+
+                let final_df = joined_df
+                    .join(
+                        address_metadata_df.lazy(),
+                        [col("mev_contract")],
+                        [col("address")],
+                        JoinArgs::new(JoinType::Inner),
+                    )
+                    .collect()?;
+
+                joined_dfs.push(final_df);
+            } else {
+                joined_dfs.push(joined_df.collect()?);
+            }
+        }
+
+        Ok(joined_dfs)
+    }
+
+    #[allow(dead_code)]
     pub fn filter_bundle(
         &self,
         bundle: &Bundle,
@@ -131,27 +196,50 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
 
         Some(bundle.clone())
     }
-}
 
-#[derive(Debug, Default, Clone)]
-pub struct AggregateMevStats {
-    pub mev_profit:   ProfitByType,
-    pub total_bribed: ProfitByType,
-    pub bundle_count: MevCount,
-    searcher_stats:   FastHashMap<Address, SearcherStats>,
-}
+    fn get_most_recent_parquet_file(
+        &self,
+        batch_type: Tables,
+        mev_type: Option<MevType>,
+    ) -> Result<PathBuf> {
+        let mut path = PathBuf::from(self.custom_path.as_deref().unwrap_or("brontes-exports"));
+        path.push(batch_type.get_default_path());
 
-impl AggregateMevStats {
-    pub fn account(&mut self, bundle: &Bundle) {
-        self.mev_profit.account_by_type(&bundle.header);
+        if batch_type == Tables::MevBlocks && mev_type.is_none() {
+            path.push("blocks");
+        } else if let Some(mev_type) = mev_type {
+            path.push("bundles");
+            path.push(mev_type.get_parquet_path());
+        }
+        let mut date_dirs: Vec<_> = fs::read_dir(path)?.filter_map(|entry| entry.ok()).collect();
 
-        self.total_bribed.account_by_type(&bundle.header);
-        self.bundle_count.increment_count(&bundle.header.mev_type);
+        date_dirs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
 
-        let stats = self
-            .searcher_stats
-            .entry(bundle.get_searcher_contract_or_eoa())
-            .or_default();
-        stats.update_with_bundle(&bundle.header);
+        for date_dir in date_dirs {
+            let mut entries: Vec<_> = fs::read_dir(date_dir.path())?
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| {
+                    entry.path().extension().and_then(|ext| ext.to_str()) == Some("parquet")
+                })
+                .collect();
+
+            // Sort the entries by filename, descending (most recent first)
+            entries.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+
+            if let Some(entry) = entries.first() {
+                return Ok(entry.path());
+            }
+        }
+
+        Err(eyre::eyre!("No .parquet files found in the specified directory"))
     }
+}
+
+pub fn get_analytics_path(custom_path: Option<String>, analysis_path: String) -> Result<PathBuf> {
+    let base_path = custom_path
+        .as_deref()
+        .unwrap_or("brontes-exports/analysis/");
+    let mut path = PathBuf::from(base_path);
+    path.push(analysis_path);
+    create_file_path(path)
 }

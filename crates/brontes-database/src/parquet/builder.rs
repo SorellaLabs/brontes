@@ -76,17 +76,17 @@ pub fn builder_info_to_record_batch(
         Field::new("fund", DataType::Utf8, true),
         Field::new(
             "pub keys",
-            DataType::List(Arc::new(Field::new("key", DataType::Utf8, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
             true,
         ),
         Field::new(
             "searcher_eoas",
-            DataType::List(Arc::new(Field::new("eoa", DataType::Utf8, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
             true,
         ),
         Field::new(
             "searcher_contracts",
-            DataType::List(Arc::new(Field::new("contract", DataType::Utf8, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
             true,
         ),
         Field::new("collateral_addr", DataType::Utf8, true),

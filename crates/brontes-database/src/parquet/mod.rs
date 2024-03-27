@@ -402,7 +402,7 @@ pub fn get_path(
     create_file_path(path)
 }
 
-fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
+pub fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     let now = Local::now();
 
     let date_str = now.format("%m-%d").to_string();
@@ -419,18 +419,19 @@ fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
 }
 
 impl Tables {
-    fn get_default_path(&self) -> &'static str {
+    pub fn get_default_path(&self) -> &'static str {
         match self {
             Tables::MevBlocks => DEFAULT_BLOCK_DIR,
             Tables::AddressMeta => DEFAULT_METADATA_DIR,
             Tables::SearcherEOAs => DEFAULT_SEARCHER_INFO_DIR,
             Tables::SearcherContracts => DEFAULT_SEARCHER_INFO_DIR,
             Tables::Builder => DEFAULT_BUILDER_INFO_DIR,
+            Tables::SearcherStatistics => DEFAULT_SEARCHER_STATS,
             _ => panic!("Unsupported table type"),
         }
     }
 }
-
+pub const DEFAULT_SEARCHER_STATS: &str = "searcher_stats";
 pub const DEFAULT_BLOCK_DIR: &str = "mev";
 pub const DEFAULT_METADATA_DIR: &str = "address_metadata";
 pub const DEFAULT_SEARCHER_INFO_DIR: &str = "searcher_info";

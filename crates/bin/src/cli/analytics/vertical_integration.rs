@@ -53,7 +53,7 @@ impl SearcherBuilder {
             task_executor.clone(),
         ));
 
-        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone());
+        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone(), None);
 
         brontes_analytics
             .get_vertically_integrated_searchers(self.start_block, self.end_block, self.mev_type)

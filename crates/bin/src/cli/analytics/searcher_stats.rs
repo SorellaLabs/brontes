@@ -56,10 +56,10 @@ impl GetStats {
             task_executor.clone(),
         ));
 
-        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone());
+        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone(), None);
 
         let _ = brontes_analytics
-            .get_searcher_stats(
+            .get_searcher_stats_by_mev_type(
                 self.start_block,
                 self.end_block,
                 self.mev_types,

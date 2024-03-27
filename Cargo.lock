@@ -1479,6 +1479,7 @@ dependencies = [
  "arrow",
  "brontes-database",
  "brontes-types",
+ "chrono",
  "eyre",
  "parquet",
  "polars",
