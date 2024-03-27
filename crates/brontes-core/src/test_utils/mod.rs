@@ -124,7 +124,12 @@ impl TraceLoader {
             .initialize_tables(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
+                &[
+                    Tables::BlockInfo,
+                    Tables::CexPrice,
+                    #[cfg(feature = "cex-dex-markout")]
+                    Tables::CexTrades,
+                ],
                 false,
                 Some((block - 2, block + 2)),
             )
