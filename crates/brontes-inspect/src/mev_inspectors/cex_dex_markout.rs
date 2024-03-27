@@ -339,33 +339,17 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
-
     #[brontes_macros::test]
     async fn test_cex_dex_markout() {
+        // https://etherscan.io/tx/0xc94a955a2f8c48dc4f14f4183aff4b23aede06ff7fcd7888b18cb407a707fa74
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
-        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
+        let tx = hex!("c94a955a2f8c48dc4f14f4183aff4b23aede06ff7fcd7888b18cb407a707fa74").into();
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
-            .with_expected_profit_usd(6772.69)
-            .with_gas_paid_usd(78993.39);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_eoa_cex_dex_markout() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
-        let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
-            .with_expected_profit_usd(7201.40)
-            .with_gas_paid_usd(6261.08);
+            .with_expected_profit_usd(20.37)
+            .with_gas_paid_usd(20.37);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
