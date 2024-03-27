@@ -50,6 +50,13 @@ impl Clickhouse {
         &self.client
     }
 
+    pub async fn max_traced_block(&self) -> eyre::Result<u64> {
+        Ok(self
+            .client
+            .query_one::<u64, _>("select max(block_number) from brontes_api.tx_traces", &())
+            .await?)
+    }
+
     // inserts
     pub async fn write_searcher_eoa_info(
         &self,
@@ -344,7 +351,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::{dex::DexPrices, normalized_actions::TransactionRoot, searcher::SearcherEoaContract},
+        db::{dex::DexPrices, searcher::SearcherEoaContract},
         init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,

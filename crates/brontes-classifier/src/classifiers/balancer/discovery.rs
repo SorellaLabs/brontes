@@ -32,9 +32,6 @@ discovery_impl!(
     }
 );
 
-// Smart Pool Factory
-//  fub4
-
 #[cfg(test)]
 mod tests {
     use alloy_primitives::{hex, Address, B256};

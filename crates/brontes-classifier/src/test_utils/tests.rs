@@ -550,7 +550,7 @@ impl ClassifierTestUtils {
 
         let mut trace_addr = found_trace.get_trace_address();
 
-        if trace_addr.len() > 1 {
+        if !trace_addr.is_empty() {
             trace_addr.pop().unwrap();
         } else {
             return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))

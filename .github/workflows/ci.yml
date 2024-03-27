@@ -68,7 +68,7 @@ jobs:
     strategy:
           fail-fast: false
           matrix:
-            features: ["sorella-server", "default"]
+            features: ["sorella-server"]
     steps:
       - name: Get branch names.
         id: branch-names
@@ -92,7 +92,7 @@ jobs:
     strategy:
           fail-fast: false
           matrix:
-            features: ["sorella-server", "default"]
+            features: ["sorella-server"]
     steps:
       - name: Get branch names.
         id: branch-names

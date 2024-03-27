@@ -39,7 +39,8 @@ sol!(CurveV2MetapoolImpl, "./classifier-abis/CurveV2MetapoolImpl.json");
 sol!(CurveV2PlainImpl, "./classifier-abis/CurveV2PlainImpl.json");
 sol!(CurvecrvUSDPlainImpl, "./classifier-abis/CurvecrvUSDPlainImpl.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
-sol!(BalancerV1, "./classifier-abis/BalancerV1Pool.json");
+sol!(BalancerV1, "./classifier-abis/balancer/BalancerV1Pool.json");
+sol!(BalancerV2Vault, "./classifier-abis/balancer/BalancerV2Vault.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
 sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
@@ -65,8 +66,46 @@ sol!(CurveTriCryptoFactory, "./classifier-abis/CurveTriCryptoFactory.json");
 sol!(PancakeSwapV3PoolDeployer, "./classifier-abis/PancakeSwapV3PoolDeployer.json");
 sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
 sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
-sol!(BalancerV1CorePoolFactory, "./classifier-abis/BalancerV1Factory.json");
-sol!(BalancerV1SmartPoolFactory, "./classifier-abis/BalancerV1CrpFactory.json");
+sol!(BalancerV1CorePoolFactory, "./classifier-abis/balancer/BalancerV1Factory.json");
+sol!(BalancerV1SmartPoolFactory, "./classifier-abis/balancer/BalancerV1CrpFactory.json");
+
+// Balancer Pool Interfaces
+sol! {
+    enum SwapKind {
+        GIVEN_IN,
+        GIVEN_OUT
+    }
+
+    struct SwapRequest {
+        SwapKind kind;
+        address tokenIn;
+        address tokenOut;
+        uint256 amount;
+        // Misc data
+        bytes32 poolId;
+        uint256 lastChangeBlock;
+        address from;
+        address to;
+        bytes userData;
+    }
+
+    interface IGeneralPool {
+        function onSwap(
+            SwapRequest memory swapRequest,
+            uint256[] memory balances,
+            uint256 indexIn,
+            uint256 indexOut
+        ) external returns (uint256 amount);
+    }
+
+    interface IMinimalSwapInfoPool {
+        function onSwap(
+            SwapRequest memory swapRequest,
+            uint256 currentBalanceTokenIn,
+            uint256 currentBalanceTokenOut
+        ) external returns (uint256 amount);
+    }
+}
 
 sol! {
     event Transfer(address indexed from, address indexed to, uint256 value);

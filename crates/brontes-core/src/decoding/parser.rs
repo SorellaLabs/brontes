@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
@@ -46,6 +48,41 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         traces.dedup_by(|a, b| a.tx_index.eq(&b.tx_index));
 
         Some((traces, self.tracer.header_by_number(block_num).await.ok()??))
+    }
+
+    pub async fn trace_clickhouse_block(&self, block_num: u64) {
+        let parity_trace = self.trace_block(block_num).await;
+        let receipts = self.get_receipts(block_num).await;
+
+        if parity_trace.0.is_none() && receipts.0.is_none() {
+            return
+        }
+
+        #[cfg(feature = "dyn-decode")]
+        let traces = self
+            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .await;
+        #[cfg(not(feature = "dyn-decode"))]
+        let traces = self
+            .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
+            .await;
+
+        let mut cnt = 0;
+
+        while self
+            .libmdbx
+            .save_traces(block_num, traces.0.clone())
+            .await
+            .is_err()
+        {
+            cnt += 1;
+            if cnt > 20 {
+                error!(%block_num, "attempted 20 inserts for db but all failed");
+                break
+            }
+
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        }
     }
 
     /// executes the tracing of a given block
