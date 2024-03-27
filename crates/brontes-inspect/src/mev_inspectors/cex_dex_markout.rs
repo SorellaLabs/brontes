@@ -37,6 +37,13 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+        if metadata.cex_trades.is_none() {
+            panic!("no cex trades");
+        }
+
+        let trades = metadata.cex_trades.clone().unwrap();
+        tracing::info!("trades: {:#?}", trades);
+
         let swap_txes = tree
             .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
@@ -326,7 +333,7 @@ pub struct SwapLeg {
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::{USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS};
+    use brontes_types::constants::USDT_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
