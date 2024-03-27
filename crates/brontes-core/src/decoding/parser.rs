@@ -55,11 +55,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         let receipts = self.get_receipts(block_num).await;
 
         if parity_trace.0.is_none() && receipts.0.is_none() {
-            let _ = self
-                .metrics_tx
-                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
             return
         }
+
+        #[cfg(feature = "dyn-decode")]
+        let traces = self
+            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .await;
+        #[cfg(not(feature = "dyn-decode"))]
         let traces = self
             .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
             .await;
@@ -73,12 +76,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
             .is_err()
         {
             cnt += 1;
-            if cnt > 5 {
-                error!(%block_num, "attempted 6 inserts for db but all failed");
+            if cnt > 20 {
+                error!(%block_num, "attempted 20 inserts for db but all failed");
                 break
             }
 
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_secs(3)).await;
         }
     }
 
