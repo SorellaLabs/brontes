@@ -10,7 +10,7 @@ use arrow::{
 use brontes_types::{normalized_actions::NormalizedMint, ToFloatNearest};
 use itertools::Itertools;
 
-use crate::parquet::utils::{build_float64_array, get_string_array_from_owned};
+use crate::parquet::utils::{build_float64_array, build_string_array};
 
 pub fn get_normalized_mint_list_array(
     normalized_mints_list: Vec<Vec<&NormalizedMint>>,
@@ -49,11 +49,11 @@ pub fn get_normalized_mint_list_array(
                 .unwrap()
                 .append_value(normalized_mint.pool.to_string());
 
-            let token_list_array = get_string_array_from_owned(
+            let token_list_array = build_string_array(
                 normalized_mint
                     .token
                     .iter()
-                    .map(|token| Some(token.address.to_string()))
+                    .map(|token| token.address.to_string())
                     .collect_vec(),
             );
 
@@ -92,12 +92,12 @@ fn normalized_mint_fields() -> Vec<Field> {
         Field::new("pool", DataType::Utf8, false),
         Field::new(
             "tokens",
-            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
             false,
         ),
         Field::new(
             "amounts",
-            DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
             false,
         ),
     ]

@@ -40,6 +40,14 @@ pub fn get_string_array_from_owned<S: AsRef<str>>(values: Vec<Option<S>>) -> Str
     builder.finish()
 }
 
+pub fn get_string_array_from<S: AsRef<str>>(values: Vec<S>) -> StringArray {
+    let mut builder = StringBuilder::new();
+    for value in values {
+        builder.append_option(value);
+    }
+    builder.finish()
+}
+
 pub fn get_list_string_array<Q>(values: Vec<&Vec<Q>>) -> ListArray
 where
     Q: Display + AsRef<str>,

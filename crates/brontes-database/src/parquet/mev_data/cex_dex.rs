@@ -121,6 +121,8 @@ fn get_stat_arb_details_list_array(stat_arb_details_list: Vec<&Vec<StatArbDetail
                 .field_builder::<Float64Builder>(5)
                 .unwrap()
                 .append_value(stat_arb_details.pnl_pre_gas.taker_profit.clone().to_float());
+
+            struct_builder.append(true);
         }
 
         list_builder.append(true);

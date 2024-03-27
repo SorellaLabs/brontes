@@ -10,7 +10,7 @@ use arrow::{
 use brontes_types::{normalized_actions::NormalizedBurn, ToFloatNearest};
 use itertools::Itertools;
 
-use crate::parquet::utils::{build_float64_array, get_string_array_from_owned};
+use crate::parquet::utils::{build_float64_array, build_string_array};
 
 pub fn get_normalized_burn_list_array(
     normalized_burns_list: Vec<&Vec<NormalizedBurn>>,
@@ -23,12 +23,12 @@ pub fn get_normalized_burn_list_array(
         Field::new("pool", DataType::Utf8, false),
         Field::new(
             "tokens",
-            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
             false,
         ),
         Field::new(
             "amounts",
-            DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
             false,
         ),
     ];
@@ -74,10 +74,10 @@ pub fn get_normalized_burn_list_array(
                 .unwrap()
                 .append_value(burn.pool.to_string());
 
-            let token_list_array = get_string_array_from_owned(
+            let token_list_array = build_string_array(
                 burn.token
                     .iter()
-                    .map(|token| Some(token.address.to_string()))
+                    .map(|token| token.address.to_string())
                     .collect_vec(),
             );
 
