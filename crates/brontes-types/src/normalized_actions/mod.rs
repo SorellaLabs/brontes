@@ -47,7 +47,10 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
 
 impl NormalizedAction for Actions {
     fn is_classified(&self) -> bool {
-        !matches!(self, Actions::Unclassified(_))
+        !matches!(
+            self,
+            Actions::Unclassified(_) | Actions::EthTransfer(..) | Actions::SelfDestruct(..)
+        )
     }
 
     /// Only relevant for unclassified actions
@@ -157,12 +160,12 @@ pub enum Actions {
     Burn(NormalizedBurn),
     Collect(NormalizedCollect),
     Liquidation(NormalizedLiquidation),
-    Unclassified(TransactionTraceWithLogs),
     SelfDestruct(SelfdestructWithIndex),
     EthTransfer(NormalizedEthTransfer),
     NewPool(NormalizedNewPool),
     PoolConfigUpdate(NormalizedPoolConfigUpdate),
     Aggregator(NormalizedAggregator),
+    Unclassified(TransactionTraceWithLogs),
     Revert,
 }
 
@@ -207,7 +210,8 @@ impl serde::Serialize for Actions {
             Actions::SelfDestruct(sd) => sd.serialize(serializer),
             Actions::EthTransfer(et) => et.serialize(serializer),
             Actions::Unclassified(trace) => (trace).serialize(serializer),
-            action => unreachable!("no action serialization for {action:?}"),
+            action => format!("{:?}", action).serialize(serializer),
+            //action => unreachable!("no action serialization for {action:?}"),
         }
     }
 }
@@ -264,7 +268,7 @@ impl Actions {
     pub fn get_calldata(&self) -> Option<Bytes> {
         if let Actions::Unclassified(u) = &self {
             if let Action::Call(call) = &u.trace.action {
-                return Some(call.input.clone());
+                return Some(call.input.clone())
             }
         }
 
@@ -393,7 +397,7 @@ impl Actions {
 
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
-            return u.is_static_call();
+            return u.is_static_call()
         }
         false
     }

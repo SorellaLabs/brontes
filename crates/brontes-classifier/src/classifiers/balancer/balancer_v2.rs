@@ -87,7 +87,7 @@ fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
 
     for (i, &token_address) in logs.tokens.iter().enumerate() {
         if logs.deltas[i].is_zero() {
-            continue;
+            continue
         }
 
         let token = db.try_fetch_token_info(token_address)?;
@@ -198,8 +198,8 @@ mod tests {
     use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfo, normalized_actions::Actions, Protocol::BalancerV2,
-        TreeSearchBuilder,
+        constants::WETH_ADDRESS, db::token_info::TokenInfo, normalized_actions::Actions,
+        Protocol::BalancerV2, TreeSearchBuilder,
     };
 
     use super::*;
@@ -214,6 +214,17 @@ mod tests {
             address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
             inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
         });
+
+        classifier_utils.ensure_protocol(
+            Protocol::BalancerV2,
+            hex!("358e056c50eea4ca707e891404e81d9b898d0b41").into(),
+            WETH_ADDRESS,
+            Some(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8").into()),
+            None,
+            None,
+            None,
+            None,
+        );
 
         // Minimal swap
         let eq_action = Actions::Swap(NormalizedSwap {

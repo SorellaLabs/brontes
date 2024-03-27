@@ -1,0 +1,12 @@
+[Unit]
+Description=brontes-tip-tracer
+
+[Service]
+ExecStart=/home/shared/bin/brontes db trace-at-tip 18000000
+EnvironmentFile=/etc/systemd/system/tip-tracer.conf
+
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

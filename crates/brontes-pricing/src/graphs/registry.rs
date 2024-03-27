@@ -25,7 +25,7 @@ use super::{subgraph::PairSubGraph, PoolState};
 /// Mainly functioning within the BrontesBatchPricer system, it plays a key role
 /// in providing up-to-date and reliable pricing data in the decentralized
 /// exchange context.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubGraphRegistry {
     /// all currently known sub-graphs
     sub_graphs: FastHashMap<Pair, Vec<(Pair, PairSubGraph)>>,
@@ -59,17 +59,22 @@ impl SubGraphRegistry {
             .copied()
     }
 
-    pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
-        self.sub_graphs
-            .get(pair)
-            .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
-            .is_some()
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
+        if let Some(goes_through) = goes_through {
+            self.sub_graphs
+                .get(pair)
+                .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
+                .is_some()
+        } else {
+            self.sub_graphs.get(pair).is_some()
+        }
     }
 
-    pub fn sufficient_pairs(&self, pair: &Pair) -> bool {
+    // if we have more than 4 extensions, this is enough of a market outlook
+    pub fn current_pairs(&self, pair: &Pair) -> usize {
         self.sub_graphs
             .get(pair)
-            .map(|f| f.len() > 4)
+            .map(|f| f.len())
             .unwrap_or_default()
     }
 
@@ -106,6 +111,7 @@ impl SubGraphRegistry {
     ) -> Option<Rational> {
         let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
+
         next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
             .map(|price| {
                 if unordered_pair.eq_unordered(&complete_pair) {

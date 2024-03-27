@@ -1,11 +1,13 @@
 use std::{cmp::min, sync::Arc};
 
 use alloy_primitives::U256;
+use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
-    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer},
+    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer, NormalizedTransfer},
     tree::root::NodeData,
     ToScaledRational,
 };
+use malachite::{num::basic::traits::Zero, Rational};
 mod tree_pruning;
 mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -103,6 +105,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     let root_trace = trace.trace.remove(0);
                     let address = root_trace.get_from_addr();
                     let trace_idx = root_trace.trace_idx;
+
                     let classification = self
                         .process_classification(
                             header.number,
@@ -283,7 +286,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             }
 
             (vec![results.0], results.1)
-        } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
+        } else if let Some(transfer) = self
+            .classify_transfer(tx_idx, trace_index, &trace, block)
+            .await
+        {
             return transfer
         } else {
             return (vec![], self.classify_eth_transfer(trace, trace_index))
@@ -292,6 +298,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
     async fn classify_transfer(
         &self,
+        tx_idx: u64,
         trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
@@ -337,14 +344,52 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 }
 
                 // Return the adjusted transfer as an action
-                Some((vec![], Actions::Transfer(transfer)))
+                Some((
+                    vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                        block,
+                        tx_idx,
+                        logs: vec![],
+                        action: Actions::Transfer(transfer.clone()),
+                    })],
+                    Actions::Transfer(transfer),
+                ))
             }
-            Err(_) => None,
+            Err(_) => {
+                for log in &trace.logs {
+                    if let Some((addr, from, to, amount)) = decode_transfer(log) {
+                        if self.libmdbx.try_fetch_token_info(addr).is_err() {
+                            load_missing_token_info(&self.provider, self.libmdbx, block, addr).await
+                        }
+
+                        let token_info = self.libmdbx.try_fetch_token_info(addr).ok()?;
+                        let amount = amount.to_scaled_rational(token_info.decimals);
+                        let transfer = NormalizedTransfer {
+                            amount,
+                            token: token_info,
+                            to,
+                            from,
+                            fee: Rational::ZERO,
+                            trace_index: trace_idx,
+                        };
+
+                        return Some((
+                            vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                                block,
+                                tx_idx,
+                                logs: vec![],
+                                action: Actions::Transfer(transfer.clone()),
+                            })],
+                            Actions::Transfer(transfer),
+                        ))
+                    }
+                }
+                None
+            }
         }
     }
 
     fn classify_eth_transfer(&self, trace: TransactionTraceWithLogs, trace_index: u64) -> Actions {
-        if trace.get_calldata().is_empty() && trace.get_msg_value() > U256::ZERO {
+        if trace.get_msg_value() > U256::ZERO {
             Actions::EthTransfer(NormalizedEthTransfer {
                 from: trace.get_from_addr(),
                 to: trace.get_to_address(),

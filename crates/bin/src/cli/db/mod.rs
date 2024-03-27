@@ -8,7 +8,7 @@ mod db_query;
 mod ensure_test_traces;
 mod export;
 mod init;
-#[cfg(feature = "sorella-server")]
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 mod tip_tracer;
 mod trace_range;
 
@@ -44,7 +44,7 @@ pub enum DatabaseCommands {
     #[cfg(feature = "local-clickhouse")]
     #[command(name = "test-traces-init")]
     TestTracesInit(ensure_test_traces::TestTraceArgs),
-    #[cfg(feature = "sorella-server")]
+    #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
     #[command(name = "trace-at-tip")]
     TraceAtTip(tip_tracer::TipTraceArgs),
 }
@@ -60,7 +60,7 @@ impl Database {
             DatabaseCommands::Export(cmd) => cmd.execute(ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(ctx).await,
-            #[cfg(feature = "sorella-server")]
+            #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
             DatabaseCommands::TraceAtTip(cmd) => cmd.execute(ctx).await,
         }
     }
