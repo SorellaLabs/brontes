@@ -110,10 +110,10 @@ pub fn get_gas_details_array(gas_details: Vec<GasDetails>) -> StructArray {
 
 fn gas_details_fields() -> Vec<Field> {
     vec![
-        Field::new("coinbase_transfer", DataType::Decimal128(38, 0), true),
-        Field::new("priority_fee", DataType::Decimal128(38, 0), false),
-        Field::new("gas_used", DataType::Decimal128(38, 0), false),
-        Field::new("effective_gas_price", DataType::Decimal128(38, 0), false),
+        Field::new("coinbase_transfer", DataType::Decimal128(38, 10), true),
+        Field::new("priority_fee", DataType::Decimal128(38, 10), false),
+        Field::new("gas_used", DataType::Decimal128(38, 10), false),
+        Field::new("effective_gas_price", DataType::Decimal128(38, 10), false),
     ]
 }
 
