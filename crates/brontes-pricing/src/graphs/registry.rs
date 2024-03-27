@@ -66,7 +66,7 @@ impl SubGraphRegistry {
                 .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
                 .is_some()
         } else {
-            self.sub_graphs.get(pair).is_some()
+            self.sub_graphs.contains_key(pair)
         }
     }
 
