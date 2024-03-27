@@ -323,4 +323,34 @@ pub struct SwapLeg {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(6772.69)
+            .with_gas_paid_usd(78993.39);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_eoa_cex_dex_markout() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(7201.40)
+            .with_gas_paid_usd(6261.08);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+}
