@@ -26,10 +26,10 @@ use serde::Deserialize;
 
 use super::{dbms::*, ClickhouseHandle};
 use crate::{
-    clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
+    clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE, CEX_TRADES},
     libmdbx::{
         determine_eth_prices,
-        tables::{BlockInfoData, CexPriceData},
+        tables::{BlockInfoData, CexPriceData, CexTradesData},
         types::LibmdbxData,
     },
     CompressedTable,
@@ -265,6 +265,14 @@ impl ClickhouseHandle for Clickhouse {
             .await?
             .value;
 
+        #[cfg(feature = "cex-dex-markout")]
+        let cex_trades = self
+            .client
+            .query_one::<CexTradesData, _>(CEX_TRADES, &(block_num))
+            .await
+            .ok()
+            .map(|v| v.value);
+
         let eth_prices = determine_eth_prices(&cex_quotes);
 
         Ok(BlockMetadata::new(
@@ -283,7 +291,7 @@ impl ClickhouseHandle for Clickhouse {
             None,
             None,
             #[cfg(feature = "cex-dex-markout")]
-            None,
+            cex_trades,
         ))
     }
 
