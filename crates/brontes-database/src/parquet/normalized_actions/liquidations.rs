@@ -86,7 +86,9 @@ pub fn get_normalized_liquidation_list_array(
             struct_builder
                 .field_builder::<Decimal128Builder>(9)
                 .unwrap()
-                .append_value(liquidation.msg_value.to::<i128>())
+                .append_value(liquidation.msg_value.to::<i128>());
+
+            struct_builder.append(true);
         }
 
         list_builder.append(true);
