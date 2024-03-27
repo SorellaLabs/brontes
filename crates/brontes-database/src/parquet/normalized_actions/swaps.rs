@@ -111,7 +111,7 @@ fn fields() -> Vec<Field> {
         Field::new("token_out", DataType::Utf8, false),
         Field::new("amount_in", DataType::Float64, false),
         Field::new("amount_out", DataType::Float64, false),
-        Field::new("msg_value", DataType::Decimal128(38, 0), false),
+        Field::new("msg_value", DataType::Decimal128(38, 10), false),
     ]
 }
 
