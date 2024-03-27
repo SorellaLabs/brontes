@@ -23,7 +23,7 @@ pub fn get_normalized_burn_list_array(
         Field::new("pool", DataType::Utf8, false),
         Field::new(
             "tokens",
-            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, false))),
             false,
         ),
         Field::new(

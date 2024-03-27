@@ -21,7 +21,7 @@ pub fn u128_to_binary_array(values: Vec<u128>) -> BinaryArray {
 }
 
 pub fn build_string_array(values: Vec<String>) -> StringArray {
-    StringArray::from(values)
+    StringArray::from_iter_values(values)
 }
 
 pub fn get_string_array(values: Vec<Option<&str>>) -> StringArray {
