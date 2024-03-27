@@ -43,7 +43,7 @@ type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize)]
 pub struct CexTradeMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>);
 
-type ClickhouseTradeMap = Vec<(CexExchange, Vec<(Pair, Vec<CexTrades>)>)>;
+type ClickhouseTradeMap = Vec<(CexExchange, Vec<((String, String), Vec<CexTrades>)>)>;
 
 impl<'de> Deserialize<'de> for CexTradeMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -61,6 +61,7 @@ impl<'de> Deserialize<'de> for CexTradeMap {
                         value.into_iter().fold(
                             FastHashMap::default(),
                             |mut acc, (pair, trades)| {
+                                let pair = Pair(pair.0.parse().unwrap(), pair.1.parse().unwrap());
                                 acc.entry(pair).or_default().extend(trades);
                                 acc
                             },
@@ -357,7 +358,7 @@ impl CexTradeMap {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Redefined, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Redefined, PartialEq, Eq)]
 #[redefined_attr(derive(
     Debug,
     PartialEq,
@@ -374,6 +375,20 @@ pub struct CexTrades {
     pub exchange: CexExchange,
     pub price:    Rational,
     pub amount:   Rational,
+}
+
+impl<'de> Deserialize<'de> for CexTrades {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let res: (CexExchange, f64, f64) = Deserialize::deserialize(deserializer)?;
+        Ok(CexTrades {
+            exchange: res.0,
+            price:    res.1.try_into().unwrap(),
+            amount:   res.2.try_into().unwrap(),
+        })
+    }
 }
 
 /// Its ok that we create 2 of these for pair price and intermediary price
