@@ -59,7 +59,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     }
 
     pub fn generate_dex_pricing(&self, block: u64, libmdbx: &'static DB) -> bool {
-        self.always_generate_price || libmdbx.get_dex_quotes(block).is_err()
+        self.always_generate_price
+            || libmdbx
+                .get_dex_quotes(block)
+                .map(|f| f.0.is_empty())
+                .unwrap_or(true)
     }
 
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
