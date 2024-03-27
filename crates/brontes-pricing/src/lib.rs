@@ -90,7 +90,6 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     current_block:   u64,
     completed_block: u64,
     finished:        Arc<AtomicBool>,
-
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
     update_rx:       UnboundedReceiver<DexPriceMsg>,
@@ -113,6 +112,8 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
     overlap_update:  Option<PoolUpdate>,
+    /// a queue of blocks that we should skip pricing for and just upkeep state
+    skip_pricing:    VecDeque<u64>,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
@@ -137,6 +138,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             current_block,
             completed_block: current_block,
             overlap_update: None,
+            skip_pricing: VecDeque::new(),
         }
     }
 
@@ -247,6 +249,31 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 );
             },
         );
+    }
+
+    fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
+        if let Some(msg) = updates.first() {
+            if msg.block > self.current_block {
+                self.current_block = msg.block;
+                self.completed_block = msg.block;
+            }
+        }
+
+        updates
+            .iter()
+            .filter_map(|update| {
+                let (protocol, pair) = self.new_graph_pairs.remove(&update.get_pool_address())?;
+                Some((update.get_pool_address(), protocol, pair, update.block))
+            })
+            .for_each(|(pool_addr, protocol, pair, block)| {
+                self.graph_manager
+                    .add_pool(pair, pool_addr, protocol, block);
+            });
+
+        updates.into_iter().for_each(|update| {
+            self.graph_manager
+                .update_state(update.get_pool_address(), update);
+        });
     }
 
     fn get_dex_price(&self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
@@ -875,7 +902,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         let mut work = 128;
-
         loop {
             work -= 1;
             if work == 0 {
@@ -895,6 +921,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             loop {
                 match self.update_rx.poll_recv(cx).map(|inner| {
                     inner.and_then(|action| match action {
+                        DexPriceMsg::DisablePricingFor(block) => {
+                            self.skip_pricing.push_back(block);
+                            Some(PollResult::Skip)
+                        }
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
                         DexPriceMsg::DiscoveredPool(NormalizedPoolConfigUpdate {
                             protocol,
@@ -942,7 +972,20 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 }
             }
 
-            execute_on!(target = pricing, self.on_pool_updates(block_updates));
+            if block_updates
+                .first()
+                .map(|u| u.block)
+                .and_then(|block_update_num| {
+                    self.skip_pricing.retain(|block| block < &block_update_num);
+                    let front = self.skip_pricing.front()?;
+                    Some(&block_update_num == front)
+                })
+                .unwrap_or(false)
+            {
+                self.on_pool_update_no_pricing(block_updates);
+            } else {
+                execute_on!(target = pricing, self.on_pool_updates(block_updates));
+            }
         }
     }
 }
@@ -950,6 +993,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
 enum PollResult {
     State(PoolUpdate),
     DiscoveredPool,
+    Skip,
 }
 
 /// a ordered buffer for holding state transitions for a block while the lazy
