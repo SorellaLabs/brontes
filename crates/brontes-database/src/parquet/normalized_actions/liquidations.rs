@@ -23,8 +23,8 @@ pub fn get_normalized_liquidation_list_array(
     ];
 
     let builder_array: Vec<Box<dyn ArrayBuilder>> = vec![
-        Box::new(UInt16Builder::new()),
         Box::new(StringBuilder::new()),
+        Box::new(UInt16Builder::new()),
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
