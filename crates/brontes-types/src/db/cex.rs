@@ -25,7 +25,7 @@ use malachite::{
 };
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{ser::SerializeSeq, Serialize};
+use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 use crate::{
     constants::*,
@@ -112,7 +112,7 @@ impl CexPriceMap {
     ///   price is reciprocated to match the requested pair ordering.
     pub fn get_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
         }
 
         self.0
@@ -137,7 +137,7 @@ impl CexPriceMap {
     /// exchanges.
     pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() });
+            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
         }
 
         let ordered_pair = pair.ordered();
@@ -397,7 +397,7 @@ impl MulAssign for CexQuote {
     PartialEq,
     Hash,
     serde::Serialize,
-    serde::Deserialize,
+    // serde::Deserialize,
     rkyv::Serialize,
     rkyv::Deserialize,
     rkyv::Archive,
@@ -417,9 +417,19 @@ pub enum CexExchange {
     GateIo,
     Bitstamp,
     Gemini,
+    Average,
     #[default]
     Unknown,
-    Average,
+}
+
+impl<'de> serde::Deserialize<'de> for CexExchange {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let cex_exchange: String = Deserialize::deserialize(deserializer)?;
+        Ok(&cex_exchange.into())
+    }
 }
 
 self_convert_redefined!(CexExchange);

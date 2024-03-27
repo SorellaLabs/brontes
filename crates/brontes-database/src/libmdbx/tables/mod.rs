@@ -154,7 +154,6 @@ impl Tables {
                     .await
             }
             Tables::CexTrades => {
-                tracing::info!("fetching cex trades");
                 initializer
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
                         block_range,
@@ -266,7 +265,14 @@ impl Tables {
             Tables::SearcherStatistics => Ok(()),
             Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
-            Tables::CexTrades => Ok(()),
+            Tables::CexTrades => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
+                        block_range,
+                        None,
+                    )
+                    .await
+            }
         }
     }
 
