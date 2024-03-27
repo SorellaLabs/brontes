@@ -28,7 +28,7 @@ pub fn get_normalized_burn_list_array(
         ),
         Field::new(
             "amounts",
-            DataType::List(Arc::new(Field::new("item", DataType::Float64, false))),
+            DataType::List(Arc::new(Field::new("item", DataType::Float64, true))),
             false,
         ),
     ];
