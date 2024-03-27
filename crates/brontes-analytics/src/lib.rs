@@ -51,6 +51,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 col("profit_usd").mean().alias("profit_mean"),
                 col("bribe_usd").sum().alias("total_bribed"),
                 col("bribe_usd").mean().alias("bribe_mean"),
+                col("total_bribed") + col("total_profit").alias("total_revenue"),
                 col("mev_contract").count().alias("bundle_count"),
             ])
             .sort(
@@ -62,7 +63,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         print!("{:?}", aggregate);
 
         let path = get_analytics_path(None, "searcher_stats".to_string())?;
-        let file = std::fs::File::create(&path)?;
+        let file = std::fs::File::create(path)?;
 
         ParquetWriter::new(file).finish(&mut aggregate)?;
 
@@ -77,7 +78,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
     ) -> Result<Vec<DataFrame>> {
         let bundle_header_path =
             self.get_most_recent_parquet_file(Tables::MevBlocks, Some(MevType::Unknown))?;
-        let bundle_header_df = LazyFrame::scan_parquet(&bundle_header_path, Default::default())?;
+        let bundle_header_df = LazyFrame::scan_parquet(bundle_header_path, Default::default())?;
 
         let mut joined_dfs = Vec::new();
 
@@ -218,7 +219,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         }
         let mut date_dirs: Vec<_> = fs::read_dir(path)?.filter_map(|entry| entry.ok()).collect();
 
-        date_dirs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+        date_dirs.sort_by_key(|b| std::cmp::Reverse(b.file_name()));
 
         for date_dir in date_dirs {
             let mut entries: Vec<_> = fs::read_dir(date_dir.path())?
@@ -228,8 +229,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 })
                 .collect();
 
-            // Sort the entries by filename, descending (most recent first)
-            entries.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            entries.sort_by_key(|b| std::cmp::Reverse(b.file_name()));
 
             if let Some(entry) = entries.first() {
                 return Ok(entry.path());

@@ -1,7 +1,7 @@
 use arrow::{
     array::{
-        ArrayBuilder, ArrayRef, Decimal128Builder, Float64Builder, ListArray, ListBuilder,
-        StringBuilder, StructArray, StructBuilder, UInt16Builder, UInt64Builder,
+        ArrayBuilder, Decimal128Builder, Float64Builder, ListArray, ListBuilder, StringBuilder,
+        StructBuilder, UInt16Builder,
     },
     datatypes::{DataType, Field},
 };
@@ -18,7 +18,6 @@ pub fn get_normalized_swap_list_array(
         let struct_builder = list_builder.values();
 
         for swap in normalized_swaps {
-            println!("Protocol: {}", swap.protocol.to_string());
             struct_builder
                 .field_builder::<StringBuilder>(0)
                 .unwrap()
@@ -73,28 +72,6 @@ pub fn get_normalized_swap_list_array(
         }
 
         list_builder.append(true);
-
-        let protocol_length = list_builder
-            .values()
-            .field_builder::<StringBuilder>(0)
-            .unwrap()
-            .len();
-        let trace_index_length = list_builder
-            .values()
-            .field_builder::<UInt16Builder>(1)
-            .unwrap()
-            .len();
-
-        let Msg_value_length = list_builder
-            .values()
-            .field_builder::<Decimal128Builder>(9)
-            .unwrap()
-            .len();
-
-        println!("Msg value Length: {}", Msg_value_length);
-
-        println!("Protocol Length: {}", protocol_length);
-        println!("Trace Index Length: {}", trace_index_length);
     }
 
     list_builder.finish()
