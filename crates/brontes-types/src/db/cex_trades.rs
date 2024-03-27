@@ -52,7 +52,7 @@ impl<'de> Deserialize<'de> for CexTradeMap {
     {
         let data: ClickhouseTradeMap = Deserialize::deserialize(deserializer)?;
 
-        Ok(data.into_iter().fold(
+        Ok(CexTradeMap(data.into_iter().fold(
             FastHashMap::default(),
             |mut acc: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>, (key, value)| {
                 if acc
@@ -73,7 +73,7 @@ impl<'de> Deserialize<'de> for CexTradeMap {
 
                 acc
             },
-        ))
+        )))
     }
 }
 
