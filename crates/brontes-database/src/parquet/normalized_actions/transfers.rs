@@ -48,6 +48,8 @@ pub fn get_normalized_transfer_list_array(
                 .field_builder::<Float64Builder>(5)
                 .unwrap()
                 .append_value(normalized_transfer.fee.clone().to_float());
+
+            struct_builder.append(true);
         }
 
         list_builder.append(true);
