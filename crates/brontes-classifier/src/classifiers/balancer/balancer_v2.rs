@@ -5,8 +5,8 @@ use brontes_pricing::Protocol;
 use brontes_types::{
     db::token_info::TokenInfoWithAddress,
     normalized_actions::{
-        NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedPoolConfigUpdate,
-        NormalizedSwap,
+        NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedNewPool,
+        NormalizedPoolConfigUpdate, NormalizedSwap,
     },
     structured_trace::CallInfo,
     ToScaledRational,
@@ -98,6 +98,42 @@ fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
 
     Ok((tokens, amounts))
 }
+
+action_impl!(
+    Protocol::BalancerV2,
+    crate::BalancerV2Vault::flashLoanCall,
+    FlashLoan,
+    [..FlashLoan*],
+    call_data: true,
+    |info: CallInfo, call_data: flashLoanCall, db: &DB| {
+        let (assets, amounts): (Vec<TokenInfoWithAddress>, Vec<Rational>) = call_data.tokens
+            .iter()
+            .zip(call_data.amounts.iter())
+            .map(|(token_address, amount)| {
+                let token = db.try_fetch_token_info(*token_address)?;
+                let amount = amount.to_scaled_rational(token.decimals);
+                Ok((token, amount))
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e: Error| <Error as Into<eyre::ErrReport>>::into(e))
+            .map(|v| v.into_iter().unzip())?;
+
+        Ok(NormalizedFlashLoan {
+            protocol: Protocol::BalancerV2,
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            pool: info.target_address,
+            receiver_contract: call_data.recipient,
+            assets,
+            amounts,
+            aave_mode: None,
+            child_actions: vec![],
+            repayments: vec![],
+            fees_paid: vec![],
+            msg_value: info.msg_value
+        })
+    }
+);
 
 action_impl!(
     Protocol::BalancerV2,
