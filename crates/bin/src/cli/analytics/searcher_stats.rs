@@ -31,7 +31,7 @@ pub struct GetStats {
     pub mev_types:   Option<Vec<MevType>>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
-    #[arg(long, short)]
+    #[arg(long)]
     pub max_tasks:   Option<u64>,
 }
 
