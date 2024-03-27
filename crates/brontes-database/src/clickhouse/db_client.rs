@@ -272,6 +272,8 @@ impl ClickhouseHandle for Clickhouse {
             .await
             .ok()
             .map(|v| v.value);
+        #[cfg(feature = "cex-dex-markout")]
+        tracing::info!(?cex_trades, "trades");
 
         let eth_prices = determine_eth_prices(&cex_quotes);
 
