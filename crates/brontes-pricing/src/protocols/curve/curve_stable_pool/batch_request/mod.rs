@@ -52,7 +52,7 @@ pub fn extract_curve_stable_pool_immutables(bytecode: Bytes) -> (Address, Vec<U2
     let base_pool = Address::from_str(base_pool).unwrap();
     //original rates are of type Vec<U256>
 
-    (base_pool, original_pool_rates)
+    (base_pool, original_rates)
 }
 
 fn populate_pool_data(mut pool: CurvePool, pool_data: PoolData) -> CurvePool {
