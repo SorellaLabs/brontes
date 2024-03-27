@@ -88,7 +88,6 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &self,
         start_block: u64,
         end_block: u64,
-        needs_dex_price: bool,
     ) -> eyre::Result<Vec<RangeInclusive<u64>>>;
 }
 
@@ -218,19 +217,12 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &self,
         start_block: u64,
         end_block: u64,
-        needs_dex_price: bool,
     ) -> eyre::Result<Vec<RangeInclusive<u64>>> {
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
 
         let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
         if peek_cur.peek().is_none() {
-            if needs_dex_price {
-                return Err(eyre::eyre!(
-                    "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ))
-            }
-
             tracing::info!("entire range missing");
             return Ok(vec![start_block..=end_block])
         }
@@ -248,24 +240,10 @@ impl LibmdbxInit for LibmdbxReadWriter {
                     result.push(block_tracking..=block);
                     block_tracking = block + 1;
 
-                    if needs_dex_price {
-                        return Err(eyre::eyre!(
-                            "Block is missing dex pricing, please run with flag \
-                             `--run-dex-pricing`"
-                        ))
-                    }
-
                     continue
                 }
 
                 block_tracking += 1;
-
-                if needs_dex_price && !state.has_dex_price() && !state.should_ignore() {
-                    tracing::error!("block is missing dex pricing {block}");
-                    return Err(eyre::eyre!(
-                        "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                    ))
-                }
 
                 if !state.is_init() {
                     tracing::trace!(?state, "state isn't init");
@@ -278,12 +256,6 @@ impl LibmdbxInit for LibmdbxReadWriter {
         }
 
         if block_tracking - 1 != end_block {
-            if needs_dex_price {
-                tracing::error!("end block != block tracing - 1, dex price lol");
-                return Err(eyre::eyre!(
-                    "Block is missing dex pricing, please run with flag `--run-dex-pricing`"
-                ))
-            }
             result.push(block_tracking - 1..=end_block);
         }
 
