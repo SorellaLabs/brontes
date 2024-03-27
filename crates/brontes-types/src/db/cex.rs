@@ -428,7 +428,7 @@ impl<'de> serde::Deserialize<'de> for CexExchange {
         D: serde::Deserializer<'de>,
     {
         let cex_exchange: String = Deserialize::deserialize(deserializer)?;
-        Ok(&cex_exchange.into())
+        Ok(cex_exchange.as_str().into())
     }
 }
 
