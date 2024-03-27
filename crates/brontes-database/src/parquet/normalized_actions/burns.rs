@@ -96,6 +96,8 @@ pub fn get_normalized_burn_list_array(
                 .field_builder::<ListBuilder<Float64Builder>>(6)
                 .unwrap()
                 .append_value(&amount_list_array);
+
+            struct_builder.append(true);
         }
 
         list_builder.append(true);

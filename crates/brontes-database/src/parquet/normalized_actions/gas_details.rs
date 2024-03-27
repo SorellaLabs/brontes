@@ -51,7 +51,8 @@ pub fn get_gas_details_list_array(gas_details_list: Vec<&Vec<GasDetails>>) -> Li
                         .effective_gas_price
                         .try_into()
                         .expect("Gas detail overflow"),
-                )
+                );
+            struct_builder.append(true);
         }
 
         list_builder.append(true);

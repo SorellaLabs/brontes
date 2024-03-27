@@ -19,7 +19,7 @@ pub fn get_normalized_liquidation_list_array(
         Field::new("debt_asset", DataType::Utf8, false),
         Field::new("covered_debt", DataType::Float64, false),
         Field::new("liquidated_collateral", DataType::Float64, false),
-        Field::new("msg_value", DataType::Decimal128(38, 0), false),
+        Field::new("msg_value", DataType::Decimal128(38, 10), false),
     ];
 
     let builder_array: Vec<Box<dyn ArrayBuilder>> = vec![
