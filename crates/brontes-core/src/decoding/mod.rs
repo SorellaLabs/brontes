@@ -27,6 +27,9 @@ use reth_primitives::BlockId;
 pub type ParserFuture<'a> =
     Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
 
+pub type TraceClickhouseFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'a>>;
+
 pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     executor: Executor,
     parser:   TraceParser<'a, T, DB>,
@@ -73,5 +76,16 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
             self.executor
                 .spawn_result_task_as(parser.execute_block(block_num), TaskKind::Default),
         ) as ParserFuture
+    }
+
+    pub fn trace_for_clickhouse(&self, block_num: u64) -> TraceClickhouseFuture {
+        // This will satisfy its lifetime scope do to the lifetime itself living longer
+        // than the process that runs brontes.
+        let parser: &'static TraceParser<'_, T, DB> = unsafe { std::mem::transmute(&self.parser) };
+
+        Box::pin(
+            self.executor
+                .spawn_result_task_as(parser.trace_clickhouse_block(block_num), TaskKind::Default),
+        ) as TraceClickhouseFuture
     }
 }
