@@ -81,6 +81,14 @@ pub fn get_normalized_swap_list_array(
             .unwrap()
             .len();
 
+        let Msg_value_length = list_builder
+            .values()
+            .field_builder::<Decimal128Builder>(9)
+            .unwrap()
+            .len();
+
+        println!("Msg value Length: {}", Msg_value_length);
+
         println!("Protocol Length: {}", protocol_length);
         println!("Trace Index Length: {}", trace_index_length);
         list_builder.append(true);
