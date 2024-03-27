@@ -972,6 +972,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 }
             }
 
+            #[allow(clippy::blocks_in_conditions)]
             if block_updates
                 .first()
                 .map(|u| u.block)
