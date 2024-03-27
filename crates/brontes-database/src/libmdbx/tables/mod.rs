@@ -154,6 +154,7 @@ impl Tables {
                     .await
             }
             Tables::CexTrades => {
+                tracing::info!("fetching cex trades");
                 initializer
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
                         block_range,
