@@ -69,6 +69,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
         let block = tree.header.number;
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
+        tracing::info!(?generate_dex_pricing);
 
         // pull full meta from libmdbx
         if !generate_dex_pricing && self.clickhouse.is_none() {
