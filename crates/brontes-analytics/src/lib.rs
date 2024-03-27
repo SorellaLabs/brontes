@@ -5,7 +5,7 @@ use std::{
 };
 
 use brontes_database::{libmdbx::LibmdbxInit, parquet::create_file_path, Tables};
-use brontes_types::{db::searcher::Fund, mev::MevType, traits::TracingProvider, Protocol};
+use brontes_types::{db::searcher::Fund, mev::MevType, traits::TracingProvider};
 use eyre::{Ok, Result};
 use polars::prelude::*;
 
@@ -23,14 +23,7 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         Self { db, tracing_client, custom_path }
     }
 
-    pub async fn get_searcher_stats_by_mev_type(
-        &self,
-        _start_block: u64,
-        _end_block: u64,
-        _mev_types: Option<Vec<MevType>>,
-        _protocols: Option<Vec<Protocol>>,
-        _funds: Option<Vec<Fund>>,
-    ) -> Result<(), eyre::Error> {
+    pub async fn get_searcher_stats_by_mev_type(&self) -> Result<(), eyre::Error> {
         let df = LazyFrame::scan_parquet(
             self.get_most_recent_parquet_file(Tables::MevBlocks, Some(MevType::Unknown))?,
             Default::default(),
@@ -144,7 +137,6 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         for df in &joined_dfs {
             println!("{:?}\n\n", df.head(Some(20)));
         }
-
         Ok(joined_dfs)
     }
 
@@ -155,6 +147,27 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
             let fund_strs: Vec<String> = funds.into_iter().map(|f| f.to_string()).collect();
             bundles.filter(col("fund").is_in(lit(Series::new("", &fund_strs))))
         }
+    }
+
+    pub fn group_by_fund(&self, bundles: LazyFrame) -> LazyFrame {
+        bundles
+            .group_by([col("fund")])
+            .agg([
+                col("profit_usd").sum().alias("total_profit"),
+                col("profit_usd").mean().alias("profit_mean"),
+                col("bribe_usd").sum().alias("total_bribed"),
+                col("bribe_usd").mean().alias("bribe_mean"),
+                col("total_bribed") + col("total_profit").alias("total_revenue"),
+                col("mev_contract").count().alias("bundle_count"),
+            ])
+            .sort(
+                "total_profit",
+                SortOptions { descending: true, nulls_last: true, ..Default::default() },
+            )
+    }
+
+    pub fn get_searcher_stats(&self) -> Result<()> {
+        Ok(())
     }
 
     fn get_most_recent_parquet_file(

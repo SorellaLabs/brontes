@@ -2,7 +2,6 @@ use std::{env, path::Path};
 
 use brontes_analytics::BrontesAnalytics;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{db::searcher::Fund, mev::bundle::MevType, Protocol};
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -14,25 +13,8 @@ use crate::{
 //TODO: Convert to notebooks searcher + builder profit stats
 #[derive(Debug, Parser)]
 pub struct GetStats {
-    /// Start Block
-    #[arg(long, short)]
-    pub start_block: u64,
-    /// Optional End Block, if omitted it will continue to run until killed
-    #[arg(long, short)]
-    pub end_block:   u64,
-    /// Optional protocols to filter searcher bundles by
-    #[arg(long, short, value_delimiter = ',')]
-    pub protocols:   Option<Vec<Protocol>>,
-    /// Optional fund filter
-    #[arg(long, short, value_delimiter = ',')]
-    pub funds:       Option<Vec<Fund>>,
-    /// Optional MevType to filter searcher bundles by
-    #[arg(long, short, value_delimiter = ',')]
-    pub mev_types:   Option<Vec<MevType>>,
-    /// Optional Max Tasks, if omitted it will default to 80% of the number of
-    /// physical cores on your machine
     #[arg(long)]
-    pub max_tasks:   Option<u64>,
+    pub max_tasks: Option<u64>,
 }
 
 impl GetStats {
@@ -58,15 +40,7 @@ impl GetStats {
 
         let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone(), None);
 
-        let _ = brontes_analytics
-            .get_searcher_stats_by_mev_type(
-                self.start_block,
-                self.end_block,
-                self.mev_types,
-                self.protocols,
-                self.funds,
-            )
-            .await;
+        let _ = brontes_analytics.get_searcher_stats_by_mev_type().await;
 
         Ok(())
     }
