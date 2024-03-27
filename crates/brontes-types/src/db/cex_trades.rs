@@ -12,7 +12,7 @@ use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use super::{cex::CexExchange, clickhouse_serde::dex::dex_quote::deserialize};
+use super::cex::CexExchange;
 use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
