@@ -69,7 +69,7 @@ pub fn searcher_info_to_record_batch(
         Field::new("fund", DataType::Utf8, true),
         Field::new(
             "mev_types",
-            DataType::List(Arc::new(Field::new("type", DataType::Utf8, true))),
+            DataType::List(Arc::new(Field::new("item", DataType::Utf8, true))),
             true,
         ),
         Field::new("builder", DataType::Utf8, true),

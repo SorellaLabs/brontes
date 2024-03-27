@@ -14,7 +14,7 @@ reth-tracing-ext.workspace = true
 chrono = "0.4.34"
 arrow.workspace = true
 parquet.workspace = true
-polars = {features = ["lazy", "parquet", "group_by_list", "polars-io"], workspace = true}
+polars = {features = ["lazy", "parquet", "group_by_list", "polars-io", "is_in"], workspace = true}
 # alloy 
 alloy-primitives.workspace = true
 

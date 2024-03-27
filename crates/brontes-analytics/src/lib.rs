@@ -5,12 +5,7 @@ use std::{
 };
 
 use brontes_database::{libmdbx::LibmdbxInit, parquet::create_file_path, Tables};
-use brontes_types::{
-    db::searcher::Fund,
-    mev::{Bundle, Mev, MevType},
-    traits::TracingProvider,
-    Protocol,
-};
+use brontes_types::{db::searcher::Fund, mev::MevType, traits::TracingProvider, Protocol};
 use eyre::{Ok, Result};
 use polars::prelude::*;
 
@@ -70,17 +65,14 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
         Ok(())
     }
 
-    // TODO: Optimise
-    pub fn get_detailed_stats(
+    pub fn get_mev_df_by_type(
         &self,
         mev_types: Option<Vec<MevType>>,
-        include_metadata: bool,
+        include_searcher_info: bool,
     ) -> Result<Vec<DataFrame>> {
         let bundle_header_path =
             self.get_most_recent_parquet_file(Tables::MevBlocks, Some(MevType::Unknown))?;
         let bundle_header_df = LazyFrame::scan_parquet(bundle_header_path, Default::default())?;
-
-        let mut joined_dfs = Vec::new();
 
         let mev_types = match mev_types {
             Some(types) => types,
@@ -94,6 +86,8 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 MevType::SearcherTx,
             ],
         };
+
+        let mut joined_dfs = Vec::new();
 
         for mev_type in mev_types {
             let bundle_data_path =
@@ -126,16 +120,15 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
                 MevType::Unknown => panic!("Unknown MEV type is not supported"),
             };
 
-            if include_metadata {
+            if include_searcher_info {
                 let address_metadata_path =
-                    self.get_most_recent_parquet_file(Tables::AddressMeta, None)?;
+                    self.get_most_recent_parquet_file(Tables::SearcherContracts, None)?;
                 let address_metadata_df =
-                    LazyFrame::scan_parquet(&address_metadata_path, Default::default())?
-                        .collect()?;
+                    LazyFrame::scan_parquet(&address_metadata_path, Default::default())?;
 
                 let final_df = joined_df
                     .join(
-                        address_metadata_df.lazy(),
+                        address_metadata_df,
                         [col("mev_contract")],
                         [col("address")],
                         JoinArgs::new(JoinType::Inner),
@@ -148,59 +141,20 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
             }
         }
 
+        for df in &joined_dfs {
+            println!("{:?}\n\n", df.head(Some(20)));
+        }
+
         Ok(joined_dfs)
     }
 
-    #[allow(dead_code)]
-    pub fn filter_bundle(
-        &self,
-        bundle: &Bundle,
-        mev_types: &Option<Vec<MevType>>,
-        protocols: &Option<Vec<Protocol>>,
-        funds: &Option<Vec<Fund>>,
-    ) -> Option<Bundle> {
-        if let Some(mev_filter) = mev_types {
-            if !mev_filter.contains(&bundle.header.mev_type) {
-                return None;
-            }
+    pub fn filter_by_fund(&self, bundles: LazyFrame, funds: Vec<Fund>) -> LazyFrame {
+        if funds.is_empty() {
+            bundles
+        } else {
+            let fund_strs: Vec<String> = funds.into_iter().map(|f| f.to_string()).collect();
+            bundles.filter(col("fund").is_in(lit(Series::new("", &fund_strs))))
         }
-        if let Some(protocols_filter) = protocols {
-            let bundle_protocols = bundle.data.protocols();
-            if !protocols_filter
-                .iter()
-                .any(|protocol| bundle_protocols.contains(protocol))
-            {
-                return None;
-            }
-        }
-
-        if let Some(funds_filter) = funds {
-            let (eoa_info, contract_info) = self
-                .db
-                .try_fetch_searcher_info(bundle.header.eoa, bundle.get_searcher_contract())
-                .expect("Failed to query searcher table");
-
-            match (eoa_info, contract_info) {
-                (Some(eoa), Some(contract)) => {
-                    if !funds_filter.contains(&eoa.fund) || !funds_filter.contains(&contract.fund) {
-                        return None
-                    }
-                }
-                (Some(eoa), None) => {
-                    if !funds_filter.contains(&eoa.fund) {
-                        return None
-                    }
-                }
-                (None, Some(contract)) => {
-                    if !funds_filter.contains(&contract.fund) {
-                        return None
-                    }
-                }
-                (None, None) => return None,
-            }
-        }
-
-        Some(bundle.clone())
     }
 
     fn get_most_recent_parquet_file(
