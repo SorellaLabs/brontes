@@ -91,7 +91,6 @@ statrs = "0.16"
 default = ["pretty-print"]
 cex-dex-markout = [
   "brontes-types/cex-dex-markout",
-  "brontes-inspect/cex-dex-markout",
   "brontes-database/cex-dex-markout",
 ]
 sorella-server = ["local-reth", "local-clickhouse"]
