@@ -69,7 +69,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
         let block = tree.header.number;
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
-        tracing::info!(?generate_dex_pricing, self.always_generate_price);
 
         // pull full meta from libmdbx
         if !generate_dex_pricing && self.clickhouse.is_none() {
@@ -112,6 +111,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             meta.builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
+
             tracing::debug!(?block, "waiting for dex price");
 
             self.dex_pricer_stream
