@@ -20,6 +20,8 @@ pub fn get_normalized_swap_list_array(
         let struct_builder = list_builder.values();
 
         for swap in normalized_swaps {
+            println!("Protocol: {}", swap.protocol.to_string());
+            println!("Trace Index: {}", swap.trace_index as u16);
             struct_builder
                 .field_builder::<StringBuilder>(0)
                 .unwrap()
@@ -71,6 +73,16 @@ pub fn get_normalized_swap_list_array(
                 .append_value(swap.msg_value.to());
         }
 
+        let protocol_length = list_builder
+            .values()
+            .field_builder::<StringBuilder>(0)
+            .unwrap()
+            .len();
+        let trace_index_length = list_builder
+            .values()
+            .field_builder::<UInt16Builder>(1)
+            .unwrap()
+            .len();
         list_builder.append(true);
     }
 
@@ -136,7 +148,7 @@ fn get_normalized_swap_array(normalized_swaps: Vec<NormalizedSwap>) -> StructArr
 fn fields() -> Vec<Field> {
     vec![
         Field::new("protocol", DataType::Utf8, false),
-        Field::new("trace_index", DataType::UInt64, false),
+        Field::new("trace_index", DataType::UInt16, false),
         Field::new("from", DataType::Utf8, false),
         Field::new("recipient", DataType::Utf8, false),
         Field::new("pool", DataType::Utf8, false),
