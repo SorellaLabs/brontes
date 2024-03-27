@@ -324,6 +324,15 @@ pub struct SwapLeg {
 
 #[cfg(test)]
 mod tests {
+
+    use alloy_primitives::hex;
+    use brontes_types::constants::{USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS};
+
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig},
+        Inspectors,
+    };
+
     #[brontes_macros::test]
     async fn test_cex_dex_markout() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
