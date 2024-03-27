@@ -101,6 +101,8 @@ pub fn get_gas_details_array(gas_details: Vec<GasDetails>) -> StructArray {
                     .try_into()
                     .expect("Gas detail overflow"),
             );
+
+        struct_builder.append(true);
     }
 
     struct_builder.finish()
