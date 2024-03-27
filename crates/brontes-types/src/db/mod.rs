@@ -10,6 +10,7 @@ pub mod dex;
 pub mod initialized_state;
 pub mod metadata;
 pub mod mev_block;
+pub mod normalized_actions;
 pub mod pool_creation_block;
 pub mod redefined_types;
 pub mod searcher;

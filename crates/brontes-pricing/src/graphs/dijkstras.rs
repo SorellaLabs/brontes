@@ -257,18 +257,6 @@ where
         if !checked_second {
             checked_second = true;
             for (successor, move_cost) in successors {
-                let break_after = if !checked_second {
-                    let second = second.cloned().unwrap();
-                    checked_second = successor == second;
-
-                    if !checked_second {
-                        continue
-                    }
-                    true
-                } else {
-                    false
-                };
-
                 i += 1;
 
                 if visited.contains(&successor) {
@@ -294,10 +282,6 @@ where
                 }
 
                 to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
-
-                if break_after {
-                    break
-                }
             }
         }
 

@@ -9,6 +9,8 @@ use brontes_database::clickhouse::Clickhouse;
 use brontes_database::clickhouse::ClickhouseHttpClient;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_database::clickhouse::ClickhouseMiddleware;
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+use brontes_database::clickhouse::ReadOnlyMiddleware;
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{
@@ -34,6 +36,15 @@ pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<L
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
     let clickhouse = Clickhouse::default();
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
+}
+
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+pub fn load_read_only_database(
+    db_endpoint: String,
+) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+    let clickhouse = Clickhouse::default();
+    Ok(ReadOnlyMiddleware::new(clickhouse, inner))
 }
 
 pub fn load_libmdbx(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {

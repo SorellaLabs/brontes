@@ -50,6 +50,8 @@ sol!(OneInchAggregationRouterV5, "./classifier-abis/OneInchAggregationRouterV5.j
 sol!(OneInchFusionSettlement, "./classifier-abis/OneInchFusionSettlement.json");
 sol!(ClipperExchange, "./classifier-abis/ClipperExchange.json");
 
+sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
+
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
