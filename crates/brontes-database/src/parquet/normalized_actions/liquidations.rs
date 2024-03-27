@@ -29,6 +29,7 @@ pub fn get_normalized_liquidation_list_array(
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
+        Box::new(StringBuilder::new()),
         Box::new(Float64Builder::new()),
         Box::new(Float64Builder::new()),
         Box::new(Decimal128Builder::new()),
