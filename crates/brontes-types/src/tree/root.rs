@@ -12,7 +12,7 @@ use super::Node;
 use crate::{
     db::{metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::{Actions, NormalizedAction},
-    TreeSearchBuilder, TxInfo,
+    FastHashSet, TreeSearchBuilder, TxInfo,
 };
 
 #[derive(Debug)]
@@ -232,6 +232,35 @@ impl<V: NormalizedAction> Root<V> {
         if metadata.private_flow.contains(&self.tx_hash) {
             self.private = true;
         }
+    }
+
+    pub fn remove_duplicate_data<C, T, R>(
+        &mut self,
+        find: &TreeSearchBuilder<V>,
+        classify: &C,
+        info: &T,
+        removal: &TreeSearchBuilder<V>,
+    ) where
+        T: Fn(&Node, &NodeData<V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
+    {
+        let mut find_res = Vec::new();
+        self.head
+            .collect(&mut find_res, find, &|data, _| data.clone(), &self.data_store);
+
+        let indexes = find_res
+            .into_iter()
+            .flat_map(|node| {
+                let mut bad_res = Vec::new();
+                node.collect(&mut bad_res, removal, info, &self.data_store);
+                classify(&bad_res, &node, &self.data_store)
+            })
+            .collect::<FastHashSet<_>>();
+
+        indexes.into_iter().for_each(|index| {
+            self.head
+                .remove_node_and_children(index, &mut self.data_store)
+        });
     }
 }
 
