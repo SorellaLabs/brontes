@@ -192,6 +192,7 @@ impl UpdatableProtocol for UniswapV3Pool {
                 uniswap_v3_math::error::UniswapV3MathError::LiquidityTooLow(self.liquidity),
             ))
         }
+
         let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
         let shift = self.token_a_decimals as i8 - self.token_b_decimals as i8;
         let price = match shift.cmp(&0) {

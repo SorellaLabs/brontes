@@ -72,7 +72,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             vec![tx_hash],
                             &info,
                             profit.to_float(),
-                            PriceAt::After,
+                            PriceAt::Lowest,
                             &[info.gas_details],
                             metadata.clone(),
                             MevType::SearcherTx,
