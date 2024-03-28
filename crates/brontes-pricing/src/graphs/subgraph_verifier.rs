@@ -348,8 +348,9 @@ impl SubgraphVerifier {
 
                         let ex = extensions
                             .iter()
-                            .map(|e| Pair(e.token_0, e.token_1))
+                            .map(|e| (e.pool_addr, Pair(e.token_0, e.token_1)))
                             .collect::<FastHashSet<_>>();
+
                         let extends_to = subgraph.subgraph.extends_to();
 
                         tracing::debug!(
@@ -357,10 +358,9 @@ impl SubgraphVerifier {
                             ?extends_to,
                             extensions = ex.len(),
                             "connected with \n {:#?}\n extensions: {:#?}",
-                            ignored
-                                .iter()
-                                .filter(|i| ex.contains(i))
-                                .map(|i| state.highest_liq_for_pair(*i))
+                            ex.iter()
+                                .filter(|(_, i)| ignored.contains(i))
+                                .map(|(_, i)| state.highest_liq_for_pair(*i))
                                 .collect_vec(),
                             ex,
                         );
