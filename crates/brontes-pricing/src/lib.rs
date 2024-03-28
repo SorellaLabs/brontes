@@ -336,7 +336,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
             info!(?addr, "failed to get pair for pool");
             self.graph_manager.update_state(addr, msg);
-
             return;
         };
 
@@ -579,7 +578,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         };
 
         if ignores.is_empty() {
-            tracing::error!(
+            tracing::debug!(
                 ?pair,
                 ?block,
                 "rundown for subgraph has no edges we are supposed to ignore"
