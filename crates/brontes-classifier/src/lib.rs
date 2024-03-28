@@ -49,12 +49,11 @@ sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 sol!(OneInchAggregationRouterV5, "./classifier-abis/OneInchAggregationRouterV5.json");
 sol!(OneInchFusionSettlement, "./classifier-abis/OneInchFusionSettlement.json");
 sol!(ClipperExchange, "./classifier-abis/ClipperExchange.json");
-
 sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
-
 sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
-
-
+sol!(ZeroXUniswapV3Feature, "./classifier-abis/zero-x/ZeroXUniswapV3Feature.json");
+sol!(ZeroXTransformERC20Feature, "./classifier-abis/zero-x/ZeroXTransformERC20Feature.json");
+sol!(ZeroXPancakeSwapFeature, "./classifier-abis/zero-x/ZeroXPancakeSwapFeature.json");
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
