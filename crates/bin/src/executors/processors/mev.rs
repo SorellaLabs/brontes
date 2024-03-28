@@ -44,10 +44,14 @@ impl Processor for MevProcessor {
             tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
         }
 
+        #[cfg(feature = "local-clickhouse")]
+        insert_tree(db, tree.clone(), metadata.block_num).await;
+
         insert_mev_results(db, block_details, mev_details).await;
     }
 }
 
+#[cfg(feature = "local-clickhouse")]
 async fn insert_tree<DB: DBWriter + LibmdbxReader>(
     db: &DB,
     tree: Arc<BlockTree<Actions>>,
