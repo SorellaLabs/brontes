@@ -1,9 +1,8 @@
 use std::{
-    ops::Deref,
-    sync::{
+    mem, ops::Deref, sync::{
         atomic::{AtomicBool, Ordering::SeqCst},
         Arc,
-    },
+    }
 };
 
 use alloy_primitives::{Address, TxHash, U256};
@@ -459,6 +458,38 @@ impl ClassifierTestUtils {
         Ok((tree, price))
     }
 
+    pub async fn contains_action_complex(
+        &self,
+        tx_hash: TxHash,
+        action_number_in_tx: usize,
+        eq_action: Actions,
+        tree_collect_builder: TreeSearchBuilder<Actions>,
+        ignore_fields: &[&str],
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let mut tree = self.build_tree_tx(tx_hash).await?;
+    
+        assert!(!tree.tx_roots.is_empty(), "empty tree. most likely an invalid hash");
+    
+        let root = tree.tx_roots.remove(0);
+        let mut actions = root.collect(&tree_collect_builder);
+        assert!(
+            !actions.is_empty(),
+            "no actions collected. protocol is either missing from db or not added to dispatch"
+        );
+        assert!(actions.len() > action_number_in_tx, "incorrect action index");
+    
+        let action = actions.remove(action_number_in_tx);
+    
+        assert!(
+            partially_eq(&action, &eq_action, ignore_fields),
+            "got: {:#?} != given: {:#?}",
+            action,
+            eq_action
+        );
+    
+        Ok(())
+    }
+
     pub async fn contains_action(
         &self,
         tx_hash: TxHash,
@@ -635,6 +666,27 @@ impl Deref for ClassifierTestUtils {
     fn deref(&self) -> &Self::Target {
         &self.trace_loader
     }
+}
+
+fn partially_eq<T>(a: &T, b: &T, ignore_fields: &[&str]) -> bool {
+    let a_ptr = a as *const T as *const u8;
+    let b_ptr = b as *const T as *const u8;
+    let size = mem::size_of::<T>();
+
+    let mut offset = 0;
+    while offset < size {
+        let field = unsafe { &*(a_ptr.add(offset) as *const &str) };
+        if !ignore_fields.contains(&field) {
+            let a_field = unsafe { &*(a_ptr.add(offset) as *const u8) };
+            let b_field = unsafe { &*(b_ptr.add(offset) as *const u8) };
+            if a_field != b_field {
+                return false;
+            }
+        }
+        offset += mem::size_of::<&str>();
+    }
+
+    true
 }
 
 #[derive(Debug, Error)]
