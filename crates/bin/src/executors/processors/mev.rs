@@ -8,6 +8,10 @@ use brontes_inspect::{
 use brontes_types::{
     db::metadata::Metadata,
     execute_on,
+    frontend_prunes::{
+        remove_burn_transfers, remove_collect_transfers, remove_mint_transfers,
+        remove_swap_transfers,
+    },
     mev::{Bundle, MevBlock, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
@@ -40,11 +44,23 @@ impl Processor for MevProcessor {
             tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
         }
 
-        if let Err(e) = db.insert_tree(tree).await {
-            tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert tree into db");
-        }
-
         insert_mev_results(db, block_details, mev_details).await;
+    }
+}
+
+async fn insert_tree<DB: DBWriter + LibmdbxReader>(
+    db: &DB,
+    tree: Arc<BlockTree<Actions>>,
+    block_num: u64,
+) {
+    let mut tree_owned = (*tree).clone();
+    remove_swap_transfers(&mut tree_owned);
+    remove_mint_transfers(&mut tree_owned);
+    remove_burn_transfers(&mut tree_owned);
+    remove_collect_transfers(&mut tree_owned);
+
+    if let Err(e) = db.insert_tree(Arc::new(tree_owned)).await {
+        tracing::error!(err=%e, %block_num, "failed to insert tree into db");
     }
 }
 
@@ -86,7 +102,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
         );
 
         if mev.header.mev_type == MevType::Unknown || mev.header.mev_type == MevType::SearcherTx {
-            continue;
+            continue
         }
 
         let (eoa_info, contract_info) = database
