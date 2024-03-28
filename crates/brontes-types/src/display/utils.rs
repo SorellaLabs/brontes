@@ -677,7 +677,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             writeln!(
                 f,
                 "        - Price on {:#?}: {}",
-                stat_arb_detail.cex_exchanges.clone(),
+                stat_arb_detail.cex_exchange.clone(),
                 stat_arb_detail.cex_price.clone().to_float()
             )?;
             writeln!(

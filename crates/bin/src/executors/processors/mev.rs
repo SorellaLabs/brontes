@@ -12,7 +12,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use tracing::info;
+use tracing::debug;
 
 use crate::Processor;
 
@@ -53,7 +53,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     block_details: MevBlock,
     mev_details: Vec<Bundle>,
 ) {
-    info!(
+    debug!(
         target: "brontes",
         "block details\n {}",
         block_details.to_string()
@@ -79,7 +79,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     mev_details: &Vec<Bundle>,
 ) {
     for mev in mev_details {
-        info!(
+        debug!(
             target: "brontes",
             "mev details\n {}",
             mev.to_string()
