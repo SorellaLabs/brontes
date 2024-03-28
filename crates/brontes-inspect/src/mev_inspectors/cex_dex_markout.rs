@@ -9,7 +9,6 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
@@ -173,16 +172,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 swaps.push(swap_with_profit.swap.clone());
                 arb_details.push(StatArbDetails {
-                    cex_exchanges: most_profitable_leg
-                        .maker_price
-                        .exchanges
-                        .iter()
-                        .map(|(a, _)| *a)
-                        .collect_vec(),
-                    cex_price:     most_profitable_leg.maker_price.price.clone(),
-                    dex_exchange:  swap_with_profit.swap.protocol,
-                    dex_price:     swap_with_profit.swap.swap_rate(),
-                    pnl_pre_gas:   most_profitable_leg.pnl.clone(),
+                    cex_exchange: most_profitable_leg.maker_price.exchanges[0].0,
+
+                    cex_price:    most_profitable_leg.maker_price.price.clone(),
+                    dex_exchange: swap_with_profit.swap.protocol,
+                    dex_price:    swap_with_profit.swap.swap_rate(),
+                    pnl_pre_gas:  most_profitable_leg.pnl.clone(),
                 });
 
                 total_arb_pre_gas.maker_profit += &most_profitable_leg.pnl.maker_profit;
