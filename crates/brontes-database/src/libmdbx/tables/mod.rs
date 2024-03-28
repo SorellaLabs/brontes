@@ -1,6 +1,7 @@
 use std::{
     fmt::{Debug, Display},
     str::FromStr,
+    sync::Arc,
 };
 
 use brontes_pricing::SubGraphsEntry;
@@ -276,13 +277,18 @@ impl Tables {
         }
     }
 
-    pub async fn export_to_parquet<DB>(&self, exporter: &ParquetExporter<DB>) -> eyre::Result<()>
+    pub async fn export_to_parquet<DB>(
+        &self,
+        exporter: Arc<ParquetExporter<DB>>,
+    ) -> eyre::Result<()>
     where
         DB: LibmdbxReader,
     {
         match self {
             Self::AddressMeta => exporter.export_address_metadata().await,
             Self::MevBlocks => exporter.export_mev_blocks().await,
+            Self::SearcherContracts | Self::SearcherEOAs => exporter.export_searcher_info().await,
+            Self::Builder => exporter.export_builder_info().await,
             _ => unreachable!("Parquet export not yet supported for this table"),
         }
     }

@@ -7,7 +7,7 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
-use strum::Display;
+use strum::{AsRefStr, Display};
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
@@ -197,7 +197,18 @@ impl SearcherStatsWithAddress {
 }
 
 #[derive(
-    Debug, Default, Display, PartialEq, Eq, Clone, rSerialize, rDeserialize, Archive, Copy,
+    Debug,
+    Default,
+    Display,
+    PartialEq,
+    Eq,
+    Clone,
+    rSerialize,
+    rDeserialize,
+    Archive,
+    Copy,
+    AsRefStr,
+    PartialOrd,
 )]
 pub enum Fund {
     #[default]
@@ -217,6 +228,7 @@ impl From<String> for Fund {
     fn from(value: String) -> Self {
         match value.as_str() {
             "Symbolic Capital Partners" => Self::SymbolicCapitalPartners,
+            "SymbolicCapitalPartners" => Self::SymbolicCapitalPartners,
             "Wintermute" => Self::Wintermute,
             "Jane Street" => Self::JaneStreet,
             "Jump Trading" => Self::JumpTrading,
