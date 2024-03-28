@@ -16,7 +16,7 @@ use super::utils::{
     u128_to_binary_array,
 };
 
-pub fn mev_block_to_record_batch(mev_blocks: Vec<&MevBlock>) -> Result<RecordBatch, ArrowError> {
+pub fn mev_block_to_record_batch(mev_blocks: Vec<MevBlock>) -> Result<RecordBatch, ArrowError> {
     let block_hash_array = build_string_array(
         mev_blocks
             .iter()
@@ -124,7 +124,7 @@ fn build_schema(mev_count_array: &StructArray) -> Schema {
     ])
 }
 
-fn get_mev_count_array(mev_blocks: &Vec<&MevBlock>) -> StructArray {
+fn get_mev_count_array(mev_blocks: &Vec<MevBlock>) -> StructArray {
     let mut mev_count_builder = UInt64Builder::new();
     let mut sandwich_count_builder = UInt64Builder::new();
     let mut liquidation_count_builder = UInt64Builder::new();
@@ -179,7 +179,7 @@ fn get_mev_count_array(mev_blocks: &Vec<&MevBlock>) -> StructArray {
     StructArray::try_new(fields.into(), arrays, None).expect("Failed to init struct arrays")
 }
 
-fn get_proposer_arrays(mev_blocks: &Vec<&MevBlock>) -> (StringArray, Float64Array) {
+fn get_proposer_arrays(mev_blocks: &Vec<MevBlock>) -> (StringArray, Float64Array) {
     let fee_recipient_data_capacity = mev_blocks[0].builder_address.len() * mev_blocks.len();
     let mut proposer_fee_recipient_builder =
         StringBuilder::with_capacity(mev_blocks.len(), fee_recipient_data_capacity);
