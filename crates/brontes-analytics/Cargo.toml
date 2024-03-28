@@ -10,10 +10,11 @@ brontes-types.workspace = true
 brontes-database.workspace = true
 reth-tracing-ext.workspace = true
 
-polars = { version = "0.38.2", features = ["lazy"]}
-arrow = "50.0.0"
-parquet = "50.0.0"
 
+chrono = "0.4.34"
+arrow.workspace = true
+parquet.workspace = true
+polars = {features = ["lazy", "parquet", "group_by_list", "polars-io", "is_in"], workspace = true}
 # alloy 
 alloy-primitives.workspace = true
 
