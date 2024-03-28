@@ -5,6 +5,9 @@ use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, span, Level};
 
+use crate::tree::types::NodeWithDataRef;
+
+pub mod frontend_prunes;
 use crate::db::traits::LibmdbxReader;
 pub mod node;
 mod types;
@@ -23,7 +26,7 @@ use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 type SpansAll<V> = TreeIterator<V, std::vec::IntoIter<(B256, Vec<Vec<V>>)>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlockTree<V: NormalizedAction> {
     pub tx_roots:             Vec<Root<V>>,
     pub header:               Header,
@@ -240,6 +243,29 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.tx_roots
             .iter_mut()
             .for_each(|root| root.label_private_tx(metadata));
+    }
+
+    /// Uses search args to collect two types of nodes. Nodes that could be a
+    /// parent to a child node that we want to remove. and child nodes we
+    /// want to remove. These are both collected and passed to the classifiy
+    /// removal index function. This function will allow the user to look at
+    /// all of the parent nodes and possible removal nodes and return the
+    /// index of nodes that will be removed from the tree.
+    pub fn remove_duplicate_data<ClassifyRemovalIndex, WantedData, R>(
+        &mut self,
+        find: TreeSearchBuilder<V>,
+        find_removal: TreeSearchBuilder<V>,
+        info: WantedData,
+        classify: ClassifyRemovalIndex,
+    ) where
+        WantedData: Fn(NodeWithDataRef<'_, V>) -> R + Sync,
+        ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
+    {
+        self.run_in_span_mut(|this| {
+            this.tx_roots.iter_mut().for_each(|root| {
+                root.remove_duplicate_data(&find, &classify, &info, &find_removal)
+            });
+        });
     }
 
     /// catches all panics and errors and makes sure to log with block number to
