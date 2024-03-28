@@ -355,6 +355,7 @@ impl SubgraphVerifier {
                         tracing::debug!(
                             ?pair,
                             ?extends_to,
+                            extensions = ex.len(),
                             "connected with \n {:#?}",
                             ignored
                                 .iter()

@@ -90,10 +90,11 @@ macro_rules! define_mev_precedence {
         }
     };
 }
+
 define_mev_precedence!(
     Unknown, SearcherTx => CexDex;
     Unknown, SearcherTx, CexDex => AtomicArb;
     Unknown, SearcherTx, AtomicArb, CexDex => Sandwich;
-    Unknown,SearcherTx, AtomicArb, CexDex => Jit;
+    Unknown, SearcherTx, AtomicArb, CexDex => Jit;
     Unknown, SearcherTx,AtomicArb, CexDex, Sandwich => JitSandwich;
 );
