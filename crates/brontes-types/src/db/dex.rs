@@ -62,6 +62,13 @@ pub enum PriceAt {
     Average,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum BlockPrice {
+    Highest,
+    Lowest,
+    Average,
+}
+
 impl DexPrices {
     pub fn get_price(self, post: PriceAt) -> Rational {
         match post {
@@ -107,6 +114,54 @@ impl DexQuotes {
         error!(?pair, before=?s_idx, "no price for pair");
 
         None
+    }
+
+    pub fn price_for_block(&self, mut pair: Pair, price_at: BlockPrice) -> Option<Rational> {
+        if pair.0 == ETH_ADDRESS {
+            pair.0 = WETH_ADDRESS;
+        }
+        if pair.1 == ETH_ADDRESS {
+            pair.1 = WETH_ADDRESS;
+        }
+
+        match price_at {
+            BlockPrice::Lowest => self
+                .0
+                .iter()
+                .filter_map(|f| f.as_ref())
+                .filter_map(|p| {
+                    p.get(&pair)
+                        .map(|prices| prices.clone().get_price(PriceAt::Lowest))
+                })
+                .min(),
+            BlockPrice::Highest => self
+                .0
+                .iter()
+                .filter_map(|f| f.as_ref())
+                .filter_map(|p| {
+                    p.get(&pair)
+                        .map(|prices| prices.clone().get_price(PriceAt::Highest))
+                })
+                .max(),
+            BlockPrice::Average => {
+                let entires = self
+                    .0
+                    .iter()
+                    .filter_map(|f| f.as_ref())
+                    .filter_map(|p| {
+                        p.get(&pair)
+                            .map(|prices| prices.clone().get_price(PriceAt::Average))
+                    })
+                    .collect_vec();
+
+                if entires.is_empty() {
+                    return None
+                }
+
+                let len = entires.len();
+                Some(entires.into_iter().sum::<Rational>() / Rational::from(len))
+            }
+        }
     }
 
     pub fn has_quote(&self, pair: &Pair, tx: usize) -> bool {

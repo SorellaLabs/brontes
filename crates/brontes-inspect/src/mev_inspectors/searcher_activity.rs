@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::dex::PriceAt,
+    db::dex::BlockPrice,
     mev::{Bundle, BundleData, MevType, SearcherTx},
     normalized_actions::{accounting::ActionAccounting, Actions},
     tree::BlockTree,
@@ -56,9 +56,8 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             searcher_address.insert(mev_contract);
                         }
 
-                        let rev_usd = self.utils.get_deltas_usd(
-                            info.tx_index,
-                            PriceAt::After,
+                        let rev_usd = self.utils.get_full_block_price(
+                            BlockPrice::Lowest,
                             searcher_address,
                             &deltas,
                             metadata.clone(),
@@ -67,12 +66,12 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             .get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
                         let profit = rev_usd - gas_paid;
 
-                        let header = self.utils.build_bundle_header(
+                        let header = self.utils.build_bundle_header_searcher_activity(
                             vec![deltas],
                             vec![tx_hash],
                             &info,
                             profit.to_float(),
-                            PriceAt::Lowest,
+                            BlockPrice::Lowest,
                             &[info.gas_details],
                             metadata.clone(),
                             MevType::SearcherTx,
