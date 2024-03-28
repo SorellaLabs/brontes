@@ -12,10 +12,11 @@ use super::Node;
 use crate::{
     db::{metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::{Actions, NormalizedAction},
+    tree::types::NodeWithDataRef,
     FastHashSet, TreeSearchBuilder, TxInfo,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeData<V: NormalizedAction>(pub Vec<Option<V>>);
 
 impl<V: NormalizedAction> NodeData<V> {
@@ -43,7 +44,7 @@ impl<V: NormalizedAction> NodeData<V> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node,
     pub position:    usize,
@@ -241,12 +242,12 @@ impl<V: NormalizedAction> Root<V> {
         info: &T,
         removal: &TreeSearchBuilder<V>,
     ) where
-        T: Fn(&Node, &NodeData<V>) -> R + Sync,
+        T: Fn(NodeWithDataRef<'_, V>) -> R + Sync,
         C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
     {
         let mut find_res = Vec::new();
         self.head
-            .collect(&mut find_res, find, &|data, _| data.clone(), &self.data_store);
+            .collect(&mut find_res, find, &|data| data.node.clone(), &self.data_store);
 
         let indexes = find_res
             .into_iter()

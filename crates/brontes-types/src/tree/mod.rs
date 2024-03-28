@@ -5,6 +5,8 @@ use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, span, Level};
 
+use crate::tree::types::NodeWithDataRef;
+
 pub mod frontend_prunes;
 use crate::db::traits::LibmdbxReader;
 pub mod node;
@@ -24,7 +26,7 @@ use crate::{db::metadata::Metadata, normalized_actions::NormalizedAction};
 
 type SpansAll<V> = TreeIterator<V, std::vec::IntoIter<(B256, Vec<Vec<V>>)>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlockTree<V: NormalizedAction> {
     pub tx_roots:             Vec<Root<V>>,
     pub header:               Header,
@@ -256,11 +258,11 @@ impl<V: NormalizedAction> BlockTree<V> {
         info: WantedData,
         classify: ClassifyRemovalIndex,
     ) where
-        WantedData: Fn(&Node, &NodeData<V>) -> R + Sync,
+        WantedData: Fn(NodeWithDataRef<'_, V>) -> R + Sync,
         ClassifyRemovalIndex: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
     {
         self.run_in_span_mut(|this| {
-            self.tx_roots.iter_mut().for_each(|root| {
+            this.tx_roots.iter_mut().for_each(|root| {
                 root.remove_duplicate_data(&find, &classify, &info, &find_removal)
             });
         });
