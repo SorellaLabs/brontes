@@ -219,11 +219,29 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.try_fetch_searcher_contract_info(searcher_eoa)
     }
 
+    fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
+        self.inner.fetch_all_searcher_eoa_info()
+    }
+
+    fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
+        self.inner.fetch_all_searcher_contract_info()
+    }
+
+    fn fetch_all_searcher_info(
+        &self,
+    ) -> eyre::Result<(Vec<(Address, SearcherInfo)>, Vec<(Address, SearcherInfo)>)> {
+        self.inner.fetch_all_searcher_info()
+    }
+
     fn try_fetch_builder_info(
         &self,
         builder_coinbase_addr: Address,
     ) -> eyre::Result<Option<BuilderInfo>> {
         self.inner.try_fetch_builder_info(builder_coinbase_addr)
+    }
+
+    fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
+        self.inner.fetch_all_builder_info()
     }
 
     //TODO: JOE
@@ -451,6 +469,14 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         self.inner.get_metadata_no_dex_price(block_num)
     }
 
+    fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
+        self.inner.fetch_all_searcher_eoa_info()
+    }
+
+    fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
+        self.inner.fetch_all_searcher_contract_info()
+    }
+
     fn try_fetch_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
@@ -470,6 +496,10 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         builder_coinbase_addr: Address,
     ) -> eyre::Result<Option<BuilderInfo>> {
         self.inner.try_fetch_builder_info(builder_coinbase_addr)
+    }
+
+    fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
+        self.inner.fetch_all_builder_info()
     }
 
     //TODO: JOE

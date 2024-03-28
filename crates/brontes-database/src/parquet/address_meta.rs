@@ -3,8 +3,7 @@ use std::sync::Arc;
 use alloy_primitives::Address;
 use arrow::{
     array::{
-        Array, ArrayRef, BooleanBuilder, ListArray, ListBuilder, StringArray, StringBuilder,
-        StructArray, UInt64Builder, UInt8Builder,
+        Array, ArrayRef, BooleanBuilder, StringBuilder, StructArray, UInt64Builder, UInt8Builder,
     },
     datatypes::{DataType, Field, Schema},
     error::ArrowError,
@@ -13,7 +12,7 @@ use arrow::{
 use brontes_types::db::address_metadata::AddressMetadata;
 use itertools::Itertools;
 
-use super::utils::build_string_array;
+use super::utils::{build_string_array, get_list_string_array, get_string_array};
 
 pub fn address_metadata_to_record_batch(
     address_metadata: Vec<(Address, AddressMetadata)>,
@@ -86,33 +85,6 @@ pub fn address_metadata_to_record_batch(
             Arc::new(socials_array),
         ],
     )
-}
-
-fn get_string_array(values: Vec<Option<&str>>) -> StringArray {
-    let mut builder = StringBuilder::new();
-    for value in values {
-        builder.append_option(value);
-    }
-    builder.finish()
-}
-
-fn get_list_string_array(values: Vec<&Vec<String>>) -> ListArray {
-    let mut builder = ListBuilder::new(StringBuilder::new());
-
-    for labels in values {
-        let mut string_builder = StringBuilder::new();
-        if labels.is_empty() {
-            builder.append_null();
-            continue;
-        } else {
-            for label in labels {
-                string_builder.append_value(label);
-            }
-            builder.append_value(&string_builder.finish());
-        }
-    }
-
-    builder.finish()
 }
 
 fn get_contract_info_array(address_metadata: Vec<&AddressMetadata>) -> StructArray {

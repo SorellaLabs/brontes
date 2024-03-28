@@ -10,6 +10,9 @@ use crate::{
     cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
     runner::CliContext,
 };
+// Convert to polars notebook code:
+// bundle count by mev_type by builder
+// bundle value by mev_type by builder
 
 #[derive(Debug, Parser)]
 pub struct SearcherBuilder {
@@ -50,7 +53,7 @@ impl SearcherBuilder {
             task_executor.clone(),
         ));
 
-        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone());
+        let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone(), None);
 
         brontes_analytics
             .get_vertically_integrated_searchers(self.start_block, self.end_block, self.mev_type)
