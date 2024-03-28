@@ -323,6 +323,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             return;
         };
 
+        if price0 > 10_000_000 || price1 > 10_000_000 {
+            return
+        }
+
         let price0 = DexPrices { post_state: price0.clone(), pre_state: price0 };
         let price1 = DexPrices { post_state: price1.clone(), pre_state: price1 };
 
@@ -335,6 +339,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let block = msg.block;
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
             info!(?addr, "failed to get pair for pool");
+            self.graph_manager.update_state(addr, msg);
+
             return;
         };
 
@@ -346,13 +352,21 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, ?pool_pair, "no price for token");
+            self.graph_manager.update_state(addr, msg);
             return;
         };
+
         let Some(price1_pre) = self.get_dex_price(pair1, flipped_pool) else {
             debug!(?pair1, ?flipped_pool, "no price for token");
+            self.graph_manager.update_state(addr, msg);
             return;
         };
+
         self.graph_manager.update_state(addr, msg);
+
+        if price0_pre > 10_000_000 || price1_pre > 10_000_000 {
+            return
+        }
 
         let Some(price0_post) = self.get_dex_price(pair0, pool_pair) else {
             debug!(?pair0, "no price for token");
@@ -362,6 +376,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             debug!(?pair1, "no price for token");
             return;
         };
+
+        if price0_post > 10_000_000 || price1_post > 10_000_000 {
+            return
+        }
 
         self.store_dex_price(
             block,
