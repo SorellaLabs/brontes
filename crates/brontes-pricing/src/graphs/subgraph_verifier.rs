@@ -356,14 +356,8 @@ impl SubgraphVerifier {
                             ?pair,
                             ?extends_to,
                             extensions = ex.len(),
-                            "connected with \n {:#?} \n {:#?}",
+                            "connected with \n {:#?}",
                             ex.iter()
-                                .filter(|f| ignored.contains(f))
-                                .map(|i| state.highest_liq_for_pair(*i))
-                                .collect_vec(),
-                            ignored
-                                .iter()
-                                .filter(|i| ex.contains(i))
                                 .map(|i| state.highest_liq_for_pair(*i))
                                 .collect_vec(),
                         );
