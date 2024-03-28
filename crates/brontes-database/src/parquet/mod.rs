@@ -143,7 +143,7 @@ where
                         .wrap_err("Failed to convert MEV block data to record batch")?;
                     sync_write_parquet(
                         block_batch,
-                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::Unknown))?,
+                        get_path(base_dir_path, Tables::MevBlocks, None)?,
                     )
                 }
             }));
