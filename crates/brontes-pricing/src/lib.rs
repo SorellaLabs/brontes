@@ -364,7 +364,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         self.graph_manager.update_state(addr, msg);
 
-        if price0_pre > 10_000_000 || price1_pre > 10_000_00 {
+        if price0_pre > 10_000_000 || price1_pre > 10_000_000 {
             return
         }
 
