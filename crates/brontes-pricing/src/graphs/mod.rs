@@ -292,7 +292,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                                             self.graph_state.finalized_state(),
                                         )
                                         .unwrap_or(Rational::ONE),
-                                    goes_through.1,
+                                    jump_pair.0,
                                     goes_through,
                                 )
                             })
