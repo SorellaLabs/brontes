@@ -38,21 +38,17 @@ sol!(
 );
 
 // Positions of stable pool immutables in the bytecode
-const BASE_POOL_RANGE: std::ops::Range<usize> = "4542..4542 + 40";
-const ORIGINAL_RATES_RANGE: std::ops::Range<usize> = "9128..9128 + 40";
+const BASE_POOL_RANGE: std::ops::Range<usize> = "";
 
-pub fn extract_curve_stable_pool_immutables(bytecode: Bytes) -> (Address, Vec<U256>) {
+pub fn extract_curve_stable_pool_immutables(bytecode: Bytes) -> Address {
     // Slices
     let base_pool_slice = &bytecode[BASE_POOL_RANGE];
-    let original_rates_slice = &bytecode[ORIGINAL_RATES_RANGE];
 
     let base_pool = from_utf8(base_pool_slice).unwrap();
-    let original_rates = from_utf8(original_rates_slice).unwrap();
 
     let base_pool = Address::from_str(base_pool).unwrap();
-    //original rates are of type Vec<U256>
 
-    (base_pool, original_rates)
+    base_pool
 }
 
 fn populate_pool_data(mut pool: CurvePool, pool_data: PoolData) -> CurvePool {
@@ -79,9 +75,8 @@ pub async fn get_curve_pool_data_batch_request<M: TracingProvider>(
     // Extract base_pool, original_pool_rates from bytecode
     if let Some(pool_bytecode) = pool_bytecode {
         let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode.as_ref()));
-        let (base_pool, original_pool_rates) = extract_curve_stable_pool_immutables(pool_bytecode);
+        let base_pool = extract_curve_stable_pool_immutables(pool_bytecode);
         pool.base_pool = base_pool;
-        pool.rates = original_pool_rates;
     }
     let mut bytecode = IGetCurveV2MetapoolDataBatchRequest::BYTECODE.to_vec();
     data_constructorCall::new((

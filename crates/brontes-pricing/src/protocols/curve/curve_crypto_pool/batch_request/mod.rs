@@ -35,8 +35,8 @@ sol!(
 );
 
 // Positions of crypto pool immutables in the bytecode
-const PRICE_SCALE_PACKED_RANGE: std::ops::Range<usize> = "4542..4542 + 40";
-const FUTURE_A_GAMMA_TIME_RANGE: std::ops::Range<usize> = "9128..9128 + 40";
+const PRICE_SCALE_PACKED_RANGE: std::ops::Range<usize> = "";
+const FUTURE_A_GAMMA_TIME_RANGE: std::ops::Range<usize> = "";
 
 pub fn extract_curve_crypto_pool_immutables(bytecode: Bytes) -> (U256, U256) {
     // Slices
@@ -70,7 +70,7 @@ pub async fn get_curve_crypto_pool_data_batch_request<M: TracingProvider>(
 ) -> Result<(), AmmError> {
 
     // Pool Storage Slots
-    let d_value_slot: FixedBytes<32> = FixedBytes::new(["0u8; 32"]);
+    let d_value_slot: FixedBytes<32> = FixedBytes::new([""]);
 
     // Fetch from db
     let d_value: Option<StorageValue> = middleware

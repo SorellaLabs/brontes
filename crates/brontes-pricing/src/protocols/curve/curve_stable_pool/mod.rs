@@ -27,6 +27,16 @@ use crate::{
     errors::{AmmError, ArithmeticError, EventLogError},
     UpdatableProtocol,
 };
+
+pub const RATES: [U256; 2] = [
+    U256::from_limbs([1_000_000_000_000_000_000, 0, 0, 0]),
+    U256::from_limbs([
+        4003012203950112768,
+        542101086242752,
+        0,
+        0,
+    ])
+];
 sol!(
     #[derive(Debug)]
     interface ICurvePool {
@@ -174,7 +184,7 @@ impl CurvePool {
             fee: U256::ZERO,
             admin_fee: U256::ZERO,
             a_value: U256::ZERO,
-            rates: Vec::new(),
+            rates: RATES.to_vec(),
             ..Default::default()
         };
 
