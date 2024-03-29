@@ -893,9 +893,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .filter_map(|p| p.as_mut())
             .for_each(|map| map.retain(|k, _| !removals.contains(k)));
 
-        removals
-            .into_iter()
-            .for_each(|pair| self.graph_manager.remove_subgraph(pair))
+        removals.into_iter().for_each(|pair| {
+            tracing::info!(?pair, "drastic price change detected. removing pair");
+            self.graph_manager.remove_subgraph(pair);
+        })
     }
 
     fn poll_state_processing(
