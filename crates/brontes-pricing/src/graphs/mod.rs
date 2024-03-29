@@ -131,27 +131,30 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         connections: Option<usize>,
         timeout: Duration,
         is_extension: bool,
-    ) -> Vec<SubGraphEdge> {
+        trying_extensions: bool,
+    ) -> (Vec<SubGraphEdge>, Option<Pair>) {
         #[cfg(not(feature = "tests"))]
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
             return edges
         }
 
-        self.all_pair_graph
-            .get_paths_ignoring(
-                pair,
-                first_hop,
-                &ignore,
-                block,
-                connectivity_wight,
-                connections,
-                timeout,
-                is_extension,
-            )
-            .into_iter()
-            .flatten()
-            .flatten()
-            .collect_vec()
+        let possible_exts = trying_extensions
+            .then(|| self.sub_graph_registry.all_pairs())
+            .unwrap_or_default();
+
+        let (path, extends) = self.all_pair_graph.get_paths_ignoring(
+            pair,
+            first_hop,
+            &ignore,
+            block,
+            connectivity_wight,
+            connections,
+            timeout,
+            is_extension,
+            possible_exts,
+        );
+
+        (path.into_iter().flatten().flatten().collect_vec(), extends)
     }
 
     pub fn add_subgraph_for_verification(

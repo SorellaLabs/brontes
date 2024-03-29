@@ -72,6 +72,7 @@ pub struct StateQueryRes {
     pub full_pair:    Pair,
 }
 
+// already generated
 pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     pairs: Vec<RequeryPairs>,
@@ -79,27 +80,33 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
     pairs
         .into_par_iter()
         .map(|RequeryPairs { pair, goes_through, full_pair, block, ignore_state, frayed_ends }| {
-            let extends_pair = graph.has_extension(&goes_through, pair.1);
+            // default extends,
+            let default_extends_pair = graph.has_extension(&goes_through, pair.1);
+
             if frayed_ends.is_empty() {
+                let (edges, extends_pair) = graph.create_subgraph(
+                    block,
+                    // if not zero, then we have a go, through
+                    (!goes_through.is_zero()).then_some(goes_through),
+                    pair,
+                    ignore_state,
+                    100,
+                    Some(5),
+                    Duration::from_millis(69),
+                    default_extends_pair.is_some(),
+                    false,
+                );
+
                 return StateQueryRes {
                     extends_pair,
                     pair,
                     block,
                     goes_through,
                     full_pair,
-                    edges: vec![graph.create_subgraph(
-                        block,
-                        // if not zero, then we have a go, through
-                        (!goes_through.is_zero()).then_some(goes_through),
-                        pair,
-                        ignore_state,
-                        100,
-                        Some(5),
-                        Duration::from_millis(69),
-                        extends_pair.is_some(),
-                    )],
+                    edges: vec![edges],
                 }
             }
+
             StateQueryRes {
                 edges: frayed_ends
                     .into_iter()
@@ -107,23 +114,26 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     .collect_vec()
                     .into_par_iter()
                     .map(|(end, start)| {
-                        graph.create_subgraph(
-                            block,
-                            (!goes_through.is_zero()).then_some(goes_through),
-                            Pair(start, end),
-                            ignore_state.clone(),
-                            0,
-                            None,
-                            Duration::from_millis(325),
-                            extends_pair.is_some(),
-                        )
+                        graph
+                            .create_subgraph(
+                                block,
+                                (!goes_through.is_zero()).then_some(goes_through),
+                                Pair(start, end),
+                                ignore_state.clone(),
+                                0,
+                                None,
+                                Duration::from_millis(325),
+                                default_extends_pair.is_some(),
+                                false,
+                            )
+                            .0
                     })
                     .collect::<Vec<_>>(),
                 full_pair,
                 goes_through,
                 pair,
                 block,
-                extends_pair,
+                extends_pair: default_extends_pair,
             }
         })
         .collect::<Vec<_>>()
@@ -178,7 +188,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
 
     // if we can extend another graph and we don't have a direct pair with a quote
     // asset, then we will extend.
-    let (n_pair, extend_to) = must_include
+    let (mut n_pair, default_extend_to) = must_include
         .and_then(|must_include| {
             graph
                 .has_extension(&must_include, pair.1)
@@ -187,7 +197,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         .unwrap_or((pair, None));
 
     Some({
-        let subgraph = graph.create_subgraph(
+        let (subgraph, actual_extends) = graph.create_subgraph(
             block,
             must_include,
             n_pair,
@@ -195,8 +205,17 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             100,
             Some(5),
             Duration::from_millis(69),
-            extend_to.is_some(),
+            default_extend_to.is_some(),
+            true,
         );
+
+        let extend_to = actual_extends
+            .map(|actual| {
+                n_pair.1 = actual.0;
+                actual
+            })
+            .or(default_extend_to);
+
         NewGraphDetails {
             complete_pair: pair,
             pair: n_pair,

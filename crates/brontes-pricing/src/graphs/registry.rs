@@ -1,5 +1,6 @@
 use alloy_primitives::Address;
 use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
+use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
@@ -49,6 +50,10 @@ impl SubGraphRegistry {
             .collect();
 
         Self { sub_graphs }
+    }
+
+    pub fn all_pairs(&self) -> Vec<Pair> {
+        self.sub_graphs.keys().copied().collect_vec()
     }
 
     // check's to see if a subgraph that shares an edge exists.

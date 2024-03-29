@@ -25,7 +25,6 @@ use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
 mod graphs;
-mod pricing_verifier;
 pub mod protocols;
 mod subgraph_query;
 pub mod types;
