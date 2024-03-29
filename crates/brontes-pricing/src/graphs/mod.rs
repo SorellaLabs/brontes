@@ -27,7 +27,7 @@ use crate::{types::PoolState, Protocol};
 
 /// After we have this amount of graphs for
 /// a given pair, we won't query, goes_through
-const SUFFICIENT_PAIRS: usize = 4;
+const SUFFICIENT_PAIRS: usize = 10;
 
 /// [`GraphManager`] Is the manager for everything graph related. It is
 /// responsible for creating, updating, and maintaining the main token graph as
