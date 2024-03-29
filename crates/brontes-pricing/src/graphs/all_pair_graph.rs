@@ -310,11 +310,11 @@ impl AllPairGraph {
 
         let extends = results.last().and_then(|n| {
             n.last().and_then(|f| {
-                f.last().map(|last| {
+                f.last().and_then(|last| {
                     let token = if last.token_0_in { last.token_1 } else { last.token_0 };
 
                     let idx = self.token_to_index.get(&token).unwrap();
-                    indexes.remove(idx).unwrap()
+                    indexes.remove(idx)
                 })
             })
         });
