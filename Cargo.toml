@@ -88,15 +88,15 @@ alloy-json-abi = "0.6.0"
 alloy-dyn-abi = "0.6.0 "
 
 # Alloy core
-alloy-provider = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
-alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
-alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
-alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b", features = [
+alloy-provider = { git = "https://github.com/alloy-rs/alloy.git", rev = "7e39c85" }
+alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "7e39c85" }
+alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "7e39c85" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "7e39c85" }
+alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "7e39c85" }
+alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "7e39c85", features = [
   "jsonrpsee-types",
 ] }
-alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "410850b" }
+alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "7e39c85" }
 
 # Async
 tokio = { version = "1.13.0", features = ["full", "tracing"] }
