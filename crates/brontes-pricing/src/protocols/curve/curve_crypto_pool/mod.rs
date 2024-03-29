@@ -75,9 +75,7 @@ pub struct CurvePool {
     pub token_decimals:     Vec<u8>,
     pub fee:                U256,
     pub reserves:           Vec<U256>,
-    //update this on executions if needed
     pub a_value:            U256,
-    //update this on executions if needed
     pub gamma_value:        U256,
     // contract immutable variables
     pub price_scale_packed: U256,
