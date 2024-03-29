@@ -269,6 +269,11 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !(ignores.contains(k)))
                     .collect::<FastHashMap<_, _>>();
 
+                if result.should_abandon {
+                    tracing::debug!(?pair, "aborting");
+                    return VerificationResults::Abort
+                }
+
                 if result.should_requery {
                     let goes_through = subgraph.subgraph.must_go_through();
                     let full_pair = subgraph.subgraph.complete_pair();
@@ -385,11 +390,9 @@ impl SubgraphVerifier {
             .map(|(pair, block, rundown, mut subgraph, price, quote)| {
                 let edge_state = state_tracker.state_for_verification(block);
                 let result = if rundown {
-                    VerificationOutcome {
-                        should_requery: false,
-                        removals:       FastHashMap::default(),
-                        frayed_ends:    vec![],
-                    }
+                    subgraph
+                        .subgraph
+                        .rundown_subgraph_check(quote, price, edge_state, all_graph)
                 } else {
                     subgraph
                         .subgraph
@@ -479,15 +482,7 @@ pub struct VerificationFailed {
 pub enum VerificationResults {
     Passed(VerificationPass),
     Failed(VerificationFailed),
-}
-
-impl VerificationResults {
-    pub fn split(self) -> (Option<VerificationPass>, Option<VerificationFailed>) {
-        match self {
-            Self::Passed(p) => (Some(p), None),
-            Self::Failed(f) => (None, Some(f)),
-        }
-    }
+    Abort,
 }
 
 #[derive(Debug, Default, Clone)]

@@ -498,6 +498,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         ignore_state: failed.ignore_state,
                     })
                 }
+                VerificationResults::Abort => None,
             })
             .collect_vec();
 

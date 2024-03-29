@@ -29,6 +29,7 @@ use crate::{types::ProtocolState, AllPairGraph, Pair};
 
 pub struct VerificationOutcome {
     pub should_requery: bool,
+    pub should_abandon: bool,
     pub removals:       FastHashMap<Pair, FastHashSet<BadEdge>>,
     pub frayed_ends:    Vec<Address>,
 }
@@ -48,6 +49,7 @@ struct BfsArgs {
 }
 
 const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
+const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 5_000;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
@@ -342,6 +344,42 @@ impl PairSubGraph {
         true
     }
 
+    pub fn rundown_subgraph_check<T: ProtocolState>(
+        &mut self,
+        start: Address,
+        start_price: Rational,
+        state: FastHashMap<Address, T>,
+        _all_pair_graph: &AllPairGraph,
+    ) -> VerificationOutcome {
+        let result = self.run_bfs_with_liquidity_params(start, start_price, &state);
+
+        // grab all edges below rundown threshold and remove. if disjoint, then
+        // we abandon pricing for the given pair
+        let edges = result
+            .removal_state
+            .into_iter()
+            .flat_map(|(pair, v)| {
+                v.into_iter()
+                    .zip(vec![pair].into_iter().cycle())
+                    .sorted_by(|a, b| a.0.liquidity.cmp(&b.0.liquidity))
+            })
+            .take_while(|(edge, _)| edge.liquidity <= MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN)
+            .map(|(edge, pair)| (pair, edge.pool_address))
+            .collect_vec();
+
+        self.prune_subgraph_rundown(edges);
+
+        let disjoint =
+            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
+                .is_none();
+
+        VerificationOutcome {
+            should_requery: false,
+            should_abandon: disjoint,
+            removals:       FastHashMap::default(),
+            frayed_ends:    vec![],
+        }
+    }
 
     pub fn verify_subgraph<T: ProtocolState>(
         &mut self,
@@ -371,6 +409,7 @@ impl PairSubGraph {
         // if we not disjoint, do a bad pool check.
         VerificationOutcome {
             should_requery: disjoint,
+            should_abandon: false,
             removals: result.removal_state,
             frayed_ends,
         }
@@ -451,6 +490,40 @@ impl PairSubGraph {
         };
 
         map.entry(pair).or_default().insert(bad_edge);
+    }
+
+    fn prune_subgraph_rundown(&mut self, data: Vec<(Pair, Address)>) {
+        data.into_iter().for_each(|(k, bad_edge_to_pool)| {
+            let Some(n0) = self.token_to_index.get(&k.0) else {
+                tracing::error!("no token 0 in token to index");
+                return;
+            };
+            let Some(n1) = self.token_to_index.get(&k.1) else {
+                tracing::error!("no token 1 in token to index");
+                return;
+            };
+            let n0 = *n0;
+            let n1 = *n1;
+
+            let Some((e, dir)) = self.graph.find_edge_undirected(n0.into(), n1.into()) else {
+                tracing::error!("no edge found");
+                return;
+            };
+
+            let mut weights = self.graph.remove_edge(e).unwrap();
+            weights.retain(|node| bad_edge_to_pool != node.pool_addr);
+
+            if !weights.is_empty() {
+                match dir {
+                    Direction::Incoming => {
+                        self.graph.add_edge(n1.into(), n0.into(), weights);
+                    }
+                    Direction::Outgoing => {
+                        self.graph.add_edge(n0.into(), n1.into(), weights);
+                    }
+                }
+            }
+        })
     }
 
     fn prune_subgraph(&mut self, removal_state: &FastHashMap<Pair, FastHashSet<BadEdge>>) {
