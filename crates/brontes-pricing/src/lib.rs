@@ -927,7 +927,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        let mut work = 2;
+        let mut work = 8;
 
         loop {
             work -= 1;
