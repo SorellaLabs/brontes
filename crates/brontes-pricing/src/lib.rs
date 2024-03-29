@@ -21,9 +21,13 @@
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
 
-use brontes_types::{execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate};
+use brontes_types::{
+    db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
+};
 mod graphs;
+mod pricing_verifier;
 pub mod protocols;
+mod subgraph_query;
 pub mod types;
 use std::{
     collections::{hash_map::Entry, VecDeque},
@@ -32,7 +36,6 @@ use std::{
         Arc,
     },
     task::{Context, Poll},
-    time::Duration,
 };
 
 use alloy_primitives::Address;
@@ -54,15 +57,22 @@ pub use graphs::{
     VerificationResults,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::One, Rational};
+use malachite::{
+    num::{arithmetic::traits::Abs, basic::traits::One},
+    Rational,
+};
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use subgraph_query::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::info;
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
+
+/// max movement of price in the block before its considered invalid.
+/// currently 10%
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(1, 10);
 
 /// # Brontes Batch Pricer
 ///
@@ -741,10 +751,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             && self.completed_block < self.current_block
     }
 
-    /// allows for pre-processing of up to 15 future blocks
+    /// allows for pre-processing of up to 10 future blocks
     /// before we only will focus on clearing current state
     fn process_future_blocks(&self) -> bool {
-        self.completed_block + 15 > self.current_block
+        self.completed_block + 10 > self.current_block
     }
 
     // called when we try to progress to the next block
@@ -783,10 +793,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let block = self.completed_block;
 
-        let res = self
+        let mut res = self
             .dex_quotes
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
+
+        self.handle_drastic_price_changes(&mut res);
 
         self.completed_block += 1;
 
@@ -824,14 +836,67 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let block = self.completed_block;
 
-        let res = self
+        let mut res = self
             .dex_quotes
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
 
+        self.handle_drastic_price_changes(&mut res);
+
         self.completed_block += 1;
 
         Some((block, res))
+    }
+
+    /// For the given DexQuotes, checks to see if the start price vs the end
+    /// price contains a drastic change. This is done to avoid incorrect
+    /// prices. prices can have drastic changes within the block (think
+    /// sandwich for example). However we know that any incorrect price
+    /// should be corrected before the end of the block. We use this knowledge
+    /// to see if the price had a massive valid change or is just being
+    /// manipulated for mev.
+    fn handle_drastic_price_changes(&mut self, prices: &mut DexQuotes) {
+        let mut first = FastHashMap::default();
+        let mut last = FastHashMap::default();
+
+        prices
+            .0
+            .iter()
+            .filter_map(|p| p.as_ref())
+            .for_each(|tx_prices| {
+                for (k, p) in tx_prices {
+                    if let Entry::Vacant(v) = first.entry(*k) {
+                        v.insert(p.clone().get_price(PriceAt::Before));
+                        last.insert(*k, p.clone().get_price(PriceAt::After));
+                    } else {
+                        last.insert(*k, p.clone().get_price(PriceAt::After));
+                    }
+                }
+            });
+
+        // all pairs over max price movement
+        let removals = first
+            .into_iter()
+            .filter_map(|(key, price)| Some((key, price, last.remove(&key)?)))
+            .filter_map(|(key, first_price, last_price)| {
+                let block_movement = (last_price - &first_price).abs() / first_price;
+                if block_movement > MAX_BLOCK_MOVEMENT {
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect::<FastHashSet<_>>();
+
+        prices
+            .0
+            .iter_mut()
+            .filter_map(|p| p.as_mut())
+            .for_each(|map| map.retain(|k, _| !removals.contains(k)));
+
+        removals
+            .into_iter()
+            .for_each(|pair| self.graph_manager.remove_subgraph(pair))
     }
 
     fn poll_state_processing(
@@ -963,203 +1028,6 @@ impl StateBuffer {
     pub fn new() -> Self {
         Self { updates: FastHashMap::default(), overrides: FastHashMap::default() }
     }
-}
-
-type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
-
-fn graph_search_par<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
-    quote: Address,
-    updates: Vec<PoolUpdate>,
-) -> GraphSeachParRes {
-    let (state, pools): (Vec<_>, Vec<_>) = updates
-        .into_par_iter()
-        .filter_map(|msg| {
-            let pair = msg.get_pair(quote)?;
-            let is_transfer = msg.is_transfer();
-
-            let pair0 = Pair(pair.0, quote);
-            let pair1 = Pair(pair.1, quote);
-
-            let pair = Some(pair).filter(|_| !is_transfer);
-
-            let (state, path) = on_new_pool_pair(
-                graph,
-                msg,
-                pair,
-                (!graph.has_subgraph_goes_through(pair0, pair)).then_some(pair0),
-                (!graph.has_subgraph_goes_through(pair1, pair)).then_some(pair1),
-            );
-            Some((state, path))
-        })
-        .unzip();
-
-    (state, pools)
-}
-
-type ParStateQueryRes = Vec<StateQueryRes>;
-
-pub struct RequeryPairs {
-    pub pair:         Pair,
-    pub goes_through: Pair,
-    pub full_pair:    Pair,
-    pub block:        u64,
-    pub ignore_state: FastHashSet<Pair>,
-    pub frayed_ends:  Vec<Address>,
-}
-
-pub struct NewGraphDetails {
-    pub must_include:  Pair,
-    pub complete_pair: Pair,
-    pub pair:          Pair,
-    pub extends_pair:  Option<Pair>,
-    pub block:         u64,
-    pub edges:         Vec<SubGraphEdge>,
-}
-
-pub struct StateQueryRes {
-    pair:         Pair,
-    block:        u64,
-    edges:        Vec<Vec<SubGraphEdge>>,
-    extends_pair: Option<Pair>,
-    goes_through: Pair,
-    full_pair:    Pair,
-}
-
-fn par_state_query<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
-    pairs: Vec<RequeryPairs>,
-) -> ParStateQueryRes {
-    pairs
-        .into_par_iter()
-        .map(|RequeryPairs { pair, goes_through, full_pair, block, ignore_state, frayed_ends }| {
-            let extends_pair = graph.has_extension(&goes_through, pair.1);
-            if frayed_ends.is_empty() {
-                return StateQueryRes {
-                    extends_pair,
-                    pair,
-                    block,
-                    goes_through,
-                    full_pair,
-                    edges: vec![graph.create_subgraph(
-                        block,
-                        // if not zero, then we have a go, through
-                        (!goes_through.is_zero()).then_some(goes_through),
-                        pair,
-                        ignore_state,
-                        100,
-                        Some(5),
-                        Duration::from_millis(69),
-                        extends_pair.is_some(),
-                    )],
-                }
-            }
-            StateQueryRes {
-                edges: frayed_ends
-                    .into_iter()
-                    .zip(vec![pair.0].into_iter().cycle())
-                    .collect_vec()
-                    .into_par_iter()
-                    .map(|(end, start)| {
-                        graph.create_subgraph(
-                            block,
-                            (!goes_through.is_zero()).then_some(goes_through),
-                            Pair(start, end),
-                            ignore_state.clone(),
-                            0,
-                            None,
-                            Duration::from_millis(325),
-                            extends_pair.is_some(),
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-                full_pair,
-                goes_through,
-                pair,
-                block,
-                extends_pair,
-            }
-        })
-        .collect::<Vec<_>>()
-}
-
-type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<NewGraphDetails>);
-
-fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
-    msg: PoolUpdate,
-    main_pair: Option<Pair>,
-    pair0: Option<Pair>,
-    pair1: Option<Pair>,
-) -> NewPoolPair {
-    let block = msg.block;
-
-    let mut buf_pending = Vec::new();
-    let mut path_pending = Vec::new();
-
-    // add default pair to buffer to make sure that we price all pairs and apply the
-    // state diff. we don't wan't to actually do a graph search for this pair
-    // though.
-    buf_pending.push((msg.get_pool_address(), msg));
-
-    // add first pair
-    if let Some(pair0) = pair0 {
-        if let Some(path) = queue_loading_returns(graph, block, main_pair, pair0) {
-            path_pending.push(path);
-        }
-    }
-
-    // add second direction
-    if let Some(pair1) = pair1 {
-        if let Some(path) = queue_loading_returns(graph, block, main_pair.map(|f| f.flip()), pair1)
-        {
-            path_pending.push(path);
-        }
-    }
-
-    (buf_pending, path_pending)
-}
-
-fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
-    block: u64,
-    must_include: Option<Pair>,
-    pair: Pair,
-) -> Option<NewGraphDetails> {
-    if pair.0 == pair.1 {
-        return None
-    }
-
-    // if we can extend another graph and we don't have a direct pair with a quote
-    // asset, then we will extend.
-    let (n_pair, extend_to) = must_include
-        .and_then(|must_include| {
-            graph
-                .has_extension(&must_include, pair.1)
-                .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
-        })
-        .unwrap_or((pair, None));
-
-    Some({
-        let subgraph = graph.create_subgraph(
-            block,
-            must_include,
-            n_pair,
-            FastHashSet::default(),
-            100,
-            Some(5),
-            Duration::from_millis(69),
-            extend_to.is_some(),
-        );
-        NewGraphDetails {
-            complete_pair: pair,
-            pair: n_pair,
-            must_include: must_include.unwrap_or_default(),
-            block,
-            edges: subgraph,
-            extends_pair: extend_to,
-        }
-    })
 }
 
 #[cfg(feature = "tests")]

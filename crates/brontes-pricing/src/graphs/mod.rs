@@ -197,6 +197,10 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .remove_empty_address(pool_pair, pool_address)
     }
 
+    pub fn remove_subgraph(&mut self, pool_pair: Pair) {
+        self.sub_graph_registry.remove_subgraph(&pool_pair);
+    }
+
     /// Returns all pairs that have been ignored from lowest to highest
     /// liquidity
     pub fn verify_subgraph_on_new_path_failure(

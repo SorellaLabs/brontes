@@ -70,6 +70,10 @@ impl SubGraphRegistry {
         }
     }
 
+    pub fn remove_subgraph(&mut self, pair: &Pair) {
+        self.sub_graphs.remove(pair);
+    }
+
     // if we have more than 4 extensions, this is enough of a market outlook
     pub fn current_pairs(&self, pair: &Pair) -> usize {
         self.sub_graphs
