@@ -317,7 +317,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                     self.get_token_value_cex(token, amount.clone(), &metadata)
                                         .unwrap_or(Rational::ZERO)
                                 } else {
-                                    at.and_then(|at| {
+                                    at.map(|at| {
                                         self.get_token_value_dex(
                                             tx_index_for_pricing as usize,
                                             at,
@@ -328,10 +328,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                     })
                                     .or_else(|| {
                                         let block = block_price.unwrap();
-                                        self.get_token_value_dex_block(
+                                        Some(self.get_token_value_dex_block(
                                             block, token, &amount, &metadata,
-                                        )
+                                        ))
                                     })
+                                    .flatten()
                                     .unwrap_or(Rational::ZERO)
                                 };
                                 //TODO: Restructure code so I don't have to requery token deltas
