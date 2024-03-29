@@ -59,7 +59,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, info};
+use tracing::info;
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
