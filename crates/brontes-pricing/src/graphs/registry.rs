@@ -121,15 +121,25 @@ impl SubGraphRegistry {
         let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
-        next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
-            .map(|price| {
-                if unordered_pair.eq_unordered(&complete_pair) {
-                    price
-                } else {
-                    price.reciprocal()
-                }
-            })
-            .or(Some(default_price))
+        if let Some(next) = next {
+            let price = self.get_price_all(next, edge_state)? * &default_price;
+            if unordered_pair.eq_unordered(&complete_pair) {
+                Some(price)
+            } else {
+                Some(price.reciprocal())
+            }
+        } else {
+            Some(default_price)
+        }
+        // next.and_then(|next| Some(self.get_price_all(next, edge_state)? *
+        // &default_price))     .map(|price| {
+        //         if unordered_pair.eq_unordered(&complete_pair) {
+        //             price
+        //         } else {
+        //             price.reciprocal()
+        //         }
+        //     })
+        //     .or(Some(default_price))
     }
 
     fn get_price_once(
