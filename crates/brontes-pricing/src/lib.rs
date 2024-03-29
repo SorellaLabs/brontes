@@ -894,7 +894,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .for_each(|map| map.retain(|k, _| !removals.contains(k)));
 
         removals.into_iter().for_each(|pair| {
-            tracing::info!(?pair, "drastic price change detected. removing pair");
+            tracing::debug!(?pair, "drastic price change detected. removing pair");
             self.graph_manager.remove_subgraph(pair);
         })
     }
@@ -927,7 +927,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        let mut work = 128;
+        let mut work = 2;
 
         loop {
             work -= 1;
