@@ -68,14 +68,14 @@ reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", rev = "c04db
 ruint = "1.9.0"
 
 # revm
-revm = { version = "7.0.0", features = [
+revm = { version = "7.2.0", features = [
   "std",
   "secp256k1",
 ], default-features = false }
-revm-primitives = { version = "2.0", features = [
+revm-primitives = { version = "3.1", features = [
   "std",
 ], default-features = false }
-revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "f96bc1f" }
+revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "b3082f3" }
 
 
 # Alloy
