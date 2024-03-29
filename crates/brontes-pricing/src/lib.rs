@@ -313,21 +313,15 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let flipped_pool = pool_pair.flip();
 
-        let Some(price0) = self.get_dex_price(pair0, pool_pair) else {
-            debug!(?pair0, "no price for token");
-            return;
+        if let Some(price0) = self.get_dex_price(pair0, pool_pair) {
+            let price0 = DexPrices { post_state: price0.clone(), pre_state: price0 };
+            self.store_dex_price(block, tx_idx, pair0, price0);
         };
 
-        let Some(price1) = self.get_dex_price(pair1, flipped_pool) else {
-            debug!(?pair1, "no price for token");
-            return;
+        if let Some(price1) = self.get_dex_price(pair1, flipped_pool) {
+            let price1 = DexPrices { post_state: price1.clone(), pre_state: price1 };
+            self.store_dex_price(block, tx_idx, pair1, price1);
         };
-
-        let price0 = DexPrices { post_state: price0.clone(), pre_state: price0 };
-        let price1 = DexPrices { post_state: price1.clone(), pre_state: price1 };
-
-        self.store_dex_price(block, tx_idx, pair0, price0);
-        self.store_dex_price(block, tx_idx, pair1, price1);
     }
 
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
@@ -339,48 +333,36 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             return;
         };
 
-        // add price post state
         let pair0 = Pair(pool_pair.0, self.quote_asset);
         let pair1 = Pair(pool_pair.1, self.quote_asset);
 
         let flipped_pool = pool_pair.flip();
 
-        let Some(price0_pre) = self.get_dex_price(pair0, pool_pair) else {
-            debug!(?pair0, ?pool_pair, "no price for token");
-            self.graph_manager.update_state(addr, msg);
-            return;
-        };
-
-        let Some(price1_pre) = self.get_dex_price(pair1, flipped_pool) else {
-            debug!(?pair1, ?flipped_pool, "no price for token");
-            self.graph_manager.update_state(addr, msg);
-            return;
-        };
+        let price0_pre = self.get_dex_price(pair0, pool_pair);
+        let price1_pre = self.get_dex_price(pair1, flipped_pool);
 
         self.graph_manager.update_state(addr, msg);
 
-        let Some(price0_post) = self.get_dex_price(pair0, pool_pair) else {
-            debug!(?pair0, "no price for token");
-            return;
-        };
-        let Some(price1_post) = self.get_dex_price(pair1, flipped_pool) else {
-            debug!(?pair1, "no price for token");
-            return;
-        };
+        let price0_post = self.get_dex_price(pair0, pool_pair);
+        let price1_post = self.get_dex_price(pair1, flipped_pool);
 
-        self.store_dex_price(
-            block,
-            tx_idx,
-            pair0,
-            DexPrices { pre_state: price0_pre, post_state: price0_post },
-        );
+        if let (Some(price0_pre), Some(price0_post)) = (price0_pre, price0_post) {
+            self.store_dex_price(
+                block,
+                tx_idx,
+                pair0,
+                DexPrices { pre_state: price0_pre, post_state: price0_post },
+            );
+        }
 
-        self.store_dex_price(
-            block,
-            tx_idx,
-            pair1,
-            DexPrices { pre_state: price1_pre, post_state: price1_post },
-        );
+        if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
+            self.store_dex_price(
+                block,
+                tx_idx,
+                pair1,
+                DexPrices { pre_state: price1_pre, post_state: price1_post },
+            );
+        }
     }
 
     /// Processes the result of lazy pool state loading. It updates the graph

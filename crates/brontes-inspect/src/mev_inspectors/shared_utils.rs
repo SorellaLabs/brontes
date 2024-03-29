@@ -51,6 +51,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         for (address, token_deltas) in deltas {
             for (token_addr, amount) in token_deltas {
+                if amount == &Rational::ZERO {
+                    continue
+                }
+
                 let pair = Pair(*token_addr, self.quote);
                 let price = if cex {
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
