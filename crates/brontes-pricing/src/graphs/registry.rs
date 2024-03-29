@@ -112,8 +112,15 @@ impl SubGraphRegistry {
         self.sub_graphs.contains_key(&pair.ordered())
     }
 
+    fn remove_all_extensions_of(&mut self, pair: Pair) {
+        self.sub_graphs.retain(|_, inner| {
+            inner.retain(|(_, g)| g.extends_to().map(|ex| ex != pair).unwrap_or(true));
+            !inner.is_empty()
+        })
+    }
+
     pub fn get_price(
-        &self,
+        &mut self,
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, PoolState>,
@@ -122,7 +129,13 @@ impl SubGraphRegistry {
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         if let Some(next) = next {
-            let price = self.get_price_all(next, edge_state)? * &default_price;
+            let next_price = self.get_price_all(next, edge_state);
+            if next_price.is_none() {
+                self.remove_all_extensions_of(next);
+                return None
+            }
+
+            let price = next_price.unwrap() * &default_price;
             if unordered_pair.eq_unordered(&complete_pair) {
                 Some(price)
             } else {
