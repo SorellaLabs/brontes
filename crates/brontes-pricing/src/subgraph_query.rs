@@ -190,6 +190,10 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     // asset, then we will extend.
     let (mut n_pair, default_extend_to) = must_include
         .and_then(|must_include| {
+            if must_include.is_zero() {
+                return None
+            }
+
             graph
                 .has_extension(&must_include, pair.1)
                 .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
