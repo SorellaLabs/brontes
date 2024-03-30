@@ -1,11 +1,12 @@
 use arrow::{
     array::{
-        ArrayBuilder, Decimal128Builder, Float64Builder, ListArray, ListBuilder, StringBuilder,
-        StructBuilder, UInt16Builder,
+        ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
+        UInt16Builder,
     },
     datatypes::{DataType, Field},
 };
 use brontes_types::{normalized_actions::NormalizedLiquidation, ToFloatNearest};
+
 pub fn get_normalized_liquidation_list_array(
     normalized_liquidations_list: Vec<Vec<&NormalizedLiquidation>>,
 ) -> ListArray {
@@ -19,7 +20,7 @@ pub fn get_normalized_liquidation_list_array(
         Field::new("debt_asset", DataType::Utf8, false),
         Field::new("covered_debt", DataType::Float64, false),
         Field::new("liquidated_collateral", DataType::Float64, false),
-        Field::new("msg_value", DataType::Decimal128(38, 10), false),
+        Field::new("msg_value", DataType::Utf8, false),
     ];
 
     let builder_array: Vec<Box<dyn ArrayBuilder>> = vec![
@@ -32,7 +33,7 @@ pub fn get_normalized_liquidation_list_array(
         Box::new(StringBuilder::new()),
         Box::new(Float64Builder::new()),
         Box::new(Float64Builder::new()),
-        Box::new(Decimal128Builder::new()),
+        Box::new(StringBuilder::new()),
     ];
 
     let mut list_builder = ListBuilder::new(StructBuilder::new(fields, builder_array));
@@ -85,9 +86,9 @@ pub fn get_normalized_liquidation_list_array(
                 .append_value(liquidation.liquidated_collateral.clone().to_float());
 
             struct_builder
-                .field_builder::<Decimal128Builder>(9)
+                .field_builder::<StringBuilder>(9)
                 .unwrap()
-                .append_value(liquidation.msg_value.to::<i128>());
+                .append_value(liquidation.msg_value.to_string());
 
             struct_builder.append(true);
         }
