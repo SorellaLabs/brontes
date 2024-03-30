@@ -101,4 +101,3 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     //     },
     // );
 }
-
