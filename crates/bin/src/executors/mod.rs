@@ -345,7 +345,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 Some(total_blocks),
                 ProgressDrawTarget::stderr_with_hz(1),
             );
-            progress_bar.enable_steady_tick(Duration::from_millis(1));
             progress_bar.set_style(
                 ProgressStyle::with_template(
                     "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
