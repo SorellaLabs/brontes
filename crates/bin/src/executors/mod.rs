@@ -44,6 +44,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub min_batch_size:    u64,
     pub quote_asset:       Address,
     pub force_dex_pricing: bool,
+    pub only_cex_dex:      bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
@@ -64,6 +65,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         min_batch_size: u64,
         quote_asset: Address,
         force_dex_pricing: bool,
+        only_cex_dex: bool,
 
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
@@ -83,6 +85,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             inspectors,
             quote_asset,
             end_block,
+            only_cex_dex,
             _p: PhantomData,
         }
     }
@@ -191,8 +194,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             rest_pairs,
         );
         let pricing = WaitingForPricerFuture::new(pricer, executor);
-        let fetcher =
-            MetadataFetcher::new(tip.then_some(self.clickhouse), pricing, self.force_dex_pricing);
+        let fetcher = MetadataFetcher::new(
+            tip.then_some(self.clickhouse),
+            pricing,
+            self.force_dex_pricing,
+            self.only_cex_dex,
+        );
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
