@@ -1,5 +1,5 @@
 use arrow::{
-    array::{ArrayBuilder, Decimal128Builder, ListArray, ListBuilder, StructArray, StructBuilder},
+    array::{ArrayBuilder, ListArray, ListBuilder, StringBuilder, StructArray, StructBuilder},
     datatypes::{DataType, Field},
 };
 use brontes_types::tree::GasDetails;
@@ -14,44 +14,32 @@ pub fn get_gas_details_list_array(gas_details_list: Vec<&Vec<GasDetails>>) -> Li
         let struct_builder = list_builder.values();
 
         for gas_details in gas_details_vec {
-            struct_builder
-                .field_builder::<Decimal128Builder>(0)
-                .unwrap()
-                .append_option(
-                    gas_details
-                        .coinbase_transfer
-                        .map(|value| value.try_into().expect("Gas detail overflow")),
-                );
+            if let Some(coinbase_transfer) = gas_details.coinbase_transfer {
+                struct_builder
+                    .field_builder::<StringBuilder>(0)
+                    .unwrap()
+                    .append_value(coinbase_transfer.to_string());
+            } else {
+                struct_builder
+                    .field_builder::<StringBuilder>(0)
+                    .unwrap()
+                    .append_null();
+            }
 
             struct_builder
-                .field_builder::<Decimal128Builder>(1)
+                .field_builder::<StringBuilder>(1)
                 .unwrap()
-                .append_value(
-                    gas_details
-                        .priority_fee
-                        .try_into()
-                        .expect("Gas detail overflow"),
-                );
+                .append_value(gas_details.priority_fee.to_string());
 
             struct_builder
-                .field_builder::<Decimal128Builder>(2)
+                .field_builder::<StringBuilder>(2)
                 .unwrap()
-                .append_value(
-                    gas_details
-                        .gas_used
-                        .try_into()
-                        .expect("Gas detail overflow"),
-                );
+                .append_value(gas_details.gas_used.to_string());
 
             struct_builder
-                .field_builder::<Decimal128Builder>(3)
+                .field_builder::<StringBuilder>(3)
                 .unwrap()
-                .append_value(
-                    gas_details
-                        .effective_gas_price
-                        .try_into()
-                        .expect("Gas detail overflow"),
-                );
+                .append_value(gas_details.effective_gas_price.to_string());
             struct_builder.append(true);
         }
 
@@ -68,39 +56,32 @@ pub fn get_gas_details_array(gas_details: Vec<GasDetails>) -> StructArray {
     let mut struct_builder = StructBuilder::new(fields, builder_array);
 
     for gas_detail in gas_details {
-        struct_builder
-            .field_builder::<Decimal128Builder>(0)
-            .unwrap()
-            .append_option(
-                gas_detail
-                    .coinbase_transfer
-                    .map(|value| value.try_into().expect("Gas detail overflow")),
-            );
+        if let Some(coinbase_transfer) = gas_detail.coinbase_transfer {
+            struct_builder
+                .field_builder::<StringBuilder>(0)
+                .unwrap()
+                .append_value(coinbase_transfer.to_string());
+        } else {
+            struct_builder
+                .field_builder::<StringBuilder>(0)
+                .unwrap()
+                .append_null();
+        }
 
         struct_builder
-            .field_builder::<Decimal128Builder>(1)
+            .field_builder::<StringBuilder>(1)
             .unwrap()
-            .append_value(
-                gas_detail
-                    .priority_fee
-                    .try_into()
-                    .expect("Gas detail overflow"),
-            );
+            .append_value(gas_detail.priority_fee.to_string());
 
         struct_builder
-            .field_builder::<Decimal128Builder>(2)
+            .field_builder::<StringBuilder>(2)
             .unwrap()
-            .append_value(gas_detail.gas_used.try_into().expect("Gas detail overflow"));
+            .append_value(gas_detail.gas_used.to_string());
 
         struct_builder
-            .field_builder::<Decimal128Builder>(3)
+            .field_builder::<StringBuilder>(3)
             .unwrap()
-            .append_value(
-                gas_detail
-                    .effective_gas_price
-                    .try_into()
-                    .expect("Gas detail overflow"),
-            );
+            .append_value(gas_detail.effective_gas_price.to_string());
 
         struct_builder.append(true);
     }
@@ -110,18 +91,18 @@ pub fn get_gas_details_array(gas_details: Vec<GasDetails>) -> StructArray {
 
 fn gas_details_fields() -> Vec<Field> {
     vec![
-        Field::new("coinbase_transfer", DataType::Decimal128(38, 10), true),
-        Field::new("priority_fee", DataType::Decimal128(38, 10), false),
-        Field::new("gas_used", DataType::Decimal128(38, 10), false),
-        Field::new("effective_gas_price", DataType::Decimal128(38, 10), false),
+        Field::new("coinbase_transfer", DataType::Utf8, true),
+        Field::new("priority_fee", DataType::Utf8, false),
+        Field::new("gas_used", DataType::Utf8, false),
+        Field::new("effective_gas_price", DataType::Utf8, false),
     ]
 }
 
 fn gas_details_struct_builder() -> Vec<Box<dyn ArrayBuilder>> {
     vec![
-        Box::new(Decimal128Builder::new()),
-        Box::new(Decimal128Builder::new()),
-        Box::new(Decimal128Builder::new()),
-        Box::new(Decimal128Builder::new()),
+        Box::new(StringBuilder::new()),
+        Box::new(StringBuilder::new()),
+        Box::new(StringBuilder::new()),
+        Box::new(StringBuilder::new()),
     ]
 }
