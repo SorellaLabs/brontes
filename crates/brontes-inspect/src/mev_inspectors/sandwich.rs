@@ -209,6 +209,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // front run that is unrelated
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions, &victim_info)
         {
+            tracing::info!( "no overlap: {:#?}", backrun_info);
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
             if possible_front_runs_info.len() > 1 {
