@@ -352,13 +352,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     ) -> bool {
         let f_swap_len = front_run_swaps.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
-            victim_actions.into_iter().zip(victim_info).enumerate()
+            victim_actions.iter().zip(victim_info).enumerate()
         {
             let chunk_front_run_swaps = &front_run_swaps[0..=i];
 
-            let chunk_back_run_swaps = if f_swap_len - 1 >= i + 1 {
+            let chunk_back_run_swaps = if f_swap_len > i + 1 {
                 let mut res = vec![];
-                res.extend(front_run_swaps[i + 1..].into_iter().flatten().cloned());
+                res.extend(front_run_swaps[i + 1..].iter().flatten().cloned());
                 res.extend(back_run_swaps.to_vec().clone());
                 res
             } else {
