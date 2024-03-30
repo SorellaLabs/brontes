@@ -1017,6 +1017,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                     inner.and_then(|action| match action {
                         DexPriceMsg::DisablePricingFor(block) => {
                             self.skip_pricing.push_back(block);
+                            tracing::info!(?block, "skipping for pricing");
                             Some(PollResult::Skip)
                         }
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
