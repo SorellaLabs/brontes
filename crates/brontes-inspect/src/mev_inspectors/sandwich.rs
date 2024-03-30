@@ -370,7 +370,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             tracing::info!(
                 front_run_am = chunk_front_run_swaps.len(),
-                back_run_am = chunk_back_run_swaps.len()
+                front_run_swaps= chunk_front_run_swaps.iter().flatten().count(),
+                back_run_aswaps = chunk_back_run_swaps.len()
             );
 
             let front_run_pools = chunk_front_run_swaps
