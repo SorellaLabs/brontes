@@ -5,13 +5,13 @@ use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::frontend_prunes::{
+    remove_burn_transfers, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
+};
 use brontes_types::{
     db::metadata::Metadata,
     execute_on,
-    frontend_prunes::{
-        remove_burn_transfers, remove_collect_transfers, remove_mint_transfers,
-        remove_swap_transfers,
-    },
     mev::{Bundle, MevBlock, MevType},
     normalized_actions::Actions,
     tree::BlockTree,

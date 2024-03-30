@@ -205,10 +205,11 @@ impl AllPairGraph {
         connections: Option<usize>,
         timeout: Duration,
         is_extension: bool,
-    ) -> Vec<Vec<Vec<SubGraphEdge>>> {
+        possible_extensions: Vec<Pair>,
+    ) -> (Vec<Vec<Vec<SubGraphEdge>>>, Option<Pair>) {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
-            return vec![]
+            return (vec![], None)
         }
 
         let Some(start_idx) = first_hop
@@ -217,7 +218,7 @@ impl AllPairGraph {
         else {
             let addr = pair.0;
             debug!(?addr, "no start node for address");
-            return vec![]
+            return (vec![], None)
         };
 
         let second_idx = first_hop.and_then(|fh| self.token_to_index.get(&fh.1));
@@ -225,10 +226,15 @@ impl AllPairGraph {
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
             debug!(?addr, "no end node for address");
-            return vec![];
+            return (vec![], None)
         };
 
-        yen(
+        let mut indexes = possible_extensions
+            .into_iter()
+            .filter_map(|pair| Some((self.token_to_index.get(&pair.0).copied()?, pair)))
+            .collect::<FastHashMap<_, _>>();
+
+        let results = yen(
             start_idx,
             second_idx,
             |cur_node| {
@@ -253,12 +259,14 @@ impl AllPairGraph {
                     .map(|n| (n.index(), weight))
                     .collect_vec()
             },
+            |node| node == end_idx || indexes.contains_key(node),
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
             connections,
             10_000,
             timeout,
             is_extension,
+            &indexes,
         )
         .into_iter()
         .map(|(nodes, _)| {
@@ -298,7 +306,20 @@ impl AllPairGraph {
                 })
                 .collect_vec()
         })
-        .collect_vec()
+        .collect_vec();
+
+        let extends = results.last().and_then(|n| {
+            n.last().and_then(|f| {
+                f.last().and_then(|last| {
+                    let token = if last.token_0_in { last.token_1 } else { last.token_0 };
+
+                    let idx = self.token_to_index.get(&token).unwrap();
+                    indexes.remove(idx)
+                })
+            })
+        });
+
+        (results, extends)
     }
 
     pub fn get_all_known_addresses(&self) -> Vec<Address> {
