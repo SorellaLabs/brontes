@@ -8,7 +8,7 @@ use super::{
     state_tracker::StateTracker,
     subgraph::{BadEdge, PairSubGraph, VerificationOutcome},
 };
-use crate::{subgraph_query, AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
+use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of

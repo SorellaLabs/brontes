@@ -94,7 +94,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     Some(5),
                     Duration::from_millis(69),
                     default_extends_pair.is_some(),
-                    false,
+                    None,
                 );
 
                 return StateQueryRes {
@@ -124,7 +124,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                                 None,
                                 Duration::from_millis(325),
                                 default_extends_pair.is_some(),
-                                false,
+                                None,
                             )
                             .0
                     })
@@ -210,7 +210,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             Some(5),
             Duration::from_millis(69),
             default_extend_to.is_some(),
-            true,
+            Some(pair.1),
         );
 
         let extend_to = actual_extends

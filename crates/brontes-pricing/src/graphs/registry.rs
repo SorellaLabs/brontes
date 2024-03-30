@@ -52,8 +52,12 @@ impl SubGraphRegistry {
         Self { sub_graphs }
     }
 
-    pub fn all_pairs(&self) -> Vec<Pair> {
-        self.sub_graphs.keys().copied().collect_vec()
+    pub fn all_pairs_with_quote(&self, addr: Address) -> Vec<Pair> {
+        self.sub_graphs
+            .keys()
+            .copied()
+            .filter(|pair| pair.1 == addr)
+            .collect_vec()
     }
 
     // check's to see if a subgraph that shares an edge exists.
