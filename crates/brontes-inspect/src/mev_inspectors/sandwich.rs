@@ -419,7 +419,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|v| {
                     v.iter()
                         .cloned()
-                        .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
+                        .filter(|(_, t)| !t.is_empty())
                         .any(|(_, transfers)| {
                             transfers.iter().any(|t| {
                                 // victim has a transfer from the pool that was a token in for
@@ -431,7 +431,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                             })
                         })
                         && v.into_iter()
-                            .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
+                            .filter(|(_, t)| !t.is_empty())
                             .any(|(_, transfers)| {
                                 transfers.iter().any(|t| {
                                     // victim has a transfer from the pool that was a token in
