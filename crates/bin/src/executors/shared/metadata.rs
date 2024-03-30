@@ -4,6 +4,7 @@ use std::{collections::VecDeque, pin::Pin, task::Poll};
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{
+        dex::DexQuotes,
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
@@ -29,6 +30,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<(BlockTree<Actions>, Metadata)>,
     always_generate_price: bool,
+    only_cex_dex:          bool,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
@@ -38,6 +40,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         clickhouse: Option<&'static CH>,
         dex_pricer_stream: WaitingForPricerFuture<T, DB>,
         always_generate_price: bool,
+        only_cex_dex: bool,
     ) -> Self {
         Self {
             clickhouse,
@@ -45,6 +48,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             clickhouse_futures: FuturesOrdered::new(),
             result_buf: VecDeque::new(),
             always_generate_price,
+            only_cex_dex,
         }
     }
 
@@ -71,7 +75,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
         // pull full meta from libmdbx
-        if !generate_dex_pricing && self.clickhouse.is_none() {
+        if !generate_dex_pricing && self.clickhouse.is_none() && !self.only_cex_dex {
             let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {
                 tracing::error!(%err);
                 err
@@ -99,6 +103,20 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
+        } else if self.only_cex_dex {
+            tracing::debug!(?block, "only cex dex. skipping dex pricing");
+            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
+                tracing::error!(%err);
+                err
+            }) else {
+                tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
+                return;
+            };
+            meta.builder_info = libmdbx
+                .try_fetch_builder_info(tree.header.beneficiary)
+                .expect("failed to fetch builder info table in libmdbx");
+            let meta = meta.into_full_metadata(DexQuotes(vec![]));
+            self.result_buf.push_back((tree, meta));
         } else {
             // pull metadata from libmdbx and generate dex_pricing
             let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
