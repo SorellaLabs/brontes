@@ -149,6 +149,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
+        // assert mints and burns are same pool
+        let pools = FastHashSet::default();
+        mints.iter().for_each(|m| pools.insert(m.pool));
+        if !burns.iter().any(|b| pools.contains(&b.pool)) {
+            return None
+        }
+
         let mev_addresses: FastHashSet<Address> = info
             .iter()
             .map(|i| i.eoa)
