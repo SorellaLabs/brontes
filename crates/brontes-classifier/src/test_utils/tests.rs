@@ -33,6 +33,7 @@ use futures::{future::join_all, StreamExt};
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
+use serde_json::Value;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
@@ -462,6 +463,38 @@ impl ClassifierTestUtils {
         Ok((tree, price))
     }
 
+    pub async fn contains_action_except(
+        &self,
+        tx_hash: TxHash,
+        action_number_in_tx: usize,
+        eq_action: Actions,
+        tree_collect_builder: TreeSearchBuilder<Actions>,
+        ignore_fields: &[&str],
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let mut tree = self.build_tree_tx(tx_hash).await?;
+
+        assert!(!tree.tx_roots.is_empty(), "empty tree. most likely an invalid hash");
+
+        let root = tree.tx_roots.remove(0);
+        let mut actions = root.collect(&tree_collect_builder);
+        assert!(
+            !actions.is_empty(),
+            "no actions collected. protocol is either missing from db or not added to dispatch"
+        );
+        assert!(actions.len() > action_number_in_tx, "incorrect action index");
+
+        let action = actions.remove(action_number_in_tx);
+
+        assert!(
+            partially_eq(&action, &eq_action, ignore_fields),
+            "got: {:#?} != given: {:#?}",
+            action,
+            eq_action
+        );
+
+        Ok(())
+    }
+
     pub async fn contains_action(
         &self,
         tx_hash: TxHash,
@@ -638,6 +671,30 @@ impl Deref for ClassifierTestUtils {
     fn deref(&self) -> &Self::Target {
         &self.trace_loader
     }
+}
+
+fn partially_eq<T: serde::Serialize>(a: &T, b: &T, ignore_fields: &[&str]) -> bool {
+    let a_json = serde_json::to_value(a).unwrap();
+    let b_json = serde_json::to_value(b).unwrap();
+
+    fn filter_fields(value: &Value, ignore_fields: &[&str]) -> Value {
+        match value {
+            Value::Object(map) => {
+                let filtered_map: serde_json::Map<String, Value> = map
+                    .iter()
+                    .filter(|(k, _)| !ignore_fields.contains(&k.as_str()))
+                    .map(|(k, v)| (k.clone(), filter_fields(v, ignore_fields)))
+                    .collect();
+                Value::Object(filtered_map)
+            }
+            _ => value.clone(),
+        }
+    }
+
+    let a_filtered = filter_fields(&a_json, ignore_fields);
+    let b_filtered = filter_fields(&b_json, ignore_fields);
+
+    a_filtered == b_filtered
 }
 
 #[derive(Debug, Error)]
