@@ -1,5 +1,6 @@
 use alloy_primitives::Address;
 use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
+use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
@@ -51,6 +52,14 @@ impl SubGraphRegistry {
         Self { sub_graphs }
     }
 
+    pub fn all_pairs_with_quote(&self, addr: Address) -> Vec<Pair> {
+        self.sub_graphs
+            .keys()
+            .copied()
+            .filter(|pair| pair.1 == addr)
+            .collect_vec()
+    }
+
     // check's to see if a subgraph that shares an edge exists.
     pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
         self.sub_graphs
@@ -63,11 +72,24 @@ impl SubGraphRegistry {
         if let Some(goes_through) = goes_through {
             self.sub_graphs
                 .get(pair)
-                .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
+                .filter(|g| {
+                    g.iter()
+                        .any(|(gt, _)| gt == goes_through || goes_through.is_zero())
+                })
                 .is_some()
         } else {
-            self.sub_graphs.get(pair).is_some()
+            self.sub_graphs.contains_key(pair)
         }
+    }
+
+    pub fn remove_subgraph(&mut self, pair: &Pair, goes_through: &Pair) {
+        self.sub_graphs.retain(|k, v| {
+            if k != pair {
+                return true
+            }
+            v.retain(|(gt, _)| gt != goes_through);
+            !v.is_empty()
+        });
     }
 
     // if we have more than 4 extensions, this is enough of a market outlook
@@ -103,8 +125,15 @@ impl SubGraphRegistry {
         self.sub_graphs.contains_key(&pair.ordered())
     }
 
+    fn remove_all_extensions_of(&mut self, pair: Pair) {
+        self.sub_graphs.retain(|_, inner| {
+            inner.retain(|(_, g)| g.extends_to().map(|ex| ex != pair).unwrap_or(true));
+            !inner.is_empty()
+        })
+    }
+
     pub fn get_price(
-        &self,
+        &mut self,
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, PoolState>,
@@ -112,15 +141,22 @@ impl SubGraphRegistry {
         let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
-        next.and_then(|next| Some(self.get_price_all(next, edge_state)? * &default_price))
-            .map(|price| {
-                if unordered_pair.eq_unordered(&complete_pair) {
-                    price
-                } else {
-                    price.reciprocal()
-                }
-            })
-            .or(Some(default_price))
+        if let Some(next) = next {
+            let next_price = self.get_price_all(next, edge_state);
+            if next_price.is_none() {
+                self.remove_all_extensions_of(next);
+                return None
+            }
+
+            let price = next_price.unwrap() * &default_price;
+            if unordered_pair.eq_unordered(&complete_pair) {
+                Some(price)
+            } else {
+                Some(price.reciprocal())
+            }
+        } else {
+            Some(default_price)
+        }
     }
 
     fn get_price_once(

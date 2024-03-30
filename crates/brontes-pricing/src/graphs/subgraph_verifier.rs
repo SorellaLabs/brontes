@@ -75,7 +75,7 @@ impl SubgraphVerifier {
                 .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
                 .unwrap_or(false)
         } else {
-            self.pending_subgraphs.get(pair).is_some()
+            self.pending_subgraphs.contains_key(pair)
         }
     }
 
@@ -269,6 +269,15 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !(ignores.contains(k)))
                     .collect::<FastHashMap<_, _>>();
 
+                if result.should_abandon {
+                    tracing::debug!(?pair, "aborting");
+                    return VerificationResults::Abort(
+                        subgraph.subgraph.complete_pair(),
+                        subgraph.subgraph.must_go_through(),
+                        block,
+                    )
+                }
+
                 if result.should_requery {
                     let goes_through = subgraph.subgraph.must_go_through();
                     let full_pair = subgraph.subgraph.complete_pair();
@@ -348,19 +357,21 @@ impl SubgraphVerifier {
 
                         let ex = extensions
                             .iter()
-                            .map(|e| Pair(e.token_0, e.token_1))
+                            .map(|e| (e.pool_addr, Pair(e.token_0, e.token_1)))
                             .collect::<FastHashSet<_>>();
+
                         let extends_to = subgraph.subgraph.extends_to();
 
                         tracing::debug!(
                             ?pair,
                             ?extends_to,
-                            "connected with \n {:#?}",
-                            ignored
-                                .iter()
-                                .filter(|i| ex.contains(i))
-                                .map(|i| state.highest_liq_for_pair(*i))
+                            extensions = ex.len(),
+                            "connected with \n {:#?}\n extensions: {:#?}",
+                            ex.iter()
+                                .filter(|(_, i)| ignored.contains(i))
+                                .map(|(_, i)| state.highest_liq_for_pair(*i))
                                 .collect_vec(),
+                            ex,
                         );
                     }
                     subgraph.subgraph.extend_subgraph(extensions);
@@ -383,11 +394,9 @@ impl SubgraphVerifier {
             .map(|(pair, block, rundown, mut subgraph, price, quote)| {
                 let edge_state = state_tracker.state_for_verification(block);
                 let result = if rundown {
-                    VerificationOutcome {
-                        should_requery: false,
-                        removals:       FastHashMap::default(),
-                        frayed_ends:    vec![],
-                    }
+                    subgraph
+                        .subgraph
+                        .rundown_subgraph_check(quote, price, edge_state, all_graph)
                 } else {
                     subgraph
                         .subgraph
@@ -477,15 +486,7 @@ pub struct VerificationFailed {
 pub enum VerificationResults {
     Passed(VerificationPass),
     Failed(VerificationFailed),
-}
-
-impl VerificationResults {
-    pub fn split(self) -> (Option<VerificationPass>, Option<VerificationFailed>) {
-        match self {
-            Self::Passed(p) => (Some(p), None),
-            Self::Failed(f) => (None, Some(f)),
-        }
-    }
+    Abort(Pair, Pair, u64),
 }
 
 #[derive(Debug, Default, Clone)]
