@@ -885,7 +885,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let block = self.completed_block;
 
-        let mut res = self
+        let res = self
             .dex_quotes
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));
@@ -928,7 +928,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let block = self.completed_block;
 
-        let mut res = self
+        let res = self
             .dex_quotes
             .remove(&self.completed_block)
             .unwrap_or(DexQuotes(vec![]));

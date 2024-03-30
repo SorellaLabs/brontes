@@ -259,7 +259,7 @@ impl AllPairGraph {
                     .map(|n| (n.index(), weight))
                     .collect_vec()
             },
-            |node| node == end_idx || indexes.contains_key(&node),
+            |node| node == end_idx || indexes.contains_key(node),
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
             connections,
