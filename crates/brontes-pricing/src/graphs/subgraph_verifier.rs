@@ -75,7 +75,7 @@ impl SubgraphVerifier {
                 .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
                 .unwrap_or(false)
         } else {
-            self.pending_subgraphs.get(pair).is_some()
+            self.pending_subgraphs.contains_key(pair)
         }
     }
 
