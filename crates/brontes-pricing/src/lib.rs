@@ -21,9 +21,7 @@
 //! New pools and their states are fetched as required, optimizing resource
 //! usage and performance.
 
-use brontes_types::{
-    db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
-};
+use brontes_types::{execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate};
 mod graphs;
 pub mod protocols;
 mod subgraph_query;
@@ -56,10 +54,7 @@ pub use graphs::{
     VerificationResults,
 };
 use itertools::Itertools;
-use malachite::{
-    num::{arithmetic::traits::Abs, basic::traits::One},
-    Rational,
-};
+use malachite::{num::basic::traits::One, Rational};
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
@@ -68,10 +63,6 @@ use tracing::info;
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
-
-// /// max movement of price in the block before its considered invalid.
-// /// currently 30%
-// const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(10, 10);
 
 /// # Brontes Batch Pricer
 ///
@@ -948,60 +939,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         Some((block, res))
     }
-
-    // /// For the given DexQuotes, checks to see if the start price vs the end
-    // /// price contains a drastic change. This is done to avoid incorrect
-    // /// prices. prices can have drastic changes within the block (think
-    // /// sandwich for example). However we know that any incorrect price
-    // /// should be corrected before the end of the block. We use this knowledge
-    // /// to see if the price had a massive valid change or is just being
-    // /// manipulated for mev.
-    // fn handle_drastic_price_changes(&mut self, prices: &mut DexQuotes) {
-    //     let mut first = FastHashMap::default();
-    //     let mut last = FastHashMap::default();
-    //
-    //     prices
-    //         .0
-    //         .iter()
-    //         .filter_map(|p| p.as_ref())
-    //         .for_each(|tx_prices| {
-    //             for (k, p) in tx_prices {
-    //                 let gt = p.goes_through;
-    //                 if let Entry::Vacant(v) = first.entry((*k, gt)) {
-    //                     v.insert(p.clone().get_price(PriceAt::Before));
-    //                     last.insert((*k, gt),
-    // p.clone().get_price(PriceAt::After));                 } else {
-    //                     last.insert((*k, gt),
-    // p.clone().get_price(PriceAt::After));                 }
-    //             }
-    //         });
-    //
-    //     // all pairs over max price movement
-    //     let removals = first
-    //         .into_iter()
-    //         .filter_map(|(key, price)| Some((key, price, last.remove(&key)?)))
-    //         .filter_map(|(key, first_price, last_price)| {
-    //             let block_movement = (last_price - &first_price).abs() /
-    // first_price;             if block_movement > MAX_BLOCK_MOVEMENT {
-    //                 Some(key)
-    //             } else {
-    //                 None
-    //             }
-    //         })
-    //         .collect::<FastHashSet<_>>();
-    //
-    //     prices
-    //         .0
-    //         .iter_mut()
-    //         .filter_map(|p| p.as_mut())
-    //         .for_each(|map| map.retain(|k, v| !removals.contains(&(*k,
-    // v.goes_through))));
-    //
-    //     removals.into_iter().for_each(|pair| {
-    //         tracing::debug!(pair=?pair.0, goes_through=?pair.1, "drastic price
-    // change detected. removing pair");         self.graph_manager.
-    // remove_subgraph(pair.0, pair.1);     })
-    // }
 
     fn poll_state_processing(
         &mut self,
