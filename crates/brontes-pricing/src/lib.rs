@@ -258,8 +258,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
-                self.current_block = msg.block;
-                self.completed_block = msg.block;
+                self.current_block = msg.block + 1;
+                self.completed_block = msg.block + 1;
             }
         }
 
@@ -1072,16 +1072,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 .first()
                 .map(|u| u.block)
                 .and_then(|block_update_num| {
-                    tracing::info!("here");
                     // remove all blocks before the current block
                     self.skip_pricing.retain(|block| block >= &block_update_num);
                     let front = self.skip_pricing.front()?;
-                    tracing::info!("here2");
                     Some(&block_update_num == front)
                 })
                 .unwrap_or(false)
             {
-                tracing::warn!("no pricing path");
                 self.on_pool_update_no_pricing(block_updates);
             } else {
                 execute_on!(target = pricing, self.on_pool_updates(block_updates));
