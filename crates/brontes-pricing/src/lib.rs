@@ -1072,7 +1072,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 .first()
                 .map(|u| u.block)
                 .and_then(|block_update_num| {
-                    self.skip_pricing.retain(|block| block < &block_update_num);
+                    self.skip_pricing.retain(|block| block > &block_update_num);
                     let front = self.skip_pricing.front()?;
                     Some(&block_update_num == front)
                 })
