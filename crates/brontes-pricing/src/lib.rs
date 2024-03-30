@@ -1074,7 +1074,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 .and_then(|block_update_num| {
                     tracing::info!("here");
                     // remove all blocks before the current block
-                    self.skip_pricing.retain(|block| block < &block_update_num);
+                    self.skip_pricing.retain(|block| block >= &block_update_num);
                     let front = self.skip_pricing.front()?;
                     tracing::info!("here2");
                     Some(&block_update_num == front)
