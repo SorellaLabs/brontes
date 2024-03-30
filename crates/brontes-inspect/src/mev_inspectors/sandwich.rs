@@ -9,8 +9,8 @@ use brontes_types::{
         NormalizedTransfer,
     },
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, FastHashMap, FastHashSet,  IntoZipTree, ToFloatNearest, TreeBase,
-    TreeCollector, TreeIter, TreeSearchBuilder, UnzipPadded,
+    ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
+    TreeIter, TreeSearchBuilder, UnzipPadded,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -374,8 +374,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 back_run_aswaps = chunk_back_run_swaps.len()
             );
 
-            tracing::info!("{:#?}", chunk_victim_actions);
-
             let front_run_pools = chunk_front_run_swaps
                 .iter()
                 .flatten()
@@ -412,10 +410,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .zip(chunk_victim_actions)
                     .map(|(info, actions)| (info.eoa, actions)),
             );
+            let amount = grouped_victims.len();
+
+            if amount == 0 {
+                return false
+            }
 
             // for each victim eoa, ensure they are a victim of a frontrun and a backrun
             // either through a pool or overlapping tokens
-            let section_res = grouped_victims
+            let was_victims: usize = grouped_victims
                 .into_values()
                 .map(|v| {
                     v.iter()
@@ -446,9 +449,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                     })
                             })
                 })
-                .all(|was_victim| was_victim);
+                .map(|was_victim| was_victim as usize)
+                .sum();
 
-            if !section_res {
+            // if we had more than 50% victims, then we say this was valid. This
+            // wiggle room is to deal with unkowns
+            if (was_victims as f64) / (amount as f64) < 0.5 {
                 return false
             }
         }
