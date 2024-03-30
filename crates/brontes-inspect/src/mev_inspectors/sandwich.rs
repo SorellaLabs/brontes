@@ -9,8 +9,8 @@ use brontes_types::{
         NormalizedTransfer,
     },
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, FastHashMap, FastHashSet, IntoZip, IntoZipTree, ToFloatNearest, TreeBase,
-    TreeCollector, TreeIter, TreeSearchBuilder, UnzipPadded,
+    ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
+    TreeIter, TreeSearchBuilder, UnzipPadded,
 };
 use itertools::Itertools;
 use reth_primitives::{Address, B256};
@@ -190,25 +190,25 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!("sando victim sets {}", victim_actions.len());
 
         let back_run_actions = searcher_actions.pop()?;
-        let back_run_swaps = back_run_actions
+        let back_run_transfers = back_run_actions
             .clone()
             .into_iter()
-            .collect_action_vec(Actions::try_swaps_merged);
+            .collect_action_vec(Actions::try_transfer);
 
-        let front_run_swaps = searcher_actions
+        let front_run_transfers = searcher_actions
             .clone()
             .into_iter()
-            .map(|action| {
-                action
-                    .into_iter()
-                    .collect_action_vec(Actions::try_swaps_merged)
-            })
+            .map(|action| action.into_iter().collect_action_vec(Actions::try_transfer))
             .collect::<Vec<_>>();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
         // front run that is unrelated
-        if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions, &victim_info)
-        {
+        if !Self::has_pool_overlap(
+            &front_run_transfers,
+            &back_run_transfers,
+            &victim_actions,
+            &victim_info,
+        ) {
             tracing::info!("no overlap: {:#?}", backrun_info);
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
@@ -251,6 +251,20 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         }
 
         let victim_swaps = victim_actions.into_iter().flatten().collect::<Vec<_>>();
+        let back_run_swaps = back_run_actions
+            .clone()
+            .into_iter()
+            .collect_action_vec(Actions::try_swaps_merged);
+
+        let front_run_swaps = searcher_actions
+            .clone()
+            .into_iter()
+            .map(|action| {
+                action
+                    .into_iter()
+                    .collect_action_vec(Actions::try_swaps_merged)
+            })
+            .collect::<Vec<_>>();
 
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
@@ -348,58 +362,43 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     fn has_pool_overlap(
-        front_run_swaps: &[Vec<NormalizedSwap>],
-        back_run_swaps: &[NormalizedSwap],
+        front_run_transfers: &[Vec<NormalizedTransfer>],
+        back_run_transfers: &[NormalizedTransfer],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        let f_swap_len = front_run_swaps.len();
+        let f_swap_len = front_run_transfers.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
             victim_actions.into_iter().zip(victim_info).enumerate()
         {
-            let chunk_front_run_swaps = &front_run_swaps[0..=i];
+            let chunk_front_run = &front_run_transfers[0..=i];
 
-            let chunk_back_run_swaps = if f_swap_len - 1 >= i + 1 {
+            let chunk_back_run = if f_swap_len - 1 >= i + 1 {
                 let mut res = vec![];
-                res.extend(front_run_swaps[i + 1..].into_iter().flatten().cloned());
-                res.extend(back_run_swaps.to_vec().clone());
+                res.extend(front_run_transfers[i + 1..].into_iter().flatten().cloned());
+                res.extend(back_run_transfers.to_vec().clone());
                 res
             } else {
-                back_run_swaps.to_vec()
+                back_run_transfers.to_vec()
             };
 
             tracing::info!(
-                front_run_am = chunk_front_run_swaps.len(),
-                front_run_swaps = chunk_front_run_swaps.iter().flatten().count(),
-                back_run_aswaps = chunk_back_run_swaps.len()
+                front_run_am = chunk_front_run.len(),
+                front_run_transfers = chunk_front_run.iter().flatten().count(),
+                back_run_transfers = chunk_back_run.len()
             );
 
             tracing::info!("{:#?}", chunk_victim_actions);
 
-            let front_run_pools = chunk_front_run_swaps
+            let front_run_tokens = chunk_front_run
                 .iter()
                 .flatten()
-                .map(|s| s.pool)
+                .flat_map(|s| [(s.token.address, s.to, true), (s.token.address, s.from, false)])
                 .collect::<FastHashSet<_>>();
 
-            let back_run_pools = chunk_back_run_swaps
+            let back_run_tokens = chunk_back_run
                 .iter()
-                .map(|swap| swap.pool)
-                .collect::<FastHashSet<_>>();
-
-            let front_run_tokens = chunk_front_run_swaps
-                .iter()
-                .flatten()
-                .flat_map(|s| {
-                    [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
-                })
-                .collect::<FastHashSet<_>>();
-
-            let back_run_tokens = chunk_back_run_swaps
-                .iter()
-                .flat_map(|s| {
-                    [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
-                })
+                .flat_map(|s| [(s.token.address, s.to, true), (s.token.address, s.from, false)])
                 .collect::<FastHashSet<_>>();
 
             // we group all victims by eoa, such that instead of a tx needing to be a
@@ -421,29 +420,27 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     v.iter()
                         .cloned()
                         .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
-                        .any(|(swaps, transfers)| {
-                            swaps.iter().any(|s| front_run_pools.contains(&s.pool))
-                                || transfers.iter().any(|t| {
-                                    // victim has a transfer from the pool that was a token in for
-                                    // the sandwich
-                                    front_run_tokens.contains(&(t.token.address, t.from, true))
+                        .any(|(_, transfers)| {
+                            transfers.iter().any(|t| {
+                                // victim has a transfer from the pool that was a token in for
+                                // the sandwich
+                                front_run_tokens.contains(&(t.token.address, t.from, true))
                             // victim has a transfer to the pool that was a token out for the
                             // sandwich 
                                 || front_run_tokens.contains(&(t.token.address, t.to, false))
-                                })
+                            })
                         })
                         && v.into_iter()
                             .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
-                            .any(|(swaps, transfers)| {
-                                swaps.iter().any(|s| back_run_pools.contains(&s.pool))
-                                    || transfers.iter().any(|t| {
-                                        // victim has a transfer from the pool that was a token in
-                                        // for the sandwich
-                                        back_run_tokens.contains(&(t.token.address, t.from, true))
+                            .any(|(_, transfers)| {
+                                transfers.iter().any(|t| {
+                                    // victim has a transfer from the pool that was a token in
+                                    // for the sandwich
+                                    back_run_tokens.contains(&(t.token.address, t.from, true))
                             // victim has a transfer to the pool that was a token out for the
                             // sandwich 
                                 || back_run_tokens.contains(&(t.token.address, t.to, false))
-                                    })
+                                })
                             })
                 })
                 .all(|was_victim| was_victim);
