@@ -388,8 +388,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 back_run_transfers = chunk_back_run.len()
             );
 
-            // tracing::info!("{:#?}", chunk_victim_actions);
-
             let front_run_tokens = chunk_front_run
                 .iter()
                 .flatten()
@@ -401,7 +399,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .flat_map(|s| [(s.token.address, s.to, true), (s.token.address, s.from, false)])
                 .collect::<FastHashSet<_>>();
 
-            tracing::info!("{:#?}\n\n\n\n\n\n {:#?}", front_run_tokens, back_run_tokens);
+            tracing::info!("{:#?} \n\n\n\n\n\n {:#?}", front_run_tokens, back_run_tokens);
 
             // we group all victims by eoa, such that instead of a tx needing to be a
             // victim, a eoa needs to be a victim. this allows for more complex
@@ -419,6 +417,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             let section_res = grouped_victims
                 .into_values()
                 .map(|v| {
+                    tracing::info!("{:#?}", v);
                     v.iter()
                         .cloned()
                         .filter(|(_, t)| !t.is_empty())
