@@ -8,4 +8,4 @@ SELECT
     proposer_mev_reward,
     private_flow
 FROM brontes_api.block_info
-WHERE block_info.block_hash IS NOT NULL AND block_number >= ? AND block_number < ? 
+WHERE block_info.block_hash IS NOT NULL AND block_number >= ? AND block_number < ?

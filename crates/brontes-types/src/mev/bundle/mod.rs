@@ -14,7 +14,7 @@ use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use strum::{Display, EnumIter};
+use strum::{AsRefStr, Display, EnumIter};
 
 use crate::{display::utils::*, Protocol};
 #[allow(unused_imports)]
@@ -81,6 +81,7 @@ impl fmt::Display for Bundle {
     Default,
     Display,
     ValueEnum,
+    AsRefStr,
 )]
 pub enum MevType {
     CexDex,
@@ -105,6 +106,19 @@ impl MevType {
             | MevType::Unknown => false,
             MevType::SearcherTx => false,
             MevType::CexDex => true,
+        }
+    }
+
+    pub fn get_parquet_path(&self) -> &'static str {
+        match self {
+            MevType::CexDex => "cex-dex",
+            MevType::AtomicArb => "atomic-arb",
+            MevType::Jit => "jit",
+            MevType::Sandwich => "sandwich",
+            MevType::JitSandwich => "jit-sandwich",
+            MevType::SearcherTx => "searcher-tx",
+            MevType::Liquidation => "liquidation",
+            MevType::Unknown => "header",
         }
     }
 }
