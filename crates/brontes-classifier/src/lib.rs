@@ -54,6 +54,10 @@ sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
 sol!(ZeroXUniswapV3Feature, "./classifier-abis/zero-x/ZeroXUniswapV3Feature.json");
 sol!(ZeroXTransformERC20Feature, "./classifier-abis/zero-x/ZeroXTransformERC20Feature.json");
 sol!(ZeroXPancakeSwapFeature, "./classifier-abis/zero-x/ZeroXPancakeSwapFeature.json");
+sol!(ZeroXOtcOrdersFeature, "./classifier-abis/zero-x/ZeroXOtcOrdersFeature.json");
+sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProviderFeature.json");
+sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
+
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
