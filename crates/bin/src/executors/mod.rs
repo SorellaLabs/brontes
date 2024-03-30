@@ -26,7 +26,7 @@ use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
-use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle, time::Duration};
+use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
 use self::shared::{
     dex_pricing::WaitingForPricerFuture, metadata::MetadataFetcher, state_collector::StateCollector,
