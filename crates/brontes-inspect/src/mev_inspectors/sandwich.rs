@@ -188,7 +188,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
         tracing::debug!("sando victim sets {}", victim_actions.len());
-        tracing::info!(?searcher_actions, ?victim_info);
 
         let back_run_actions = searcher_actions.pop()?;
         let back_run_swaps = back_run_actions
