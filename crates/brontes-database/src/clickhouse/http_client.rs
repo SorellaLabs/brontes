@@ -10,8 +10,8 @@ use brontes_types::{
 };
 use clickhouse::{remote_cursor::RemoteCursor, DbRow};
 use futures::TryStreamExt;
-use hyper::StatusCode;
 use itertools::Itertools;
+use reqwest::StatusCode;
 use serde::Deserialize;
 
 use crate::{

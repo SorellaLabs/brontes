@@ -6,11 +6,13 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedSwap,
+        NormalizedTransfer,
     },
     tree::{BlockTree, GasDetails, TxInfo},
-    ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeIter,
-    TreeSearchBuilder, UnzipPadded,
+    ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
+    TreeIter, TreeSearchBuilder, UnzipPadded,
 };
+use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -68,7 +70,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         return None
                     };
 
-                    let (victim_swaps, victim_info): (Vec<_>, Vec<_>) = victims
+                    let (victim_swaps_transfers, victim_info): (Vec<_>, Vec<_>) = victims
                         .into_iter()
                         .map(|victim| {
                             (
@@ -93,14 +95,18 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                             let tree = victim_set.tree();
                             let (actions, info) = victim_set
                                 .map(|s| {
-                                    s.into_iter().collect_action_vec(Actions::try_swaps_merged)
+                                    s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
+                                        Actions::try_swaps_merged,
+                                        Actions::try_transfer,
+                                    ))
                                 })
                                 .into_zip_tree(tree)
                                 .tree_zip_with(hashes.into_iter())
                                 .t_full_filter_map(|(tree, rest)| {
                                     let (swap, hashes): (Vec<_>, Vec<_>) =
                                         UnzipPadded::unzip_padded(rest);
-                                    if !(hashes
+
+                                    if !hashes
                                         .iter()
                                         .map(|v| {
                                             let tree = &(*tree.clone());
@@ -110,7 +116,6 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                                 || mev_executor_contract == d.get_to_address()
                                         })
                                         .any(|d| d)
-                                        || swap.iter().flatten().count() == 0)
                                     {
                                         Some((
                                             swap,
@@ -140,6 +145,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         .iter()
                         .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
                         .collect::<Vec<_>>();
+
                     let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
 
                     let searcher_actions: Vec<Vec<Actions>> = tree
@@ -162,7 +168,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         back_run_info,
                         searcher_actions,
                         victim_info,
-                        victim_swaps,
+                        victim_swaps_transfers,
                     )
                 },
             )
@@ -179,8 +185,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,
         mut victim_info: Vec<Vec<TxInfo>>,
-        mut victim_actions: Vec<Vec<Vec<NormalizedSwap>>>,
+        mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
+        tracing::debug!("sando victim sets {}", victim_actions.len());
         let back_run_actions = searcher_actions.pop()?;
         let back_run_swaps = back_run_actions
             .clone()
@@ -209,7 +216,21 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
 
-                if victim_actions.iter().flatten().flatten().count() == 0 {
+                if victim_actions
+                    .iter()
+                    .flatten()
+                    .filter_map(
+                        |(s, t)| {
+                            if s.is_empty() && t.is_empty() {
+                                None
+                            } else {
+                                Some(true)
+                            }
+                        },
+                    )
+                    .count()
+                    == 0
+                {
                     return None
                 }
 
@@ -304,6 +325,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             MevType::Sandwich,
         );
 
+        let victim_swaps = victim_swaps
+            .into_iter()
+            .map(|(swaps, _)| swaps)
+            .collect_vec();
+
         let sandwich = Sandwich {
             frontrun_tx_hash,
             frontrun_gas_details,
@@ -322,7 +348,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn has_pool_overlap(
         front_run_swaps: &[Vec<NormalizedSwap>],
         back_run_swaps: &[NormalizedSwap],
-        victim_actions: &[Vec<Vec<NormalizedSwap>>],
+        victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
         let front_run_pools = front_run_swaps
@@ -334,6 +360,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let back_run_pools = back_run_swaps
             .iter()
             .map(|swap| swap.pool)
+            .collect::<FastHashSet<_>>();
+
+        let front_run_tokens = front_run_swaps
+            .iter()
+            .flatten()
+            .flat_map(|s| [s.token_in.address, s.token_out.address])
+            .collect::<FastHashSet<_>>();
+
+        let back_run_tokens = back_run_swaps
+            .iter()
+            .flat_map(|s| [s.token_in.address, s.token_out.address])
             .collect::<FastHashSet<_>>();
 
         // we group all victims by eoa, such that instead of a tx needing to be a
@@ -349,16 +386,21 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         );
 
         // for each victim eoa, ensure they are a victim of a frontrun and a backrun
+        // either through a pool or overlapping tokens
         grouped_victims
             .into_values()
             .map(|v| {
-                v.iter()
-                    .cloned()
-                    .flatten()
-                    .any(|pool| front_run_pools.contains(&pool.pool))
-                    && v.into_iter()
-                        .flatten()
-                        .any(|pool| back_run_pools.contains(&pool.pool))
+                v.iter().cloned().any(|(swaps, transfers)| {
+                    swaps.iter().any(|s| front_run_pools.contains(&s.pool))
+                        || transfers
+                            .iter()
+                            .any(|t| front_run_tokens.contains(&t.token.address))
+                }) && v.into_iter().any(|(swaps, transfers)| {
+                    swaps.iter().any(|s| back_run_pools.contains(&s.pool))
+                        || transfers
+                            .iter()
+                            .any(|t| back_run_tokens.contains(&t.token.address))
+                })
             })
             .all(|was_victim| was_victim)
     }

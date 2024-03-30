@@ -39,8 +39,10 @@ use crate::{
     Archive
 ))]
 pub struct DexPrices {
-    pub pre_state:  Rational,
-    pub post_state: Rational,
+    pub pre_state:    Rational,
+    pub post_state:   Rational,
+    /// tells us what varient of pricing for this pool we are looking at
+    pub goes_through: Pair,
 }
 
 impl Display for DexPrices {
@@ -59,6 +61,13 @@ pub enum PriceAt {
     After,
     Lowest,
     Highest,
+    Average,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub enum BlockPrice {
+    Highest,
+    Lowest,
     Average,
 }
 
@@ -90,7 +99,11 @@ impl DexQuotes {
         let s_idx = tx;
 
         if pair.0 == pair.1 {
-            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
+            return Some(DexPrices {
+                pre_state:    Rational::ONE,
+                post_state:   Rational::ONE,
+                goes_through: Pair::default(),
+            })
         }
 
         loop {
@@ -107,6 +120,54 @@ impl DexQuotes {
         error!(?pair, before=?s_idx, "no price for pair");
 
         None
+    }
+
+    pub fn price_for_block(&self, mut pair: Pair, price_at: BlockPrice) -> Option<Rational> {
+        if pair.0 == ETH_ADDRESS {
+            pair.0 = WETH_ADDRESS;
+        }
+        if pair.1 == ETH_ADDRESS {
+            pair.1 = WETH_ADDRESS;
+        }
+
+        match price_at {
+            BlockPrice::Lowest => self
+                .0
+                .iter()
+                .filter_map(|f| f.as_ref())
+                .filter_map(|p| {
+                    p.get(&pair)
+                        .map(|prices| prices.clone().get_price(PriceAt::Lowest))
+                })
+                .min(),
+            BlockPrice::Highest => self
+                .0
+                .iter()
+                .filter_map(|f| f.as_ref())
+                .filter_map(|p| {
+                    p.get(&pair)
+                        .map(|prices| prices.clone().get_price(PriceAt::Highest))
+                })
+                .max(),
+            BlockPrice::Average => {
+                let entires = self
+                    .0
+                    .iter()
+                    .filter_map(|f| f.as_ref())
+                    .filter_map(|p| {
+                        p.get(&pair)
+                            .map(|prices| prices.clone().get_price(PriceAt::Average))
+                    })
+                    .collect_vec();
+
+                if entires.is_empty() {
+                    return None
+                }
+
+                let len = entires.len();
+                Some(entires.into_iter().sum::<Rational>() / Rational::from(len))
+            }
+        }
     }
 
     pub fn has_quote(&self, pair: &Pair, tx: usize) -> bool {
