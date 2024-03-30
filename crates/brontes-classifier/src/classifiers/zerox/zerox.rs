@@ -6,7 +6,7 @@ use brontes_types::{
 };
 use alloy_primitives::U256;
 
-
+// Uniswap
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXUniswapFeaure::sellToUniswapCall,
@@ -24,18 +24,19 @@ action_impl!(
     }
 );
 
-
+// Uniswap V3
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXUniswapV3Feature::sellEthForTokenToUniswapV3Call,
     Aggregator,
     [Swap],
-    |info: CallInfo, _| {
+    call_data: true,
+    |info: CallInfo, call_data: sellEthForTokenToUniswapV3Call, _| {
         Ok(NormalizedAggregator {
             protocol: Protocol::ZeroX, 
             trace_index: info.trace_idx,
             from: info.from_address,
-            recipient: info.msg_sender,
+            recipient: call_data.recipient,
             child_actions: vec![],
             msg_value: info.msg_value, 
         })
@@ -47,12 +48,13 @@ action_impl!(
     crate::ZeroXUniswapV3Feature::sellTokenForEthToUniswapV3Call,
     Aggregator,
     [Swap],
-    |info: CallInfo, _| {
+    call_data: true,
+    |info: CallInfo, call_data: sellTokenForEthToUniswapV3Call, _| {
         Ok(NormalizedAggregator {
             protocol: Protocol::ZeroX, 
             trace_index: info.trace_idx,
             from: info.from_address,
-            recipient: info.msg_sender,
+            recipient: call_data.recipient,
             child_actions: vec![],
             msg_value: info.msg_value, 
         })
@@ -64,19 +66,20 @@ action_impl!(
     crate::ZeroXUniswapV3Feature::sellTokenForTokenToUniswapV3Call,
     Aggregator,
     [Swap],
-    |info: CallInfo, _| {
+    call_data: true,
+    |info: CallInfo, call_data: sellTokenForTokenToUniswapV3Call, _| {
         Ok(NormalizedAggregator {
             protocol: Protocol::ZeroX, 
             trace_index: info.trace_idx,
             from: info.from_address,
-            recipient: info.msg_sender,
+            recipient: call_data.recipient,
             child_actions: vec![],
             msg_value: info.msg_value, 
         })
     }
 );
 
-
+// Transform
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXTransformERC20Feature::transformERC20Call,
@@ -94,6 +97,7 @@ action_impl!(
     }
 );
 
+// Pancakeswap
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXPancakeSwapFeature::sellToPancakeSwapCall,
@@ -111,6 +115,8 @@ action_impl!(
     }
 );
 
+// Otc orders
+//https://etherscan.io/tx/0x07a010a8697a5d74c1c68dac628e18f5b09e593dc89f6a7d11b2bf7873dad726
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillOtcOrderCall,
@@ -141,6 +147,7 @@ action_impl!(
     }
 );
 
+//https://etherscan.io/tx/0xb42a52833022a55565a1822c794f31b09612114fdca7b8445393547c0f45c900
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillOtcOrderForEthCall,
@@ -171,6 +178,7 @@ action_impl!(
     }
 );
 
+//https://etherscan.io/tx/0x9e9b85c90ed4bcb1a7579c048748a5c232685743bf945ec4b54399ca63268e48
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillOtcOrderWithEthCall,
@@ -201,6 +209,7 @@ action_impl!(
     }
 );
 
+//https://etherscan.io/tx/0x92ea4576989a38d630867ff361c346d9317e2f61a3192a0c03698d9a70b5aee2
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillTakerSignedOtcOrderCall,
@@ -231,7 +240,7 @@ action_impl!(
     }
 );
 
-//fillTakerSignedOtcOrderForEth
+//https://etherscan.io/tx/0x2ba6ce2e47a4625b75a64bd0a22b4b288ffd7582cd2ac559962e456e6bb7fe61
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillTakerSignedOtcOrderForEthCall,
@@ -262,9 +271,6 @@ action_impl!(
     }
 );
 
-//batchFillTakerSignedOtcOrders
-//NormalizedBatch
-//OtcOrderFilled*
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::batchFillTakerSignedOtcOrdersCall,
@@ -308,6 +314,8 @@ action_impl!(
     }
 );
 
+// Liquidity Provider
+//https://etherscan.io/tx/0x58b26d0fa1dcafd8af70e9adc8b9ca08dee9d2f63ae9e7a5430830c160ca0ceb
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXLiquidityProviderFeature::sellToLiquidityProviderCall,
@@ -339,7 +347,216 @@ action_impl!(
 
 );
 
-// action_impl!(
+// Multiplex
+//https://etherscan.io/tx/0xff79232fe5aca01c6f5d85ed5f14bd10ca5f58584c4f6707fa5910e2eda79262
+action_impl!(
+    Protocol::ZeroX,
+    crate::ZeroXInterface::multiplexBatchSellEthForTokenCall,
+    Aggregator,
+    [],
+    |info: CallInfo, _| {
+
+        Ok(NormalizedAggregator {
+            protocol: Protocol::ZeroX, 
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.msg_sender,
+            child_actions: vec![],
+            msg_value: info.msg_value, 
+        })
+    }
+);
+
+action_impl!(
+    Protocol::ZeroX,
+    crate::ZeroXInterface::multiplexBatchSellTokenForEthCall,
+    Aggregator,
+    [],
+    |info: CallInfo, _| {
+
+        Ok(NormalizedAggregator {
+            protocol: Protocol::ZeroX, 
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.msg_sender,
+            child_actions: vec![],
+            msg_value: info.msg_value, 
+        })
+    }
+);
+
+action_impl!(
+    Protocol::ZeroX,
+    crate::ZeroXInterface::multiplexBatchSellTokenForTokenCall,
+    Aggregator,
+    [],
+    |info: CallInfo, _| {
+
+        Ok(NormalizedAggregator {
+            protocol: Protocol::ZeroX, 
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.msg_sender,
+            child_actions: vec![],
+            msg_value: info.msg_value, 
+        })
+    }
+);
+
+action_impl!(
+    Protocol::ZeroX,
+    crate::ZeroXInterface::multiplexMultiHopSellEthForTokenCall,
+    Aggregator,
+    [],
+    |info: CallInfo, _| {
+
+        Ok(NormalizedAggregator {
+            protocol: Protocol::ZeroX, 
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.msg_sender,
+            child_actions: vec![],
+            msg_value: info.msg_value, 
+        })
+    }
+);
+
+action_impl!(
+    Protocol::ZeroX,
+    crate::ZeroXInterface::multiplexMultiHopSellTokenForEthCall,
+    Aggregator,
+    [],
+    |info: CallInfo, _| {
+
+        Ok(NormalizedAggregator {
+            protocol: Protocol::ZeroX, 
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.msg_sender,
+            child_actions: vec![],
+            msg_value: info.msg_value, 
+        })
+    }
+);
+
+action_impl!(
+    Protocol::ZeroX,
+    crate::ZeroXInterface::multiplexMultiHopSellTokenForTokenCall,
+    Aggregator,
+    [],
+    |info: CallInfo, _| {
+
+        Ok(NormalizedAggregator {
+            protocol: Protocol::ZeroX, 
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.msg_sender,
+            child_actions: vec![],
+            msg_value: info.msg_value, 
+        })
+    }
+);
+
+// Native Orders
+// TODO, CODE NOT IN GITHUB
 
 
-// );
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, Address, B256, U256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::TokenInfoWithAddress,
+        normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+        ToScaledRational, TreeSearchBuilder,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_zerox_sell_to_uniswap() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let aggregator_tx =
+            B256::from(hex!("fac5edf3af538243554fdb0d8275781ee5834686bc0881e9343ac90e108a9e89"));
+
+        classifier_utils
+            .detects_protocol_at(
+                aggregator_tx,
+                0,
+                Protocol::ZeroX,
+                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_sell_eth_for_token_to_uniswap_v3() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let aggregator_tx =
+            B256::from(hex!("d168fb3a2f2bc931ba7974d6afa89e2843c251f9fad444b71033f2c7b1953c9e"));
+
+        classifier_utils
+            .detects_protocol_at(
+                aggregator_tx,
+                0,
+                Protocol::ZeroX,
+                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_sell_token_for_eth_to_uniswap_v3() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let aggregator_tx =
+            B256::from(hex!("8c4f1512afc633047ea7bc71484265cadba410adb6de99981b2f5220748b5fc2"));
+
+        classifier_utils
+            .detects_protocol_at(
+                aggregator_tx,
+                0,
+                Protocol::ZeroX,
+                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_sell_token_for_token_to_uniswap_v3() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let aggregator_tx =
+            B256::from(hex!("aa8f632e139d59dc67f58ea2d9faee6f076eae08098ba08de24658b56fa09cfe"));
+
+        classifier_utils
+            .detects_protocol_at(
+                aggregator_tx,
+                0,
+                Protocol::ZeroX,
+                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_transform_erc20() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let aggregator_tx =
+            B256::from(hex!("cd3cb6d905be10df9e1ad080eed2e8253af7a46aec27f64607b0145c9051e838"));
+
+        classifier_utils
+            .detects_protocol_at(
+                aggregator_tx,
+                0,
+                Protocol::ZeroX,
+                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+            )
+            .await
+            .unwrap();
+    }
+}

@@ -172,5 +172,11 @@ action_dispatch!(
     ClipperExchangeTransmitAndSwapCall,
     ClipperExchangeTransmitAndSellTokenForEthCall,
     CowswapSettleCall,
-    CowswapSwapCall
+    CowswapSwapCall,
+    ZeroXSellToUniswapCall,
+    ZeroXSellEthForTokenToUniswapV3Call,
+    ZeroXSellTokenForEthToUniswapV3Call,
+    ZeroXSellTokenForTokenToUniswapV3Call,
+    ZeroXTransformERC20Call,
+    ZeroXSellToPancakeSwapCall
 );
