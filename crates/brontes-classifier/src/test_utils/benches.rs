@@ -63,7 +63,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (vec![trace.clone()], header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header).await)
+                    black_box(self.classifier.build_block_tree(trace, header, true).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -87,7 +87,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (traces.clone(), header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header).await)
+                    black_box(self.classifier.build_block_tree(trace, header, true).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -110,7 +110,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter_batched(
                 || (traces.clone(), header.clone()),
                 |(trace, header)| async move {
-                    black_box(self.classifier.build_block_tree(trace, header).await)
+                    black_box(self.classifier.build_block_tree(trace, header, true).await)
                 },
                 criterion::BatchSize::NumIterations(1),
             );
@@ -132,7 +132,7 @@ impl ClassifierBenchUtils {
 
         let tree = self
             .rt
-            .block_on(self.classifier.build_block_tree(vec![trace], header));
+            .block_on(self.classifier.build_block_tree(vec![trace], header, true));
         let tree = Arc::new(tree);
 
         c.bench_function(bench_name, move |b| b.iter(|| black_box(bench_fn(tree.clone()))));
@@ -153,7 +153,7 @@ impl ClassifierBenchUtils {
             .block_on(self.trace_loader.get_block_traces_with_header(block))?;
         let tree = self
             .rt
-            .block_on(self.classifier.build_block_tree(traces, header));
+            .block_on(self.classifier.build_block_tree(traces, header, true));
         let tree = Arc::new(tree);
 
         c.bench_function(bench_name, move |b| b.iter(|| black_box(bench_fn(tree.clone()))));
@@ -185,7 +185,7 @@ impl ClassifierBenchUtils {
         if trace_addr.len() > 1 {
             trace_addr.pop().unwrap();
         } else {
-            return Err(ClassifierBenchError::ProtocolDiscoveryError(created_pool));
+            return Err(ClassifierBenchError::ProtocolDiscoveryError(created_pool))
         };
 
         let p_trace = trace
