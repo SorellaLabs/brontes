@@ -37,13 +37,13 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
-    pub start_block:      Option<u64>,
-    pub end_block:        Option<u64>,
-    pub back_from_tip:    u64,
-    pub max_tasks:        u64,
-    pub min_batch_size:   u64,
-    pub quote_asset:      Address,
-    pub with_dex_pricing: bool,
+    pub start_block:       Option<u64>,
+    pub end_block:         Option<u64>,
+    pub back_from_tip:     u64,
+    pub max_tasks:         u64,
+    pub min_batch_size:    u64,
+    pub quote_asset:       Address,
+    pub force_dex_pricing: bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
@@ -63,7 +63,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         max_tasks: u64,
         min_batch_size: u64,
         quote_asset: Address,
-        with_dex_pricing: bool,
+        force_dex_pricing: bool,
 
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
@@ -77,7 +77,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             back_from_tip,
             min_batch_size,
             max_tasks,
-            with_dex_pricing,
+            force_dex_pricing,
             parser,
             libmdbx,
             inspectors,
@@ -113,22 +113,16 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     async move {
                         tracing::info!(batch_id, start_block, end_block, "Starting batch");
 
-                        let state_collector = if self.with_dex_pricing {
-                            self.state_collector_dex_price(
+                        RangeExecutorWithPricing::new(
+                            start_block,
+                            end_block,
+                            self.init_state_collector(
                                 executor.clone(),
                                 start_block,
                                 end_block,
                                 false,
                             )
-                            .await
-                        } else {
-                            self.state_collector_no_dex_price()
-                        };
-
-                        RangeExecutorWithPricing::new(
-                            start_block,
-                            end_block,
-                            state_collector,
+                            .await,
                             self.libmdbx,
                             self.inspectors,
                         )
@@ -145,7 +139,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         back_from_tip: u64,
     ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self
-            .state_collector_dex_price(executor, start_block, start_block, true)
+            .init_state_collector(executor, start_block, start_block, true)
             .await;
         TipInspector::new(
             start_block,
@@ -157,21 +151,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         )
     }
 
-    fn state_collector_no_dex_price(&self) -> StateCollector<T, DB, CH> {
-        let (tx, rx) = unbounded_channel();
-        let classifier = static_object(Classifier::new(self.libmdbx, tx, self.parser.get_tracer()));
-
-        let fetcher = MetadataFetcher::new(None, None, Some(rx));
-        StateCollector::new(
-            Arc::new(AtomicBool::new(false)),
-            fetcher,
-            classifier,
-            self.parser,
-            self.libmdbx,
-        )
-    }
-
-    async fn state_collector_dex_price(
+    async fn init_state_collector(
         &self,
         executor: BrontesTaskExecutor,
         start_block: u64,
@@ -211,7 +191,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             rest_pairs,
         );
         let pricing = WaitingForPricerFuture::new(pricer, executor);
-        let fetcher = MetadataFetcher::new(tip.then_some(self.clickhouse), Some(pricing), None);
+        let fetcher =
+            MetadataFetcher::new(tip.then_some(self.clickhouse), pricing, self.force_dex_pricing);
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
@@ -240,9 +221,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         if let Some(start_block) = self.start_block {
             tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
-            let state_to_init =
-                self.libmdbx
-                    .state_to_initialize(start_block, end_block, !self.with_dex_pricing)?;
+            let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
             if state_to_init.is_empty() {
                 return Ok(())

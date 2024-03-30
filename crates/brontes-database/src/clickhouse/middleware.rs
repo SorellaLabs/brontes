@@ -193,10 +193,8 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         &self,
         start_block: u64,
         end_block: u64,
-        needs_dex_price: bool,
     ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
-        self.inner
-            .state_to_initialize(start_block, end_block, needs_dex_price)
+        self.inner.state_to_initialize(start_block, end_block)
     }
 }
 
@@ -457,10 +455,8 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         &self,
         start_block: u64,
         end_block: u64,
-        needs_dex_price: bool,
     ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
-        self.inner
-            .state_to_initialize(start_block, end_block, needs_dex_price)
+        self.inner.state_to_initialize(start_block, end_block)
     }
 }
 
