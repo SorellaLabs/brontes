@@ -1,6 +1,5 @@
 use std::{collections::hash_map::Entry, hash::Hash, iter, sync::Arc};
 
-use alloy_rpc_types::transaction;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
@@ -220,13 +219,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 if victim_actions
                     .iter()
                     .flatten()
-                    .filter_map(|(s, t)| {
-                        if s.is_empty() && t.is_empty() {
-                            return None
-                        } else {
-                            return Some(true)
-                        }
-                    })
+                    .filter_map(
+                        |(s, t)| {
+                            if s.is_empty() && t.is_empty() {
+                                None
+                            } else {
+                                Some(true)
+                            }
+                        },
+                    )
                     .count()
                     == 0
                 {
@@ -347,7 +348,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn has_pool_overlap(
         front_run_swaps: &[Vec<NormalizedSwap>],
         back_run_swaps: &[NormalizedSwap],
-        mut victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
+        victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
         let front_run_pools = front_run_swaps
