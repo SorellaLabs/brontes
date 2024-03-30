@@ -346,12 +346,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let front_run_tokens = front_run_swaps
             .iter()
             .flatten()
-            .flat_map(|s| [s.token_in, s.token_out])
+            .flat_map(|s| [s.token_in.address, s.token_out.address])
             .collect::<FastHashSet<_>>();
 
         let back_run_tokens = back_run_swaps
             .iter()
-            .flat_map(|s| [s.token_in, s.token_out])
+            .flat_map(|s| [s.token_in.address, s.token_out.address])
             .collect::<FastHashSet<_>>();
 
         // we group all victims by eoa, such that instead of a tx needing to be a
