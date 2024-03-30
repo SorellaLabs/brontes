@@ -1,5 +1,6 @@
 use std::{collections::hash_map::Entry, hash::Hash, iter, sync::Arc};
 
+use alloy_rpc_types::transaction;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
@@ -186,7 +187,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
-        tracing::debug!("sando victim sets {}",victim_actions.len());
+        tracing::debug!("sando victim sets {}", victim_actions.len());
         let back_run_actions = searcher_actions.pop()?;
         let back_run_swaps = back_run_actions
             .clone()
@@ -342,6 +343,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|swap| swap.pool)
             .collect::<FastHashSet<_>>();
 
+        let front_run_tokens = front_run_swaps
+            .iter()
+            .flatten()
+            .flat_map(|s| [s.token_in, s.token_out])
+            .collect::<FastHashSet<_>>();
+
+        let back_run_tokens = back_run_swaps
+            .iter()
+            .flat_map(|s| [s.token_in, s.token_out])
+            .collect::<FastHashSet<_>>();
+
         // we group all victims by eoa, such that instead of a tx needing to be a
         // victim, a eoa needs to be a victim. this allows for more complex
         // detection such as having a approve and then a swap in different
@@ -355,16 +367,19 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         );
 
         // for each victim eoa, ensure they are a victim of a frontrun and a backrun
+        // either through a pool or overlapping tokens
         grouped_victims
             .into_values()
             .map(|v| {
-                v.iter()
-                    .cloned()
-                    .flatten()
-                    .any(|pool| front_run_pools.contains(&pool.pool))
-                    && v.into_iter()
-                        .flatten()
-                        .any(|pool| back_run_pools.contains(&pool.pool))
+                v.iter().cloned().any(|(swaps, transfers)| {
+                    swaps.iter().any(|s| front_run_pools.contains(&s.pool))
+                        || transfers
+                            .iter()
+                            .any(|t| front_run_tokens.contains(&t.token))
+                }) && v.into_iter().any(|(swaps, transfers)| {
+                    swaps.iter().any(|s| back_run_pools.contains(&s.pool))
+                        || transfers.iter().any(|t| back_run_tokens.contains(&t.token))
+                })
             })
             .all(|was_victim| was_victim)
     }
