@@ -187,8 +187,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
-        tracing::debug!("sando victim sets {}", victim_actions.len());
-
         let back_run_actions = searcher_actions.pop()?;
         let back_run_swaps = back_run_actions
             .clone()
@@ -209,7 +207,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // front run that is unrelated
         if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions, &victim_info)
         {
-            tracing::info!("no overlap: {:#?}", backrun_info);
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
             if possible_front_runs_info.len() > 1 {
@@ -367,12 +364,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             } else {
                 back_run_swaps.to_vec()
             };
-
-            tracing::info!(
-                front_run_am = chunk_front_run_swaps.len(),
-                front_run_swaps = chunk_front_run_swaps.iter().flatten().count(),
-                back_run_aswaps = chunk_back_run_swaps.len()
-            );
 
             let front_run_pools = chunk_front_run_swaps
                 .iter()
