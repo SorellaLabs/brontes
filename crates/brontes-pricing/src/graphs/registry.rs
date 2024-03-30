@@ -144,15 +144,6 @@ impl SubGraphRegistry {
         } else {
             Some(default_price)
         }
-        // next.and_then(|next| Some(self.get_price_all(next, edge_state)? *
-        // &default_price))     .map(|price| {
-        //         if unordered_pair.eq_unordered(&complete_pair) {
-        //             price
-        //         } else {
-        //             price.reciprocal()
-        //         }
-        //     })
-        //     .or(Some(default_price))
     }
 
     fn get_price_once(
