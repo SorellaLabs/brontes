@@ -26,7 +26,7 @@ use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
-use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
+use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle, time::Duration};
 
 use self::shared::{
     dex_pricing::WaitingForPricerFuture, metadata::MetadataFetcher, state_collector::StateCollector,
@@ -344,7 +344,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             let progress_bar = ProgressBar::with_draw_target(
                 Some(total_blocks),
                 ProgressDrawTarget::stderr_with_hz(1),
-            );
+            )
+            .enable_steady_tick(Duration::from_millis(1));
             progress_bar.set_style(
                 ProgressStyle::with_template(
                     "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
