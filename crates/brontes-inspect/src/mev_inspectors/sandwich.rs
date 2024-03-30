@@ -13,6 +13,7 @@ use brontes_types::{
     ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
     TreeIter, TreeSearchBuilder, UnzipPadded,
 };
+use itertools::Itertools;
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -216,7 +217,19 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_actions.pop()?;
                 let back_run_info = possible_front_runs_info.pop()?;
 
-                if victim_actions.iter().flatten().flatten().count() == 0 {
+                if victim_actions
+                    .iter()
+                    .flatten()
+                    .filter_map(|(s, t)| {
+                        if s.is_empty() && t.is_empty() {
+                            return None
+                        } else {
+                            return Some(true)
+                        }
+                    })
+                    .count()
+                    == 0
+                {
                     return None
                 }
 
@@ -310,6 +323,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             metadata,
             MevType::Sandwich,
         );
+
+        let victim_swaps = victim_swaps
+            .into_iter()
+            .map(|(swaps, _)| swaps)
+            .collect_vec();
 
         let sandwich = Sandwich {
             frontrun_tx_hash,
