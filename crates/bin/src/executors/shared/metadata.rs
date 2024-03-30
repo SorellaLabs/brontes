@@ -151,6 +151,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             return Poll::Ready(Some(res))
         }
 
+        if self.only_cex_dex {
+            return Poll::Pending
+        }
+
         while let Poll::Ready(Some((block, tree, meta))) =
             self.clickhouse_futures.poll_next_unpin(cx)
         {
