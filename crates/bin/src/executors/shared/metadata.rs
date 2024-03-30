@@ -4,6 +4,7 @@ use std::{collections::VecDeque, pin::Pin, task::Poll};
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{
+        dex::DexQuotes,
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
@@ -29,6 +30,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<(BlockTree<Actions>, Metadata)>,
     always_generate_price: bool,
+    only_cex_dex:          bool,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
@@ -38,6 +40,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         clickhouse: Option<&'static CH>,
         dex_pricer_stream: WaitingForPricerFuture<T, DB>,
         always_generate_price: bool,
+        only_cex_dex: bool,
     ) -> Self {
         Self {
             clickhouse,
@@ -45,6 +48,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             clickhouse_futures: FuturesOrdered::new(),
             result_buf: VecDeque::new(),
             always_generate_price,
+            only_cex_dex,
         }
     }
 
@@ -59,11 +63,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     }
 
     pub fn generate_dex_pricing(&self, block: u64, libmdbx: &'static DB) -> bool {
-        self.always_generate_price
+        (self.always_generate_price
             || libmdbx
                 .get_dex_quotes(block)
                 .map(|f| f.0.is_empty())
-                .unwrap_or(true)
+                .unwrap_or(true))
+            && !self.only_cex_dex
     }
 
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
@@ -99,6 +104,20 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
+        } else if self.only_cex_dex {
+            tracing::debug!(?block, "only cex dex. skipping dex pricing");
+            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
+                tracing::error!(%err);
+                err
+            }) else {
+                tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
+                return;
+            };
+            meta.builder_info = libmdbx
+                .try_fetch_builder_info(tree.header.beneficiary)
+                .expect("failed to fetch builder info table in libmdbx");
+            let meta = meta.into_full_metadata(DexQuotes(vec![]));
+            self.result_buf.push_back((tree, meta));
         } else {
             // pull metadata from libmdbx and generate dex_pricing
             let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
@@ -131,6 +150,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Some(res) = self.result_buf.pop_front() {
             return Poll::Ready(Some(res))
+        }
+
+        if self.only_cex_dex {
+            return Poll::Pending
         }
 
         while let Poll::Ready(Some((block, tree, meta))) =
