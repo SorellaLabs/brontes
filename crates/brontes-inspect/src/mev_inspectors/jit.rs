@@ -150,7 +150,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         }
 
         // assert mints and burns are same pool
-        let pools = FastHashSet::default();
+        let mut pools = FastHashSet::default();
         mints.iter().for_each(|m| {
             pools.insert(m.pool);
         });
