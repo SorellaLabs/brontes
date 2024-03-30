@@ -64,17 +64,17 @@ pub fn get_normalized_swap_list_array(
                 .append_value(&swap.token_out.symbol);
 
             struct_builder
-                .field_builder::<Float64Builder>(7)
+                .field_builder::<Float64Builder>(9)
                 .unwrap()
                 .append_value(swap.amount_in.clone().to_float());
 
             struct_builder
-                .field_builder::<Float64Builder>(8)
+                .field_builder::<Float64Builder>(10)
                 .unwrap()
                 .append_value(swap.amount_out.clone().to_float());
 
             struct_builder
-                .field_builder::<StringBuilder>(9)
+                .field_builder::<StringBuilder>(11)
                 .unwrap()
                 .append_value(swap.msg_value.to_string());
 
