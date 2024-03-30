@@ -258,7 +258,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         );
     }
 
-    fn get_dex_price(&self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
+    fn get_dex_price(&mut self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
