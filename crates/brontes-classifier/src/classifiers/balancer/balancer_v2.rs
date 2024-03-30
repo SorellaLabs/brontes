@@ -301,39 +301,38 @@ mod tests {
         let flash_loan =
             B256::from(hex!("0feed8bde2117cc166264dfeebfdec0cf6dc6655325fb94bd90f00688f8c463a"));
 
-        let eq_action = Actions::FlashLoan(NormalizedFlashLoan {
-            protocol:    Protocol::BalancerV2,
-            trace_index: 3,
-            from:        Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
-            pool:        Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
-            receiver_contract: Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
-            assets:      vec![
-                TokenInfoWithAddress {
-                    address: Address::new
-                        (hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
-                    inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
-                }
-            ],
-            amounts:     vec![
-                U256::from_str("653220647374307183")
-                    .unwrap()
-                    .to_scaled_rational(18),
-            ],
-            aave_mode:   None,
-            child_actions: vec![],
-            repayments:  vec![],
-            fees_paid:   vec![],
-            msg_value:   U256::ZERO,
+        classifier_utils.ensure_token(TokenInfoWithAddress {
+            address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
+            inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+        });
 
+        let eq_action = Actions::FlashLoan(NormalizedFlashLoan {
+            protocol:          Protocol::BalancerV2,
+            trace_index:       3,
+            from:              Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
+            pool:              Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
+            receiver_contract: Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
+            assets:            vec![TokenInfoWithAddress {
+                address: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
+                inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
+            }],
+            amounts:           vec![U256::from_str("653220647374307183")
+                .unwrap()
+                .to_scaled_rational(18)],
+            aave_mode:         None,
+            child_actions:     vec![],
+            repayments:        vec![],
+            fees_paid:         vec![],
+            msg_value:         U256::ZERO,
         });
 
         classifier_utils
-            .contains_action_complex(
+            .contains_action_except(
                 flash_loan,
                 0,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Actions::is_flash_loan),
-                &["child_actions"]
+                &["child_actions"],
             )
             .await
             .unwrap();
