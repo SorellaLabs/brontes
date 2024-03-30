@@ -64,7 +64,7 @@ pin-project = "1.1.4"
 clap.workspace = true
 
 # stats
-statrs = "0.16"
+statrs = "0.16" 
 
 # errors
 eyre.workspace = true
