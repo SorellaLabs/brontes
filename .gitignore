@@ -29,6 +29,9 @@
 # Parquet exports
 /data_exports/**
 
+# Juptyer Notebook 
+/notebook/** 
+
 .cargo/
 
 stuff

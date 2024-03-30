@@ -82,7 +82,7 @@ impl PricingTestUtils {
         let pricer = self.init_dex_pricer(block, None, rx).await?;
 
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
-        let tree = classifier.build_block_tree(traces, header).await;
+        let tree = classifier.build_block_tree(traces, header, true).await;
         Ok((pricer, tree))
     }
 
@@ -98,7 +98,7 @@ impl PricingTestUtils {
         let classifier = Classifier::new(self.tracer.libmdbx, tx, self.tracer.get_provider());
         let pricer = self.init_dex_pricer(block, None, rx).await?;
 
-        let _tree = classifier.build_block_tree(vec![trace], header).await;
+        let _tree = classifier.build_block_tree(vec![trace], header, true).await;
 
         Ok(pricer)
     }
