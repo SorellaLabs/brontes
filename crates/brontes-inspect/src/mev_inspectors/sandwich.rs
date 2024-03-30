@@ -393,10 +393,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     swaps.iter().any(|s| front_run_pools.contains(&s.pool))
                         || transfers
                             .iter()
-                            .any(|t| front_run_tokens.contains(&t.token))
+                            .any(|t| front_run_tokens.contains(&t.token.address))
                 }) && v.into_iter().any(|(swaps, transfers)| {
                     swaps.iter().any(|s| back_run_pools.contains(&s.pool))
-                        || transfers.iter().any(|t| back_run_tokens.contains(&t.token))
+                        || transfers.iter().any(|t| back_run_tokens.contains(&t.token.address))
                 })
             })
             .all(|was_victim| was_victim)
