@@ -365,12 +365,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let front_run_tokens = front_run_swaps
             .iter()
             .flatten()
-            .flat_map(|s| [s.token_in.address, s.token_out.address])
+            .flat_map(|s| {
+                [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
+            })
             .collect::<FastHashSet<_>>();
 
         let back_run_tokens = back_run_swaps
             .iter()
-            .flat_map(|s| [s.token_in.address, s.token_out.address])
+            .flat_map(|s| {
+                [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
+            })
             .collect::<FastHashSet<_>>();
 
         // we group all victims by eoa, such that instead of a tx needing to be a
@@ -392,14 +396,24 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|v| {
                 v.iter().cloned().any(|(swaps, transfers)| {
                     swaps.iter().any(|s| front_run_pools.contains(&s.pool))
-                        || transfers
-                            .iter()
-                            .any(|t| front_run_tokens.contains(&t.token.address))
+                        || transfers.iter().any(|t| {
+                            // victim has a transfer from the pool that was a token in for the
+                            // sandwich
+                            front_run_tokens.contains(&(t.token.address, t.from, true))
+                            // victim has a transfer to the pool that was a token out for the
+                            // sandwich 
+                                || front_run_tokens.contains(&(t.token.address, t.to, false))
+                        })
                 }) && v.into_iter().any(|(swaps, transfers)| {
                     swaps.iter().any(|s| back_run_pools.contains(&s.pool))
-                        || transfers
-                            .iter()
-                            .any(|t| back_run_tokens.contains(&t.token.address))
+                        || transfers.iter().any(|t| {
+                            // victim has a transfer from the pool that was a token in for the
+                            // sandwich
+                            back_run_tokens.contains(&(t.token.address, t.from, true))
+                            // victim has a transfer to the pool that was a token out for the
+                            // sandwich 
+                                || back_run_tokens.contains(&(t.token.address, t.to, false))
+                        })
                 })
             })
             .all(|was_victim| was_victim)
