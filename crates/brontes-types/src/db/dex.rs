@@ -39,8 +39,10 @@ use crate::{
     Archive
 ))]
 pub struct DexPrices {
-    pub pre_state:  Rational,
-    pub post_state: Rational,
+    pub pre_state:    Rational,
+    pub post_state:   Rational,
+    /// tells us what varient of pricing for this pool we are looking at
+    pub goes_through: Pair,
 }
 
 impl Display for DexPrices {
@@ -97,7 +99,11 @@ impl DexQuotes {
         let s_idx = tx;
 
         if pair.0 == pair.1 {
-            return Some(DexPrices { pre_state: Rational::ONE, post_state: Rational::ONE })
+            return Some(DexPrices {
+                pre_state:    Rational::ONE,
+                post_state:   Rational::ONE,
+                goes_through: Pair::default(),
+            })
         }
 
         loop {

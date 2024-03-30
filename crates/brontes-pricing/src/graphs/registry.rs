@@ -68,15 +68,24 @@ impl SubGraphRegistry {
         if let Some(goes_through) = goes_through {
             self.sub_graphs
                 .get(pair)
-                .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
+                .filter(|g| {
+                    g.iter()
+                        .any(|(gt, _)| gt == goes_through || goes_through.is_zero())
+                })
                 .is_some()
         } else {
             self.sub_graphs.get(pair).is_some()
         }
     }
 
-    pub fn remove_subgraph(&mut self, pair: &Pair) {
-        self.sub_graphs.remove(pair);
+    pub fn remove_subgraph(&mut self, pair: &Pair, goes_through: &Pair) {
+        self.sub_graphs.retain(|k, v| {
+            if k != pair {
+                return true
+            }
+            v.retain(|(gt, _)| gt != goes_through);
+            !v.is_empty()
+        });
     }
 
     // if we have more than 4 extensions, this is enough of a market outlook

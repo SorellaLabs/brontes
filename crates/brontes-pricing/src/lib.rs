@@ -119,6 +119,9 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
     dex_quotes:      FastHashMap<u64, DexQuotes>,
+    /// pairs that failed to be verified. we use this to avoid the fallback for
+    /// transfers
+    failed_pairs:    FastHashMap<u64, Vec<(Pair, Pair)>>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
     overlap_update:  Option<PoolUpdate>,
@@ -136,6 +139,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     ) -> Self {
         Self {
             finished,
+            failed_pairs: FastHashMap::default(),
             new_graph_pairs,
             quote_asset,
             buffer: StateBuffer::new(),
@@ -323,13 +327,59 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let flipped_pool = pool_pair.flip();
 
         if let Some(price0) = self.get_dex_price(pair0, pool_pair) {
-            let price0 = DexPrices { post_state: price0.clone(), pre_state: price0 };
-            self.store_dex_price(block, tx_idx, pair0, price0);
+            let mut bad = false;
+            self.failed_pairs.retain(|r_block, s| {
+                if block != *r_block {
+                    return true
+                }
+                s.retain(|(p, gt)| {
+                    if *p == pair0 && *gt == pool_pair {
+                        bad = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+
+                !s.is_empty()
+            });
+
+            if !bad {
+                let price0 = DexPrices {
+                    post_state:   price0.clone(),
+                    pre_state:    price0,
+                    goes_through: pool_pair,
+                };
+                self.store_dex_price(block, tx_idx, pair0, price0);
+            }
         };
 
         if let Some(price1) = self.get_dex_price(pair1, flipped_pool) {
-            let price1 = DexPrices { post_state: price1.clone(), pre_state: price1 };
-            self.store_dex_price(block, tx_idx, pair1, price1);
+            let mut bad = false;
+            self.failed_pairs.retain(|r_block, s| {
+                if block != *r_block {
+                    return true
+                }
+                s.retain(|(p, gt)| {
+                    if *p == pair1 && *gt == flipped_pool {
+                        bad = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+
+                !s.is_empty()
+            });
+
+            if !bad {
+                let price1 = DexPrices {
+                    post_state:   price1.clone(),
+                    pre_state:    price1,
+                    goes_through: flipped_pool,
+                };
+                self.store_dex_price(block, tx_idx, pair1, price1);
+            }
         };
     }
 
@@ -356,21 +406,66 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let price1_post = self.get_dex_price(pair1, flipped_pool);
 
         if let (Some(price0_pre), Some(price0_post)) = (price0_pre, price0_post) {
-            self.store_dex_price(
-                block,
-                tx_idx,
-                pair0,
-                DexPrices { pre_state: price0_pre, post_state: price0_post },
-            );
+            let mut bad = false;
+            self.failed_pairs.retain(|r_block, s| {
+                if block != *r_block {
+                    return true
+                }
+                s.retain(|(p, gt)| {
+                    if *p == pair0 && *gt == pool_pair {
+                        bad = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+
+                !s.is_empty()
+            });
+
+            if !bad {
+                self.store_dex_price(
+                    block,
+                    tx_idx,
+                    pair0,
+                    DexPrices {
+                        pre_state:    price0_pre,
+                        post_state:   price0_post,
+                        goes_through: pool_pair,
+                    },
+                );
+            }
         }
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
-            self.store_dex_price(
-                block,
-                tx_idx,
-                pair1,
-                DexPrices { pre_state: price1_pre, post_state: price1_post },
-            );
+            let mut bad = false;
+            self.failed_pairs.retain(|r_block, s| {
+                if block != *r_block {
+                    return true
+                }
+                s.retain(|(p, gt)| {
+                    if *p == pair1 && *gt == flipped_pool {
+                        bad = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+
+                !s.is_empty()
+            });
+            if !bad {
+                self.store_dex_price(
+                    block,
+                    tx_idx,
+                    pair1,
+                    DexPrices {
+                        pre_state:    price1_pre,
+                        post_state:   price1_post,
+                        goes_through: flipped_pool,
+                    },
+                );
+            }
         }
     }
 
@@ -489,7 +584,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         ignore_state: failed.ignore_state,
                     })
                 }
-                VerificationResults::Abort => None,
+                VerificationResults::Abort(pair, goes_through, block) => {
+                    self.failed_pairs
+                        .entry(block)
+                        .or_default()
+                        .push((pair, goes_through));
+
+                    None
+                }
             })
             .collect_vec();
 
@@ -864,11 +966,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .filter_map(|p| p.as_ref())
             .for_each(|tx_prices| {
                 for (k, p) in tx_prices {
-                    if let Entry::Vacant(v) = first.entry(*k) {
+                    let gt = p.goes_through;
+                    if let Entry::Vacant(v) = first.entry((*k, gt)) {
                         v.insert(p.clone().get_price(PriceAt::Before));
-                        last.insert(*k, p.clone().get_price(PriceAt::After));
+                        last.insert((*k, gt), p.clone().get_price(PriceAt::After));
                     } else {
-                        last.insert(*k, p.clone().get_price(PriceAt::After));
+                        last.insert((*k, gt), p.clone().get_price(PriceAt::After));
                     }
                 }
             });
@@ -891,11 +994,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .0
             .iter_mut()
             .filter_map(|p| p.as_mut())
-            .for_each(|map| map.retain(|k, _| !removals.contains(k)));
+            .for_each(|map| map.retain(|k, v| !removals.contains(&(*k, v.goes_through))));
 
         removals.into_iter().for_each(|pair| {
-            tracing::debug!(?pair, "drastic price change detected. removing pair");
-            self.graph_manager.remove_subgraph(pair);
+            tracing::debug!(pair=?pair.0, goes_through=?pair.1, "drastic price change detected. removing pair");
+            self.graph_manager.remove_subgraph(pair.0, pair.1);
         })
     }
 

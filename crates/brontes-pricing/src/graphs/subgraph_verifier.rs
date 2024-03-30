@@ -8,7 +8,7 @@ use super::{
     state_tracker::StateTracker,
     subgraph::{BadEdge, PairSubGraph, VerificationOutcome},
 };
-use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
+use crate::{subgraph_query, AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
@@ -271,7 +271,11 @@ impl SubgraphVerifier {
 
                 if result.should_abandon {
                     tracing::debug!(?pair, "aborting");
-                    return VerificationResults::Abort
+                    return VerificationResults::Abort(
+                        subgraph.subgraph.complete_pair(),
+                        subgraph.subgraph.must_go_through(),
+                        block,
+                    )
                 }
 
                 if result.should_requery {
@@ -482,7 +486,7 @@ pub struct VerificationFailed {
 pub enum VerificationResults {
     Passed(VerificationPass),
     Failed(VerificationFailed),
-    Abort,
+    Abort(Pair, Pair, u64),
 }
 
 #[derive(Debug, Default, Clone)]
