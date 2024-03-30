@@ -16,6 +16,8 @@ pub enum UniswapV3MathError {
     ZeroValue,
     #[error("Liquidity is 0")]
     LiquidityIsZero,
+    #[error("Liquidity to Low {0}")]
+    LiquidityTooLow(u128),
     //TODO: Update this, shield your eyes for now
     #[error(
         "require((product = amount * sqrtPX96) / amount == sqrtPX96 && numerator1 > product);"

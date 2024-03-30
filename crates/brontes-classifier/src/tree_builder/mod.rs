@@ -52,7 +52,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         &self,
         traces: Vec<TxTrace>,
         header: Header,
+        generate_pricing: bool,
     ) -> BlockTree<Actions> {
+        if !generate_pricing {
+            self.pricing_update_sender
+                .send(DexPriceMsg::DisablePricingFor(header.number))
+                .unwrap();
+        }
+
         let tx_roots = self.build_all_tx_trees(traces, &header).await;
         let mut tree = BlockTree::new(header, tx_roots.len());
 

@@ -150,6 +150,7 @@ action_dispatch!(
     BalancerV1BindCall,
     BalancerV2OnSwap_0Call,
     BalancerV2OnSwap_1Call,
+    BalancerV2FlashLoanCall,
     BalancerV2JoinPoolCall,
     BalancerV2ExitPoolCall,
     BalancerV2RegisterTokensCall,

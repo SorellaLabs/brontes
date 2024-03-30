@@ -70,21 +70,25 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     }
 
     async fn state_future(
+        generate_pricing: bool,
         fut: ExecutionFut<'static>,
         classifier: &'static Classifier<'static, T, DB>,
     ) -> eyre::Result<BlockTree<Actions>> {
         let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
 
         debug!("Got {} traces + header", traces.len());
-        let res = classifier.build_block_tree(traces, header).await;
+        let res = classifier
+            .build_block_tree(traces, header, generate_pricing)
+            .await;
 
         Ok(res)
     }
 
     pub fn fetch_state_for(&mut self, block: u64) {
         let execute_fut = self.parser.execute(block);
+        let generate_pricing = self.metadata_fetcher.generate_dex_pricing(block, self.db);
         self.collection_future = Some(Box::pin(
-            Self::state_future(execute_fut, self.classifier)
+            Self::state_future(generate_pricing, execute_fut, self.classifier)
                 .instrument(span!(Level::ERROR, "mev processor", block_number=%block)),
         ))
     }

@@ -170,7 +170,10 @@ impl ClassifierTestUtils {
     ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
-        Ok(self.classifier.build_block_tree(vec![trace], header).await)
+        Ok(self
+            .classifier
+            .build_block_tree(vec![trace], header, true)
+            .await)
     }
 
     pub async fn setup_pricing_for_bench(
@@ -192,7 +195,7 @@ impl ClassifierTestUtils {
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
-        let _tree = classifier.build_block_tree(traces, header).await;
+        let _tree = classifier.build_block_tree(traces, header, true).await;
 
         needs_tokens
             .iter()
@@ -225,7 +228,7 @@ impl ClassifierTestUtils {
             .await?;
 
         let classifier = Classifier::new(self.libmdbx, tx, self.get_provider());
-        let _tree = classifier.build_block_tree(traces, header).await;
+        let _tree = classifier.build_block_tree(traces, header, true).await;
 
         Ok(())
     }
@@ -254,7 +257,7 @@ impl ClassifierTestUtils {
         let BlockTracesWithHeaderAnd { traces, header, .. } = range_traces.remove(0);
 
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
-        let _tree = classifier.build_block_tree(traces, header).await;
+        let _tree = classifier.build_block_tree(traces, header, true).await;
 
         needs_tokens
             .iter()
@@ -274,7 +277,7 @@ impl ClassifierTestUtils {
 
         // send rest of updates
         for BlockTracesWithHeaderAnd { traces, header, .. } in range_traces {
-            classifier.build_block_tree(traces, header).await;
+            classifier.build_block_tree(traces, header, true).await;
         }
 
         ctr.store(true, SeqCst);
@@ -295,7 +298,7 @@ impl ClassifierTestUtils {
         let (tx, rx) = unbounded_channel();
 
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
-        let tree = classifier.build_block_tree(vec![trace], header).await;
+        let tree = classifier.build_block_tree(vec![trace], header, true).await;
 
         needs_tokens
             .iter()
@@ -335,7 +338,7 @@ impl ClassifierTestUtils {
                 .into_iter()
                 .map(|block_info| async move {
                     self.classifier
-                        .build_block_tree(block_info.traces, block_info.header)
+                        .build_block_tree(block_info.traces, block_info.header, true)
                         .await
                 }),
         )
@@ -367,7 +370,7 @@ impl ClassifierTestUtils {
             end_block = block_info.block;
 
             let tree = classifier
-                .build_block_tree(block_info.traces, block_info.header)
+                .build_block_tree(block_info.traces, block_info.header, true)
                 .await;
 
             trees.push(tree);
@@ -412,7 +415,7 @@ impl ClassifierTestUtils {
             .trace_loader
             .get_block_traces_with_header(block)
             .await?;
-        let tree = self.classifier.build_block_tree(traces, header).await;
+        let tree = self.classifier.build_block_tree(traces, header, true).await;
 
         Ok(tree)
     }
@@ -430,7 +433,7 @@ impl ClassifierTestUtils {
 
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
-        let tree = classifier.build_block_tree(traces, header).await;
+        let tree = classifier.build_block_tree(traces, header, true).await;
 
         needs_tokens
             .iter()
