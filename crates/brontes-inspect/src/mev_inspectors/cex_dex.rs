@@ -199,6 +199,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         exchange_cex_price: (CexExchange, Rational, bool),
         metadata: &Metadata,
     ) -> Option<ExchangeLeg> {
+        // If the price difference between the DEX and CEX is greater than 10x then this
+        // is likely a false positive resulting from incorrect price data
+        let smaller = swap.swap_rate().min(exchange_cex_price.1.clone());
+        let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
+
+        if smaller * Rational::from(10) < larger {
+            return None;
+        }
+
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let delta_price = &exchange_cex_price.1 - swap.swap_rate();
