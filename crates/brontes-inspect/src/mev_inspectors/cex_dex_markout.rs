@@ -339,7 +339,7 @@ mod tests {
         // https://etherscan.io/tx/0xb8745d3c76a24f9a8085507305541ab13b2e6953fbad2c612d4d06b808d5f924
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
-        let tx = hex!("0xb8745d3c76a24f9a8085507305541ab13b2e6953fbad2c612d4d06b808d5f924").into();
+        let tx = hex!("b8745d3c76a24f9a8085507305541ab13b2e6953fbad2c612d4d06b808d5f924").into();
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
