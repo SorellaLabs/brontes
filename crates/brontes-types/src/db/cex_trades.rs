@@ -144,6 +144,7 @@ impl CexTradeMap {
     ) -> Option<MakerTaker> {
         self.get_vwam_no_intermediary(exchanges, pair, volume, baskets, quality.as_ref())
             .or_else(|| {
+                tracing::info!("trying intermediary");
                 self.get_vwam_via_intermediary(exchanges, pair, volume, baskets, quality.as_ref())
             })
     }
