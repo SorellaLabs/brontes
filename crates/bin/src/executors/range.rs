@@ -16,7 +16,7 @@ use reth_tasks::shutdown::GracefulShutdown;
 use tracing::info;
 
 use super::shared::state_collector::StateCollector;
-use crate::Processor;
+use crate::{executors::ProgressBar, Processor};
 pub struct RangeExecutorWithPricing<
     T: TracingProvider,
     DB: DBWriter + LibmdbxReader,
@@ -29,6 +29,7 @@ pub struct RangeExecutorWithPricing<
     end_block:      u64,
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
+    progress_bar:   Option<ProgressBar>,
     _p:             PhantomData<P>,
 }
 
@@ -41,6 +42,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
+        progress_bar: Option<ProgressBar>,
     ) -> Self {
         Self {
             collector: state_collector,
@@ -49,6 +51,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             end_block,
             libmdbx,
             inspectors,
+            progress_bar,
             _p: PhantomData,
         }
     }
@@ -95,6 +98,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 let block = self.current_block;
                 self.collector.fetch_state_for(block);
                 self.current_block += 1;
+                if let Some(pb) = self.progress_bar.as_ref() {
+                    pb.inc(1)
+                };
             }
 
             if let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {

@@ -144,13 +144,15 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     };
 
                     for trace in trace.trace.into_iter() {
-                        if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
-                            *coinbase +=
-                                get_coinbase_transfer(header.beneficiary, &trace.trace.action)
-                                    .unwrap_or_default()
-                        } else {
-                            tx_root.gas_details.coinbase_transfer =
-                                get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                        if trace.trace.error.is_none() {
+                            if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                                *coinbase +=
+                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                                        .unwrap_or_default()
+                            } else {
+                                tx_root.gas_details.coinbase_transfer =
+                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                            }
                         }
 
                         let classification = self
