@@ -338,10 +338,10 @@ mod tests {
     };
     #[brontes_macros::test]
     async fn test_cex_dex_markout() {
-        // https://etherscan.io/tx/0xb8745d3c76a24f9a8085507305541ab13b2e6953fbad2c612d4d06b808d5f924
+        // https://etherscan.io/tx/0x0d33ed7991b01d5bf6f6f549a77a667657c02ffce8137a26d1c209b0e42fa30e
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
-        let tx = hex!("b8745d3c76a24f9a8085507305541ab13b2e6953fbad2c612d4d06b808d5f924").into();
+        let tx = hex!("0d33ed7991b01d5bf6f6f549a77a667657c02ffce8137a26d1c209b0e42fa30e").into();
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
