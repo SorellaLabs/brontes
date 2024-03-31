@@ -121,9 +121,10 @@ action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillOtcOrderCall,
     Swap,
-    [OtcOrderFilled],
+    [..OtcOrderFilled],
     logs: true,
     |info: CallInfo, logs: ZeroXFillOtcOrderCallLogs, db: &DB| {
+        println!("Filling OTC order");
         let logs = logs.otc_order_filled_field?;
 
         let token_in = db.try_fetch_token_info(logs.makerToken)?;
@@ -468,7 +469,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress,
+        db::token_info::{TokenInfo, TokenInfoWithAddress},
         normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
         ToScaledRational, TreeSearchBuilder,
     };
@@ -555,6 +556,56 @@ mod tests {
                 0,
                 Protocol::ZeroX,
                 TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_fill_otc_order() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap_tx =
+            B256::from(hex!("07a010a8697a5d74c1c68dac628e18f5b09e593dc89f6a7d11b2bf7873dad726"));
+
+        let token_in = TokenInfoWithAddress {
+            address: Address::from_str("0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84").unwrap(),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "stETH".to_string()
+            }
+        };
+
+        classifier_utils.ensure_token(token_in.clone());
+
+        let token_out = TokenInfoWithAddress::weth();
+
+        let amount_in = U256::from_str("4123654490488176400")
+            .unwrap()
+            .to_scaled_rational(token_in.decimals);
+        let amount_out = U256::from_str("4127334728116880329")
+            .unwrap()
+            .to_scaled_rational(token_out.decimals);
+
+
+        let action = Actions::Swap(NormalizedSwap {
+            protocol: Protocol::ZeroX,
+            trace_index: 0,
+            from: Address::from_str("0x807cF9A772d5a3f9CeFBc1192e939D62f0D9bD38").unwrap(),
+            recipient: Address::from_str("0x69Db96B584B6e25420a4Aa2ca4B20E3860d19d8C").unwrap(),
+            msg_value: U256::ZERO,
+            pool: Address::ZERO,
+            token_in,
+            token_out,
+            amount_in,
+            amount_out,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap_tx, 
+                0, 
+                action,               
+                TreeSearchBuilder::default().with_action(Actions::is_liquidation),
             )
             .await
             .unwrap();
