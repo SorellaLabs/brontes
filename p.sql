@@ -30,3 +30,5 @@ SELECT
 FROM sec
 GROUP BY block_number
 
+select arrayMap(x -> arrayFilter(l -> l.1.1 == '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' or l.1.2 == '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', x.2),data) from brontes_api.cex_trades where block_number = 18592518 format Vertical
+

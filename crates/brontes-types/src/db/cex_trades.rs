@@ -198,6 +198,7 @@ impl CexTradeMap {
             .calculate_intermediary_addresses(exchanges, pair)
             .into_par_iter()
             .filter_map(|intermediary| {
+                tracing::info!(?intermediary, "trying intermediary");
                 let pair0 = Pair(pair.0, intermediary);
                 let pair1 = Pair(intermediary, pair.1);
                 Some((
