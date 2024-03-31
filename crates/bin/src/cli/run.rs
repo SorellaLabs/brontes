@@ -74,8 +74,19 @@ impl RunArgs {
         let clickhouse = static_object(load_clickhouse().await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
-        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
+        let only_cex_dex = self
+            .inspectors
+            .as_ref()
+            .map(|f| {
+                #[cfg(not(feature = "cex-dex-markout"))]
+                let cmp = Inspectors::CexDex;
+                #[cfg(feature = "cex-dex-markout")]
+                let cmp = Inspectors::CexDexMarkout;
+                f.len() == 1 && f.contains(&cmp)
+            })
+            .unwrap_or(false);
 
+        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
         let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
@@ -92,6 +103,7 @@ impl RunArgs {
                     self.min_batch_size,
                     quote_asset,
                     self.force_dex_pricing,
+                    only_cex_dex,
                     inspectors,
                     clickhouse,
                     parser,

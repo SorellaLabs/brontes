@@ -1,5 +1,6 @@
 mod processors;
 mod range;
+use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
@@ -44,6 +45,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub min_batch_size:    u64,
     pub quote_asset:       Address,
     pub force_dex_pricing: bool,
+    pub only_cex_dex:      bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
@@ -64,6 +66,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         min_batch_size: u64,
         quote_asset: Address,
         force_dex_pricing: bool,
+        only_cex_dex: bool,
 
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
@@ -83,6 +86,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             inspectors,
             quote_asset,
             end_block,
+            only_cex_dex,
             _p: PhantomData,
         }
     }
@@ -92,6 +96,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         executor: BrontesTaskExecutor,
         end_block: u64,
+        progress_bar: Option<ProgressBar>,
     ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -110,6 +115,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     let executor = executor.clone();
                     let start_block = chunk.next().unwrap();
                     let end_block = chunk.last().unwrap_or(start_block);
+
+                    let prgrs_bar = progress_bar.clone();
+
                     async move {
                         tracing::info!(batch_id, start_block, end_block, "Starting batch");
 
@@ -125,6 +133,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                             .await,
                             self.libmdbx,
                             self.inspectors,
+                            prgrs_bar,
                         )
                     }
                 }),
@@ -191,8 +200,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             rest_pairs,
         );
         let pricing = WaitingForPricerFuture::new(pricer, executor);
-        let fetcher =
-            MetadataFetcher::new(tip.then_some(self.clickhouse), pricing, self.force_dex_pricing);
+        let fetcher = MetadataFetcher::new(
+            tip.then_some(self.clickhouse),
+            pricing,
+            self.force_dex_pricing,
+            self.only_cex_dex,
+        );
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
@@ -326,8 +339,36 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
+        let progress_bar = if self.start_block.is_some() && had_end_block {
+            let total_blocks = end_block - self.start_block.unwrap();
+            let progress_bar = ProgressBar::with_draw_target(
+                Some(total_blocks),
+                ProgressDrawTarget::stderr_with_hz(1),
+            );
+            progress_bar.set_style(
+                ProgressStyle::with_template(
+                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
+                     ({percent}%) | ETA: {eta}",
+                )?
+                .progress_chars("█>-")
+                .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+                })
+                .with_key(
+                    "percent",
+                    |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                        write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                    },
+                ),
+            );
+            progress_bar.set_message("Processing blocks:");
+            Some(progress_bar)
+        } else {
+            None
+        };
+
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block)
+            self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
                 .await
                 .into_iter()
                 .for_each(|block_range| {
@@ -340,7 +381,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 });
         } else {
             if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block)
+                self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
                     .await
                     .into_iter()
                     .for_each(|block_range| {
@@ -362,7 +403,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             ));
         }
 
-        Ok(Brontes(futures))
+        Ok(Brontes { futures, progress_bar })
     }
 
     pub async fn build(
@@ -393,17 +434,26 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     }
 }
 
-pub struct Brontes(FuturesUnordered<JoinHandle<()>>);
+pub struct Brontes {
+    futures:      FuturesUnordered<JoinHandle<()>>,
+    progress_bar: Option<ProgressBar>,
+}
 
 impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if self.0.is_empty() {
+        if self.futures.is_empty() {
+            if let Some(bar) = &self.progress_bar {
+                bar.finish();
+            }
             return Poll::Ready(())
         }
 
-        if let Poll::Ready(None) = self.0.poll_next_unpin(cx) {
+        if let Poll::Ready(None) = self.futures.poll_next_unpin(cx) {
+            if let Some(bar) = &self.progress_bar {
+                bar.finish();
+            }
             return Poll::Ready(())
         }
 
