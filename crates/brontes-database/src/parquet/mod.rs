@@ -57,9 +57,6 @@ where
         Self { start_block, end_block, base_dir_path, db }
     }
 
-    //TODO: Optimize bundle data export process + test exports
-    //TODO: Impl analytics using polars with notebook visualizations
-
     pub async fn export_mev_blocks(&self) -> Result<(), Error> {
         let mev_blocks = if let Some(end_block) = self.end_block {
             self.db
