@@ -41,7 +41,6 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         }
 
         let trades = metadata.cex_trades.clone().unwrap();
-        tracing::info!("trades: {:#?}", trades);
 
         let swap_txes = tree
             .clone()
@@ -106,6 +105,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
         let pair = Pair(swap.token_out.address, swap.token_in.address);
+        tracing::info!(?pair, "fetching price");
 
         let (maker_price, taker_price) = metadata.cex_trades.as_ref()?.get_price(
             &self.cex_exchanges,
@@ -117,6 +117,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             // add lookup
             None,
         )?;
+
+        tracing::info!(?maker_price, ?taker_price, "got price");
         let leg = self.profit_classifier(swap, maker_price, taker_price);
 
         Some(PossibleCexDexLeg { swap: swap.clone(), leg })
