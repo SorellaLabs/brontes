@@ -466,13 +466,13 @@ struct BSConfig {
 pub struct AddressMetadataConfig {
     pub entity_name:     Option<String>,
     pub nametag:         Option<String>,
-    pub labels:          Vec<String>,
+    pub labels:          Option<Vec<String>>,
     #[serde(rename = "type")]
     pub address_type:    Option<String>,
     #[serde(default)]
     pub contract_info:   Option<ContractInfoConfig>,
     pub ens:             Option<String>,
-    pub social_metadata: SocialsConfig,
+    pub social_metadata: Option<SocialsConfig>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -500,7 +500,7 @@ impl AddressMetadataConfig {
         AddressMetadata {
             entity_name:     self.entity_name,
             nametag:         self.nametag,
-            labels:          self.labels,
+            labels:          self.labels.unwrap_or_default(),
             address_type:    self.address_type,
             contract_info:   self.contract_info.map(|config| ContractInfo {
                 verified_contract: config.verified_contract,
@@ -508,13 +508,16 @@ impl AddressMetadataConfig {
                 reputation:        config.reputation,
             }),
             ens:             self.ens,
-            social_metadata: Socials {
-                twitter:           self.social_metadata.twitter,
-                twitter_followers: self.social_metadata.twitter_followers,
-                website_url:       self.social_metadata.website_url,
-                crunchbase:        self.social_metadata.crunchbase,
-                linkedin:          self.social_metadata.linkedin,
-            },
+            social_metadata: self
+                .social_metadata
+                .map(|config| Socials {
+                    twitter:           config.twitter,
+                    twitter_followers: config.twitter_followers,
+                    website_url:       config.website_url,
+                    crunchbase:        config.crunchbase,
+                    linkedin:          config.linkedin,
+                })
+                .unwrap_or_default(),
         }
     }
 }
