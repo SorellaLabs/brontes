@@ -43,6 +43,7 @@
 
 use std::sync::Arc;
 
+use alloy_primitives::hex;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt},
@@ -60,6 +61,8 @@ use reth_primitives::Address;
 use tracing::debug;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+
+pub const JARED: Address = Address::new(hex!("ae2Fc483527B8EF99EB5D9B44875F005ba1FaE13"));
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
     utils:         SharedInspectorUtils<'db, DB>,
@@ -119,6 +122,14 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         swap_txes
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+
+                // Return early if the tx is a solver settling trades
+                if let Some(contract_type) = tx_info.contract_type.as_ref() {
+                    if contract_type.is_solver_settlement() {
+                        return None;
+                    }
+                }
+
                 let deltas = swaps.clone().into_iter().account_for_actions();
                 let swaps = swaps
                     .into_iter()
@@ -213,7 +224,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let smaller = swap.swap_rate().min(exchange_cex_price.1.clone());
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
-        if smaller * Rational::from(10) < larger {
+        if smaller * Rational::from(3) < larger {
             return None;
         }
 
@@ -377,6 +388,13 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         info: &TxInfo,
         metadata: Arc<Metadata>,
     ) -> Option<BundleData> {
+        //TODO: Temporary fix! Fix because dex pricing is shit rn we are misclassifying
+        // a lot of sandwich backruns as cex-dex (as on paper they would be
+        // extremely profitable cex-dex)
+        if info.eoa == JARED {
+            return None
+        }
+
         if self.is_triangular_arb(possible_cex_dex, info, metadata) {
             return None
         }

@@ -51,6 +51,10 @@ impl AddressMetadata {
             return ContractType::CexExchange;
         }
 
+        if self.is_settlement_contract() {
+            return ContractType::SolverSettlement;
+        }
+
         if self.is_cex() {
             return ContractType::Cex;
         }
@@ -65,6 +69,20 @@ impl AddressMetadata {
 
         self.get_contract_type_from_labels()
             .unwrap_or(ContractType::Unknown)
+    }
+
+    fn is_settlement_contract(&self) -> bool {
+        if let Some(nametag) = &self.nametag {
+            if nametag.eq_ignore_ascii_case("UniswapX")
+                || nametag.eq_ignore_ascii_case("CoW Protocol")
+            {
+                return true;
+            }
+        }
+
+        self.labels
+            .iter()
+            .any(|label| label.eq_ignore_ascii_case("settlement"))
     }
 
     fn is_cex(&self) -> bool {
@@ -156,12 +174,17 @@ pub enum ContractType {
     Protocol,
     CexExchange,
     Bridge,
+    SolverSettlement,
     Unknown,
 }
 
 impl ContractType {
     pub fn could_be_mev_contract(&self) -> bool {
         matches!(self, ContractType::MevBot | ContractType::Unknown)
+    }
+
+    pub fn is_solver_settlement(&self) -> bool {
+        matches!(self, ContractType::SolverSettlement)
     }
 }
 

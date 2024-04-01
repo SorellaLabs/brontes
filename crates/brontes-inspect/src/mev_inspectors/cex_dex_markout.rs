@@ -47,6 +47,14 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         swap_txes
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+
+                // Return early if the tx is a solver settling trades
+                if let Some(contract_type) = tx_info.contract_type.as_ref() {
+                    if contract_type.is_solver_settlement() {
+                        return None;
+                    }
+                }
+
                 let deltas = swaps.clone().into_iter().account_for_actions();
                 let swaps = swaps
                     .into_iter()
