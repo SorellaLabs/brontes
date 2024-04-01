@@ -709,10 +709,10 @@ mod tests {
         let new_values = clickhouse.get_cex_prices(CexRangeOrArbitrary::Range(block_range.0, block_range.1)).await.unwrap();
         let old_values =  clickhouse.query_many_range::<CexPrice, CexPriceData>(block_range.0, block_range.1).await.unwrap();
 
-        assert!(new_values.0.len() >= old_values.0.len());
+        assert!(new_values.len() >= old_values.len());
         
-        old_values.0.iter().for_each(|(exch, old_data)| {
-            let new_data = new_values.0.get(&exch).unwrap();
+        old_values.iter().for_each(|(exch, old_data)| {
+            let new_data = new_values.get(&exch).unwrap();
             assert!(new_data.len() > old_data.len());
         });
 
