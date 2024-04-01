@@ -258,7 +258,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         FILTER_THRESHOLD,
                     )
                     || info.is_cex_dex_call))
-            || info.is_searcher_of_type_with_count_threshold(mev_type, FILTER_THRESHOLD * 3)
+            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
             || info.is_labelled_searcher_of_type(MevType::CexDex)
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
