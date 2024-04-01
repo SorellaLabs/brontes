@@ -178,6 +178,6 @@ action_dispatch!(
     ZeroXSellTokenForEthToUniswapV3Call,
     ZeroXSellTokenForTokenToUniswapV3Call,
     ZeroXTransformERC20Call,
-    ZeroXSellToPancakeSwapCall,
-    ZeroXFillOtcOrderCall
+    ZeroXSellToPancakeSwapCall
+    // ZeroXFillOtcOrderCall
 );

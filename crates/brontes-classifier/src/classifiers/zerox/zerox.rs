@@ -124,7 +124,6 @@ action_impl!(
     [..OtcOrderFilled],
     logs: true,
     |info: CallInfo, logs: ZeroXFillOtcOrderCallLogs, db: &DB| {
-        println!("Filling OTC order");
         let logs = logs.otc_order_filled_field?;
 
         let token_in = db.try_fetch_token_info(logs.makerToken)?;
