@@ -1,11 +1,13 @@
 use std::fmt::Debug;
 
 use alloy_primitives::{Address, Log};
+use alloy_sol_types::sol_data::Address;
 use brontes_types::{
     normalized_actions::{pool::NormalizedPoolConfigUpdate, Actions},
     pair::Pair,
 };
 use malachite::Rational;
+use reth_rpc_types::trace::parity::Action;
 
 use crate::{
     errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, Protocol,
@@ -151,6 +153,18 @@ pub struct PoolUpdate {
 impl PoolUpdate {
     pub fn get_pool_address(&self) -> Address {
         self.action.get_to_address()
+    }
+
+    pub fn get_pool_address_for_pricing(&self) -> Option<Address> {
+        // these don't have a pool address
+        if self.action.is_transfer()
+            || self.action.is_batch()
+            || self.action.is_aggregator()
+            || self.action.is_eth_transfer()
+        {
+            return None
+        }
+        Some(self.get_pool_address())
     }
 
     pub fn is_transfer(&self) -> bool {

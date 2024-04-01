@@ -176,7 +176,7 @@ impl SubGraphRegistry {
                     (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
                 })
             })
-            .and_then(|graph| {
+            .map(|graph| {
                 Some((
                     graph.extends_to(),
                     graph.complete_pair(),
@@ -188,9 +188,12 @@ impl SubGraphRegistry {
             // we take the average price on non-extended graphs and return the price
             // that way
             .or_else(|| {
-                self.get_price_all(unordered_pair, edge_state)
-                    .map(|price| (None, unordered_pair, price))
+                Some(
+                    self.get_price_all(unordered_pair, edge_state)
+                        .map(|price| (None, unordered_pair, price)),
+                )
             })
+            .flatten()
     }
 
     /// for the given pair, grabs the price for all go-through variants

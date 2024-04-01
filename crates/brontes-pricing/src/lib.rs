@@ -346,7 +346,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn init_new_pool_override(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
-        let pool = msg.get_pool_address();
+        let pool = msg.get_pool_address_for_pricing();
 
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
             info!(?addr, "failed to get pair for pool");
@@ -359,7 +359,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let flipped_pool = pool_pair.flip();
 
-        if let Some(price0) = self.get_dex_price(pair0, pool_pair, Some(pool)) {
+        if let Some(price0) = self.get_dex_price(pair0, pool_pair, pool) {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -387,7 +387,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             }
         };
 
-        if let Some(price1) = self.get_dex_price(pair1, flipped_pool, Some(pool)) {
+        if let Some(price1) = self.get_dex_price(pair1, flipped_pool, pool) {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -419,7 +419,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
-        let pool = msg.get_pool_address();
+        let pool = msg.get_pool_address_for_pricing();
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
             error!(?addr, "failed to get pair for pool");
             self.graph_manager.update_state(addr, msg);
@@ -431,13 +431,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let flipped_pool = pool_pair.flip();
 
-        let price0_pre = self.get_dex_price(pair0, pool_pair, Some(pool));
-        let price1_pre = self.get_dex_price(pair1, flipped_pool, Some(pool));
+        let price0_pre = self.get_dex_price(pair0, pool_pair, pool);
+        let price1_pre = self.get_dex_price(pair1, flipped_pool, pool);
 
         self.graph_manager.update_state(addr, msg);
 
-        let price0_post = self.get_dex_price(pair0, pool_pair, Some(pool));
-        let price1_post = self.get_dex_price(pair1, flipped_pool, Some(pool));
+        let price0_post = self.get_dex_price(pair0, pool_pair, pool);
+        let price1_post = self.get_dex_price(pair1, flipped_pool, pool);
 
         if let (Some(price0_pre), Some(price0_post)) = (price0_pre, price0_post) {
             let mut bad = false;
