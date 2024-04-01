@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 mod builder;
 use std::{
     fs::{self},

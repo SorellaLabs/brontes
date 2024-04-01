@@ -60,6 +60,8 @@ use malachite::{
 use reth_primitives::Address;
 use tracing::debug;
 
+pub const FILTER_THRESHOLD: u64 = 20;
+
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub const JARED: Address = Address::new(hex!("ae2Fc483527B8EF99EB5D9B44875F005ba1FaE13"));
@@ -388,14 +390,13 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         info: &TxInfo,
         metadata: Arc<Metadata>,
     ) -> Option<BundleData> {
+        if self.is_triangular_arb(possible_cex_dex, info, metadata) {
+            return None
+        }
         //TODO: Temporary fix! Fix because dex pricing is shit rn we are misclassifying
         // a lot of sandwich backruns as cex-dex (as on paper they would be
         // extremely profitable cex-dex)
         if info.eoa == JARED {
-            return None
-        }
-
-        if self.is_triangular_arb(possible_cex_dex, info, metadata) {
             return None
         }
 
@@ -404,9 +405,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         if has_positive_pnl
             || (!info.is_classified
-                && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
+                && (possible_cex_dex.gas_details.coinbase_transfer.is_some()
+                    && info.is_private
+                    && info.is_searcher_of_type_with_count_threshold(
+                        MevType::CexDex,
+                        FILTER_THRESHOLD,
+                    )
                     || info.is_cex_dex_call))
-            || info.is_searcher_of_type(MevType::CexDex)
+            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
+            || info.is_labelled_searcher_of_type(MevType::CexDex)
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
