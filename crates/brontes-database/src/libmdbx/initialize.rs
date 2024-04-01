@@ -712,7 +712,7 @@ mod tests {
         assert!(new_values.len() >= old_values.len());
         
         old_values.iter().zip(new_values).map(|(old_data, new_data)| {
-            assert!(new_data.data.len() > old_data.data.len());
+            assert!(new_data.value.len() > old_data.value.len());
         })
         
     }
