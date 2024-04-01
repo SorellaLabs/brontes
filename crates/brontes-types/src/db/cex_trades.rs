@@ -161,6 +161,7 @@ impl CexTradeMap {
                 pairs
                     .keys()
                     .filter_map(|trade_pair| {
+                        tracing::info!(?trade_pair);
                         (trade_pair.0 == pair.0 && trade_pair.1 != pair.1)
                             .then_some(pair.1)
                             .or_else(|| {
@@ -331,6 +332,7 @@ impl CexTradeMap {
 
             vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
             vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
+
             *exchange_with_vol
                 .entry(trade.get().exchange)
                 .or_insert(Rational::ZERO) += &trade.get().amount;
