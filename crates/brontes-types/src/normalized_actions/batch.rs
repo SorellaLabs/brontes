@@ -59,16 +59,14 @@ impl NormalizedBatch {
                     }
                 }
                 Actions::Swap(s) => {
-                    if s.from == self.solver {
-                        if let Some(swaps) = &mut self.solver_swaps {
-                            swaps.push(s.clone());
-                            nodes_to_prune.push(*trace_index);
-                            break;
-                        } else {
-                            self.solver_swaps = Some(vec![s.clone()]);
-                            nodes_to_prune.push(*trace_index);
-                            break;
-                        }
+                    if let Some(swaps) = &mut self.solver_swaps {
+                        swaps.push(s.clone());
+                        nodes_to_prune.push(*trace_index);
+                        break;
+                    } else {
+                        self.solver_swaps = Some(vec![s.clone()]);
+                        nodes_to_prune.push(*trace_index);
+                        break;
                     }
                 }
                 _ => {
