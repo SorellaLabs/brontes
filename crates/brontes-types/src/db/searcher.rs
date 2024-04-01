@@ -16,6 +16,7 @@ use crate::{
     serde_utils::{addresss, option_addresss},
 };
 
+//TODO: Replace Ve<MevType> with MevCount, to enable count based filtering
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherInfo {

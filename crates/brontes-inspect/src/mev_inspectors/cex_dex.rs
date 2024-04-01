@@ -125,15 +125,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     .collect_action_vec(Actions::try_swaps_merged);
 
                 // For each swap in the transaction, detect potential CEX-DEX
-                let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
-                    .into_iter()
-                    .filter_map(|swap| {
-                        let possible_cex_dex =
-                            self.detect_cex_dex_opportunity(&swap, metadata.as_ref())?;
-
-                        Some(possible_cex_dex)
-                    })
-                    .collect();
+                let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> =
+                    self.detect_cex_dex(swaps, &metadata)?;
 
                 let possible_cex_dex = self.gas_accounting(
                     possible_cex_dex_by_exchange,
@@ -162,6 +155,22 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
 }
 
 impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
+    pub fn detect_cex_dex(
+        &self,
+        swaps: Vec<NormalizedSwap>,
+        metadata: &Metadata,
+    ) -> Option<Vec<PossibleCexDexLeg>> {
+        swaps.into_iter().try_fold(Vec::new(), |mut acc, swap| {
+            match self.detect_cex_dex_opportunity(swap, metadata) {
+                Some(leg) => {
+                    acc.push(leg);
+                    Some(acc)
+                }
+                None => None,
+            }
+        })
+    }
+
     /// Detects potential CEX-DEX arbitrage opportunities for a given swap.
     ///
     /// # Arguments
@@ -175,19 +184,19 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     /// otherwise `None`.
     pub fn detect_cex_dex_opportunity(
         &self,
-        swap: &NormalizedSwap,
+        swap: NormalizedSwap,
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
-        let cex_prices = self.cex_quotes_for_swap(swap, metadata)?;
+        let cex_prices = self.cex_quotes_for_swap(&swap, metadata)?;
 
         let possible_legs: Vec<ExchangeLeg> = cex_prices
             .into_iter()
             .filter_map(|(exchange, price, is_direct_pair)| {
-                self.profit_classifier(swap, (exchange, price, is_direct_pair), metadata)
+                self.profit_classifier(&swap, (exchange, price, is_direct_pair), metadata)
             })
             .collect();
 
-        Some(PossibleCexDexLeg { swap: swap.clone(), possible_legs })
+        Some(PossibleCexDexLeg { swap, possible_legs })
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from

@@ -52,6 +52,24 @@ impl Clear {
             )
         });
 
+        #[cfg(feature = "local-reth")]
+        if !self.tables.contains(&Tables::InitializedState)
+            && [Tables::CexPrice, Tables::BlockInfo, Tables::DexPrice]
+                .iter()
+                .any(|table| self.tables.contains(table))
+        {
+            db.clear_table::<brontes_database::libmdbx::tables::InitializedState>()?;
+        }
+
+        #[cfg(not(feature = "local-reth"))]
+        if !self.tables.contains(&Tables::InitializedState)
+            && [Tables::CexPrice, Tables::BlockInfo, Tables::DexPrice, Tables::TxTraces]
+                .iter()
+                .any(|table| self.tables.contains(table))
+        {
+            db.clear_table::<brontes_database::libmdbx::tables::InitializedState>()?;
+        }
+
         Ok(())
     }
 }
