@@ -341,8 +341,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         // Process builders
         for (address_str, builder_info) in builder_config {
-            let address = address_str.parse().unwrap();
-
+            let address: Address = address_str
+                .parse()
+                .expect(&format!("Failed to parse address '{}'", address_str));
             let existing_info = self.libmdbx.try_fetch_builder_info(address);
 
             match existing_info.expect("Failed to query builder table") {
@@ -376,7 +377,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         // Process SearcherEOAs
         for (address_str, searcher_info) in searcher_config.searcher_eoas {
-            let address = address_str.parse().unwrap();
+            let address = address_str
+                .parse()
+                .expect(&format!("Failed to parse address '{}'", address_str));
+
             let existing_info = self.libmdbx.try_fetch_searcher_eoa_info(address);
 
             match existing_info.expect("Failed to query builder table") {
