@@ -288,21 +288,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        let (rev, has_dex_price) = metadata
-            .has_dex_quotes()
-            .then(|| {
-                (
-                    self.utils.get_deltas_usd(
-                        backrun_info.tx_index,
-                        PriceAt::After,
-                        mev_addresses,
-                        &searcher_deltas,
-                        metadata.clone(),
-                    ),
-                    true,
-                )
-            })
-            .unwrap_or((Some(Rational::ZERO), false));
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+            backrun_info.tx_index,
+            PriceAt::After,
+            mev_addresses,
+            &searcher_deltas,
+            metadata.clone(),
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
         let profit_usd = rev
             .map(|rev| rev - &gas_used)

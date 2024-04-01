@@ -171,21 +171,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter(|a| if has_collect { !a.is_burn() } else { true })
             .account_for_actions();
 
-        let (rev, has_dex_price) = metadata
-            .has_dex_quotes()
-            .then(|| {
-                (
-                    self.utils.get_deltas_usd(
-                        info[1].tx_index,
-                        PriceAt::After,
-                        mev_addresses,
-                        &deltas,
-                        metadata.clone(),
-                    ),
-                    true,
-                )
-            })
-            .unwrap_or((Some(Rational::ZERO), false));
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+            info[1].tx_index,
+            PriceAt::After,
+            mev_addresses,
+            &deltas,
+            metadata.clone(),
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
         let (hashes, gas_details): (Vec<_>, Vec<_>) = info
             .iter()

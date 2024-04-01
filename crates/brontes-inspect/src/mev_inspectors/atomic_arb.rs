@@ -115,21 +115,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .chain(eth_transfers.into_iter().map(Actions::from))
             .account_for_actions();
 
-        let (rev, has_dex_price) = metadata
-            .has_dex_quotes()
-            .then(|| {
-                (
-                    self.utils.get_deltas_usd(
-                        info.tx_index,
-                        PriceAt::Average,
-                        mev_addresses,
-                        &account_deltas,
-                        metadata.clone(),
-                    ),
-                    true,
-                )
-            })
-            .unwrap_or((Some(Rational::ZERO), false));
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+            info.tx_index,
+            PriceAt::Average,
+            mev_addresses,
+            &account_deltas,
+            metadata.clone(),
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);

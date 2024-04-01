@@ -80,21 +80,17 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let deltas = actions.into_iter().account_for_actions();
 
-        let (rev, has_dex_price) = metadata
-            .has_dex_quotes()
-            .then(|| {
-                (
-                    self.utils.get_deltas_usd(
-                        info.tx_index,
-                        PriceAt::After,
-                        mev_addresses,
-                        &deltas,
-                        metadata.clone(),
-                    ),
-                    true,
-                )
-            })
-            .unwrap_or((Some(Rational::ZERO), false));
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+            info.tx_index,
+            PriceAt::After,
+            mev_addresses,
+            &deltas,
+            metadata.clone(),
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
         let gas_finalized =
             metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
