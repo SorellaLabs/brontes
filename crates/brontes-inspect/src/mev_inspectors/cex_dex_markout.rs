@@ -81,6 +81,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,
+                    false,
                 );
 
                 Some(Bundle { header, data: cex_dex })

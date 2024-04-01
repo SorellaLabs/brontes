@@ -129,8 +129,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     true,
                 )
             })
-            .or_else(|| Some((Some(Rational::ZERO), false)))
-            .unwrap();
+            .unwrap_or((Some(Rational::ZERO), false));
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);

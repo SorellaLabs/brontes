@@ -185,8 +185,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     true,
                 )
             })
-            .or_else(|| Some((Some(Rational::ZERO), false)))
-            .unwrap();
+            .unwrap_or((Some(Rational::ZERO), false));
 
         let (hashes, gas_details): (Vec<_>, Vec<_>) = info
             .iter()

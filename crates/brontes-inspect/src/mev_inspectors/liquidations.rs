@@ -94,8 +94,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                     true,
                 )
             })
-            .or_else(|| Some((Some(Rational::ZERO), false)))
-            .unwrap();
+            .unwrap_or((Some(Rational::ZERO), false));
 
         let gas_finalized =
             metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
