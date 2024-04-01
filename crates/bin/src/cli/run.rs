@@ -19,38 +19,42 @@ use crate::{
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:       Option<u64>,
+    pub start_block:          Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:         Option<u64>,
+    pub end_block:            Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks:         Option<u64>,
+    pub max_tasks:            Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size:    u64,
+    pub min_batch_size:       u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset:       String,
+    pub quote_asset:          String,
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors:        Option<Vec<Inspectors>>,
+    pub inspectors:           Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
-    pub cex_exchanges:     Vec<String>,
+    pub cex_exchanges:        Vec<String>,
     /// Ensures that dex prices are calcuated for every new block, even if the
     /// db already contains the price
     #[arg(long, short, default_value = "false")]
-    pub force_dex_pricing: bool,
+    pub force_dex_pricing:    bool,
+    /// Turns off dex pricing making it run on historical or will just
+    /// calculate based on amounts
+    #[arg(long, default_value = "false")]
+    pub force_no_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "3")]
-    pub behind_tip:        u64,
+    pub behind_tip:           u64,
 }
 
 impl RunArgs {
-    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(mut self, ctx: CliContext) -> eyre::Result<()> {
         banner::print_banner();
         // Fetch required environment variables.
         let db_path = get_env_vars()?;
@@ -86,6 +90,10 @@ impl RunArgs {
             })
             .unwrap_or(false);
 
+        if only_cex_dex {
+            self.force_no_dex_pricing = true;
+        }
+
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
         let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 
@@ -103,7 +111,7 @@ impl RunArgs {
                     self.min_batch_size,
                     quote_asset,
                     self.force_dex_pricing,
-                    only_cex_dex,
+                    self.force_no_dex_pricing,
                     inspectors,
                     clickhouse,
                     parser,
