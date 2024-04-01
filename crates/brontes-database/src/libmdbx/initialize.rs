@@ -336,11 +336,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         let builder_config_str = std::fs::read_to_string(builder_config_path)
             .expect("Failed to read builder config file");
 
-        let builder_config: FastHashMap<String, BuilderInfo> =
+        let builder_config: BuilderConfig =
             toml::from_str(&builder_config_str).expect("Failed to parse builder TOML");
 
         // Process builders
-        for (address_str, builder_info) in builder_config {
+        for (address_str, builder_info) in builder_config.builders {
             let address: Address = address_str
                 .parse()
                 .expect(&format!("Failed to parse address '{}'", address_str));
