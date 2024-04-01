@@ -136,10 +136,11 @@ impl SubGraphRegistry {
         &mut self,
         unordered_pair: Pair,
         goes_through: Pair,
+        goes_through_address: Option<Address>,
         edge_state: &FastHashMap<Address, PoolState>,
     ) -> Option<Rational> {
         let (next, complete_pair, default_price) =
-            self.get_price_once(unordered_pair, goes_through, edge_state)?;
+            self.get_price_once(unordered_pair, goes_through, goes_through_address, edge_state)?;
 
         if let Some(next) = next {
             let next_price = self.get_price_all(next, edge_state);
@@ -163,6 +164,7 @@ impl SubGraphRegistry {
         &self,
         unordered_pair: Pair,
         goes_through: Pair,
+        goes_through_address: Option<Address>,
         edge_state: &FastHashMap<Address, PoolState>,
     ) -> Option<(Option<Pair>, Pair, Rational)> {
         let pair = unordered_pair.ordered();
@@ -174,17 +176,24 @@ impl SubGraphRegistry {
                     (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
                 })
             })
-            .and_then(|graph| {
-                Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
+            .map(|graph| {
+                Some((
+                    graph.extends_to(),
+                    graph.complete_pair(),
+                    graph.fetch_price(edge_state, goes_through_address)?,
+                ))
             })
             // this can happen when we have pools with a token that only has that one pool.
             // this causes a one way and we can't process price. Instead, in this case
             // we take the average price on non-extended graphs and return the price
             // that way
             .or_else(|| {
-                self.get_price_all(unordered_pair, edge_state)
-                    .map(|price| (None, unordered_pair, price))
+                Some(
+                    self.get_price_all(unordered_pair, edge_state)
+                        .map(|price| (None, unordered_pair, price)),
+                )
             })
+            .flatten()
     }
 
     /// for the given pair, grabs the price for all go-through variants
@@ -202,7 +211,7 @@ impl SubGraphRegistry {
                 if graph.extends_to().is_some() {
                     continue
                 };
-                let Some(next) = graph.fetch_price(edge_state) else {
+                let Some(next) = graph.fetch_price(edge_state, None) else {
                     continue;
                 };
                 let default_pair = graph.get_unordered_pair();
