@@ -1,0 +1,126 @@
+[builders."0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"]
+name = "beaverbuild"
+fund = "Symbolic Capital Partners"
+pub_keys = [
+    "0x93582c97ac58670ba118aae52cf6355d8c680a2a538bf77c90873e3fe7ddc0a6dd231e2e2ea06bdc07e9b160883512a3",
+    "0x8d2b4626cd64c2889ff4822c6bdb25161bbd8a3976f087086403c7ecf185eee4f2f71006c2a0dc8ade3bf0d8552236f4",
+    "0xb9f88bc584a53fabb5b295e50638b20218c8b2303f3d26daef84ddb9609f1f93a95608806c94e564ebcd6e3976d3838d",
+    "0xabcf636b7081e47edf77cf3f42b9e8b0c3a27a049b8eef3fa810ce6f7262036bea1910bc36a9a4791e8ee21587b82bf3",
+    "0xacb407cfb554255db2fbbb320f79bb7f1cc1e8d2dc43324e8e31baafd0836340d49c43eebc51828f53bf6d364f9ac207",
+    "0x88e1d82a11804c7f4596b2b0aecf19f62f4a6cf1e893c152242b0ca15374b9085755870e3c3456789befa618bbccadc8",
+    "0x840c9dafb68f5cd460b5d5677b85114e89187e7c890f11a8c5fc4a3e4f4aa74136ef0fcd62cf7de9741afcf7d4d3360d",
+    "0x8c75cfb66562e7d8c39ef6dfd40b2f464a058f0ff939a1fd535f18c85a74100a1298555d3931367e9655504c4a9f38bf"
+]
+searchers_eoas = [
+    "0x0cac3d1a887206e0f6169222C4504301A8b4b993",
+    "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9",
+    "0x0D78FCF0a3E51124b2531A80950023f5Ba2E8FAc"
+]
+searchers_contracts = [
+    "0xFA103c21ea2DF71DFb92B0652F8B1D795e51cdEf",
+    "0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C",
+    "0x5050e08626c499411B5D0E0b5AF0E83d3fD82EDF",
+    "0x7d32C90762E22379235FC311fDB16fAB399Ed40A"
+]
+ultrasound_relay_collateral_address = "0xa83114a443da1cecefc50368531cace9f37fcccb"
+
+[builders."0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"]
+name = "rsync"
+fund = "Wintermute"
+pub_keys = [
+    "0x978a35c39c41aadbe35ea29712bccffb117cc6ebcad4d86ea463d712af1dc80131d0c650dc29ba29ef27c881f43bd587",
+    "0x83d3495a2951065cf19c4d282afca0a635a39f6504bd76282ed0138fe28680ec60fa3fd149e6d27a94a7d90e7b1fb640",
+    "0x945fc51bf63613257792926c9155d7ae32db73155dc13bdfe61cd476f1fd2297b66601e8721b723cef11e4e6682e9d87",
+    "0x8e6df6e0a9ca3fd89db2aa2f3daf77722dc4fbcd15e285ed7d9560fdf07b7d69ba504add4cc12ac999b8094ff30ed06c",
+    "0x8aab0ed724d2c7f94af139bd2249ab511f08474ac69e761e56918403c81c358f5f8a6d61c62a86dc4cd7bcad935f49d9",
+    "0xacfdcf458829f4693168a57d0659253069d687682bc64ec130d935ecb6e05ccfb80c138bd3cf53546c86715696612ec8"
+]
+searchers_eoas = [
+    "0xDBF5E9c5206d0dB70a90108bf936DA60221dC080",
+    "0x0000f079e68BbCC79AB9600ace786B0a4dB1c83c",
+    "0xB3f923eaBAF178fC1BD8E13902FC5C61D3DdEF5B",
+    "0xAaD5Ae975e15fde11cb508866d836D3A278D34d3"
+]
+searchers_contracts = [
+    "0x0087BB802D9C0e343F00510000729031ce00bf27",
+    "0x51c72848c68a965f66fa7a88855f9f7784502a7f",
+    "0x00000000AE347930bD1E7B0F35588b92280f9e75",
+    "0xaf0b0000f0210d0f421f0009c72406703b50506b",
+    "0x0000006daea1723962647b7e189d311d757fb793",
+    "0x280027dd00ee0050d3f9d168efd6b40090009246",
+    "0x53FacEe52e897740B140F5304E9Cd9DC6238d735"
+]
+ultrasound_relay_collateral_address = "0x0affb0a96fbefaa97dce488dfd97512346cf3ab8"
+
+# need to update builder addr
+[builders."0xb4e29628cacea3567cf00ca0721234bd37fa0c10"]
+name = "rsync-dev"
+fund = "Wintermute"
+ultrasound_relay_collateral_address = "0xb4e29628cacea3567cf00ca0721234bd37fa0c10"
+
+[builders."0x5F927395213ee6b95dE97bDdCb1b2B1C0F16844F"]
+name = "manta builder"
+fund = "Jane Street"
+searchers_contracts = ["0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
+
+
+[builders."0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97"]
+name = "titan"
+ultrasound_relay_collateral_address = "0x9fc3da866e7df3a1c57ade1a97c9f00a70f010c8"
+
+[builders."0x88c6C46EBf353A52Bdbab708c23D0c81dAA8134A"]
+name = "jet builder"
+ultrasound_relay_collateral_address = "0xd551a2fad3998079017652435b5fb109b3c4437e"
+
+[builders."0xf15689636571dba322b48E9EC9bA6cFB3DF818e1"]
+name = "penguin"
+ultrasound_relay_collateral_address = "0xc021712a2cd96f649d0061f5ab51711fd3463c2a"
+
+[builders."0x0Aa8EBb6aD5A8e499E550ae2C461197624c6e667"]
+name = "gambit labs"
+searchers_contracts = ["0x0000000000450702bc4f750fd1e7ecad7054c4f1"]
+
+[builders."0x7aDc0e867EBc337E2d20c44DB181c067fA08637b"]
+name = "block beelder"
+searchers_contracts = ["0xe8cFAd4C75a5e1CaF939Fd80AfCf837DdE340a69"]
+
+[builders."0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"]
+name = "antbuilder"
+fund = "Flow Traders"
+searchers_contracts = ["0x32801ab1957aaad1c65289b51603373802b4e8bb", "0xD198fBE60C49D4789525fC54567447518C7D2a11", "0xaafb85ad4a412dd8adc49611496a7695a22f4aeb", "0x752e87b5f1397e171d5383cec3d4c51a8d3c114b"]
+
+[builders."0x8186b214A917fb4922Eb984fb80CFAfA30EE8810"]
+name = "loki builder"
+
+[builders."0xdcca982701a264e8d629a6e8cfba9c1a27912623"]
+name = "Tokka Builder"
+fund = "Tokka Labs"
+searchers_contracts = ["0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
+
+
+
+[builders."0xedcb63f859905be353d85d53041e9697dbea5f81"]
+name = "Builder+"
+pub_keys = ["0x8042acb1f21ff5ee9d0035c2ea5d9a09c3810b048ba28f89e9a94e8e76c5fdd5bebce9b88af4e489ccd1daf735b829bb"]
+
+
+
+[builders."0xFeebabE6b0418eC13b30aAdF129F5DcDd4f70CeA"]
+name = "eth-builder"
+searchers_contracts = ["0x5e51328C0583094b76f28Cfd532AbC3d454fCfEA"]
+
+[builders."0x5124fcC2B3F99F571AD67D075643C743F38f1C34"]
+name = "faith-builder"
+
+[builders."0xbd3Afb0bB76683eCb4225F9DBc91f998713C3b01"]
+name = "BuildAI"
+searchers_contracts = ["0xE8c060F8052E07423f71D445277c61AC5138A2e5"]
+
+[builders."0x1Af7Cad7f2B93Dbe800aa0E48095435B471A09c9"]
+name = "Bob The Builder"
+searchers_contracts = ["0x000000000035B5e5ad9019092C665357240f594e"]
+
+[builders."0x3b64216AD1a58f61538b4fA1B27327675Ab7ED67"]
+name = "Boba Builder"
+searchers_contracts = ["0xb0baBabE78a9be0810fAdf99Dd2eD31ed12568bE", "0x000000e1fddf4fe15db5f23ae3ee83c6a11e8dd1"]
+

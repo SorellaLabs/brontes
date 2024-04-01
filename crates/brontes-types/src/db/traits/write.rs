@@ -5,10 +5,8 @@ use futures::Future;
 
 use crate::{
     db::{
-        address_metadata::AddressMetadata,
-        builder::{BuilderInfo, BuilderStats},
-        dex::DexQuotes,
-        searcher::{SearcherInfo, SearcherStats},
+        address_metadata::AddressMetadata, builder::BuilderInfo, dex::DexQuotes,
+        searcher::SearcherInfo,
     },
     mev::{Bundle, MevBlock},
     normalized_actions::Actions,
@@ -90,24 +88,6 @@ pub trait DBWriter: Send + Unpin + 'static {
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner()
             .write_builder_info(builder_address, builder_info)
-    }
-
-    fn write_searcher_stats(
-        &self,
-        searcher_eoa: Address,
-        searcher_stats: SearcherStats,
-    ) -> impl Future<Output = eyre::Result<()>> + Send {
-        self.inner()
-            .write_searcher_stats(searcher_eoa, searcher_stats)
-    }
-
-    fn write_builder_stats(
-        &self,
-        builder_address: Address,
-        builder_stats: BuilderStats,
-    ) -> impl Future<Output = eyre::Result<()>> + Send {
-        self.inner()
-            .write_builder_stats(builder_address, builder_stats)
     }
 
     fn write_address_meta(

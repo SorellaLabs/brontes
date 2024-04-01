@@ -421,7 +421,6 @@ impl Tables {
             Tables::SearcherEOAs => DEFAULT_SEARCHER_INFO_DIR,
             Tables::SearcherContracts => DEFAULT_SEARCHER_INFO_DIR,
             Tables::Builder => DEFAULT_BUILDER_INFO_DIR,
-            Tables::SearcherStatistics => DEFAULT_SEARCHER_STATS,
             _ => panic!("Unsupported table type"),
         }
     }

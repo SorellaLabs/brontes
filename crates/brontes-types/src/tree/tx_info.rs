@@ -73,15 +73,37 @@ impl TxInfo {
     }
 
     pub fn is_searcher_of_type(&self, mev_type: MevType) -> bool {
-        let eoa_contains_type = self
-            .searcher_eoa_info
+        self.searcher_eoa_info
             .as_ref()
-            .map_or(false, |info| info.contains_searcher_type(mev_type));
-        let contract_contains_type = self
-            .searcher_contract_info
+            .map_or(false, |info| info.is_searcher_of_type(mev_type))
+            || self
+                .searcher_contract_info
+                .as_ref()
+                .map_or(false, |info| info.is_searcher_of_type(mev_type))
+    }
+
+    pub fn is_searcher_of_type_with_count_threshold(
+        &self,
+        mev_type: MevType,
+        threshold: u64,
+    ) -> bool {
+        self.searcher_eoa_info
             .as_ref()
-            .map_or(false, |info| info.contains_searcher_type(mev_type));
-        eoa_contains_type || contract_contains_type
+            .map_or(false, |info| info.is_searcher_of_type_with_threshold(mev_type, threshold))
+            || self
+                .searcher_contract_info
+                .as_ref()
+                .map_or(false, |info| info.is_searcher_of_type_with_threshold(mev_type, threshold))
+    }
+
+    pub fn is_labelled_searcher_of_type(&self, mev_type: MevType) -> bool {
+        self.searcher_eoa_info
+            .as_ref()
+            .map_or(false, |info| info.is_labelled_searcher_of_type(mev_type))
+            || self
+                .searcher_contract_info
+                .as_ref()
+                .map_or(false, |info| info.is_labelled_searcher_of_type(mev_type))
     }
 
     pub fn is_private(&self) -> bool {
