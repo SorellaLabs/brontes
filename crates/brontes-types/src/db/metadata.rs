@@ -90,6 +90,10 @@ impl Metadata {
         self
     }
 
+    pub fn has_dex_quotes(&self) -> bool {
+        self.dex_quotes.is_some()
+    }
+
     pub fn block_num(&self) -> u64 {
         self.block_num
     }

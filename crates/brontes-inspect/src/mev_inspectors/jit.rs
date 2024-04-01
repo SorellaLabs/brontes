@@ -11,7 +11,7 @@ use brontes_types::{
 #[allow(unused)]
 use clickhouse::{fixed_string::FixedString, row::*};
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::Zero, Rational};
 
 use crate::{
     shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, Metadata,
@@ -171,13 +171,22 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter(|a| if has_collect { !a.is_burn() } else { true })
             .account_for_actions();
 
-        let rev = self.utils.get_deltas_usd(
-            info[1].tx_index,
-            PriceAt::After,
-            mev_addresses,
-            &deltas,
-            metadata.clone(),
-        )?;
+        let (rev, has_dex_price) = metadata
+            .has_dex_quotes()
+            .then(|| {
+                (
+                    self.utils.get_deltas_usd(
+                        info[1].tx_index,
+                        PriceAt::After,
+                        mev_addresses,
+                        &deltas,
+                        metadata.clone(),
+                    ),
+                    true,
+                )
+            })
+            .or_else(|| Some((Some(Rational::ZERO), false)))
+            .unwrap();
 
         let (hashes, gas_details): (Vec<_>, Vec<_>) = info
             .iter()
@@ -190,7 +199,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .unzip();
 
         let bribe = self.get_bribes(metadata.clone(), &gas_details);
-        let profit = rev - &bribe;
+        let profit = rev
+            .map(|rev| rev - &bribe)
+            .filter(|_| has_dex_price)
+            .unwrap_or_default();
 
         let mut bundle_hashes = Vec::new();
         bundle_hashes.push(hashes[0]);
@@ -206,6 +218,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             &gas_details,
             metadata,
             MevType::Jit,
+            !has_dex_price,
         );
 
         let victim_swaps = victim_actions
