@@ -110,6 +110,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .collect::<FastHashSet<_>>();
 
+        if info.tx_index == 6 {
+            tracing::info!("{:#?} {:#?} {:#?}", transfers, eth_transfers, swaps);
+        }
+
         let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
