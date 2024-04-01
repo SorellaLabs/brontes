@@ -96,5 +96,5 @@ define_mev_precedence!(
     Unknown, SearcherTx, CexDex => AtomicArb;
     Unknown, SearcherTx, AtomicArb, CexDex => Sandwich;
     Unknown, SearcherTx, AtomicArb, CexDex => Jit;
-    Unknown, SearcherTx,AtomicArb, CexDex, Sandwich => JitSandwich;
+    Unknown, SearcherTx, AtomicArb, CexDex, Sandwich => JitSandwich;
 );
