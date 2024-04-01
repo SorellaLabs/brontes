@@ -32,8 +32,8 @@ pub struct CexBlockTimes {
 impl CexBlockTimes {
     pub fn trade_times(value: BlockTimes) -> Self {
         Self {
-            start_timestamp: value.timestamp - 6,
-            end_timestamp:   value.timestamp + 6,
+            start_timestamp: value.timestamp - 6000,
+            end_timestamp:   value.timestamp + 6000,
             block_number:    value.block_number,
         }
     }

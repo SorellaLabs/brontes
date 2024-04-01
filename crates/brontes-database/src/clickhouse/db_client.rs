@@ -365,6 +365,7 @@ impl ClickhouseHandle for Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap();
 
+                println!("START-END: {:?}", (start_time, end_time));
                 self.client
                     .query_many(RAW_CEX_QUOTES, &(start_time, end_time))
                     .await?
