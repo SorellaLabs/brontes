@@ -56,5 +56,7 @@ crunchbase = "https://www.crunchbase.com/organization/mimic-finance"
 linkedin = "https://www.linkedin.com/company/mimic-finance"
 
 
+
+# Aave was incorectly labelles as unverified, this corects that
 [metadata."0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2".contract_info]
 verified_contract = true
