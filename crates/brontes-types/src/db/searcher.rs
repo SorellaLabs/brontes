@@ -144,9 +144,9 @@ impl SearcherInfo {
     }
 
     pub fn update_with_bundle(&mut self, header: &BundleHeader) {
-        self.pnl.account_by_type(header);
+        self.pnl.account_pnl(header);
         self.mev_count.increment_count(header.mev_type);
-        self.gas_bids.account_by_type(header);
+        self.gas_bids.account_gas(header);
     }
 }
 
@@ -179,7 +179,7 @@ pub struct TollByType {
 self_convert_redefined!(TollByType);
 
 impl TollByType {
-    pub fn account_by_type(&mut self, header: &BundleHeader) {
+    pub fn account_pnl(&mut self, header: &BundleHeader) {
         self.total += header.profit_usd;
         match header.mev_type {
             MevType::CexDex => {
@@ -205,6 +205,37 @@ impl TollByType {
             }
             MevType::SearcherTx => {
                 self.searcher_tx = Some(self.searcher_tx.unwrap_or_default().add(header.profit_usd))
+            }
+            _ => (),
+        }
+    }
+
+    pub fn account_gas(&mut self, header: &BundleHeader) {
+        self.total += header.bribe_usd;
+        match header.mev_type {
+            MevType::CexDex => {
+                self.cex_dex = Some(self.cex_dex.unwrap_or_default().add(header.bribe_usd))
+            }
+            MevType::Sandwich => {
+                self.sandwich = Some(self.sandwich.unwrap_or_default().add(header.bribe_usd))
+            }
+            MevType::AtomicArb => {
+                self.atomic_backrun = Some(
+                    self.atomic_backrun
+                        .unwrap_or_default()
+                        .add(header.bribe_usd),
+                )
+            }
+            MevType::Jit => self.jit = Some(self.jit.unwrap_or_default().add(header.bribe_usd)),
+            MevType::JitSandwich => {
+                self.jit_sandwich =
+                    Some(self.jit_sandwich.unwrap_or_default().add(header.bribe_usd))
+            }
+            MevType::Liquidation => {
+                self.liquidation = Some(self.liquidation.unwrap_or_default().add(header.bribe_usd))
+            }
+            MevType::SearcherTx => {
+                self.searcher_tx = Some(self.searcher_tx.unwrap_or_default().add(header.bribe_usd))
             }
             _ => (),
         }
