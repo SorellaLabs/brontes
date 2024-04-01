@@ -6,7 +6,8 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, FastHashMap, Protocol,
+    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, pair::Pair,
+    FastHashMap, Protocol,
 };
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Deserialize, Redefined)]
@@ -104,6 +105,14 @@ impl PoolPairInfoDirection {
             self.info.token_0
         } else {
             self.info.token_1
+        }
+    }
+
+    pub fn get_pair(&self) -> Pair {
+        if self.token_0_in {
+            Pair(self.info.token_0, self.info.token_1)
+        } else {
+            Pair(self.info.token_1, self.info.token_0)
         }
     }
 
