@@ -109,7 +109,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     }
 
     fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
-        info!(target:"brontes::tip_inspector","Completed DEX pricing");
+        debug!(target:"brontes::tip_inspector","Completed DEX pricing");
         self.processing_futures.push(Box::pin(P::process_results(
             self.database,
             self.inspectors,

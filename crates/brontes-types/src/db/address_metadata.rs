@@ -55,6 +55,10 @@ impl AddressMetadata {
             return ContractType::SolverSettlement;
         }
 
+        if self.is_automation_contract() {
+            return ContractType::DefiAutomation;
+        }
+
         if self.is_cex() {
             return ContractType::Cex;
         }
@@ -69,6 +73,12 @@ impl AddressMetadata {
 
         self.get_contract_type_from_labels()
             .unwrap_or(ContractType::Unknown)
+    }
+
+    fn is_automation_contract(&self) -> bool {
+        self.labels
+            .iter()
+            .any(|label| label.to_lowercase().contains("automation"))
     }
 
     fn is_settlement_contract(&self) -> bool {
@@ -175,6 +185,7 @@ pub enum ContractType {
     CexExchange,
     Bridge,
     SolverSettlement,
+    DefiAutomation,
     Unknown,
 }
 
@@ -185,6 +196,10 @@ impl ContractType {
 
     pub fn is_solver_settlement(&self) -> bool {
         matches!(self, ContractType::SolverSettlement)
+    }
+
+    pub fn is_defi_automation(&self) -> bool {
+        matches!(self, ContractType::DefiAutomation)
     }
 }
 

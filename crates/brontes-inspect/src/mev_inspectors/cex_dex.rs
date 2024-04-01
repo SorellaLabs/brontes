@@ -125,7 +125,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
 
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
-                    if contract_type.is_solver_settlement() {
+                    if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
                         return None;
                     }
                 }
