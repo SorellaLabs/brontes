@@ -307,7 +307,7 @@ impl CexTradeMap {
         }
 
         if &cur_vol < volume {
-            tracing::info!(?cur_vol, "not enough volume");
+            tracing::info!(?cur_vol, expected=?volume, "not enough volume");
 
             return None
         }
