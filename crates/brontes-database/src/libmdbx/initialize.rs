@@ -706,8 +706,8 @@ mod tests {
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         
         
-        let new_values = clickhouse.get_cex_prices(CexRangeOrArbitrary::Range(block_range.0, block_range.1)).await;
-        let old_values =  clickhouse.query_many_range::<CexPrice, CexPriceData>(block_range.0, block_range.1).await;
+        let new_values = clickhouse.get_cex_prices(CexRangeOrArbitrary::Range(block_range.0, block_range.1)).await.unwrap();
+        let old_values =  clickhouse.query_many_range::<CexPrice, CexPriceData>(block_range.0, block_range.1).await.unwrap();
 
         assert!(new_values.0.len() >= old_values.0.len());
         
