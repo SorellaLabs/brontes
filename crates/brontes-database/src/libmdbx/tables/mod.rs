@@ -9,7 +9,7 @@ use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
         address_to_protocol_info::{ProtocolInfo, ProtocolInfoRedefined},
-        builder::{BuilderInfo, BuilderInfoRedefined, BuilderStats, BuilderStatsRedefined},
+        builder::{BuilderInfo, BuilderInfoRedefined},
         cex::{CexPriceMap, CexPriceMapRedefined},
         cex_trades::{CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
@@ -18,7 +18,7 @@ use brontes_types::{
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
-        searcher::{SearcherInfo, SearcherInfoRedefined, SearcherStats, SearcherStatsRedefined},
+        searcher::{SearcherInfo, SearcherInfoRedefined},
         token_info::TokenInfo,
         traces::{TxTracesInner, TxTracesInnerRedefined},
         traits::LibmdbxReader,
@@ -44,7 +44,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 17;
+pub const NUM_TABLES: usize = 15;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -187,8 +187,6 @@ impl Tables {
             }
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
-            Tables::SearcherStatistics => Ok(()),
-            Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
             Tables::CexTrades => Ok(()),
         }
@@ -255,8 +253,6 @@ impl Tables {
             }
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
-            Tables::SearcherStatistics => Ok(()),
-            Tables::BuilderStatistics => Ok(()),
             Tables::InitializedState => Ok(()),
             Tables::CexTrades => Ok(()),
         }
@@ -294,8 +290,6 @@ tables!(
     SearcherEOAs,
     SearcherContracts,
     InitializedState,
-    SearcherStatistics,
-    BuilderStatistics,
     CexTrades
 );
 
@@ -701,25 +695,6 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table BuilderStatistics {
-        Data {
-            #[serde(with = "address_string")]
-            key: Address,
-            value: BuilderStats,
-            compressed_value: BuilderStatsRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Other,
-            http_endpoint: None
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
     Table AddressMeta {
         Data {
             #[serde(with = "address_string")]
@@ -764,25 +739,6 @@ compressed_table!(
             key: Address,
             value: SearcherInfo,
             compressed_value: SearcherInfoRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Clickhouse,
-            http_endpoint: None
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table SearcherStatistics {
-        Data {
-            #[serde(with = "address_string")]
-            key: Address,
-            value: SearcherStats,
-            compressed_value: SearcherStatsRedefined
         },
         Init {
             init_size: None,
