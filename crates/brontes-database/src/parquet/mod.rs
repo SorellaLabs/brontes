@@ -401,9 +401,8 @@ pub fn get_path(
 
 pub fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     let now = Local::now();
-
     let date_str = now.format("%m-%d").to_string();
-    let time_str = now.format("%H:%M:%S").to_string();
+    let time_str = now.format("%H:%M").to_string();
 
     // Creates a flat directory structure
     // "data_exports/address_metadata/03-19"
@@ -411,7 +410,6 @@ pub fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     std::fs::create_dir_all(&dir_path)?;
 
     let file_path = dir_path.join(format!("{}.parquet", time_str.replace(':', "-")));
-
     Ok(file_path)
 }
 
