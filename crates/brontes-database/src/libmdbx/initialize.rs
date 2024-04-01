@@ -693,7 +693,7 @@ mod tests {
     }
 
     #[cfg(feature = "local-clickhouse")]
-    #[brontes_macros::test]
+    #[tokio::test]
     async fn test_initialize_cex() {
         //let block_range = (17000000, 17000100);
 
