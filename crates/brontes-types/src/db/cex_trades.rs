@@ -305,6 +305,12 @@ impl CexTradeMap {
 
             trades.push(next);
         }
+
+        if &cur_vol < volume {
+            tracing::info!("not enough volume");
+            return None
+        }
+
         // Groups trades into a set of iterators, first including all trades, then all
         // combinations of 2 trades, then all combinations of 3 trades, then all
         // combinations of 4 trades
