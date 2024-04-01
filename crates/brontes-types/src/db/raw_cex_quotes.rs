@@ -7,6 +7,7 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use super::{
     block_times::{BlockTimes, CexBlockTimes},
@@ -14,11 +15,13 @@ use super::{
     cex_symbols::CexSymbols,
 };
 use crate::{
-    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, FastHashMap,
+    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc,
+    serde_utils::cex_exchange, FastHashMap,
 };
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct RawCexQuotes {
+    #[serde(with = "cex_exchange")]
     pub exchange:   CexExchange,
     pub symbol:     String,
     pub timestamp:  u64,

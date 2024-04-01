@@ -701,3 +701,30 @@ pub mod address_pair {
         Ok(Pair(Address::from_str(&data0).unwrap(), Address::from_str(&data1).unwrap()))
     }
 }
+
+pub mod cex_exchange {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::{db::cex::CexExchange, pair::Pair};
+
+    pub fn serialize<S: Serializer>(u: &CexExchange, serializer: S) -> Result<S::Ok, S::Error> {
+        let st = u.to_string();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<CexExchange, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let d: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(CexExchange::from(d.as_str()))
+    }
+}

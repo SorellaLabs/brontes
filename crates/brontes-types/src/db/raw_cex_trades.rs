@@ -12,10 +12,14 @@ use super::{
     cex_symbols::CexSymbols,
     cex_trades::CexTradeMap,
 };
-use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc};
+use crate::{
+    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc,
+    serde_utils::cex_exchange,
+};
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct RawCexTrades {
+    #[serde(with = "cex_exchange")]
     pub exchange:  CexExchange,
     pub symbol:    String,
     pub timestamp: u64,

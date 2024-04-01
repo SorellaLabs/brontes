@@ -707,19 +707,19 @@ mod tests {
         
         
         let new_values = clickhouse.get_cex_prices(CexRangeOrArbitrary::Range(block_range.0, block_range.1)).await.unwrap();
-        // let old_values =  clickhouse.query_many_range::<CexPrice, CexPriceData>(block_range.0, block_range.1).await.unwrap();
+        let old_values =  clickhouse.query_many_range::<CexPrice, CexPriceData>(block_range.0, block_range.1).await.unwrap();
 
-        // assert_eq!(new_values.len(), old_values.len());
+        assert_eq!(new_values.len(), old_values.len());
         
-        // old_values.into_iter().zip(new_values).for_each(|(old_data, new_data)| {
-        //     let (old_mapping, new_mapping) = (new_data.value.0, old_data.value.0);
-        //     assert!(old_mapping.len() >= new_mapping.len());
+        old_values.into_iter().zip(new_values).for_each(|(old_data, new_data)| {
+            let (old_mapping, new_mapping) = (new_data.value.0, old_data.value.0);
+            assert!(old_mapping.len() >= new_mapping.len());
 
-        //     old_mapping.into_iter().for_each(|(old_exch, old_pairs)| {
-        //         let new_pairs = new_mapping.get(&old_exch).unwrap();
-        //         assert!(new_pairs.len() >= old_pairs.len());
-        //     })
-        // });
+            old_mapping.into_iter().for_each(|(old_exch, old_pairs)| {
+                let new_pairs = new_mapping.get(&old_exch).unwrap();
+                assert!(new_pairs.len() >= old_pairs.len());
+            })
+        });
         
     }
 }
