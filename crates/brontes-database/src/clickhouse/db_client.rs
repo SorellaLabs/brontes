@@ -5,11 +5,11 @@ use alloy_primitives::Address;
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
-        builder::{BuilderInfo, BuilderInfoWithAddress, BuilderStats, BuilderStatsWithAddress},
+        builder::{BuilderInfo, BuilderInfoWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         normalized_actions::TransactionRoot,
-        searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
+        searcher::{JoinedSearcherInfo, SearcherInfo},
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, BundleData, MevBlock},
@@ -86,20 +86,6 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn write_searcher_stats(
-        &self,
-        searcher_eoa: Address,
-        searcher_stats: SearcherStats,
-    ) -> eyre::Result<()> {
-        let stats = SearcherStatsWithAddress::new_with_address(searcher_eoa, searcher_stats);
-
-        self.client
-            .insert_one::<ClickhouseSearcherStats>(&stats)
-            .await?;
-
-        Ok(())
-    }
-
     pub async fn write_builder_info(
         &self,
         builder_eoa: Address,
@@ -109,20 +95,6 @@ impl Clickhouse {
 
         self.client
             .insert_one::<ClickhouseBuilderInfo>(&info)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn write_builder_stats(
-        &self,
-        builder_eoa: Address,
-        builder_stats: BuilderStats,
-    ) -> eyre::Result<()> {
-        let stats = BuilderStatsWithAddress::new_with_address(builder_eoa, builder_stats);
-
-        self.client
-            .insert_one::<ClickhouseBuilderStats>(&stats)
             .await?;
 
         Ok(())
