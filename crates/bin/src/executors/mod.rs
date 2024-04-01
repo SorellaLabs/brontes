@@ -38,14 +38,14 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
-    pub start_block:       Option<u64>,
-    pub end_block:         Option<u64>,
-    pub back_from_tip:     u64,
-    pub max_tasks:         u64,
-    pub min_batch_size:    u64,
-    pub quote_asset:       Address,
-    pub force_dex_pricing: bool,
-    pub only_cex_dex:      bool,
+    pub start_block:          Option<u64>,
+    pub end_block:            Option<u64>,
+    pub back_from_tip:        u64,
+    pub max_tasks:            u64,
+    pub min_batch_size:       u64,
+    pub quote_asset:          Address,
+    pub force_dex_pricing:    bool,
+    pub force_no_dex_pricing: bool,
 
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
@@ -66,7 +66,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         min_batch_size: u64,
         quote_asset: Address,
         force_dex_pricing: bool,
-        only_cex_dex: bool,
+        force_no_dex_pricing: bool,
 
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
@@ -86,7 +86,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             inspectors,
             quote_asset,
             end_block,
-            only_cex_dex,
+            force_no_dex_pricing,
             _p: PhantomData,
         }
     }
@@ -204,7 +204,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             tip.then_some(self.clickhouse),
             pricing,
             self.force_dex_pricing,
-            self.only_cex_dex,
+            self.force_no_dex_pricing,
         );
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
