@@ -1,13 +1,11 @@
 use std::fmt::Debug;
 
 use alloy_primitives::{Address, Log};
-use alloy_sol_types::sol_data::Address;
 use brontes_types::{
     normalized_actions::{pool::NormalizedPoolConfigUpdate, Actions},
     pair::Pair,
 };
 use malachite::Rational;
-use reth_rpc_types::trace::parity::Action;
 
 use crate::{
     errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, Protocol,
