@@ -135,7 +135,7 @@ fn get_mev_count_array(mev_blocks: &Vec<MevBlock>) -> StructArray {
     let mut searcher_tx_count_builder = UInt64Builder::new();
 
     for block in mev_blocks {
-        mev_count_builder.append_value(block.mev_count.mev_count);
+        mev_count_builder.append_value(block.mev_count.bundle_count);
         sandwich_count_builder.append_option(block.mev_count.sandwich_count);
         liquidation_count_builder.append_option(block.mev_count.liquidation_count);
         atomic_backrun_count_builder.append_option(block.mev_count.atomic_backrun_count);

@@ -12,7 +12,6 @@ use crate::{
         searcher::Fund,
     },
     implement_table_value_codecs_with_zc,
-    mev::MevBlock,
     serde_utils::{addresss, option_addresss, option_fund, vec_address, vec_bls_pub_key},
     FastHashSet,
 };
@@ -128,44 +127,6 @@ impl BuilderInfoWithAddress {
             searchers_eoas: info.searchers_eoas,
             searchers_contracts: info.searchers_contracts,
             ultrasound_relay_collateral_address: info.ultrasound_relay_collateral_address,
-        }
-    }
-}
-
-#[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct BuilderStats {
-    pub pnl:          f64,
-    pub blocks_built: u64,
-    pub last_active:  u64,
-}
-
-implement_table_value_codecs_with_zc!(BuilderStatsRedefined);
-
-impl BuilderStats {
-    pub fn update_with_block(&mut self, block: &MevBlock) {
-        self.pnl += block.builder_profit_usd + block.builder_mev_profit_usd;
-        self.blocks_built += 1;
-        self.last_active = block.block_number;
-    }
-}
-
-#[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize)]
-pub struct BuilderStatsWithAddress {
-    #[serde(with = "addresss")]
-    pub address:      Address,
-    pub pnl:          f64,
-    pub blocks_built: u64,
-    pub last_active:  u64,
-}
-
-impl BuilderStatsWithAddress {
-    pub fn new_with_address(address: Address, stats: BuilderStats) -> Self {
-        Self {
-            address,
-            pnl: stats.pnl,
-            blocks_built: stats.blocks_built,
-            last_active: stats.last_active,
         }
     }
 }

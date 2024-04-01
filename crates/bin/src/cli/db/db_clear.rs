@@ -42,11 +42,9 @@ impl Clear {
                 AddressToProtocolInfo,
                 PoolCreationBlocks,
                 Builder,
-                BuilderStatistics,
                 AddressMeta,
                 SearcherEOAs,
                 SearcherContracts,
-                SearcherStatistics,
                 SubGraphs,
                 TxTraces
             )
