@@ -78,7 +78,7 @@ impl NormalizedFlashLoan {
                     } else if t.from == self.receiver_contract && self.pool == t.to {
                         if let Some(i) = self.assets.iter().position(|x| *x == t.token) {
                             if t.amount >= self.amounts[i] {
-                                self.child_actions.push(action);
+                                repay_transfers.push(t.clone());
                                 nodes_to_prune.push(index);
                             }
                         }
