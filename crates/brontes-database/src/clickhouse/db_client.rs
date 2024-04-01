@@ -169,7 +169,7 @@ impl Clickhouse {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
-            .map(|root| root.into())
+            .map(|root| (root, tree.header.number).into())
             .collect::<Vec<_>>();
 
         self.client.insert_many::<ClickhouseTree>(&roots).await?;
@@ -568,7 +568,7 @@ mod tests {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
-            .map(|root| root.into())
+            .map(|root| (root, tree.header.number).into())
             .collect::<Vec<_>>();
 
         db.insert_many::<ClickhouseTree>(&roots).await.unwrap();
