@@ -64,7 +64,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::info;
+use tracing::{error, info};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
@@ -413,7 +413,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let tx_idx = msg.tx_idx;
         let block = msg.block;
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
-            info!(?addr, "failed to get pair for pool");
+            error!(?addr, "failed to get pair for pool");
             self.graph_manager.update_state(addr, msg);
             return;
         };
@@ -645,7 +645,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let new_state = execute_on!(target = pricing, par_state_query(&self.graph_manager, pairs));
 
         if new_state.is_empty() {
-            tracing::error!("requery bad state returned nothing");
+            error!("requery bad state returned nothing");
         }
 
         let mut recusing = Vec::new();
@@ -769,7 +769,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         });
 
         if edges.is_empty() {
-            tracing::error!(?pair, ?block, "failed to find connection for graph");
+            error!(?pair, ?block, "failed to find connection for graph");
             return
         } else {
             let Some((id, need_state, _)) =
@@ -1078,7 +1078,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                     inner.and_then(|action| match action {
                         DexPriceMsg::DisablePricingFor(block) => {
                             self.skip_pricing.push_back(block);
-                            tracing::info!(?block, "skipping for pricing");
+                            tracing::debug!(?block, "skipping for pricing");
                             Some(PollResult::Skip)
                         }
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
