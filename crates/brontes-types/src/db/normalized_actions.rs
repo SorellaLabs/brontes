@@ -7,22 +7,25 @@ use crate::{normalized_actions::Actions, GasDetails, Node, Root};
 
 #[derive(Debug, Clone)]
 pub struct TransactionRoot {
-    pub tx_hash:     B256,
-    pub tx_idx:      usize,
-    pub gas_details: GasDetails,
-    pub trace_nodes: Vec<TraceNode>,
+    pub block_number: u64,
+    pub tx_hash:      B256,
+    pub tx_idx:       usize,
+    pub gas_details:  GasDetails,
+    pub trace_nodes:  Vec<TraceNode>,
 }
 
-impl From<&Root<Actions>> for TransactionRoot {
-    fn from(value: &Root<Actions>) -> Self {
-        let tx_data = &value.data_store.0;
+impl From<(&Root<Actions>, u64)> for TransactionRoot {
+    fn from(value: (&Root<Actions>, u64)) -> Self {
+        let (root, block_number) = value;
+        let tx_data = &root.data_store.0;
         let mut trace_nodes = Vec::new();
-        make_trace_nodes(&value.head, tx_data, &mut trace_nodes);
+        make_trace_nodes(&root.head, tx_data, &mut trace_nodes);
 
         Self {
-            tx_hash: value.tx_hash,
-            tx_idx: value.position,
-            gas_details: value.gas_details,
+            block_number,
+            tx_hash: root.tx_hash,
+            tx_idx: root.position,
+            gas_details: root.gas_details,
             trace_nodes,
         }
     }
@@ -35,6 +38,7 @@ impl Serialize for TransactionRoot {
     {
         let mut ser_struct = serializer.serialize_struct("TransactionRoot", 7)?;
 
+        ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("tx_idx", &self.tx_idx)?;
         ser_struct.serialize_field(
@@ -73,6 +77,7 @@ impl Serialize for TransactionRoot {
 
 impl DbRow for TransactionRoot {
     const COLUMN_NAMES: &'static [&'static str] = &[
+        "block_number",
         "tx_hash",
         "tx_idx",
         "gas_details",
@@ -197,7 +202,7 @@ pub mod test {
     async fn test_into_tx_root() {
         let tree = load_tree().await;
         let root = &tree.clone().tx_roots[0];
-        let tx_root = TransactionRoot::from(root);
+        let tx_root = TransactionRoot::from((root, tree.header.number));
 
         let burns = tx_root
             .trace_nodes
