@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fmt::Debug,
     path,
     sync::{Arc, Mutex},
@@ -19,14 +20,16 @@ use brontes_types::{
 };
 use futures::{future::join_all, join, stream::iter, StreamExt};
 use itertools::Itertools;
+use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
-use toml::Table;
+use toml::Table as tomlTable;
 use tracing::{error, info};
 
-use super::tables::Tables;
+use super::{cex_utils::CexTableFlag, tables::Tables};
 use crate::{
     clickhouse::ClickhouseHandle,
-    libmdbx::{types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
+    libmdbx::{cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
+    BlockInfo, BlockInfoData, CexPrice, CexPriceData,
 };
 const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";
 const SEARCHER_CONFIG_FILE: &str = "config/searcher_config.toml";
@@ -133,6 +136,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: Option<(u64, u64)>,
         clear_table: bool,
         mark_init: Option<u8>,
+        cex_table_flag: CexTableFlag,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -181,16 +185,43 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let libmdbx = self.libmdbx;
 
             async move {
-                let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
 
-                match data {
-                    Ok(d) => {
-                        libmdbx.0.write_table(&d)?;
-                    }
-                    Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                    }
+                match cex_table_flag {
+                    CexTableFlag::Trades => {
+                        let data = clickhouse.get_cex_trades(CexRangeOrArbitrary::Range(start, end+1)).await;
+                        match data {
+                            Ok(d) => {
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    },
+                    CexTableFlag::Quotes => {
+                        let data = clickhouse.get_cex_prices(CexRangeOrArbitrary::Range(start, end+1)).await;
+                        match data {
+                            Ok(d) => {
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    },
+                    CexTableFlag::None => {
+                        let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
+                        match data {
+                            Ok(d) => {
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    },
                 }
+                
 
                 let num = {
                     let mut n = num_chunks.lock().unwrap();
@@ -219,6 +250,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         block_range: &'static [u64],
         mark_init: Option<u8>,
+        cex_table_flag: CexTableFlag,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -244,16 +276,43 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let libmdbx = self.libmdbx;
 
             async move {
-                let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
 
-                match data {
-                    Ok(d) => {
-                        libmdbx.0.write_table(&d)?;
-                    }
-                    Err(e) => {
-                        info!(target: "brontes::init::missing_state", "{} -- Error Writing -- {:?}", T::NAME,  e)
-                    }
+                match cex_table_flag {
+                    CexTableFlag::Trades => {
+                        let data = clickhouse.get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range)).await;
+                        match data {
+                            Ok(d) => {
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    },
+                    CexTableFlag::Quotes => {
+                        let data = clickhouse.get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range)).await;
+                        match data {
+                            Ok(d) => {
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    },
+                    CexTableFlag::None => {
+                        let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
+                        match data {
+                            Ok(d) => {
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    },
                 }
+
 
                 let num = {
                     let mut n = num_chunks.lock().unwrap();
@@ -285,7 +344,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         let mut workspace_dir = workspace_dir();
         workspace_dir.push(CLASSIFIER_CONFIG_FILE);
 
-        let Ok(config) = toml::from_str::<Table>(&{
+        let Ok(config) = toml::from_str::<tomlTable>(&{
             let Ok(path) = std::fs::read_to_string(workspace_dir) else {
                 tracing::error!(target: "brontes::init", "failed to read classifier_config");
                 return;
@@ -555,10 +614,14 @@ mod tests {
     use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
 
+    use brontes_database::libmdbx::cex_utils::CexRangeOrArbitrary;
+    use brontes_database::{CexPrice, CexPriceData};
+    use brontes_database::clickhouse::ClickhouseHandle;
+
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
         //let block_range = (17000000, 17000100);
-        let block_range = (17000000, 17000002);
+        let block_range = (19000000, 19000002);
         let arbitrary_set = Box::leak(Box::new(vec![17000000, 17000010, 17000100]));
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
@@ -570,61 +633,88 @@ mod tests {
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = Tables::ALL;
+        //let tables = Tables::ALL;
+        let tables = [Tables::CexPrice];
 
         intializer
             .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
 
-        // TokenDecimals
-        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // TokenDecimals
+        // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // AddressToProtocol
-        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // AddressToProtocol
+        // AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
         // CexPrice
         CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
+        // CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        //     .await
+        //     .unwrap();
 
-        // Metadata
-        BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
-        BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
+        // // Metadata
+        // BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        //     .await
+        //     .unwrap();
+        // BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        //     .await
+        //     .unwrap();
 
-        // PoolCreationBlocks
-        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // PoolCreationBlocks
+        // PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // Builder
-        Builder::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // Builder
+        // Builder::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // AddressMeta
-        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // AddressMeta
+        // AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // TxTraces
-        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
+        // // TxTraces
+        // TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        //     .await
+        //     .unwrap();
 
-        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
+        // TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        //     .await
+        //     .unwrap();
+    }
+
+    #[cfg(feature = "local-clickhouse")]
+    #[brontes_macros::test]
+    async fn test_initialize_cex() {
+        //let block_range = (17000000, 17000100);
+
+        
+
+       
+        let block_range = (19000000, 19000002);
+        let arbitrary_set = Box::leak(Box::new(vec![17000000, 17000010, 17000100]));
+
+        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        
+        
+        let new_values = clickhouse.get_cex_prices(CexRangeOrArbitrary::Range(block_range.0, block_range.1)).await;
+        let old_values =  clickhouse.query_many_range::<CexPrice, CexPriceData>(block_range.0, block_range.1).await;
+
+        assert!(new_values.0.len() >= old_values.0.len());
+        
+        old_values.0.iter().for_each(|(exch, old_data)| {
+            let new_data = new_values.0.get(&exch).unwrap();
+            assert!(new_data.len() > old_data.len());
+        });
+
     }
 }

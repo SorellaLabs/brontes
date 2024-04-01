@@ -27,6 +27,7 @@ use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeSeq, Serialize};
 
+use super::raw_cex_quotes::RawCexQuotes;
 use crate::{
     constants::*,
     db::redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
@@ -384,6 +385,21 @@ impl MulAssign for CexQuote {
     fn mul_assign(&mut self, rhs: Self) {
         self.price.0 *= rhs.price.0;
         self.price.1 *= rhs.price.1;
+    }
+}
+
+impl From<(Pair, RawCexQuotes)> for CexQuote {
+    fn from(value: (Pair, RawCexQuotes)) -> Self {
+        let (pair, quote) = value;
+        CexQuote {
+            exchange:  quote.exchange,
+            timestamp: quote.timestamp,
+            price:     (
+                Rational::try_from_float_simplest(quote.ask_price).unwrap(),
+                Rational::try_from_float_simplest(quote.bid_price).unwrap(),
+            ),
+            token0:    pair.0,
+        }
     }
 }
 

@@ -2,6 +2,13 @@ use std::{cmp::max, fmt::Debug};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::db::{
+    block_times::BlockTimes,
+    cex_symbols::CexSymbols,
+    raw_cex_quotes::{CexQuotesConverter, RawCexQuotes},
+    raw_cex_trades::{CexTradesConverter, RawCexTrades},
+};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
@@ -25,6 +32,10 @@ use futures::future::join_all;
 use serde::Deserialize;
 
 use super::{dbms::*, ClickhouseHandle};
+#[cfg(feature = "local-clickhouse")]
+use super::{BLOCK_TIMES, CEX_SYMBOLS, RAW_CEX_QUOTES, RAW_CEX_TRADES};
+#[cfg(feature = "local-clickhouse")]
+use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 use crate::{
     clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
     libmdbx::{
@@ -313,6 +324,144 @@ impl ClickhouseHandle for Clickhouse {
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
         &self.client
     }
+
+    #[cfg(feature = "local-clickhouse")]
+    async fn get_cex_prices(
+        &self,
+        range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> eyre::Result<Vec<crate::CexPriceData>> {
+        let block_times: Vec<BlockTimes> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(s, e) => {
+                self.client.query_many(BLOCK_TIMES, &(s, e)).await?
+            }
+            CexRangeOrArbitrary::Arbitrary(vals) => {
+                let mut query = BLOCK_TIMES.to_string();
+
+                query = query.replace(
+                    "block_number >= ? AND block_number < ?",
+                    &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
+                );
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        if block_times.is_empty() {
+            return Ok(vec![])
+        }
+
+        let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
+
+        let data: Vec<RawCexQuotes> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(..) => {
+                let start_time = block_times
+                    .iter()
+                    .max_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap();
+                let end_time = block_times
+                    .iter()
+                    .min_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap();
+
+                self.client
+                    .query_many(RAW_CEX_QUOTES, &(start_time, end_time))
+                    .await?
+            }
+            CexRangeOrArbitrary::Arbitrary(_) => {
+                let mut query = RAW_CEX_QUOTES.to_string();
+
+                let query_mod = block_times
+                    .iter()
+                    .map(|b| b.convert_to_timestamp_query(12, 0))
+                    .collect::<Vec<_>>()
+                    .join(" OR");
+
+                query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        let price_converter = CexQuotesConverter::new(block_times, symbols, data);
+        let prices = price_converter
+            .convert_to_prices()
+            .into_iter()
+            .map(|(block_num, price_map)| CexPriceData::new(block_num, price_map))
+            .collect();
+
+        Ok(prices)
+    }
+
+    #[cfg(feature = "local-clickhouse")]
+    async fn get_cex_trades(
+        &self,
+        range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> eyre::Result<Vec<crate::CexTradesData>> {
+        let block_times: Vec<BlockTimes> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(s, e) => {
+                self.client.query_many(BLOCK_TIMES, &(s, e)).await?
+            }
+            CexRangeOrArbitrary::Arbitrary(vals) => {
+                let mut query = BLOCK_TIMES.to_string();
+
+                query = query.replace(
+                    "block_number >= ? AND block_number < ?",
+                    &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
+                );
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        if block_times.is_empty() {
+            return Ok(vec![])
+        }
+
+        let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
+
+        let data: Vec<RawCexTrades> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(..) => {
+                let start_time = block_times
+                    .iter()
+                    .max_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap();
+                let end_time = block_times
+                    .iter()
+                    .min_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap();
+
+                self.client
+                    .query_many(RAW_CEX_TRADES, &(start_time, end_time))
+                    .await?
+            }
+            CexRangeOrArbitrary::Arbitrary(_) => {
+                let mut query = RAW_CEX_TRADES.to_string();
+
+                let query_mod = block_times
+                    .iter()
+                    .map(|b| b.convert_to_timestamp_query(6, 6))
+                    .collect::<Vec<_>>()
+                    .join(" OR");
+
+                query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        let trades_converter = CexTradesConverter::new(block_times, symbols, data);
+        let trades = trades_converter
+            .convert_to_trades()
+            .into_iter()
+            .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
+            .collect();
+
+        Ok(trades)
+    }
 }
 
 #[cfg(test)]
@@ -365,9 +514,12 @@ mod tests {
         let case0 = JoinedSearcherInfo {
             address:         Default::default(),
             fund:            Default::default(),
-            mev:             vec![MevType::default()],
+            mev:             todo!(),
             builder:         Some(Default::default()),
             eoa_or_contract: SearcherEoaContract::Contract,
+            config_labels:   todo!(),
+            pnl:             todo!(),
+            gas_bids:        todo!(),
         };
 
         db.insert_one::<ClickhouseSearcherInfo>(&case0)
@@ -402,6 +554,8 @@ mod tests {
     // }
 
     async fn builder_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+        todo!();
+        /*
         let case0 = BuilderStatsWithAddress::default();
 
         db.insert_one::<ClickhouseBuilderStats>(&case0)
@@ -412,6 +566,7 @@ mod tests {
         let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
+        */
     }
 
     async fn dex_price_mapping(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {

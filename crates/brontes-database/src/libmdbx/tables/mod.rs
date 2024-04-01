@@ -42,7 +42,9 @@ use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
 
-use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
+use super::{
+    cex_utils::CexTableFlag, initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable,
+};
 
 pub const NUM_TABLES: usize = 15;
 
@@ -151,6 +153,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(CEX_FLAG),
+                        CexTableFlag::Quotes,
                     )
                     .await
             }
@@ -160,6 +163,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(META_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
@@ -172,6 +176,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(TRACE_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
@@ -221,6 +226,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
                         Some(CEX_FLAG),
+                        CexTableFlag::Quotes,
                     )
                     .await
             }
@@ -229,6 +235,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
                         Some(META_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
@@ -240,6 +247,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
                         Some(TRACE_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
