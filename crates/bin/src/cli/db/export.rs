@@ -1,19 +1,20 @@
-use std::env;
+use std::{env, sync::Arc};
 
 use brontes_database::{parquet::ParquetExporter, Tables};
 use clap::Parser;
-use futures::stream::{FuturesUnordered, StreamExt};
+use futures::future::join_all;
+use tokio::task::spawn;
 use tracing::error;
 
 use crate::{
     cli::{load_libmdbx, static_object},
     runner::CliContext,
 };
-
 #[derive(Debug, Parser)]
 pub struct Export {
     /// Optional tables to exports, if omitted will export all supported tables
-    #[arg(long, short,default_values = &["MevBlocks", "AddressMeta"], value_delimiter = ',')]
+    //TODO: ignore double searcher info passed, ensure searcher info export triggered only once
+    #[arg(long, short,default_values = &["MevBlocks", "AddressMeta", "SearcherContracts", "Builder"], value_delimiter = ',', ignore_case=true)]
     pub tables:      Vec<Tables>,
     /// Optional Start Block, if omitted it will export the entire range to
     /// parquet
@@ -31,19 +32,27 @@ impl Export {
     pub async fn execute(self, _ctx: CliContext) -> eyre::Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
         let libmdbx = static_object(load_libmdbx(brontes_db_endpoint)?);
+        let exporter =
+            Arc::new(ParquetExporter::new(self.start_block, self.end_block, self.path, libmdbx));
 
-        let exporter = ParquetExporter::new(self.start_block, self.end_block, self.path, libmdbx);
+        let futures = self.tables.into_iter().map(|t| {
+            let exporter = exporter.clone();
+            spawn(async move { t.export_to_parquet(exporter).await })
+        });
 
-        let mut futures = FuturesUnordered::new();
+        let results = join_all(futures).await;
 
-        for t in self.tables.iter() {
-            futures.push(t.export_to_parquet(&exporter));
-        }
-
-        while let Some(result) = futures.next().await {
-            if let Err(e) = result {
-                error!("Failed to export table: {}", e);
-                return Err(e);
+        for result in results {
+            match result {
+                Ok(Ok(_)) => (),
+                Ok(Err(e)) => {
+                    error!("Failed to export table: {}", e);
+                    return Err(e);
+                }
+                Err(e) => {
+                    error!("Task failed: {}", e);
+                    return Err(eyre::eyre!("Task failed: {}", e));
+                }
             }
         }
 

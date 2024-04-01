@@ -8,7 +8,7 @@ use futures::{join, StreamExt};
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
+    cli::{get_env_vars, get_tracing_provider, load_read_only_database, static_object},
     runner::CliContext,
 };
 
@@ -16,14 +16,14 @@ use crate::{
 pub struct TipTraceArgs {
     /// Start Block
     #[arg(long, short)]
-    pub start_block: u64,
+    pub start_block: Option<u64>,
 }
 
 impl TipTraceArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
-        let max_tasks = determine_max_tasks(None) * 2;
+        let max_tasks = (num_cpus::get_physical() as f64 * 0.7) as u64 + 1;
         init_threadpools(max_tasks as usize);
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
@@ -36,7 +36,7 @@ impl TipTraceArgs {
         BRONTES_DB_PATH in .env",
         );
 
-        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        let libmdbx = static_object(load_read_only_database(brontes_db_endpoint)?);
 
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
@@ -44,11 +44,20 @@ impl TipTraceArgs {
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
         let mut end_block = parser.get_latest_block_number().unwrap();
 
+        let start_block = if let Some(s) = self.start_block {
+            s
+        } else {
+            libmdbx.client.max_traced_block().await.unwrap()
+        };
+
         // trace up to chaintip
         let catchup = ctx.task_executor.spawn_critical("catchup", async move {
-            futures::stream::iter(self.start_block..=end_block)
-                .unordered_buffer_map(100, |i| parser.execute(i))
-                .map(|_res| ())
+            futures::stream::iter(start_block..=end_block)
+                .unordered_buffer_map(100, |i| parser.trace_for_clickhouse(i))
+                .map(|res| {
+                    drop(res);
+                    return
+                })
                 .collect::<Vec<_>>()
                 .await;
         });
@@ -58,7 +67,7 @@ impl TipTraceArgs {
                 let tip = parser.get_latest_block_number().unwrap();
                 if tip + 1 > end_block {
                     end_block += 1;
-                    let _ = parser.execute(end_block).await;
+                    let _ = parser.trace_for_clickhouse(end_block).await;
                 }
             }
         });

@@ -82,54 +82,22 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // remove swaps that originate from a transfer. This event only occurs
     // when a tax token is transfered and the taxed amount is swapped into
     // a more stable currency
-    tree.modify_node_if_contains_childs(
-        TreeSearchBuilder::default()
-            .with_action(Actions::is_transfer)
-            .child_nodes_contain([Actions::is_swap, Actions::is_transfer]),
-        |node, data| {
-            let mut swap_idx = Vec::new();
-            node.collect(
-                &mut swap_idx,
-                &TreeSearchBuilder::default().with_action(Actions::is_swap),
-                &|node| node.node.index,
-                data,
-            );
-
-            swap_idx.into_iter().for_each(|idx| {
-                node.remove_node_and_children(idx, data);
-            })
-        },
-    );
-}
-
-#[cfg(test)]
-mod test {
-    use std::sync::Arc;
-
-    use brontes_types::{normalized_actions::Actions, TreeSearchBuilder};
-    use hex_literal::hex;
-
-    use crate::test_utils::ClassifierTestUtils;
-
-    /// 7 total swaps but 1 is tax token
-    #[brontes_macros::test]
-    async fn test_filter_tax_tokens() {
-        let utils = ClassifierTestUtils::new().await;
-        let tree = Arc::new(
-            utils
-                .build_tree_tx(
-                    hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-                )
-                .await
-                .unwrap(),
-        );
-
-        let swaps = tree
-            .collect(
-                &hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
-            )
-            .collect::<Vec<_>>();
-        assert!(swaps.len() == 6, "didn't filter tax token");
-    }
+    // tree.modify_node_if_contains_childs(
+    //     TreeSearchBuilder::default()
+    //         .with_action(Actions::is_transfer)
+    //         .child_nodes_contain([Actions::is_swap, Actions::is_transfer]),
+    //     |node, data| {
+    //         let mut swap_idx = Vec::new();
+    //         node.collect(
+    //             &mut swap_idx,
+    //             &TreeSearchBuilder::default().with_action(Actions::is_swap),
+    //             &|node| node.node.index,
+    //             data,
+    //         );
+    //
+    //         swap_idx.into_iter().for_each(|idx| {
+    //             node.remove_node_and_children(idx, data);
+    //         })
+    //     },
+    // );
 }

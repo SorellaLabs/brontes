@@ -17,9 +17,8 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
-pub use subgraph_verifier::VerificationResults;
 
-use self::{
+pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
     subgraph_verifier::*,
 };
@@ -83,6 +82,23 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         }
     }
 
+    /// used for testing and benching
+    pub fn snapshot_state(&self) -> (SubGraphRegistry, SubgraphVerifier, StateTracker) {
+        (self.sub_graph_registry.clone(), self.subgraph_verifier.clone(), self.graph_state.clone())
+    }
+
+    /// used for testing and benching
+    pub fn set_state(
+        &mut self,
+        sub_graph_registry: SubGraphRegistry,
+        verifier: SubgraphVerifier,
+        state: StateTracker,
+    ) {
+        self.sub_graph_registry = sub_graph_registry;
+        self.subgraph_verifier = verifier;
+        self.graph_state = state;
+    }
+
     pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {
         self.all_pair_graph.add_node(pair, pool_addr, dex, block);
     }
@@ -104,32 +120,37 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn create_subgraph(
         &self,
         block: u64,
-        first_hop: Pair,
+        first_hop: Option<Pair>,
         pair: Pair,
         ignore: FastHashSet<Pair>,
         connectivity_wight: usize,
         connections: Option<usize>,
         timeout: Duration,
-    ) -> Vec<SubGraphEdge> {
+        is_extension: bool,
+        trying_extensions_quote: Option<Address>,
+    ) -> (Vec<SubGraphEdge>, Option<Pair>) {
         #[cfg(not(feature = "tests"))]
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
             return edges
         }
 
-        self.all_pair_graph
-            .get_paths_ignoring(
-                pair,
-                first_hop,
-                &ignore,
-                block,
-                connectivity_wight,
-                connections,
-                timeout,
-            )
-            .into_iter()
-            .flatten()
-            .flatten()
-            .collect_vec()
+        let possible_exts = trying_extensions_quote
+            .map(|quote| self.sub_graph_registry.all_pairs_with_quote(quote))
+            .unwrap_or_default();
+
+        let (path, extends) = self.all_pair_graph.get_paths_ignoring(
+            pair,
+            first_hop,
+            &ignore,
+            block,
+            connectivity_wight,
+            connections,
+            timeout,
+            is_extension,
+            possible_exts,
+        );
+
+        (path.into_iter().flatten().flatten().collect_vec(), extends)
     }
 
     pub fn add_subgraph_for_verification(
@@ -175,6 +196,11 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .remove_empty_address(pool_pair, pool_address)
     }
 
+    pub fn remove_subgraph(&mut self, pool_pair: Pair, goes_through: Pair) {
+        self.sub_graph_registry
+            .remove_subgraph(&pool_pair, &goes_through);
+    }
+
     /// Returns all pairs that have been ignored from lowest to highest
     /// liquidity
     pub fn verify_subgraph_on_new_path_failure(
@@ -186,7 +212,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .verify_subgraph_on_new_path_failure(pair, goes_through)
     }
 
-    pub fn get_price(&self, pair: Pair, goes_through: Pair) -> Option<Rational> {
+    pub fn get_price(&mut self, pair: Pair, goes_through: Pair) -> Option<Rational> {
         self.sub_graph_registry
             .get_price(pair, goes_through, self.graph_state.finalized_state())
     }
@@ -204,15 +230,13 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             || self.subgraph_verifier.is_verifying(&pair, &goes_through)
     }
 
-    pub fn has_subgraph_goes_through(
-        &self,
-        pair: Pair,
-        goes_through: Pair,
-        quote: Address,
-    ) -> bool {
-        self.has_extension(&pair, quote).is_some()
-            && self.sub_graph_registry.has_go_through(&pair, &goes_through)
-            || self.sub_graph_registry.sufficient_pairs(&pair)
+    fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
+        self.sub_graph_registry.has_go_through(pair, goes_through)
+            || self.subgraph_verifier.has_go_through(pair, goes_through)
+    }
+
+    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Option<Pair>) -> bool {
+        self.has_go_through(&pair, &goes_through)
     }
 
     pub fn remove_state(&mut self, address: &Address) {
@@ -260,7 +284,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                                             self.graph_state.finalized_state(),
                                         )
                                         .unwrap_or(Rational::ONE),
-                                    goes_through.1,
+                                    jump_pair.0,
                                     goes_through,
                                 )
                             })

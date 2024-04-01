@@ -109,6 +109,8 @@ impl PoolVariants {
 
 #[derive(Debug, Clone)]
 pub enum DexPriceMsg {
+    /// marker for only updating loaded state and not generating prices
+    DisablePricingFor(u64),
     Update(PoolUpdate),
     /// we only send pool config update if the pool is valid and has tokens
     DiscoveredPool(NormalizedPoolConfigUpdate),
@@ -149,6 +151,10 @@ pub struct PoolUpdate {
 impl PoolUpdate {
     pub fn get_pool_address(&self) -> Address {
         self.action.get_to_address()
+    }
+
+    pub fn is_transfer(&self) -> bool {
+        self.action.is_transfer()
     }
 
     // we currently only use this in order to fetch the pair for when its new or to

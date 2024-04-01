@@ -19,12 +19,15 @@ use super::{
     Actions,
 };
 use crate::{
+    constants::ETH_ADDRESS,
     db::{
         redefined_types::{malachite::*, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
     mev::StatArbDetails,
-    rational_to_clickhouse_tuple, Protocol, ToFloatNearest,
+    rational_to_clickhouse_tuple,
+    utils::ToScaledRational,
+    Protocol, ToFloatNearest,
 };
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
@@ -69,7 +72,7 @@ impl NormalizedSwap {
     /// Calculates the exchange rate for a given DEX swap
     pub fn swap_rate(&self) -> Rational {
         if self.amount_out == Rational::ZERO {
-            return Rational::ZERO;
+            return Rational::ZERO
         }
 
         &self.amount_in / &self.amount_out
@@ -105,6 +108,13 @@ impl TokenAccounting for NormalizedSwap {
 
         apply_delta(self.from, self.token_in.address, -amount_in.clone(), delta_map);
         apply_delta(self.recipient, self.token_out.address, amount_out, delta_map);
+
+        // if we have msg.value, apply this too
+        if self.msg_value > U256::ZERO {
+            let am = self.msg_value.to_scaled_rational(18);
+            apply_delta(self.from, ETH_ADDRESS, -am.clone(), delta_map);
+            apply_delta(self.recipient, ETH_ADDRESS, am, delta_map);
+        }
     }
 }
 
@@ -213,7 +223,7 @@ impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecN
 
 #[derive(Default)]
 pub struct ClickhouseStatArbDetails {
-    pub cex_exchanges:    Vec<String>,
+    pub cex_exchange:     String,
     pub cex_price:        ([u8; 32], [u8; 32]),
     pub dex_exchange:     String,
     pub dex_price:        ([u8; 32], [u8; 32]),
@@ -224,11 +234,7 @@ pub struct ClickhouseStatArbDetails {
 impl From<StatArbDetails> for ClickhouseStatArbDetails {
     fn from(value: StatArbDetails) -> Self {
         Self {
-            cex_exchanges:    value
-                .cex_exchanges
-                .into_iter()
-                .map(|e| format!("{:?}", e))
-                .collect_vec(),
+            cex_exchange:     value.cex_exchange.to_string(),
             cex_price:        rational_to_u256_bytes(value.cex_price),
             dex_exchange:     value.dex_exchange.to_string(),
             dex_price:        rational_to_u256_bytes(value.dex_price),
@@ -240,7 +246,7 @@ impl From<StatArbDetails> for ClickhouseStatArbDetails {
 
 #[derive(Default)]
 pub struct ClickhouseVecStatArbDetails {
-    pub cex_exchanges:    Vec<Vec<String>>,
+    pub cex_exchanges:    Vec<String>,
     pub cex_price:        Vec<([u8; 32], [u8; 32])>,
     pub dex_exchange:     Vec<String>,
     pub dex_price:        Vec<([u8; 32], [u8; 32])>,
@@ -254,7 +260,7 @@ impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
 
         value.into_iter().for_each(|exch| {
             let val: ClickhouseStatArbDetails = exch.into();
-            this.cex_exchanges.push(val.cex_exchanges);
+            this.cex_exchanges.push(val.cex_exchange);
             this.cex_price.push(val.cex_price);
             this.dex_exchange.push(val.dex_exchange);
             this.dex_price.push(val.dex_price);

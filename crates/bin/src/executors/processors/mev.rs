@@ -5,6 +5,10 @@ use brontes_inspect::{
     composer::{compose_mev_results, ComposerResults},
     Inspector,
 };
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::frontend_prunes::{
+    remove_burn_transfers, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
+};
 use brontes_types::{
     db::metadata::Metadata,
     execute_on,
@@ -12,7 +16,7 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use tracing::info;
+use tracing::debug;
 
 use crate::Processor;
 
@@ -28,8 +32,10 @@ impl Processor for MevProcessor {
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
     ) {
-        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
-            execute_on!(target = inspect, compose_mev_results(inspectors, tree, metadata.clone()));
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
+            target = inspect,
+            compose_mev_results(inspectors, tree.clone(), metadata.clone())
+        );
 
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
@@ -38,7 +44,27 @@ impl Processor for MevProcessor {
             tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
         }
 
+        #[cfg(feature = "local-clickhouse")]
+        insert_tree(db, tree.clone(), metadata.block_num).await;
+
         insert_mev_results(db, block_details, mev_details).await;
+    }
+}
+
+#[cfg(feature = "local-clickhouse")]
+async fn insert_tree<DB: DBWriter + LibmdbxReader>(
+    db: &DB,
+    tree: Arc<BlockTree<Actions>>,
+    block_num: u64,
+) {
+    let mut tree_owned = (*tree).clone();
+    remove_swap_transfers(&mut tree_owned);
+    remove_mint_transfers(&mut tree_owned);
+    remove_burn_transfers(&mut tree_owned);
+    remove_collect_transfers(&mut tree_owned);
+
+    if let Err(e) = db.insert_tree(Arc::new(tree_owned)).await {
+        tracing::error!(err=%e, %block_num, "failed to insert tree into db");
     }
 }
 
@@ -47,7 +73,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     block_details: MevBlock,
     mev_details: Vec<Bundle>,
 ) {
-    info!(
+    debug!(
         target: "brontes",
         "block details\n {}",
         block_details.to_string()
@@ -73,14 +99,14 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     mev_details: &Vec<Bundle>,
 ) {
     for mev in mev_details {
-        info!(
+        debug!(
             target: "brontes",
             "mev details\n {}",
             mev.to_string()
         );
 
         if mev.header.mev_type == MevType::Unknown || mev.header.mev_type == MevType::SearcherTx {
-            continue;
+            continue
         }
 
         let (eoa_info, contract_info) = database

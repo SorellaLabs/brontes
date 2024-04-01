@@ -55,7 +55,8 @@ discovery_dispatch!(
     CurvecrvUSDMetaDiscovery1,
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
-    BalancerV1CoreDiscovery
+    BalancerV1CoreDiscovery,
+    BalancerV1SmartPoolDiscovery
 );
 
 action_dispatch!(
@@ -144,6 +145,12 @@ action_dispatch!(
     BalancerV1SwapExactAmountInCall,
     BalancerV1SwapExactAmountOutCall,
     BalancerV1BindCall,
+    BalancerV2OnSwap_0Call,
+    BalancerV2OnSwap_1Call,
+    BalancerV2FlashLoanCall,
+    BalancerV2JoinPoolCall,
+    BalancerV2ExitPoolCall,
+    BalancerV2RegisterTokensCall,
     CompoundV2LiquidateBorrowCall,
     CompoundV2Initialize_0Call,
     CompoundV2Initialize_1Call,

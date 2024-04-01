@@ -29,6 +29,7 @@ reth-db.workspace = true
 reth-rpc.workspace = true
 reth-rpc-types.workspace = true
 
+
 # libmdbx deps
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
 reth-codecs.workspace = true
@@ -42,9 +43,9 @@ bytes = "1.5"
 zstd = "0.13"
 chrono = "0.4.35"
 
-polars = { version = "0.38.2", features = ["lazy"] }
-arrow = { version = "51.0.0" }
-parquet = { version = "51.0.0", features = ["async"] }
+polars.workspace = true
+arrow.workspace = true
+parquet = { workspace = true, features = ["async"] }
 
 
 # numbers
@@ -113,9 +114,11 @@ test-fuzz = "4"
 async-trait.workspace = true
 reth-tasks.workspace = true
 brontes-core = { workspace = true, features = ["tests"] }
+brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
+
 
 [build-dependencies]
 serde.workspace = true

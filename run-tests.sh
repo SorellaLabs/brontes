@@ -42,15 +42,15 @@ BENCH="bench";
 
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
 if [ "$3" = "$IT" ]; then 
-  if cargo run --release --features $4 -- run --start-block 18300000 --end-block 18300002 --run-dex-pricing; then : ; else teardown $2; exit 1; fi
+  if cargo run -j 20 --features $4 -- run --start-block 18300000 --end-block 18300002; then : ; else teardown $2; exit 1; fi
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  if cargo test --features $4; then : ;else  teardown $2; exit 1; fi
+  if cargo test -j 20 --features $4; then : ;else  teardown $2; exit 1; fi
 fi
 
 if [ "$3" = "$BENCH" ]; then 
-  if cargo bench --features $4; then : ; else teardown $2; exit 1; fi
+  if cargo bench -j 20 --features $4; then : ; else teardown $2; exit 1; fi
 fi 
 
 teardown $2

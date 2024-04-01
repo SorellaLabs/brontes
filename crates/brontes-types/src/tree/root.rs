@@ -12,10 +12,11 @@ use super::Node;
 use crate::{
     db::{metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::{Actions, NormalizedAction},
-    TreeSearchBuilder, TxInfo,
+    tree::types::NodeWithDataRef,
+    FastHashSet, TreeSearchBuilder, TxInfo,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeData<V: NormalizedAction>(pub Vec<Option<V>>);
 
 impl<V: NormalizedAction> NodeData<V> {
@@ -43,7 +44,7 @@ impl<V: NormalizedAction> NodeData<V> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Root<V: NormalizedAction> {
     pub head:        Node,
     pub position:    usize,
@@ -114,10 +115,10 @@ impl<V: NormalizedAction> Root<V> {
         // protocol addresses as mev contracts
         if is_verified_contract
             || is_classified
+            || emits_logs && searcher_contract_info.is_none()
             || contract_type
                 .as_ref()
                 .map_or(false, |ct| !ct.could_be_mev_contract())
-            || emits_logs && searcher_contract_info.is_none()
         {
             return Ok(TxInfo::new(
                 block_number,
@@ -133,7 +134,7 @@ impl<V: NormalizedAction> Root<V> {
                 is_verified_contract,
                 searcher_eoa_info,
                 None,
-            ));
+            ))
         }
 
         Ok(TxInfo::new(
@@ -232,6 +233,35 @@ impl<V: NormalizedAction> Root<V> {
         if metadata.private_flow.contains(&self.tx_hash) {
             self.private = true;
         }
+    }
+
+    pub fn remove_duplicate_data<C, T, R>(
+        &mut self,
+        find: &TreeSearchBuilder<V>,
+        classify: &C,
+        info: &T,
+        removal: &TreeSearchBuilder<V>,
+    ) where
+        T: Fn(NodeWithDataRef<'_, V>) -> R + Sync,
+        C: Fn(&Vec<R>, &Node, &NodeData<V>) -> Vec<u64> + Sync,
+    {
+        let mut find_res = Vec::new();
+        self.head
+            .collect(&mut find_res, find, &|data| data.node.clone(), &self.data_store);
+
+        let indexes = find_res
+            .into_iter()
+            .flat_map(|node| {
+                let mut bad_res = Vec::new();
+                node.collect(&mut bad_res, removal, info, &self.data_store);
+                classify(&bad_res, &node, &self.data_store)
+            })
+            .collect::<FastHashSet<_>>();
+
+        indexes.into_iter().for_each(|index| {
+            self.head
+                .remove_node_and_children(index, &mut self.data_store)
+        });
     }
 }
 

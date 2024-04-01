@@ -57,7 +57,7 @@ pub mod dex_quote {
         let des: DexPriceQuotesVec = Deserialize::deserialize(deserializer)?;
 
         if des.is_empty() {
-            return Ok(None);
+            return Ok(None)
         }
 
         let val = des
@@ -67,14 +67,15 @@ pub mod dex_quote {
                     Pair(Address::from_str(&pair0).unwrap(), Address::from_str(&pair1).unwrap())
                         .ordered(),
                     DexPrices {
-                        pre_state:  Rational::from_naturals(
+                        pre_state:    Rational::from_naturals(
                             Natural::from_owned_limbs_asc(pre_num),
                             Natural::from_owned_limbs_asc(pre_den),
                         ),
-                        post_state: Rational::from_naturals(
+                        post_state:   Rational::from_naturals(
                             Natural::from_owned_limbs_asc(post_num),
                             Natural::from_owned_limbs_asc(post_den),
                         ),
+                        goes_through: Pair::default(),
                     },
                 )
             })

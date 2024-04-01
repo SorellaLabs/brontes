@@ -90,7 +90,7 @@ impl BuilderInfo {
         if let Some(fund) = &self.fund {
             if *fund != Fund::None {
                 description.push_str(" operated by ");
-                description.push_str(&fund.to_string());
+                description.push_str(fund.as_ref());
             }
         }
 

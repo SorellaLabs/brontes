@@ -52,7 +52,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         &self,
         traces: Vec<TxTrace>,
         header: Header,
+        generate_pricing: bool,
     ) -> BlockTree<Actions> {
+        if !generate_pricing {
+            self.pricing_update_sender
+                .send(DexPriceMsg::DisablePricingFor(header.number))
+                .unwrap();
+        }
+
         let tx_roots = self.build_all_tx_trees(traces, &header).await;
         let mut tree = BlockTree::new(header, tx_roots.len());
 
@@ -137,13 +144,15 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     };
 
                     for trace in trace.trace.into_iter() {
-                        if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
-                            *coinbase +=
-                                get_coinbase_transfer(header.beneficiary, &trace.trace.action)
-                                    .unwrap_or_default()
-                        } else {
-                            tx_root.gas_details.coinbase_transfer =
-                                get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                        if trace.trace.error.is_none() {
+                            if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                                *coinbase +=
+                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                                        .unwrap_or_default()
+                            } else {
+                                tx_root.gas_details.coinbase_transfer =
+                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                            }
                         }
 
                         let classification = self
@@ -273,10 +282,23 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             if results.1.is_new_pool() {
                 let Actions::NewPool(p) = &results.1 else { unreachable!() };
                 self.insert_new_pool(block, p).await;
+            } else if results.1.is_pool_config_update() {
+                let Actions::PoolConfigUpdate(p) = &results.1 else { unreachable!() };
+                if self
+                    .libmdbx
+                    .insert_pool(block, p.pool_address, p.tokens.as_slice(), None, p.protocol)
+                    .await
+                    .is_err()
+                {
+                    error!(pool=?p.pool_address,"failed to update pool config");
+                }
             }
 
             (vec![results.0], results.1)
-        } else if let Some(transfer) = self.classify_transfer(trace_index, &trace, block).await {
+        } else if let Some(transfer) = self
+            .classify_transfer(tx_idx, trace_index, &trace, block)
+            .await
+        {
             return transfer
         } else {
             return (vec![], self.classify_eth_transfer(trace, trace_index))
@@ -285,6 +307,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
     async fn classify_transfer(
         &self,
+        tx_idx: u64,
         trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
@@ -330,7 +353,15 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 }
 
                 // Return the adjusted transfer as an action
-                Some((vec![], Actions::Transfer(transfer)))
+                Some((
+                    vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                        block,
+                        tx_idx,
+                        logs: vec![],
+                        action: Actions::Transfer(transfer.clone()),
+                    })],
+                    Actions::Transfer(transfer),
+                ))
             }
             Err(_) => {
                 for log in &trace.logs {
@@ -341,17 +372,23 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                         let token_info = self.libmdbx.try_fetch_token_info(addr).ok()?;
                         let amount = amount.to_scaled_rational(token_info.decimals);
+                        let transfer = NormalizedTransfer {
+                            amount,
+                            token: token_info,
+                            to,
+                            from,
+                            fee: Rational::ZERO,
+                            trace_index: trace_idx,
+                        };
 
                         return Some((
-                            vec![],
-                            Actions::Transfer(NormalizedTransfer {
-                                amount,
-                                token: token_info,
-                                to,
-                                from,
-                                fee: Rational::ZERO,
-                                trace_index: trace_idx,
-                            }),
+                            vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
+                                block,
+                                tx_idx,
+                                logs: vec![],
+                                action: Actions::Transfer(transfer.clone()),
+                            })],
+                            Actions::Transfer(transfer),
                         ))
                     }
                 }
@@ -361,7 +398,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     }
 
     fn classify_eth_transfer(&self, trace: TransactionTraceWithLogs, trace_index: u64) -> Actions {
-        if trace.get_calldata().is_empty() && trace.get_msg_value() > U256::ZERO {
+        if trace.get_msg_value() > U256::ZERO {
             Actions::EthTransfer(NormalizedEthTransfer {
                 from: trace.get_from_addr(),
                 to: trace.get_to_address(),

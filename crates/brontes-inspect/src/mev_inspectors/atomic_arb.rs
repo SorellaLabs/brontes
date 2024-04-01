@@ -137,7 +137,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 let stable_arb = is_stable_arb(&swaps, jump_index);
                 let cross_or = self.is_cross_pair_or_stable_arb(&info);
 
-                ((is_profitable || stable_arb) || cross_or).then_some(profit)
+                (is_profitable || stable_arb || cross_or).then_some(profit)
             }
 
             AtomicArbType::StablecoinArb => {
@@ -199,9 +199,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
     }
 
-    // Fix atomic arb to solely work based on swaps & move any transfer related
-    // impls to long tail to deal with the scenario in which we have unclassified
-    // pools
     fn process_triangle_arb(&self, tx_info: &TxInfo) -> bool {
         tx_info.is_searcher_of_type(MevType::AtomicArb)
             || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
@@ -251,7 +248,6 @@ fn is_stable_arb(swaps: &[NormalizedSwap], jump_index: usize) -> bool {
     let token_bought = &swaps[jump_index - 1].token_out.symbol;
     let token_sold = &swaps[jump_index].token_in.symbol;
 
-    // Check if this is a stable arb
     is_stable_pair(token_sold, token_bought)
 }
 

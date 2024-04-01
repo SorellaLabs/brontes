@@ -19,34 +19,34 @@ use crate::{
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:     Option<u64>,
+    pub start_block:       Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:       Option<u64>,
+    pub end_block:         Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks:       Option<u64>,
+    pub max_tasks:         Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size:  u64,
+    pub min_batch_size:    u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset:     String,
+    pub quote_asset:       String,
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors:      Option<Vec<Inspectors>>,
+    pub inspectors:        Option<Vec<Inspectors>>,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
-    pub cex_exchanges:   Vec<String>,
-    /// If the dex pricing calculation should be run, even if we have the stored
-    /// dex prices.
+    pub cex_exchanges:     Vec<String>,
+    /// Ensures that dex prices are calcuated for every new block, even if the
+    /// db already contains the price
     #[arg(long, short, default_value = "false")]
-    pub run_dex_pricing: bool,
+    pub force_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "3")]
-    pub behind_tip:      u64,
+    pub behind_tip:        u64,
 }
 
 impl RunArgs {
@@ -74,8 +74,19 @@ impl RunArgs {
         let clickhouse = static_object(load_clickhouse().await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
-        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
+        let only_cex_dex = self
+            .inspectors
+            .as_ref()
+            .map(|f| {
+                #[cfg(not(feature = "cex-dex-markout"))]
+                let cmp = Inspectors::CexDex;
+                #[cfg(feature = "cex-dex-markout")]
+                let cmp = Inspectors::CexDexMarkout;
+                f.len() == 1 && f.contains(&cmp)
+            })
+            .unwrap_or(false);
 
+        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
         let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
@@ -91,7 +102,8 @@ impl RunArgs {
                     max_tasks,
                     self.min_batch_size,
                     quote_asset,
-                    self.run_dex_pricing,
+                    self.force_dex_pricing,
+                    only_cex_dex,
                     inspectors,
                     clickhouse,
                     parser,

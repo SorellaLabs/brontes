@@ -33,7 +33,7 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   the current state of the DEX, checking liquidity parameters and pool
 ///   states. This method is vital in maintaining the integrity of the pricing
 ///   system.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SubgraphVerifier {
     pending_subgraphs:           FastHashMap<Pair, Vec<(Pair, Subgraph)>>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
@@ -41,6 +41,12 @@ pub struct SubgraphVerifier {
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
     subgraph_verification_state: FastHashMap<Pair, Vec<(Pair, SubgraphVerificationState)>>,
+}
+
+impl Default for SubgraphVerifier {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SubgraphVerifier {
@@ -60,6 +66,24 @@ impl SubgraphVerifier {
                     .find_map(|(pair, s)| (pair == goes_through).then(|| s.subgraph.extends_to()))
             })
             .flatten()
+    }
+
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
+        if let Some(goes_through) = goes_through {
+            self.pending_subgraphs
+                .get(pair)
+                .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
+                .unwrap_or(false)
+        } else {
+            self.pending_subgraphs.contains_key(pair)
+        }
+    }
+
+    pub fn current_pairs(&self, pair: &Pair) -> usize {
+        self.pending_subgraphs
+            .get(pair)
+            .map(|f| f.len())
+            .unwrap_or_default()
     }
 
     pub fn all_pairs(&self) -> Vec<Pair> {
@@ -82,6 +106,7 @@ impl SubgraphVerifier {
             v.retain(|(k, _)| k != goes_through);
             !v.is_empty()
         });
+
         self.pending_subgraphs.retain(|k, v| {
             if *k != pair {
                 return true
@@ -244,6 +269,15 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !(ignores.contains(k)))
                     .collect::<FastHashMap<_, _>>();
 
+                if result.should_abandon {
+                    tracing::debug!(?pair, "aborting");
+                    return VerificationResults::Abort(
+                        subgraph.subgraph.complete_pair(),
+                        subgraph.subgraph.must_go_through(),
+                        block,
+                    )
+                }
+
                 if result.should_requery {
                     let goes_through = subgraph.subgraph.must_go_through();
                     let full_pair = subgraph.subgraph.complete_pair();
@@ -304,7 +338,11 @@ impl SubgraphVerifier {
                 let goes_through = subgraph.subgraph.must_go_through();
 
                 if let Some(frayed) = frayed {
-                    let extensions = subgraph.frayed_end_extensions.remove(&frayed).unwrap();
+                    let extensions = subgraph
+                        .frayed_end_extensions
+                        .remove(&frayed)
+                        .unwrap_or_default();
+
                     if subgraph.in_rundown {
                         let state = &self
                             .subgraph_verification_state
@@ -319,19 +357,21 @@ impl SubgraphVerifier {
 
                         let ex = extensions
                             .iter()
-                            .map(|e| Pair(e.token_0, e.token_1))
+                            .map(|e| (e.pool_addr, Pair(e.token_0, e.token_1)))
                             .collect::<FastHashSet<_>>();
+
                         let extends_to = subgraph.subgraph.extends_to();
 
                         tracing::debug!(
                             ?pair,
                             ?extends_to,
-                            "connected with \n {:#?}",
-                            ignored
-                                .iter()
-                                .filter(|i| ex.contains(i))
-                                .map(|i| state.highest_liq_for_pair(*i))
+                            extensions = ex.len(),
+                            "connected with \n {:#?}\n extensions: {:#?}",
+                            ex.iter()
+                                .filter(|(_, i)| ignored.contains(i))
+                                .map(|(_, i)| state.highest_liq_for_pair(*i))
                                 .collect_vec(),
+                            ex,
                         );
                     }
                     subgraph.subgraph.extend_subgraph(extensions);
@@ -354,11 +394,9 @@ impl SubgraphVerifier {
             .map(|(pair, block, rundown, mut subgraph, price, quote)| {
                 let edge_state = state_tracker.state_for_verification(block);
                 let result = if rundown {
-                    VerificationOutcome {
-                        should_requery: false,
-                        removals:       FastHashMap::default(),
-                        frayed_ends:    vec![],
-                    }
+                    subgraph
+                        .subgraph
+                        .rundown_subgraph_check(quote, price, edge_state, all_graph)
                 } else {
                     subgraph
                         .subgraph
@@ -405,7 +443,7 @@ impl SubgraphVerifier {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Subgraph {
     pub subgraph:              PairSubGraph,
     pub frayed_end_extensions: FastHashMap<u64, Vec<SubGraphEdge>>,
@@ -448,18 +486,10 @@ pub struct VerificationFailed {
 pub enum VerificationResults {
     Passed(VerificationPass),
     Failed(VerificationFailed),
+    Abort(Pair, Pair, u64),
 }
 
-impl VerificationResults {
-    pub fn split(self) -> (Option<VerificationPass>, Option<VerificationFailed>) {
-        match self {
-            Self::Passed(p) => (Some(p), None),
-            Self::Failed(f) => (None, Some(f)),
-        }
-    }
-}
-
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SubgraphVerificationState {
     /// contains all fully removed edges. this is so that
     /// if we don't find a edge with the wanted amount of liquidity,
@@ -523,5 +553,5 @@ impl SubgraphVerificationState {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EdgesWithLiq(FastHashMap<Address, FastHashSet<BadEdge>>);

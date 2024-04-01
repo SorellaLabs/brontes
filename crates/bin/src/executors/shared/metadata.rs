@@ -2,9 +2,9 @@ use core::panic;
 use std::{collections::VecDeque, pin::Pin, task::Poll};
 
 use brontes_database::clickhouse::ClickhouseHandle;
-use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     db::{
+        dex::DexQuotes,
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
@@ -13,7 +13,6 @@ use brontes_types::{
     BlockTree,
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
-use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
@@ -26,14 +25,12 @@ pub type ClickhouseMetadataFuture =
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> {
-    clickhouse:         Option<&'static CH>,
-    dex_pricer_stream:  Option<WaitingForPricerFuture<T, DB>>,
-    /// we will drain this in the case we aren't running a dex pricer to avoid
-    /// being terrible on memory
-    no_price_chan:      Option<UnboundedReceiver<DexPriceMsg>>,
-    clickhouse_futures: ClickhouseMetadataFuture,
-
-    result_buf: VecDeque<(BlockTree<Actions>, Metadata)>,
+    clickhouse:            Option<&'static CH>,
+    dex_pricer_stream:     WaitingForPricerFuture<T, DB>,
+    clickhouse_futures:    ClickhouseMetadataFuture,
+    result_buf:            VecDeque<(BlockTree<Actions>, Metadata)>,
+    always_generate_price: bool,
+    only_cex_dex:          bool,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
@@ -41,47 +38,45 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
 {
     pub fn new(
         clickhouse: Option<&'static CH>,
-        dex_pricer_stream: Option<WaitingForPricerFuture<T, DB>>,
-        no_price_chan: Option<UnboundedReceiver<DexPriceMsg>>,
+        dex_pricer_stream: WaitingForPricerFuture<T, DB>,
+        always_generate_price: bool,
+        only_cex_dex: bool,
     ) -> Self {
         Self {
             clickhouse,
             dex_pricer_stream,
-            no_price_chan,
             clickhouse_futures: FuturesOrdered::new(),
             result_buf: VecDeque::new(),
+            always_generate_price,
+            only_cex_dex,
         }
     }
 
     pub fn should_process_next_block(&self) -> bool {
-        self.dex_pricer_stream
-            .as_ref()
-            .map(|pricer| pricer.pending_trees.len() < MAX_PENDING_TREES)
-            .unwrap_or(true)
+        self.dex_pricer_stream.pending_trees.len() < MAX_PENDING_TREES
     }
 
     pub fn is_finished(&self) -> bool {
         self.result_buf.is_empty()
-            && self
-                .dex_pricer_stream
-                .as_ref()
-                .map(|stream| stream.is_done())
-                .unwrap_or(true)
+            && self.dex_pricer_stream.is_done()
             && self.clickhouse_futures.is_empty()
     }
 
-    fn clear_no_price_channel(&mut self) {
-        if let Some(chan) = self.no_price_chan.as_mut() {
-            while chan.try_recv().is_ok() {}
-        }
+    pub fn generate_dex_pricing(&self, block: u64, libmdbx: &'static DB) -> bool {
+        (self.always_generate_price
+            || libmdbx
+                .get_dex_quotes(block)
+                .map(|f| f.0.is_empty())
+                .unwrap_or(true))
+            && !self.only_cex_dex
     }
 
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
         let block = tree.header.number;
-        // clear price channel
-        self.clear_no_price_channel();
-        // pull directly from libmdbx
-        if self.dex_pricer_stream.is_none() && self.clickhouse.is_none() {
+        let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
+
+        // pull full meta from libmdbx
+        if !generate_dex_pricing && self.clickhouse.is_none() {
             let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {
                 tracing::error!(%err);
                 err
@@ -95,6 +90,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
 
             tracing::debug!(?block, "caching result buf");
             self.result_buf.push_back((tree, meta));
+        // pull metadata from clickhouse and generate dex_pricing
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
             let future = Box::pin(async move {
@@ -108,7 +104,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
-        } else if let Some(pricer) = self.dex_pricer_stream.as_mut() {
+        } else if self.only_cex_dex {
+            tracing::debug!(?block, "only cex dex. skipping dex pricing");
             let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
                 tracing::error!(%err);
                 err
@@ -119,10 +116,25 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             meta.builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
-            tracing::debug!(?block, "waiting for dex price");
-            pricer.add_pending_inspection(block, tree, meta);
+            let meta = meta.into_full_metadata(DexQuotes(vec![]));
+            self.result_buf.push_back((tree, meta));
         } else {
-            panic!("metadata fetcher not setup properly")
+            // pull metadata from libmdbx and generate dex_pricing
+            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
+                tracing::error!(%err);
+                err
+            }) else {
+                tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
+                return;
+            };
+            meta.builder_info = libmdbx
+                .try_fetch_builder_info(tree.header.beneficiary)
+                .expect("failed to fetch builder info table in libmdbx");
+
+            tracing::debug!(?block, "waiting for dex price");
+
+            self.dex_pricer_stream
+                .add_pending_inspection(block, tree, meta);
         }
     }
 }
@@ -136,26 +148,22 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        self.clear_no_price_channel();
-
         if let Some(res) = self.result_buf.pop_front() {
             return Poll::Ready(Some(res))
         }
 
-        if let Some(mut pricer) = self.dex_pricer_stream.take() {
-            while let Poll::Ready(Some((block, tree, meta))) =
-                self.clickhouse_futures.poll_next_unpin(cx)
-            {
-                tracing::info!("clickhouse future resolved");
-                pricer.add_pending_inspection(block, tree, meta)
-            }
-
-            let res = pricer.poll_next_unpin(cx);
-            self.dex_pricer_stream = Some(pricer);
-
-            return res
+        if self.only_cex_dex {
+            return Poll::Pending
         }
 
-        std::task::Poll::Pending
+        while let Poll::Ready(Some((block, tree, meta))) =
+            self.clickhouse_futures.poll_next_unpin(cx)
+        {
+            tracing::info!("clickhouse future resolved");
+            self.dex_pricer_stream
+                .add_pending_inspection(block, tree, meta)
+        }
+
+        self.dex_pricer_stream.poll_next_unpin(cx)
     }
 }
