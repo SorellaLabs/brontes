@@ -163,9 +163,9 @@ impl CexTradeMap {
                     .filter_map(|trade_pair| {
                         tracing::info!(?trade_pair);
                         (trade_pair.0 == pair.0 && trade_pair.1 != pair.1)
-                            .then_some(pair.1)
+                            .then_some(pair.0)
                             .or_else(|| {
-                                (trade_pair.0 != pair.0 && trade_pair.1 == pair.1).then_some(pair.0)
+                                (trade_pair.0 != pair.0 && trade_pair.1 == pair.1).then_some(pair.1)
                             })
                     })
                     .collect_vec()
