@@ -31,6 +31,7 @@ pub struct RawCexQuotes {
     pub bid_amount: f64,
 }
 
+#[derive(Debug)]
 pub struct CexQuotesConverter {
     pub block_times: Vec<CexBlockTimes>,
     pub symbols:     HashMap<(CexExchange, String), CexSymbols>,
