@@ -152,7 +152,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             return Poll::Ready(Some(res))
         }
 
-        if self.only_cex_dex {
+        if self.force_no_dex_pricing{
             return Poll::Pending
         }
 
