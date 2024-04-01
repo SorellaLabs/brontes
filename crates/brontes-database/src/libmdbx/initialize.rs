@@ -711,10 +711,9 @@ mod tests {
 
         assert!(new_values.len() >= old_values.len());
         
-        old_values.iter().for_each(|(exch, old_data)| {
-            let new_data = new_values.get(&exch).unwrap();
-            assert!(new_data.len() > old_data.len());
-        });
-
+        old_values.iter().zip(new_values).iter().map(|(old_data, new_data)| {
+            assert!(new_data.data.len() > old_data.data.len());
+        })
+        
     }
 }
