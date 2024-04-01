@@ -164,7 +164,7 @@ pub fn filter_and_count_bundles(
             .into_iter()
             .filter(|bundle| {
                 if matches!(mev_type, MevType::Sandwich | MevType::Jit | MevType::AtomicArb) {
-                    bundle.header.profit_usd > 0.0
+                    bundle.header.profit_usd > 0.0 || bundle.header.no_pricing_calculated
                 } else {
                     true
                 }

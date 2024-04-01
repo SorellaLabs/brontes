@@ -115,19 +115,27 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .chain(eth_transfers.into_iter().map(Actions::from))
             .account_for_actions();
 
-        let rev_usd = self.utils.get_deltas_usd(
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::Average,
             mev_addresses,
             &account_deltas,
             metadata.clone(),
-        )?;
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
-        let profit = rev_usd - gas_used_usd;
 
-        let is_profitable = profit > Rational::ZERO;
+        let profit = rev
+            .map(|rev| rev - gas_used_usd)
+            .filter(|_| has_dex_price)
+            .unwrap_or_default();
+
+        let is_profitable = profit > Rational::ZERO || !has_dex_price;
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => {
@@ -157,6 +165,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             arb_type: possible_arb_type,
         };
         let data = BundleData::AtomicArb(backrun);
+
         let header = self.utils.build_bundle_header(
             vec![account_deltas],
             vec![info.tx_hash],
@@ -166,6 +175,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             &[info.gas_details],
             metadata.clone(),
             MevType::AtomicArb,
+            !has_dex_price,
         );
         tracing::debug!("{:#?}", header);
 
