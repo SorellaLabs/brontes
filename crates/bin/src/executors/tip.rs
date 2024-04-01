@@ -13,7 +13,7 @@ use brontes_inspect::Inspector;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
-use tracing::info;
+use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
 use crate::Processor;
