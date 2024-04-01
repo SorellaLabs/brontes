@@ -28,9 +28,10 @@ use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
 };
-const CLASSIFIER_CONFIG_FILE_NAME: &str = "config/classifier_config.toml";
-const SEARCHER_BUILDER_CONFIG_FILE_NAME: &str = "config/searcher_builder_config.toml";
-const METADATA_CONFIG_FILE_NAME: &str = "config/metadata_config.toml";
+const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";
+const SEARCHER_CONFIG_FILE: &str = "config/searcher_config.toml";
+const BUILDER_CONFIG_FILE: &str = "config/builder_config.toml";
+const METADATA_CONFIG_FILE: &str = "config/metadata_config.toml";
 const DEFAULT_START_BLOCK: u64 = 0;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
@@ -68,7 +69,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         join!(
             self.load_classifier_config_data(),
-            self.load_searcher_builder_config_data(),
+            self.load_searcher_config_data(),
+            self.load_builder_config_data(),
             self.load_address_metadata_config(),
         );
         Ok(())
@@ -89,7 +91,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .collect::<eyre::Result<_>>()?;
 
         self.load_classifier_config_data().await;
-        self.load_searcher_builder_config_data().await;
+        self.load_searcher_config_data().await;
+        self.load_builder_config_data().await;
         Ok(())
     }
 
@@ -280,7 +283,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     /// database
     async fn load_classifier_config_data(&self) {
         let mut workspace_dir = workspace_dir();
-        workspace_dir.push(CLASSIFIER_CONFIG_FILE_NAME);
+        workspace_dir.push(CLASSIFIER_CONFIG_FILE);
 
         let Ok(config) = toml::from_str::<Table>(&{
             let Ok(path) = std::fs::read_to_string(workspace_dir) else {
@@ -326,19 +329,21 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         }
     }
 
-    async fn load_searcher_builder_config_data(&self) {
-        let mut workspace_dir = workspace_dir();
-        workspace_dir.push(SEARCHER_BUILDER_CONFIG_FILE_NAME);
+    async fn load_builder_config_data(&self) {
+        let mut builder_config_path = workspace_dir();
+        builder_config_path.push(BUILDER_CONFIG_FILE);
 
-        let config_str =
-            std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
+        let builder_config_str = std::fs::read_to_string(builder_config_path)
+            .expect("Failed to read builder config file");
 
-        let config: BSConfig = toml::from_str(&config_str).expect("Failed to parse TOML");
+        let builder_config: BuilderConfig =
+            toml::from_str(&builder_config_str).expect("Failed to parse builder TOML");
 
         // Process builders
-        for (address_str, builder_info) in config.builders {
-            let address = address_str.parse().unwrap();
-
+        for (address_str, builder_info) in builder_config.builders {
+            let address: Address = address_str
+                .parse()
+                .expect(&format!("Failed to parse address '{}'", address_str));
             let existing_info = self.libmdbx.try_fetch_builder_info(address);
 
             match existing_info.expect("Failed to query builder table") {
@@ -357,10 +362,25 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 }
             }
         }
+    }
+
+    async fn load_searcher_config_data(&self) {
+        let mut searcher_config_path = workspace_dir();
+
+        searcher_config_path.push(SEARCHER_CONFIG_FILE);
+
+        let searcher_config_str = std::fs::read_to_string(searcher_config_path)
+            .expect("Failed to read searcher config file");
+
+        let searcher_config: SearcherConfig =
+            toml::from_str(&searcher_config_str).expect("Failed to parse searcher TOML");
 
         // Process SearcherEOAs
-        for (address_str, searcher_info) in config.searcher_eoas {
-            let address = address_str.parse().unwrap();
+        for (address_str, searcher_info) in searcher_config.searcher_eoas {
+            let address = address_str
+                .parse()
+                .expect(&format!("Failed to parse address '{}'", address_str));
+
             let existing_info = self.libmdbx.try_fetch_searcher_eoa_info(address);
 
             match existing_info.expect("Failed to query builder table") {
@@ -380,7 +400,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             }
         }
         // Process SearcherContracts
-        for (address_str, searcher_info) in config.searcher_contracts {
+        for (address_str, searcher_info) in searcher_config.searcher_contracts {
             let address = address_str.parse().unwrap();
             let existing_info = self.libmdbx.try_fetch_searcher_contract_info(address);
 
@@ -404,7 +424,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     async fn load_address_metadata_config(&self) {
         let mut workspace_dir = workspace_dir();
-        workspace_dir.push(METADATA_CONFIG_FILE_NAME);
+        workspace_dir.push(METADATA_CONFIG_FILE);
 
         let config_str =
             std::fs::read_to_string(workspace_dir).expect("Failed to read config file");
@@ -456,8 +476,12 @@ pub struct TokenInfoWithAddressToml {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct BSConfig {
-    builders:           FastHashMap<String, BuilderInfo>,
+struct BuilderConfig {
+    builders: FastHashMap<String, BuilderInfo>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SearcherConfig {
     searcher_eoas:      FastHashMap<String, SearcherInfo>,
     searcher_contracts: FastHashMap<String, SearcherInfo>,
 }

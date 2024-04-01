@@ -173,7 +173,7 @@ pub fn filter_and_count_bundles(
 
         // Update  for this MEV type
         let count = filtered_bundles.len() as u64;
-        mev_count.mev_count += count; // Increment total MEV count
+        mev_count.bundle_count += count; // Increment total MEV count
 
         if count != 0 {
             update_mev_count(&mut mev_count, mev_type, count);

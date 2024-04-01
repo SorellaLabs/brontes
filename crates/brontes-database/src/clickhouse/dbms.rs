@@ -1,11 +1,8 @@
 use brontes_types::{
     db::{
-        address_to_protocol_info::ProtocolInfoClickhouse,
-        builder::{BuilderInfoWithAddress, BuilderStatsWithAddress},
-        dex::DexQuotesWithBlockNumber,
-        normalized_actions::TransactionRoot,
-        searcher::{JoinedSearcherInfo, SearcherStatsWithAddress},
-        token_info::TokenInfoWithAddress,
+        address_to_protocol_info::ProtocolInfoClickhouse, builder::BuilderInfoWithAddress,
+        dex::DexQuotesWithBlockNumber, normalized_actions::TransactionRoot,
+        searcher::JoinedSearcherInfo, token_info::TokenInfoWithAddress,
     },
     mev::*,
     structured_trace::TxTrace,
@@ -28,8 +25,6 @@ clickhouse_dbms!(
         ClickhouseDexPriceMapping,
         ClickhouseTxTraces,
         ClickhouseTokenInfo,
-        ClickhouseSearcherStats,
-        ClickhouseBuilderStats,
         ClickhousePools,
         ClickhouseBuilderInfo,
         ClickhouseTree
@@ -86,14 +81,6 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "brontes",
-    ClickhouseSearcherStats,
-    SearcherStatsWithAddress,
-    "crates/brontes-database/src/clickhouse/tables/"
-);
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
     "mev",
     ClickhouseCexDex,
     CexDex,
@@ -145,14 +132,6 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseTokenInfo,
     TokenInfoWithAddress,
-    "crates/brontes-database/src/clickhouse/tables/"
-);
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "brontes",
-    ClickhouseBuilderStats,
-    BuilderStatsWithAddress,
     "crates/brontes-database/src/clickhouse/tables/"
 );
 

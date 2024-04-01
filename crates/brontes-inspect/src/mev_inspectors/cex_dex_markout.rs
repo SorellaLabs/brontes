@@ -12,6 +12,10 @@ use brontes_types::{
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
+// The threshold for the number of CEX-DEX trades an address is required to make
+// to classify a a negative pnl cex-dex trade as a CEX-DEX trade
+pub const FILTER_THRESHOLD: u64 = 20;
+
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
@@ -247,9 +251,15 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         if has_positive_pnl
             || (!info.is_classified
-                && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
+                && (possible_cex_dex.gas_details.coinbase_transfer.is_some()
+                    && info.is_private
+                    && info.is_searcher_of_type_with_count_threshold(
+                        MevType::CexDex,
+                        FILTER_THRESHOLD,
+                    )
                     || info.is_cex_dex_call))
-            || info.is_searcher_of_type(MevType::CexDex)
+            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
+            || info.is_labelled_searcher_of_type(MevType::CexDex)
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
