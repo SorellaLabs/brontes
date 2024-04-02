@@ -1,6 +1,7 @@
 #[cfg(feature = "local-reth")]
 use std::sync::OnceLock;
 use std::{collections::hash_map::Entry, env, sync::Arc};
+use itertools::Itertools;
 
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
