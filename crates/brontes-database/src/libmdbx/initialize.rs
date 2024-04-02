@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use toml::Table as tomlTable;
 use tracing::{error, info};
 
-use super::{cex_utils::CexTableFlag, tables::Tables};
+use super::tables::Tables;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{
@@ -159,7 +159,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: Option<(u64, u64)>,
         clear_table: bool,
         mark_init: Option<u8>,
-        cex_table_flag: CexTableFlag,
+        cex_table_flag: bool,
+
         pb: ProgressBar,
     ) -> eyre::Result<()>
     where
@@ -211,11 +212,13 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let count = end - start;
 
             async move {
-                match cex_table_flag {
-                    CexTableFlag::Trades => {
+
+                if cex_table_flag {
+                    #[cfg(not(feature = "cex-dex-markout"))]
+                    {
                         let data = clickhouse
-                        .get_cex_trades(CexRangeOrArbitrary::Range(start, end+1))
-                        .await;
+                            .get_cex_prices(CexRangeOrArbitrary::Range(start, end+1))
+                            .await;
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
@@ -225,11 +228,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
-                    },
-                    CexTableFlag::Quotes => {
+                    }
+
+
+                    #[cfg(feature = "cex-dex-markout")]
+                    {                        
                         let data = clickhouse
-                        .get_cex_prices(CexRangeOrArbitrary::Range(start, end+1))
-                        .await;
+                            .get_cex_trades(CexRangeOrArbitrary::Range(start, end+1))
+                            .await;
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
@@ -239,21 +245,21 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
-                    },
-                    CexTableFlag::None => {
-                        let data = clickhouse
-                        .query_many_range::<T, D>(start, end + 1)
-                        .await;
-                        match data {
-                            Ok(d) => {
-                                pb.inc(count);
-                                libmdbx.0.write_table(&d)?;
-                            }
-                            Err(e) => {
-                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                            }
+                    }
+
+                } else {
+                    let data = clickhouse
+                    .query_many_range::<T, D>(start, end + 1)
+                    .await;
+                    match data {
+                        Ok(d) => {
+                            pb.inc(count);
+                            libmdbx.0.write_table(&d)?;
                         }
-                    },
+                        Err(e) => {
+                            info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                        }
+                    }
                 }
 
                 if let Some(flag) = mark_init {
@@ -276,7 +282,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         block_range: &'static [u64],
         mark_init: Option<u8>,
-        cex_table_flag: CexTableFlag,
+        cex_table_flag: bool,
         pb: ProgressBar,
     ) -> eyre::Result<()>
     where
@@ -303,8 +309,27 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let count = inner_range.len() as u64;
 
             async move {
-                match cex_table_flag {
-                    CexTableFlag::Trades => {
+
+                if cex_table_flag {
+                    #[cfg(not(feature = "cex-dex-markout"))]
+                    {
+                        let data = clickhouse
+                            .get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range))
+                            .await;
+                        match data {
+                            Ok(d) => {
+                                pb.inc(count);
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    }
+
+
+                    #[cfg(feature = "cex-dex-markout")]
+                    {                        
                         let data = clickhouse
                         .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))
                         .await;
@@ -317,34 +342,20 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
-                    },
-                    CexTableFlag::Quotes => {
-                        let data = clickhouse
-                        .get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range))
-                        .await;
-                        match data {
-                            Ok(d) => {
-                                pb.inc(count);
-                                libmdbx.0.write_table(&d)?;
-                            }
-                            Err(e) => {
-                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                            }
-                        }
-                    },
-                    CexTableFlag::None => {
-                        let data = clickhouse
+                    }
+
+                } else {
+                    let data = clickhouse
                         .query_many_arbitrary::<T, D>(inner_range).await;
-                        match data {
-                            Ok(d) => {
-                                pb.inc(count);
-                                libmdbx.0.write_table(&d)?;
-                            }
-                            Err(e) => {
-                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                            }
+                    match data {
+                        Ok(d) => {
+                            pb.inc(count);
+                            libmdbx.0.write_table(&d)?;
                         }
-                    },
+                        Err(e) => {
+                            info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                        }
+                    }
                 }
 
                 if let Some(flag) = mark_init {

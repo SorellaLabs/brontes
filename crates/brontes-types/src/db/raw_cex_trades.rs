@@ -32,6 +32,7 @@ impl CexTradesConverter {
         block_times: Vec<BlockTimes>,
         symbols: Vec<CexSymbols>,
         trades: Vec<RawCexTrades>,
+        time_window: (u64, u64),
     ) -> Self {
         let symbols = symbols
             .into_iter()
@@ -46,7 +47,7 @@ impl CexTradesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(CexBlockTimes::trade_times)
+                .map(|b| CexBlockTimes::add_time_window(b, time_window))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
