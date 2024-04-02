@@ -193,7 +193,16 @@ impl Tables {
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
-            Tables::CexTrades => Ok(()),
+            Tables::CexTrades => {
+                initializer
+                    .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
+                        block_range,
+                        clear_table,
+                        Some(CEX_FLAG),
+                        CexTableFlag::Trades,
+                    )
+                    .await
+            }
         }
     }
 
@@ -262,7 +271,15 @@ impl Tables {
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
-            Tables::CexTrades => Ok(()),
+            Tables::CexTrades => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
+                        block_range,
+                        Some(CEX_FLAG),
+                        CexTableFlag::Trades,
+                    )
+                    .await
+            }
         }
     }
 

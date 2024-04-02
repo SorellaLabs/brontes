@@ -634,7 +634,7 @@ mod tests {
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         //let tables = Tables::ALL;
-        let tables = [Tables::CexPrice];
+        let tables = [Tables::CexPrice, Tables::CexTrades];
 
         intializer
             .initialize(&tables, false, Some(block_range))
@@ -651,11 +651,19 @@ mod tests {
         //     .await
         //     .unwrap();
 
+        // // CexPrice
+        // CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        //     .await
+        //     .unwrap();
+        // CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        //     .await
+        //     .unwrap();
+
         // CexPrice
-        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
-        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        CexTrades::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        .await
+        .unwrap();
+        CexTrades::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
             .await
             .unwrap();
 
