@@ -247,10 +247,27 @@ impl ClickhouseHandle for Clickhouse {
             .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
             .await?;
 
-        let cex_quotes = cex_quotes_for_block.first().unwrap().clone();
+        #[cfg(not(feature = "cex-dex-markout"))]
+        {
+            let cex_quotes = cex_quotes_for_block.first().unwrap().clone();
 
-        let eth_prices = determine_eth_prices(&cex_quotes.value);
+            let eth_prices = determine_eth_prices(&cex_quotes.value);
 
+            Ok(BlockMetadata::new(
+                block_num,
+                block_meta.block_hash,
+                block_meta.block_timestamp,
+                block_meta.relay_timestamp,
+                block_meta.p2p_timestamp,
+                block_meta.proposer_fee_recipient,
+                block_meta.proposer_mev_reward,
+                max(eth_prices.price.0, eth_prices.price.1),
+                block_meta.private_flow.into_iter().collect(),
+            )
+            .into_metadata(cex_quotes.value, None, None))
+        }
+
+        #[cfg(feature = "cex-dex-markout")]
         Ok(BlockMetadata::new(
             block_num,
             block_meta.block_hash,
@@ -259,16 +276,10 @@ impl ClickhouseHandle for Clickhouse {
             block_meta.p2p_timestamp,
             block_meta.proposer_fee_recipient,
             block_meta.proposer_mev_reward,
-            max(eth_prices.price.0, eth_prices.price.1),
+            Default::default(),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(
-            cex_quotes.value,
-            None,
-            None,
-            #[cfg(feature = "cex-dex-markout")]
-            None,
-        ))
+        .into_metadata(Default::default(), None, None, None))
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
@@ -352,6 +363,15 @@ impl ClickhouseHandle for Clickhouse {
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
 
+        let exchanges_str = self
+            .cex_download_config
+            .clone()
+            .exchanges_to_use
+            .into_iter()
+            .map(|s| s.to_clickhouse_string().to_string())
+            .collect::<Vec<_>>()
+            .join(" OR ");
+
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
@@ -359,16 +379,21 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - 12000;
+                    - self.cex_download_config.price_window.0 * 1000;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap();
+                    .unwrap()
+                    + self.cex_download_config.price_window.1 * 1000;
+
+                let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
+
+                println!("PRICES RANGE: {query}");
 
                 self.client
-                    .query_many(RAW_CEX_QUOTES, &(start_time, end_time))
+                    .query_many(query, &(start_time, end_time))
                     .await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
@@ -380,7 +405,12 @@ impl ClickhouseHandle for Clickhouse {
                     .collect::<Vec<_>>()
                     .join(" OR ");
 
-                query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
+                query = query.replace(
+                    "timestamp >= ? AND timestamp < ?",
+                    &format!("({query_mod}) AND ({exchanges_str})"),
+                );
+
+                println!("PRICES ARBITRARY: {query}");
 
                 self.client.query_many(query, &()).await?
             }
@@ -422,6 +452,15 @@ impl ClickhouseHandle for Clickhouse {
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
 
+        let exchanges_str = self
+            .cex_download_config
+            .clone()
+            .exchanges_to_use
+            .into_iter()
+            .map(|s| s.to_clickhouse_string().to_string())
+            .collect::<Vec<_>>()
+            .join(" OR ");
+
         let data: Vec<RawCexTrades> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
@@ -429,16 +468,21 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - 6000;
+                    - self.cex_download_config.trades_window.0;
+
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    + 6000;
+                    + self.cex_download_config.trades_window.1;
+
+                let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
+
+                println!("TRADES RANGE: {query}");
 
                 self.client
-                    .query_many(RAW_CEX_TRADES, &(start_time, end_time))
+                    .query_many(query, &(start_time, end_time))
                     .await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
@@ -450,7 +494,12 @@ impl ClickhouseHandle for Clickhouse {
                     .collect::<Vec<_>>()
                     .join(" OR ");
 
-                query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
+                query = query.replace(
+                    "timestamp >= ? AND timestamp < ?",
+                    &format!("({query_mod}) AND ({exchanges_str})"),
+                );
+
+                println!("TRADES ARBITRARY: {query}");
 
                 self.client.query_many(query, &()).await?
             }
