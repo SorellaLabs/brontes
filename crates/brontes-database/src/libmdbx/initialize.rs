@@ -187,7 +187,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
                 match cex_table_flag {
                     CexTableFlag::Trades => {
-                        let data = clickhouse.get_cex_trades(CexRangeOrArbitrary::Range(start, end+1)).await;
+                        let data = clickhouse
+                        .get_cex_trades(CexRangeOrArbitrary::Range(start, end+1))
+                        .await;
                         match data {
                             Ok(d) => {
                                 libmdbx.0.write_table(&d)?;
@@ -198,7 +200,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     },
                     CexTableFlag::Quotes => {
-                        let data = clickhouse.get_cex_prices(CexRangeOrArbitrary::Range(start, end+1)).await;
+                        let data = clickhouse
+                        .get_cex_prices(CexRangeOrArbitrary::Range(start, end+1))
+                        .await;
                         match data {
                             Ok(d) => {
                                 libmdbx.0.write_table(&d)?;
@@ -209,7 +213,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     },
                     CexTableFlag::None => {
-                        let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
+                        let data = clickhouse
+                        .query_many_range::<T, D>(start, end + 1)
+                        .await;
                         match data {
                             Ok(d) => {
                                 libmdbx.0.write_table(&d)?;
@@ -221,7 +227,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     },
                 }
                 
-
                 let num = {
                     let mut n = num_chunks.lock().unwrap();
                     *n -= 1;
@@ -278,7 +283,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
                 match cex_table_flag {
                     CexTableFlag::Trades => {
-                        let data = clickhouse.get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range)).await;
+                        let data = clickhouse
+                        .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))
+                        .await;
                         match data {
                             Ok(d) => {
                                 libmdbx.0.write_table(&d)?;
@@ -289,7 +296,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     },
                     CexTableFlag::Quotes => {
-                        let data = clickhouse.get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range)).await;
+                        let data = clickhouse
+                        .get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range))
+                        .await;
                         match data {
                             Ok(d) => {
                                 libmdbx.0.write_table(&d)?;
@@ -300,7 +309,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     },
                     CexTableFlag::None => {
-                        let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
+                        let data = clickhouse
+                        .query_many_arbitrary::<T, D>(inner_range).await;
                         match data {
                             Ok(d) => {
                                 libmdbx.0.write_table(&d)?;
