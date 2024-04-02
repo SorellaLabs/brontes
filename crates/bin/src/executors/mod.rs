@@ -97,6 +97,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         end_block: u64,
         progress_bar: Option<ProgressBar>,
+        multi: MultiProgress,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -117,8 +118,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 (start, end_block)
             })
             .collect_vec();
-
-        let multi = MultiProgress::default();
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
@@ -329,7 +328,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     false,
                     None,
                     multi,
-                    0
+                    0,
                 )
                 .await?;
         }
@@ -385,8 +384,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             None
         };
 
+        let multi = MultiProgress::default();
+
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
+            self.build_range_executors(executor.clone(), end_block, progress_bar.clone(), multi.clone())
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -399,17 +400,22 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .await;
         } else {
             if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
-                    .for_each(|block_range| {
-                        futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
-                            "Range Executor",
-                            |shutdown| async move {
-                                block_range.run_until_graceful_shutdown(shutdown).await
-                            },
-                        ));
-                        std::future::ready(())
-                    })
-                    .await;
+                self.build_range_executors(
+                    executor.clone(),
+                    end_block,
+                    progress_bar.clone(),
+                    multi.clone(),
+                )
+                .for_each(|block_range| {
+                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                        "Range Executor",
+                        |shutdown| async move {
+                            block_range.run_until_graceful_shutdown(shutdown).await
+                        },
+                    ));
+                    std::future::ready(())
+                })
+                .await;
             }
 
             let tip_inspector =
@@ -420,6 +426,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },
             ));
         }
+        multi.clear()?;
 
         Ok(Brontes { futures, progress_bar })
     }
