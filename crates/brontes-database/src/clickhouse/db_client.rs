@@ -368,7 +368,7 @@ impl ClickhouseHandle for Clickhouse {
             .clone()
             .exchanges_to_use
             .into_iter()
-            .map(|s| s.to_clickhouse_string().to_string())
+            .map(|s| s.to_clickhouse_filter().to_string())
             .collect::<Vec<_>>()
             .join(" OR ");
 
