@@ -3,7 +3,9 @@ use std::{cmp::min, sync::Arc};
 use alloy_primitives::U256;
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
-    normalized_actions::{pool::NormalizedNewPool, NormalizedEthTransfer, NormalizedTransfer},
+    normalized_actions::{
+        pool::NormalizedNewPool, NormalizedAction, NormalizedEthTransfer, NormalizedTransfer,
+    },
     tree::root::NodeData,
     ToScaledRational,
 };
@@ -13,7 +15,7 @@ mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    normalized_actions::{Actions, NormalizedAction, SelfdestructWithIndex},
+    normalized_actions::{Actions, SelfdestructWithIndex},
     structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
     traits::TracingProvider,
     tree::{BlockTree, GasDetails, Node, Root},
@@ -169,8 +171,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                     coinbase_transfer: true,
                                 });
 
-                                tx_root.insert(node, classification);
-                                continue;
+                                tx_root.insert(node, vec![classification]);
+                                continue
                             }
                         }
 
@@ -224,7 +226,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace: TransactionTraceWithLogs,
         further_classification_requests: &mut Vec<u64>,
         pool_updates: &mut Vec<DexPriceMsg>,
-    ) -> Actions {
+    ) -> Vec<Actions> {
         let (update, classification) = self
             .classify_node(block_number, root_head, node_data_store, tx_index, trace, trace_index)
             .await;
@@ -232,8 +234,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // Here we are marking more complex actions that require data
         // that can only be retrieved by classifying it's action and
         // all subsequent child actions.
-        if classification.continue_classification() {
-            further_classification_requests.push(classification.get_trace_index());
+        if classification.first().unwrap().continue_classification() {
+            further_classification_requests.push(classification.first().unwrap().get_trace_index());
         }
 
         update.into_iter().for_each(|update| {
@@ -262,20 +264,41 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-    ) -> (Vec<DexPriceMsg>, Actions) {
+    ) -> (Vec<DexPriceMsg>, Vec<Actions>) {
         if trace.trace.error.is_some() {
-            return (vec![], Actions::Revert)
+            return (vec![], vec![Actions::Revert])
         }
-        match trace.action_type() {
-            Action::Call(_) => self.classify_call(block, tx_idx, trace, trace_index).await,
-            Action::Create(_) => {
-                self.classify_create(block, root_head, node_data_store, tx_idx, trace, trace_index)
+        let (pricing, base_action) = match trace.action_type() {
+            Action::Call(_) => {
+                self.classify_call(block, tx_idx, trace.clone(), trace_index)
                     .await
+            }
+            Action::Create(_) => {
+                self.classify_create(
+                    block,
+                    root_head,
+                    node_data_store,
+                    tx_idx,
+                    trace.clone(),
+                    trace_index,
+                )
+                .await
             }
             Action::Selfdestruct(sd) => {
                 (vec![], Actions::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
             }
-            Action::Reward(_) => (vec![], Actions::Unclassified(trace)),
+            Action::Reward(_) => (vec![], Actions::Unclassified(trace.clone())),
+        };
+
+        if base_action.is_eth_transfer() {
+            (pricing, vec![base_action])
+        } else {
+            let mut res = vec![base_action];
+            if let Some(eth) = self.classify_eth_transfer(&trace, trace_index) {
+                res.push(eth);
+            }
+
+            (pricing, res)
         }
     }
 
@@ -316,7 +339,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         {
             return transfer
         } else {
-            return (vec![], self.classify_eth_transfer(trace, trace_index))
+            return (
+                vec![],
+                self.classify_eth_transfer(&trace, trace_index)
+                    .unwrap_or(Actions::Unclassified(trace)),
+            )
         }
     }
 
@@ -412,8 +439,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         }
     }
 
-    fn classify_eth_transfer(&self, trace: TransactionTraceWithLogs, trace_index: u64) -> Actions {
-        if trace.get_msg_value() > U256::ZERO {
+    fn classify_eth_transfer(
+        &self,
+        trace: &TransactionTraceWithLogs,
+        trace_index: u64,
+    ) -> Option<Actions> {
+        (trace.get_msg_value() > U256::ZERO).then(|| {
             Actions::EthTransfer(NormalizedEthTransfer {
                 from: trace.get_from_addr(),
                 to: trace.get_to_address(),
@@ -421,9 +452,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 trace_index,
                 coinbase_transfer: false,
             })
-        } else {
-            Actions::Unclassified(trace)
-        }
+        })
     }
 
     async fn classify_create(
@@ -451,6 +480,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         let Some(calldata) = node_data_store
             .get_ref(node_data.data)
+            .and_then(|node| node.first())
             .and_then(|res| res.get_calldata())
         else {
             return (vec![], Actions::Unclassified(trace));
