@@ -37,4 +37,12 @@ impl CexBlockTimes {
             block_number:    value.block_number,
         }
     }
+
+    pub fn quote_times(value: BlockTimes) -> Self {
+        Self {
+            start_timestamp: value.timestamp - 12000,
+            end_timestamp:   value.timestamp,
+            block_number:    value.block_number,
+        }
+    }
 }

@@ -61,7 +61,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(CexBlockTimes::trade_times)
+                .map(CexBlockTimes::quote_times)
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
