@@ -674,3 +674,54 @@ pub mod option_fund {
         Ok(fund.map(Into::into))
     }
 }
+
+pub mod address_pair {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::pair::Pair;
+
+    pub fn serialize<S: Serializer>(u: &Pair, serializer: S) -> Result<S::Ok, S::Error> {
+        let st = (format!("{:?}", u.0), format!("{:?}", u.1));
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Pair, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (data0, data1): (String, String) = Deserialize::deserialize(deserializer)?;
+
+        Ok(Pair(Address::from_str(&data0).unwrap(), Address::from_str(&data1).unwrap()).ordered())
+    }
+}
+
+pub mod cex_exchange {
+
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::db::cex::CexExchange;
+
+    pub fn serialize<S: Serializer>(u: &CexExchange, serializer: S) -> Result<S::Ok, S::Error> {
+        let st = u.to_string();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<CexExchange, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let d: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(CexExchange::from(d.as_str()))
+    }
+}

@@ -5,6 +5,7 @@ use std::path::Path;
 
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
+pub mod cex_utils;
 pub mod initialize;
 mod libmdbx_read_write;
 use eyre::Context;

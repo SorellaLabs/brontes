@@ -19,15 +19,12 @@ use super::{
     Actions,
 };
 use crate::{
-    constants::ETH_ADDRESS,
     db::{
         redefined_types::{malachite::*, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
     mev::StatArbDetails,
-    rational_to_clickhouse_tuple,
-    utils::ToScaledRational,
-    Protocol, ToFloatNearest,
+    rational_to_clickhouse_tuple, Protocol, ToFloatNearest,
 };
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
@@ -108,13 +105,6 @@ impl TokenAccounting for NormalizedSwap {
 
         apply_delta(self.from, self.token_in.address, -amount_in.clone(), delta_map);
         apply_delta(self.recipient, self.token_out.address, amount_out, delta_map);
-
-        // if we have msg.value, apply this too
-        if self.msg_value > U256::ZERO {
-            let am = self.msg_value.to_scaled_rational(18);
-            apply_delta(self.from, ETH_ADDRESS, -am.clone(), delta_map);
-            apply_delta(self.recipient, ETH_ADDRESS, am, delta_map);
-        }
     }
 }
 

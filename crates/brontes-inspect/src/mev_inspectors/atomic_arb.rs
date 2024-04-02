@@ -129,13 +129,22 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::Average,
-            mev_addresses,
+            &mev_addresses,
             &account_deltas,
             metadata.clone(),
         ) {
             (Some(rev), true)
         } else {
-            (Some(Rational::ZERO), false)
+            (
+                Some(self.utils.get_available_usd_deltas(
+                    info.tx_index,
+                    PriceAt::Average,
+                    &mev_addresses,
+                    &account_deltas,
+                    metadata.clone(),
+                )),
+                false,
+            )
         };
 
         let gas_used = info.gas_details.gas_paid();
@@ -146,27 +155,29 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .filter(|_| has_dex_price)
             .unwrap_or_default();
 
-        let is_profitable = profit > Rational::ZERO || !has_dex_price;
+        let is_profitable = profit > Rational::ZERO;
+
+        let requirement_multiplier = if has_dex_price { 2 } else { 1 };
 
         let profit = match possible_arb_type {
-            AtomicArbType::Triangle => {
-                (is_profitable || self.process_triangle_arb(&info)).then_some(profit)
-            }
+            AtomicArbType::Triangle => (is_profitable
+                || self.process_triangle_arb(&info, requirement_multiplier))
+            .then_some(profit),
             AtomicArbType::CrossPair(jump_index) => {
                 let stable_arb = is_stable_arb(&swaps, jump_index);
-                let cross_or = self.is_cross_pair_or_stable_arb(&info);
+                let cross_or = self.is_cross_pair_or_stable_arb(&info, requirement_multiplier);
 
                 (is_profitable || stable_arb || cross_or).then_some(profit)
             }
 
             AtomicArbType::StablecoinArb => {
-                let cross_or = self.is_cross_pair_or_stable_arb(&info);
+                let cross_or = self.is_cross_pair_or_stable_arb(&info, requirement_multiplier);
 
                 (is_profitable || cross_or).then_some(profit)
             }
-            AtomicArbType::LongTail => {
-                (self.is_long_tail(&info) && is_profitable).then_some(profit)
-            }
+            AtomicArbType::LongTail => (self.is_long_tail(&info, requirement_multiplier)
+                && is_profitable)
+                .then_some(profit),
         }?;
 
         let backrun = AtomicArb {
@@ -220,21 +231,21 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
     }
 
-    fn process_triangle_arb(&self, tx_info: &TxInfo) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 40)
+    fn process_triangle_arb(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
+        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
     }
 
-    fn is_cross_pair_or_stable_arb(&self, tx_info: &TxInfo) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20)
+    fn is_cross_pair_or_stable_arb(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
+        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private
             || tx_info.gas_details.coinbase_transfer.is_some()
     }
 
-    fn is_long_tail(&self, tx_info: &TxInfo) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20)
+    fn is_long_tail(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
+        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private && tx_info.gas_details.coinbase_transfer.is_some()
             || tx_info.mev_contract.is_some()

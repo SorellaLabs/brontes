@@ -3,6 +3,8 @@ use std::{env, path::Path, sync::Arc};
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_types::init_threadpools;
 use clap::Parser;
+use indicatif::MultiProgress;
+use itertools::Itertools;
 
 use crate::{
     cli::{get_env_vars, get_tracing_provider, load_clickhouse, load_database, static_object},
@@ -22,6 +24,7 @@ pub struct Init {
     ///     Metadata
     ///     PoolState
     ///     DexPrice
+    ///     CexTrades
     #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
     pub tables_to_init:       Option<Vec<Tables>>,
     /// Start Block to download metadata from Sorella's MEV DB
@@ -49,6 +52,14 @@ impl Init {
 
         let tracer = Arc::new(get_tracing_provider(Path::new(&db_path), 10, task_executor.clone()));
 
+        let multi = MultiProgress::default();
+        let tables = Arc::new(
+            Tables::ALL
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
+
         if self.init_libmdbx {
             // currently inits all tables
             let range = if let (Some(start), Some(end)) = (self.start_block, self.end_block) {
@@ -75,6 +86,7 @@ impl Init {
                                 .as_slice(),
                             false,
                             range,
+                            tables,
                         )
                         .await
                         .unwrap();

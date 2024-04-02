@@ -327,7 +327,6 @@ impl Actions {
         }
     }
 
-
     pub const fn is_swap(&self) -> bool {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }

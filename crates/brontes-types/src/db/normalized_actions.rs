@@ -88,7 +88,11 @@ impl DbRow for TransactionRoot {
     ];
 }
 
-fn make_trace_nodes(node: &Node, actions: &[Option<Actions>], trace_nodes: &mut Vec<TraceNode>) {
+fn make_trace_nodes(
+    node: &Node,
+    actions: &[Option<Vec<Actions>>],
+    trace_nodes: &mut Vec<TraceNode>,
+) {
     trace_nodes.push((node, actions).into());
 
     for n in &node.inner {
@@ -104,16 +108,14 @@ pub struct TraceNode {
     pub action:        Option<Actions>,
 }
 
-impl From<(&Node, &[Option<Actions>])> for TraceNode {
-    fn from(value: (&Node, &[Option<Actions>])) -> Self {
+impl From<(&Node, &[Option<Vec<Actions>>])> for TraceNode {
+    fn from(value: (&Node, &[Option<Vec<Actions>>])) -> Self {
         let (node, actions) = value;
         let action = actions
             .iter()
             .enumerate()
             .find(|(i, _)| *i == node.data)
-            .map(|(_, a)| a)
-            .cloned()
-            .flatten();
+            .and_then(|(_, a)| a.as_ref().and_then(|f| f.first()).cloned());
         Self {
             trace_idx: node.index,
             trace_address: node

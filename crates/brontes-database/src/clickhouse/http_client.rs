@@ -16,7 +16,7 @@ use serde::Deserialize;
 
 use crate::{
     clickhouse::ClickhouseHandle,
-    libmdbx::{determine_eth_prices, types::LibmdbxData},
+    libmdbx::{cex_utils::CexRangeOrArbitrary, determine_eth_prices, types::LibmdbxData},
     BlockInfo, BlockInfoData, CexPrice, CexPriceData, CompressedTable, DexPrice, DexPriceData,
 };
 
@@ -253,6 +253,20 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         }
 
         Ok(res)
+    }
+
+    async fn get_cex_prices(
+        &self,
+        _range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> eyre::Result<Vec<crate::CexPriceData>> {
+        unimplemented!()
+    }
+
+    async fn get_cex_trades(
+        &self,
+        _range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> eyre::Result<Vec<crate::CexTradesData>> {
+        unimplemented!()
     }
 }
 

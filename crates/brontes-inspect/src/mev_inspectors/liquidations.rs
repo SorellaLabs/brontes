@@ -83,7 +83,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::After,
-            mev_addresses,
+            &mev_addresses,
             &deltas,
             metadata.clone(),
         ) {

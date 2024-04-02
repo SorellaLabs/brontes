@@ -291,7 +291,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
-            mev_addresses,
+            &mev_addresses,
             &searcher_deltas,
             metadata.clone(),
         ) {

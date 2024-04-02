@@ -18,7 +18,8 @@ brontes-tracing.workspace = true
 brontes-analytics.workspace = true
 malachite.workspace = true
 toml = "0.8.2"
-indicatif = "0.17.8"
+indicatif.workspace = true
+
 # Async
 tokio = { workspace = true }
 async-scoped = { version = "0.7.1", features = ["use-tokio"] }
@@ -88,7 +89,7 @@ default = [
   "brontes-database/default",
   "brontes-classifier/default",
   "brontes-inspect/default",
-  "pretty-print"
+  "pretty-print",
 ]
 
 sorella-server = ["local-reth", "local-clickhouse"]
@@ -99,9 +100,7 @@ cex-dex-markout = [
   "brontes-inspect/cex-dex-markout",
 ]
 
-pretty-print = [
-  "brontes-inspect/pretty-print"
-]
+pretty-print = ["brontes-inspect/pretty-print"]
 
 local-no-inserts = []
 

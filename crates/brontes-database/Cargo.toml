@@ -98,6 +98,7 @@ strum_macros = "0.25"
 async-trait = "0.1.73"
 reqwest = { workspace = true, features = ["stream"] }
 toml = "0.8.9"
+indicatif.workspace = true 
 
 # benches
 criterion = "0.5"
