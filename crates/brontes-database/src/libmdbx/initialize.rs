@@ -210,12 +210,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             )
             .collect_vec();
 
-        let num_chunks = Arc::new(Mutex::new(pair_ranges.len()));
-
-        info!(target: "brontes::init", "{} -- Starting Initialization With {} Chunks", T::NAME, pair_ranges.len());
-
         iter(pair_ranges.into_iter().map(|(start, end)| {
-            let num_chunks = num_chunks.clone();
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
             let pb = pb.clone();
@@ -233,7 +228,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
                     },
@@ -247,7 +242,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
                     },
@@ -261,18 +256,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
                     },
                 }
-                let num = {
-                    let mut n = num_chunks.lock().unwrap();
-                    *n -= 1;
-                    *n + 1
-                };
 
-                info!(target: "brontes::init", "{} -- Finished Chunk {}", T::NAME, num);
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(start..=end, flag)?;
                 }
@@ -312,12 +301,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         let pb = Self::build_init_state_progress_bar(T::NAME, entries as u64, &multi_progress_bar);
 
         let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
-        let num_chunks = Arc::new(Mutex::new(ranges.len()));
-
-        info!(target: "brontes::init::missing_state", "{} -- Starting Initialization Missing State With {} Chunks", T::NAME, ranges.len());
 
         iter(ranges.into_iter().map(|inner_range| {
-            let num_chunks = num_chunks.clone();
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
             let pb = pb.clone();
@@ -349,7 +334,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
                     },
@@ -362,20 +347,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                             }
                         }
                     },
                 }
-
-
-                let num = {
-                    let mut n = num_chunks.lock().unwrap();
-                    *n -= 1;
-                    *n + 1
-                };
-
-                info!(target: "brontes::init::missing_state", "{} -- Finished Chunk {}", T::NAME, num);
 
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(inner_range.iter().copied(), flag)?;
