@@ -307,7 +307,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         // range
         if self.libmdbx.init_full_range_tables(self.clickhouse).await {
             tracing::info!("Initializing critical range state");
-            let multi = MultiProgress::default();
 
             self.libmdbx
                 .initialize_tables(

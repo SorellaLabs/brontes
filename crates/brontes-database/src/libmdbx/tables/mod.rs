@@ -135,7 +135,7 @@ impl Tables {
 
     pub fn build_init_state_progress_bar(&self, multi_progress_bar: &MultiProgress) -> ProgressBar {
         let progress_bar =
-            ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr_with_hz(5));
+            ProgressBar::with_draw_target(Some(0), ProgressDrawTarget::stderr_with_hz(5));
 
         progress_bar.set_style(
             ProgressStyle::with_template(
