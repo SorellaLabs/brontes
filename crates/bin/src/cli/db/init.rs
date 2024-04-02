@@ -79,6 +79,7 @@ impl Init {
                             false,
                             range,
                             bar,
+                            0
                         )
                         .await
                         .unwrap();
