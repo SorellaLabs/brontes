@@ -325,7 +325,6 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
-    #[cfg(feature = "local-clickhouse")]
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -396,7 +395,6 @@ impl ClickhouseHandle for Clickhouse {
         Ok(prices)
     }
 
-    #[cfg(feature = "local-clickhouse")]
     async fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
