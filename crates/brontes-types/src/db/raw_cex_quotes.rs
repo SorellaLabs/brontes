@@ -43,7 +43,7 @@ impl CexQuotesConverter {
 
         let symbols = symbols
             .into_iter()
-            .map(|c| ((c.exchange.clone(), c.symbol_pair.clone()), c))
+            .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
             .collect::<HashMap<_, _>>();
 
         let quotes = quotes
@@ -72,15 +72,10 @@ impl CexQuotesConverter {
         self.quotes
             .into_par_iter()
             .filter_map(|q| {
-                if let Some(block_time) = self
+                self
                     .block_times
                     .par_iter()
-                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
-                {
-                    Some((block_time.block_number, q))
-                } else {
-                    None
-                }
+                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp).map(|block_time| (block_time.block_number, q))
             })
             .collect::<Vec<_>>()
             .into_iter()

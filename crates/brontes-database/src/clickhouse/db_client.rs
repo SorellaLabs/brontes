@@ -485,7 +485,7 @@ mod tests {
         init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
-            MevType, PossibleMev, PossibleMevCollection, Sandwich,
+            PossibleMev, PossibleMevCollection, Sandwich,
         },
         normalized_actions::{
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
