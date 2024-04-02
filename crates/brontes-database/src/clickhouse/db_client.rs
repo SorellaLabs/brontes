@@ -352,8 +352,6 @@ impl ClickhouseHandle for Clickhouse {
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
 
-        println!("BLOCK RANGES: {:?}", range_or_arbitrary);
-        println!("BLOCK TIMES: {:?}", block_times);
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
@@ -369,7 +367,6 @@ impl ClickhouseHandle for Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap();
 
-                println!("START-END: {:?}", (start_time, end_time));
                 self.client
                     .query_many(RAW_CEX_QUOTES, &(start_time, end_time))
                     .await?
@@ -384,8 +381,6 @@ impl ClickhouseHandle for Clickhouse {
                     .join(" OR ");
 
                 query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
-
-                println!("QUERY: {}\n", query);
 
                 self.client.query_many(query, &()).await?
             }
