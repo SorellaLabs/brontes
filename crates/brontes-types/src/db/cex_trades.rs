@@ -12,7 +12,7 @@ use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use super::cex::CexExchange;
+use super::{cex::CexExchange, raw_cex_trades::RawCexTrades};
 use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
@@ -341,6 +341,16 @@ pub struct CexTrades {
     pub exchange: CexExchange,
     pub price:    Rational,
     pub amount:   Rational,
+}
+
+impl From<RawCexTrades> for CexTrades {
+    fn from(value: RawCexTrades) -> Self {
+        Self {
+            exchange: value.exchange,
+            price:    Rational::try_from_float_simplest(value.price).unwrap(),
+            amount:   Rational::try_from_float_simplest(value.amount).unwrap(),
+        }
+    }
 }
 
 /// Its ok that we create 2 of these for pair price and intermediary price

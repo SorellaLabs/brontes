@@ -22,6 +22,7 @@ pub struct Init {
     ///     Metadata
     ///     PoolState
     ///     DexPrice
+    ///     CexTrades
     #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
     pub tables_to_init:       Option<Vec<Tables>>,
     /// Start Block to download metadata from Sorella's MEV DB
