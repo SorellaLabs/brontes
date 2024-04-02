@@ -657,11 +657,14 @@ impl AddressMetadataConfig {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use brontes_core::test_utils::{get_db_handle, init_trace_parser};
     use brontes_database::libmdbx::{
         initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
     };
     use brontes_types::init_threadpools;
+    use itertools::Itertools;
     use tokio::sync::mpsc::unbounded_channel;
 
     #[brontes_macros::test]
@@ -681,8 +684,15 @@ mod tests {
 
         let tables = Tables::ALL;
 
+        let tables_cnt = Arc::new(
+            Tables::ALL
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
+
         intializer
-            .initialize(&tables, false, Some(block_range))
+            .initialize(&tables, false, Some(block_range), tables_cnt)
             .await
             .unwrap();
 

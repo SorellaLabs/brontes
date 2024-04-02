@@ -380,30 +380,37 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 ),
             );
             progress_bar.set_message("Processing blocks:");
-            Some(progress_bar)
+            Some(multi.add(progress_bar))
         } else {
             None
         };
 
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block, progress_bar.clone(), tables)
-                .for_each(|block_range| {
-                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+            self.build_range_executors(
+                executor.clone(),
+                end_block,
+                progress_bar.clone(),
+                tables.clone(),
+            )
+            .for_each(|block_range| {
+                futures.push(
+                    executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
                         |shutdown| async move {
                             block_range.run_until_graceful_shutdown(shutdown).await
                         },
-                    ));
-                    std::future::ready(())
-                })
-                .await;
+                    ),
+                );
+                std::future::ready(())
+            })
+            .await;
         } else {
             if self.start_block.is_some() {
                 self.build_range_executors(
                     executor.clone(),
                     end_block,
                     progress_bar.clone(),
-                    tables,
+                    tables.clone(),
                 )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -425,9 +432,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },
             ));
         }
-        multi.clear()?;
 
-        Ok(Brontes { futures, progress_bar })
+        // clear init tables
+        tables.iter().for_each(|(_, pb)| {
+            pb.finish_and_clear();
+        });
+
+        Ok(Brontes { futures, multi, progress_bar })
     }
 
     pub async fn build(
@@ -460,6 +471,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
 pub struct Brontes {
     futures:      FuturesUnordered<JoinHandle<()>>,
+    multi:        MultiProgress,
     progress_bar: Option<ProgressBar>,
 }
 
@@ -471,6 +483,8 @@ impl Future for Brontes {
             if let Some(bar) = &self.progress_bar {
                 bar.finish();
             }
+            self.multi.clear().unwrap();
+
             return Poll::Ready(())
         }
 
@@ -478,6 +492,8 @@ impl Future for Brontes {
             if let Some(bar) = &self.progress_bar {
                 bar.finish();
             }
+            self.multi.clear().unwrap();
+
             return Poll::Ready(())
         }
 
