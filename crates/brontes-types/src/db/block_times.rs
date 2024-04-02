@@ -1,10 +1,5 @@
-use alloy_primitives::Address;
 use clickhouse::Row;
-use redefined::Redefined;
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
-
-use crate::{db::redefined_types::primitives::*, implement_table_value_codecs_with_zc};
+use serde::Deserialize;
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct BlockTimes {

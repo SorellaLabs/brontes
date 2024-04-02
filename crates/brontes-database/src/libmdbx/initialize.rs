@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fmt::Debug,
     path,
     sync::{Arc, Mutex},
@@ -20,7 +19,7 @@ use brontes_types::{
 };
 use futures::{future::join_all, join, stream::iter, StreamExt};
 use itertools::Itertools;
-use reth_db::table::Table;
+
 use serde::{Deserialize, Serialize};
 use toml::Table as tomlTable;
 use tracing::{error, info};
@@ -29,7 +28,7 @@ use super::{cex_utils::CexTableFlag, tables::Tables};
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
-    BlockInfo, BlockInfoData, CexPrice, CexPriceData,
+
 };
 const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";
 const SEARCHER_CONFIG_FILE: &str = "config/searcher_config.toml";
@@ -615,8 +614,8 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use brontes_database::libmdbx::cex_utils::CexRangeOrArbitrary;
-    use brontes_database::{CexPrice, CexPriceData, CexTradesData, CexTrades};
-    use brontes_types::mev::block;
+    use brontes_database::CexPrice;
+
 
 
     use brontes_database::clickhouse::ClickhouseHandle;
@@ -636,71 +635,71 @@ mod tests {
 
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        //let tables = Tables::ALL;
-        let tables = [Tables::CexPrice, Tables::CexTrades];
+        let tables = Tables::ALL;
+
 
         intializer
             .initialize(&tables, false, Some(block_range))
             .await
             .unwrap();
 
-        // // TokenDecimals
-        // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
-
-        // // AddressToProtocol
-        // AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
-
-        // // CexPrice
-        // CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-        //     .await
-        //     .unwrap();
-        // CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-        //     .await
-        //     .unwrap();
-
-        // CexPrice
-        CexTrades::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-        .await
-        .unwrap();
-        CexTrades::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        // TokenDecimals
+        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
 
-        // // Metadata
-        // BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+        // AddressToProtocol
+        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
+
+        // CexPrice
+        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
+
+        // CexTrades (this works can't be asked to implement des for no reason)
+        // CexTrades::test_initialized_data(clickhouse, libmdbx, Some(block_range))
         //     .await
         //     .unwrap();
-        // BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+        // CexTrades::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
         //     .await
         //     .unwrap();
 
-        // // PoolCreationBlocks
-        // PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // Metadata
+        BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+        BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
 
-        // // Builder
-        // Builder::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // PoolCreationBlocks
+        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // AddressMeta
-        // AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // Builder
+        Builder::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // TxTraces
-        // TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-        //     .await
-        //     .unwrap();
+        // AddressMeta
+        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-        //     .await
-        //     .unwrap();
+        // TxTraces
+        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
+            .await
+            .unwrap();
+
+        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
     }
     
 

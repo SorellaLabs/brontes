@@ -1,25 +1,14 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use redefined::Redefined;
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::{
-    block_times::BlockTimes,
-    cex::{CexExchange, CexPriceMap},
-    cex_symbols::CexSymbols,
-    cex_trades::CexTradeMap,
+    block_times::BlockTimes, cex::CexExchange, cex_symbols::CexSymbols, cex_trades::CexTradeMap,
 };
-use crate::{
-    db::{block_times::CexBlockTimes, redefined_types::primitives::*},
-    implement_table_value_codecs_with_zc,
-    serde_utils::cex_exchange,
-    FastHashMap,
-};
+use crate::{db::block_times::CexBlockTimes, serde_utils::cex_exchange, FastHashMap};
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct RawCexTrades {
@@ -44,16 +33,6 @@ impl CexTradesConverter {
         symbols: Vec<CexSymbols>,
         trades: Vec<RawCexTrades>,
     ) -> Self {
-        println!(
-            "\nEXCHANGES PRE: {:?}\n",
-            trades
-                .iter()
-                .map(|t| t.exchange)
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect_vec()
-        );
-
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange.clone(), c.symbol_pair.clone()), c))
@@ -82,19 +61,6 @@ impl CexTradesConverter {
     pub fn convert_to_trades(self) -> Vec<(u64, CexTradeMap)> {
         let mut block_num_map = HashMap::new();
 
-        println!("\nBLOCK TIMES: {:?}\n", self.block_times);
-        println!("\nTRADES: {:?}\n", self.trades.len());
-
-        println!(
-            "\nEXCHANGES POST: {:?}\n",
-            self.trades
-                .iter()
-                .map(|t| t.exchange)
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect_vec()
-        );
-
         self.trades
             .into_par_iter()
             .filter_map(|q| {
@@ -116,8 +82,6 @@ impl CexTradesConverter {
                     .or_insert(Vec::new())
                     .push(trade)
             });
-
-        // println!("\nBLOCK MAP: {:?}\n", block_num_map);
 
         block_num_map
             .into_par_iter()

@@ -1,23 +1,16 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use redefined::Redefined;
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use serde::Deserialize;
 
 use super::{
     block_times::{BlockTimes, CexBlockTimes},
     cex::{CexExchange, CexPriceMap},
     cex_symbols::CexSymbols,
 };
-use crate::{
-    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc,
-    serde_utils::cex_exchange, FastHashMap,
-};
+use crate::{serde_utils::cex_exchange, FastHashMap};
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct RawCexQuotes {
@@ -48,16 +41,6 @@ impl CexQuotesConverter {
             s.address_pair.ordered();
         });
 
-        println!(
-            "\nEXCHANGES PRE: {:?}\n",
-            quotes
-                .iter()
-                .map(|q| q.exchange)
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect_vec()
-        );
-
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange.clone(), c.symbol_pair.clone()), c))
@@ -86,19 +69,6 @@ impl CexQuotesConverter {
     pub fn convert_to_prices(self) -> Vec<(u64, CexPriceMap)> {
         let mut block_num_map = HashMap::new();
 
-        println!("\nBLOCK TIMES: {:?}\n", self.block_times);
-        println!("\nQUOTES: {:?}\n", self.quotes.len());
-
-        println!(
-            "\nEXCHANGES POST: {:?}\n",
-            self.quotes
-                .iter()
-                .map(|q| q.exchange)
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect_vec()
-        );
-
         self.quotes
             .into_par_iter()
             .filter_map(|q| {
@@ -120,8 +90,6 @@ impl CexQuotesConverter {
                     .or_insert(Vec::new())
                     .push(quote)
             });
-
-        // println!("\nBLOCK MAP: {:?}\n", block_num_map);
 
         block_num_map
             .into_par_iter()
