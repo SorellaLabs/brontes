@@ -14,6 +14,7 @@ use itertools::Itertools;
 use reqwest::StatusCode;
 use serde::Deserialize;
 
+use super::cex_config::CexDownloadConfig;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{cex_utils::CexRangeOrArbitrary, determine_eth_prices, types::LibmdbxData},
@@ -21,13 +22,18 @@ use crate::{
 };
 
 pub struct ClickhouseHttpClient {
-    client:  reqwest::Client,
-    url:     String,
-    api_key: String,
+    client:               reqwest::Client,
+    url:                  String,
+    api_key:              String,
+    _cex_download_config: CexDownloadConfig,
 }
 
 impl ClickhouseHttpClient {
-    pub async fn new(url: String, api_key: Option<String>) -> Self {
+    pub async fn new(
+        url: String,
+        api_key: Option<String>,
+        cex_download_config: CexDownloadConfig,
+    ) -> Self {
         let client = reqwest::Client::new();
         let api_key = if let Some(key) = api_key {
             key
@@ -44,7 +50,7 @@ impl ClickhouseHttpClient {
                 text.split("key: ").collect_vec()[1].to_string()
             }
         };
-        Self { url, api_key, client }
+        Self { url, api_key, client, _cex_download_config: cex_download_config }
     }
 
     fn process_dex_quotes(val: DexPriceData) -> DexQuotes {
@@ -255,6 +261,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         Ok(res)
     }
 
+    #[cfg(not(feature = "cex-dex-markout"))]
     async fn get_cex_prices(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
@@ -262,6 +269,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         unimplemented!()
     }
 
+    #[cfg(feature = "cex-dex-markout")]
     async fn get_cex_trades(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,

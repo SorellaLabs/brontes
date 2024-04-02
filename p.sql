@@ -30,3 +30,15 @@ SELECT
 FROM sec
 GROUP BY block_number
 
+
+
+
+SELECT
+    exchange,
+    upper(replaceAll(replaceAll(replaceAll(symbol, '/', ''), '-', ''), '_', '')) AS symbol,
+    timestamp,
+    side,
+    if (side == 'buy', price, divide(1, price)) AS price,
+    if (side == 'buy', amount, multiply(divide(1, price), amount)) AS amount
+FROM cex.normalized_trades 
+WHERE timestamp >= 1693067309000 AND timestamp < 1693067381000 AND (exchange = 'binance' OR exchange = 'coinbase' OR exchange = 'okex' OR exchange = 'bybit-spot' OR exchange = 'kucoin')

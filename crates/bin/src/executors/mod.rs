@@ -1,13 +1,12 @@
 mod processors;
 mod range;
 use futures::Stream;
-use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
+use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
-
 use std::{
     marker::PhantomData,
     pin::Pin,
@@ -23,6 +22,7 @@ use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use brontes_types::{BrontesTaskExecutor, FastHashMap};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
+use indicatif::MultiProgress;
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::shutdown::GracefulShutdown;
@@ -39,20 +39,19 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
-    pub start_block:          Option<u64>,
-    pub end_block:            Option<u64>,
-    pub back_from_tip:        u64,
-    pub max_tasks:            u64,
-    pub min_batch_size:       u64,
-    pub quote_asset:          Address,
-    pub force_dex_pricing:    bool,
+    pub start_block: Option<u64>,
+    pub end_block: Option<u64>,
+    pub back_from_tip: u64,
+    pub max_tasks: u64,
+    pub min_batch_size: u64,
+    pub quote_asset: Address,
+    pub force_dex_pricing: bool,
     pub force_no_dex_pricing: bool,
-
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
-    pub parser:     &'static Parser<'static, T, DB>,
-    pub libmdbx:    &'static DB,
-    _p:             PhantomData<P>,
+    pub parser: &'static Parser<'static, T, DB>,
+    pub libmdbx: &'static DB,
+    _p: PhantomData<P>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
@@ -68,10 +67,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         quote_asset: Address,
         force_dex_pricing: bool,
         force_no_dex_pricing: bool,
-
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
-
         parser: &'static Parser<'static, T, DB>,
         libmdbx: &'static DB,
     ) -> Self {
@@ -128,7 +125,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block, tables_pb)
+                    self.init_block_range_tables(start_block, end_block, tables_pb.clone())
                         .await
                         .unwrap();
 
@@ -220,13 +217,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
+        tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
         let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
         if state_to_init.is_empty() {
             return Ok(())
         }
 
-        tracing::info!(%start_block, %end_block, "Downloading missing info in range");
+        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
 
         let state_to_init_continuous = state_to_init
             .clone()
@@ -234,32 +232,29 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .filter(|range| range.clone().collect_vec().len() >= 1000)
             .collect_vec();
 
+        tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
+
+        let mut tables_to_init = vec![Tables::BlockInfo];
+        #[cfg(not(feature = "sorella-server"))]
+        tables_to_init.push(Tables::TxTraces);
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables_to_init.push(Tables::CexPrice);
+        #[cfg(feature = "cex-dex-markout")]
+        tables_to_init.push(Tables::CexTrades);
+
+        let tables_to_init_cont = &tables_to_init.clone();
         join_all(state_to_init_continuous.iter().map(|range| {
             let tables_pb = tables_pb.clone();
             async move {
                 let start = range.start();
                 let end = range.end();
 
-                #[cfg(feature = "sorella-server")]
                 {
                     self.libmdbx
                         .initialize_tables(
                             self.clickhouse,
                             self.parser.get_tracer(),
-                            &[Tables::BlockInfo, Tables::CexPrice],
-                            false,
-                            Some((*start, *end)),
-                            tables_pb.clone(),
-                        )
-                        .await
-                }
-                #[cfg(not(feature = "sorella-server"))]
-                {
-                    self.libmdbx
-                        .initialize_tables(
-                            self.clickhouse,
-                            self.parser.get_tracer(),
-                            &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                            tables_to_init_cont,
                             false,
                             Some((*start, *end)),
                             tables_pb.clone(),
@@ -272,28 +267,22 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         .into_iter()
         .collect::<eyre::Result<_>>()?;
 
+        tracing::info!(
+            "Downloading {} missing discontinuous ranges",
+            state_to_init.len() - state_to_init_continuous.len()
+        );
+
         let state_to_init_disc = state_to_init
             .into_iter()
             .filter(|range| range.clone().collect_vec().len() < 1000)
             .flatten()
             .collect_vec();
 
-        #[cfg(feature = "sorella-server")]
         self.libmdbx
             .initialize_tables_arbitrary(
                 self.clickhouse,
                 self.parser.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
-                state_to_init_disc,
-                tables_pb.clone(),
-            )
-            .await?;
-        #[cfg(not(feature = "sorella-server"))]
-        self.libmdbx
-            .initialize_tables_arbitrary(
-                self.clickhouse,
-                self.parser.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                &tables_to_init,
                 state_to_init_disc,
                 tables_pb.clone(),
             )
@@ -307,7 +296,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         // range
         if self.libmdbx.init_full_range_tables(self.clickhouse).await {
             tracing::info!("Initializing critical range state");
-
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,
@@ -349,19 +337,11 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
-        let multi = MultiProgress::default();
-        let tables = Arc::new(
-            Tables::ALL
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                .collect_vec(),
-        );
-
         let progress_bar = if self.start_block.is_some() && had_end_block {
             let total_blocks = end_block - self.start_block.unwrap();
             let progress_bar = ProgressBar::with_draw_target(
                 Some(total_blocks),
-                ProgressDrawTarget::stderr_with_hz(30),
+                ProgressDrawTarget::stderr_with_hz(1),
             );
             progress_bar.set_style(
                 ProgressStyle::with_template(
@@ -380,17 +360,31 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 ),
             );
             progress_bar.set_message("Processing blocks:");
-            Some(multi.add(progress_bar))
+            Some(progress_bar)
         } else {
             None
         };
+
+        let mut tables = Tables::ALL.to_vec();
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables.retain(|t| !matches!(t, Tables::CexTrades));
+        #[cfg(feature = "cex-dex-markout")]
+        tables.retain(|t| !matches!(t, Tables::CexPrice));
+
+        let multi = MultiProgress::default();
+        let tables_with_progress = Arc::new(
+            tables
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
 
         if had_end_block && self.start_block.is_some() {
             self.build_range_executors(
                 executor.clone(),
                 end_block,
                 progress_bar.clone(),
-                tables.clone(),
+                tables_with_progress,
             )
             .for_each(|block_range| {
                 futures.push(
@@ -410,7 +404,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     executor.clone(),
                     end_block,
                     progress_bar.clone(),
-                    tables.clone(),
+                    tables_with_progress,
                 )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -433,12 +427,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             ));
         }
 
-        // clear init tables
-        tables.iter().for_each(|(_, pb)| {
-            pb.finish_and_clear();
-        });
-
-        Ok(Brontes { futures, multi, progress_bar })
+        Ok(Brontes { futures, progress_bar })
     }
 
     pub async fn build(
@@ -471,7 +460,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
 pub struct Brontes {
     futures:      FuturesUnordered<JoinHandle<()>>,
-    multi:        MultiProgress,
     progress_bar: Option<ProgressBar>,
 }
 
@@ -483,8 +471,6 @@ impl Future for Brontes {
             if let Some(bar) = &self.progress_bar {
                 bar.finish();
             }
-            self.multi.clear().unwrap();
-
             return Poll::Ready(())
         }
 
@@ -492,8 +478,6 @@ impl Future for Brontes {
             if let Some(bar) = &self.progress_bar {
                 bar.finish();
             }
-            self.multi.clear().unwrap();
-
             return Poll::Ready(())
         }
 

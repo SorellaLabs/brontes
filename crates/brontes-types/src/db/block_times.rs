@@ -25,18 +25,10 @@ pub struct CexBlockTimes {
 }
 
 impl CexBlockTimes {
-    pub fn trade_times(value: BlockTimes) -> Self {
+    pub fn add_time_window(value: BlockTimes, time_window: (u64, u64)) -> Self {
         Self {
-            start_timestamp: value.timestamp - 6000,
-            end_timestamp:   value.timestamp + 6000,
-            block_number:    value.block_number,
-        }
-    }
-
-    pub fn quote_times(value: BlockTimes) -> Self {
-        Self {
-            start_timestamp: value.timestamp - 12000,
-            end_timestamp:   value.timestamp,
+            start_timestamp: value.timestamp - time_window.0 * 1000,
+            end_timestamp:   value.timestamp + time_window.1 * 1000,
             block_number:    value.block_number,
         }
     }
