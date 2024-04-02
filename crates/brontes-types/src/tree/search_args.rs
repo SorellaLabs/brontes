@@ -109,25 +109,27 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
     fn collect_current_node(&self, node: &Node, node_data: &NodeData<V>) -> bool {
         node_data
             .get_ref(node.data)
-            .map(|node_action| {
-                self.with_actions
-                    .iter()
-                    .map(|ptr| {
-                        ptr(node_action)
-                            && self
-                                .has_from_address
-                                .map(|addr| node_action.get_action().get_from_address() == addr)
-                                .unwrap_or(true)
-                            && self
-                                .has_to_address
-                                .as_ref()
-                                .map(|addrs| {
-                                    addrs.contains(&node_action.get_action().get_to_address())
-                                })
-                                .unwrap_or(true)
-                    })
-                    .reduce(|a, b| a | b)
-                    .unwrap_or(false)
+            .map(|node_actions| {
+                node_actions.into_iter().any(|node_action| {
+                    self.with_actions
+                        .iter()
+                        .map(|ptr| {
+                            ptr(node_action)
+                                && self
+                                    .has_from_address
+                                    .map(|addr| node_action.get_action().get_from_address() == addr)
+                                    .unwrap_or(true)
+                                && self
+                                    .has_to_address
+                                    .as_ref()
+                                    .map(|addrs| {
+                                        addrs.contains(&node_action.get_action().get_to_address())
+                                    })
+                                    .unwrap_or(true)
+                        })
+                        .reduce(|a, b| a | b)
+                        .unwrap_or(false)
+                })
             })
             .unwrap_or_default()
     }
@@ -136,6 +138,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
         node.get_all_sub_actions()
             .iter()
             .filter_map(|node| node_data.get_ref(*node))
+            .flat_map(|node| node)
             .any(|action| {
                 self.with_actions
                     .iter()
@@ -164,6 +167,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
         node.get_all_sub_actions()
             .iter()
             .filter_map(|node| node_data.get_ref(*node))
+            .flat_map(|node| node)
             .for_each(|action| {
                 // for have, its a or with the result
                 have_any |= self
