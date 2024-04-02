@@ -7,9 +7,7 @@ use tracing::error;
 
 use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap};
-use crate::{
-    constants::ETH_ADDRESS, db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Protocol,
-};
+use crate::{db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Protocol};
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBatch {
@@ -90,13 +88,6 @@ impl TokenAccounting for NormalizedBatch {
             swaps
                 .iter()
                 .for_each(|swap| swap.apply_token_deltas(delta_map));
-        }
-
-        if !self.msg_value.is_zero() {
-            let am = self.msg_value.to_scaled_rational(18);
-
-            apply_delta(self.solver, ETH_ADDRESS, -am.clone(), delta_map);
-            apply_delta(self.settlement_contract, ETH_ADDRESS, am, delta_map);
         }
     }
 }

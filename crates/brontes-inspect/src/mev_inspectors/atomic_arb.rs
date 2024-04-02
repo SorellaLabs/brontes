@@ -51,13 +51,6 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 (
                     k,
                     v.into_iter()
-                        .flat_map(|a| {
-                            if let Some(e) = a.get_eth_transfer() {
-                                vec![Actions::EthTransfer(e), a]
-                            } else {
-                                vec![a]
-                            }
-                        })
                         .flatten_specified(
                             Actions::try_flash_loan_ref,
                             |actions: NormalizedFlashLoan| {
