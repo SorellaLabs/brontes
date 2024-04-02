@@ -163,12 +163,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_deltas: Vec<AddressDeltas>,
         bundle_txes: Vec<TxHash>,
         info: &TxInfo,
-        profit_usd: f64,
+        mut profit_usd: f64,
         price_type: BlockPrice,
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
+        no_pricing_calculated: bool,
     ) -> BundleHeader {
+        if no_pricing_calculated {
+            profit_usd = 0.0;
+        }
+
         let balance_deltas = self.get_bundle_accounting(
             bundle_txes,
             bundle_deltas,
@@ -197,6 +202,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             profit_usd,
             bribe_usd,
             mev_type,
+            no_pricing_calculated,
             balance_deltas,
         }
     }
@@ -206,12 +212,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_deltas: Vec<AddressDeltas>,
         bundle_txes: Vec<TxHash>,
         info: &TxInfo,
-        profit_usd: f64,
+        mut profit_usd: f64,
         at: PriceAt,
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
+        no_pricing_calculated: bool,
     ) -> BundleHeader {
+        if no_pricing_calculated {
+            profit_usd = 0.0;
+        }
+
         let balance_deltas = self.get_bundle_accounting(
             bundle_txes,
             bundle_deltas,
@@ -240,6 +251,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             profit_usd,
             bribe_usd,
             mev_type,
+            no_pricing_calculated,
             balance_deltas,
         }
     }
