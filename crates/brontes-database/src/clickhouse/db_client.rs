@@ -37,7 +37,7 @@ use super::{BLOCK_TIMES, CEX_SYMBOLS, RAW_CEX_QUOTES, RAW_CEX_TRADES};
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 use crate::{
-    clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
+    clickhouse::const_sql::BLOCK_INFO,
     libmdbx::{
         determine_eth_prices,
         tables::{BlockInfoData, CexPriceData},
@@ -242,13 +242,13 @@ impl ClickhouseHandle for Clickhouse {
             .await?
             .value;
 
-        let cex_quotes = self
-            .client
-            .query_one::<CexPriceData, _>(CEX_PRICE, &(block_num))
-            .await?
-            .value;
+        let cex_quotes_for_block = self
+            .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+            .await?;
 
-        let eth_prices = determine_eth_prices(&cex_quotes);
+        let cex_quotes = cex_quotes_for_block.first().unwrap().clone();
+
+        let eth_prices = determine_eth_prices(&cex_quotes.value);
 
         Ok(BlockMetadata::new(
             block_num,
@@ -262,7 +262,7 @@ impl ClickhouseHandle for Clickhouse {
             block_meta.private_flow.into_iter().collect(),
         )
         .into_metadata(
-            cex_quotes,
+            cex_quotes.value,
             None,
             None,
             #[cfg(feature = "cex-dex-markout")]
