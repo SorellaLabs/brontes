@@ -71,6 +71,8 @@ impl NormalizedFlashLoan {
                         if t.to == self.receiver_contract && t.amount == self.amounts[i] {
                             a_token_addresses.push(t.token.address);
                         }
+                        self.child_actions.push(action);
+                        nodes_to_prune.push(index);
                     }
                     // if the receiver contract is sending the token to the AToken address then this
                     // is the flashloan repayment
