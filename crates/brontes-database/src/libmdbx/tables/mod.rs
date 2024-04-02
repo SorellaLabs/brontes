@@ -43,9 +43,7 @@ use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
 
-use super::{
-    cex_utils::CexTableFlag, initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable,
-};
+use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
 pub const NUM_TABLES: usize = 15;
 
@@ -194,7 +192,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(CEX_FLAG),
-                        CexTableFlag::Quotes,
+                        true,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b))
@@ -209,7 +207,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(META_FLAG),
-                        CexTableFlag::default(),
+                        false,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
@@ -226,7 +224,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(TRACE_FLAG),
-                        CexTableFlag::default(),
+                        false,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
@@ -259,7 +257,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(CEX_FLAG),
-                        CexTableFlag::Trades,
+                        true,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
@@ -300,7 +298,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
                         Some(CEX_FLAG),
-                        CexTableFlag::Quotes,
+                        true,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b.clone()))
@@ -313,7 +311,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
                         Some(META_FLAG),
-                        CexTableFlag::default(),
+                        false,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
@@ -329,7 +327,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
                         Some(TRACE_FLAG),
-                        CexTableFlag::default(),
+                        false,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
@@ -353,7 +351,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
                         block_range,
                         Some(CEX_FLAG),
-                        CexTableFlag::Trades,
+                        true,
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))

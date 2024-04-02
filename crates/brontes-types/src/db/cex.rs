@@ -438,6 +438,28 @@ pub enum CexExchange {
     Average,
 }
 
+impl CexExchange {
+    pub fn to_clickhouse_filter(&self) -> &str {
+        match self {
+            CexExchange::Binance => "exchange = 'binance'",
+            CexExchange::Bitmex => "exchange = 'bitmex'",
+            CexExchange::Deribit => "exchange = 'deribit'",
+            CexExchange::Okex => "exchange = 'okex'",
+            CexExchange::Coinbase => "exchange = 'coinbase'",
+            CexExchange::Kraken => "exchange = 'kraken'",
+            CexExchange::BybitSpot => "exchange = 'bybit-spot'",
+            CexExchange::Kucoin => "exchange = 'kucoin'",
+            CexExchange::Upbit => "exchange = 'upbit'",
+            CexExchange::Huobi => "exchange = 'huobi'",
+            CexExchange::GateIo => "exchange = 'gate-io;",
+            CexExchange::Bitstamp => "exchange = 'bitstamp'",
+            CexExchange::Gemini => "exchange = 'gemini'",
+            CexExchange::Unknown => "exchange = ''",
+            CexExchange::Average => "exchange = ''",
+        }
+    }
+}
+
 self_convert_redefined!(CexExchange);
 
 impl From<&str> for CexExchange {
