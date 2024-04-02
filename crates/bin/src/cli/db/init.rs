@@ -89,6 +89,12 @@ impl Init {
 
             task_executor
                 .spawn_critical("init", async move {
+                    let mut tables = Tables::ALL.to_vec();
+                    #[cfg(not(feature = "cex-dex-markout"))]
+                    tables.retain(|t| !matches!(Tables::CexTrades));
+                    #[cfg(feature = "cex-dex-markout")]
+                    tables.retain(|t| !matches!(Tables::CexPrice));
+
                     libmdbx
                         .initialize_tables(
                             clickhouse,
@@ -97,9 +103,9 @@ impl Init {
                                 .unwrap_or({
                                     if self.download_dex_pricing {
                                         //TODO: Joe add non dex price download behaviour
-                                        Tables::ALL.to_vec()
+                                        tables
                                     } else {
-                                        Tables::ALL.to_vec()
+                                        tables
                                     }
                                 })
                                 .as_slice(),
