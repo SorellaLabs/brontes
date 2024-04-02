@@ -70,7 +70,6 @@ impl Init {
 
             task_executor
                 .spawn_critical("init", async move {
-                    let bar = MultiProgress::default();
                     libmdbx
                         .initialize_tables(
                             clickhouse,

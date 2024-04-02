@@ -151,6 +151,7 @@ impl Tables {
             ),
         );
         progress_bar.set_message(format!("{}", self));
+
         multi_progress_bar.add(progress_bar)
     }
 
