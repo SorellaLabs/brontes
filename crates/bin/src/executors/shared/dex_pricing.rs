@@ -41,7 +41,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
                 .next()
                 .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
                 .await;
-            tx_clone.try_send((pricer, res)).unwrap();
+
+            if let Err(e) = tx_clone.try_send((pricer, res)) {
+                tracing::error!(err=%e, "failed to send dex pricing result");
+            }
         });
 
         task_executor.spawn_critical("dex pricer", fut);
