@@ -385,6 +385,8 @@ impl ClickhouseHandle for Clickhouse {
 
                 query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
 
+                println!("QUERY: {}\n", query);
+
                 self.client.query_many(query, &()).await?
             }
         };
