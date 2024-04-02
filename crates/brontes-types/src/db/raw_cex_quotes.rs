@@ -73,7 +73,7 @@ impl CexQuotesConverter {
         let mut block_num_map = HashMap::new();
 
         println!("\nBLOCK TIMES: {:?}\n", self.block_times);
-        println!("\nQUOTES: {:?}\n", self.quotes);
+        println!("\nQUOTES: {:?}\n", self.quotes.len());
 
         self.quotes
             .into_par_iter()
