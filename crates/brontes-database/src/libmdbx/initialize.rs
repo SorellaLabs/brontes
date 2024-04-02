@@ -713,15 +713,15 @@ mod tests {
         
         old_values.into_iter().zip(new_values).for_each(|(old_data, new_data)| {
             let (new_mapping, old_mapping) = (new_data.value.0, old_data.value.0);
-            println!("NEW EXCHANGES: {:?}", new_mapping.clone().keys());
-            println!("OLD EXCHANGES: {:?}\n", old_mapping.clone().keys());
+            println!("NEW EXCHANGES: {:?}", new_mapping.len());
+            println!("OLD EXCHANGES: {:?}\n", old_mapping.len());
             assert!(new_mapping.len() >= old_mapping.len());
 
             old_mapping.into_iter().for_each(|(old_exch, old_pairs)| {
                 let new_pairs = new_mapping.get(&old_exch).unwrap();
-                println!("NEW PAIRS: {} - {:?}", new_pairs.len(), new_pairs.clone().keys());
-                println!("OLD PAIRS: {} - {:?}\n", old_pairs.len(), old_pairs.clone().keys());
-                assert!(new_pairs.len() >= old_pairs.len() * .5);
+                println!("NEW PAIRS: {}", new_pairs.len());
+                println!("OLD PAIRS: {}\n", old_pairs.len());
+                assert!(new_pairs.len() >= old_pairs.len() * 0.5);
             })
         });
         
