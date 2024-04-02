@@ -42,7 +42,9 @@ use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
 
-use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
+use super::{
+    cex_utils::CexTableFlag, initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable,
+};
 
 pub const NUM_TABLES: usize = 15;
 
@@ -151,6 +153,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(CEX_FLAG),
+                        CexTableFlag::Quotes,
                     )
                     .await
             }
@@ -160,6 +163,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(META_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
@@ -172,6 +176,7 @@ impl Tables {
                         block_range,
                         clear_table,
                         Some(TRACE_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
@@ -188,7 +193,16 @@ impl Tables {
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
-            Tables::CexTrades => Ok(()),
+            Tables::CexTrades => {
+                initializer
+                    .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
+                        block_range,
+                        clear_table,
+                        Some(CEX_FLAG),
+                        CexTableFlag::Trades,
+                    )
+                    .await
+            }
         }
     }
 
@@ -221,6 +235,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
                         Some(CEX_FLAG),
+                        CexTableFlag::Quotes,
                     )
                     .await
             }
@@ -229,6 +244,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
                         Some(META_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
@@ -240,6 +256,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
                         Some(TRACE_FLAG),
+                        CexTableFlag::default(),
                     )
                     .await
             }
@@ -254,7 +271,15 @@ impl Tables {
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
-            Tables::CexTrades => Ok(()),
+            Tables::CexTrades => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
+                        block_range,
+                        Some(CEX_FLAG),
+                        CexTableFlag::Trades,
+                    )
+                    .await
+            }
         }
     }
 
@@ -551,7 +576,7 @@ compressed_table!(
         compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(50_000),
+            init_size: Some(10_000),
             init_method: Clickhouse,
             http_endpoint: Some("cex-price")
         },
@@ -777,7 +802,7 @@ compressed_table!(
         compressed_value: CexTradeMapRedefined
         },
         Init {
-            init_size: Some(50_000),
+            init_size: Some(10_000),
             init_method: Clickhouse,
             http_endpoint: None
         },
