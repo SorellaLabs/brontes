@@ -140,6 +140,7 @@ impl Tables {
         clear_table: bool,
         multi: MultiProgress,
         crit_progress: Option<ProgressBar>,
+        batch_id: usize,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
@@ -174,6 +175,7 @@ impl Tables {
                         Some(CEX_FLAG),
                         CexTableFlag::Quotes,
                         multi,
+                        batch_id,
                     )
                     .await
             }
@@ -185,6 +187,7 @@ impl Tables {
                         Some(META_FLAG),
                         CexTableFlag::default(),
                         multi,
+                        batch_id,
                     )
                     .await
             }
@@ -199,6 +202,7 @@ impl Tables {
                         Some(TRACE_FLAG),
                         CexTableFlag::default(),
                         multi,
+                        batch_id,
                     )
                     .await
             }
@@ -229,6 +233,7 @@ impl Tables {
                         Some(CEX_FLAG),
                         CexTableFlag::Trades,
                         multi,
+                        batch_id,
                     )
                     .await
             }
@@ -243,6 +248,7 @@ impl Tables {
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: &'static [u64],
         multi: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
@@ -267,6 +273,7 @@ impl Tables {
                         Some(CEX_FLAG),
                         CexTableFlag::Quotes,
                         multi,
+                        batch_id,
                     )
                     .await
             }
@@ -277,6 +284,7 @@ impl Tables {
                         Some(META_FLAG),
                         CexTableFlag::default(),
                         multi,
+                        batch_id,
                     )
                     .await
             }
@@ -290,6 +298,7 @@ impl Tables {
                         Some(TRACE_FLAG),
                         CexTableFlag::default(),
                         multi,
+                        batch_id,
                     )
                     .await
             }
@@ -311,6 +320,7 @@ impl Tables {
                         Some(CEX_FLAG),
                         CexTableFlag::Trades,
                         multi,
+                        batch_id,
                     )
                     .await
             }

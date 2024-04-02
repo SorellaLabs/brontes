@@ -1,8 +1,4 @@
-use std::{
-    fmt::Debug,
-    path,
-    sync::{Arc},
-};
+use std::{fmt::Debug, path, sync::Arc};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -58,6 +54,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         multi_progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()> {
         let critical_table_count = tables
             .iter()
@@ -82,6 +79,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             clear_tables,
                             multi,
                             critical_state_progress_bar,
+                            batch_id,
                         )
                         .await
                 }
@@ -106,9 +104,15 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         tables: &[Tables],
         block_range: &'static [u64],
         progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()> {
         join_all(tables.iter().map(|table| {
-            table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+            table.initialize_table_arbitrary_state(
+                self,
+                block_range,
+                progress_bar.clone(),
+                batch_id,
+            )
         }))
         .await
         .into_iter()
@@ -167,6 +171,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
         multi_progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -200,7 +205,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             )
         };
 
-        let pb = Self::build_init_state_progress_bar(T::NAME, range_count, &multi_progress_bar);
+        let pb = Self::build_init_state_progress_bar(
+            T::NAME,
+            batch_id,
+            range_count,
+            &multi_progress_bar,
+        );
 
         let pair_ranges = block_range_chunks
             .into_iter()
@@ -261,6 +271,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     },
                 }
+                pb.finish_with_message(format!("{} Init for batch: {} Complete", T::NAME,batch_id));
 
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(start..=end, flag)?;
@@ -284,6 +295,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
         multi_progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -298,7 +310,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + 'static,
     {
         let entries = block_range.len();
-        let pb = Self::build_init_state_progress_bar(T::NAME, entries as u64, &multi_progress_bar);
+        let pb = Self::build_init_state_progress_bar(
+            T::NAME,
+            batch_id,
+            entries as u64,
+            &multi_progress_bar,
+        );
 
         let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
 
@@ -353,6 +370,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     },
                 }
 
+                pb.finish_with_message(format!("{} Init for batch: {} Complete", T::NAME,batch_id));
+
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(inner_range.iter().copied(), flag)?;
                 }
@@ -371,6 +390,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     fn build_init_state_progress_bar(
         name: &'static str,
+        batch_id: usize,
         total_blocks: u64,
         multi_progress_bar: &MultiProgress,
     ) -> ProgressBar {
@@ -391,7 +411,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 },
             ),
         );
-        progress_bar.set_message(name);
+        progress_bar.set_message(format!("{} Batch: {}", name, batch_id));
         multi_progress_bar.add(progress_bar)
     }
 

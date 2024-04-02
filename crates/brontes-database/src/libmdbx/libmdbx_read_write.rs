@@ -68,6 +68,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         clear_tables: bool,
         block_range: Option<(u64, u64)>,
         progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// initializes all the tables with missing data ranges via the CLI
@@ -78,6 +79,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tables: &[Tables],
         block_range: Vec<u64>,
         progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// checks the min and max values of the clickhouse db and sees if the full
@@ -149,10 +151,11 @@ impl LibmdbxInit for LibmdbxReadWriter {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()> {
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer
-            .initialize(tables, clear_tables, block_range, progress_bar)
+            .initialize(tables, clear_tables, block_range, progress_bar, batch_id)
             .await?;
 
         Ok(())
@@ -166,12 +169,13 @@ impl LibmdbxInit for LibmdbxReadWriter {
         tables: &[Tables],
         block_range: Vec<u64>,
         progress_bar: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()> {
         let block_range = Box::leak(Box::new(block_range));
 
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer
-            .initialize_arbitrary_state(tables, block_range, progress_bar)
+            .initialize_arbitrary_state(tables, block_range, progress_bar,batch_id)
             .await?;
 
         Ok(())

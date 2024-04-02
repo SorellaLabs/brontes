@@ -129,7 +129,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block, multi)
+                    self.init_block_range_tables(start_block, end_block, multi, batch_id)
                         .await
                         .unwrap();
 
@@ -220,6 +220,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         start_block: u64,
         end_block: u64,
         multi: MultiProgress,
+        batch_id: usize,
     ) -> eyre::Result<()> {
         let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
