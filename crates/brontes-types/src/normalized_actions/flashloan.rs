@@ -62,6 +62,10 @@ impl NormalizedFlashLoan {
                     nodes_to_prune.push(index);
                 }
                 Actions::Transfer(t) => {
+                    self.child_actions.push(action);
+                    nodes_to_prune.push(index);
+                    continue;
+
                     // get the a_token reserve address that will be the receiver of the flashloan
                     // repayment for this token
                     if let Some(i) = self.assets.iter().position(|x| *x == t.token) {
