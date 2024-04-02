@@ -1,7 +1,7 @@
 use std::{
     fmt::Debug,
     path,
-    sync::{Arc, Mutex},
+    sync::{Arc},
 };
 
 use ::clickhouse::DbRow;
