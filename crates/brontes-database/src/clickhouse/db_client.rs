@@ -394,9 +394,6 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
-                println!("PRICES RANGE: {query}");
-                println!("TIME RANGE: {start_time} - {end_time}");
-
                 self.client
                     .query_many(query, &(start_time, end_time))
                     .await?
@@ -420,8 +417,6 @@ impl ClickhouseHandle for Clickhouse {
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
 
-                println!("PRICES ARBITRARY: {query}");
-
                 self.client.query_many(query, &()).await?
             }
         };
@@ -437,19 +432,6 @@ impl ClickhouseHandle for Clickhouse {
             .into_iter()
             .map(|(block_num, price_map)| CexPriceData::new(block_num, price_map))
             .collect();
-
-        println!(
-            "NUM PRICES: {}",
-            prices
-                .iter()
-                .map(|v| v
-                    .value
-                    .0
-                    .iter()
-                    .map(|(_, inner)| inner.len())
-                    .sum::<usize>())
-                .sum::<usize>()
-        );
 
         Ok(prices)
     }
@@ -508,9 +490,6 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
-                println!("TRADES RANGE: {query}");
-                println!("TIME RANGE: {start_time} - {end_time}");
-
                 self.client
                     .query_many(query, &(start_time, end_time))
                     .await?
@@ -534,8 +513,6 @@ impl ClickhouseHandle for Clickhouse {
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
 
-                println!("TRADES ARBITRARY: {query}");
-
                 self.client.query_many(query, &()).await?
             }
         };
@@ -551,19 +528,6 @@ impl ClickhouseHandle for Clickhouse {
             .into_iter()
             .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
             .collect();
-
-        println!(
-            "NUM TRADES: {}",
-            trades
-                .iter()
-                .map(|v| v
-                    .value
-                    .0
-                    .iter()
-                    .map(|(_, inner)| inner.len())
-                    .sum::<usize>())
-                .sum::<usize>()
-        );
 
         Ok(trades)
     }
