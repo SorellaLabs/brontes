@@ -615,7 +615,10 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use brontes_database::libmdbx::cex_utils::CexRangeOrArbitrary;
-    use brontes_database::{CexPrice, CexPriceData};
+    use brontes_database::{CexPrice, CexPriceData, CexTradesData, CexTrades};
+    use brontes_types::mev::block;
+
+
     use brontes_database::clickhouse::ClickhouseHandle;
 
     #[brontes_macros::test]
@@ -706,9 +709,7 @@ mod tests {
     async fn test_initialize_cex() {
         //let block_range = (17000000, 17000100);
 
-        use brontes_types::mev::block;
 
-        use crate::CexTradesData;
 
         
 
