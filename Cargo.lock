@@ -1657,6 +1657,7 @@ dependencies = [
  "human_bytes",
  "hyper 0.14.28",
  "hyper-tls 0.5.0",
+ "indicatif",
  "itertools 0.12.1",
  "malachite",
  "modular-bitfield",

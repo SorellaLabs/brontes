@@ -28,6 +28,7 @@ use brontes_types::{
     serde_utils::*,
     traits::TracingProvider,
 };
+use indicatif::{MultiProgress, ProgressBar};
 use reth_db::table::Table;
 use serde_with::serde_as;
 
@@ -121,22 +122,39 @@ macro_rules! tables {
 }
 
 impl Tables {
+    pub(crate) fn is_critical_init(&self) -> bool {
+        matches!(
+            self,
+            Self::PoolCreationBlocks
+                | Self::AddressToProtocolInfo
+                | Self::TokenDecimals
+                | Self::Builder
+                | Self::AddressMeta,
+        )
+    }
+
     pub(crate) async fn initialize_table<T: TracingProvider, CH: ClickhouseHandle>(
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
+        multi: MultiProgress,
+        crit_progress: Option<ProgressBar>,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
                 initializer
-                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(clear_table)
+                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
+                        clear_table,
+                        crit_progress.unwrap(),
+                    )
                     .await
             }
             Tables::AddressToProtocolInfo => {
                 initializer
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
                         clear_table,
+                        crit_progress.unwrap(),
                     )
                     .await
             }
@@ -144,6 +162,7 @@ impl Tables {
                 initializer
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
                         clear_table,
+                        crit_progress.unwrap(),
                     )
                     .await
             }
@@ -154,6 +173,7 @@ impl Tables {
                         clear_table,
                         Some(CEX_FLAG),
                         CexTableFlag::Quotes,
+                        multi,
                     )
                     .await
             }
@@ -164,6 +184,7 @@ impl Tables {
                         clear_table,
                         Some(META_FLAG),
                         CexTableFlag::default(),
+                        multi,
                     )
                     .await
             }
@@ -177,17 +198,24 @@ impl Tables {
                         clear_table,
                         Some(TRACE_FLAG),
                         CexTableFlag::default(),
+                        multi,
                     )
                     .await
             }
             Tables::Builder => {
                 initializer
-                    .clickhouse_init_no_args::<Builder, BuilderData>(clear_table)
+                    .clickhouse_init_no_args::<Builder, BuilderData>(
+                        clear_table,
+                        crit_progress.unwrap(),
+                    )
                     .await
             }
             Tables::AddressMeta => {
                 initializer
-                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(clear_table)
+                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(
+                        clear_table,
+                        crit_progress.unwrap(),
+                    )
                     .await
             }
             Tables::SearcherEOAs => Ok(()),
@@ -200,6 +228,7 @@ impl Tables {
                         clear_table,
                         Some(CEX_FLAG),
                         CexTableFlag::Trades,
+                        multi,
                     )
                     .await
             }
@@ -213,6 +242,7 @@ impl Tables {
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: &'static [u64],
+        multi: MultiProgress,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
@@ -236,6 +266,7 @@ impl Tables {
                         block_range,
                         Some(CEX_FLAG),
                         CexTableFlag::Quotes,
+                        multi,
                     )
                     .await
             }
@@ -245,6 +276,7 @@ impl Tables {
                         block_range,
                         Some(META_FLAG),
                         CexTableFlag::default(),
+                        multi,
                     )
                     .await
             }
@@ -257,6 +289,7 @@ impl Tables {
                         block_range,
                         Some(TRACE_FLAG),
                         CexTableFlag::default(),
+                        multi,
                     )
                     .await
             }
@@ -277,6 +310,7 @@ impl Tables {
                         block_range,
                         Some(CEX_FLAG),
                         CexTableFlag::Trades,
+                        multi,
                     )
                     .await
             }

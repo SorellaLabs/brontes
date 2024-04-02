@@ -1,7 +1,7 @@
 mod processors;
 mod range;
 use futures::Stream;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
@@ -118,6 +118,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             })
             .collect_vec();
 
+        let multi = MultiProgress::default();
+
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
                 let executor = executor.clone();
@@ -126,7 +128,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block)
+                    self.init_block_range_tables(start_block, end_block, multi.clone())
                         .await
                         .unwrap();
 
@@ -212,23 +214,25 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
 
-    async fn init_block_range_tables(&self, start_block: u64, end_block: u64) -> eyre::Result<()> {
-        tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
+    async fn init_block_range_tables(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        multi: MultiProgress,
+    ) -> eyre::Result<()> {
         let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
         if state_to_init.is_empty() {
             return Ok(())
         }
 
-        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
+        tracing::info!(%start_block, %end_block, "Downloading missing info in range");
 
         let state_to_init_continuous = state_to_init
             .clone()
             .into_iter()
             .filter(|range| range.clone().collect_vec().len() >= 1000)
             .collect_vec();
-
-        tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
 
         join_all(state_to_init_continuous.iter().map(|range| async move {
             let start = range.start();
@@ -243,6 +247,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         &[Tables::BlockInfo, Tables::CexPrice],
                         false,
                         Some((*start, *end)),
+                        multi.clone(),
                     )
                     .await
             }
@@ -255,6 +260,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                         false,
                         Some((*start, *end)),
+                        multi.clone(),
                     )
                     .await
             }
@@ -262,11 +268,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
-
-        tracing::info!(
-            "Downloading {} missing discontinuous ranges",
-            state_to_init.len() - state_to_init_continuous.len()
-        );
 
         let state_to_init_disc = state_to_init
             .into_iter()
@@ -281,6 +282,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.parser.get_tracer(),
                 &[Tables::BlockInfo, Tables::CexPrice],
                 state_to_init_disc,
+                multi.clone(),
             )
             .await?;
         #[cfg(not(feature = "sorella-server"))]
@@ -290,6 +292,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.parser.get_tracer(),
                 &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                 state_to_init_disc,
+                multi.clone(),
             )
             .await?;
 
@@ -301,6 +304,25 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         // range
         if self.libmdbx.init_full_range_tables(self.clickhouse).await {
             tracing::info!("Initializing critical range state");
+            let multi = MultiProgress::default();
+
+            // let progress_bar =
+            //     ProgressBar::with_draw_target(Some(5),
+            // ProgressDrawTarget::stderr_with_hz(10)); progress_bar.set_style(
+            //     ProgressStyle::with_template(
+            //         "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len}
+            // ({percent}%)",     )?
+            //     .progress_chars("█>-")
+            //     .with_key(
+            //         "percent",
+            //         |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+            //             write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+            //         },
+            //     ),
+            // );
+            // progress_bar.set_message("Critical Tables Init:");
+            // multi.add(pb)
+
             self.libmdbx
                 .initialize_tables(
                     self.clickhouse,
@@ -314,6 +336,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     ],
                     false,
                     None,
+                    multi,
                 )
                 .await?;
         }
@@ -345,7 +368,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             let total_blocks = end_block - self.start_block.unwrap();
             let progress_bar = ProgressBar::with_draw_target(
                 Some(total_blocks),
-                ProgressDrawTarget::stderr_with_hz(1),
+                ProgressDrawTarget::stderr_with_hz(30),
             );
             progress_bar.set_style(
                 ProgressStyle::with_template(

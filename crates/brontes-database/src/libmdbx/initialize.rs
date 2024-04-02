@@ -18,6 +18,7 @@ use brontes_types::{
     FastHashMap, Protocol,
 };
 use futures::{future::join_all, join, stream::iter, StreamExt};
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use toml::Table as tomlTable;
@@ -56,14 +57,36 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
+        multi_progress_bar: MultiProgress,
     ) -> eyre::Result<()> {
+        let critical_table_count = tables
+            .iter()
+            .map(Tables::is_critical_init)
+            .filter(|f| *f)
+            .count();
+
+        let critical_state_progress_bar = Self::build_critical_state_progress_bar(
+            critical_table_count as u64,
+            &multi_progress_bar,
+        );
+
         futures::stream::iter(tables.to_vec())
-            .map(|table| async move {
-                table
-                    .initialize_table(self, block_range, clear_tables)
-                    .await
+            .map(|table| {
+                let multi = multi_progress_bar.clone();
+                let critical_state_progress_bar = critical_state_progress_bar.clone();
+                async move {
+                    table
+                        .initialize_table(
+                            self,
+                            block_range,
+                            clear_tables,
+                            multi,
+                            critical_state_progress_bar,
+                        )
+                        .await
+                }
             })
-            .buffered(2)
+            .buffer_unordered(2)
             .collect::<Vec<_>>()
             .await
             .into_iter()
@@ -82,25 +105,29 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         tables: &[Tables],
         block_range: &'static [u64],
+        progress_bar: MultiProgress,
     ) -> eyre::Result<()> {
-        join_all(
-            tables
-                .iter()
-                .map(|table| table.initialize_table_arbitrary_state(self, block_range)),
-        )
+        join_all(tables.iter().map(|table| {
+            table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+        }))
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
 
-        self.load_classifier_config_data().await;
-        self.load_searcher_config_data().await;
-        self.load_builder_config_data().await;
+        join!(
+            self.load_classifier_config_data(),
+            self.load_searcher_config_data(),
+            self.load_builder_config_data(),
+            self.load_address_metadata_config(),
+        );
+
         Ok(())
     }
 
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
         clear_table: bool,
+        progress_bar: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -121,7 +148,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         let data = self.clickhouse.query_many::<T, D>().await;
 
         match data {
-            Ok(d) => self.libmdbx.0.write_table(&d)?,
+            Ok(d) => {
+                progress_bar.inc(1);
+                self.libmdbx.0.write_table(&d)?
+            }
             Err(e) => {
                 error!(target: "brontes::init", error=%e, "error initing {}", T::NAME)
             }
@@ -136,6 +166,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_table: bool,
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
+        multi_progress_bar: MultiProgress,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -153,18 +184,23 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             self.libmdbx.0.clear_table::<T>()?;
         }
 
-        let block_range_chunks = if let Some((s, e)) = block_range {
-            (s..e + 1).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
+        let (block_range_chunks, range_count) = if let Some((s, e)) = block_range {
+            ((s..e + 1).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize)), e - s)
         } else {
             #[cfg(feature = "local-reth")]
             let end_block = self.tracer.best_block_number()?;
             #[cfg(not(feature = "local-reth"))]
             let end_block = self.tracer.best_block_number().await?;
 
-            (DEFAULT_START_BLOCK..end_block + 1).chunks(
-                T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
+            (
+                (DEFAULT_START_BLOCK..end_block + 1).chunks(
+                    T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
+                ),
+                end_block - DEFAULT_START_BLOCK,
             )
         };
+
+        let pb = Self::build_init_state_progress_bar(T::NAME, range_count, &multi_progress_bar);
 
         let pair_ranges = block_range_chunks
             .into_iter()
@@ -182,9 +218,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let num_chunks = num_chunks.clone();
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
+            let pb = pb.clone();
+            let count = end - start;
 
             async move {
-
                 match cex_table_flag {
                     CexTableFlag::Trades => {
                         let data = clickhouse
@@ -192,6 +229,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .await;
                         match data {
                             Ok(d) => {
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -205,6 +243,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .await;
                         match data {
                             Ok(d) => {
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -218,6 +257,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .await;
                         match data {
                             Ok(d) => {
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -254,6 +294,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: &'static [u64],
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
+        multi_progress_bar: MultiProgress,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -267,8 +308,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + Unpin
             + 'static,
     {
-        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
+        let entries = block_range.len();
+        let pb = Self::build_init_state_progress_bar(T::NAME, entries as u64, &multi_progress_bar);
 
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
         let num_chunks = Arc::new(Mutex::new(ranges.len()));
 
         info!(target: "brontes::init::missing_state", "{} -- Starting Initialization Missing State With {} Chunks", T::NAME, ranges.len());
@@ -277,9 +320,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let num_chunks = num_chunks.clone();
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
+            let pb = pb.clone();
+            let count = inner_range.len() as u64;
 
             async move {
-
                 match cex_table_flag {
                     CexTableFlag::Trades => {
                         let data = clickhouse
@@ -287,6 +331,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .await;
                         match data {
                             Ok(d) => {
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -300,6 +345,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .await;
                         match data {
                             Ok(d) => {
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -312,6 +358,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .query_many_arbitrary::<T, D>(inner_range).await;
                         match data {
                             Ok(d) => {
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -344,6 +391,60 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
+    }
+
+    fn build_init_state_progress_bar(
+        name: &'static str,
+        total_blocks: u64,
+        multi_progress_bar: &MultiProgress,
+    ) -> ProgressBar {
+        let progress_bar = ProgressBar::with_draw_target(
+            Some(total_blocks),
+            ProgressDrawTarget::stderr_with_hz(5),
+        );
+        progress_bar.set_style(
+            ProgressStyle::with_template(
+                "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len} ({percent}%)",
+            )
+            .unwrap()
+            .progress_chars("█>-")
+            .with_key(
+                "percent",
+                |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                },
+            ),
+        );
+        progress_bar.set_message(name);
+        multi_progress_bar.add(progress_bar)
+    }
+
+    fn build_critical_state_progress_bar(
+        table_count: u64,
+        multi_progress_bar: &MultiProgress,
+    ) -> Option<ProgressBar> {
+        if table_count == 0 {
+            return None
+        }
+
+        let progress_bar =
+            ProgressBar::with_draw_target(Some(table_count), ProgressDrawTarget::stderr_with_hz(5));
+        progress_bar.set_style(
+            ProgressStyle::with_template(
+                "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len} ({percent}%)",
+            )
+            .unwrap()
+            .progress_chars("█>-")
+            .with_key(
+                "percent",
+                |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                },
+            ),
+        );
+        progress_bar.set_message("Critical Tables Init:");
+
+        Some(multi_progress_bar.add(progress_bar))
     }
 
     /// loads up the `classifier_config.toml` and ensures the values are in the
