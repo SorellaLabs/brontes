@@ -114,6 +114,7 @@ impl TraceLoader {
                 false,
                 Some((block - 2, block + 2)),
                 bar,
+                0,
             )
             .await?;
 
@@ -133,6 +134,7 @@ impl TraceLoader {
                 false,
                 Some((block - 2, block + 2)),
                 bar,
+                0,
             )
             .await?;
 
@@ -366,6 +368,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     false,
                     None,
                     bar,
+                    0,
                 )
                 .await
                 .unwrap();
