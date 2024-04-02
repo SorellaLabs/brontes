@@ -379,9 +379,9 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(12, 0))
+                    .map(|b| b.convert_to_timestamp_query(12000, 0))
                     .collect::<Vec<_>>()
-                    .join(" OR");
+                    .join(" OR ");
 
                 query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
 
@@ -434,12 +434,14 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap();
+                    .unwrap()
+                    - 6000;
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap();
+                    .unwrap()
+                    + 6000;
 
                 self.client
                     .query_many(RAW_CEX_TRADES, &(start_time, end_time))
@@ -450,9 +452,9 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(6, 6))
+                    .map(|b| b.convert_to_timestamp_query(6000, 6000))
                     .collect::<Vec<_>>()
-                    .join(" OR");
+                    .join(" OR ");
 
                 query = query.replace("timestamp >= ? AND timestamp < ?", &query_mod);
 
