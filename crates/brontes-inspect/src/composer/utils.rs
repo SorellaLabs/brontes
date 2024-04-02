@@ -185,20 +185,18 @@ pub fn calculate_builder_profit(
             Actions::EthTransfer(transfer) => {
                 if Some(transfer.to) == metadata.proposer_fee_recipient {
                     0
-                } else {
-                    if let Some(gas_details) =
-                        pre_processing.gas_details_by_address.get(&transfer.to)
-                    {
-                        let total_paid = gas_details.priority_fee
-                            + gas_details.coinbase_transfer.unwrap_or_default();
-                        if total_paid > transfer.value.to::<u128>() {
-                            transfer.value.to()
-                        } else {
-                            0
-                        }
+                } else if let Some(gas_details) =
+                    pre_processing.gas_details_by_address.get(&transfer.to)
+                {
+                    let total_paid = gas_details.priority_fee
+                        + gas_details.coinbase_transfer.unwrap_or_default();
+                    if total_paid > transfer.value.to::<u128>() {
+                        transfer.value.to()
                     } else {
                         0
                     }
+                } else {
+                    0
                 }
             }
             _ => 0,
@@ -302,7 +300,7 @@ pub(crate) fn pre_process(tree: Arc<BlockTree<Actions>>) -> BlockPreprocessing {
                 gas_details_by_address
                     .entry(address)
                     .and_modify(|existing: &mut GasDetails| existing.merge(gas_details_item))
-                    .or_insert_with(|| gas_details_item.clone());
+                    .or_insert_with(|| *gas_details_item);
 
                 let gas_used = gas_details_item.gas_used;
                 let priority_fee = gas_details_item.priority_fee;
