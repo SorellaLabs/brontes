@@ -25,7 +25,7 @@ use tracing::{error, info};
 
 use super::{cex_utils::CexTableFlag, tables::Tables};
 use crate::{
-    clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
+    clickhouse::ClickhouseHandle,
     libmdbx::{
         cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter,
     },
@@ -626,7 +626,7 @@ mod tests {
     use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
 
-    use crate::clickhouse::cex_config::CexDownloadConfig;
+
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {

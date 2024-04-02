@@ -439,23 +439,23 @@ pub enum CexExchange {
 }
 
 impl CexExchange {
-    pub fn to_clickhouse_string(&self) -> &str {
+    pub fn to_clickhouse_filter(&self) -> &str {
         match self {
-            CexExchange::Binance => "binance",
-            CexExchange::Bitmex => "bitmex",
-            CexExchange::Deribit => "deribit",
-            CexExchange::Okex => "okex",
-            CexExchange::Coinbase => "coinbase",
-            CexExchange::Kraken => "kraken",
-            CexExchange::BybitSpot => "bybit-spot",
-            CexExchange::Kucoin => "kucoin",
-            CexExchange::Upbit => "upbit",
-            CexExchange::Huobi => "huobi",
-            CexExchange::GateIo => "gate-io",
-            CexExchange::Bitstamp => "bitstamp",
-            CexExchange::Gemini => "gemini",
-            CexExchange::Unknown => "",
-            CexExchange::Average => "",
+            CexExchange::Binance => "exchange = 'binance'",
+            CexExchange::Bitmex => "exchange = 'bitmex'",
+            CexExchange::Deribit => "exchange = 'deribit'",
+            CexExchange::Okex => "exchange = 'okex'",
+            CexExchange::Coinbase => "exchange = 'coinbase'",
+            CexExchange::Kraken => "exchange = 'kraken'",
+            CexExchange::BybitSpot => "exchange = 'bybit-spot'",
+            CexExchange::Kucoin => "exchange = 'kucoin'",
+            CexExchange::Upbit => "exchange = 'upbit'",
+            CexExchange::Huobi => "exchange = 'huobi'",
+            CexExchange::GateIo => "exchange = 'gate-io;",
+            CexExchange::Bitstamp => "exchange = 'bitstamp'",
+            CexExchange::Gemini => "exchange = 'gemini'",
+            CexExchange::Unknown => "exchange = ''",
+            CexExchange::Average => "exchange = ''",
         }
     }
 }

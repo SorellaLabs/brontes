@@ -32,7 +32,7 @@ use reth_db::table::Table;
 use serde_with::serde_as;
 
 use crate::{
-    clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
+    clickhouse::ClickhouseHandle,
     libmdbx::{types::ReturnKV, utils::protocol_info, LibmdbxData, LibmdbxReadWriter},
     parquet::ParquetExporter,
 };
