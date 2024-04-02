@@ -36,6 +36,7 @@ impl CexQuotesConverter {
         block_times: Vec<BlockTimes>,
         mut symbols: Vec<CexSymbols>,
         quotes: Vec<RawCexQuotes>,
+        time_window: (u64, u64),
     ) -> Self {
         symbols.iter_mut().for_each(|s| {
             s.address_pair.ordered();
@@ -54,7 +55,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(CexBlockTimes::quote_times)
+                .map(|b| CexBlockTimes::add_time_window(b, time_window))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
