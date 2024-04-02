@@ -1,7 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
+use itertools::Itertools;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
@@ -13,8 +15,10 @@ use super::{
     cex_trades::CexTradeMap,
 };
 use crate::{
-    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc,
+    db::{block_times::CexBlockTimes, redefined_types::primitives::*},
+    implement_table_value_codecs_with_zc,
     serde_utils::cex_exchange,
+    FastHashMap,
 };
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
@@ -29,7 +33,7 @@ pub struct RawCexTrades {
 }
 
 pub struct CexTradesConverter {
-    pub block_times: Vec<BlockTimes>,
+    pub block_times: Vec<CexBlockTimes>,
     pub symbols:     HashMap<(CexExchange, String), CexSymbols>,
     pub trades:      Vec<RawCexTrades>,
 }
@@ -40,27 +44,64 @@ impl CexTradesConverter {
         symbols: Vec<CexSymbols>,
         trades: Vec<RawCexTrades>,
     ) -> Self {
-        Self {
-            block_times,
-            symbols: symbols
+        println!(
+            "\nEXCHANGES PRE: {:?}\n",
+            trades
+                .iter()
+                .map(|t| t.exchange)
+                .collect::<HashSet<_>>()
                 .into_iter()
-                .map(|c| ((c.exchange.clone(), c.symbol_pair.clone()), c))
-                .collect::<HashMap<_, _>>(),
+                .collect_vec()
+        );
+
+        let symbols = symbols
+            .into_iter()
+            .map(|c| ((c.exchange.clone(), c.symbol_pair.clone()), c))
+            .collect::<HashMap<_, _>>();
+
+        let trades = trades
+            .into_iter()
+            .filter(|trade| {
+                symbols
+                    .get(&(trade.exchange, trade.symbol.clone()))
+                    .is_some()
+            })
+            .collect();
+
+        Self {
+            block_times: block_times
+                .into_iter()
+                .map(CexBlockTimes::trade_times)
+                .sorted_by_key(|b| b.start_timestamp)
+                .collect(),
+            symbols,
             trades,
         }
     }
 
     pub fn convert_to_trades(self) -> Vec<(u64, CexTradeMap)> {
-        /*
-                let mut block_num_map = HashMap::new();
+        let mut block_num_map = HashMap::new();
 
-        self.quotes
+        println!("\nBLOCK TIMES: {:?}\n", self.block_times);
+        println!("\nTRADES: {:?}\n", self.trades.len());
+
+        println!(
+            "\nEXCHANGES POST: {:?}\n",
+            self.trades
+                .iter()
+                .map(|t| t.exchange)
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect_vec()
+        );
+
+        self.trades
             .into_par_iter()
             .filter_map(|q| {
                 if let Some(block_time) = self
                     .block_times
                     .par_iter()
-                    .find_any(|b| b.start_timestamp >= q.timestamp && b.end_timestamp < q.timestamp)
+                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
                 {
                     Some((block_time.block_number, q))
                 } else {
@@ -69,32 +110,49 @@ impl CexTradesConverter {
             })
             .collect::<Vec<_>>()
             .into_iter()
-            .for_each(|(block_num, quote)| {
+            .for_each(|(block_num, trade)| {
                 block_num_map
                     .entry(block_num)
                     .or_insert(Vec::new())
-                    .push(quote)
+                    .push(trade)
             });
+
+        // println!("\nBLOCK MAP: {:?}\n", block_num_map);
 
         block_num_map
             .into_par_iter()
-            .map(|(block_num, quotes)| {
-                let mut exchange_map = quotes
-                    .iter()
-                    .map(|quote| (quote.exchange, HashMap::new()))
-                    .collect::<HashMap<_, _>>();
+            .map(|(block_num, trades)| {
+                let mut exchange_map = HashMap::new();
 
-                quotes.into_par_iter().for_each(|quote| {
-                    if let Some(symbol) = self.symbols.get(&(quote.exchange, quote.symbol)) {
-                        exchange_map.entry(quote.exchange).or_insert(HashMap::new()).entry(symbol.address_pair)
-                    }
-                    //
-                })
+                trades.into_iter().for_each(|trade| {
+                    exchange_map
+                        .entry(trade.exchange)
+                        .or_insert(Vec::new())
+                        .push(trade);
+                });
 
+                let cex_price_map = exchange_map
+                    .into_par_iter()
+                    .map(|(exch, trades)| {
+                        let mut exchange_symbol_map = FastHashMap::default();
+
+                        trades.into_iter().for_each(|trade| {
+                            let symbol = self
+                                .symbols
+                                .get(&(trade.exchange, trade.symbol.clone()))
+                                .unwrap();
+                            exchange_symbol_map
+                                .entry(symbol.address_pair)
+                                .or_insert(Vec::new())
+                                .push(trade.into());
+                        });
+
+                        (exch, exchange_symbol_map)
+                    })
+                    .collect::<FastHashMap<_, _>>();
+
+                (block_num, CexTradeMap(cex_price_map))
             })
             .collect()
-
-         */
-        vec![]
     }
 }
