@@ -60,7 +60,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .unwrap();
         }
 
-        let tx_roots = self.build_all_tx_trees(traces, &header).await;
+        let tx_roots = self.build_tx_trees(traces, &header).await;
         let mut tree = BlockTree::new(header, tx_roots.len());
 
         // send out all updates
@@ -91,7 +91,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .collect_vec()
     }
 
-    pub(crate) async fn build_all_tx_trees(
+    pub(crate) async fn build_tx_trees(
         &self,
         traces: Vec<TxTrace>,
         header: &Header,
@@ -144,14 +144,33 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     };
 
                     for trace in trace.trace.into_iter() {
+                        let from_addr = trace.get_from_addr();
+                        let node = Node::new(
+                            trace.trace_idx,
+                            from_addr,
+                            trace.trace.trace_address.clone(),
+                        );
+
                         if trace.trace.error.is_none() {
-                            if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
-                                *coinbase +=
-                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action)
-                                        .unwrap_or_default()
-                            } else {
-                                tx_root.gas_details.coinbase_transfer =
-                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                            if let Some(coinbase_transfer) =
+                                get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                            {
+                                if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                                    *coinbase += coinbase_transfer;
+                                } else {
+                                    tx_root.gas_details.coinbase_transfer = Some(coinbase_transfer);
+                                }
+
+                                let classification = Actions::EthTransfer(NormalizedEthTransfer {
+                                    from:              from_addr,
+                                    to:                trace.get_to_address(),
+                                    value:             trace.get_msg_value(),
+                                    trace_index:       trace.trace_idx,
+                                    coinbase_transfer: true,
+                                });
+
+                                tx_root.insert(node, classification);
+                                continue;
                             }
                         }
 
@@ -167,10 +186,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 &mut pool_updates,
                             )
                             .await;
-
-                        let from_addr = trace.get_from_addr();
-
-                        let node = Node::new(trace.trace_idx, from_addr, trace.trace.trace_address);
 
                         tx_root.insert(node, classification);
                     }
@@ -404,6 +419,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 to: trace.get_to_address(),
                 value: trace.get_msg_value(),
                 trace_index,
+                coinbase_transfer: false,
             })
         } else {
             Actions::Unclassified(trace)

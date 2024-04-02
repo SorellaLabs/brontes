@@ -43,7 +43,6 @@
 
 use std::sync::Arc;
 
-use alloy_primitives::hex;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{cex::CexExchange, dex::PriceAt},
@@ -63,8 +62,6 @@ use tracing::debug;
 pub const FILTER_THRESHOLD: u64 = 20;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
-
-pub const JARED: Address = Address::new(hex!("ae2Fc483527B8EF99EB5D9B44875F005ba1FaE13"));
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
     utils:         SharedInspectorUtils<'db, DB>,
@@ -392,12 +389,6 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Option<BundleData> {
         if self.is_triangular_arb(possible_cex_dex, info, metadata) {
-            return None
-        }
-        //TODO: Temporary fix! Fix because dex pricing is shit rn we are misclassifying
-        // a lot of sandwich backruns as cex-dex (as on paper they would be
-        // extremely profitable cex-dex)
-        if info.eoa == JARED {
             return None
         }
 

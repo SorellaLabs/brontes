@@ -1,6 +1,6 @@
 use alloy_primitives::Address;
 
-use crate::{tree::NormalizedAction, FastHashSet, Node, NodeData};
+use crate::{tree::NormalizedAction, Node, NodeData};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TreeSearchArgs {
@@ -19,7 +19,7 @@ pub struct TreeSearchBuilder<V: NormalizedAction> {
     /// gets and'd together
     has_from_address:     Option<Address>,
     /// gets and'd together
-    has_to_address:       Option<FastHashSet<Address>>,
+    has_to_address:       Option<Vec<Address>>,
 }
 impl<V: NormalizedAction> Default for TreeSearchBuilder<V> {
     fn default() -> Self {
@@ -89,7 +89,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
         self
     }
 
-    pub fn with_to_address(mut self, addresses: FastHashSet<Address>) -> Self {
+    pub fn with_to_address(mut self, addresses: Vec<Address>) -> Self {
         self.has_to_address = Some(addresses);
         self
     }

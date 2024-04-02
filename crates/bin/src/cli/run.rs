@@ -40,12 +40,13 @@ pub struct RunArgs {
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
     pub cex_exchanges:        Vec<String>,
-    /// Ensures that dex prices are calcuated for every new block, even if the
+    /// Ensures that dex prices are calculated at every block, even if the
     /// db already contains the price
     #[arg(long, short, default_value = "false")]
     pub force_dex_pricing:    bool,
-    /// Turns off dex pricing making it run on historical or will just
-    /// calculate based on amounts
+    /// Turns off dex pricing entirely, inspectors requiring dex pricing won't
+    /// calculate USD pnl if we don't have dex pricing in the db & will only
+    /// calculate token pnl
     #[arg(long, default_value = "false")]
     pub force_no_dex_pricing: bool,
     /// How many blocks behind chain tip to run.

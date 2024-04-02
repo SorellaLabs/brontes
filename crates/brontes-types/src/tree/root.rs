@@ -321,6 +321,18 @@ impl GasDetails {
         self.coinbase_transfer.unwrap_or_default()
     }
 
+    pub fn merge(&mut self, other: &GasDetails) {
+        self.coinbase_transfer = Some(
+            self.coinbase_transfer.unwrap_or_default()
+                + other.coinbase_transfer.unwrap_or_default(),
+        )
+        .filter(|&res| res != 0);
+
+        self.priority_fee += other.priority_fee;
+        self.gas_used += other.gas_used;
+        self.effective_gas_price += other.effective_gas_price;
+    }
+
     // Pretty print after 'spaces' spaces
     pub fn pretty_print_with_spaces(&self, f: &mut fmt::Formatter, spaces: usize) -> fmt::Result {
         let space_str = " ".repeat(spaces);
