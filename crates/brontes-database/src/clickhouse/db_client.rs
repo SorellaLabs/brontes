@@ -369,7 +369,7 @@ impl ClickhouseHandle for Clickhouse {
 
                 println!("START-END: {:?}", (start_time, end_time));
                 self.client
-                    .query_many(RAW_CEX_QUOTES, &(start_time, end_time))
+                    .query_many(RAW_CEX_QUOTES, &(start_time - 12000, end_time))
                     .await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
