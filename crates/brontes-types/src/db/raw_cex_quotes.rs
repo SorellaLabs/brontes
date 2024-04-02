@@ -72,6 +72,7 @@ impl CexQuotesConverter {
     pub fn convert_to_prices(self) -> Vec<(u64, CexPriceMap)> {
         let mut block_num_map = HashMap::new();
 
+        println!("\nBLOCK TIMES: {:?}\n", self.block_times);
         println!("\nQUOTES: {:?}\n", self.quotes);
 
         self.quotes
