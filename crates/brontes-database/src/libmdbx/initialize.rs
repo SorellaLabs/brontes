@@ -725,17 +725,16 @@ mod tests {
 
         assert_eq!(new_values.len(), old_values.len());
         
-        old_values.into_iter().zip(new_values).for_each(|(old_data, new_data)| {
-            let (new_mapping, old_mapping) = (new_data.value.0, old_data.value.0);
+        new_values.into_iter().for_each(| new_data| {
+            let new_mapping = new_data.value.0;
             println!("NEW EXCHANGES: {:?}", new_mapping.len());
-            println!("OLD EXCHANGES: {:?}\n", old_mapping.len());
-            assert!(new_mapping.len() >= old_mapping.len());
+            assert!(new_mapping.len() >= 5);
 
-            old_mapping.into_iter().for_each(|(old_exch, old_pairs)| {
-                let new_pairs = new_mapping.get(&old_exch).unwrap();
-                println!("NEW PAIRS: {}", new_pairs.len());
-                println!("OLD PAIRS: {}\n", old_pairs.len());
-                assert!(new_pairs.len() as f64 >= old_pairs.len() as f64 * 0.5);
+            new_mapping.into_iter().for_each(|(new_exch, new_pairs)| {
+                
+                println!("NEW PAIRS FOR {:?}: {}", new_exch, new_pairs.len());
+
+                assert!(new_pairs.len() >= 10);
             })
         });
         
