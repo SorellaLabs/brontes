@@ -110,7 +110,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
         node_data
             .get_ref(node.data)
             .map(|node_actions| {
-                node_actions.into_iter().any(|node_action| {
+                node_actions.iter().any(|node_action| {
                     self.with_actions
                         .iter()
                         .map(|ptr| {
@@ -138,7 +138,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
         node.get_all_sub_actions()
             .iter()
             .filter_map(|node| node_data.get_ref(*node))
-            .flat_map(|node| node)
+            .flatten()
             .any(|action| {
                 self.with_actions
                     .iter()
@@ -167,7 +167,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
         node.get_all_sub_actions()
             .iter()
             .filter_map(|node| node_data.get_ref(*node))
-            .flat_map(|node| node)
+            .flatten()
             .for_each(|action| {
                 // for have, its a or with the result
                 have_any |= self

@@ -380,7 +380,7 @@ impl Node {
                 .get_all_sub_actions()
                 .into_iter()
                 .filter_map(|node| data.get_ref(node).cloned())
-                .flat_map(|node| node)
+                .flatten()
                 .collect::<Vec<_>>();
 
             result.push(res);

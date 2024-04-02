@@ -115,8 +115,7 @@ impl From<(&Node, &[Option<Vec<Actions>>])> for TraceNode {
             .iter()
             .enumerate()
             .find(|(i, _)| *i == node.data)
-            .map(|(_, a)| a.as_ref().and_then(|f| f.first()).cloned())
-            .flatten();
+            .and_then(|(_, a)| a.as_ref().and_then(|f| f.first()).cloned());
         Self {
             trace_idx: node.index,
             trace_address: node
