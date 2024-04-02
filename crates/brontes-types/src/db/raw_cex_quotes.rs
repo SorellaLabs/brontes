@@ -48,11 +48,7 @@ impl CexQuotesConverter {
 
         let quotes = quotes
             .into_iter()
-            .filter(|quote| {
-                symbols
-                    .get(&(quote.exchange, quote.symbol.clone()))
-                    .is_some()
-            })
+            .filter(|quote| symbols.contains_key(&(quote.exchange, quote.symbol.clone())))
             .collect();
 
         Self {
@@ -72,10 +68,10 @@ impl CexQuotesConverter {
         self.quotes
             .into_par_iter()
             .filter_map(|q| {
-                self
-                    .block_times
+                self.block_times
                     .par_iter()
-                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp).map(|block_time| (block_time.block_number, q))
+                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
+                    .map(|block_time| (block_time.block_number, q))
             })
             .collect::<Vec<_>>()
             .into_iter()

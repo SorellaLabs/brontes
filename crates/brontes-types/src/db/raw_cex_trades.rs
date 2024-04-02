@@ -40,11 +40,7 @@ impl CexTradesConverter {
 
         let trades = trades
             .into_iter()
-            .filter(|trade| {
-                symbols
-                    .get(&(trade.exchange, trade.symbol.clone()))
-                    .is_some()
-            })
+            .filter(|trade| symbols.contains_key(&(trade.exchange, trade.symbol.clone())))
             .collect();
 
         Self {
@@ -64,10 +60,10 @@ impl CexTradesConverter {
         self.trades
             .into_par_iter()
             .filter_map(|q| {
-                self
-                    .block_times
+                self.block_times
                     .par_iter()
-                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp).map(|block_time| (block_time.block_number, q))
+                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
+                    .map(|block_time| (block_time.block_number, q))
             })
             .collect::<Vec<_>>()
             .into_iter()
