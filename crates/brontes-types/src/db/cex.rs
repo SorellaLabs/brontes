@@ -449,11 +449,13 @@ impl From<&str> for CexExchange {
             "okex" | "Okex" => CexExchange::Okex,
             "coinbase" | "Coinbase" => CexExchange::Coinbase,
             "kraken" | "Kraken" => CexExchange::Kraken,
-            "bybit-spot" | "bybitspot" | "BybitSpot" => CexExchange::BybitSpot,
+            "bybit-spot" | "bybitspot" | "BybitSpot" | "Bybit-Spot" | "Bybit_Spot" => {
+                CexExchange::BybitSpot
+            }
             "kucoin" | "Kucoin" => CexExchange::Kucoin,
             "upbit" | "Upbit" => CexExchange::Upbit,
             "huobi" | "Huobi" => CexExchange::Huobi,
-            "gate-io" | "gateio" | "GateIo" => CexExchange::GateIo,
+            "gate-io" | "gateio" | "GateIo" | "Gate_Io" => CexExchange::GateIo,
             "bitstamp" | "Bitstamp" => CexExchange::Bitstamp,
             "gemini" | "Gemini" => CexExchange::Gemini,
             _ => CexExchange::Unknown,
