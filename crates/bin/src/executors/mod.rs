@@ -97,7 +97,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         end_block: u64,
         progress_bar: Option<ProgressBar>,
-        multi: MultiProgress,
+        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -123,12 +123,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             move |(batch_id, (start_block, end_block))| {
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
-                let multi = multi.clone();
+                let tables_pb = tables_pb.clone();
 
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block, multi, batch_id)
+                    self.init_block_range_tables(start_block, end_block, tables_pb)
                         .await
                         .unwrap();
 
@@ -218,8 +218,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         start_block: u64,
         end_block: u64,
-        multi: MultiProgress,
-        batch_id: usize,
+        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
@@ -236,7 +235,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .collect_vec();
 
         join_all(state_to_init_continuous.iter().map(|range| {
-            let multi = multi.clone();
+            let tables_pb = tables_pb.clone();
             async move {
                 let start = range.start();
                 let end = range.end();
@@ -250,8 +249,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                             &[Tables::BlockInfo, Tables::CexPrice],
                             false,
                             Some((*start, *end)),
-                            multi,
-                            batch_id,
+                            tables_pb.clone(),
                         )
                         .await
                 }
@@ -264,8 +262,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                             &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                             false,
                             Some((*start, *end)),
-                            multi,
-                            batch_id,
+                            tables_pb.clone(),
                         )
                         .await
                 }
@@ -288,8 +285,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.parser.get_tracer(),
                 &[Tables::BlockInfo, Tables::CexPrice],
                 state_to_init_disc,
-                multi.clone(),
-                batch_id,
+                tables_pb.clone(),
             )
             .await?;
         #[cfg(not(feature = "sorella-server"))]
@@ -299,8 +295,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.parser.get_tracer(),
                 &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                 state_to_init_disc,
-                multi.clone(),
-                batch_id,
+                tables_pb.clone(),
             )
             .await?;
 
@@ -327,8 +322,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     ],
                     false,
                     None,
-                    multi,
-                    0,
+                    Arc::new(vec![]),
                 )
                 .await?;
         }
@@ -355,6 +349,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
+
+        let multi = MultiProgress::default();
+        let tables = Arc::new(
+            Tables::ALL
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
 
         let progress_bar = if self.start_block.is_some() && had_end_block {
             let total_blocks = end_block - self.start_block.unwrap();
@@ -384,10 +386,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             None
         };
 
-        let multi = MultiProgress::default();
-
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block, progress_bar.clone(), multi.clone())
+            self.build_range_executors(executor.clone(), end_block, progress_bar.clone(), tables)
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -404,7 +404,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     executor.clone(),
                     end_block,
                     progress_bar.clone(),
-                    multi.clone(),
+                    tables,
                 )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(

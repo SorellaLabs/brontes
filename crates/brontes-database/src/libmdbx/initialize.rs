@@ -14,7 +14,7 @@ use brontes_types::{
     FastHashMap, Protocol,
 };
 use futures::{future::join_all, join, stream::iter, StreamExt};
-use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
+use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use toml::Table as tomlTable;
@@ -53,8 +53,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-        multi_progress_bar: MultiProgress,
-        batch_id: usize,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let critical_table_count = tables
             .iter()
@@ -62,14 +61,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .filter(|f| *f)
             .count();
 
-        let critical_state_progress_bar = Self::build_critical_state_progress_bar(
-            critical_table_count as u64,
-            &multi_progress_bar,
-        );
+        let critical_state_progress_bar =
+            Self::build_critical_state_progress_bar(critical_table_count as u64);
 
         futures::stream::iter(tables.to_vec())
             .map(|table| {
-                let multi = multi_progress_bar.clone();
+                let progress_bar = progress_bar.clone();
                 let critical_state_progress_bar = critical_state_progress_bar.clone();
                 async move {
                     table
@@ -77,9 +74,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             self,
                             block_range,
                             clear_tables,
-                            multi,
                             critical_state_progress_bar,
-                            batch_id,
+                            progress_bar,
                         )
                         .await
                 }
@@ -103,16 +99,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         tables: &[Tables],
         block_range: &'static [u64],
-        progress_bar: MultiProgress,
-        batch_id: usize,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         join_all(tables.iter().map(|table| {
-            table.initialize_table_arbitrary_state(
-                self,
-                block_range,
-                progress_bar.clone(),
-                batch_id,
-            )
+            table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
         }))
         .await
         .into_iter()
@@ -170,8 +160,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_table: bool,
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
-        multi_progress_bar: MultiProgress,
-        batch_id: usize,
+        pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -205,12 +194,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             )
         };
 
-        let pb = Self::build_init_state_progress_bar(
-            T::NAME,
-            batch_id,
-            range_count,
-            &multi_progress_bar,
-        );
+        pb.inc_length(range_count);
 
         let pair_ranges = block_range_chunks
             .into_iter()
@@ -271,7 +255,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     },
                 }
-                pb.finish_with_message(format!("{} Init for batch: {} Complete", T::NAME,batch_id));
 
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(start..=end, flag)?;
@@ -294,8 +277,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: &'static [u64],
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
-        multi_progress_bar: MultiProgress,
-        batch_id: usize,
+        pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -310,12 +292,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + 'static,
     {
         let entries = block_range.len();
-        let pb = Self::build_init_state_progress_bar(
-            T::NAME,
-            batch_id,
-            entries as u64,
-            &multi_progress_bar,
-        );
+        pb.inc_length(entries as u64);
 
         let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
 
@@ -370,8 +347,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     },
                 }
 
-                pb.finish_with_message(format!("{} Init for batch: {} Complete", T::NAME,batch_id));
-
                 if let Some(flag) = mark_init {
                     libmdbx.inited_range(inner_range.iter().copied(), flag)?;
                 }
@@ -388,37 +363,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         Ok(())
     }
 
-    fn build_init_state_progress_bar(
-        name: &'static str,
-        batch_id: usize,
-        total_blocks: u64,
-        multi_progress_bar: &MultiProgress,
-    ) -> ProgressBar {
-        let progress_bar = ProgressBar::with_draw_target(
-            Some(total_blocks),
-            ProgressDrawTarget::stderr_with_hz(5),
-        );
-        progress_bar.set_style(
-            ProgressStyle::with_template(
-                "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len} ({percent}%)",
-            )
-            .unwrap()
-            .progress_chars("█>-")
-            .with_key(
-                "percent",
-                |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                    write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
-                },
-            ),
-        );
-        progress_bar.set_message(format!("{} Batch: {}", name, batch_id));
-        multi_progress_bar.add(progress_bar)
-    }
-
-    fn build_critical_state_progress_bar(
-        table_count: u64,
-        multi_progress_bar: &MultiProgress,
-    ) -> Option<ProgressBar> {
+    fn build_critical_state_progress_bar(table_count: u64) -> Option<ProgressBar> {
         if table_count == 0 {
             return None
         }
@@ -440,7 +385,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         );
         progress_bar.set_message("Critical Tables Init:");
 
-        Some(multi_progress_bar.add(progress_bar))
+        Some(progress_bar)
     }
 
     /// loads up the `classifier_config.toml` and ensures the values are in the
