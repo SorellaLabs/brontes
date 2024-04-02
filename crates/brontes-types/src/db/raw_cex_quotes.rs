@@ -75,6 +75,16 @@ impl CexQuotesConverter {
         println!("\nBLOCK TIMES: {:?}\n", self.block_times);
         println!("\nQUOTES: {:?}\n", self.quotes.len());
 
+        println!(
+            "\nEXCHANGES: {:?}\n",
+            self.quotes
+                .iter()
+                .map(|q| q.exchange)
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect_vec()
+        );
+
         self.quotes
             .into_par_iter()
             .filter_map(|q| {
