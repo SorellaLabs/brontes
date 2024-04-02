@@ -174,7 +174,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info[1].tx_index,
             PriceAt::After,
-            mev_addresses,
+            &mev_addresses,
             &deltas,
             metadata.clone(),
         ) {
