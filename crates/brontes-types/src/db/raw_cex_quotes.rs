@@ -44,6 +44,16 @@ impl CexQuotesConverter {
         symbols: Vec<CexSymbols>,
         quotes: Vec<RawCexQuotes>,
     ) -> Self {
+        println!(
+            "\nEXCHANGES PRE: {:?}\n",
+            quotes
+                .iter()
+                .map(|q| q.exchange)
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect_vec()
+        );
+
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange.clone(), c.symbol_pair.clone()), c))
@@ -76,7 +86,7 @@ impl CexQuotesConverter {
         println!("\nQUOTES: {:?}\n", self.quotes.len());
 
         println!(
-            "\nEXCHANGES: {:?}\n",
+            "\nEXCHANGES POST: {:?}\n",
             self.quotes
                 .iter()
                 .map(|q| q.exchange)
