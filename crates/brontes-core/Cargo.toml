@@ -69,7 +69,7 @@ lazy_static.workspace = true
 auto_impl.workspace = true
 dotenv.workspace = true
 itertools.workspace = true
-
+indicatif.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true
@@ -93,4 +93,3 @@ local-clickhouse = [
   "brontes-database/local-clickhouse",
   "reth-tracing-ext/local-clickhouse",
 ]
-
