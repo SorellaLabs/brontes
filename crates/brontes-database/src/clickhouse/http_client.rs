@@ -257,14 +257,14 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 
     async fn get_cex_prices(
         &self,
-        range_or_arbitrary: CexRangeOrArbitrary,
+        _range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexPriceData>> {
         unimplemented!()
     }
 
     async fn get_cex_trades(
         &self,
-        range_or_arbitrary: CexRangeOrArbitrary,
+        _range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexTradesData>> {
         unimplemented!()
     }
