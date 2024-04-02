@@ -91,9 +91,9 @@ impl Init {
                 .spawn_critical("init", async move {
                     let mut tables = Tables::ALL.to_vec();
                     #[cfg(not(feature = "cex-dex-markout"))]
-                    tables.retain(|t| !matches!(Tables::CexTrades));
+                    tables.retain(|t| !matches!(t, Tables::CexTrades));
                     #[cfg(feature = "cex-dex-markout")]
-                    tables.retain(|t| !matches!(Tables::CexPrice));
+                    tables.retain(|t| !matches!(t, Tables::CexPrice));
 
                     libmdbx
                         .initialize_tables(
