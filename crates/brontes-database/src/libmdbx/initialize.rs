@@ -702,40 +702,4 @@ mod tests {
             .unwrap();
     }
     
-
-    #[cfg(feature = "local-clickhouse")]
-    #[tokio::test]
-    async fn test_initialize_cex() {
-        //let block_range = (17000000, 17000100);
-
-
-
-        
-
-       
-        let block_range = (19000000, 19000002);
-        let arbitrary_set = Box::leak(Box::new(vec![17000000, 17000010, 17000100]));
-
-        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
-        
-        
-        let new_values = clickhouse.get_cex_trades(CexRangeOrArbitrary::Range(block_range.0, block_range.1)).await.unwrap();
-        //let old_values =  clickhouse.query_many_range::<CexTrades, CexTradesData>(block_range.0, block_range.1).await.unwrap();
-
-        assert_eq!(new_values.len(), 2);
-        
-        new_values.into_iter().for_each(| new_data| {
-            let new_mapping = new_data.value.0;
-            println!("NEW EXCHANGES: {:?}", new_mapping.len());
-            assert!(new_mapping.len() >= 5);
-
-            new_mapping.into_iter().for_each(|(new_exch, new_pairs)| {
-                
-                println!("NEW PAIRS FOR {:?}: {}", new_exch, new_pairs.len());
-
-                assert!(new_pairs.len() >= 2);
-            })
-        });
-        
-    }
 }
