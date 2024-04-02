@@ -124,10 +124,7 @@ impl ClassifierTestUtils {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
 
-        let tx_roots = self
-            .classifier
-            .build_all_tx_trees(vec![trace], &header)
-            .await;
+        let tx_roots = self.classifier.build_tx_trees(vec![trace], &header).await;
 
         let mut tree = BlockTree::new(header, tx_roots.len());
 
@@ -150,7 +147,7 @@ impl ClassifierTestUtils {
                 .map(|data| async move {
                     let tx_roots = self
                         .classifier
-                        .build_all_tx_trees(data.traces, &data.header)
+                        .build_tx_trees(data.traces, &data.header)
                         .await;
 
                     let mut tree = BlockTree::new(data.header, tx_roots.len());
