@@ -655,9 +655,9 @@ mod tests {
         CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-        // CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-        //     .await
-        //     .unwrap();
+        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
+            .await
+            .unwrap();
 
         // // Metadata
         // BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
