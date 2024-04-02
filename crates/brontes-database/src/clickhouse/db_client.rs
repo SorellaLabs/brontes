@@ -356,12 +356,12 @@ impl ClickhouseHandle for Clickhouse {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
                     .iter()
-                    .max_by_key(|b| b.timestamp)
+                    .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap();
                 let end_time = block_times
                     .iter()
-                    .min_by_key(|b| b.timestamp)
+                    .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap();
 
@@ -426,12 +426,12 @@ impl ClickhouseHandle for Clickhouse {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
                     .iter()
-                    .max_by_key(|b| b.timestamp)
+                    .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap();
                 let end_time = block_times
                     .iter()
-                    .min_by_key(|b| b.timestamp)
+                    .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap();
 
