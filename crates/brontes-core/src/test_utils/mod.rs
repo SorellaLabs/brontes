@@ -14,6 +14,7 @@ use brontes_types::{
     FastHashMap,
 };
 use futures::future::join_all;
+use indicatif::MultiProgress;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
@@ -103,6 +104,8 @@ impl TraceLoader {
         tracing::info!(%block, "fetching missing trces");
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        let bar = MultiProgress::default();
+
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -110,6 +113,7 @@ impl TraceLoader {
                 &[Tables::TxTraces],
                 false,
                 Some((block - 2, block + 2)),
+                bar,
             )
             .await?;
 
@@ -120,6 +124,7 @@ impl TraceLoader {
         tracing::info!(%block, "fetching missing metadata");
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        let bar = MultiProgress::default();
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -127,6 +132,7 @@ impl TraceLoader {
                 &[Tables::BlockInfo, Tables::CexPrice],
                 false,
                 Some((block - 2, block + 2)),
+                bar,
             )
             .await?;
 
@@ -342,6 +348,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
                 }),
             ));
+            let bar = MultiProgress::default();
 
             let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
@@ -358,6 +365,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     ],
                     false,
                     None,
+                    bar,
                 )
                 .await
                 .unwrap();
