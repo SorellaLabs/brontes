@@ -51,6 +51,13 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 (
                     k,
                     v.into_iter()
+                        .flat_map(|a| {
+                            if let Some(e) = a.get_eth_transfer() {
+                                vec![Actions::EthTransfer(e), a]
+                            } else {
+                                vec![a]
+                            }
+                        })
                         .flatten_specified(
                             Actions::try_flash_loan_ref,
                             |actions: NormalizedFlashLoan| {
@@ -58,7 +65,6 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                                     .child_actions
                                     .into_iter()
                                     .chain(actions.repayments.into_iter().map(Actions::from))
-                                    .filter(|f| f.is_swap() || f.is_transfer())
                                     .collect::<Vec<_>>()
                             },
                         )
