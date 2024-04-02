@@ -6,57 +6,15 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Actions,
     tree::BlockTree,
-    FastHashMap, ToScaledRational, TreeSearchBuilder,
+    FastHashMap, GasDetails, ToScaledRational, TreeSearchBuilder,
 };
 use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use tracing::log::debug;
 
-pub struct BlockPreprocessing {
-    cumulative_gas_used:     u128,
-    cumulative_priority_fee: u128,
-    total_bribe:             u128,
-    builder_address:         Address,
-}
-
-/// Pre-processes the block data for the Composer.
-///
-/// This function extracts the builder address from the block tree header,
-/// calculates the cumulative gas used and paid by iterating over the
-/// transaction roots in the block tree, and packages these results into a
-/// `BlockPreprocessing` struct.
-pub(crate) fn pre_process(tree: Arc<BlockTree<Actions>>) -> BlockPreprocessing {
-    let builder_address = tree.header.beneficiary;
-
-    let (cumulative_gas_used, cumulative_priority_fee, total_bribe) = tree.tx_roots.iter().fold(
-        (0u128, 0u128, 0u128),
-        |(cumulative_gas_used, cumulative_priority_fee, total_bribe), root| {
-            let gas_details = &root.gas_details;
-
-            let gas_used = gas_details.gas_used;
-            let priority_fee = gas_details.priority_fee;
-            let bribe = gas_details.coinbase_transfer();
-
-            (
-                cumulative_gas_used + gas_used,
-                cumulative_priority_fee + priority_fee * gas_used,
-                total_bribe + bribe,
-            )
-        },
-    );
-
-    BlockPreprocessing {
-        cumulative_gas_used,
-        cumulative_priority_fee,
-        total_bribe,
-        builder_address,
-    }
-}
-
 pub(crate) fn build_mev_header(
     metadata: &Arc<Metadata>,
     tree: Arc<BlockTree<Actions>>,
-    pre_processing: &BlockPreprocessing,
     possible_mev: PossibleMevCollection,
     mev_count: MevCount,
     orchestra_data: &[Bundle],
@@ -73,13 +31,10 @@ pub(crate) fn build_mev_header(
                 (total_fee_paid + fee_paid, total_profit_usd + profit_usd)
             });
 
-    let (builder_eth_profit, builder_mev_profit_usd) = calculate_builder_profit(
-        tree,
-        metadata,
-        pre_processing.cumulative_priority_fee,
-        pre_processing.total_bribe,
-        orchestra_data,
-    );
+    let pre_processing = pre_process(tree.clone());
+
+    let (builder_eth_profit, builder_mev_profit_usd) =
+        calculate_builder_profit(tree, metadata, orchestra_data, &pre_processing);
 
     let builder_eth_profit = builder_eth_profit.to_scaled_rational(18);
 
@@ -199,7 +154,6 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
     }
 }
 
-//TODO: Change bundle header to store: revenue, gas & profit
 /// Calculate builder profit
 ///
 /// Accounts for ultrasound relay bid adjustments & vertically integrated
@@ -207,12 +161,12 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 pub fn calculate_builder_profit(
     tree: Arc<BlockTree<Actions>>,
     metadata: &Arc<Metadata>,
-    cumulative_priority_fee: u128,
-    total_bribe: u128,
     bundles: &[Bundle],
+    pre_processing: &BlockPreprocessing,
 ) -> (i128, f64) {
     let builder_address = tree.header.beneficiary;
-    let builder_payments: i128 = (cumulative_priority_fee + total_bribe) as i128;
+    let builder_payments: i128 =
+        (pre_processing.cumulative_priority_fee + pre_processing.total_bribe) as i128;
 
     if metadata.proposer_fee_recipient.is_none() | metadata.proposer_mev_reward.is_none() {
         debug!("Isn't an mev-boost block");
@@ -229,11 +183,20 @@ pub fn calculate_builder_profit(
         .flat_map(|(_, v)| v)
         .map(|action| match action {
             Actions::EthTransfer(transfer) => {
-                // So we don't double count when deducting proposer mev reward below
                 if Some(transfer.to) == metadata.proposer_fee_recipient {
                     0
+                } else if let Some(gas_details) =
+                    pre_processing.gas_details_by_address.get(&transfer.to)
+                {
+                    let total_paid = gas_details.priority_fee
+                        + gas_details.coinbase_transfer.unwrap_or_default();
+                    if total_paid > transfer.value.to::<u128>() {
+                        transfer.value.to()
+                    } else {
+                        0
+                    }
                 } else {
-                    transfer.value.to()
+                    0
                 }
             }
             _ => 0,
@@ -307,4 +270,56 @@ pub fn calculate_builder_profit(
         builder_payments - builder_sponsorship_amount - payment_from_collateral_addr,
         mev_searching_profit,
     )
+}
+
+pub struct BlockPreprocessing {
+    cumulative_gas_used:     u128,
+    cumulative_priority_fee: u128,
+    total_bribe:             u128,
+    builder_address:         Address,
+    gas_details_by_address:  FastHashMap<Address, GasDetails>,
+}
+
+/// Pre-processes the block data for the Builder PNL calculation
+pub(crate) fn pre_process(tree: Arc<BlockTree<Actions>>) -> BlockPreprocessing {
+    let builder_address = tree.header.beneficiary;
+
+    let (gas_details_by_address, cumulative_gas_used, cumulative_priority_fee, total_bribe) =
+        tree.tx_roots.iter().fold(
+            (FastHashMap::default(), 0u128, 0u128, 0u128),
+            |(
+                mut gas_details_by_address,
+                cumulative_gas_used,
+                cumulative_priority_fee,
+                total_bribe,
+            ),
+             root| {
+                let address = root.get_from_address();
+                let gas_details_item = &root.gas_details;
+
+                gas_details_by_address
+                    .entry(address)
+                    .and_modify(|existing: &mut GasDetails| existing.merge(gas_details_item))
+                    .or_insert_with(|| *gas_details_item);
+
+                let gas_used = gas_details_item.gas_used;
+                let priority_fee = gas_details_item.priority_fee;
+                let coinbase_transfer = gas_details_item.coinbase_transfer.unwrap_or(0);
+
+                (
+                    gas_details_by_address,
+                    cumulative_gas_used + gas_used,
+                    cumulative_priority_fee + priority_fee * gas_used,
+                    total_bribe + coinbase_transfer,
+                )
+            },
+        );
+
+    BlockPreprocessing {
+        cumulative_gas_used,
+        cumulative_priority_fee,
+        total_bribe,
+        builder_address,
+        gas_details_by_address,
+    }
 }
