@@ -252,6 +252,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                             false,
                             Some((*start, *end)),
                             multi,
+                            batch_id,
                         )
                         .await
                 }
@@ -265,6 +266,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                             false,
                             Some((*start, *end)),
                             multi,
+                            batch_id,
                         )
                         .await
                 }
@@ -288,6 +290,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 &[Tables::BlockInfo, Tables::CexPrice],
                 state_to_init_disc,
                 multi.clone(),
+                batch_id,
             )
             .await?;
         #[cfg(not(feature = "sorella-server"))]
@@ -298,6 +301,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
                 state_to_init_disc,
                 multi.clone(),
+                batch_id,
             )
             .await?;
 
@@ -325,6 +329,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     false,
                     None,
                     multi,
+                    0
                 )
                 .await?;
         }
