@@ -110,7 +110,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .collect::<FastHashSet<_>>();
 
-        if info.tx_index == 6 {
+        if info.tx_index == 14 {
             tracing::info!("{:#?} {:#?} {:#?}", transfers, eth_transfers, swaps);
         }
 
