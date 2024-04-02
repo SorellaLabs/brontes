@@ -352,7 +352,8 @@ impl ClickhouseHandle for Clickhouse {
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
 
-        println!("BLOCKTIMES: {:?}", block_times);
+        println!("BLOCK RANGES: {:?}", range_or_arbitrary);
+        println!("BLOCK TIMES: {:?}", block_times);
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
