@@ -431,13 +431,13 @@ impl ClickhouseHandle for Clickhouse {
             data,
             self.cex_download_config.time_window,
         );
-        let prices = price_converter
+        let prices: Vec<CexPriceData> = price_converter
             .convert_to_prices()
             .into_iter()
             .map(|(block_num, price_map)| CexPriceData::new(block_num, price_map))
             .collect();
 
-        println!("NUM PRICES: {}", prices.len());
+        println!("NUM PRICES: {}", price_converter.len());
 
         Ok(prices)
     }
@@ -533,7 +533,7 @@ impl ClickhouseHandle for Clickhouse {
             data,
             self.cex_download_config.time_window,
         );
-        let trades = trades_converter
+        let trades: Vec<crate::CexTradesData> = trades_converter
             .convert_to_trades()
             .into_iter()
             .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
