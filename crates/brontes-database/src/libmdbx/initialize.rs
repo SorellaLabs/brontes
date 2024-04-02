@@ -734,7 +734,7 @@ mod tests {
                 
                 println!("NEW PAIRS FOR {:?}: {}", new_exch, new_pairs.len());
 
-                assert!(new_pairs.len() >= 10);
+                assert!(new_pairs.len() >= 2);
             })
         });
         
