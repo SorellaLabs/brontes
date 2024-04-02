@@ -57,7 +57,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                                 actions
                                     .child_actions
                                     .into_iter()
-                                    .filter(|f| f.is_swap() || f.is_transfer())
+                                    .chain(actions.repayments.into_iter().map(Actions::from))
                                     .collect::<Vec<_>>()
                             },
                         )
