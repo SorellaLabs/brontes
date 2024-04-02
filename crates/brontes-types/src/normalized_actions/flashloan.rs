@@ -62,17 +62,12 @@ impl NormalizedFlashLoan {
                     nodes_to_prune.push(index);
                 }
                 Actions::Transfer(t) => {
-                    // self.child_actions.push(action);
-                    // nodes_to_prune.push(index);
-
                     // get the a_token reserve address that will be the receiver of the flashloan
                     // repayment for this token
                     if let Some(i) = self.assets.iter().position(|x| *x == t.token) {
                         if t.to == self.receiver_contract && t.amount == self.amounts[i] {
                             a_token_addresses.push(t.token.address);
                         }
-                        self.child_actions.push(action);
-                        nodes_to_prune.push(index);
                     }
                     // if the receiver contract is sending the token to the AToken address then this
                     // is the flashloan repayment
@@ -80,6 +75,7 @@ impl NormalizedFlashLoan {
                     {
                         repay_transfers.push(t.clone());
                         nodes_to_prune.push(index);
+                        continue
                     // replayment back to the flash-loan pool
                     } else if t.from == self.receiver_contract && self.pool == t.to {
                         if let Some(i) = self.assets.iter().position(|x| *x == t.token) {
@@ -89,12 +85,9 @@ impl NormalizedFlashLoan {
                                 continue
                             }
                         }
-                        self.child_actions.push(action);
-                        nodes_to_prune.push(index);
-                    } else {
-                        self.child_actions.push(action);
-                        nodes_to_prune.push(index);
                     }
+                    self.child_actions.push(action);
+                    nodes_to_prune.push(index);
                 }
                 _ => continue,
             }
