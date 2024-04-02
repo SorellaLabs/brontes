@@ -88,8 +88,7 @@ default = [
   "brontes-database/default",
   "brontes-classifier/default",
   "brontes-inspect/default",
-  "pretty-print",
-  "sorella-server"
+  "pretty-print"
 ]
 
 sorella-server = ["local-reth", "local-clickhouse"]
