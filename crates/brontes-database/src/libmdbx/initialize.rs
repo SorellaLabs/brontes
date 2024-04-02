@@ -664,9 +664,9 @@ mod tests {
         initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
     };
     use brontes_types::init_threadpools;
+    use indicatif::MultiProgress;
     use itertools::Itertools;
     use tokio::sync::mpsc::unbounded_channel;
-    use indicatif::MultiProgress;
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
