@@ -420,7 +420,12 @@ impl ClickhouseHandle for Clickhouse {
             }
         };
 
-        let price_converter = CexQuotesConverter::new(block_times, symbols, data);
+        let price_converter = CexQuotesConverter::new(
+            block_times,
+            symbols,
+            data,
+            self.cex_download_config.time_window,
+        );
         let prices = price_converter
             .convert_to_prices()
             .into_iter()
@@ -510,7 +515,12 @@ impl ClickhouseHandle for Clickhouse {
             }
         };
 
-        let trades_converter = CexTradesConverter::new(block_times, symbols, data);
+        let trades_converter = CexTradesConverter::new(
+            block_times,
+            symbols,
+            data,
+            self.cex_download_config.time_window,
+        );
         let trades = trades_converter
             .convert_to_trades()
             .into_iter()
