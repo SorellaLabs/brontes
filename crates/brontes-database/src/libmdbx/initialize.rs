@@ -19,7 +19,6 @@ use brontes_types::{
 };
 use futures::{future::join_all, join, stream::iter, StreamExt};
 use itertools::Itertools;
-
 use serde::{Deserialize, Serialize};
 use toml::Table as tomlTable;
 use tracing::{error, info};
@@ -27,8 +26,9 @@ use tracing::{error, info};
 use super::{cex_utils::CexTableFlag, tables::Tables};
 use crate::{
     clickhouse::ClickhouseHandle,
-    libmdbx::{cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
-
+    libmdbx::{
+        cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter,
+    },
 };
 const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";
 const SEARCHER_CONFIG_FILE: &str = "config/searcher_config.toml";
@@ -613,12 +613,6 @@ mod tests {
     use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
 
-    use brontes_database::CexPrice;
-
-
-
-
-
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
         //let block_range = (17000000, 17000100);
@@ -635,7 +629,6 @@ mod tests {
         let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
         let tables = Tables::ALL;
-
 
         intializer
             .initialize(&tables, false, Some(block_range))
@@ -664,8 +657,8 @@ mod tests {
         // CexTrades::test_initialized_data(clickhouse, libmdbx, Some(block_range))
         //     .await
         //     .unwrap();
-        // CexTrades::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-        //     .await
+        // CexTrades::test_initialized_arbitrary_data(clickhouse, libmdbx,
+        // arbitrary_set)     .await
         //     .unwrap();
 
         // Metadata
@@ -700,5 +693,4 @@ mod tests {
             .await
             .unwrap();
     }
-    
 }
