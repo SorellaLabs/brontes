@@ -704,15 +704,12 @@ pub mod address_pair {
 
 pub mod cex_exchange {
 
-    use std::str::FromStr;
-
-    use alloy_primitives::Address;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
     };
 
-    use crate::{db::cex::CexExchange, pair::Pair};
+    use crate::db::cex::CexExchange;
 
     pub fn serialize<S: Serializer>(u: &CexExchange, serializer: S) -> Result<S::Ok, S::Error> {
         let st = u.to_string();

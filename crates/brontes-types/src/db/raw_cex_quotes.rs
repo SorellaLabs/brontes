@@ -41,9 +41,13 @@ pub struct CexQuotesConverter {
 impl CexQuotesConverter {
     pub fn new(
         block_times: Vec<BlockTimes>,
-        symbols: Vec<CexSymbols>,
+        mut symbols: Vec<CexSymbols>,
         quotes: Vec<RawCexQuotes>,
     ) -> Self {
+        symbols.iter_mut().for_each(|s| {
+            s.address_pair.ordered();
+        });
+
         println!(
             "\nEXCHANGES PRE: {:?}\n",
             quotes

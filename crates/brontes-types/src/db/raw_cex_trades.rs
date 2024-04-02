@@ -141,8 +141,15 @@ impl CexTradesConverter {
                                 .symbols
                                 .get(&(trade.exchange, trade.symbol.clone()))
                                 .unwrap();
+
+                            let pair = if &trade.side == "buy" {
+                                symbol.address_pair
+                            } else {
+                                symbol.address_pair.flip()
+                            };
+
                             exchange_symbol_map
-                                .entry(symbol.address_pair)
+                                .entry(pair)
                                 .or_insert(Vec::new())
                                 .push(trade.into());
                         });
