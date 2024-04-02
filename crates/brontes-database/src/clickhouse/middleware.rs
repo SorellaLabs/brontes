@@ -19,10 +19,10 @@ use brontes_types::{
     structured_trace::TxTrace,
     BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
-use indicatif::MultiProgress;
+use indicatif::ProgressBar;
 
 use super::Clickhouse;
-use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit};
+use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit, Tables};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
     #[allow(dead_code)] // on tests feature
@@ -168,14 +168,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables(
-                clickhouse,
-                tracer,
-                tables,
-                clear_tables,
-                block_range,
-                progress_bar,
-            )
+            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
             .await
     }
 
@@ -191,13 +184,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(
-                clickhouse,
-                tracer,
-                tables,
-                block_range,
-                progress_bar,
-            )
+            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
             .await
     }
 
@@ -445,14 +432,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables(
-                clickhouse,
-                tracer,
-                tables,
-                clear_tables,
-                block_range,
-                progress_bar,
-            )
+            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
             .await
     }
 
@@ -468,13 +448,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(
-                clickhouse,
-                tracer,
-                tables,
-                block_range,
-                progress_bar,
-            )
+            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
             .await
     }
 
