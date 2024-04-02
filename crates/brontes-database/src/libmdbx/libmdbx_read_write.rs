@@ -889,7 +889,7 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
         let res = tx
             .get::<CexPrice>(block_num)?
-            .ok_or_else(|| eyre!("Failed to fetch cexquotes's for block {}", block_num))
+            .ok_or_else(|| eyre!("Failed to fetch cex quotes's for block {}", block_num))
             .map(|e| e.0);
 
         if res.is_err() {

@@ -261,6 +261,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         Ok(res)
     }
 
+    #[cfg(not(feature = "cex-dex-markout"))]
     async fn get_cex_prices(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
@@ -269,6 +270,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         unimplemented!()
     }
 
+    #[cfg(feature = "cex-dex-markout")]
     async fn get_cex_trades(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,

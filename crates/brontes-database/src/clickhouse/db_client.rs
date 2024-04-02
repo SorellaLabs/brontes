@@ -1,14 +1,15 @@
-use std::{cmp::max, fmt::Debug};
+#[cfg(not(feature = "cex-dex-markout"))]
+use std::cmp::max;
+use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
+#[cfg(not(feature = "cex-dex-markout"))]
+use brontes_types::db::raw_cex_quotes::{CexQuotesConverter, RawCexQuotes};
+#[cfg(feature = "cex-dex-markout")]
+use brontes_types::db::raw_cex_trades::{CexTradesConverter, RawCexTrades};
 #[cfg(feature = "local-clickhouse")]
-use brontes_types::db::{
-    block_times::BlockTimes,
-    cex_symbols::CexSymbols,
-    raw_cex_quotes::{CexQuotesConverter, RawCexQuotes},
-    raw_cex_trades::{CexTradesConverter, RawCexTrades},
-};
+use brontes_types::db::{block_times::BlockTimes, cex_symbols::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
@@ -31,18 +32,20 @@ use db_interfaces::{
 use futures::future::join_all;
 use serde::Deserialize;
 
+#[cfg(not(feature = "cex-dex-markout"))]
+use super::RAW_CEX_QUOTES;
+#[cfg(feature = "cex-dex-markout")]
+use super::RAW_CEX_TRADES;
 use super::{cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle};
 #[cfg(feature = "local-clickhouse")]
-use super::{BLOCK_TIMES, CEX_SYMBOLS, RAW_CEX_QUOTES, RAW_CEX_TRADES};
+use super::{BLOCK_TIMES, CEX_SYMBOLS};
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
+#[cfg(not(feature = "cex-dex-markout"))]
+use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
     clickhouse::const_sql::BLOCK_INFO,
-    libmdbx::{
-        determine_eth_prices,
-        tables::{BlockInfoData, CexPriceData},
-        types::LibmdbxData,
-    },
+    libmdbx::{tables::BlockInfoData, types::LibmdbxData},
     CompressedTable,
 };
 
@@ -337,6 +340,7 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
+    #[cfg(not(feature = "cex-dex-markout"))]
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -379,14 +383,14 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - self.cex_download_config.price_window.0 * 1000;
+                    - self.cex_download_config.time_window.0 * 1000;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    + self.cex_download_config.price_window.1 * 1000;
+                    + self.cex_download_config.time_window.1 * 1000;
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -426,6 +430,7 @@ impl ClickhouseHandle for Clickhouse {
         Ok(prices)
     }
 
+    #[cfg(feature = "cex-dex-markout")]
     async fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -468,14 +473,14 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - self.cex_download_config.trades_window.0;
+                    - self.cex_download_config.time_window.0;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    + self.cex_download_config.trades_window.1;
+                    + self.cex_download_config.time_window.1;
 
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
