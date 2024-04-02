@@ -50,7 +50,7 @@ impl ClickhouseHttpClient {
                 text.split("key: ").collect_vec()[1].to_string()
             }
         };
-        Self { url, api_key, client, cex_download_config }
+        Self { url, api_key, client, _cex_download_config: cex_download_config }
     }
 
     fn process_dex_quotes(val: DexPriceData) -> DexQuotes {
@@ -265,7 +265,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
     async fn get_cex_prices(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
-        _cex_config: &CexDownloadConfig,
     ) -> eyre::Result<Vec<crate::CexPriceData>> {
         unimplemented!()
     }
@@ -274,7 +273,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
     async fn get_cex_trades(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
-        _cex_config: &CexDownloadConfig,
     ) -> eyre::Result<Vec<crate::CexTradesData>> {
         unimplemented!()
     }

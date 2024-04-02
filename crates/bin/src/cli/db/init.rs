@@ -3,6 +3,8 @@ use std::{env, path::Path, sync::Arc};
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxInit, Tables};
 use brontes_types::{db::cex::CexExchange, init_threadpools};
 use clap::Parser;
+use indicatif::MultiProgress;
+use itertools::Itertools;
 
 use crate::{
     cli::{get_env_vars, get_tracing_provider, load_clickhouse, load_database, static_object},
@@ -98,6 +100,15 @@ impl Init {
                     #[cfg(feature = "cex-dex-markout")]
                     tables.retain(|t| !matches!(t, Tables::CexPrice));
 
+                    let multi = MultiProgress::default();
+                    let tables_with_progress = Arc::new(
+                        tables
+                            .clone()
+                            .into_iter()
+                            .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                            .collect_vec(),
+                    );
+
                     libmdbx
                         .initialize_tables(
                             clickhouse,
@@ -114,6 +125,7 @@ impl Init {
                                 .as_slice(),
                             false,
                             range,
+                            tables_with_progress,
                         )
                         .await
                         .unwrap();

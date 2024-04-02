@@ -7,7 +7,6 @@ mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
 mod tip;
-
 use std::{
     marker::PhantomData,
     pin::Pin,
@@ -23,6 +22,7 @@ use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use brontes_types::{BrontesTaskExecutor, FastHashMap};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
+use indicatif::MultiProgress;
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::shutdown::GracefulShutdown;
@@ -94,6 +94,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         end_block: u64,
         progress_bar: Option<ProgressBar>,
+        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -119,11 +120,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             move |(batch_id, (start_block, end_block))| {
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
+                let tables_pb = tables_pb.clone();
 
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block)
+                    self.init_block_range_tables(start_block, end_block, tables_pb.clone())
                         .await
                         .unwrap();
 
@@ -209,7 +211,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
 
-    async fn init_block_range_tables(&self, start_block: u64, end_block: u64) -> eyre::Result<()> {
+    async fn init_block_range_tables(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
+    ) -> eyre::Result<()> {
         tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
         let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
@@ -236,20 +243,24 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         tables_to_init.push(Tables::CexTrades);
 
         let tables_to_init_cont = &tables_to_init.clone();
-        join_all(state_to_init_continuous.iter().map(|range| async move {
-            let start = range.start();
-            let end = range.end();
+        join_all(state_to_init_continuous.iter().map(|range| {
+            let tables_pb = tables_pb.clone();
+            async move {
+                let start = range.start();
+                let end = range.end();
 
-            {
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        tables_to_init_cont,
-                        false,
-                        Some((*start, *end)),
-                    )
-                    .await
+                {
+                    self.libmdbx
+                        .initialize_tables(
+                            self.clickhouse,
+                            self.parser.get_tracer(),
+                            tables_to_init_cont,
+                            false,
+                            Some((*start, *end)),
+                            tables_pb.clone(),
+                        )
+                        .await
+                }
             }
         }))
         .await
@@ -273,6 +284,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.parser.get_tracer(),
                 &tables_to_init,
                 state_to_init_disc,
+                tables_pb.clone(),
             )
             .await?;
 
@@ -297,6 +309,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     ],
                     false,
                     None,
+                    Arc::new(vec![]),
                 )
                 .await?;
         }
@@ -352,8 +365,47 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             None
         };
 
+        let mut tables = Tables::ALL.to_vec();
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables.retain(|t| !matches!(t, Tables::CexTrades));
+        #[cfg(feature = "cex-dex-markout")]
+        tables.retain(|t| !matches!(t, Tables::CexPrice));
+
+        let multi = MultiProgress::default();
+        let tables_with_progress = Arc::new(
+            tables
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
+
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
+            self.build_range_executors(
+                executor.clone(),
+                end_block,
+                progress_bar.clone(),
+                tables_with_progress,
+            )
+            .for_each(|block_range| {
+                futures.push(
+                    executor.spawn_critical_with_graceful_shutdown_signal(
+                        "Range Executor",
+                        |shutdown| async move {
+                            block_range.run_until_graceful_shutdown(shutdown).await
+                        },
+                    ),
+                );
+                std::future::ready(())
+            })
+            .await;
+        } else {
+            if self.start_block.is_some() {
+                self.build_range_executors(
+                    executor.clone(),
+                    end_block,
+                    progress_bar.clone(),
+                    tables_with_progress,
+                )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -364,19 +416,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     std::future::ready(())
                 })
                 .await;
-        } else {
-            if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
-                    .for_each(|block_range| {
-                        futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
-                            "Range Executor",
-                            |shutdown| async move {
-                                block_range.run_until_graceful_shutdown(shutdown).await
-                            },
-                        ));
-                        std::future::ready(())
-                    })
-                    .await;
             }
 
             let tip_inspector =

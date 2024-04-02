@@ -14,6 +14,8 @@ use brontes_types::{
     FastHashMap,
 };
 use futures::future::join_all;
+use indicatif::MultiProgress;
+use itertools::Itertools;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};
@@ -103,6 +105,14 @@ impl TraceLoader {
         tracing::info!(%block, "fetching missing trces");
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        let multi = MultiProgress::default();
+        let tables = Arc::new(
+            Tables::ALL
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
+
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -110,6 +120,7 @@ impl TraceLoader {
                 &[Tables::TxTraces],
                 false,
                 Some((block - 2, block + 2)),
+                tables,
             )
             .await?;
 
@@ -120,6 +131,13 @@ impl TraceLoader {
         tracing::info!(%block, "fetching missing metadata");
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        let multi = MultiProgress::default();
+        let tables = Arc::new(
+            Tables::ALL
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -127,6 +145,7 @@ impl TraceLoader {
                 &[Tables::BlockInfo, Tables::CexPrice],
                 false,
                 Some((block - 2, block + 2)),
+                tables,
             )
             .await?;
 
@@ -342,6 +361,13 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
                 }),
             ));
+            let multi = MultiProgress::default();
+            let tables = Arc::new(
+                Tables::ALL
+                    .into_iter()
+                    .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                    .collect_vec(),
+            );
 
             let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
@@ -358,6 +384,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     ],
                     false,
                     None,
+                    tables,
                 )
                 .await
                 .unwrap();
@@ -442,5 +469,5 @@ pub async fn load_clickhouse() -> Clickhouse {
 pub async fn load_clickhouse() -> ClickhouseHttpClient {
     let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
-    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await
+    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key, Default::default()).await
 }
