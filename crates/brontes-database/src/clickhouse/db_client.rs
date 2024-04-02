@@ -395,6 +395,7 @@ impl ClickhouseHandle for Clickhouse {
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
                 println!("PRICES RANGE: {query}");
+                println!("TIME RANGE: {start_time} - {end_time}");
 
                 self.client
                     .query_many(query, &(start_time, end_time))
@@ -437,7 +438,7 @@ impl ClickhouseHandle for Clickhouse {
             .map(|(block_num, price_map)| CexPriceData::new(block_num, price_map))
             .collect();
 
-        println!("NUM PRICES: {}", price_converter.len());
+        println!("NUM PRICES: {}", prices.len());
 
         Ok(prices)
     }
@@ -497,6 +498,7 @@ impl ClickhouseHandle for Clickhouse {
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
                 println!("TRADES RANGE: {query}");
+                println!("TIME RANGE: {start_time} - {end_time}");
 
                 self.client
                     .query_many(query, &(start_time, end_time))
