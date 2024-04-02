@@ -62,9 +62,8 @@ impl NormalizedFlashLoan {
                     nodes_to_prune.push(index);
                 }
                 Actions::Transfer(t) => {
-                    self.child_actions.push(action);
-                    nodes_to_prune.push(index);
-                    continue;
+                    // self.child_actions.push(action);
+                    // nodes_to_prune.push(index);
 
                     // get the a_token reserve address that will be the receiver of the flashloan
                     // repayment for this token
@@ -85,8 +84,8 @@ impl NormalizedFlashLoan {
                             if t.amount >= self.amounts[i] {
                                 repay_transfers.push(t.clone());
                                 nodes_to_prune.push(index);
+                                continue
                             }
-                            continue
                         }
                         self.child_actions.push(action);
                         nodes_to_prune.push(index);
