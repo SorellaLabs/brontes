@@ -691,6 +691,7 @@ mod tests {
         //     .await
         //     .unwrap();
     }
+    
 
     #[cfg(feature = "local-clickhouse")]
     #[tokio::test]
