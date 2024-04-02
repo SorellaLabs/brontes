@@ -613,12 +613,11 @@ mod tests {
     use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
 
-    use brontes_database::libmdbx::cex_utils::CexRangeOrArbitrary;
     use brontes_database::CexPrice;
 
 
 
-    use brontes_database::clickhouse::ClickhouseHandle;
+
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
