@@ -56,6 +56,7 @@ impl NormalizedFlashLoan {
                 | Actions::Liquidation(_)
                 | Actions::Batch(_)
                 | Actions::Burn(_)
+                | Actions::EthTransfer(_)
                 | Actions::Mint(_) => {
                     self.child_actions.push(action);
                     nodes_to_prune.push(index);
@@ -74,18 +75,19 @@ impl NormalizedFlashLoan {
                     {
                         repay_transfers.push(t.clone());
                         nodes_to_prune.push(index);
+                        continue
                     // replayment back to the flash-loan pool
                     } else if t.from == self.receiver_contract && self.pool == t.to {
                         if let Some(i) = self.assets.iter().position(|x| *x == t.token) {
                             if t.amount >= self.amounts[i] {
-                                self.child_actions.push(action);
+                                repay_transfers.push(t.clone());
                                 nodes_to_prune.push(index);
+                                continue
                             }
                         }
-                    } else {
-                        self.child_actions.push(action);
-                        nodes_to_prune.push(index);
                     }
+                    self.child_actions.push(action);
+                    nodes_to_prune.push(index);
                 }
                 _ => continue,
             }
