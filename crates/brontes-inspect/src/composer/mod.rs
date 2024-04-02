@@ -44,8 +44,7 @@ use brontes_types::{
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use utils::{
-    build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, pre_process,
-    sort_mev_by_type, BlockPreprocessing,
+    build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, sort_mev_by_type,
 };
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
@@ -65,14 +64,13 @@ pub fn compose_mev_results(
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
-    let pre_processing = pre_process(tree.clone());
     let (possible_mev_txes, classified_mev) =
         run_inspectors(orchestra, tree.clone(), metadata.clone());
 
     let possible_arbs = possible_mev_txes.clone();
 
     let (block_details, mev_details) =
-        on_orchestra_resolution(pre_processing, tree, possible_mev_txes, metadata, classified_mev);
+        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev);
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
@@ -115,7 +113,6 @@ fn run_inspectors(
 }
 
 fn on_orchestra_resolution(
-    pre_processing: BlockPreprocessing,
     tree: Arc<BlockTree<Actions>>,
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
@@ -137,14 +134,7 @@ fn on_orchestra_resolution(
 
     let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
 
-    let header = build_mev_header(
-        &metadata,
-        tree,
-        &pre_processing,
-        possible_mev_txes,
-        mev_count,
-        &filtered_bundles,
-    );
+    let header = build_mev_header(&metadata, tree, possible_mev_txes, mev_count, &filtered_bundles);
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
