@@ -666,6 +666,7 @@ mod tests {
     use brontes_types::init_threadpools;
     use itertools::Itertools;
     use tokio::sync::mpsc::unbounded_channel;
+    use indicatif::MultiProgress;
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
@@ -684,6 +685,7 @@ mod tests {
 
         let tables = Tables::ALL;
 
+        let multi = MultiProgress::default();
         let tables_cnt = Arc::new(
             Tables::ALL
                 .into_iter()
