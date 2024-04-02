@@ -1,5 +1,6 @@
 mod processors;
 mod range;
+use futures::Stream;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
 mod shared;
@@ -91,13 +92,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
     }
 
-    #[allow(clippy::async_yields_async)]
-    async fn build_range_executors(
-        &self,
+    fn build_range_executors<'a>(
+        &'a self,
         executor: BrontesTaskExecutor,
         end_block: u64,
         progress_bar: Option<ProgressBar>,
-    ) -> Vec<RangeExecutorWithPricing<T, DB, CH, P>> {
+    ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + 'a {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block.unwrap();
@@ -106,50 +106,50 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let cpus = std::cmp::min(cpus_min, self.max_tasks);
         let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
-        join_all(
-            (self.start_block.unwrap()..=end_block)
-                .chunks(chunk_size.try_into().unwrap())
-                .into_iter()
-                .enumerate()
-                .map(|(batch_id, mut chunk)| {
-                    let executor = executor.clone();
-                    let start_block = chunk.next().unwrap();
-                    let end_block = chunk.last().unwrap_or(start_block);
+        let start_block = self.start_block.unwrap();
 
-                    let prgrs_bar = progress_bar.clone();
+        let chunks = (start_block..=end_block)
+            .chunks(chunk_size.try_into().unwrap())
+            .into_iter()
+            .map(|mut c| {
+                let start = c.next().unwrap();
+                let end_block = c.last().unwrap_or(start_block);
+                (start, end_block)
+            })
+            .collect_vec();
 
-                    async move {
-                        tracing::info!(batch_id, start_block, end_block, "Starting batch");
+        futures::stream::iter(chunks.into_iter().enumerate().map(
+            move |(batch_id, (start_block, end_block))| {
+                let executor = executor.clone();
+                let prgrs_bar = progress_bar.clone();
 
-                        RangeExecutorWithPricing::new(
-                            start_block,
-                            end_block,
-                            self.init_state_collector(
-                                executor.clone(),
-                                start_block,
-                                end_block,
-                                false,
-                            )
-                            .await,
-                            self.libmdbx,
-                            self.inspectors,
-                            prgrs_bar,
-                        )
-                    }
-                }),
-        )
-        .await
+                async move {
+                    tracing::info!(batch_id, start_block, end_block, "Starting batch");
+                    self.init_block_range_tables(start_block, end_block)
+                        .await
+                        .unwrap();
+
+                    RangeExecutorWithPricing::new(
+                        start_block,
+                        end_block,
+                        self.init_state_collector(executor.clone(), start_block, end_block, false),
+                        self.libmdbx,
+                        self.inspectors,
+                        prgrs_bar,
+                    )
+                }
+            },
+        ))
+        .buffer_unordered(15)
     }
 
-    async fn build_tip_inspector(
+    fn build_tip_inspector(
         &self,
         executor: BrontesTaskExecutor,
         start_block: u64,
         back_from_tip: u64,
     ) -> TipInspector<T, DB, CH, P> {
-        let state_collector = self
-            .init_state_collector(executor, start_block, start_block, true)
-            .await;
+        let state_collector = self.init_state_collector(executor, start_block, start_block, true);
         TipInspector::new(
             start_block,
             back_from_tip,
@@ -160,7 +160,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         )
     }
 
-    async fn init_state_collector(
+    fn init_state_collector(
         &self,
         executor: BrontesTaskExecutor,
         start_block: u64,
@@ -210,7 +210,91 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
     }
 
-    async fn verify_database_fetch_missing(&self, end_block: u64) -> eyre::Result<()> {
+    async fn init_block_range_tables(&self, start_block: u64, end_block: u64) -> eyre::Result<()> {
+        tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
+        let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
+
+        if state_to_init.is_empty() {
+            return Ok(())
+        }
+
+        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
+
+        let state_to_init_continuous = state_to_init
+            .clone()
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() >= 1000)
+            .collect_vec();
+
+        tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
+
+        join_all(state_to_init_continuous.iter().map(|range| async move {
+            let start = range.start();
+            let end = range.end();
+
+            #[cfg(feature = "sorella-server")]
+            {
+                self.libmdbx
+                    .initialize_tables(
+                        self.clickhouse,
+                        self.parser.get_tracer(),
+                        &[Tables::BlockInfo, Tables::CexPrice],
+                        false,
+                        Some((*start, *end)),
+                    )
+                    .await
+            }
+            #[cfg(not(feature = "sorella-server"))]
+            {
+                self.libmdbx
+                    .initialize_tables(
+                        self.clickhouse,
+                        self.parser.get_tracer(),
+                        &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                        false,
+                        Some((*start, *end)),
+                    )
+                    .await
+            }
+        }))
+        .await
+        .into_iter()
+        .collect::<eyre::Result<_>>()?;
+
+        tracing::info!(
+            "Downloading {} missing discontinuous ranges",
+            state_to_init.len() - state_to_init_continuous.len()
+        );
+
+        let state_to_init_disc = state_to_init
+            .into_iter()
+            .filter(|range| range.clone().collect_vec().len() < 1000)
+            .flatten()
+            .collect_vec();
+
+        #[cfg(feature = "sorella-server")]
+        self.libmdbx
+            .initialize_tables_arbitrary(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice],
+                state_to_init_disc,
+            )
+            .await?;
+        #[cfg(not(feature = "sorella-server"))]
+        self.libmdbx
+            .initialize_tables_arbitrary(
+                self.clickhouse,
+                self.parser.get_tracer(),
+                &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                state_to_init_disc,
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    async fn verify_database_fetch_missing(&self) -> eyre::Result<()> {
         // these tables are super lightweight and as such, we init them for the entire
         // range
         if self.libmdbx.init_full_range_tables(self.clickhouse).await {
@@ -232,91 +316,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .await?;
         }
 
-        if let Some(start_block) = self.start_block {
-            tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
-            let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
-
-            if state_to_init.is_empty() {
-                return Ok(())
-            }
-
-            tracing::info!("Downloading missing {:#?} ranges", state_to_init);
-
-            let state_to_init_continuous = state_to_init
-                .clone()
-                .into_iter()
-                .filter(|range| range.clone().collect_vec().len() >= 1000)
-                .collect_vec();
-
-            tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
-
-            join_all(state_to_init_continuous.iter().map(|range| async move {
-                let start = range.start();
-                let end = range.end();
-
-                #[cfg(feature = "sorella-server")]
-                {
-                    self.libmdbx
-                        .initialize_tables(
-                            self.clickhouse,
-                            self.parser.get_tracer(),
-                            &[Tables::BlockInfo, Tables::CexPrice],
-                            false,
-                            Some((*start, *end)),
-                        )
-                        .await
-                }
-                #[cfg(not(feature = "sorella-server"))]
-                {
-                    self.libmdbx
-                        .initialize_tables(
-                            self.clickhouse,
-                            self.parser.get_tracer(),
-                            &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
-                            false,
-                            Some((*start, *end)),
-                        )
-                        .await
-                }
-            }))
-            .await
-            .into_iter()
-            .collect::<eyre::Result<_>>()?;
-
-            tracing::info!(
-                "Downloading {} missing discontinuous ranges",
-                state_to_init.len() - state_to_init_continuous.len()
-            );
-
-            let state_to_init_disc = state_to_init
-                .into_iter()
-                .filter(|range| range.clone().collect_vec().len() < 1000)
-                .flatten()
-                .collect_vec();
-
-            #[cfg(feature = "sorella-server")]
-            self.libmdbx
-                .initialize_tables_arbitrary(
-                    self.clickhouse,
-                    self.parser.get_tracer(),
-                    &[Tables::BlockInfo, Tables::CexPrice],
-                    state_to_init_disc,
-                )
-                .await?;
-            #[cfg(not(feature = "sorella-server"))]
-            self.libmdbx
-                .initialize_tables_arbitrary(
-                    self.clickhouse,
-                    self.parser.get_tracer(),
-                    &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
-                    state_to_init_disc,
-                )
-                .await?;
-
-            Ok(())
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     async fn get_end_block(&self) -> (bool, u64) {
@@ -369,8 +369,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         if had_end_block && self.start_block.is_some() {
             self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
-                .await
-                .into_iter()
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -378,12 +376,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                             block_range.run_until_graceful_shutdown(shutdown).await
                         },
                     ));
-                });
+                    std::future::ready(())
+                })
+                .await;
         } else {
             if self.start_block.is_some() {
                 self.build_range_executors(executor.clone(), end_block, progress_bar.clone())
-                    .await
-                    .into_iter()
                     .for_each(|block_range| {
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                             "Range Executor",
@@ -391,11 +389,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                                 block_range.run_until_graceful_shutdown(shutdown).await
                             },
                         ));
-                    });
+                        std::future::ready(())
+                    })
+                    .await;
             }
-            let tip_inspector = self
-                .build_tip_inspector(executor.clone(), end_block, self.back_from_tip)
-                .await;
+
+            let tip_inspector =
+                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip);
 
             futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                 "Tip Inspector",
@@ -413,7 +413,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
-        self.verify_database_fetch_missing(end_block).await?;
+        self.verify_database_fetch_missing().await?;
         let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
 
         pin_mut!(build_future, shutdown);
