@@ -3,6 +3,7 @@ use std::{env, path::Path, sync::Arc};
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_types::init_threadpools;
 use clap::Parser;
+use indicatif::MultiProgress;
 
 use crate::{
     cli::{get_env_vars, get_tracing_provider, load_clickhouse, load_database, static_object},
@@ -60,6 +61,7 @@ impl Init {
 
             task_executor
                 .spawn_critical("init", async move {
+                    let bar = MultiProgress::default();
                     libmdbx
                         .initialize_tables(
                             clickhouse,
@@ -76,6 +78,7 @@ impl Init {
                                 .as_slice(),
                             false,
                             range,
+                            bar,
                         )
                         .await
                         .unwrap();

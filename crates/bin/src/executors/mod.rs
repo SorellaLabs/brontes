@@ -124,11 +124,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             move |(batch_id, (start_block, end_block))| {
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
+                let multi = multi.clone();
 
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block, multi.clone())
+                    self.init_block_range_tables(start_block, end_block, multi)
                         .await
                         .unwrap();
 
@@ -234,35 +235,38 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .filter(|range| range.clone().collect_vec().len() >= 1000)
             .collect_vec();
 
-        join_all(state_to_init_continuous.iter().map(|range| async move {
-            let start = range.start();
-            let end = range.end();
+        join_all(state_to_init_continuous.iter().map(|range| {
+            let multi = multi.clone();
+            async move {
+                let start = range.start();
+                let end = range.end();
 
-            #[cfg(feature = "sorella-server")]
-            {
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice],
-                        false,
-                        Some((*start, *end)),
-                        multi.clone(),
-                    )
-                    .await
-            }
-            #[cfg(not(feature = "sorella-server"))]
-            {
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
-                        false,
-                        Some((*start, *end)),
-                        multi.clone(),
-                    )
-                    .await
+                #[cfg(feature = "sorella-server")]
+                {
+                    self.libmdbx
+                        .initialize_tables(
+                            self.clickhouse,
+                            self.parser.get_tracer(),
+                            &[Tables::BlockInfo, Tables::CexPrice],
+                            false,
+                            Some((*start, *end)),
+                            multi,
+                        )
+                        .await
+                }
+                #[cfg(not(feature = "sorella-server"))]
+                {
+                    self.libmdbx
+                        .initialize_tables(
+                            self.clickhouse,
+                            self.parser.get_tracer(),
+                            &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                            false,
+                            Some((*start, *end)),
+                            multi,
+                        )
+                        .await
+                }
             }
         }))
         .await
@@ -305,23 +309,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         if self.libmdbx.init_full_range_tables(self.clickhouse).await {
             tracing::info!("Initializing critical range state");
             let multi = MultiProgress::default();
-
-            // let progress_bar =
-            //     ProgressBar::with_draw_target(Some(5),
-            // ProgressDrawTarget::stderr_with_hz(10)); progress_bar.set_style(
-            //     ProgressStyle::with_template(
-            //         "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len}
-            // ({percent}%)",     )?
-            //     .progress_chars("█>-")
-            //     .with_key(
-            //         "percent",
-            //         |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-            //             write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
-            //         },
-            //     ),
-            // );
-            // progress_bar.set_message("Critical Tables Init:");
-            // multi.add(pb)
 
             self.libmdbx
                 .initialize_tables(
