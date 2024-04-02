@@ -131,7 +131,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     ) -> (Vec<SubGraphEdge>, Option<Pair>) {
         #[cfg(not(feature = "tests"))]
         if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
-            return edges
+            return (edges, None)
         }
 
         let possible_exts = trying_extensions_quote
