@@ -18,6 +18,8 @@ pub struct TreeSearchBuilder<V: NormalizedAction> {
     child_nodes_contains: Vec<fn(&V) -> bool>,
     /// gets and'd together
     has_from_address:     Option<Address>,
+    /// gets and'd together
+    has_to_address:       Option<Vec<Address>>,
 }
 impl<V: NormalizedAction> Default for TreeSearchBuilder<V> {
     fn default() -> Self {
@@ -32,6 +34,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             child_node_have:      vec![],
             child_nodes_contains: vec![],
             has_from_address:     None,
+            has_to_address:       None,
         }
     }
 
@@ -58,7 +61,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             tracing::error!(
                 "child nodes contains already set, only one of contains, or have is allowed"
             );
-            return self;
+            return self
         }
 
         self.child_node_have = action_fns.to_vec();
@@ -72,7 +75,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             tracing::error!(
                 "child nodes contains already set, only one of contains, or have is allowed"
             );
-            return self;
+            return self
         }
         self.child_nodes_contains = action_fns.to_vec();
         self
@@ -83,6 +86,11 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
     /// be collected.
     pub fn with_from_address(mut self, address: Address) -> Self {
         self.has_from_address = Some(address);
+        self
+    }
+
+    pub fn with_to_address(mut self, addresses: Vec<Address>) -> Self {
+        self.has_to_address = Some(addresses);
         self
     }
 
@@ -110,6 +118,13 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                                 .has_from_address
                                 .map(|addr| node_action.get_action().get_from_address() == addr)
                                 .unwrap_or(true)
+                            && self
+                                .has_to_address
+                                .as_ref()
+                                .map(|addrs| {
+                                    addrs.contains(&node_action.get_action().get_to_address())
+                                })
+                                .unwrap_or(true)
                     })
                     .reduce(|a, b| a | b)
                     .unwrap_or(false)
@@ -129,6 +144,11 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                             && self
                                 .has_from_address
                                 .map(|addr| action.get_action().get_from_address() == addr)
+                                .unwrap_or(true)
+                            && self
+                                .has_to_address
+                                .as_ref()
+                                .map(|addrs| addrs.contains(&action.get_action().get_to_address()))
                                 .unwrap_or(true)
                     })
                     .reduce(|a, b| a | b)
@@ -154,6 +174,11 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                             && self
                                 .has_from_address
                                 .map(|addr| action.get_action().get_from_address() == addr)
+                                .unwrap_or(true)
+                            && self
+                                .has_to_address
+                                .as_ref()
+                                .map(|addrs| addrs.contains(&action.get_action().get_to_address()))
                                 .unwrap_or(true)
                     })
                     .reduce(|a, b| a | b)

@@ -92,12 +92,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
     }
 
-    fn build_range_executors<'a>(
-        &'a self,
+    fn build_range_executors(
+        &'_ self,
         executor: BrontesTaskExecutor,
         end_block: u64,
         progress_bar: Option<ProgressBar>,
-    ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + 'a {
+    ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
         let range = end_block - self.start_block.unwrap();
@@ -123,12 +123,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
 
+                #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
                     self.init_block_range_tables(start_block, end_block)
                         .await
                         .unwrap();
 
+                    #[allow(clippy::async_yields_async)]
                     RangeExecutorWithPricing::new(
                         start_block,
                         end_block,
