@@ -405,7 +405,12 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(12000, 0))
+                    .map(|b| {
+                        b.convert_to_timestamp_query(
+                            self.cex_download_config.time_window.0 * 1000,
+                            self.cex_download_config.time_window.1 * 1000,
+                        )
+                    })
                     .collect::<Vec<_>>()
                     .join(" OR ");
 
@@ -478,14 +483,14 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - self.cex_download_config.time_window.0;
+                    - self.cex_download_config.time_window.0 * 1000;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    + self.cex_download_config.time_window.1;
+                    + self.cex_download_config.time_window.1 * 1000;
 
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
@@ -500,7 +505,12 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(6000, 6000))
+                    .map(|b| {
+                        b.convert_to_timestamp_query(
+                            self.cex_download_config.time_window.0 * 1000,
+                            self.cex_download_config.time_window.1 * 1000,
+                        )
+                    })
                     .collect::<Vec<_>>()
                     .join(" OR ");
 
