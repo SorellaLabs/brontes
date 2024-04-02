@@ -523,12 +523,12 @@ mod tests {
         let case0 = JoinedSearcherInfo {
             address:         Default::default(),
             fund:            Default::default(),
-            mev:             todo!(),
+            mev:             Default::default(),
             builder:         Some(Default::default()),
             eoa_or_contract: SearcherEoaContract::Contract,
-            config_labels:   todo!(),
-            pnl:             todo!(),
-            gas_bids:        todo!(),
+            config_labels:   Default::default(),
+            pnl:             Default::default(),
+            gas_bids:        Default::default(),
         };
 
         db.insert_one::<ClickhouseSearcherInfo>(&case0)
