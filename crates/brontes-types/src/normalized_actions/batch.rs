@@ -7,7 +7,9 @@ use tracing::error;
 
 use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap};
-use crate::{db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Protocol};
+use crate::{
+    constants::ETH_ADDRESS, db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Protocol,
+};
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBatch {
@@ -32,11 +34,11 @@ impl NormalizedBatch {
                             user_swap.trace_index = *trace_index;
                             user_swap.token_in = t.token.clone();
                             user_swap.amount_in = t.amount.clone();
-                            break;
+                            break
                         } else if t.from == self.solver && t.to == user_swap.from {
                             user_swap.token_out = t.token.clone();
                             user_swap.amount_out = t.amount.clone();
-                            break;
+                            break
                         }
                     }
                 }
@@ -46,11 +48,11 @@ impl NormalizedBatch {
                             user_swap.trace_index = *trace_index;
                             user_swap.token_in = TokenInfoWithAddress::native_eth();
                             user_swap.amount_in = et.clone().value.to_scaled_rational(18);
-                            break;
+                            break
                         } else if et.from == self.settlement_contract && et.to == user_swap.from {
                             user_swap.token_out = TokenInfoWithAddress::native_eth();
                             user_swap.amount_out = et.clone().value.to_scaled_rational(18);
-                            break;
+                            break
                         }
                     }
                 }
@@ -58,11 +60,11 @@ impl NormalizedBatch {
                     if let Some(swaps) = &mut self.solver_swaps {
                         swaps.push(s.clone());
                         nodes_to_prune.push(*trace_index);
-                        break;
+                        break
                     } else {
                         self.solver_swaps = Some(vec![s.clone()]);
                         nodes_to_prune.push(*trace_index);
-                        break;
+                        break
                     }
                 }
                 _ => {
@@ -88,6 +90,13 @@ impl TokenAccounting for NormalizedBatch {
             swaps
                 .iter()
                 .for_each(|swap| swap.apply_token_deltas(delta_map));
+        }
+
+        if !self.msg_value.is_zero() {
+            let am = self.msg_value.to_scaled_rational(18);
+
+            apply_delta(self.solver, ETH_ADDRESS, -am.clone(), delta_map);
+            apply_delta(self.settlement_contract, ETH_ADDRESS, am, delta_map);
         }
     }
 }
