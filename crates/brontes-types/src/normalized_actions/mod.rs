@@ -327,47 +327,6 @@ impl Actions {
         }
     }
 
-    pub fn get_eth_transfer(&self) -> Option<NormalizedEthTransfer> {
-        match self {
-            Actions::Swap(s) => {
-                if s.msg_value.is_zero() {
-                    return None
-                }
-
-                Some(NormalizedEthTransfer {
-                    to: s.pool,
-                    from: s.from,
-                    value: s.msg_value,
-                    ..Default::default()
-                })
-            }
-            Actions::Batch(b) => {
-                if b.msg_value.is_zero() {
-                    return None
-                }
-
-                Some(NormalizedEthTransfer {
-                    to: b.settlement_contract,
-                    from: b.solver,
-                    value: b.msg_value,
-                    ..Default::default()
-                })
-            }
-            Actions::SwapWithFee(s) => {
-                if s.msg_value.is_zero() {
-                    return None
-                }
-
-                Some(NormalizedEthTransfer {
-                    to: s.pool,
-                    from: s.from,
-                    value: s.msg_value,
-                    ..Default::default()
-                })
-            }
-            _ => None
-        }
-    }
 
     pub const fn is_swap(&self) -> bool {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
