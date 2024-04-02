@@ -32,7 +32,6 @@ pub use middleware::*;
 use serde::Deserialize;
 
 use crate::{
-    clickhouse::cex_config::CexDownloadConfig,
     libmdbx::{cex_utils::CexRangeOrArbitrary, types::LibmdbxData},
     CompressedTable,
 };

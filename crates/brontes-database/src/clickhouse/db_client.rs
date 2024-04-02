@@ -243,12 +243,12 @@ impl ClickhouseHandle for Clickhouse {
             .await?
             .value;
 
-        let cex_quotes_for_block = self
-            .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
-            .await?;
-
         #[cfg(not(feature = "cex-dex-markout"))]
         {
+            let cex_quotes_for_block = self
+                .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+                .await?;
+
             let cex_quotes = cex_quotes_for_block.first().unwrap().clone();
 
             let eth_prices = determine_eth_prices(&cex_quotes.value);

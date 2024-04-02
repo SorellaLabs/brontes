@@ -20,7 +20,7 @@ use brontes_types::{
     BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
 
-use super::{cex_config::CexDownloadConfig, Clickhouse};
+use super::Clickhouse;
 use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
