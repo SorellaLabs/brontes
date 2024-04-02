@@ -7,7 +7,7 @@ pub fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, data| {
             // calcuate the
-            let Some(swap_data) = data.get_ref(node.data) else {
+            let Some(swap_data) = data.get_ref(node.data).and_then(|node| node.first()) else {
                 return vec![];
             };
             let swap_data = swap_data.force_swap_ref();
@@ -36,7 +36,9 @@ pub fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
         TreeSearchBuilder::default().with_action(Actions::is_transfer),
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, node_data| {
-            let Some(Actions::Mint(mint_data)) = node_data.get_ref(node.data) else {
+            let Some(Actions::Mint(mint_data)) =
+                node_data.get_ref(node.data).and_then(|node| node.first())
+            else {
                 unreachable!("value not mint")
             };
             other_nodes
@@ -63,7 +65,9 @@ pub fn remove_burn_transfers(tree: &mut BlockTree<Actions>) {
         TreeSearchBuilder::default().with_action(Actions::is_transfer),
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, node_data| {
-            let Some(Actions::Burn(burn_data)) = node_data.get_ref(node.data) else {
+            let Some(Actions::Burn(burn_data)) =
+                node_data.get_ref(node.data).and_then(|node| node.first())
+            else {
                 unreachable!("value not burn")
             };
             other_nodes
@@ -90,7 +94,9 @@ pub fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
         TreeSearchBuilder::default().with_action(Actions::is_transfer),
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, node_info| {
-            let Some(Actions::Collect(collect_data)) = node_info.get_ref(node.data) else {
+            let Some(Actions::Collect(collect_data)) =
+                node_info.get_ref(node.data).and_then(|node| node.first())
+            else {
                 unreachable!("value not collect")
             };
             other_nodes
