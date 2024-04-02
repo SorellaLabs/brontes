@@ -438,7 +438,18 @@ impl ClickhouseHandle for Clickhouse {
             .map(|(block_num, price_map)| CexPriceData::new(block_num, price_map))
             .collect();
 
-        println!("NUM PRICES: {}", prices.len());
+        println!(
+            "NUM PRICES: {}",
+            prices
+                .iter()
+                .map(|v| v
+                    .value
+                    .0
+                    .iter()
+                    .map(|(_, inner)| inner.len())
+                    .sum::<usize>())
+                .sum::<usize>()
+        );
 
         Ok(prices)
     }
@@ -541,7 +552,18 @@ impl ClickhouseHandle for Clickhouse {
             .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
             .collect();
 
-        println!("NUM TRADES: {}", trades.len());
+        println!(
+            "NUM TRADES: {}",
+            trades
+                .iter()
+                .map(|v| v
+                    .value
+                    .0
+                    .iter()
+                    .map(|(_, inner)| inner.len())
+                    .sum::<usize>())
+                .sum::<usize>()
+        );
 
         Ok(trades)
     }
