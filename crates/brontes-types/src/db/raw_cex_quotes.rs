@@ -81,7 +81,7 @@ impl CexQuotesConverter {
                 if let Some(block_time) = self
                     .block_times
                     .par_iter()
-                    .find_any(|b| b.start_timestamp >= q.timestamp && b.end_timestamp < q.timestamp)
+                    .find_any(|b| q.timestamp >= b.start_timestamp && timestamp < b.end_timestamp)
                 {
                     Some((block_time.block_number, q))
                 } else {
