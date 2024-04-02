@@ -226,7 +226,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     },
                 }
-                
                 let num = {
                     let mut n = num_chunks.lock().unwrap();
                     *n -= 1;
