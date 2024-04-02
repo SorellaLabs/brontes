@@ -173,6 +173,7 @@ bytes = "1.5"
 arrow = "51.0.0"
 polars = { version = "0.38.3", features = ["lazy"]}
 parquet = {version = "51.0.0", features = ["async"] }
+indicatif = "0.17.8"
 
 
 [profile.dev]

@@ -19,9 +19,10 @@ use brontes_types::{
     structured_trace::TxTrace,
     BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
+use indicatif::ProgressBar;
 
 use super::Clickhouse;
-use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit};
+use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit, Tables};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
     #[allow(dead_code)] // on tests feature
@@ -164,9 +165,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         tables: &[crate::Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
+            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
             .await
     }
 
@@ -179,9 +181,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         tracer: std::sync::Arc<T>,
         tables: &[crate::Tables],
         block_range: Vec<u64>,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range)
+            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
             .await
     }
 
@@ -426,9 +429,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         tables: &[crate::Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
+            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
             .await
     }
 
@@ -441,9 +445,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         tracer: std::sync::Arc<T>,
         tables: &[crate::Tables],
         block_range: Vec<u64>,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range)
+            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
             .await
     }
 
