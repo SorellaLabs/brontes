@@ -97,7 +97,7 @@ impl CexQuotesConverter {
                     .push(quote)
             });
 
-        println!("\nBLOCK MAP: {:?}\n", block_num_map);
+        // println!("\nBLOCK MAP: {:?}\n", block_num_map);
 
         block_num_map
             .into_par_iter()
