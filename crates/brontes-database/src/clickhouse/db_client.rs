@@ -562,7 +562,7 @@ mod tests {
     //     assert_eq!(queried, case0);
     // }
 
-    async fn builder_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn builder_stats(_db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         todo!();
         /*
         let case0 = BuilderStatsWithAddress::default();
