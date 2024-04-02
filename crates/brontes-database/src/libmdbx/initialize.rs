@@ -713,7 +713,8 @@ mod tests {
         
         old_values.into_iter().zip(new_values).for_each(|(old_data, new_data)| {
             let (new_mapping, old_mapping) = (new_data.value.0, old_data.value.0);
-            println!("NEW - OLD: {} - {}", new_mapping.len(), old_mapping.len());
+            println!("NEW: {:?}", new_mapping.clone().keys());
+            println!("OLD: {:?}", old_mapping.clone().keys());
             assert!(new_mapping.len() >= old_mapping.len());
 
             old_mapping.into_iter().for_each(|(old_exch, old_pairs)| {
