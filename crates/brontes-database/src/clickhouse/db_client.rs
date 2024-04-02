@@ -31,7 +31,7 @@ use db_interfaces::{
 use futures::future::join_all;
 use serde::Deserialize;
 
-use super::{dbms::*, ClickhouseHandle};
+use super::{cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle};
 #[cfg(feature = "local-clickhouse")]
 use super::{BLOCK_TIMES, CEX_SYMBOLS, RAW_CEX_QUOTES, RAW_CEX_TRADES};
 #[cfg(feature = "local-clickhouse")]
@@ -48,13 +48,14 @@ use crate::{
 
 #[derive(Default)]
 pub struct Clickhouse {
-    client: ClickhouseClient<BrontesClickhouseTables>,
+    client:              ClickhouseClient<BrontesClickhouseTables>,
+    cex_download_config: CexDownloadConfig,
 }
 
 impl Clickhouse {
-    pub fn new(config: ClickhouseConfig) -> Self {
+    pub fn new(config: ClickhouseConfig, cex_download_config: CexDownloadConfig) -> Self {
         let client = ClickhouseClient::new(config);
-        Self { client }
+        Self { client, cex_download_config }
     }
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {

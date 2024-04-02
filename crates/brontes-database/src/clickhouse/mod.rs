@@ -16,6 +16,8 @@ pub use http_client::*;
 mod middleware;
 use std::fmt::Debug;
 
+pub mod cex_config;
+
 use ::clickhouse::DbRow;
 use brontes_types::db::metadata::Metadata;
 #[cfg(feature = "local-clickhouse")]
@@ -30,6 +32,7 @@ pub use middleware::*;
 use serde::Deserialize;
 
 use crate::{
+    clickhouse::cex_config::CexDownloadConfig,
     libmdbx::{cex_utils::CexRangeOrArbitrary, types::LibmdbxData},
     CompressedTable,
 };

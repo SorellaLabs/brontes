@@ -25,7 +25,7 @@ use tracing::{error, info};
 
 use super::{cex_utils::CexTableFlag, tables::Tables};
 use crate::{
-    clickhouse::ClickhouseHandle,
+    clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
     libmdbx::{
         cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter,
     },
@@ -82,6 +82,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         tables: &[Tables],
         block_range: &'static [u64],
+      
     ) -> eyre::Result<()> {
         join_all(
             tables
@@ -136,6 +137,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_table: bool,
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
+
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -182,6 +184,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let num_chunks = num_chunks.clone();
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
+            
 
             async move {
 
@@ -254,6 +257,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: &'static [u64],
         mark_init: Option<u8>,
         cex_table_flag: CexTableFlag,
+
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -621,6 +625,8 @@ mod tests {
     };
     use brontes_types::init_threadpools;
     use tokio::sync::mpsc::unbounded_channel;
+
+    use crate::clickhouse::cex_config::CexDownloadConfig;
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {

@@ -53,7 +53,7 @@ use crate::clickhouse::{
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::CompressedTable;
 use crate::{
-    clickhouse::ClickhouseHandle,
+    clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
 };
 

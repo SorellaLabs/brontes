@@ -1,9 +1,10 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
+use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{constants::USDT_ADDRESS_STRING, init_threadpools};
+use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -19,39 +20,60 @@ use crate::{
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:          Option<u64>,
+    pub start_block:                   Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:            Option<u64>,
+    pub end_block:                     Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks:            Option<u64>,
+    pub max_tasks:                     Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size:       u64,
+    pub min_batch_size:                u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset:          String,
+    pub quote_asset:                   String,
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors:           Option<Vec<Inspectors>>,
+    pub inspectors:                    Option<Vec<Inspectors>>,
+    /// The sliding time window (BEFORE) for cex prices relative to the block
+    /// timestamp
+    #[arg(long = "price-tw-before", default_value = "12")]
+    pub cex_price_time_window_before:  u64,
+    /// The sliding time window (AFTER) for cex prices relative to the block
+    /// timestamp
+    #[arg(long = "price-tw-after", default_value = "0")]
+    pub cex_price_time_window_after:   u64,
+    /// The sliding time window (BEFORE) for cex trades relative to the block
+    /// timestamp
+    #[arg(long = "trades-tw-before", default_value = "6")]
+    pub cex_trades_time_window_before: u64,
+    /// The sliding time window (AFTER) for cex trades relative to the block
+    /// timestamp
+    #[arg(long = "trades-tw-after", default_value = "6")]
+    pub cex_trades_time_window_after:  u64,
     /// Centralized exchanges to consider for cex-dex inspector
-    #[arg(long, short, default_values = &["Binance", "Coinbase", "Okex", "BybitSpot", "Kucoin"], value_delimiter = ',')]
-    pub cex_exchanges:        Vec<String>,
+    #[arg(
+        long,
+        short,
+        default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
+        value_delimiter = ','
+    )]
+    pub cex_exchanges:                 Vec<CexExchange>,
     /// Ensures that dex prices are calculated at every block, even if the
     /// db already contains the price
     #[arg(long, short, default_value = "false")]
-    pub force_dex_pricing:    bool,
+    pub force_dex_pricing:             bool,
     /// Turns off dex pricing entirely, inspectors requiring dex pricing won't
     /// calculate USD pnl if we don't have dex pricing in the db & will only
     /// calculate token pnl
     #[arg(long, default_value = "false")]
-    pub force_no_dex_pricing: bool,
+    pub force_no_dex_pricing:          bool,
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "3")]
-    pub behind_tip:           u64,
+    pub behind_tip:                    u64,
 }
 
 impl RunArgs {
@@ -76,7 +98,13 @@ impl RunArgs {
         tracing::info!(target: "brontes", "starting database initialization");
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
         tracing::info!(target: "brontes", "Initialize Libmdbx");
-        let clickhouse = static_object(load_clickhouse().await?);
+
+        let cex_download_config = CexDownloadConfig::new(
+            (self.cex_price_time_window_before, self.cex_price_time_window_after),
+            (self.cex_trades_time_window_before, self.cex_trades_time_window_after),
+            self.cex_exchanges.clone(),
+        );
+        let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
         let only_cex_dex = self

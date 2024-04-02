@@ -7,7 +7,7 @@ use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
 use brontes_database::clickhouse::ClickhouseHttpClient;
 pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
-use brontes_database::{libmdbx::LibmdbxInit, Tables};
+use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::metadata::Metadata, init_threadpools, structured_trace::TxTrace, traits::TracingProvider,

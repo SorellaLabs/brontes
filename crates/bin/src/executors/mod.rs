@@ -4,7 +4,10 @@ use futures::Stream;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
 mod shared;
-use brontes_database::{clickhouse::ClickhouseHandle, Tables};
+use brontes_database::{
+    clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
+    Tables,
+};
 use futures::pin_mut;
 mod tip;
 
@@ -21,7 +24,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap};
+use brontes_types::{db::cex::CexExchange, BrontesTaskExecutor, FastHashMap};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
@@ -39,20 +42,19 @@ pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
-    pub start_block:          Option<u64>,
-    pub end_block:            Option<u64>,
-    pub back_from_tip:        u64,
-    pub max_tasks:            u64,
-    pub min_batch_size:       u64,
-    pub quote_asset:          Address,
-    pub force_dex_pricing:    bool,
+    pub start_block: Option<u64>,
+    pub end_block: Option<u64>,
+    pub back_from_tip: u64,
+    pub max_tasks: u64,
+    pub min_batch_size: u64,
+    pub quote_asset: Address,
+    pub force_dex_pricing: bool,
     pub force_no_dex_pricing: bool,
-
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
-    pub parser:     &'static Parser<'static, T, DB>,
-    pub libmdbx:    &'static DB,
-    _p:             PhantomData<P>,
+    pub parser: &'static Parser<'static, T, DB>,
+    pub libmdbx: &'static DB,
+    _p: PhantomData<P>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
@@ -68,10 +70,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         quote_asset: Address,
         force_dex_pricing: bool,
         force_no_dex_pricing: bool,
-
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
-
         parser: &'static Parser<'static, T, DB>,
         libmdbx: &'static DB,
     ) -> Self {
@@ -230,29 +230,25 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
 
+        let mut tables_to_init = vec![Tables::BlockInfo];
+        #[cfg(not(feature = "sorella-server"))]
+        tables_to_init.push(Tables::TxTraces);
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables_to_init.push(Tables::CexPrice);
+        #[cfg(feature = "cex-dex-markout")]
+        tables_to_init.push(Tables::CexTrades);
+
+        let tables_to_init_cont = &tables_to_init.clone();
         join_all(state_to_init_continuous.iter().map(|range| async move {
             let start = range.start();
             let end = range.end();
 
-            #[cfg(feature = "sorella-server")]
             {
                 self.libmdbx
                     .initialize_tables(
                         self.clickhouse,
                         self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice],
-                        false,
-                        Some((*start, *end)),
-                    )
-                    .await
-            }
-            #[cfg(not(feature = "sorella-server"))]
-            {
-                self.libmdbx
-                    .initialize_tables(
-                        self.clickhouse,
-                        self.parser.get_tracer(),
-                        &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                        tables_to_init_cont,
                         false,
                         Some((*start, *end)),
                     )
@@ -274,21 +270,11 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .flatten()
             .collect_vec();
 
-        #[cfg(feature = "sorella-server")]
         self.libmdbx
             .initialize_tables_arbitrary(
                 self.clickhouse,
                 self.parser.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
-                state_to_init_disc,
-            )
-            .await?;
-        #[cfg(not(feature = "sorella-server"))]
-        self.libmdbx
-            .initialize_tables_arbitrary(
-                self.clickhouse,
-                self.parser.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice, Tables::TxTraces],
+                &tables_to_init,
                 state_to_init_disc,
             )
             .await?;
