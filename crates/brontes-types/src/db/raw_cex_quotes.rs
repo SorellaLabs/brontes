@@ -102,7 +102,7 @@ impl CexQuotesConverter {
                                 .get(&(quote.exchange, quote.symbol.clone()))
                                 .unwrap();
                             exchange_symbol_map
-                                .entry(&symbol.address_pair)
+                                .entry(&symbol.address_pair.ordered())
                                 .or_insert(Vec::new())
                                 .push(quote);
                         });
