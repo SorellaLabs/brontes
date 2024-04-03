@@ -61,7 +61,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_solver_settlement() {
-                        return None;
+                        return None
                     }
                 }
 
@@ -147,7 +147,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             None,
         )?;
         tracing::info!(?maker_price, ?taker_price, "got price");
-        let leg = self.profit_classifier(swap, maker_price, taker_price);
+        let leg = self.profit_classifier(&swap, maker_price, taker_price);
 
         Some(PossibleCexDexLeg { swap, leg })
     }
