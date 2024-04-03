@@ -43,7 +43,7 @@ type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize)]
 pub struct CexTradeMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>);
 
-type ClickhouseTradeMap = Vec<(CexExchange, Vec<((String, String), Vec<CexTrades>)>)>;
+type ClickhouseTradeMap = Vec<(CexExchange, Vec<((String, String), Vec<RawCexTrades>)>)>;
 
 impl<'de> Deserialize<'de> for CexTradeMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -59,7 +59,9 @@ impl<'de> Deserialize<'de> for CexTradeMap {
                     FastHashMap::default(),
                     |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
                         let pair = Pair(pair.0.parse().unwrap(), pair.1.parse().unwrap());
-                        acc.entry(pair).or_default().extend(trades);
+                        acc.entry(pair)
+                            .or_default()
+                            .extend(trades.into_iter().map(Into::into));
                         acc
                     },
                 ));
