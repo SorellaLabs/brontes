@@ -275,12 +275,7 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(feature = "cex-dex-markout")]
         {
-            let cex_trades = self
-                .client
-                .query_one::<CexTradesData, _>(CEX_TRADES, &(block_num))
-                .await
-                .ok()
-                .map(|v| v.value);
+            let cex_trades = self.get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num)).await?;
 
             #[cfg(feature = "cex-dex-markout")]
             Ok(BlockMetadata::new(
