@@ -138,6 +138,7 @@ impl TraceLoader {
                 .map(|table| (table, table.build_init_state_progress_bar(&multi)))
                 .collect_vec(),
         );
+
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -148,6 +149,7 @@ impl TraceLoader {
                 tables,
             )
             .await?;
+        tracing::info!("shit init");
 
         Ok(())
     }
