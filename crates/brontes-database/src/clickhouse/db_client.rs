@@ -256,7 +256,7 @@ impl ClickhouseHandle for Clickhouse {
                 .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
                 .await?;
 
-            let cex_quotes = cex_quotes_for_block.first().unwrap().clone();
+            let cex_quotes = cex_quotes_for_block.remove(0);
             let eth_prices = determine_eth_prices(&cex_quotes.value);
 
             Ok(BlockMetadata::new(
@@ -289,7 +289,7 @@ impl ClickhouseHandle for Clickhouse {
                 Default::default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(Default::default(), None, None, cex_trades))
+            .into_metadata(Default::default(), None, None, Some(cex_trades)))
         }
     }
 
