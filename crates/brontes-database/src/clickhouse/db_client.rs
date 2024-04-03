@@ -44,7 +44,7 @@ use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 #[cfg(not(feature = "cex-dex-markout"))]
 use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
-    clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE, CEX_TRADES},
+    clickhouse::const_sql::{BLOCK_INFO},
     libmdbx::{
         determine_eth_prices,
         tables::{BlockInfoData, CexPriceData, CexTradesData},
