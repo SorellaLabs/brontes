@@ -247,7 +247,7 @@ impl ClickhouseHandle for Clickhouse {
         let block_meta = self
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-            .await?
+            .await.unwrap()
             .value;
 
         #[cfg(not(feature = "cex-dex-markout"))]
