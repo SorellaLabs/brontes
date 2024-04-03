@@ -254,7 +254,8 @@ impl CexTradeMap {
         //   have significantly more volume than the needed inventory offset
         // - The assumption here is the stat arber is trading just for this arb and
         //   isn't offsetting inventory for other purposes at the same time
-        let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
+
+        // let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
         let trades = self
             .0
             .iter()
@@ -265,7 +266,7 @@ impl CexTradeMap {
                     trades.get(pair).map(|trades| {
                         trades
                             .iter()
-                            .filter(|f| f.amount.le(&max_vol_per_trade))
+                            // .filter(|f| f.amount.le(&max_vol_per_trade))
                             .collect_vec()
                     })?,
                 ))
