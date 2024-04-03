@@ -98,7 +98,7 @@ impl CexTradesConverter {
                                 .get(&(trade.exchange, trade.symbol.clone()))
                                 .unwrap();
 
-                            let pair = if &trade.side == "buy" {
+                            let pair = if &trade.side == "sell" {
                                 symbol.address_pair
                             } else {
                                 trade.amount *= trade.price;
