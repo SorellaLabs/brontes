@@ -2,9 +2,10 @@ use alloy_primitives::Address;
 
 use crate::{tree::NormalizedAction, Node, NodeData};
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TreeSearchArgs {
     pub collect_current_node:  bool,
+    pub collect_idxs:          Vec<usize>,
     pub child_node_to_collect: bool,
 }
 
@@ -95,7 +96,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
     }
 
     pub fn generate_search_args(&self, node: &Node, node_data: &NodeData<V>) -> TreeSearchArgs {
-        let collect_current_node = self.collect_current_node(node, node_data);
+        let (collect_current_node, collect_idxs) = self.collect_current_node(node, node_data);
         let child_node_to_collect =
             if self.child_nodes_contains.is_empty() && self.child_node_have.is_empty() {
                 self.has_child_nodes_default(node, node_data)
@@ -103,33 +104,55 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
                 self.has_child_nodes(node, node_data)
             };
 
-        TreeSearchArgs { collect_current_node, child_node_to_collect }
+        TreeSearchArgs { collect_current_node, child_node_to_collect, collect_idxs }
     }
 
-    fn collect_current_node(&self, node: &Node, node_data: &NodeData<V>) -> bool {
+    fn collect_current_node(&self, node: &Node, node_data: &NodeData<V>) -> (bool, Vec<usize>) {
         node_data
             .get_ref(node.data)
             .map(|node_actions| {
-                node_actions.iter().any(|node_action| {
-                    self.with_actions
-                        .iter()
-                        .map(|ptr| {
-                            ptr(node_action)
-                                && self
-                                    .has_from_address
-                                    .map(|addr| node_action.get_action().get_from_address() == addr)
-                                    .unwrap_or(true)
-                                && self
-                                    .has_to_address
-                                    .as_ref()
-                                    .map(|addrs| {
-                                        addrs.contains(&node_action.get_action().get_to_address())
-                                    })
-                                    .unwrap_or(true)
-                        })
-                        .reduce(|a, b| a | b)
-                        .unwrap_or(false)
-                })
+                let (is_good, idxs): (Vec<_>, Vec<_>) = node_actions
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, node_action)| {
+                        let is_true = self
+                            .with_actions
+                            .iter()
+                            .map(|ptr| {
+                                ptr(node_action)
+                                    && self
+                                        .has_from_address
+                                        .map(|addr| {
+                                            node_action.get_action().get_from_address() == addr
+                                        })
+                                        .unwrap_or(true)
+                                    && self
+                                        .has_to_address
+                                        .as_ref()
+                                        .map(|addrs| {
+                                            addrs.contains(
+                                                &node_action.get_action().get_to_address(),
+                                            )
+                                        })
+                                        .unwrap_or(true)
+                            })
+                            .reduce(|a, b| a | b)
+                            .unwrap_or(false);
+
+                        if is_true {
+                            (true, idx)
+                        } else {
+                            // rand number but shoudl be big enough
+                            (false, 694200)
+                        }
+                    })
+                    .unzip();
+                (
+                    is_good.iter().any(|f| *f),
+                    idxs.into_iter()
+                        .filter(|idx| *idx != 694200)
+                        .collect::<Vec<_>>(),
+                )
             })
             .unwrap_or_default()
     }
