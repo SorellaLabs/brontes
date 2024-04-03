@@ -283,12 +283,12 @@ impl CexTradeMap {
         //   by price)
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
 
-        tracing::info!(?pair, "basket calcs for pair");
-        self.get_most_accurate_basket(trade_queue, volume, baskets)
+        self.get_most_accurate_basket(pair, trade_queue, volume, baskets)
     }
 
     fn get_most_accurate_basket(
         &self,
+        pair: &Pair,
         mut queue: PairTradeQueue<'_>,
         volume: &Rational,
         baskets: usize,
@@ -312,7 +312,7 @@ impl CexTradeMap {
         }
 
         if &cur_vol < volume {
-            tracing::info!(?cur_vol, expected=?volume, "not enough volume");
+            tracing::info!(?pair, ?cur_vol, expected=?volume, "not enough volume");
 
             return None
         }
