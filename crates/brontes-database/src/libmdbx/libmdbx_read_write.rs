@@ -930,6 +930,9 @@ impl LibmdbxReadWriter {
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;
         }
+
+        
+
         res
     }
 

@@ -232,7 +232,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
 
                     #[cfg(feature = "cex-dex-markout")]
-                    {                        
+                    {
                         let data = clickhouse
                             .get_cex_trades(CexRangeOrArbitrary::Range(start, end+1))
                             .await;
@@ -329,7 +329,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
 
                     #[cfg(feature = "cex-dex-markout")]
-                    {                        
+                    {
                         let data = clickhouse
                         .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))
                         .await;

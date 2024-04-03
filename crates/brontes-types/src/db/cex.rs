@@ -391,6 +391,7 @@ impl MulAssign for CexQuote {
 impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         let (pair, quote) = value;
+
         CexQuote {
             exchange:  quote.exchange,
             timestamp: quote.timestamp,
