@@ -174,7 +174,7 @@ impl CexTradeMap {
                                     .then_some(trade_pair.1)
                             })
                     })
-                    .collect_vec();
+                    .collect_vec()
             })
             .collect::<FastHashSet<_>>()
     }
