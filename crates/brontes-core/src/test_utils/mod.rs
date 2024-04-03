@@ -149,7 +149,6 @@ impl TraceLoader {
                 tables,
             )
             .await?;
-        tracing::info!("shit init");
 
         Ok(())
     }
