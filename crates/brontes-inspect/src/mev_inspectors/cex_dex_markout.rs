@@ -12,6 +12,10 @@ use brontes_types::{
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
+// The threshold for the number of CEX-DEX trades an address is required to make
+// to classify a a negative pnl cex-dex trade as a CEX-DEX trade
+pub const FILTER_THRESHOLD: u64 = 20;
+
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
@@ -53,16 +57,22 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         swap_txes
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+
+                // Return early if the tx is a solver settling trades
+                if let Some(contract_type) = tx_info.contract_type.as_ref() {
+                    if contract_type.is_solver_settlement() {
+                        return None;
+                    }
+                }
+
                 let deltas = swaps.clone().into_iter().account_for_actions();
                 let swaps = swaps
                     .into_iter()
                     .collect_action_vec(Actions::try_swaps_merged);
 
                 // For each swap in the transaction, detect potential CEX-DEX
-                let cex_dex_legs: Vec<PossibleCexDexLeg> = swaps
-                    .into_iter()
-                    .filter_map(|swap| self.detect_cex_dex_opportunity(&swap, metadata.as_ref()))
-                    .collect();
+                let cex_dex_legs: Vec<PossibleCexDexLeg> =
+                    self.detect_cex_dex(swaps, metadata.as_ref())?;
 
                 let possible_cex_dex =
                     self.gas_accounting(cex_dex_legs, &tx_info.gas_details, metadata.clone())?;
@@ -70,6 +80,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                 let cex_dex =
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
+                //TODO: When you build the header, you are using quotes for pricing instead of
+                // using the VMAP
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
                     vec![tx_info.tx_hash],
@@ -79,6 +91,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,
+                    false,
                 );
 
                 Some(Bundle { header, data: cex_dex })
@@ -88,6 +101,22 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
 }
 
 impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
+    pub fn detect_cex_dex(
+        &self,
+        swaps: Vec<NormalizedSwap>,
+        metadata: &Metadata,
+    ) -> Option<Vec<PossibleCexDexLeg>> {
+        swaps.into_iter().try_fold(Vec::new(), |mut acc, swap| {
+            match self.detect_cex_dex_opportunity(swap, metadata) {
+                Some(leg) => {
+                    acc.push(leg);
+                    Some(acc)
+                }
+                None => None,
+            }
+        })
+    }
+
     /// Detects potential CEX-DEX arbitrage opportunities for a given swap.
     ///
     /// # Arguments
@@ -101,7 +130,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     /// otherwise `None`.
     pub fn detect_cex_dex_opportunity(
         &self,
-        swap: &NormalizedSwap,
+        swap: NormalizedSwap,
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
         let pair = Pair(swap.token_out.address, swap.token_in.address);
@@ -117,11 +146,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             // add lookup
             None,
         )?;
-
         tracing::info!(?maker_price, ?taker_price, "got price");
         let leg = self.profit_classifier(swap, maker_price, taker_price);
 
-        Some(PossibleCexDexLeg { swap: swap.clone(), leg })
+        Some(PossibleCexDexLeg { swap, leg })
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
@@ -140,7 +168,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let taker_delta = &taker_price.price - &rate;
 
         let (maker_profit, taker_profit) = (
-            // prices are fee adjusted already so no need to calcuate taking a fee here
+            // prices are fee adjusted already so no need to calculate fees here
             maker_delta * &swap.amount_out * &maker_price.price,
             taker_delta * &swap.amount_out * &taker_price.price,
         );
@@ -232,9 +260,15 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         if has_positive_pnl
             || (!info.is_classified
-                && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
+                && (possible_cex_dex.gas_details.coinbase_transfer.is_some()
+                    && info.is_private
+                    && info.is_searcher_of_type_with_count_threshold(
+                        MevType::CexDex,
+                        FILTER_THRESHOLD,
+                    )
                     || info.is_cex_dex_call))
-            || info.is_searcher_of_type(MevType::CexDex)
+            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
+            || info.is_labelled_searcher_of_type(MevType::CexDex)
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {

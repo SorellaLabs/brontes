@@ -11,7 +11,7 @@ use brontes_database::clickhouse::ClickhouseHttpClient;
 use brontes_database::clickhouse::ClickhouseMiddleware;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_database::clickhouse::ReadOnlyMiddleware;
-use brontes_database::libmdbx::LibmdbxReadWriter;
+use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxReadWriter};
 use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{
     db::{cex::CexExchange, traits::LibmdbxReader},
@@ -52,15 +52,17 @@ pub fn load_libmdbx(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
 }
 
 #[cfg(feature = "local-clickhouse")]
-pub async fn load_clickhouse() -> eyre::Result<Clickhouse> {
-    Ok(Clickhouse::default())
+pub async fn load_clickhouse(cex_download_config: CexDownloadConfig) -> eyre::Result<Clickhouse> {
+    Ok(Clickhouse::new(Default::default(), cex_download_config))
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub async fn load_clickhouse() -> eyre::Result<ClickhouseHttpClient> {
+pub async fn load_clickhouse(
+    cex_download_config: CexDownloadConfig,
+) -> eyre::Result<ClickhouseHttpClient> {
     let clickhouse_api = env::var("CLICKHOUSE_API")?;
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
-    Ok(ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await)
+    Ok(ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key, cex_download_config).await)
 }
 
 #[cfg(not(feature = "local-reth"))]
@@ -98,10 +100,8 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     quote_token: Address,
     db: &'static DB,
     inspectors: Option<Vec<Inspectors>>,
-    cex_exchanges: Vec<String>,
+    cex_exchanges: Vec<CexExchange>,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
-    let cex_exchanges: Vec<CexExchange> = cex_exchanges.into_iter().map(|s| s.into()).collect();
-
     let mut res = Vec::new();
     for inspector in inspectors
         .map(|i| i.into_iter())

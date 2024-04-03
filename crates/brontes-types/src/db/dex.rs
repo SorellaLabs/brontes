@@ -17,7 +17,7 @@ use redefined::Redefined;
 use reth_db::DatabaseError;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
-use tracing::error;
+use tracing::debug;
 
 use crate::{
     constants::{ETH_ADDRESS, WETH_ADDRESS},
@@ -117,7 +117,7 @@ impl DexQuotes {
             tx -= 1;
         }
 
-        error!(?pair, before=?s_idx, "no price for pair");
+        debug!(?pair, before=?s_idx, "no price for pair");
 
         None
     }

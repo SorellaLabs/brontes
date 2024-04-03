@@ -27,6 +27,7 @@ use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
+use super::raw_cex_quotes::RawCexQuotes;
 use crate::{
     constants::*,
     db::redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
@@ -387,6 +388,21 @@ impl MulAssign for CexQuote {
     }
 }
 
+impl From<(Pair, RawCexQuotes)> for CexQuote {
+    fn from(value: (Pair, RawCexQuotes)) -> Self {
+        let (pair, quote) = value;
+        CexQuote {
+            exchange:  quote.exchange,
+            timestamp: quote.timestamp,
+            price:     (
+                Rational::try_from_float_simplest(quote.ask_price).unwrap(),
+                Rational::try_from_float_simplest(quote.bid_price).unwrap(),
+            ),
+            token0:    pair.0,
+        }
+    }
+}
+
 #[derive(
     Copy,
     Display,
@@ -432,6 +448,28 @@ impl<'de> serde::Deserialize<'de> for CexExchange {
     }
 }
 
+impl CexExchange {
+    pub fn to_clickhouse_filter(&self) -> &str {
+        match self {
+            CexExchange::Binance => "exchange = 'binance'",
+            CexExchange::Bitmex => "exchange = 'bitmex'",
+            CexExchange::Deribit => "exchange = 'deribit'",
+            CexExchange::Okex => "exchange = 'okex'",
+            CexExchange::Coinbase => "exchange = 'coinbase'",
+            CexExchange::Kraken => "exchange = 'kraken'",
+            CexExchange::BybitSpot => "exchange = 'bybit-spot'",
+            CexExchange::Kucoin => "exchange = 'kucoin'",
+            CexExchange::Upbit => "exchange = 'upbit'",
+            CexExchange::Huobi => "exchange = 'huobi'",
+            CexExchange::GateIo => "exchange = 'gate-io;",
+            CexExchange::Bitstamp => "exchange = 'bitstamp'",
+            CexExchange::Gemini => "exchange = 'gemini'",
+            CexExchange::Unknown => "exchange = ''",
+            CexExchange::Average => "exchange = ''",
+        }
+    }
+}
+
 self_convert_redefined!(CexExchange);
 
 impl From<&str> for CexExchange {
@@ -443,11 +481,13 @@ impl From<&str> for CexExchange {
             "okex" | "Okex" => CexExchange::Okex,
             "coinbase" | "Coinbase" => CexExchange::Coinbase,
             "kraken" | "Kraken" => CexExchange::Kraken,
-            "bybit-spot" | "bybitspot" | "BybitSpot" => CexExchange::BybitSpot,
+            "bybit-spot" | "bybitspot" | "BybitSpot" | "Bybit-Spot" | "Bybit_Spot" => {
+                CexExchange::BybitSpot
+            }
             "kucoin" | "Kucoin" => CexExchange::Kucoin,
             "upbit" | "Upbit" => CexExchange::Upbit,
             "huobi" | "Huobi" => CexExchange::Huobi,
-            "gate-io" | "gateio" | "GateIo" => CexExchange::GateIo,
+            "gate-io" | "gateio" | "GateIo" | "Gate_Io" => CexExchange::GateIo,
             "bitstamp" | "Bitstamp" => CexExchange::Bitstamp,
             "gemini" | "Gemini" => CexExchange::Gemini,
             _ => CexExchange::Unknown,

@@ -1,11 +1,6 @@
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxInit;
-use brontes_types::{
-    db::{builder::BuilderStats, searcher::SearcherStats},
-    mev::bundle::MevType,
-    traits::TracingProvider,
-    FastHashMap, FastHashSet,
-};
+use brontes_types::{mev::bundle::MevType, traits::TracingProvider, FastHashMap, FastHashSet};
 use eyre::Result;
 use tracing::info;
 
@@ -14,10 +9,13 @@ use crate::BrontesAnalytics;
 impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
     pub async fn get_vertically_integrated_searchers(
         &self,
-        start_block: u64,
-        end_block: u64,
-        mev_type: Option<Vec<MevType>>,
+        _start_block: u64,
+        _end_block: u64,
+        _mev_type: Option<Vec<MevType>>,
     ) -> Result<(), eyre::Error> {
+        todo!()
+    }
+    /*
         let mut searcher_to_builder_map: FastHashMap<
             Address,
             (SearcherStats, FastHashSet<Address>),
@@ -92,4 +90,5 @@ impl<T: TracingProvider, DB: LibmdbxInit> BrontesAnalytics<T, DB> {
 
         Ok(())
     }
+     */
 }

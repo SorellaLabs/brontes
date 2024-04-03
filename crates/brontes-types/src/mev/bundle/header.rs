@@ -29,21 +29,23 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
-    pub block_number:   u64,
-    pub tx_index:       u64,
+    pub block_number:          u64,
+    pub tx_index:              u64,
     #[serde(with = "txhash")]
     // For a sandwich this is always the first frontrun tx hash
     pub tx_hash: B256,
     #[serde(with = "addresss")]
-    pub eoa:            Address,
+    pub eoa:                   Address,
     #[serde(with = "option_addresss")]
-    pub mev_contract:   Option<Address>,
-    pub profit_usd:     f64,
+    pub mev_contract:          Option<Address>,
+    pub profit_usd:            f64,
     // Total tx cost in USD
-    pub bribe_usd:      f64,
+    pub bribe_usd:             f64,
     #[redefined(same_fields)]
-    pub mev_type:       MevType,
-    pub balance_deltas: Vec<TransactionAccounting>,
+    pub mev_type:              MevType,
+    // if we generated this arb without pricing
+    pub no_pricing_calculated: bool,
+    pub balance_deltas:        Vec<TransactionAccounting>,
 }
 
 #[serde_as]
@@ -117,7 +119,7 @@ impl Serialize for BundleHeader {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("BundleHeader", 10)?;
+        let mut ser_struct = serializer.serialize_struct("BundleHeader", 11)?;
 
         ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("tx_index", &self.tx_index)?;
@@ -128,6 +130,7 @@ impl Serialize for BundleHeader {
         ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
         ser_struct.serialize_field("bribe_usd", &self.bribe_usd)?;
         ser_struct.serialize_field("mev_type", &self.mev_type)?;
+        ser_struct.serialize_field("no_pricing_calculated", &self.no_pricing_calculated)?;
 
         let balance_deltas_tx_hashes = self
             .balance_deltas
@@ -198,6 +201,7 @@ impl DbRow for BundleHeader {
         "profit_usd",
         "bribe_usd",
         "mev_type",
+        "no_pricing_calculated",
         "balance_deltas.tx_hash",
         "balance_deltas.address",
         "balance_deltas.name",

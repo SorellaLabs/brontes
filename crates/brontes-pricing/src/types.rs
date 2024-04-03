@@ -153,6 +153,18 @@ impl PoolUpdate {
         self.action.get_to_address()
     }
 
+    pub fn get_pool_address_for_pricing(&self) -> Option<Address> {
+        // these don't have a pool address
+        if self.action.is_transfer()
+            || self.action.is_batch()
+            || self.action.is_aggregator()
+            || self.action.is_eth_transfer()
+        {
+            return None
+        }
+        Some(self.get_pool_address())
+    }
+
     pub fn is_transfer(&self) -> bool {
         self.action.is_transfer()
     }

@@ -30,7 +30,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<(BlockTree<Actions>, Metadata)>,
     always_generate_price: bool,
-    only_cex_dex:          bool,
+    force_no_dex_pricing:  bool,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
@@ -40,7 +40,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         clickhouse: Option<&'static CH>,
         dex_pricer_stream: WaitingForPricerFuture<T, DB>,
         always_generate_price: bool,
-        only_cex_dex: bool,
+        force_no_dex_pricing: bool,
     ) -> Self {
         Self {
             clickhouse,
@@ -48,7 +48,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             clickhouse_futures: FuturesOrdered::new(),
             result_buf: VecDeque::new(),
             always_generate_price,
-            only_cex_dex,
+            force_no_dex_pricing,
         }
     }
 
@@ -68,7 +68,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 .get_dex_quotes(block)
                 .map(|f| f.0.is_empty())
                 .unwrap_or(true))
-            && !self.only_cex_dex
+            && !self.force_no_dex_pricing
     }
 
     pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
@@ -104,7 +104,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 (block, tree, meta)
             });
             self.clickhouse_futures.push_back(future);
-        } else if self.only_cex_dex {
+        } else if self.force_no_dex_pricing {
             tracing::debug!(?block, "only cex dex. skipping dex pricing");
             let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
                 tracing::error!(%err);
@@ -152,7 +152,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             return Poll::Ready(Some(res))
         }
 
-        if self.only_cex_dex {
+        if self.force_no_dex_pricing {
             return Poll::Pending
         }
 

@@ -36,4 +36,27 @@ twitter_followers = 59800
 website_url = "https://bananagun.io/"
 
 
- 
+
+[metadata."0x3c11F6265Ddec22f4d049Dde480615735f451646"]
+entity_name = "MimicSwap"
+nametag = "Mimic: Swapper"
+labels = ["DefiAutomation", "SC:sourcecodeverified", "automation"]
+address_type = "defi-automation"
+
+[metadata."0x3c11F6265Ddec22f4d049Dde480615735f451646".contract_info]
+verified_contract = true
+contract_creator = "0x55fb751f3022D56888fb3249002C1004579753C7"
+reputation = 1
+
+[metadata."0x3c11F6265Ddec22f4d049Dde480615735f451646".social_metadata]
+twitter = "https://twitter.com/mimicfi"
+twitter_followers = 873
+website_url = "https://mimic.fi"
+crunchbase = "https://www.crunchbase.com/organization/mimic-finance"
+linkedin = "https://www.linkedin.com/company/mimic-finance"
+
+
+
+# Aave was incorectly labelles as unverified, this corects that
+[metadata."0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2".contract_info]
+verified_contract = true
