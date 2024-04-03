@@ -894,10 +894,6 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
         let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
 
-        if res.is_err() {
-            self.init_state_updating(block_num, SKIP_FLAG)?;
-        }
-
         Ok(CexPriceMap(res?))
     }
 
