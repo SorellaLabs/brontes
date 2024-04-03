@@ -133,6 +133,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         swap: NormalizedSwap,
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
+        // token in price
         let pair = Pair(swap.token_out.address, swap.token_in.address);
         tracing::info!(?pair, "fetching price");
 
