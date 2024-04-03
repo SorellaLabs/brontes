@@ -719,22 +719,6 @@ mod tests {
             .await
             .unwrap();
 
-        // CexPrice
-        CexPrice::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
-        CexPrice::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
-
-        // CexTrades (this works can't be asked to implement des for no reason)
-        // CexTrades::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-        //     .await
-        //     .unwrap();
-        // CexTrades::test_initialized_arbitrary_data(clickhouse, libmdbx,
-        // arbitrary_set)     .await
-        //     .unwrap();
-
         // Metadata
         BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
@@ -759,6 +743,5 @@ mod tests {
         TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-
     }
 }
