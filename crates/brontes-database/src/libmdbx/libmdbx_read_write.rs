@@ -894,7 +894,7 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
         let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
 
-        Ok(CexPriceMap(res?))
+        Ok(CexPriceMap(res))
     }
 
     pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
