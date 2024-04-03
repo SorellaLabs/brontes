@@ -881,8 +881,6 @@ impl LibmdbxReadWriter {
             self.init_state_updating(block_num, SKIP_FLAG)?;
         }
 
-        
-
         res
     }
 
