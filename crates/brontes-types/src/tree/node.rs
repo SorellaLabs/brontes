@@ -153,7 +153,7 @@ impl Node {
     where
         F: Fn(&mut Node, &mut NodeData<V>),
     {
-        let TreeSearchArgs { collect_current_node, child_node_to_collect } =
+        let TreeSearchArgs { collect_current_node, child_node_to_collect, .. } =
             find.generate_search_args(self, &*data);
 
         if !child_node_to_collect {
@@ -401,12 +401,12 @@ impl Node {
     ) where
         T: Fn(NodeWithDataRef<'_, V>) -> R,
     {
-        let TreeSearchArgs { collect_current_node, child_node_to_collect } =
+        let TreeSearchArgs { collect_current_node, child_node_to_collect, collect_idxs } =
             call.generate_search_args(self, data);
         if collect_current_node {
             if let Some(datas) = data.get_ref(self.data) {
-                for data in datas {
-                    results.push(wanted_data(NodeWithDataRef::new(self, data)))
+                for idx in collect_idxs {
+                    results.push(wanted_data(NodeWithDataRef::new(self, &datas[idx])))
                 }
             }
         }
