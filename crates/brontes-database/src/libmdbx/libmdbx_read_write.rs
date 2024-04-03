@@ -892,10 +892,7 @@ impl LibmdbxReadWriter {
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         let tx = self.0.ro_tx()?;
-        let res = tx
-            .get::<CexPrice>(block_num)?
-            .ok_or_default()
-            .map(|e| e.0);
+        let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
 
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;
