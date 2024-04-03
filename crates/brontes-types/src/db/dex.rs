@@ -27,6 +27,11 @@ use crate::{
     FastHashMap,
 };
 
+/// Represents the DEX prices of a token pair before (`pre_state`) and after a
+/// transaction (`post_state`)
+///
+/// The `goes_through` field, indicates the token pair of the pool
+/// that generated the action that caused the pricing event.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize, Redefined)]
 #[redefined_attr(derive(
     Debug,
@@ -41,7 +46,7 @@ use crate::{
 pub struct DexPrices {
     pub pre_state:    Rational,
     pub post_state:   Rational,
-    /// tells us what varient of pricing for this pool we are looking at
+    /// tells us what variant of pricing for this pool we are looking at
     pub goes_through: Pair,
 }
 
@@ -83,6 +88,12 @@ impl DexPrices {
     }
 }
 
+/// A collection of dex prices for a given block
+///
+/// Each index in the vec represents a tx index in the block
+///
+/// For a given transaction, the value is `None` if it doesn't
+/// contain any token transfers
 #[derive(Debug, Clone, PartialEq, Row, Eq, Deserialize, Serialize)]
 pub struct DexQuotes(pub Vec<Option<FastHashMap<Pair, DexPrices>>>);
 

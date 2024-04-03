@@ -10,7 +10,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 #[cfg(feature = "cex-dex-markout")]
-use brontes_types::db::cex_trades::CexTradeMap;
+use brontes_types::db::{cex_trades::CexTradeMap, initialized_state::CEX_TRADES_FLAG};
 use brontes_types::{
     constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
@@ -19,7 +19,9 @@ use brontes_types::{
         builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
-        initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
+        },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -91,7 +93,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<RangeInclusive<u64>>>;
+    ) -> eyre::Result<Vec<(Option<Vec<Tables>>, RangeInclusive<u64>)>>;
 }
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -222,18 +224,27 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<RangeInclusive<u64>>> {
+    ) -> eyre::Result<Vec<(Option<Vec<Tables>>, RangeInclusive<u64>)>> {
+        let mut tables_to_init = vec![Tables::BlockInfo];
+        #[cfg(not(feature = "sorella-server"))]
+        tables_to_init.push(Tables::TxTraces);
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables_to_init.push(Tables::CexPrice);
+        #[cfg(feature = "cex-dex-markout")]
+        tables_to_init.push(Tables::CexTrades);
+
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
 
         let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
         if peek_cur.peek().is_none() {
             tracing::info!("entire range missing");
-            return Ok(vec![start_block..=end_block])
+            return Ok(vec![(Some(tables_to_init), start_block..=end_block)])
         }
 
-        let mut result = Vec::new();
+        let mut result: Vec<(Vec<Tables>, RangeInclusive<u64>)> = Vec::new();
         let mut block_tracking = start_block;
+        let mut oldest_missing_data_block_continuous: Option<u64> = None;
 
         for entry in peek_cur {
             if let Ok(has_info) = entry {
@@ -242,26 +253,39 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 // if we are missing the block, we add it to the range
                 if block != block_tracking {
                     tracing::info!(block, block_tracking, "block != tracking");
-                    result.push(block_tracking..=block);
+
+                    if oldest_missing_data_block_continuous.is_none() {
+                        result.push((tables_to_init, block_tracking..=block));
+                    }
+
                     block_tracking = block + 1;
 
                     continue
                 }
 
-                block_tracking += 1;
+                // We are trying to build the largest ranges, so we need to check if the state
+                // is missing, if it is we will add it as the oldest missing data block &
+                // continue
 
-                if !state.is_init() {
-                    tracing::trace!(?state, "state isn't init");
-                    result.push(block..=block);
+                // Prob make this a hashmap by table so we have the ranges on a by table basis
+                // so we can easily offload to the correct init function
+                if let Some(tables) = tables_to_initialize(Some(state)) {
+                    if oldest_missing_data_block_continuous.is_none() {
+                        oldest_missing_data_block_continuous = Some(block_tracking);
+                    }
+                    if block_tracking == end_block {
+                        result.push((
+                            tables_to_init,
+                            oldest_missing_data_block_continuous.unwrap()..=block,
+                        ));
+                        oldest_missing_data_block_continuous = None;
+                    }
                 }
+                block_tracking += 1;
             } else {
-                // should never happen unless a courput db
+                // should never happen unless db is corrupted
                 panic!("database is corrupted");
             }
-        }
-
-        if block_tracking - 1 != end_block {
-            result.push(block_tracking - 1..=end_block);
         }
 
         Ok(result)
@@ -293,7 +317,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        self.init_state_updating(block_num, CEX_FLAG)?;
+        self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         #[cfg(feature = "cex-dex-markout")]
         let trades = self.fetch_trades(block_num).ok();
@@ -322,7 +346,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        self.init_state_updating(block_num, CEX_FLAG)?;
+        self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
 
@@ -864,7 +888,33 @@ impl LibmdbxReadWriter {
         Ok(())
     }
 
-    pub fn inited_range(&self, range: impl Iterator<Item = u64>, flag: u8) -> eyre::Result<()> {
+    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
+        let mut range_cursor = self.0.rw_tx()?.cursor_write::<InitializedState>()?;
+
+        let mut block = *range.start();
+
+        while let Some(mut state) = range_cursor.next()? {
+            if state.0 != block {
+                let mut init_state = InitializedStateMeta::default();
+                init_state.set(flag);
+                let value = InitializedStateData::from((block, init_state));
+                range_cursor.upsert(value.key, value.value)?;
+                block += 1;
+            } else {
+                state.1.set(flag);
+                range_cursor.upsert(state.0, state.1)?;
+                block += 1;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn inited_range_arbitrary(
+        &self,
+        range: impl Iterator<Item = u64>,
+        flag: u8,
+    ) -> eyre::Result<()> {
         for block in range {
             self.init_state_updating(block, flag)?;
         }
@@ -944,5 +994,85 @@ pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
         cex_quotes
             .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
             .unwrap_or_default()
+    }
+}
+
+pub fn tables_to_initialize(data: Option<InitializedStateMeta>) -> Option<Vec<Tables>> {
+    let mut tables = Vec::new();
+
+    if let Some(data) = data {
+        if data.should_ignore() {
+            return None
+        }
+
+        #[cfg(all(feature = "local-reth", not(feature = "cex-dex-markout")))]
+        {
+            if (data.0 & DEX_PRICE_FLAG) == 0 {
+                tables.push(Tables::DexPrice);
+            }
+            if (self.0 & CEX_QUOTES_FLAG) == 0 {
+                tables.push(Tables::CexPrice);
+            }
+            if (self.0 & META_FLAG) == 0 {
+                tables.push(Tables::BlockInfo);
+            }
+        }
+
+        #[cfg(all(not(feature = "local-reth"), feature = "cex-dex-markout"))]
+        {
+            if (data.0 & DEX_PRICE_FLAG) == 0 {
+                tables.push(Tables::DexPrice);
+            }
+            if (data.0 & CEX_TRADES_FLAG) == 0 {
+                tables.push(Tables::CexTrades);
+            }
+            if (data.0 & META_FLAG) == 0 {
+                tables.push(Tables::BlockInfo);
+            }
+            if (data.0 & TRACE_FLAG) == 0 {
+                tables.push(Tables::TxTraces);
+            }
+        }
+
+        #[cfg(all(feature = "local-reth", feature = "cex-dex-markout"))]
+        {
+            if (data.0 & DEX_PRICE_FLAG) == 0 {
+                tables.push(Tables::DexPrice);
+            }
+            if (data.0 & CEX_TRADES_FLAG) == 0 {
+                tables.push(Tables::CexTrades);
+            }
+            if (data.0 & META_FLAG) == 0 {
+                tables.push(Tables::BlockInfo);
+            }
+        }
+    } else {
+        #[cfg(feature = "local-reth")]
+        {
+            tables.push(Tables::DexPrice);
+            tables.push(Tables::BlockInfo);
+            #[cfg(not(feature = "cex-dex-markout"))]
+            tables.push(Tables::CexPrice);
+
+            #[cfg(feature = "cex-dex-markout")]
+            tables.push(Tables::CexTrades);
+        }
+
+        #[cfg(not(feature = "local-reth"))]
+        {
+            #[cfg(feature = "cex-dex-markout")]
+            tables.push(Tables::CexTrades);
+            #[cfg(not(feature = "cex-dex-markout"))]
+            tables.push(Tables::CexPrice);
+
+            tables.push(Tables::DexPrice);
+            tables.push(Tables::TxTraces);
+        }
+    }
+
+    if tables.is_empty() {
+        None
+    } else {
+        Some(tables)
     }
 }

@@ -217,7 +217,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
+        tracing::info!(
+            start_block=%start_block, %end_block,
+            "Verifying the database contains the data from block {} to block {}",
+            start_block,
+            end_block
+        );
+
         let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
 
         if state_to_init.is_empty() {
@@ -233,14 +239,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .collect_vec();
 
         tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
-
-        let mut tables_to_init = vec![Tables::BlockInfo];
-        #[cfg(not(feature = "sorella-server"))]
-        tables_to_init.push(Tables::TxTraces);
-        #[cfg(not(feature = "cex-dex-markout"))]
-        tables_to_init.push(Tables::CexPrice);
-        #[cfg(feature = "cex-dex-markout")]
-        tables_to_init.push(Tables::CexTrades);
 
         let tables_to_init_cont = &tables_to_init.clone();
         join_all(state_to_init_continuous.iter().map(|range| {

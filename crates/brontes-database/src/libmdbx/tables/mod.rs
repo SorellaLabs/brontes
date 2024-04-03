@@ -5,6 +5,8 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
+#[cfg(features = "cex-dex-markout")]
+use brontes_types::db::{cex_trades::CexTradeMap, initialized_state::CEX_TRADES_FLAG};
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
@@ -14,7 +16,9 @@ use brontes_types::{
         cex_trades::{CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG, TRACE_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, META_FLAG, TRACE_FLAG,
+        },
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -191,7 +195,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
-                        Some(CEX_FLAG),
+                        Some(CEX_QUOTES_FLAG),
                         true,
                         progress_bar
                             .iter()
@@ -256,7 +260,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
                         block_range,
                         clear_table,
-                        Some(CEX_FLAG),
+                        Some(CEX_TRADES_FLAG),
                         true,
                         progress_bar
                             .iter()
@@ -297,7 +301,7 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
-                        Some(CEX_FLAG),
+                        Some(CEX_QUOTES_FLAG),
                         true,
                         progress_bar
                             .iter()
@@ -350,7 +354,7 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
                         block_range,
-                        Some(CEX_FLAG),
+                        Some(CEX_TRADES_FLAG),
                         true,
                         progress_bar
                             .iter()
