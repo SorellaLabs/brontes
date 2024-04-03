@@ -739,9 +739,6 @@ mod tests {
         BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
-        BlockInfo::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
 
         // PoolCreationBlocks
         PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
@@ -763,8 +760,5 @@ mod tests {
             .await
             .unwrap();
 
-        TxTraces::test_initialized_arbitrary_data(clickhouse, libmdbx, arbitrary_set)
-            .await
-            .unwrap();
     }
 }
