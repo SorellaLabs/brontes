@@ -24,6 +24,7 @@ impl NormalizedBatch {
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         let mut nodes_to_prune = Vec::new();
 
+        tracing::info!("{:#?}", actions);
         for (trace_index, action) in actions.iter() {
             match &action {
                 Actions::Transfer(t) => {
