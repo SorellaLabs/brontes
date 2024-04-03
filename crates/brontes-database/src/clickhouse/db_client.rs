@@ -275,7 +275,7 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(feature = "cex-dex-markout")]
         {
-            let cex_trades = self.get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num)).await?.remove(0).value;
+            let cex_trades = self.get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num)).await.uwnrap().remove(0).value;
 
             #[cfg(feature = "cex-dex-markout")]
             Ok(BlockMetadata::new(
