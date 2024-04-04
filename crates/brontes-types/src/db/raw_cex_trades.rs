@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -8,7 +9,9 @@ use serde::Deserialize;
 use super::{
     block_times::BlockTimes, cex::CexExchange, cex_symbols::CexSymbols, cex_trades::CexTradeMap,
 };
-use crate::{db::block_times::CexBlockTimes, serde_utils::cex_exchange, FastHashMap};
+use crate::{
+    constants::USDC_ADDRESS, db::block_times::CexBlockTimes, serde_utils::cex_exchange, FastHashMap,
+};
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct RawCexTrades {
@@ -93,16 +96,15 @@ impl CexTradesConverter {
                         let mut exchange_symbol_map = FastHashMap::default();
 
                         trades.into_iter().for_each(|mut trade| {
-                            if trade.exchange == CexExchange::Coinbase
-                                && trade.symbol.ends_with("USD")
-                            {
-                                trade.symbol += "C";
-                            }
-
-                            let symbol = self
+                            let mut symbol = self
                                 .symbols
                                 .get(&(trade.exchange, trade.symbol.clone()))
                                 .unwrap();
+                            if symbol.address_pair.1
+                                == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
+                            {
+                                symbol.address_pair.1 = USDC_ADDRESS;
+                            }
 
                             let pair = if &trade.side == "buy" {
                                 symbol.address_pair
