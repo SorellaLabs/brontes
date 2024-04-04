@@ -138,15 +138,11 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> =
                     self.detect_cex_dex(swaps, &metadata)?;
 
-                tracing::info!("{:#?}", possible_cex_dex_by_exchange);
-
                 let possible_cex_dex = self.gas_accounting(
                     possible_cex_dex_by_exchange,
                     &tx_info.gas_details,
                     metadata.clone(),
                 )?;
-
-                tracing::info!("{:#?}", possible_cex_dex);
 
                 let cex_dex =
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
@@ -203,7 +199,6 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
         let cex_prices = self.cex_quotes_for_swap(&swap, metadata)?;
-        tracing::info!(?cex_prices, "prices");
 
         let possible_legs: Vec<ExchangeLeg> = cex_prices
             .into_iter()
@@ -247,7 +242,6 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             )?
             .price
             .0;
-        tracing::info!("no direct");
 
         let (maker_profit, taker_profit) = if exchange_cex_price.2 {
             (
