@@ -386,6 +386,7 @@ impl ClassifierTestUtils {
                         logs: vec![],
                         action: make_fake_swap(pair),
                     });
+                    tracing::info!(?update, "with");
                     tx.send(update).unwrap();
                 });
         });
