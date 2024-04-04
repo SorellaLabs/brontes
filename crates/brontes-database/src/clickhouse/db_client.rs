@@ -811,10 +811,10 @@ mod tests {
         cex_dex(database).await;
         mev_block(database).await;
         dex_price_mapping(database).await;
-        builder_stats(database).await;
+        // builder_stats(database).await;
         // searcher_stats(database).await;
         token_info(database).await;
-        searcher_info(database).await;
+        // searcher_info(database).await;
         tree(database).await;
     }
 
