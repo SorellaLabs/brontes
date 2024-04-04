@@ -8,7 +8,7 @@ use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
+    cli::{determine_max_tasks, get_db_path, get_tracing_provider, load_database, static_object},
     runner::CliContext,
 };
 
@@ -20,7 +20,7 @@ pub struct TestTraceArgs {
 
 impl TestTraceArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
-        let db_path = get_env_vars()?;
+        let db_path = get_db_path()?;
 
         let max_tasks = determine_max_tasks(None) * 2;
         init_threadpools(max_tasks as usize);

@@ -1,20 +1,13 @@
-use std::{env, path::Path};
-
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
-use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
-use tokio::sync::mpsc::unbounded_channel;
 
-use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
-use crate::{
-    banner,
-    cli::{get_tracing_provider, init_inspectors},
-    runner::CliContext,
-    BrontesRunConfig, MevProcessor,
+use super::{
+    determine_max_tasks, init_brontes_db, init_clickhouse, init_metrics_listener, init_tracer,
+    load_quote_address, set_dex_pricing, static_object,
 };
+use crate::{banner, cli::init_inspectors, runner::CliContext, BrontesRunConfig, MevProcessor};
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -30,7 +23,7 @@ pub struct RunArgs {
     #[arg(long, short)]
     pub max_tasks:              Option<u64>,
     /// Optional minimum batch size
-    #[arg(long, default_value = "500")]
+    #[arg(long, default_value = "1000")]
     pub min_batch_size:         u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
@@ -83,52 +76,24 @@ pub struct RunArgs {
 impl RunArgs {
     pub async fn execute(mut self, ctx: CliContext) -> eyre::Result<()> {
         banner::print_banner();
-        // Fetch required environment variables.
-        let db_path = get_env_vars()?;
-        tracing::info!(target: "brontes", "got env vars");
-        let quote_asset = self.quote_asset.parse()?;
-        tracing::info!(target: "brontes", "parsed quote asset");
+
+        let quote_asset = load_quote_address(&self)?;
+
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
         init_threadpools(max_tasks as usize);
 
-        let (metrics_tx, metrics_rx) = unbounded_channel();
-        let metrics_listener = PoirotMetricsListener::new(metrics_rx);
-        task_executor.spawn_critical("metrics", metrics_listener);
+        let metrics_tx = init_metrics_listener(&task_executor);
 
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+        let libmdbx = init_brontes_db()?;
 
-        tracing::info!(target: "brontes", "starting database initialization");
-        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
-        tracing::info!(target: "brontes", "Initialize Libmdbx");
+        let clickhouse = init_clickhouse(&self).await?;
 
-        let cex_download_config = CexDownloadConfig::new(
-            (self.cex_time_window_before, self.cex_time_window_after),
-            self.cex_exchanges.clone(),
-        );
-        let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
-        tracing::info!(target: "brontes", "Databases initialized");
-
-        let only_cex_dex = self
-            .inspectors
-            .as_ref()
-            .map(|f| {
-                #[cfg(not(feature = "cex-dex-markout"))]
-                let cmp = Inspectors::CexDex;
-                #[cfg(feature = "cex-dex-markout")]
-                let cmp = Inspectors::CexDexMarkout;
-                f.len() == 1 && f.contains(&cmp)
-            })
-            .unwrap_or(false);
-
-        if only_cex_dex {
-            self.force_no_dex_pricing = true;
-        }
+        set_dex_pricing(&mut self);
 
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
-        let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
-
+        let tracer = init_tracer(task_executor.clone(), max_tasks)?;
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         let executor = task_executor.clone();

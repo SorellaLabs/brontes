@@ -72,6 +72,13 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
+    /// Initialize the small tables that aren't indexed by block number
+    fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
+
     /// initializes all the tables with missing data ranges via the CLI
     fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
         &'static self,
@@ -84,7 +91,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
-    fn init_full_range_tables<CH: ClickhouseHandle>(
+    fn should_init_full_range_tables<CH: ClickhouseHandle>(
         &self,
         clickhouse: &'static CH,
     ) -> impl Future<Output = bool> + Send;
@@ -93,7 +100,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<(Option<Vec<Tables>>, RangeInclusive<u64>)>>;
+    ) -> eyre::Result<FastHashMap<Tables, Vec<RangeInclusive<u64>>>>;
 }
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -182,7 +189,10 @@ impl LibmdbxInit for LibmdbxReadWriter {
     /// checks the min and max values of the clickhouse db and sees if the full
     /// range tables have the values.
     #[cfg(feature = "local-clickhouse")]
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
+    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
+        &self,
+        clickhouse: &'static CH,
+    ) -> bool {
         futures::stream::iter([
             Tables::PoolCreationBlocks,
             Tables::AddressToProtocolInfo,
@@ -216,74 +226,103 @@ impl LibmdbxInit for LibmdbxReadWriter {
     }
 
     #[cfg(not(feature = "local-clickhouse"))]
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, _clickhouse: &'static CH) -> bool {
+    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
+        &self,
+        _clickhouse: &'static CH,
+    ) -> bool {
         true
+    }
+
+    async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer.initialize_full_range_tables().await?;
+
+        Ok(())
     }
 
     fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<(Option<Vec<Tables>>, RangeInclusive<u64>)>> {
-        let mut tables_to_init = vec![Tables::BlockInfo];
-        #[cfg(not(feature = "sorella-server"))]
-        tables_to_init.push(Tables::TxTraces);
-        #[cfg(not(feature = "cex-dex-markout"))]
-        tables_to_init.push(Tables::CexPrice);
-        #[cfg(feature = "cex-dex-markout")]
-        tables_to_init.push(Tables::CexTrades);
+    ) -> eyre::Result<FastHashMap<Tables, Vec<RangeInclusive<u64>>>> {
+        let tables_to_init = default_tables_to_init();
 
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
-
         let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
+
         if peek_cur.peek().is_none() {
             tracing::info!("entire range missing");
-            return Ok(vec![(Some(tables_to_init), start_block..=end_block)])
+            let mut result = FastHashMap::default();
+            for table in tables_to_init {
+                result.insert(table, vec![start_block..=end_block]);
+            }
+            return Ok(result);
         }
 
-        let mut result: Vec<(Vec<Tables>, RangeInclusive<u64>)> = Vec::new();
-        let mut block_tracking = start_block;
-        let mut oldest_missing_data_block_continuous: Option<u64> = None;
+        let mut result: FastHashMap<Tables, Vec<RangeInclusive<u64>>> = FastHashMap::default();
+        let mut start_block_to_init: FastHashMap<Tables, Option<u64>> = FastHashMap::default();
+        let mut block_tracker = start_block;
 
         for entry in peek_cur {
             if let Ok(has_info) = entry {
                 let block = has_info.0;
                 let state = has_info.1;
-                // if we are missing the block, we add it to the range
-                if block != block_tracking {
-                    tracing::info!(block, block_tracking, "block != tracking");
 
-                    if oldest_missing_data_block_continuous.is_none() {
-                        result.push((tables_to_init, block_tracking..=block));
+                if block != block_tracker {
+                    for table in tables_to_init.iter() {
+                        if start_block_to_init.get(table).is_none() {
+                            start_block_to_init.insert(*table, Some(block_tracker));
+                        }
                     }
-
-                    block_tracking = block + 1;
-
-                    continue
+                    block_tracker = block + 1;
+                    continue;
                 }
 
-                // We are trying to build the largest ranges, so we need to check if the state
-                // is missing, if it is we will add it as the oldest missing data block &
-                // continue
-
-                // Prob make this a hashmap by table so we have the ranges on a by table basis
-                // so we can easily offload to the correct init function
-                if let Some(tables) = tables_to_initialize(Some(state)) {
-                    if oldest_missing_data_block_continuous.is_none() {
-                        oldest_missing_data_block_continuous = Some(block_tracking);
+                if block == end_block {
+                    for (table, should_init) in tables_to_initialize(state) {
+                        if should_init {
+                            if let Some(start) = start_block_to_init
+                                .get_mut(&table)
+                                .and_then(|opt| opt.take())
+                            {
+                                result.entry(table).or_default().push(start..=block);
+                            } else {
+                                result.entry(table).or_default().push(block..=block);
+                            }
+                        } else {
+                            if let Some(start) = start_block_to_init
+                                .get_mut(&table)
+                                .and_then(|opt| opt.take())
+                            {
+                                result.entry(table).or_default().push(start..=block - 1);
+                            }
+                        }
                     }
-                    if block_tracking == end_block {
-                        result.push((
-                            tables_to_init,
-                            oldest_missing_data_block_continuous.unwrap()..=block,
-                        ));
-                        oldest_missing_data_block_continuous = None;
+                } else {
+                    for (table, should_init) in tables_to_initialize(state) {
+                        if should_init {
+                            if start_block_to_init.get(&table).is_none() {
+                                start_block_to_init.insert(table, Some(block_tracker));
+                            }
+                        } else {
+                            if let Some(start) = start_block_to_init
+                                .get_mut(&table)
+                                .and_then(|opt| opt.take())
+                            {
+                                result.entry(table).or_default().push(start..=block - 1);
+                            }
+                        }
                     }
                 }
-                block_tracking += 1;
+
+                block_tracker = block + 1;
             } else {
-                // should never happen unless db is corrupted
+                // Should never happen unless the database is corrupted
                 panic!("database is corrupted");
             }
         }
@@ -998,82 +1037,48 @@ pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
     }
 }
 
-pub fn tables_to_initialize(data: Option<InitializedStateMeta>) -> Option<Vec<Tables>> {
-    let mut tables = Vec::new();
+fn default_tables_to_init() -> Vec<Tables> {
+    let mut tables_to_init = vec![Tables::BlockInfo];
 
-    if let Some(data) = data {
-        if data.should_ignore() {
-            return None
-        }
+    #[cfg(not(feature = "sorella-server"))]
+    tables_to_init.push(Tables::TxTraces);
 
+    #[cfg(not(feature = "cex-dex-markout"))]
+    tables_to_init.push(Tables::CexPrice);
+
+    #[cfg(feature = "cex-dex-markout")]
+    tables_to_init.push(Tables::CexTrades);
+
+    tables_to_init
+}
+pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
+    let tables = Vec::new();
+
+    if data.should_ignore() {
+        tables
+    } else {
         #[cfg(all(feature = "local-reth", not(feature = "cex-dex-markout")))]
         {
-            if (data.0 & DEX_PRICE_FLAG) == 0 {
-                tables.push(Tables::DexPrice);
-            }
-            if (self.0 & CEX_QUOTES_FLAG) == 0 {
-                tables.push(Tables::CexPrice);
-            }
-            if (self.0 & META_FLAG) == 0 {
-                tables.push(Tables::BlockInfo);
-            }
+            tables.push((Tables::DexPrice, (data.0 & DEX_PRICE_FLAG) == 0));
+            tables.push((Tables::CexPrice, (data.0 & CEX_QUOTES_FLAG) == 0));
+            tables.push((Tables::BlockInfo, (data.0 & META_FLAG) == 0));
         }
 
         #[cfg(all(not(feature = "local-reth"), feature = "cex-dex-markout"))]
         {
-            if (data.0 & DEX_PRICE_FLAG) == 0 {
-                tables.push(Tables::DexPrice);
-            }
-            if (data.0 & CEX_TRADES_FLAG) == 0 {
-                tables.push(Tables::CexTrades);
-            }
-            if (data.0 & META_FLAG) == 0 {
-                tables.push(Tables::BlockInfo);
-            }
-            if (data.0 & TRACE_FLAG) == 0 {
-                tables.push(Tables::TxTraces);
-            }
+            tables.push((Tables::DexPrice, (data.0 & DEX_PRICE_FLAG) == 0));
+            tables.push((Tables::CexTrades, (data.0 & CEX_TRADES_FLAG) == 0));
+            tables.push((Tables::BlockInfo, (data.0 & META_FLAG) == 0));
+            tables.push((Tables::TxTraces, (data.0 & TRACE_FLAG) == 0));
         }
 
         #[cfg(all(feature = "local-reth", feature = "cex-dex-markout"))]
         {
-            if (data.0 & DEX_PRICE_FLAG) == 0 {
-                tables.push(Tables::DexPrice);
-            }
-            if (data.0 & CEX_TRADES_FLAG) == 0 {
-                tables.push(Tables::CexTrades);
-            }
-            if (data.0 & META_FLAG) == 0 {
-                tables.push(Tables::BlockInfo);
-            }
-        }
-    } else {
-        #[cfg(feature = "local-reth")]
-        {
-            tables.push(Tables::DexPrice);
-            tables.push(Tables::BlockInfo);
-            #[cfg(not(feature = "cex-dex-markout"))]
-            tables.push(Tables::CexPrice);
-
-            #[cfg(feature = "cex-dex-markout")]
-            tables.push(Tables::CexTrades);
+            tables.push((Tables::DexPrice, (data.0 & DEX_PRICE_FLAG) == 0));
+            tables.push((Tables::CexTrades, (data.0 & CEX_TRADES_FLAG) == 0));
+            tables.push((Tables::BlockInfo, (data.0 & META_FLAG) == 0));
         }
 
-        #[cfg(not(feature = "local-reth"))]
-        {
-            #[cfg(feature = "cex-dex-markout")]
-            tables.push(Tables::CexTrades);
-            #[cfg(not(feature = "cex-dex-markout"))]
-            tables.push(Tables::CexPrice);
-
-            tables.push(Tables::DexPrice);
-            tables.push(Tables::TxTraces);
-        }
-    }
-
-    if tables.is_empty() {
-        None
-    } else {
-        Some(tables)
+        tables
     }
 }

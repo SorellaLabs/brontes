@@ -53,7 +53,7 @@ pub const NUM_TABLES: usize = 15;
 
 macro_rules! tables {
     ($($table:ident),*) => {
-        #[derive(Debug, PartialEq, Copy, Clone)]
+        #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
         /// Default tables that should be present inside database.
         pub enum Tables {
             $(
@@ -157,39 +157,59 @@ impl Tables {
         multi_progress_bar.add(progress_bar)
     }
 
-    pub(crate) async fn initialize_table<T: TracingProvider, CH: ClickhouseHandle>(
+    pub(crate) async fn initialize_full_range_table<T: TracingProvider, CH: ClickhouseHandle>(
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
-        block_range: Option<(u64, u64)>,
-        clear_table: bool,
-        crit_progress: Option<ProgressBar>,
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+
+        crit_progress: ProgressBar,
     ) -> eyre::Result<()> {
         match self {
             Tables::TokenDecimals => {
                 initializer
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
-                        clear_table,
-                        crit_progress.unwrap(),
+                        true,
+                        crit_progress,
                     )
                     .await
             }
             Tables::AddressToProtocolInfo => {
                 initializer
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
-                        clear_table,
-                        crit_progress.unwrap(),
+                        true,
+                        crit_progress,
                     )
                     .await
             }
             Tables::PoolCreationBlocks => {
                 initializer
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
-                        clear_table,
-                        crit_progress.unwrap(),
+                        true,
+                        crit_progress,
                     )
                     .await
             }
+            Tables::Builder => {
+                initializer
+                    .clickhouse_init_no_args::<Builder, BuilderData>(true, crit_progress)
+                    .await
+            }
+            Tables::AddressMeta => {
+                initializer
+                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(true, crit_progress)
+                    .await
+            }
+            _ => unimplemented!("{:?} isn't a full range table", self),
+        }
+    }
+
+    pub(crate) async fn initialize_table<T: TracingProvider, CH: ClickhouseHandle>(
+        &self,
+        initializer: &LibmdbxInitializer<T, CH>,
+        block_range: Option<(u64, u64)>,
+        clear_table: bool,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+    ) -> eyre::Result<()> {
+        match self {
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
@@ -236,22 +256,6 @@ impl Tables {
                     )
                     .await
             }
-            Tables::Builder => {
-                initializer
-                    .clickhouse_init_no_args::<Builder, BuilderData>(
-                        clear_table,
-                        crit_progress.unwrap(),
-                    )
-                    .await
-            }
-            Tables::AddressMeta => {
-                initializer
-                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(
-                        clear_table,
-                        crit_progress.unwrap(),
-                    )
-                    .await
-            }
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
@@ -269,6 +273,7 @@ impl Tables {
                     )
                     .await
             }
+            _ => unimplemented!("'initialize_table' not implemented for {:?}", self),
         }
     }
 

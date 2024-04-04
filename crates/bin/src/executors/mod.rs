@@ -21,7 +21,7 @@ use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use brontes_types::{BrontesTaskExecutor, FastHashMap};
-use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
+use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
@@ -106,7 +106,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         let start_block = self.start_block.unwrap();
 
-        let chunks = (start_block..=end_block)
+        let chunks = (start_block..end_block)
             .chunks(chunk_size.try_into().unwrap())
             .into_iter()
             .map(|mut c| {
@@ -217,6 +217,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
+        todo!();
+
         tracing::info!(
             start_block=%start_block, %end_block,
             "Verifying the database contains the data from block {} to block {}",
@@ -230,7 +232,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             return Ok(())
         }
 
-        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
+        for keys in state_to_init.iter() {}
 
         let state_to_init_continuous = state_to_init
             .clone()
@@ -238,9 +240,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .filter(|range| range.clone().collect_vec().len() >= 1000)
             .collect_vec();
 
+        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
+
         tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
 
-        let tables_to_init_cont = &tables_to_init.clone();
         join_all(state_to_init_continuous.iter().map(|range| {
             let tables_pb = tables_pb.clone();
             async move {
@@ -289,26 +292,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         Ok(())
     }
 
-    async fn verify_database_fetch_missing(&self) -> eyre::Result<()> {
-        // these tables are super lightweight and as such, we init them for the entire
-        // range
+    /// Verify global tables & initialize them if necessary
+    async fn verify_global_tables(&self) -> eyre::Result<()> {
         if self.libmdbx.init_full_range_tables(self.clickhouse).await {
             tracing::info!("Initializing critical range state");
             self.libmdbx
-                .initialize_tables(
-                    self.clickhouse,
-                    self.parser.get_tracer(),
-                    &[
-                        Tables::PoolCreationBlocks,
-                        Tables::AddressToProtocolInfo,
-                        Tables::TokenDecimals,
-                        Tables::Builder,
-                        Tables::AddressMeta,
-                    ],
-                    false,
-                    None,
-                    Arc::new(vec![]),
-                )
+                .initialize_full_range_tables(self.clickhouse, self.parser.get_tracer())
                 .await?;
         }
 
@@ -435,7 +424,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
-        self.verify_database_fetch_missing().await?;
+        self.verify_global_tables().await?;
         let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
 
         pin_mut!(build_future, shutdown);

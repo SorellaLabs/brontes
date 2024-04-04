@@ -8,7 +8,7 @@ use futures::{join, StreamExt};
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    cli::{get_env_vars, get_tracing_provider, load_read_only_database, static_object},
+    cli::{get_db_path, get_tracing_provider, load_read_only_database, static_object},
     runner::CliContext,
 };
 
@@ -21,7 +21,7 @@ pub struct TipTraceArgs {
 
 impl TipTraceArgs {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
-        let db_path = get_env_vars()?;
+        let db_path = get_db_path()?;
 
         let max_tasks = (num_cpus::get_physical() as f64 * 0.7) as u64 + 1;
         init_threadpools(max_tasks as usize);

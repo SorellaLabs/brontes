@@ -55,43 +55,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        let critical_table_count = tables
-            .iter()
-            .map(Tables::is_critical_init)
-            .filter(|f| *f)
-            .count();
-
-        let critical_state_progress_bar =
-            Self::build_critical_state_progress_bar(critical_table_count as u64);
-
-        futures::stream::iter(tables.to_vec())
-            .map(|table| {
-                let progress_bar = progress_bar.clone();
-                let critical_state_progress_bar = critical_state_progress_bar.clone();
-                async move {
-                    table
-                        .initialize_table(
-                            self,
-                            block_range,
-                            clear_tables,
-                            critical_state_progress_bar,
-                            progress_bar,
-                        )
-                        .await
-                }
-            })
-            .buffer_unordered(2)
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<eyre::Result<()>>()?;
-
-        join!(
-            self.load_classifier_config_data(),
-            self.load_searcher_config_data(),
-            self.load_builder_config_data(),
-            self.load_address_metadata_config(),
-        );
+        futures::stream::iter(tables.to_vec()).map(|table| {
+            let progress_bar = progress_bar.clone();
+            async move {
+                table
+                    .initialize_table(self, block_range, clear_tables, progress_bar)
+                    .await
+            }
+        });
         Ok(())
     }
 
@@ -108,6 +79,32 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .into_iter()
         .collect::<eyre::Result<_>>()?;
 
+        Ok(())
+    }
+
+    pub async fn initialize_full_range_tables(&self) -> eyre::Result<()> {
+        let tables = &[
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+            Tables::Builder,
+            Tables::AddressMeta,
+        ];
+
+        let critical_state_progress_bar = Self::build_critical_state_progress_bar(5);
+
+        futures::stream::iter(tables.to_vec()).map(|table| {
+            let progress_bar = progress_bar.clone();
+            async move {
+                table
+                    .initialize_full_range_table(self, progress_bar, cleartable)
+                    .await
+            }
+        });
+        Ok(())
+    }
+
+    pub async fn load_config(&self) -> eyre::Result<()> {
         join!(
             self.load_classifier_config_data(),
             self.load_searcher_config_data(),
