@@ -203,6 +203,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
         let cex_prices = self.cex_quotes_for_swap(&swap, metadata)?;
+        tracing::info!(?cex_prices, "prices");
 
         let possible_legs: Vec<ExchangeLeg> = cex_prices
             .into_iter()
