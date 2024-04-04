@@ -588,6 +588,7 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    #[allow(unused)]
     async fn searcher_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = JoinedSearcherInfo {
             address:         Default::default(),
@@ -631,6 +632,7 @@ mod tests {
     //     assert_eq!(queried, case0);
     // }
 
+    #[allow(unused)]
     async fn builder_stats(_db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         todo!();
         /*
