@@ -138,13 +138,13 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> =
                     self.detect_cex_dex(swaps, &metadata)?;
 
+                tracing::info!("{:#?}", possible_cex_dex_by_exchange);
+
                 let possible_cex_dex = self.gas_accounting(
                     possible_cex_dex_by_exchange,
                     &tx_info.gas_details,
                     metadata.clone(),
                 )?;
-
-                tracing::info!("{:#?}", possible_cex_dex_by_exchange);
 
                 let cex_dex =
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
