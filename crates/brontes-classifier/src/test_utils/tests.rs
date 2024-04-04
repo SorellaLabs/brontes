@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use alloy_primitives::{Address, TxHash, U256};
+use alloy_primitives::{Address, TxHash};
 use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
     TxTracesWithHeaderAnd,
@@ -23,14 +23,12 @@ use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
     },
-    normalized_actions::{pool::NormalizedNewPool, NormalizedSwap, NormalizedTransfer},
-    pair::Pair,
+    normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
     FastHashMap, TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
-use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use serde_json::Value;
