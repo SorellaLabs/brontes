@@ -383,14 +383,14 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - self.cex_download_config.time_window.0 * 1000;
+                    - self.cex_download_config.time_window.0 * 1000000;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    + self.cex_download_config.time_window.1 * 1000;
+                    + self.cex_download_config.time_window.1 * 1000000;
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -405,8 +405,8 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .map(|b| {
                         b.convert_to_timestamp_query(
-                            self.cex_download_config.time_window.0 * 1000,
-                            self.cex_download_config.time_window.1 * 1000,
+                            self.cex_download_config.time_window.0 * 1000000,
+                            self.cex_download_config.time_window.1 * 1000000,
                         )
                     })
                     .collect::<Vec<_>>()
@@ -479,14 +479,14 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - self.cex_download_config.time_window.0 * 1000;
+                    - self.cex_download_config.time_window.0 * 1000000;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    + self.cex_download_config.time_window.1 * 1000;
+                    + self.cex_download_config.time_window.1 * 1000000;
 
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
@@ -501,8 +501,8 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .map(|b| {
                         b.convert_to_timestamp_query(
-                            self.cex_download_config.time_window.0 * 1000,
-                            self.cex_download_config.time_window.1 * 1000,
+                            self.cex_download_config.time_window.0 * 1000000,
+                            self.cex_download_config.time_window.1 * 1000000,
                         )
                     })
                     .collect::<Vec<_>>()
