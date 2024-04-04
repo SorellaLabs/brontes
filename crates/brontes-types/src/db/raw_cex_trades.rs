@@ -105,7 +105,6 @@ impl CexTradesConverter {
                                 trade.price = 1.0 / trade.price;
                                 symbol.address_pair.flip()
                             };
-                            tracing::info!(?pair, ?trade.price, ?trade.amount);
 
                             exchange_symbol_map
                                 .entry(pair)
