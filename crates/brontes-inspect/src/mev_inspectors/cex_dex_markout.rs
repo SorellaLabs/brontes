@@ -168,6 +168,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let maker_delta = &maker_price.price - &rate;
         let taker_delta = &taker_price.price - &rate;
 
+
+        tracing::info!(?maker_price, ?rate, "got price");
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calculate fees here
             maker_delta * &swap.amount_out * &maker_price.price,
@@ -382,8 +384,8 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
             .needs_token(WETH_ADDRESS)
-            .with_expected_profit_usd(38.31)
-            .with_gas_paid_usd(38.31);
+            .with_gas_paid_usd(38.31)
+            .with_expected_profit_usd(38.31);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
