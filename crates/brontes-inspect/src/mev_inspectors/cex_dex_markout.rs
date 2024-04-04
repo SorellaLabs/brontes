@@ -365,7 +365,7 @@ pub struct SwapLeg {
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::USDT_ADDRESS;
+    use brontes_types::constants::{WETH_ADDRESS,USDT_ADDRESS};
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
@@ -380,6 +380,8 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .needs_token(WETH_ADDRESS)
             .with_expected_profit_usd(20.37)
             .with_gas_paid_usd(20.37);
 
