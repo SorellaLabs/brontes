@@ -117,7 +117,7 @@ impl DexQuotes {
             tx -= 1;
         }
 
-        debug!(?pair, before=?s_idx, "no price for pair");
+        tracing::error!(?pair, before=?s_idx, "no price for pair");
 
         None
     }
