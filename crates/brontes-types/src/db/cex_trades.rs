@@ -549,7 +549,9 @@ fn closest<'a>(
         .collect::<Vec<_>>();
     mapped.sort_unstable_by(|a, b| a.1.cmp(&b.1));
 
-    mapped.into_iter().find(|(set, m_vol)| m_vol.ge(vol))
+    mapped
+        .into_iter()
+        .find_map(|(set, m_vol)| m_vol.ge(vol).then_some(set))
 }
 
 struct CexTradePtr<'ptr> {
