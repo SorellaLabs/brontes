@@ -329,13 +329,17 @@ impl CexTradeMap {
         // - The assumption here is we don't frequently need to evaluate more than a set
         //   of 4 trades
         //TODO: Bench & check if it's it worth to parallelize
-        let trade_buckets_iterator = trades.iter().map(|t| vec![t]).chain(
-            trades
-                .iter()
-                .combinations(2)
-                .chain(trades.iter().combinations(3))
-                .chain(trades.iter().combinations(4)),
-        ).collect::<Vec<_>>();
+        let trade_buckets_iterator = trades
+            .iter()
+            .map(|t| vec![t])
+            .chain(
+                trades
+                    .iter()
+                    .combinations(2)
+                    .chain(trades.iter().combinations(3))
+                    .chain(trades.iter().combinations(4)),
+            )
+            .collect::<Vec<_>>();
         // Gets the vec of trades that's closest to the volume of the stat arb swap
         // Will not return a vec that does not have enough volume to fill the arb
         let closest = closest(trade_buckets_iterator.into_par_iter(), volume)?;
@@ -540,18 +544,12 @@ fn closest<'a>(
 ) -> Option<Vec<&'a CexTradePtr<'a>>> {
     // sort from lowest to highest volume returning the first
     // does not return a vec that does not have enough volume to fill the arb
-    iter.sorted_by(|a, b| {
-        a.iter()
-            .map(|t| &t.get().amount)
-            .sum::<Rational>()
-            .cmp(&b.iter().map(|t| &t.get().amount).sum::<Rational>())
-    })
-    .find(|set| {
-        set.iter()
-            .map(|t| &t.get().amount)
-            .sum::<Rational>()
-            .ge(vol)
-    })
+    let mut mapped = iter
+        .map(|a| (a, a.iter().map(|t| &t.get().amount).sum::<Rational>()))
+        .collect::<Vec<_>>();
+    mapped.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+
+    mapped.into_iter().find(|(set, m_vol)| m_vol.ge(vol))
 }
 
 struct CexTradePtr<'ptr> {
@@ -559,6 +557,9 @@ struct CexTradePtr<'ptr> {
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
     _p:  PhantomData<&'ptr u8>,
 }
+
+unsafe impl<'a> Send for CexTradePtr<'a> {}
+unsafe impl<'a> Sync for CexTradePtr<'a> {}
 
 impl<'ptr> CexTradePtr<'ptr> {
     fn new(raw: &CexTrades) -> Self {
