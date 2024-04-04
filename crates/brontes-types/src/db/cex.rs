@@ -476,13 +476,13 @@ self_convert_redefined!(CexExchange);
 impl From<&str> for CexExchange {
     fn from(value: &str) -> Self {
         match value {
-            "binance" | "Binance" => CexExchange::Binance,
+            "binance" | "Binance" | "binance-futures" => CexExchange::Binance,
             "bitmex" | "Bitmex" => CexExchange::Bitmex,
             "deribit" | "Deribit" => CexExchange::Deribit,
-            "okex" | "Okex" => CexExchange::Okex,
+            "okex" | "Okex" | "okex-swap" => CexExchange::Okex,
             "coinbase" | "Coinbase" => CexExchange::Coinbase,
             "kraken" | "Kraken" => CexExchange::Kraken,
-            "bybit-spot" | "bybitspot" | "BybitSpot" | "Bybit-Spot" | "Bybit_Spot" => {
+            "bybit-spot" | "bybitspot" | "BybitSpot" | "Bybit-Spot" | "Bybit_Spot" | "bybit" => {
                 CexExchange::BybitSpot
             }
             "kucoin" | "Kucoin" => CexExchange::Kucoin,

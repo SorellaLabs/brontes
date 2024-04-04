@@ -44,7 +44,7 @@ use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 #[cfg(not(feature = "cex-dex-markout"))]
 use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
-    clickhouse::const_sql::{BLOCK_INFO},
+    clickhouse::const_sql::BLOCK_INFO,
     libmdbx::{
         determine_eth_prices,
         tables::{BlockInfoData, CexPriceData, CexTradesData},
@@ -247,7 +247,8 @@ impl ClickhouseHandle for Clickhouse {
         let block_meta = self
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-            .await.unwrap()
+            .await
+            .unwrap()
             .value;
 
         #[cfg(not(feature = "cex-dex-markout"))]
@@ -277,7 +278,12 @@ impl ClickhouseHandle for Clickhouse {
         #[cfg(feature = "cex-dex-markout")]
         {
             tracing::info!("markout");
-            let cex_trades = self.get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num)).await.unwrap().remove(0).value;
+            let cex_trades = self
+                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num))
+                .await
+                .unwrap()
+                .remove(0)
+                .value;
 
             Ok(BlockMetadata::new(
                 block_num,
