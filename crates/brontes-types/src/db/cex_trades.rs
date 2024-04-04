@@ -336,8 +336,7 @@ impl CexTradeMap {
                 trades
                     .iter()
                     .combinations(2)
-                    .chain(trades.iter().combinations(3))
-                    .chain(trades.iter().combinations(4)),
+                    .chain(trades.iter().combinations(3)),
             )
             .collect::<Vec<_>>();
         // Gets the vec of trades that's closest to the volume of the stat arb swap
