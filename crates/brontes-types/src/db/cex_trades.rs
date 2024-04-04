@@ -202,7 +202,6 @@ impl CexTradeMap {
             .calculate_intermediary_addresses(exchanges, pair)
             .into_par_iter()
             .filter_map(|intermediary| {
-                tracing::info!(?intermediary, "trying intermediary");
                 let pair0 = Pair(pair.0, intermediary);
                 let pair1 = Pair(intermediary, pair.1);
                 let (i, res) = (
@@ -260,7 +259,7 @@ impl CexTradeMap {
         // - The assumption here is the stat arber is trading just for this arb and
         //   isn't offsetting inventory for other purposes at the same time
 
-        // let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
+        let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
         let trades = self
             .0
             .iter()
@@ -271,7 +270,7 @@ impl CexTradeMap {
                     trades.get(pair).map(|trades| {
                         trades
                             .iter()
-                            // .filter(|f| f.amount.le(&max_vol_per_trade))
+                            .filter(|f| f.amount.le(&max_vol_per_trade))
                             .collect_vec()
                     })?,
                 ))
@@ -323,11 +322,11 @@ impl CexTradeMap {
             return None
         }
 
-        // // Groups trades into a set of iterators, first including all trades, then all
-        // // combinations of 2 trades, then all combinations of 3 trades, then all
-        // // combinations of 4 trades
-        // // - The assumption here is we don't frequently need to evaluate more than a set
-        // //   of 4 trades
+        // // Groups trades into a set of iterators, first including all trades, then
+        // all // combinations of 2 trades, then all combinations of 3 trades,
+        // then all // combinations of 4 trades
+        // // - The assumption here is we don't frequently need to evaluate more than a
+        // set //   of 4 trades
         // //TODO: Bench & check if it's it worth to parallelize
         // let trade_buckets_iterator = trades
         //     .iter()
@@ -537,7 +536,7 @@ fn calculate_cross_pair(
 }
 
 // TODO: Potentially collect all sets from 100% to 120% then select best price
-fn closest<'a>(
+fn _closest<'a>(
     iter: impl ParallelIterator<Item = Vec<&'a CexTradePtr<'a>>>,
     vol: &Rational,
 ) -> Option<Vec<&'a CexTradePtr<'a>>> {
