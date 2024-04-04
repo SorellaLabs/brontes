@@ -146,6 +146,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     metadata.clone(),
                 )?;
 
+                tracing::info!("{:#?}", possible_cex_dex);
+
                 let cex_dex =
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
@@ -461,6 +463,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     }
 }
 
+#[derive(Debug)]
 pub struct PossibleCexDex {
     pub swaps:       Vec<NormalizedSwap>,
     pub arb_details: Vec<StatArbDetails>,
