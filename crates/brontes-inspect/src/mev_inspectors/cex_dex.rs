@@ -125,7 +125,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
-                        return None;
+                        return None
                     }
                 }
 
@@ -227,7 +227,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
         if smaller * Rational::from(3) < larger {
-            return None;
+            return None
         }
 
         // A positive delta indicates potential profit from buying on DEX
@@ -487,6 +487,7 @@ impl PossibleCexDex {
     }
 }
 
+#[derive(Debug)]
 pub struct PossibleCexDexLeg {
     pub swap:          NormalizedSwap,
     pub possible_legs: Vec<ExchangeLeg>,
@@ -502,7 +503,7 @@ impl PossibleCexDexLeg {
             .cloned()
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ExchangeLeg {
     pub exchange:  CexExchange,
     pub cex_price: Rational,
