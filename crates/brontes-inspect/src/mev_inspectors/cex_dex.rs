@@ -144,6 +144,8 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     metadata.clone(),
                 )?;
 
+                tracing::info!("{:#?}", possible_cex_dex_by_exchange);
+
                 let cex_dex =
                     self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
 
