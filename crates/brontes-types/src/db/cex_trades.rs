@@ -205,14 +205,19 @@ impl CexTradeMap {
                 tracing::info!(?intermediary, "trying intermediary");
                 let pair0 = Pair(pair.0, intermediary);
                 let pair1 = Pair(intermediary, pair.1);
+                let (i, res) = (
+                    intermediary,
+                    self.get_vwam_no_intermediary(exchanges, &pair0, volume, baskets, quality)?,
+                );
+                let new_vol = volume * &res.0.price;
+
                 Some((
+                    (i, res),
                     (
                         intermediary,
-                        self.get_vwam_no_intermediary(exchanges, &pair0, volume, baskets, quality)?,
-                    ),
-                    (
-                        intermediary,
-                        self.get_vwam_no_intermediary(exchanges, &pair1, volume, baskets, quality)?,
+                        self.get_vwam_no_intermediary(
+                            exchanges, &pair1, &new_vol, baskets, quality,
+                        )?,
                     ),
                 ))
             })

@@ -134,14 +134,14 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
         // token in price
-        let pair = Pair(swap.token_in.address, swap.token_out.address);
+        let pair = Pair(swap.token_out.address, swap.token_in.address);
         tracing::info!(?pair, "fetching price");
 
         let (maker_price, taker_price) = metadata.cex_trades.as_ref()?.get_price(
             &self.cex_exchanges,
             &pair,
             // we always are buying amount in on cex
-            &swap.amount_in,
+            &swap.amount_out,
             // arbitrary for now
             25,
             // add lookup
