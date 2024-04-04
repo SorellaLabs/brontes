@@ -302,7 +302,7 @@ impl CexTradeMap {
         let mut trades = Vec::new();
 
         // multiply volume by baskets to assess more potential baskets of trades
-        let volume_amount = volume * Rational::from(baskets);
+        let volume_amount = volume;
         let mut cur_vol = Rational::ZERO;
 
         // Populates an ordered vec of trades from best to worst price
@@ -323,25 +323,25 @@ impl CexTradeMap {
             return None
         }
 
-        // Groups trades into a set of iterators, first including all trades, then all
-        // combinations of 2 trades, then all combinations of 3 trades, then all
-        // combinations of 4 trades
-        // - The assumption here is we don't frequently need to evaluate more than a set
-        //   of 4 trades
-        //TODO: Bench & check if it's it worth to parallelize
-        let trade_buckets_iterator = trades
-            .iter()
-            .map(|t| vec![t])
-            .chain(
-                trades
-                    .iter()
-                    .combinations(2)
-                    .chain(trades.iter().combinations(3)),
-            )
-            .collect::<Vec<_>>();
-        // Gets the vec of trades that's closest to the volume of the stat arb swap
-        // Will not return a vec that does not have enough volume to fill the arb
-        let closest = closest(trade_buckets_iterator.into_par_iter(), volume)?;
+        // // Groups trades into a set of iterators, first including all trades, then all
+        // // combinations of 2 trades, then all combinations of 3 trades, then all
+        // // combinations of 4 trades
+        // // - The assumption here is we don't frequently need to evaluate more than a set
+        // //   of 4 trades
+        // //TODO: Bench & check if it's it worth to parallelize
+        // let trade_buckets_iterator = trades
+        //     .iter()
+        //     .map(|t| vec![t])
+        //     .chain(
+        //         trades
+        //             .iter()
+        //             .combinations(2)
+        //             .chain(trades.iter().combinations(3)),
+        //     )
+        //     .collect::<Vec<_>>();
+        // // Gets the vec of trades that's closest to the volume of the stat arb swap
+        // // Will not return a vec that does not have enough volume to fill the arb
+        // let closest = closest(trade_buckets_iterator.into_par_iter(), volume)?;
 
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
@@ -349,7 +349,7 @@ impl CexTradeMap {
         let mut exchange_with_vol = FastHashMap::default();
 
         // For the closest basket sum volume and volume weighted prices
-        for trade in closest {
+        for trade in trades {
             let (m_fee, t_fee) = trade.get().exchange.fees();
 
             vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
