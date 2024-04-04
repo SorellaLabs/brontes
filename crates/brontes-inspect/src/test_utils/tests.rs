@@ -224,6 +224,7 @@ impl InspectorTestUtils {
                 res.unwrap_or_else(|_| Metadata::default())
             }
         };
+        tracing::info!("{:#?}", quotes);
 
         if metadata.dex_quotes.is_none() {
             metadata.dex_quotes = quotes;
