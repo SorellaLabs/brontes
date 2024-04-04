@@ -93,6 +93,12 @@ impl CexTradesConverter {
                         let mut exchange_symbol_map = FastHashMap::default();
 
                         trades.into_iter().for_each(|mut trade| {
+                            if trade.exchange == CexExchange::Coinbase
+                                && trade.symbol.ends_with("USD")
+                            {
+                                trade.symbol += "C";
+                            }
+
                             let symbol = self
                                 .symbols
                                 .get(&(trade.exchange, trade.symbol.clone()))
