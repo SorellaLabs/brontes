@@ -99,7 +99,9 @@ impl CexTradesConverter {
                             let mut symbol = self
                                 .symbols
                                 .get(&(trade.exchange, trade.symbol.clone()))
-                                .unwrap();
+                                .unwrap()
+                                .clone();
+
                             if symbol.address_pair.1
                                 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
                             {
