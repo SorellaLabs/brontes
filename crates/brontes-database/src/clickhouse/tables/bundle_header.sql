@@ -8,6 +8,7 @@ CREATE TABLE mev.bundle_header ON CLUSTER eth_cluster0
     `profit_usd` Float64,
     `bribe_usd` Float64,
     `mev_type` String,
+    `no_pricing_calculated` Bool DEFAULT false,
     `balance_deltas` Nested (
         `tx_hash` String,
         `address` String,
