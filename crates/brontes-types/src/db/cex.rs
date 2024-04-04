@@ -452,13 +452,13 @@ impl<'de> serde::Deserialize<'de> for CexExchange {
 impl CexExchange {
     pub fn to_clickhouse_filter(&self) -> &str {
         match self {
-            CexExchange::Binance => "exchange = 'binance'",
+            CexExchange::Binance => "(exchange = 'binance' or exchange = 'binance-futures')",
             CexExchange::Bitmex => "exchange = 'bitmex'",
             CexExchange::Deribit => "exchange = 'deribit'",
-            CexExchange::Okex => "exchange = 'okex'",
+            CexExchange::Okex => "(exchange = 'okex' or exchange = 'okex-swap')",
             CexExchange::Coinbase => "exchange = 'coinbase'",
             CexExchange::Kraken => "exchange = 'kraken'",
-            CexExchange::BybitSpot => "exchange = 'bybit-spot'",
+            CexExchange::BybitSpot => "(exchange = 'bybit-spot' or exchange = 'bybit')",
             CexExchange::Kucoin => "exchange = 'kucoin'",
             CexExchange::Upbit => "exchange = 'upbit'",
             CexExchange::Huobi => "exchange = 'huobi'",
