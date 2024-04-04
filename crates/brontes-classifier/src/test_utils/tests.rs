@@ -418,17 +418,15 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(traces, header, true).await;
 
-        needs_tokens
-            .iter()
-            .for_each(|token| {
-                let update = DexPriceMsg::Update(PoolUpdate {
-                    block,
-                    tx_idx: 0,
-                    logs: vec![],
-                    action: make_fake_transfer(*token),
-                });
-                tx.send(update).unwrap();
+        needs_tokens.iter().for_each(|token| {
+            let update = DexPriceMsg::Update(PoolUpdate {
+                block,
+                tx_idx: 0,
+                logs: vec![],
+                action: make_fake_transfer(*token),
             });
+            tx.send(update).unwrap();
+        });
 
         let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         classifier.close();
@@ -697,7 +695,7 @@ pub enum ClassifierTestUtilsError {
 
 /// Makes a swap for initializing a virtual pool with the quote token.
 /// this swap is empty such that we don't effect the state
-const fn make_fake_transfer(addr: Address) -> Actions {
+fn make_fake_transfer(addr: Address) -> Actions {
     let t_in = TokenInfoWithAddress {
         inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
         address: addr,
