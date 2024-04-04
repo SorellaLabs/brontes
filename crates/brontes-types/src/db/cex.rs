@@ -475,8 +475,10 @@ self_convert_redefined!(CexExchange);
 
 impl From<&str> for CexExchange {
     fn from(value: &str) -> Self {
+        let val = value.to_lowercase();
+        let value = val.as_str();
         match value {
-            "binance" | "Binance" | "binance-futures" => CexExchange::Binance,
+            "binance" | "binance-futures" => CexExchange::Binance,
             "bitmex" | "Bitmex" => CexExchange::Bitmex,
             "deribit" | "Deribit" => CexExchange::Deribit,
             "okex" | "Okex" | "okex-swap" => CexExchange::Okex,
