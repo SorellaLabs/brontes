@@ -168,7 +168,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let maker_delta = &maker_price.price - &rate;
         let taker_delta = &taker_price.price - &rate;
 
-
         tracing::info!(?maker_price, ?rate, "got price");
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calculate fees here
@@ -373,6 +372,7 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
+
     #[brontes_macros::test]
     async fn test_cex_dex_markout() {
         // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
@@ -386,6 +386,20 @@ mod tests {
             .needs_token(WETH_ADDRESS)
             .with_gas_paid_usd(38.31)
             .with_expected_profit_usd(38.31);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_vs_non() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(6772.69)
+            .with_gas_paid_usd(78993.39);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
