@@ -34,14 +34,10 @@ pub struct CexQuotesConverter {
 impl CexQuotesConverter {
     pub fn new(
         block_times: Vec<BlockTimes>,
-        mut symbols: Vec<CexSymbols>,
+        symbols: Vec<CexSymbols>,
         quotes: Vec<RawCexQuotes>,
         time_window: (u64, u64),
     ) -> Self {
-        symbols.iter_mut().for_each(|s| {
-            s.address_pair.ordered();
-        });
-
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
@@ -118,7 +114,7 @@ impl CexQuotesConverter {
                                     quotes.into_par_iter().max_by_key(|q| q.timestamp).unwrap();
                                 let pair_quote = (*pair, best_quote);
 
-                                (*pair, pair_quote.into())
+                                (pair.ordered(), pair_quote.into())
                             })
                             .collect::<FastHashMap<_, _>>();
 
