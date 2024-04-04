@@ -259,13 +259,6 @@ impl InspectorTestUtils {
         if let Some(specific_state_tests) = specific_state_tests {
             specific_state_tests(&bundle);
         }
-        // check profit
-        assert!(
-            (bundle.header.profit_usd - profit_usd).abs() < self.max_result_difference,
-            "Finalized Profit != Expected Profit, {} != {}",
-            bundle.header.profit_usd,
-            profit_usd
-        );
 
         // check gas
         assert!(
@@ -273,6 +266,14 @@ impl InspectorTestUtils {
             "Finalized Bribe != Expected Bribe, {} != {}",
             bundle.header.bribe_usd,
             gas_used_usd
+        );
+
+        // check profit
+        assert!(
+            (bundle.header.profit_usd - profit_usd).abs() < self.max_result_difference,
+            "Finalized Profit != Expected Profit, {} != {}",
+            bundle.header.profit_usd,
+            profit_usd
         );
 
         Ok(())

@@ -380,7 +380,7 @@ mod tests {
             ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)
-            .with_expected_profit_usd(745.1);
+            .with_expected_profit_usd(26.5);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }

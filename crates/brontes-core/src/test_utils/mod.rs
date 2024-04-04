@@ -123,6 +123,7 @@ impl TraceLoader {
                 tables,
             )
             .await?;
+        multi.clear().unwrap();
 
         Ok(())
     }
@@ -148,6 +149,7 @@ impl TraceLoader {
                 tables,
             )
             .await?;
+        multi.clear().unwrap();
 
         Ok(())
     }
@@ -389,6 +391,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                 .await
                 .unwrap();
             }
+            multi.clear().unwrap();
 
             this
         })
