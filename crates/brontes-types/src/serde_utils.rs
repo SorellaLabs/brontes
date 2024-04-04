@@ -698,7 +698,7 @@ pub mod address_pair {
     {
         let (data0, data1): (String, String) = Deserialize::deserialize(deserializer)?;
 
-        Ok(Pair(Address::from_str(&data0).unwrap(), Address::from_str(&data1).unwrap()).ordered())
+        Ok(Pair(Address::from_str(&data0).unwrap(), Address::from_str(&data1).unwrap()))
     }
 }
 
