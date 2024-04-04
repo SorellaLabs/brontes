@@ -545,13 +545,14 @@ fn closest<'a>(
     // sort from lowest to highest volume returning the first
     // does not return a vec that does not have enough volume to fill the arb
     let mut mapped = iter
-        .map(|a| (a, a.iter().map(|t| &t.get().amount).sum::<Rational>()))
+        .map(|a| (a.iter().map(|t| &t.get().amount).sum::<Rational>(), a))
         .collect::<Vec<_>>();
-    mapped.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+
+    mapped.sort_unstable_by(|a, b| a.0.cmp(&b.0));
 
     mapped
         .into_iter()
-        .find_map(|(set, m_vol)| m_vol.ge(vol).then_some(set))
+        .find_map(|(m_vol, set)| m_vol.ge(vol).then_some(set))
 }
 
 struct CexTradePtr<'ptr> {
