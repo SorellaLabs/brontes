@@ -230,6 +230,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
         if smaller * Rational::from(3) < larger {
+            tracing::info!("to big of delta");
             return None
         }
 
@@ -246,6 +247,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             )?
             .price
             .0;
+        tracing::info!("no direct");
 
         let (maker_profit, taker_profit) = if exchange_cex_price.2 {
             (
