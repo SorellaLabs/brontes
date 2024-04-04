@@ -976,7 +976,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .filter_map(|(key, first_price, last_price)| {
                 let block_movement = (last_price - &first_price).abs() / first_price;
                 if block_movement > MAX_BLOCK_MOVEMENT {
-                    tracing::info!(?key, "removing pair");
                     Some(key)
                 } else {
                     None
