@@ -335,10 +335,10 @@ impl CexTradeMap {
                 .combinations(2)
                 .chain(trades.iter().combinations(3))
                 .chain(trades.iter().combinations(4)),
-        );
+        ).collect::<Vec<_>>();
         // Gets the vec of trades that's closest to the volume of the stat arb swap
         // Will not return a vec that does not have enough volume to fill the arb
-        let closest = closest(trade_buckets_iterator, volume)?;
+        let closest = closest(trade_buckets_iterator.into_par_iter(), volume)?;
 
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
@@ -535,7 +535,7 @@ fn calculate_cross_pair(
 
 // TODO: Potentially collect all sets from 100% to 120% then select best price
 fn closest<'a>(
-    iter: impl Iterator<Item = Vec<&'a CexTradePtr<'a>>>,
+    iter: impl ParallelIterator<Item = Vec<&'a CexTradePtr<'a>>>,
     vol: &Rational,
 ) -> Option<Vec<&'a CexTradePtr<'a>>> {
     // sort from lowest to highest volume returning the first
