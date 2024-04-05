@@ -111,7 +111,6 @@ impl CexTradesConverter {
                             let pair = if &trade.side == "buy" {
                                 symbol.address_pair
                             } else {
-                                tracing::info!("flippin");
                                 trade.amount *= trade.price;
                                 trade.price = 1.0 / trade.price;
                                 symbol.address_pair.flip()
