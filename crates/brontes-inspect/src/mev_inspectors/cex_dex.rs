@@ -225,8 +225,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
         if smaller * Rational::from(3) < larger {
-            tracing::info!("to big of delta");
-            return None
+            tracing::info!(
+                "Filtered out possible CEX-DEX due to significant price delta.\n Price delta \
+                 between CEX '{}' with price '{}' and DEX '{}' with price '{}'",
+                exchange_cex_price.0,
+                exchange_cex_price.1,
+                swap.exchange,
+                swap.swap_rate()
+            );
+            return None;
         }
 
         // A positive delta indicates potential profit from buying on DEX

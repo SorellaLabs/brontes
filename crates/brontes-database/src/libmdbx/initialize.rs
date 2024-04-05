@@ -90,7 +90,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             Tables::Builder,
             Tables::AddressMeta,
         ];
+        Ok(())
+    }
 
+    pub fn initailize_progress_bars(&self) -> Vec<(Tables, ProgressBar)> {
         let critical_state_progress_bar = Self::build_critical_state_progress_bar(5);
 
         futures::stream::iter(tables.to_vec()).map(|table| {

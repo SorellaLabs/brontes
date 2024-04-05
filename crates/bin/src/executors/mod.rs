@@ -51,6 +51,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub clickhouse: &'static CH,
     pub parser: &'static Parser<'static, T, DB>,
     pub libmdbx: &'static DB,
+    pub cli_only: bool,
     _p: PhantomData<P>,
 }
 
@@ -71,6 +72,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         clickhouse: &'static CH,
         parser: &'static Parser<'static, T, DB>,
         libmdbx: &'static DB,
+        cli_only: bool,
     ) -> Self {
         Self {
             clickhouse,
@@ -85,16 +87,21 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             quote_asset,
             end_block,
             force_no_dex_pricing,
+            cli_only,
             _p: PhantomData,
         }
     }
 
+    //TODO: We currently don't have the ability to stream the query results from
+    // clickhouse because the client is shit, so we have to break up the downloads
+    // into smaller batches & wait for these smaller queries to return to write all
+    // of the data. This uses a lot of memory & is slow. We will switch to using
+    // stream functionality.
     fn build_range_executors(
         &'_ self,
         executor: BrontesTaskExecutor,
+        has_end_block: bool,
         end_block: u64,
-        progress_bar: Option<ProgressBar>,
-        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -106,15 +113,18 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         let start_block = self.start_block.unwrap();
 
-        let chunks = (start_block..end_block)
-            .chunks(chunk_size.try_into().unwrap())
-            .into_iter()
-            .map(|mut c| {
-                let start = c.next().unwrap();
-                let end_block = c.last().unwrap_or(start_block);
-                (start, end_block)
-            })
-            .collect_vec();
+        let total_blocks = 12;
+        let global_pb = self.initialize_global_progress_bar(has_end_block, end_block, total_blocks);
+
+        let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
+
+        let multi = MultiProgress::default();
+        let tables_with_progress = Arc::new(
+            tables
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi, 5)))
+                .collect_vec(),
+        );
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
@@ -215,6 +225,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         start_block: u64,
         end_block: u64,
+        cli_only: bool,
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         todo!();
@@ -225,12 +236,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             start_block,
             end_block
         );
-
-        let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
-
-        if state_to_init.is_empty() {
-            return Ok(())
-        }
 
         for keys in state_to_init.iter() {}
 
@@ -324,75 +329,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
-        let progress_bar = if self.start_block.is_some() && had_end_block {
-            let total_blocks = end_block - self.start_block.unwrap();
-            let progress_bar = ProgressBar::with_draw_target(
-                Some(total_blocks),
-                ProgressDrawTarget::stderr_with_hz(1),
-            );
-            progress_bar.set_style(
-                ProgressStyle::with_template(
-                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
-                     ({percent}%) | ETA: {eta}",
-                )?
-                .progress_chars("█>-")
-                .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                    write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
-                })
-                .with_key(
-                    "percent",
-                    |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                        write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
-                    },
-                ),
-            );
-            progress_bar.set_message("Processing blocks:");
-            Some(progress_bar)
-        } else {
-            None
-        };
-
         let mut tables = Tables::ALL.to_vec();
         #[cfg(not(feature = "cex-dex-markout"))]
         tables.retain(|t| !matches!(t, Tables::CexTrades));
         #[cfg(feature = "cex-dex-markout")]
         tables.retain(|t| !matches!(t, Tables::CexPrice));
 
-        let multi = MultiProgress::default();
-        let tables_with_progress = Arc::new(
-            tables
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                .collect_vec(),
-        );
-
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(
-                executor.clone(),
-                end_block,
-                progress_bar.clone(),
-                tables_with_progress,
-            )
-            .for_each(|block_range| {
-                futures.push(
-                    executor.spawn_critical_with_graceful_shutdown_signal(
-                        "Range Executor",
-                        |shutdown| async move {
-                            block_range.run_until_graceful_shutdown(shutdown).await
-                        },
-                    ),
-                );
-                std::future::ready(())
-            })
-            .await;
-        } else {
-            if self.start_block.is_some() {
-                self.build_range_executors(
-                    executor.clone(),
-                    end_block,
-                    progress_bar.clone(),
-                    tables_with_progress,
-                )
+            self.build_range_executors(executor.clone(), has_end_block, end_block)
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -403,6 +347,19 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     std::future::ready(())
                 })
                 .await;
+        } else {
+            if self.start_block.is_some() {
+                self.build_range_executors(executor.clone(), has_end_block, end_block)
+                    .for_each(|block_range| {
+                        futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                            "Range Executor",
+                            |shutdown| async move {
+                                block_range.run_until_graceful_shutdown(shutdown).await
+                            },
+                        ));
+                        std::future::ready(())
+                    })
+                    .await;
             }
 
             let tip_inspector =
@@ -442,6 +399,73 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         );
 
         Err(eyre::eyre!("shutdown"))
+    }
+
+    fn initialize_global_progress_bar(
+        &self,
+        has_end_block: bool,
+        end_block: u64,
+        total_blocks: u64,
+    ) -> Option<ProgressBar> {
+        self.cli_only.and_then(|| {
+            start_block.and_then(|start_block, total_blocks| {
+                // Assuming `had_end_block` and `end_block` should be defined or passed
+                // elsewhere
+                if had_end_block {
+                    let progress_bar = ProgressBar::with_draw_target(
+                        total_blocks,
+                        ProgressDrawTarget::stderr_with_hz(100),
+                    );
+                    let style = ProgressStyle::default_bar()
+                        .template(
+                            "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} \
+                             blocks ({percent}%) | ETA: {eta}",
+                        )
+                        .expect("Invalid progress bar template")
+                        .progress_chars("█>-")
+                        .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                            write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+                        })
+                        .with_key(
+                            "percent",
+                            |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                                write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                            },
+                        );
+                    progress_bar.set_style(style);
+                    progress_bar.set_message("Processing blocks:");
+                    Some(progress_bar)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    pub fn build_init_state_progress_bar(
+        &self,
+        multi_progress_bar: &MultiProgress,
+        total_blocks: u64,
+    ) -> ProgressBar {
+        let progress_bar = ProgressBar::with_draw_target(
+            Some(total_blocks),
+            ProgressDrawTarget::stderr_with_hz(60),
+        );
+        progress_bar.set_style(
+            ProgressStyle::with_template(
+                "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len} ({percent}%)",
+            )
+            .unwrap()
+            .progress_chars("#>-")
+            .with_key(
+                "percent",
+                |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                },
+            ),
+        );
+        progress_bar.set_message(format!("{}", self));
+        multi_progress_bar.add(progress_bar)
     }
 }
 

@@ -135,10 +135,15 @@ impl Tables {
         )
     }
 
-    pub fn build_init_state_progress_bar(&self, multi_progress_bar: &MultiProgress) -> ProgressBar {
-        let progress_bar =
-            ProgressBar::with_draw_target(Some(0), ProgressDrawTarget::stderr_with_hz(5));
-
+    pub fn build_init_state_progress_bar(
+        &self,
+        multi_progress_bar: &MultiProgress,
+        blocks_to_init: u64,
+    ) -> ProgressBar {
+        let progress_bar = ProgressBar::with_draw_target(
+            Some(blocks_to_init),
+            ProgressDrawTarget::stderr_with_hz(50),
+        );
         progress_bar.set_style(
             ProgressStyle::with_template(
                 "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len} ({percent}%)",
@@ -153,14 +158,12 @@ impl Tables {
             ),
         );
         progress_bar.set_message(format!("{}", self));
-
         multi_progress_bar.add(progress_bar)
     }
 
     pub(crate) async fn initialize_full_range_table<T: TracingProvider, CH: ClickhouseHandle>(
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
-
         crit_progress: ProgressBar,
     ) -> eyre::Result<()> {
         match self {

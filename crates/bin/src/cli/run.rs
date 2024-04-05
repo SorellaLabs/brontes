@@ -23,7 +23,7 @@ pub struct RunArgs {
     #[arg(long, short)]
     pub max_tasks:              Option<u64>,
     /// Optional minimum batch size
-    #[arg(long, default_value = "1000")]
+    #[arg(long, default_value = "500")]
     pub min_batch_size:         u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
@@ -31,6 +31,14 @@ pub struct RunArgs {
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
     pub inspectors:             Option<Vec<Inspectors>>,
+    /// Centralized exchanges to consider for cex-dex inspector
+    #[arg(
+        long,
+        short,
+        default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
+        value_delimiter = ','
+    )]
+    pub cex_exchanges:          Vec<CexExchange>,
     #[cfg(not(feature = "cex-dex-markout"))]
     /// The sliding time window (BEFORE) for cex prices relative to the block
     /// timestamp
@@ -51,14 +59,6 @@ pub struct RunArgs {
     /// timestamp
     #[arg(long = "trades-tw-after", default_value = "4")]
     pub cex_time_window_after:  u64,
-    /// Centralized exchanges to consider for cex-dex inspector
-    #[arg(
-        long,
-        short,
-        default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
-        value_delimiter = ','
-    )]
-    pub cex_exchanges:          Vec<CexExchange>,
     /// Ensures that dex prices are calculated at every block, even if the
     /// db already contains the price
     #[arg(long, short, default_value = "false")]
@@ -71,6 +71,8 @@ pub struct RunArgs {
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "3")]
     pub behind_tip:             u64,
+    #[arg(long, default_value = "false")]
+    pub cli_only:               bool,
 }
 
 impl RunArgs {
@@ -113,6 +115,7 @@ impl RunArgs {
                     clickhouse,
                     parser,
                     libmdbx,
+                    self.cli_only,
                 )
                 .build(task_executor, shutdown)
                 .await

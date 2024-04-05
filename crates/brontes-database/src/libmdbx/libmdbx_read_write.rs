@@ -2,6 +2,7 @@
 use std::str::FromStr;
 use std::{
     cmp::max,
+    collections::hash_map::Entry,
     ops::{Bound, RangeInclusive},
     path::Path,
     sync::Arc,
@@ -100,7 +101,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<FastHashMap<Tables, Vec<RangeInclusive<u64>>>>;
+    ) -> eyre::Result<StateToInitialize>;
 }
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -248,7 +249,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<FastHashMap<Tables, Vec<RangeInclusive<u64>>>> {
+    ) -> eyre::Result<StateToInitialize> {
         let tables_to_init = default_tables_to_init();
 
         let tx = self.0.ro_tx()?;
@@ -261,11 +262,18 @@ impl LibmdbxInit for LibmdbxReadWriter {
             for table in tables_to_init {
                 result.insert(table, vec![start_block..=end_block]);
             }
-            return Ok(result);
+            return Ok(StateToInitialize {
+                ranges_to_init:       FastHashMap::default(),
+                blocks_to_init_count: FastHashMap::default(),
+                blocks_skipped:       0,
+            });
         }
 
         let mut result: FastHashMap<Tables, Vec<RangeInclusive<u64>>> = FastHashMap::default();
         let mut start_block_to_init: FastHashMap<Tables, Option<u64>> = FastHashMap::default();
+        let mut blocks_to_init_count: FastHashMap<Tables, u64> = FastHashMap::default();
+        let mut blocks_skipped = 0;
+
         let mut block_tracker = start_block;
 
         for entry in peek_cur {
@@ -284,22 +292,56 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 }
 
                 if block == end_block {
-                    for (table, should_init) in tables_to_initialize(state) {
-                        if should_init {
-                            if let Some(start) = start_block_to_init
-                                .get_mut(&table)
-                                .and_then(|opt| opt.take())
-                            {
-                                result.entry(table).or_default().push(start..=block);
-                            } else {
-                                result.entry(table).or_default().push(block..=block);
+                    let tables_to_init = tables_to_initialize(state);
+                    if tables_to_init.is_empty() {
+                        blocks_skipped += 1;
+                        for table in start_block_to_init.keys().cloned().collect::<Vec<_>>() {
+                            if let Some(start) = start_block_to_init.remove(&table) {
+                                ranges_to_init.entry(table).or_default().push(start..=end_block);
+                                *blocks_to_init_count.entry(table).or_default() += end_block - start + 1;
                             }
-                        } else {
-                            if let Some(start) = start_block_to_init
-                                .get_mut(&table)
-                                .and_then(|opt| opt.take())
-                            {
-                                result.entry(table).or_default().push(start..=block - 1);
+                        } 
+                                result.entry(*table).or_default().push(start..=block - 1);
+
+                                let init_count = start - block - 1;
+                                blocks_to_init_count
+                                    .entry(*table)
+                                    .and_modify(|count| *count += init_count)
+                                    .or_insert(1);
+                            }
+                        }
+                    } else {
+                        for (table, should_init) in tables_to_init {
+                            if should_init {
+                                if let Some(start) = start_block_to_init
+                                    .get_mut(&table)
+                                    .and_then(|opt| opt.take())
+                                {
+                                    result.entry(table).or_default().push(start..=block);
+
+                                    blocks_to_init_count
+                                        .entry(table)
+                                        .and_modify(|count| *count += start - block)
+                                        .or_insert(1);
+                                } else {
+                                    result.entry(table).or_default().push(block..=block);
+                                    blocks_to_init_count
+                                        .entry(table)
+                                        .and_modify(|count| *count += 1)
+                                        .or_insert(1);
+                                }
+                            } else {
+                                if let Some(start) = start_block_to_init
+                                    .get_mut(&table)
+                                    .and_then(|opt| opt.take())
+                                {
+                                    result.entry(table).or_default().push(start..=block - 1);
+
+                                    blocks_to_init_count
+                                        .entry(table)
+                                        .and_modify(|count| *count += 1)
+                                        .or_insert(1);
+                                }
                             }
                         }
                     }
@@ -315,6 +357,12 @@ impl LibmdbxInit for LibmdbxReadWriter {
                                 .and_then(|opt| opt.take())
                             {
                                 result.entry(table).or_default().push(start..=block - 1);
+
+                                let init_count = start - block - 1;
+                                blocks_to_init_count
+                                    .entry(table)
+                                    .and_modify(|count| *count += init_count)
+                                    .or_insert(1);
                             }
                         }
                     }
@@ -327,8 +375,38 @@ impl LibmdbxInit for LibmdbxReadWriter {
             }
         }
 
-        Ok(result)
+        Ok(StateToInitialize { ranges_to_init: result, blocks_to_init_count, blocks_skipped })
     }
+}
+
+#[derive(Debug, Default)]
+pub struct StateToInitialize {
+    ranges_to_init:       FastHashMap<Tables, Vec<RangeInclusive<u64>>>,
+    blocks_to_init_count: FastHashMap<Tables, u64>,
+    blocks_skipped:       u64,
+}
+
+fn aggregate_state_to_initialize(
+    states: Vec<StateToInitialize>,
+) -> (FastHashMap<Tables, u64>, u64) {
+    let mut blocks_to_init_count: FastHashMap<Tables, u64> = FastHashMap::default();
+    let mut total_blocks_skipped = 0;
+
+    for state in states {
+        for (table, count) in state.blocks_to_init_count {
+            match blocks_to_init_count.entry(table) {
+                Entry::Occupied(mut entry) => {
+                    *entry.get_mut() += count;
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(count);
+                }
+            }
+        }
+        total_blocks_skipped += state.blocks_skipped;
+    }
+
+    (blocks_to_init_count, total_blocks_skipped)
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
@@ -1052,7 +1130,7 @@ fn default_tables_to_init() -> Vec<Tables> {
     tables_to_init
 }
 pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
-    let tables = Vec::new();
+    let mut tables = Vec::new();
 
     if data.should_ignore() {
         tables
