@@ -172,10 +172,7 @@ impl CexTradeMap {
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
         self.get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref())
-            .or_else(|| {
-                tracing::info!("trying intermediary");
-                self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref())
-            })
+            .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()))
     }
 
     fn calculate_intermediary_addresses(
@@ -252,7 +249,7 @@ impl CexTradeMap {
 
                 let new_vol = volume * &res.prices.0.price;
 
-                let res = Some((
+                Some((
                     (i, res),
                     (
                         intermediary,
@@ -260,18 +257,7 @@ impl CexTradeMap {
                             exchanges, &pair1, &new_vol, quality,
                         )?,
                     ),
-                ));
-                if intermediary == Address::new(hex!("B8c77482e45F1F44dE1745F52C74426C631bDD52")) {
-                    tracing::info!(?pair0, ?pair1, "{:#?}", res);
-                    let reg = self.0.get(&CexExchange::Binance).unwrap().get(&pair0);
-                    let flipped = self
-                        .0
-                        .get(&CexExchange::Binance)
-                        .unwrap()
-                        .get(&pair0.flip());
-                    tracing::info!(?pair0, flip=?pair0.flip(),"{:#?} flipped {:#?}", reg, flipped);
-                }
-                res
+                ))
             })
             .fold(
                 || (FastHashMap::default(), FastHashMap::default()),
@@ -481,8 +467,6 @@ impl CexTradeMap {
         }
 
         if &cur_vol < volume {
-            tracing::info!(?pair, ?cur_vol, expected=?volume, "not enough volume");
-
             return None
         }
 
@@ -711,8 +695,6 @@ fn calculate_multi_cross_pair(
                 })
                 .collect_vec();
 
-            tracing::info!(?inter, "inter result prices: {:#?}", res);
-
             res
         })
         .sorted_by(|(_, a, _), (_, b, _)| b.price.cmp(&a.price))
@@ -737,10 +719,6 @@ fn calculate_multi_cross_pair(
         );
 
     if total_volume_pct < Rational::ONE {
-        tracing::info!(
-            vol_pct_found=%total_volume_pct.to_float(),
-            "not enough volume found for spreading markout over all valid intermediaries."
-        );
         return None
     }
 

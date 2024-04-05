@@ -41,22 +41,6 @@ use crate::db::redefined_types::primitives::AddressRedefined;
 ))]
 pub struct Pair(pub Address, pub Address);
 
-// impl Hash for Pair {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         let this = self.ordered();
-//         this.0.hash(state);
-//         this.1.hash(state);
-//     }
-// }
-//
-// impl Eq for Pair {}
-//
-// impl PartialEq for Pair {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.ordered().0 == other.ordered().0 && self.ordered().1 ==
-// other.ordered().1     }
-// }
-
 impl Pair {
     pub fn is_zero(&self) -> bool {
         self.0 == Address::ZERO && self.1 == Address::ZERO
