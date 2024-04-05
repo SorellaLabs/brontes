@@ -77,7 +77,7 @@ impl Metadata {
                         let baseline_for_tokeprice = Rational::from(100);
                         let pair = Pair(WETH_ADDRESS, quote_token);
 
-                        return self
+                        self
                             .cex_trades
                             .as_ref()
                             .and_then(|trade_map| {
@@ -106,8 +106,7 @@ impl Metadata {
                     let baseline_for_tokeprice = Rational::from(100);
                     let pair = Pair(WETH_ADDRESS, quote_token);
 
-                    return self
-                        .cex_trades
+                    self.cex_trades
                         .as_ref()
                         .and_then(|trade_map| {
                             tracing::debug!("getting eth price");
@@ -120,7 +119,6 @@ impl Metadata {
                         })
                         .unwrap_or(Rational::ZERO)
                 }
-
                 #[cfg(not(feature = "cex-dex-markout"))]
                 Rational::ZERO
             }
