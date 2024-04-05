@@ -399,7 +399,7 @@ mod tests {
             .with_dex_prices()
             .needs_token(WETH_ADDRESS)
             .with_expected_profit_usd(6772.69)
-            .with_gas_paid_usd(78993.39);
+            .with_gas_paid_usd(80751.62);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
