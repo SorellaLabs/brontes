@@ -731,7 +731,7 @@ fn calculate_multi_cross_pair(
             },
         );
 
-    if total_volume_pct < Rational::ONE {
+    if total_volume_pct < Rational::ONE || wi == Rational::ZERO {
         return None
     }
 
