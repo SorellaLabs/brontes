@@ -248,7 +248,7 @@ impl CexTradeMap {
                         .get(&CexExchange::Binance)
                         .unwrap()
                         .get(&pair0.flip());
-                    tracing::info!("{:#?} flipped {:#?}", reg, flipped);
+                    tracing::info!(?pair0, flip=?pair0.flip(),"{:#?} flipped {:#?}", reg, flipped);
                 }
                 res
             })
