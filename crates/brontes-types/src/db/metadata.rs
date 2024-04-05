@@ -79,23 +79,14 @@ impl Metadata {
                 {
                     let trades = [CexExchange::Binance];
                     let baseline_for_tokeprice = Rational::from(100);
-                    let pair= 
-                                        Pair(
-                                            WETH_ADDRESS,
-                                            quote_token);
+                    let pair = Pair(WETH_ADDRESS, quote_token);
 
                     return self
                         .cex_trades
                         .and_then(|trade_map| {
                             Some(
                                 trade_map
-                                    .get_price(
-                                        &trades,
-                                        &pair,
-                                            &baseline_for_tokeprice,
-                                            None,
-                                        ),
-                                    ?
+                                    .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
                                     .0
                                     .price,
                             )
