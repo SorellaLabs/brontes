@@ -155,37 +155,32 @@ impl ToFloatNearest for Rational {
 
 pub fn rational_to_u256_fraction(rational: &Rational) -> ([u8; 32], [u8; 32]) {
     println!("RATIONAL: {:?}", rational);
-    // Extract numerator and denominator as `Natural`
+
     let (num_nat, denom_nat) = rational.to_numerator_and_denominator();
 
-    // Convert U256::MAX to `Natural` for comparison
     let u256_max = Natural::from_limbs_asc(U256::MAX.as_limbs());
 
-    // Check if either numerator or denominator overflows `U256`
     let num_overflow = num_nat > u256_max;
     let denom_overflow = denom_nat > u256_max;
 
     if !num_overflow && !denom_overflow {
-        // Direct conversion if both fit into U256
         let num_u256 = U256::from_limbs_slice(&num_nat.to_limbs_asc());
         let denom_u256 = U256::from_limbs_slice(&denom_nat.to_limbs_asc());
         (num_u256.to_le_bytes(), denom_u256.to_le_bytes())
     } else {
-        // Calculate the scaling factor based on the maximum overflow
         let scale_factor = if num_overflow && denom_overflow {
             std::cmp::max(num_nat.clone(), denom_nat.clone()) / &u256_max
         } else if num_overflow {
             num_nat.clone() / &u256_max
         } else {
             denom_nat.clone() / &u256_max
-        } + Natural::from(1_u8); // Add 1 to ensure we are under U256::MAX after scaling
+        } + Natural::from(1_u8);
         let scaled_num_nat = &num_nat / &scale_factor;
         let scaled_denom_nat = &denom_nat / &scale_factor;
 
         println!("NUM: {:?}", scaled_num_nat);
         println!("DENOM: {:?}", scaled_denom_nat);
 
-        // Now, convert the scaled values to U256, which should fit without overflow
         let scaled_num_u256 = U256::from_limbs_slice(&scaled_num_nat.to_limbs_asc());
         let scaled_denom_u256 = U256::from_limbs_slice(&scaled_denom_nat.to_limbs_asc());
 
