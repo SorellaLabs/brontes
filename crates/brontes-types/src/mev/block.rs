@@ -145,7 +145,7 @@ fn format_profit(value: f64) -> String {
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Serialize, Row, Clone, Default, rDeser, rSer, Archive)]
 pub struct MevCount {
-    pub mev_count:            u64,
+    pub bundle_count:         u64,
     pub sandwich_count:       Option<u64>,
     pub cex_dex_count:        Option<u64>,
     pub jit_count:            Option<u64>,
@@ -156,8 +156,8 @@ pub struct MevCount {
 }
 
 impl MevCount {
-    pub fn increment_count(&mut self, mev_type: &MevType) {
-        self.mev_count += 1;
+    pub fn increment_count(&mut self, mev_type: MevType) {
+        self.bundle_count += 1;
         match mev_type {
             MevType::CexDex => {
                 self.cex_dex_count = Some(self.cex_dex_count.unwrap_or_default().add(1))
@@ -187,7 +187,7 @@ self_convert_redefined!(MevCount);
 
 impl fmt::Display for MevCount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "  - MEV Count: {}", self.mev_count.to_string().bold())?;
+        writeln!(f, "  - MEV Count: {}", self.bundle_count.to_string().bold())?;
 
         if let Some(count) = self.sandwich_count {
             writeln!(f, "    - Sandwich: {}", count.to_string().bold())?;
@@ -308,7 +308,7 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
 
-        ser_struct.serialize_field("mev_count.mev_count", &vec![self.mev_count.mev_count])?;
+        ser_struct.serialize_field("mev_count.mev_count", &vec![self.mev_count.bundle_count])?;
         ser_struct.serialize_field(
             "mev_count.sandwich_count",
             &vec![self.mev_count.sandwich_count.unwrap_or_default()],

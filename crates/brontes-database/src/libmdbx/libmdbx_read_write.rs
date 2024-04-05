@@ -16,14 +16,14 @@ use brontes_types::{
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
-        builder::{BuilderInfo, BuilderStats},
+        builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
-        searcher::{SearcherInfo, SearcherStats},
+        searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
         traces::TxTracesInner,
         traits::{DBWriter, LibmdbxReader},
@@ -41,6 +41,7 @@ use eyre::{eyre, ErrReport};
 use futures::Future;
 #[cfg(feature = "local-clickhouse")]
 use futures::{FutureExt, StreamExt};
+use indicatif::ProgressBar;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
@@ -65,7 +66,8 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tracer: Arc<T>,
         tables: &[Tables],
         clear_tables: bool,
-        block_range: Option<(u64, u64)>, // inclusive of start only
+        block_range: Option<(u64, u64)>,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// initializes all the tables with missing data ranges via the CLI
@@ -75,6 +77,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tracer: Arc<T>,
         tables: &[Tables],
         block_range: Vec<u64>,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// checks the min and max values of the clickhouse db and sees if the full
@@ -145,10 +148,11 @@ impl LibmdbxInit for LibmdbxReadWriter {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer
-            .initialize(tables, clear_tables, block_range)
+            .initialize(tables, clear_tables, block_range, progress_bar)
             .await?;
 
         Ok(())
@@ -161,12 +165,13 @@ impl LibmdbxInit for LibmdbxReadWriter {
         tracer: Arc<T>,
         tables: &[Tables],
         block_range: Vec<u64>,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let block_range = Box::leak(Box::new(block_range));
 
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer
-            .initialize_arbitrary_state(tables, block_range)
+            .initialize_arbitrary_state(tables, block_range, progress_bar)
             .await?;
 
         Ok(())
@@ -663,18 +668,6 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
-    async fn write_searcher_stats(
-        &self,
-        searcher_eoa: Address,
-        searcher_stats: SearcherStats,
-    ) -> eyre::Result<()> {
-        let data = SearcherStatisticsData::new(searcher_eoa, searcher_stats);
-        self.0
-            .write_table::<SearcherStatistics, SearcherStatisticsData>(&[data])
-            .expect("libmdbx write failure");
-        Ok(())
-    }
-
     async fn write_address_meta(
         &self,
         address: Address,
@@ -856,18 +849,6 @@ impl DBWriter for LibmdbxReadWriter {
     async fn insert_tree(&self, _tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
         Ok(())
     }
-
-    async fn write_builder_stats(
-        &self,
-        builder_address: Address,
-        builder_stats: BuilderStats,
-    ) -> eyre::Result<()> {
-        let data = BuilderStatisticsData::new(builder_address, builder_stats);
-        self.0
-            .write_table::<BuilderStatistics, BuilderStatisticsData>(&[data])
-            .expect("libmdbx write failure");
-        Ok(())
-    }
 }
 
 impl LibmdbxReadWriter {
@@ -899,6 +880,7 @@ impl LibmdbxReadWriter {
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;
         }
+
         res
     }
 
@@ -913,7 +895,7 @@ impl LibmdbxReadWriter {
         let tx = self.0.ro_tx()?;
         let res = tx
             .get::<CexPrice>(block_num)?
-            .ok_or_else(|| eyre!("Failed to fetch cexquotes's for block {}", block_num))
+            .ok_or_else(|| eyre!("Failed to fetch cex quotes's for block {}", block_num))
             .map(|e| e.0);
 
         if res.is_err() {

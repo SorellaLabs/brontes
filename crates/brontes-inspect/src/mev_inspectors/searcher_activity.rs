@@ -9,6 +9,7 @@ use brontes_types::{
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
@@ -56,15 +57,25 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             searcher_address.insert(mev_contract);
                         }
 
-                        let rev_usd = self.utils.get_full_block_price(
-                            BlockPrice::Lowest,
-                            searcher_address,
-                            &deltas,
-                            metadata.clone(),
-                        )?;
+                        let (rev_usd, has_dex_price) = if let Some(rev) =
+                            self.utils.get_full_block_price(
+                                BlockPrice::Lowest,
+                                searcher_address,
+                                &deltas,
+                                metadata.clone(),
+                            ) {
+                            (Some(rev), true)
+                        } else {
+                            (Some(Rational::ZERO), false)
+                        };
+
                         let gas_paid = metadata
                             .get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
-                        let profit = rev_usd - gas_paid;
+
+                        let profit = rev_usd
+                            .map(|rev| rev - gas_paid)
+                            .filter(|_| has_dex_price)
+                            .unwrap_or_default();
 
                         let header = self.utils.build_bundle_header_searcher_activity(
                             vec![deltas],
@@ -75,6 +86,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                             &[info.gas_details],
                             metadata.clone(),
                             MevType::SearcherTx,
+                            !has_dex_price,
                         );
 
                         Some(Bundle {

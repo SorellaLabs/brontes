@@ -212,9 +212,18 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .verify_subgraph_on_new_path_failure(pair, goes_through)
     }
 
-    pub fn get_price(&mut self, pair: Pair, goes_through: Pair) -> Option<Rational> {
-        self.sub_graph_registry
-            .get_price(pair, goes_through, self.graph_state.finalized_state())
+    pub fn get_price(
+        &mut self,
+        pair: Pair,
+        goes_through: Pair,
+        goes_through_address: Option<Address>,
+    ) -> Option<Rational> {
+        self.sub_graph_registry.get_price(
+            pair,
+            goes_through,
+            goes_through_address,
+            self.graph_state.finalized_state(),
+        )
     }
 
     pub fn new_state(&mut self, address: Address, state: PoolState) {

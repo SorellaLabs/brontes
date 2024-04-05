@@ -12,7 +12,7 @@ use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use super::cex::CexExchange;
+use super::{cex::CexExchange, raw_cex_trades::RawCexTrades};
 use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
@@ -86,16 +86,16 @@ impl CexTradeMap {
     // Calculates VWAPs for the given pair across all provided exchanges - this
     // will assess trades across each exchange
     //
-    // For non-intermediary dependant pairs the following process is followed:
-    // - 1. Adjust each exchanges trade set by the assumed execution quality for the
-    //   given pair on the exchange, we assess a larger percent of trades if
-    //   execution quality is assumed to be lower
-    // - 2. Exclude trades that have volume too large to be considered as potential
-    //   hedging trades
-    // - 3. Order all trades for each exchange by price
-    // - 4. Finally we pick a vec of trades whose total volume is closest to the
-    //   swap volume
-    // - 5. Calculates VWAP for the chosen set of trades
+    // For non-intermediary dependent pairs, we do the following:
+    // - 1. Adjust each exchange's trade set by the assumed execution quality for
+    //   the given pair on the exchange. We assess a larger percentage of trades if
+    //   execution quality is assumed to be lower.
+    // - 2. Exclude trades with a volume that is too large to be considered
+    //   potential hedging trades.
+    // - 3. Order all trades for each exchange by price.
+    // - 4. Finally, we pick a vector of trades whose total volume is closest to the
+    //   swap volume.
+    // - 5. Calculate the VWAP for the chosen set of trades.
 
     // For non-intermediary dependant pairs
     // - 1. Calculate VWAPs for all potential intermediary pairs (using above
@@ -245,7 +245,8 @@ impl CexTradeMap {
         // - This utilizes the quality percent number to set the number of trades that
         //   will be assessed in picking a bucket to calculate the vwam with. A lower
         //   quality percent will cause us to examine more trades (go deeper into the
-        //   vec) - resulting in a potentially worse price
+        //   vec) - resulting in a potentially worse price (remember, trades are sorted
+        //   by price)
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
 
         self.get_most_accurate_basket(trade_queue, volume, baskets)
@@ -279,6 +280,7 @@ impl CexTradeMap {
         // combinations of 4 trades
         // - The assumption here is we don't frequently need to evaluate more than a set
         //   of 4 trades
+        //TODO: Bench & check if it's it worth to parallelize
         let trade_buckets_iterator = trades.iter().map(|t| vec![t]).chain(
             trades
                 .iter()
@@ -341,6 +343,16 @@ pub struct CexTrades {
     pub amount:   Rational,
 }
 
+impl From<RawCexTrades> for CexTrades {
+    fn from(value: RawCexTrades) -> Self {
+        Self {
+            exchange: value.exchange,
+            price:    Rational::try_from_float_simplest(value.price).unwrap(),
+            amount:   Rational::try_from_float_simplest(value.amount).unwrap(),
+        }
+    }
+}
+
 /// Its ok that we create 2 of these for pair price and intermediary price
 /// as it runs off of borrowed data so there is no overhead we occur
 pub struct PairTradeQueue<'a> {
@@ -358,9 +370,9 @@ impl<'a> PairTradeQueue<'a> {
         // exchange and pair.
         // -- quality percent is the assumed percent of good trades the arber is
         // capturing for the relevant pair on a given exchange
-        // -- a lower quality percent means we need to assess more trades because it's
-        // possible the arber was getting bad execution. Vice versa for a high quality
-        // percent
+        // -- a lower quality percentage means we need to assess more trades because
+        // it's possible the arber was getting bad execution. Vice versa for a
+        // high quality percent
         let exchange_depth = if let Some(quality_pct) = execution_quality_pct {
             trades
                 .iter()
@@ -472,6 +484,7 @@ fn calculate_cross_pair(
     ))
 }
 
+// TODO: Potentially collect all sets from 100% to 120% then select best price
 fn closest<'a>(
     iter: impl Iterator<Item = Vec<&'a CexTradePtr<'a>>>,
     vol: &Rational,

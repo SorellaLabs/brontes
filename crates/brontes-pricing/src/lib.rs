@@ -64,7 +64,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::info;
+use tracing::{error, info};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
@@ -288,11 +288,17 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         });
     }
 
-    fn get_dex_price(&mut self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
+    fn get_dex_price(
+        &mut self,
+        pool_pair: Pair,
+        goes_through: Pair,
+        goes_through_address: Option<Address>,
+    ) -> Option<Rational> {
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
-        self.graph_manager.get_price(pool_pair, goes_through)
+        self.graph_manager
+            .get_price(pool_pair, goes_through, goes_through_address)
     }
 
     /// For a given block number and tx idx, finds the path to the following
@@ -340,6 +346,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn init_new_pool_override(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
+        let pool = msg.get_pool_address_for_pricing();
 
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
             info!(?addr, "failed to get pair for pool");
@@ -352,7 +359,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let flipped_pool = pool_pair.flip();
 
-        if let Some(price0) = self.get_dex_price(pair0, pool_pair) {
+        if let Some(price0) = self.get_dex_price(pair0, pool_pair, pool) {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -380,7 +387,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             }
         };
 
-        if let Some(price1) = self.get_dex_price(pair1, flipped_pool) {
+        if let Some(price1) = self.get_dex_price(pair1, flipped_pool, pool) {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -412,8 +419,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
+        let pool = msg.get_pool_address_for_pricing();
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
-            info!(?addr, "failed to get pair for pool");
+            error!(?addr, "failed to get pair for pool");
             self.graph_manager.update_state(addr, msg);
             return;
         };
@@ -423,13 +431,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let flipped_pool = pool_pair.flip();
 
-        let price0_pre = self.get_dex_price(pair0, pool_pair);
-        let price1_pre = self.get_dex_price(pair1, flipped_pool);
+        let price0_pre = self.get_dex_price(pair0, pool_pair, pool);
+        let price1_pre = self.get_dex_price(pair1, flipped_pool, pool);
 
         self.graph_manager.update_state(addr, msg);
 
-        let price0_post = self.get_dex_price(pair0, pool_pair);
-        let price1_post = self.get_dex_price(pair1, flipped_pool);
+        let price0_post = self.get_dex_price(pair0, pool_pair, pool);
+        let price1_post = self.get_dex_price(pair1, flipped_pool, pool);
 
         if let (Some(price0_pre), Some(price0_post)) = (price0_pre, price0_post) {
             let mut bad = false;
@@ -645,10 +653,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let new_state = execute_on!(target = pricing, par_state_query(&self.graph_manager, pairs));
 
         if new_state.is_empty() {
-            tracing::error!("requery bad state returned nothing");
+            error!("requery bad state returned nothing");
         }
 
         let mut recusing = Vec::new();
+
         new_state.into_iter().for_each(
             |StateQueryRes { pair, block, edges, extends_pair, goes_through, full_pair }| {
                 let edges = edges.into_iter().flatten().unique().collect_vec();
@@ -769,7 +778,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         });
 
         if edges.is_empty() {
-            tracing::error!(?pair, ?block, "failed to find connection for graph");
+            error!(?pair, ?block, "failed to find connection for graph");
             return
         } else {
             let Some((id, need_state, _)) =
@@ -1078,7 +1087,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                     inner.and_then(|action| match action {
                         DexPriceMsg::DisablePricingFor(block) => {
                             self.skip_pricing.push_back(block);
-                            tracing::info!(?block, "skipping for pricing");
+                            tracing::debug!(?block, "skipping for pricing");
                             Some(PollResult::Skip)
                         }
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),

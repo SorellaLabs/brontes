@@ -13,6 +13,7 @@ use brontes_types::{
     TreeIter, TreeSearchBuilder, UnzipPadded,
 };
 use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -287,15 +288,22 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        let rev_usd = self.utils.get_deltas_usd(
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
-            mev_addresses,
+            &mev_addresses,
             &searcher_deltas,
             metadata.clone(),
-        )?;
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
-        let profit_usd = (rev_usd - &gas_used).to_float();
+        let profit_usd = rev
+            .map(|rev| rev - &gas_used)
+            .filter(|_| has_dex_price)
+            .unwrap_or_default();
 
         let gas_details: Vec<_> = possible_front_runs_info
             .iter()
@@ -317,11 +325,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             vec![searcher_deltas],
             bundle_hashes,
             &backrun_info,
-            profit_usd,
+            profit_usd.to_float(),
             PriceAt::After,
             &gas_details,
             metadata,
             MevType::Sandwich,
+            !has_dex_price,
         );
 
         let victim_swaps = victim_swaps

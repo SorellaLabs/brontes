@@ -57,9 +57,6 @@ where
         Self { start_block, end_block, base_dir_path, db }
     }
 
-    //TODO: Optimize bundle data export process + test exports
-    //TODO: Impl analytics using polars with notebook visualizations
-
     pub async fn export_mev_blocks(&self) -> Result<(), Error> {
         let mev_blocks = if let Some(end_block) = self.end_block {
             self.db
@@ -404,9 +401,8 @@ pub fn get_path(
 
 pub fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     let now = Local::now();
-
     let date_str = now.format("%m-%d").to_string();
-    let time_str = now.format("%H:%M:%S").to_string();
+    let time_str = now.format("%H:%M").to_string();
 
     // Creates a flat directory structure
     // "data_exports/address_metadata/03-19"
@@ -414,7 +410,6 @@ pub fn create_file_path<P: AsRef<Path>>(base_dir: P) -> Result<PathBuf> {
     std::fs::create_dir_all(&dir_path)?;
 
     let file_path = dir_path.join(format!("{}.parquet", time_str.replace(':', "-")));
-
     Ok(file_path)
 }
 
@@ -426,7 +421,6 @@ impl Tables {
             Tables::SearcherEOAs => DEFAULT_SEARCHER_INFO_DIR,
             Tables::SearcherContracts => DEFAULT_SEARCHER_INFO_DIR,
             Tables::Builder => DEFAULT_BUILDER_INFO_DIR,
-            Tables::SearcherStatistics => DEFAULT_SEARCHER_STATS,
             _ => panic!("Unsupported table type"),
         }
     }

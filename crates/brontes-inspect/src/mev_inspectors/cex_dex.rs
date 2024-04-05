@@ -59,6 +59,8 @@ use malachite::{
 use reth_primitives::Address;
 use tracing::debug;
 
+pub const FILTER_THRESHOLD: u64 = 20;
+
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexInspector<'db, DB: LibmdbxReader> {
@@ -119,21 +121,22 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         swap_txes
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+
+                // Return early if the tx is a solver settling trades
+                if let Some(contract_type) = tx_info.contract_type.as_ref() {
+                    if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
+                        return None
+                    }
+                }
+
                 let deltas = swaps.clone().into_iter().account_for_actions();
                 let swaps = swaps
                     .into_iter()
                     .collect_action_vec(Actions::try_swaps_merged);
 
                 // For each swap in the transaction, detect potential CEX-DEX
-                let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> = swaps
-                    .into_iter()
-                    .filter_map(|swap| {
-                        let possible_cex_dex =
-                            self.detect_cex_dex_opportunity(&swap, metadata.as_ref())?;
-
-                        Some(possible_cex_dex)
-                    })
-                    .collect();
+                let possible_cex_dex_by_exchange: Vec<PossibleCexDexLeg> =
+                    self.detect_cex_dex(swaps, &metadata)?;
 
                 let possible_cex_dex = self.gas_accounting(
                     possible_cex_dex_by_exchange,
@@ -153,6 +156,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,
+                    false,
                 );
 
                 Some(Bundle { header, data: cex_dex })
@@ -162,6 +166,22 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
 }
 
 impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
+    pub fn detect_cex_dex(
+        &self,
+        swaps: Vec<NormalizedSwap>,
+        metadata: &Metadata,
+    ) -> Option<Vec<PossibleCexDexLeg>> {
+        swaps.into_iter().try_fold(Vec::new(), |mut acc, swap| {
+            match self.detect_cex_dex_opportunity(swap, metadata) {
+                Some(leg) => {
+                    acc.push(leg);
+                    Some(acc)
+                }
+                None => None,
+            }
+        })
+    }
+
     /// Detects potential CEX-DEX arbitrage opportunities for a given swap.
     ///
     /// # Arguments
@@ -175,19 +195,19 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     /// otherwise `None`.
     pub fn detect_cex_dex_opportunity(
         &self,
-        swap: &NormalizedSwap,
+        swap: NormalizedSwap,
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
-        let cex_prices = self.cex_quotes_for_swap(swap, metadata)?;
+        let cex_prices = self.cex_quotes_for_swap(&swap, metadata)?;
 
         let possible_legs: Vec<ExchangeLeg> = cex_prices
             .into_iter()
             .filter_map(|(exchange, price, is_direct_pair)| {
-                self.profit_classifier(swap, (exchange, price, is_direct_pair), metadata)
+                self.profit_classifier(&swap, (exchange, price, is_direct_pair), metadata)
             })
             .collect();
 
-        Some(PossibleCexDexLeg { swap: swap.clone(), possible_legs })
+        Some(PossibleCexDexLeg { swap, possible_legs })
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
@@ -199,6 +219,16 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         exchange_cex_price: (CexExchange, Rational, bool),
         metadata: &Metadata,
     ) -> Option<ExchangeLeg> {
+        // If the price difference between the DEX and CEX is greater than 10x then this
+        // is likely a false positive resulting from incorrect price data
+        let smaller = swap.swap_rate().min(exchange_cex_price.1.clone());
+        let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
+
+        if smaller * Rational::from(3) < larger {
+            tracing::info!("to big of delta");
+            return None
+        }
+
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let delta_price = &exchange_cex_price.1 - swap.swap_rate();
@@ -368,9 +398,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         if has_positive_pnl
             || (!info.is_classified
-                && (possible_cex_dex.gas_details.coinbase_transfer.is_some() && info.is_private
+                && (possible_cex_dex.gas_details.coinbase_transfer.is_some()
+                    && info.is_private
+                    && info.is_searcher_of_type_with_count_threshold(
+                        MevType::CexDex,
+                        FILTER_THRESHOLD,
+                    )
                     || info.is_cex_dex_call))
-            || info.is_searcher_of_type(MevType::CexDex)
+            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
+            || info.is_labelled_searcher_of_type(MevType::CexDex)
         {
             Some(possible_cex_dex.build_cex_dex_type(info))
         } else {
@@ -424,6 +460,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     }
 }
 
+#[derive(Debug)]
 pub struct PossibleCexDex {
     pub swaps:       Vec<NormalizedSwap>,
     pub arb_details: Vec<StatArbDetails>,
@@ -450,6 +487,7 @@ impl PossibleCexDex {
     }
 }
 
+#[derive(Debug)]
 pub struct PossibleCexDexLeg {
     pub swap:          NormalizedSwap,
     pub possible_legs: Vec<ExchangeLeg>,
@@ -465,7 +503,7 @@ impl PossibleCexDexLeg {
             .cloned()
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ExchangeLeg {
     pub exchange:  CexExchange,
     pub cex_price: Rational,

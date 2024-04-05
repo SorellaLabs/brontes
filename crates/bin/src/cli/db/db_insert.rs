@@ -57,8 +57,6 @@ impl Insert {
             SearcherEOAs,
             SearcherContracts,
             InitializedState,
-            BuilderStatistics,
-            SearcherStatistics,
             PoolCreationBlocks = &self.key,
             &self.value
         );

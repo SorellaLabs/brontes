@@ -116,13 +116,8 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
         let mut eoa_info = eoa_info.unwrap_or_default();
         let mut contract_info = contract_info.unwrap_or_default();
 
-        if !eoa_info.mev.contains(&mev.header.mev_type) {
-            eoa_info.mev.push(mev.header.mev_type);
-        }
-
-        if !contract_info.mev.contains(&mev.header.mev_type) {
-            contract_info.mev.push(mev.header.mev_type);
-        }
+        eoa_info.update_with_bundle(&mev.header);
+        contract_info.update_with_bundle(&mev.header);
 
         if let Err(e) = database
             .write_searcher_info(

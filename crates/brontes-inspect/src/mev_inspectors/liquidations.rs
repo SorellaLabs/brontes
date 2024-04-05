@@ -9,6 +9,7 @@ use brontes_types::{
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{b256, Address};
 
@@ -79,27 +80,36 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let deltas = actions.into_iter().account_for_actions();
 
-        let rev = self.utils.get_deltas_usd(
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::After,
-            mev_addresses,
+            &mev_addresses,
             &deltas,
             metadata.clone(),
-        )?;
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
         let gas_finalized =
             metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
-        let profit_usd = (rev - &gas_finalized).to_float();
+
+        let profit_usd = rev
+            .map(|rev| rev - &gas_finalized)
+            .filter(|_| has_dex_price)
+            .unwrap_or_default();
 
         let header = self.utils.build_bundle_header(
             vec![deltas],
             vec![info.tx_hash],
             &info,
-            profit_usd,
+            profit_usd.to_float(),
             PriceAt::After,
             &[info.gas_details],
             metadata,
             MevType::Liquidation,
+            !has_dex_price,
         );
 
         let new_liquidation = Liquidation {
