@@ -85,6 +85,7 @@ impl Metadata {
                         .cex_trades
                         .as_ref()
                         .and_then(|trade_map| {
+                            tracing::debug!("getting eth price");
                             Some(
                                 trade_map
                                     .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
@@ -95,6 +96,7 @@ impl Metadata {
                         .unwrap_or(Rational::ZERO)
                 }
 
+                #[cfg(not(feature = "cex-dex-markout"))]
                 Rational::ZERO
             }
         } else {
