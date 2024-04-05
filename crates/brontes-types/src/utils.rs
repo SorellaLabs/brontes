@@ -95,61 +95,106 @@ impl ToFloatNearest for Rational {
 //     }
 // }
 
+// pub fn rational_to_u256_fraction(rational: &Rational) -> ([u8; 32], [u8; 32])
+// {     let (num_nat, denom_nat) = rational.to_numerator_and_denominator();
+//     println!("RATIONAL: {:?}", rational);
+
+//     if let ((num, false), (denom, false)) = (
+//         U256::overflowing_from_limbs_slice(&num_nat.to_limbs_asc()),
+//         U256::overflowing_from_limbs_slice(&denom_nat.to_limbs_asc()),
+//     ) {
+//         (num.to_le_bytes(), denom.to_le_bytes())
+//     } else {
+//         let u256_max = Natural::from_limbs_asc(U256::MAX.as_limbs());
+//         println!("MAX U256: {:?}\n", u256_max);
+//         if num_nat > denom_nat {
+//             let div_const = Rational::from_naturals_ref(&u256_max, &num_nat);
+
+//             println!("DIV: {:?}", div_const);
+//             println!("NOM: {:?}", num_nat);
+//             println!("DENOM: {:?}", denom_nat);
+
+//             let rational_denom =
+//                 div_const * Rational::from_naturals_ref(&denom_nat,
+// &Natural::from(1_u8));             let rounded_denom: Natural =
+// rational_denom.rounding_into(RoundingMode::Nearest).0;
+
+//             println!("DENOM ROUND: {:?}", rounded_denom);
+
+//             (
+//
+// U256::from_limbs_slice(&u256_max.to_limbs_asc()).to_le_bytes(),
+// U256::from_limbs_slice(&rounded_denom.to_limbs_asc()).to_le_bytes(),
+//             )
+//         } else {
+//             let div_const = Rational::from_naturals_ref(&u256_max,
+// &denom_nat);
+
+//             println!("DIV: {:?}", div_const);
+//             println!("DENOM: {:?}", denom_nat);
+//             println!("NUM: {:?}", num_nat);
+
+//             let rational_num =
+//                 div_const * Rational::from_naturals_ref(&num_nat,
+// &Natural::from(1_u8));             let rounded_num: Natural =
+// rational_num.rounding_into(RoundingMode::Nearest).0;
+
+//             println!("NUM ROUND: {:?}", rounded_num);
+
+//             // let (final_num, final_denom) =
+//             //     Rational::from_naturals(rounded_num,
+//             // denom_nat).to_numerator_and_denominator();
+//             (
+//
+// U256::from_limbs_slice(&rounded_num.to_limbs_asc()).to_le_bytes(),
+//
+// U256::from_limbs_slice(&u256_max.to_limbs_asc()).to_le_bytes(),             )
+//         }
+//     }
+// }
+
 pub fn rational_to_u256_fraction(rational: &Rational) -> ([u8; 32], [u8; 32]) {
-    let (num_nat, denom_nat) = rational.to_numerator_and_denominator();
     println!("RATIONAL: {:?}", rational);
+    // Extract numerator and denominator as `Natural`
+    let (num_nat, denom_nat) = rational.to_numerator_and_denominator();
 
-    if let ((num, false), (denom, false)) = (
-        U256::overflowing_from_limbs_slice(&num_nat.to_limbs_asc()),
-        U256::overflowing_from_limbs_slice(&denom_nat.to_limbs_asc()),
-    ) {
-        (num.to_le_bytes(), denom.to_le_bytes())
+    // Convert U256::MAX to `Natural` for comparison
+    let u256_max = Natural::from_limbs_asc(U256::MAX.as_limbs());
+
+    // Check if either numerator or denominator overflows `U256`
+    let num_overflow = num_nat > u256_max;
+    let denom_overflow = denom_nat > u256_max;
+
+    if !num_overflow && !denom_overflow {
+        // Direct conversion if both fit into U256
+        let num_u256 = U256::from_limbs_slice(&num_nat.to_limbs_asc());
+        let denom_u256 = U256::from_limbs_slice(&denom_nat.to_limbs_asc());
+        (num_u256.to_le_bytes(), denom_u256.to_le_bytes())
     } else {
-        if num_nat > denom_nat {
-            let div_const = Rational::from_naturals_ref(
-                &Natural::from_limbs_asc(U256::MAX.as_limbs()),
-                &num_nat,
-            );
-
-            println!("DIV: {:?}", div_const);
-
-            let rounded_denom = &denom_nat * &div_const.rounding_into(RoundingMode::Nearest).0;
-
-            println!("NOM: {:?}", num_nat);
-            println!("DENOM: {:?}", denom_nat);
-            println!("DENOM ROUND: {:?}", rounded_denom);
-
-            let (final_num, final_denom) =
-                Rational::from_naturals(num_nat, rounded_denom).to_numerator_and_denominator();
-            (
-                U256::from_limbs_slice(&final_num.to_limbs_asc()).to_le_bytes(),
-                U256::from_limbs_slice(&final_denom.to_limbs_asc()).to_le_bytes(),
-            )
+        // Calculate the scaling factor based on the maximum overflow
+        let scale_factor = if num_overflow && denom_overflow {
+            std::cmp::max(num_nat.clone(), denom_nat.clone()) / &u256_max
+        } else if num_overflow {
+            num_nat.clone() / &u256_max
         } else {
-            let div_const: Natural = Rational::from_naturals_ref(
-                &Natural::from_limbs_asc(U256::MAX.as_limbs()),
-                &denom_nat,
-            )
-            .rounding_into(RoundingMode::Floor)
-            .0;
+            denom_nat.clone() / &u256_max
+        } + Natural::from(1_u8); // Add 1 to ensure we are under U256::MAX after scaling
+        let scaled_num_nat = &num_nat / &scale_factor;
+        let scaled_denom_nat = &denom_nat / &scale_factor;
 
-            println!("DIV: {:?}", div_const);
+        println!("NUM: {:?}", scaled_num_nat);
+        println!("DENOM: {:?}", scaled_denom_nat);
 
-            let rounded_num = &div_const * &num_nat;
+        // Now, convert the scaled values to U256, which should fit without overflow
+        let scaled_num_u256 = U256::from_limbs_slice(&scaled_num_nat.to_limbs_asc());
+        let scaled_denom_u256 = U256::from_limbs_slice(&scaled_denom_nat.to_limbs_asc());
 
-            println!("NUM: {:?}", num_nat);
-            println!("NUM ROUND: {:?}", rounded_num);
-
-            // let (final_num, final_denom) =
-            //     Rational::from_naturals(rounded_num,
-            // denom_nat).to_numerator_and_denominator();
-            (
-                U256::from_limbs_slice(&rounded_num.to_limbs_asc()).to_le_bytes(),
-                U256::from_limbs_slice(&denom_nat.to_limbs_asc()).to_le_bytes(),
-            )
-        }
+        (scaled_num_u256.to_le_bytes(), scaled_denom_u256.to_le_bytes())
     }
 }
+
+// (115792089237316195423570985008687907853269984665640564039457584007913129639935/13445378) - (8006643927551493257961755468982781446000000000000000000000000000000000000000000/941176471)
+// (115792089237316195423570985008687907853269984665640564039457584007913129639935/(16000000007*(115792089237316195423570985008687907853269984665640564039457584007913129639935/x))) - (115792089237316195423570985008687907853269984665640564039457584007913129639935/13611295)
 
 #[cfg(test)]
 mod tests {
