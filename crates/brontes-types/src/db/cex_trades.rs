@@ -1,5 +1,6 @@
 use std::{cmp::min, marker::PhantomData};
 
+use crate::utils::ToFloatNearest;
 use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
@@ -241,8 +242,8 @@ impl CexTradeMap {
             )
             .reduce(|| (FastHashMap::default(), FastHashMap::default()), fold_fn);
 
-        // calculates best possible cross_pair execution price
-        calculate_cross_pair(pair0_vwams, pair1_vwams, volume)
+        // calculates best possible mult cross pair price
+        calculate_multi_cross_pair(pair0_vwams, pair1_vwams, volume)
     }
 
     fn get_vwam_via_intermediary_spread(
@@ -602,7 +603,7 @@ impl<'a> PairTradeQueue<'a> {
 /// pair price with the amount of volume that they have cleared. We then will
 /// take the best price up-to our target volume and do a weighted average of the
 /// best.
-fn calculate_cross_pair(
+fn calculate_multi_cross_pair(
     v0: FastHashMap<Address, Vec<MakerTakerWithVolumeFilled>>,
     mut v1: FastHashMap<Address, Vec<MakerTakerWithVolumeFilled>>,
     v0_volume_needed: &Rational,
@@ -692,7 +693,7 @@ fn calculate_cross_pair(
 
     if total_volume_pct < Rational::ONE {
         tracing::info!(
-            ?total_volume_pct,
+            vol_pct_found=%total_volume_pct.to_float(),
             "not enough volume found for spreading markout over all valid intermediaries."
         );
         return None
