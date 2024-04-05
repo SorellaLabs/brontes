@@ -627,6 +627,7 @@ fn calculate_multi_cross_pair(
             let Some(vwam1) = v1.remove(&inter) else {
                 return vec![];
             };
+            tracing::info!(v1_len=%vwam1.len(), v0_len=%vwam0.len(), "lens");
 
             let res = vwam0
                 .into_iter()
@@ -681,6 +682,7 @@ fn calculate_multi_cross_pair(
                 })
                 .collect_vec();
             tracing::info!(?inter, "inter result prices: {:#?}", res);
+
             res
         })
         .sorted_by(|(_, a, _), (_, b, _)| b.price.cmp(&a.price))
