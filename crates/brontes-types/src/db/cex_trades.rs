@@ -732,8 +732,12 @@ fn calculate_multi_cross_pair(
             |(mut wi, mut maker_sum, mut taker_sum), (w, maker, taker)| {
                 // apply to sum
                 wi += &w;
-                maker_sum.price += &w * maker.price;
-                taker_sum.price += w * taker.price;
+                maker_sum.price += &w * &maker.price;
+                taker_sum.price += w * &taker.price;
+
+                maker_sum.exchanges.extend(maker.exchanges);
+                taker_sum.exchanges.extend(taker.exchanges);
+
                 // TODO: apply exchange volumes (will do later)
                 (wi, maker_sum, taker_sum)
             },
