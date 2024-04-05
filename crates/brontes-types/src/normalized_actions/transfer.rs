@@ -13,7 +13,7 @@ use crate::{
         redefined_types::{malachite::*, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    rational_to_clickhouse_tuple,
+    rational_to_u256_fraction,
 };
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq, Redefined)]
@@ -54,11 +54,11 @@ impl From<Vec<NormalizedTransfer>> for ClickhouseVecNormalizedTransfer {
             token:       value.iter().map(|val| format!("{:?}", val.token)).collect(),
             amount:      value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.amount))
+                .map(|val| rational_to_u256_fraction(&val.amount))
                 .collect(),
             fee:         value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.fee))
+                .map(|val| rational_to_u256_fraction(&val.fee))
                 .collect(),
         }
     }

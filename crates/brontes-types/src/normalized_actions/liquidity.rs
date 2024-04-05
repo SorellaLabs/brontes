@@ -16,7 +16,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    rational_to_clickhouse_tuple, Protocol, ToFloatNearest,
+    rational_to_u256_fraction, Protocol, ToFloatNearest,
 };
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -171,7 +171,7 @@ impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
                 .map(|val| {
                     val.amount
                         .iter()
-                        .map(rational_to_clickhouse_tuple)
+                        .map(rational_to_u256_fraction)
                         .collect_vec()
                 })
                 .collect(),
@@ -199,7 +199,7 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
                 .map(|val| {
                     val.amount
                         .iter()
-                        .map(rational_to_clickhouse_tuple)
+                        .map(rational_to_u256_fraction)
                         .collect_vec()
                 })
                 .collect(),

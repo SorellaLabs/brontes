@@ -6,7 +6,7 @@ use ahash::HashSet;
 use alloy_primitives::U256;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
-use malachite::Rational;
+use malachite::{num::conversion::traits::RoundingInto, rounding_modes::RoundingMode, Rational};
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -20,7 +20,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
-    Protocol, ToFloatNearest,
+    rational_to_u256_fraction, Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -105,19 +105,9 @@ impl Serialize for CexDex {
             &stat_arb_details.pnl_taker_profit,
         )?;
 
-        let maker_profit: ([u8; 32], [u8; 32]) = (
-            U256::from_limbs_slice(&self.pnl.maker_profit.numerator_ref().to_limbs_asc())
-                .to_le_bytes(),
-            U256::from_limbs_slice(&self.pnl.maker_profit.denominator_ref().to_limbs_asc())
-                .to_le_bytes(),
-        );
+        let maker_profit: ([u8; 32], [u8; 32]) = rational_to_u256_fraction(&self.pnl.maker_profit);
+        let taker_profit: ([u8; 32], [u8; 32]) = rational_to_u256_fraction(&self.pnl.taker_profit);
 
-        let taker_profit: ([u8; 32], [u8; 32]) = (
-            U256::from_limbs_slice(&self.pnl.taker_profit.numerator_ref().to_limbs_asc())
-                .to_le_bytes(),
-            U256::from_limbs_slice(&self.pnl.taker_profit.denominator_ref().to_limbs_asc())
-                .to_le_bytes(),
-        );
         ser_struct.serialize_field("pnl", &(maker_profit, taker_profit))?;
 
         let gas_details = (

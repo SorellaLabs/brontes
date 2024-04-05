@@ -16,7 +16,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    rational_to_clickhouse_tuple, Protocol,
+    rational_to_u256_fraction, Protocol,
 };
 
 #[derive(Default, Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
@@ -201,11 +201,11 @@ impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
                 .collect(),
             covered_debt:          value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.covered_debt))
+                .map(|val| rational_to_u256_fraction(&val.covered_debt))
                 .collect(),
             liquidated_collateral: value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.liquidated_collateral))
+                .map(|val| rational_to_u256_fraction(&val.liquidated_collateral))
                 .collect(),
         }
     }

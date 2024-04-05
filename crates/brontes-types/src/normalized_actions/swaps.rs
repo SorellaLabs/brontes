@@ -24,7 +24,7 @@ use crate::{
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
     mev::StatArbDetails,
-    rational_to_clickhouse_tuple, Protocol, ToFloatNearest,
+    rational_to_u256_fraction, Protocol, ToFloatNearest,
 };
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq)]
@@ -139,11 +139,11 @@ impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
                 .collect(),
             amount_in:   value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.amount_in))
+                .map(|val| rational_to_u256_fraction(&val.amount_in))
                 .collect(),
             amount_out:  value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.amount_out))
+                .map(|val| rational_to_u256_fraction(&val.amount_out))
                 .collect(),
         }
     }
@@ -225,11 +225,11 @@ impl From<StatArbDetails> for ClickhouseStatArbDetails {
     fn from(value: StatArbDetails) -> Self {
         Self {
             cex_exchange:     value.cex_exchange.to_string(),
-            cex_price:        rational_to_u256_bytes(value.cex_price),
+            cex_price:        rational_to_u256_fraction(&value.cex_price),
             dex_exchange:     value.dex_exchange.to_string(),
-            dex_price:        rational_to_u256_bytes(value.dex_price),
-            pnl_maker_profit: rational_to_u256_bytes(value.pnl_pre_gas.maker_profit),
-            pnl_taker_profit: rational_to_u256_bytes(value.pnl_pre_gas.taker_profit),
+            dex_price:        rational_to_u256_fraction(&value.dex_price),
+            pnl_maker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.maker_profit),
+            pnl_taker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.taker_profit),
         }
     }
 }
@@ -260,11 +260,4 @@ impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
 
         this
     }
-}
-
-fn rational_to_u256_bytes(value: Rational) -> ([u8; 32], [u8; 32]) {
-    let num = U256::from_limbs_slice(&value.numerator_ref().to_limbs_asc());
-    let denom = U256::from_limbs_slice(&value.denominator_ref().to_limbs_asc());
-
-    (num.to_le_bytes(), denom.to_le_bytes())
 }
