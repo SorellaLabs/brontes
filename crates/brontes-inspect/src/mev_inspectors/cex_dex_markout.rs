@@ -142,8 +142,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             &pair,
             // we always are buying amount in on cex
             &swap.amount_out,
-            // arbitrary for now
-            25,
             // add lookup
             None,
         )?;
