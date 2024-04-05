@@ -50,6 +50,29 @@ type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize)]
 pub struct CexTradeMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>);
 
+impl CexTradeMap {
+    pub fn from_redefined(map: Vec<(CexExchange, RedefinedTradeMapVec)>) -> Self {
+        Self(
+            map.into_iter()
+                .map(|(ex, trades)| {
+                    (
+                        ex,
+                        trades.into_iter().fold(
+                            FastHashMap::default(),
+                            |mut acc, (pair, trades)| {
+                                acc.entry(pair.to_source())
+                                    .or_insert(vec![])
+                                    .extend(trades.into_iter().map(|t| t.to_source()));
+                                acc
+                            },
+                        ),
+                    )
+                })
+                .collect(),
+        )
+    }
+}
+
 type ClickhouseTradeMap = Vec<(CexExchange, Vec<((String, String), Vec<RawCexTrades>)>)>;
 
 impl<'de> Deserialize<'de> for CexTradeMap {
@@ -82,9 +105,7 @@ impl<'de> Deserialize<'de> for CexTradeMap {
 #[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
 #[redefined(CexTradeMap)]
 #[redefined_attr(
-    to_source = "CexTradeMap(self.map.into_iter().map(|(k,v)| \
-                 (k,v.into_iter().collect::<FastHashMap<_,_>>())).collect::<FastHashMap<_,_>>().\
-                 to_source())",
+    to_source = "CexTradeMap::from_redefined(self.map)",
     from_source = "CexTradeMapRedefined::new(src.0)"
 )]
 pub struct CexTradeMapRedefined {
