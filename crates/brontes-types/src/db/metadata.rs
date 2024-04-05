@@ -83,6 +83,7 @@ impl Metadata {
 
                     return self
                         .cex_trades
+                        .as_ref()
                         .and_then(|trade_map| {
                             Some(
                                 trade_map
