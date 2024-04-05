@@ -1,8 +1,4 @@
-use std::{
-    cmp::{max, min},
-    fmt::Display,
-    marker::PhantomData,
-};
+use std::{cmp::max, fmt::Display, marker::PhantomData};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -627,7 +623,6 @@ fn calculate_multi_cross_pair(
             let Some(vwam1) = v1.remove(&inter) else {
                 return vec![];
             };
-            tracing::info!(v1_len=%vwam1.len(), v0_len=%vwam0.len(), "lens");
 
             let res = vwam0
                 .into_iter()
@@ -669,7 +664,7 @@ fn calculate_multi_cross_pair(
 
                         let maker = ExchangePrice {
                             exchanges: maker_exchanges,
-                            price:     &first_vwam.prices.0.price * &second_vwam.prices.1.price,
+                            price:     &first_vwam.prices.0.price * &second_vwam.prices.0.price,
                         };
 
                         let taker = ExchangePrice {
@@ -681,6 +676,7 @@ fn calculate_multi_cross_pair(
                     })
                 })
                 .collect_vec();
+
             tracing::info!(?inter, "inter result prices: {:#?}", res);
 
             res
