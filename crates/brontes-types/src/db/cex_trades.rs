@@ -1,6 +1,5 @@
 use std::{cmp::min, marker::PhantomData};
 
-use crate::utils::ToFloatNearest;
 use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
@@ -18,6 +17,7 @@ use crate::{
     db::redefined_types::malachite::RationalRedefined,
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
+    utils::ToFloatNearest,
     FastHashMap, FastHashSet,
 };
 
@@ -653,7 +653,7 @@ fn calculate_multi_cross_pair(
                         let total_volume_pct_0 = &first_vwam.volume_looked_at / v0_volume_needed;
                         let total_volume_pct_1 = &second_vwam.volume_looked_at / &v1_volume_needed;
 
-                        let volume_pct = min(total_volume_pct_0, total_volume_pct_1);
+                        let volume_pct = max(total_volume_pct_0, total_volume_pct_1);
 
                         let maker = ExchangePrice {
                             exchanges: maker_exchanges,
