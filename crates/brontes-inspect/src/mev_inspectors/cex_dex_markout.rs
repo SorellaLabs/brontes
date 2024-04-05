@@ -145,7 +145,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             // add lookup
             None,
         )?;
-        tracing::info!(?maker_price, ?taker_price, "got price");
+        tracing::info!(%maker_price, %taker_price, "got price");
         let leg = self.profit_classifier(&swap, maker_price, taker_price);
 
         Some(PossibleCexDexLeg { swap, leg })

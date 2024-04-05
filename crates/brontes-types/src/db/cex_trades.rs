@@ -1,5 +1,6 @@
 use std::{
     cmp::{max, min},
+    fmt::Display,
     marker::PhantomData,
 };
 
@@ -37,6 +38,13 @@ pub struct ExchangePrice {
     // cex exchange with amount of volume executed on it
     pub exchanges: Vec<(CexExchange, Rational)>,
     pub price:     Rational,
+}
+
+impl Display for ExchangePrice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:#?}", self.exchanges)?;
+        writeln!(f, "{}", self.price.clone().to_float())
+    }
 }
 
 type MakerTaker = (ExchangePrice, ExchangePrice);
