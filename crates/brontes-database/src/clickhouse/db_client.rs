@@ -45,10 +45,7 @@ use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
     clickhouse::const_sql::BLOCK_INFO,
-    libmdbx::{
-        tables::{BlockInfoData, CexPriceData, CexTradesData},
-        types::LibmdbxData,
-    },
+    libmdbx::{tables::BlockInfoData, types::LibmdbxData},
     CompressedTable,
 };
 
