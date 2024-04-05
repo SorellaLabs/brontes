@@ -127,6 +127,7 @@ impl Metadata {
         } else {
             self.block_metadata.eth_prices.clone()
         };
+        tracing::debug!(?eth_price);
 
         gas_used_rational * eth_price
     }
