@@ -29,6 +29,7 @@ futures.workspace = true
 
 # numbers
 malachite = { workspace = true, features = ["enable_serde"] }
+malachite-q = { workspace = true, features = ["enable_serde"] }
 
 # serde
 serde = { workspace = true, features = ["derive"] }

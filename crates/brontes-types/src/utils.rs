@@ -7,6 +7,7 @@ use malachite::{
     rounding_modes::RoundingMode,
     Integer, Natural, Rational,
 };
+use malachite_q::arithmetic::traits::Approximate;
 
 #[allow(unused_imports)]
 use crate::{
@@ -156,36 +157,43 @@ impl ToFloatNearest for Rational {
 pub fn rational_to_u256_fraction(rational: &Rational) -> ([u8; 32], [u8; 32]) {
     // println!("RATIONAL: {:?}", rational);
 
-    let (num_nat, denom_nat) = rational.to_numerator_and_denominator();
+    let (num_nat, denom_nat) = rational.numerator_and_denominator_ref();
 
     let u256_max = Natural::from_limbs_asc(U256::MAX.as_limbs());
 
-    let num_overflow = num_nat > u256_max;
-    let denom_overflow = denom_nat > u256_max;
-
-    if !num_overflow && !denom_overflow {
+    if num_nat <= &u256_max && denom_nat <= &u256_max {
         let num_u256 = U256::from_limbs_slice(&num_nat.to_limbs_asc());
         let denom_u256 = U256::from_limbs_slice(&denom_nat.to_limbs_asc());
+
+        (num_u256.to_le_bytes(), denom_u256.to_le_bytes())
+    } else if num_nat < denom_nat {
+        let approx_rational = rational.approximate(&u256_max);
+        let (approx_num, approx_denom) = approx_rational.numerator_and_denominator_ref();
+
+        let num_u256 = U256::from_limbs_slice(&approx_num.to_limbs_asc());
+        let denom_u256 = U256::from_limbs_slice(&approx_denom.to_limbs_asc());
+
         (num_u256.to_le_bytes(), denom_u256.to_le_bytes())
     } else {
-        let scale_factor = if num_overflow && denom_overflow {
-            std::cmp::max(num_nat.clone(), denom_nat.clone()) / &u256_max
-        } else if num_overflow {
-            num_nat.clone() / &u256_max
-        } else {
-            denom_nat.clone() / &u256_max
-        } + Natural::from(1_u8);
+        println!("RATIONAL: {:?}", rational);
+        let whole_div = num_nat / denom_nat;
+        let div_num = U256::from_limbs_slice(&whole_div.to_limbs_asc());
 
-        let scaled_num_nat = &num_nat / &scale_factor;
-        let scaled_denom_nat = &denom_nat / &scale_factor;
+        println!("DIV: {:?}", whole_div);
 
-        // println!("NUM: {:?}", scaled_num_nat);
-        // println!("DENOM: {:?}", scaled_denom_nat);
+        let mut rational_remainder = rational.clone();
+        rational_remainder.mutate_numerator(|n| *n -= denom_nat * whole_div);
 
-        let scaled_num_u256 = U256::from_limbs_slice(&scaled_num_nat.to_limbs_asc());
-        let scaled_denom_u256 = U256::from_limbs_slice(&scaled_denom_nat.to_limbs_asc());
+        let approx_rational = rational_remainder.approximate(&u256_max);
+        let (approx_num, approx_denom) = approx_rational.numerator_and_denominator_ref();
 
-        (scaled_num_u256.to_le_bytes(), scaled_denom_u256.to_le_bytes())
+        println!("\nNUM: {:?}", approx_num);
+        println!("DENOM: {:?}", approx_denom);
+
+        let num_u256 = U256::from_limbs_slice(&approx_num.to_limbs_asc()) + div_num;
+        let denom_u256 = U256::from_limbs_slice(&approx_denom.to_limbs_asc());
+
+        (num_u256.to_le_bytes(), denom_u256.to_le_bytes())
     }
 }
 
@@ -194,6 +202,8 @@ pub fn rational_to_u256_fraction(rational: &Rational) -> ([u8; 32], [u8; 32]) {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     #[test]
@@ -216,9 +226,14 @@ mod tests {
 
         let mod_numerator =
             Natural::from(num) * (Natural::from(4_u8) * Natural::from(10_u8).pow(41));
-        let mut rational = Rational::from_naturals(mod_numerator.clone(), Natural::from(denom));
-
+        let rational = Rational::from_naturals(mod_numerator.clone(), Natural::from(denom));
         let calculated = rational_to_u256_fraction(&rational);
+
+        let div = U256::from(num / denom);
+        let expected_num = div + (U256::from(num) - U256::from(denom) * div);
+        let expected_denom = U256::from(denom);
+
+        assert_eq!((expected_num.to_le_bytes(), expected_denom.to_le_bytes()), calculated);
     }
 
     #[test]
