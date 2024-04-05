@@ -168,6 +168,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let taker_delta = &taker_price.price - &rate;
 
         let pair = Pair(swap.token_in.address, self.utils.quote);
+        tracing::info!(?pair, "fetching token price for pair");
 
         let token_price = metadata
             .cex_trades
@@ -190,7 +191,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         );
         tracing::info!(?maker_profit, ?taker_profit, "profit");
 
-        SwapLeg { taker_price, maker_price, pnl: StatArbPnl { maker_profit, taker_profit } }
+        Some(SwapLeg { taker_price, maker_price, pnl: StatArbPnl { maker_profit, taker_profit } })
     }
 
     /// Accounts for gas costs in the calculation of potential arbitrage
