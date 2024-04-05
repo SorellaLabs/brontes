@@ -42,8 +42,7 @@ use self::shared::{
 };
 use crate::cli::static_object;
 
-//TUI related
-use brontes_types::mev::events::Action;
+
 
 
 
@@ -107,7 +106,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         end_block: u64,
         progress_bar: Option<ProgressBar>,
-        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
+        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,        
+        tui_tx : UnboundedSender<Action>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -347,7 +347,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         had_end_block: bool,
         end_block: u64,
-        app_tx: UnboundedSender<Action>,
+        tui_tx: UnboundedSender<Action>,
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
@@ -399,6 +399,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 end_block,
                 progress_bar.clone(),
                 tables_with_progress,
+                tui_tx,
             )
             .for_each(|block_range| {
                 futures.push(
@@ -419,6 +420,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     end_block,
                     progress_bar.clone(),
                     tables_with_progress,
+                    tui_tx
                 )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -453,7 +455,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
         self.verify_database_fetch_missing().await?;
-        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
+        let build_future = self.build_internal(executor.clone(), had_end_block, end_block,app_tx);
 
         pin_mut!(build_future, shutdown);
         tokio::select! {

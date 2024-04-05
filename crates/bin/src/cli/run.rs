@@ -15,7 +15,9 @@ use crate::{
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
 };
+//TUI related imports
 use brontes_types::mev::{MevBlock, events::TuiEvents, events::Action};
+use crate::tui::app::App;
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {

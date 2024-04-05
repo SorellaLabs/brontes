@@ -6,7 +6,9 @@ use brontes::{
 };
 use clap::Parser;
 use eyre::eyre;
-use tracing::{error, info};
+use tracing::{error, info, Level};
+use tracing_subscriber::filter::Directive;
+use tui_logger::tracing_subscriber_layer;
 
 fn main() -> eyre::Result<()> {
     dotenv::dotenv().ok();

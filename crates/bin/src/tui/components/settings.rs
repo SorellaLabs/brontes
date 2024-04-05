@@ -180,17 +180,20 @@ impl Component for Settings {
 
 
     fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
+        //TODO: handle settings 
+
 /*
           SettingsState::EndBlock => SettingsState::Inspectors,
           SettingsState::Inspectors => SettingsState::Exchanges,
           SettingsState::Exchanges => SettingsState::Done,
           SettingsState::Done => SettingsState::Done,
 
-*/
+
       match key.code {
         KeyCode::Up => self.state.previous(),
         KeyCode::Down => self.state.next(),
-
+        _ => {},
+/*
         _ => {
             match self.state {
               SettingsState::StartBlock => match key.code {
@@ -282,11 +285,11 @@ impl Component for Settings {
                 },
             }
         }
-
-    
+*/
+ 
     
     }
-
+*/
       Ok(Some(Action::Tick))
   }
 
@@ -335,7 +338,7 @@ impl Component for Settings {
         match opt.command {
             Commands::Run(command) => {
                 // Now `run_args` is your `RunArgs` struct, and you can access its fields
-                let mut textarea = TextArea::from([command.start_block.to_string()]);
+                let mut textarea = TextArea::from([command.start_block.unwrap().to_string()]);
                 textarea.set_cursor_line_style(Style::default());
                 textarea.set_style(Style::default().fg(Color::LightGreen));
 
