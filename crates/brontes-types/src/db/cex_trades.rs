@@ -1,6 +1,6 @@
 use std::{cmp::max, fmt::Display, marker::PhantomData};
 
-use alloy_primitives::Address;
+use alloy_primitives::{hex, Address};
 use clickhouse::Row;
 use itertools::Itertools;
 use malachite::{
@@ -204,7 +204,9 @@ impl CexTradeMap {
             .calculate_intermediary_addresses(exchanges, pair)
             .into_par_iter()
             .filter_map(|intermediary| {
+                // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.0, intermediary);
+                // bnb / eth 0.1298price
                 let pair1 = Pair(intermediary, pair.1);
                 // check if we have a path
                 let mut has_pair0 = false;
@@ -229,7 +231,7 @@ impl CexTradeMap {
 
                 let new_vol = volume * &res.prices.0.price;
 
-                Some((
+                let res = Some((
                     (i, res),
                     (
                         intermediary,
@@ -237,7 +239,11 @@ impl CexTradeMap {
                             exchanges, &pair1, &new_vol, quality,
                         )?,
                     ),
-                ))
+                ));
+                if intermediary == Address::new(hex!("B8c77482e45F1F44dE1745F52C74426C631bDD52")) {
+                    tracing::info!("{:#?}", res);
+                }
+                res
             })
             .fold(
                 || (FastHashMap::default(), FastHashMap::default()),
