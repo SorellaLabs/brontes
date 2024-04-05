@@ -146,7 +146,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             None,
         )?;
         tracing::info!(%maker_price, %taker_price, "got price");
-        let leg = self.profit_classifier(&swap, maker_price, taker_price, metadata);
+        let leg = self.profit_classifier(&swap, maker_price, taker_price, metadata)?;
 
         Some(PossibleCexDexLeg { swap, leg })
     }
@@ -160,7 +160,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         maker_price: ExchangePrice,
         taker_price: ExchangePrice,
         metadata: &Metadata,
-    ) -> SwapLeg {
+    ) -> Option<SwapLeg> {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let rate = swap.swap_rate();
@@ -171,8 +171,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let token_price = metadata
             .cex_trades
-            .as_ref()
-            .unwrap()
+            .as_ref()?
             .get_price(
                 &self.cex_exchanges,
                 &pair,
@@ -180,10 +179,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &swap.amount_in,
                 // add lookup
                 None,
-            )
-            .unwrap()
+            )?
             .0;
-
 
         tracing::info!(%maker_price, ?maker_delta, ?taker_delta, ?rate, %token_price, "got price");
         let (maker_profit, taker_profit) = (
