@@ -216,7 +216,7 @@ impl Dashboard {
                     */
                 "ETH/ETH".to_string(),    
                 item.header.eoa.to_string(),
-                item.header.mev_contract.unwrap().to_string(),
+                item.header.mev_contract.as_ref().map(|address| address.to_string()).unwrap_or("None".to_string()),
                 item.header.profit_usd.to_string(),
                 item.header.bribe_usd.to_string(),
             ]
