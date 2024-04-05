@@ -1,6 +1,6 @@
 use std::{cmp::max, fmt::Display, marker::PhantomData};
 
-use alloy_primitives::{hex, Address};
+use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
 use malachite::{
@@ -60,7 +60,7 @@ impl CexTradeMap {
                         trades.into_iter().fold(
                             FastHashMap::default(),
                             |mut acc, (pair, trades)| {
-                                acc.entry(pair.to_source()).or_insert(vec![]).extend(
+                                acc.entry(pair.to_source()).or_default().extend(
                                     trades
                                         .into_iter()
                                         .map(|t| t.to_source())
@@ -394,7 +394,7 @@ impl CexTradeMap {
         //   by price)
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
 
-        self.get_most_accurate_basket(pair, trade_queue, volume)
+        self.get_most_accurate_basket(trade_queue, volume)
     }
 
     fn get_most_accurate_basket_intermediary(
@@ -457,7 +457,6 @@ impl CexTradeMap {
 
     fn get_most_accurate_basket(
         &self,
-        pair: &Pair,
         mut queue: PairTradeQueue<'_>,
         volume: &Rational,
     ) -> Option<MakerTaker> {

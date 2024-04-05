@@ -46,7 +46,6 @@ use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
     clickhouse::const_sql::BLOCK_INFO,
     libmdbx::{
-        determine_eth_prices,
         tables::{BlockInfoData, CexPriceData, CexTradesData},
         types::LibmdbxData,
     },
