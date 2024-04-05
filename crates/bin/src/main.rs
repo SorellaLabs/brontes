@@ -20,7 +20,7 @@ use tracing::{error, info};
 use tracing_subscriber::filter::Directive;
 
 fn main() -> eyre::Result<()> {
-    dotenv::dotenv().expect("Failed to load .env file");
+    dotenv::dotenv().ok();
     fdlimit::raise_fd_limit().unwrap();
     #[cfg(all(feature = "dhat-heap", not(feature = "jemalloc")))]
     let _profiler = dhat::Profiler::new_heap();
@@ -51,24 +51,37 @@ fn run() -> eyre::Result<()> {
     init_tracing(opt.verbosity.directive());
 
     match opt.command {
-        Commands::Run(command) => runner::run_command_until_exit(
-            Some(opt.metrics_port),
-            Duration::from_secs(3600),
-            |ctx| command.execute(brontes_db_endpoint, ctx),
-        ),
-        Commands::Database(command) => {
-            runner::run_command_until_exit(None, Duration::from_secs(5), |ctx| {
-                command.execute(brontes_db_endpoint, ctx)
-            })
-        }
+        Commands::Run(command) => {
+            init_tracing(command.cli_only);
+
+            //TODO
+            if command.cli_only {
+                runner::run_command_until_exit(|ctx| command.execute(ctx))
+            }else{
+                runner::run_command_until_exit(|ctx| command.execute(ctx))
+
+                
+            }
+        },
+        Commands::Database(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
+        Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
     }
 }
 
-fn init_tracing(verbosity: Directive) {
-    let layers = vec![
-        brontes_tracing::stdout(verbosity),
-        brontes_metrics::error_layer::BrontesErrorMetrics::default().boxed(),
-    ];
 
-    brontes_tracing::init(layers);
+
+fn init_tracing(tui: bool) {
+    info!("tui: {}", tui);
+    if !tui{
+    
+        let layers = vec![];
+        brontes_tracing::init(layers,true);
+
+    }else{
+        let verbosity_level = Level::INFO;
+        let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+        let layers = vec![brontes_tracing::stdout(directive)];
+
+        brontes_tracing::init(layers,false);
+}
 }

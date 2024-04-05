@@ -30,14 +30,22 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver};
-use futures::{stream::FuturesUnordered, Future, StreamExt};
+// TUI related
+use brontes_types::mev::events::Action;
+use brontes_types::{
+    mev::{events::TuiEvents, MevBlock},
+    BrontesTaskExecutor, FastHashMap,
+};
+use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
-use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
 
 use self::shared::{
     dex_pricing::WaitingForPricerFuture, metadata_loader::MetadataLoader,
@@ -45,7 +53,13 @@ use self::shared::{
 };
 use crate::cli::static_object;
 
-pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [0u8, 0u8, 0u8, 0u8];
+//TUI related
+use brontes_types::mev::events::Action;
+
+
+
+pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
+pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
@@ -529,13 +543,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
     }
 
-    ///Calculate the block chunks using min batch size and max_tasks.
-    /// Max tasks defaults to 50% of physical cores of the system if not set
-    fn calculate_chunks(&self, end_block: u64) -> Vec<(u64, u64)> {
-        let start_block = self.start_block.unwrap();
-        let range = end_block - start_block;
-        let cpus_min = range / self.min_batch_size + 1;
-        let cpus = std::cmp::min(cpus_min, self.max_tasks);
+    async fn build_internal(
+        self,
+        executor: BrontesTaskExecutor,
+        had_end_block: bool,
+        end_block: u64,
+        app_tx: UnboundedSender<Action>,
+    ) -> eyre::Result<Brontes> {
+        let futures = FuturesUnordered::new();
 
         let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
@@ -608,37 +623,66 @@ fn calculate_buffer_size(
                     .sum();
                 (*table, total_range)
             })
-        })
-        .collect();
+            .await;
+        } else {
+            if self.start_block.is_some() {
+                self.build_range_executors(
+                    executor.clone(),
+                    end_block,
+                    progress_bar.clone(),
+                    tables_with_progress,
+                )
+                .for_each(|block_range| {
+                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                        "Range Executor",
+                        |shutdown| async move {
+                            block_range.run_until_graceful_shutdown(shutdown).await
+                        },
+                    ));
+                    std::future::ready(())
+                })
+                .await;
+            }
 
-    let weighted_sum: f64 = table_ranges
-        .iter()
-        .map(|(table, range_size)| {
-            let weight = TABLE_WEIGHTS
-                .iter()
-                .find(|(t, _)| t == table)
-                .map(|(_, w)| w)
-                .unwrap();
-            *weight * (*range_size as f64 / REFERENCE_BLOCK_RANGE)
-        })
-        .sum();
+            let tip_inspector =
+                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip);
 
-    // Normalize weighted_sum to be between 0 and 1
-    let normalized_weight =
-        (weighted_sum / TABLE_WEIGHTS.iter().map(|(_, w)| w).sum::<f64>()).min(1.0);
+            futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                "Tip Inspector",
+                |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },
+            ));
+        }
 
-    // Calculate buffer size
-    let buffer_size = chunks * (1.0 - normalized_weight);
+        Ok(Brontes { futures, progress_bar })
+    }
 
-    // Adjust based on total range size relative to reference
-    let size_factor = (total_block_range as f64 / REFERENCE_BLOCK_RANGE).min(1.0);
-    let adjusted_buffer_size = buffer_size * (1.0 - size_factor * normalized_weight);
+    pub async fn build(
+        self,
+        executor: BrontesTaskExecutor,
+        shutdown: GracefulShutdown,
+        app_tx: UnboundedSender<Action>,
+    ) -> eyre::Result<Brontes> {
+        // we always verify before we allow for any canceling
+        let (had_end_block, end_block) = self.get_end_block().await;
+        self.verify_database_fetch_missing().await?;
+        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
 
-    // Clamp the buffer size
-    let min_buffer = 10;
-    let max_buffer = 80;
+        pin_mut!(build_future, shutdown);
+        tokio::select! {
+            res = &mut build_future => {
+                return res
+            },
+            guard = shutdown => {
+                drop(guard)
+            }
+        }
+        tracing::info!(
+            "Received shutdown signal during initialization process, clearing possibly corrupted
+                           full range tables"
+        );
 
-    (adjusted_buffer_size.round() as usize).clamp(min_buffer, max_buffer)
+        Err(eyre::eyre!("shutdown"))
+    }
 }
 
 pub struct Brontes {

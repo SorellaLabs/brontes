@@ -21,7 +21,7 @@ use crate::{
     BrontesRunConfig,
     MevProcessor,
 };
-const SECONDS_TO_US: u64 = 1_000_000;
+use brontes_types::mev::{MevBlock, events::TuiEvents, events::Action};
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -66,45 +66,10 @@ pub struct RunArgs {
     #[arg(long, default_value = "false")]
     pub force_no_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
-    #[arg(long, default_value = "10")]
-    pub behind_tip:           u64,
-    /// Run in CLI only mode (no TUI) - will output progress bars to stdout
-    #[arg(long, default_value = "true")]
-    pub cli_only:             bool,
-    /// Metrics will be exported
-    #[arg(long, default_value = "true")]
-    pub with_metrics:         bool,
-    /// wether or not to use a fallback server.
-    #[arg(long, default_value_t = false)]
-    pub enable_fallback:      bool,
-    /// the address of the fallback server. if the socket breaks,
-    /// the fallback server will trigger db writes to ensure we
-    /// don't lose data
-    #[arg(long)]
-    pub fallback_server:      Option<String>,
-}
-
-#[derive(Debug, Parser)]
-pub struct TimeWindowArgs {
-    /// The sliding time window (BEFORE) for cex prices or trades relative to
-    /// the block timestamp
-    #[arg(long = "tw-before", short = 'b', default_value = "10")]
-    pub time_window_before:            f64,
-    /// The sliding time window (AFTER) for cex prices or trades relative to the
-    /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = "20")]
-    pub time_window_after:             f64,
-    /// The time window (BEFORE) for cex prices or trades relative to
-    /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-before", default_value = "5.0")]
-    pub time_window_before_optimistic: f64,
-    /// The time window (AFTER) for cex prices or trades relative to
-    /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-after", default_value = "10.0")]
-    pub time_window_after_optimistic:  f64,
-    /// Cex Dex Quotes price time
-    #[arg(long = "mk-time", default_value = "0.0")]
-    pub quotes_price_time:             f64,
+    #[arg(long, default_value = "3")]
+    pub behind_tip:             u64,
+    #[arg(long, default_value = "false")]
+    pub cli_only: bool,
 }
 
 impl RunArgs {
@@ -137,13 +102,14 @@ impl RunArgs {
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        let hr = self.try_start_fallback_server().await;
+        tracing::info!("Launching App");
+        let (tui_tx, mut tui_rx) = unbounded_channel();
+        let executor = task_executor.clone();
+        executor
+        .spawn_critical("TUI", { App::run(tui_rx,tui_tx.clone())});
 
-        tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
-        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint, hr).await?);
 
-        let tip = static_object(load_tip_database(libmdbx)?);
-        tracing::info!(target: "brontes", "initialized libmdbx database");
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         let load_window = self.load_time_window();
 
@@ -207,7 +173,7 @@ impl RunArgs {
                     snapshot_mode,
                     load_window,
                 )
-                .build(task_executor, shutdown)
+                .build(task_executor, shutdown, tui_tx)
                 .await
                 .map_err(|e| {
                     tracing::error!(%e);
