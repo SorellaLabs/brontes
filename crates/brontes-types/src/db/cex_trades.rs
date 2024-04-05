@@ -96,7 +96,7 @@ impl<'de> Deserialize<'de> for CexTradeMap {
                             trades
                                 .into_iter()
                                 .map(Into::into)
-                                .sorted_unstable_by_key(|a| a.price.clone()),
+                                .sorted_unstable_by_key(|a: &CexTrades| a.price.clone()),
                         );
                         acc
                     },
