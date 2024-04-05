@@ -95,7 +95,7 @@ impl CexTradesConverter {
                     .map(|(exch, trades)| {
                         let mut exchange_symbol_map = FastHashMap::default();
 
-                        trades.into_iter().for_each(|mut trade| {
+                        trades.into_iter().for_each(|trade| {
                             let mut symbol = self
                                 .symbols
                                 .get(&(trade.exchange, trade.symbol.clone()))
@@ -111,8 +111,6 @@ impl CexTradesConverter {
                             let pair = if &trade.side == "buy" {
                                 symbol.address_pair
                             } else {
-                                trade.amount *= trade.price;
-                                trade.price = 1.0 / trade.price;
                                 symbol.address_pair.flip()
                             };
 
