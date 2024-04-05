@@ -241,6 +241,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         }
 
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
+        tracing::debug!(?gas_cost);
 
         let pnl = StatArbPnl {
             maker_profit: total_arb_pre_gas.maker_profit - &gas_cost,
