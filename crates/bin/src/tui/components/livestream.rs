@@ -224,15 +224,17 @@ impl Livestream {
             item.header.block_number.to_string(),
             item.header.tx_index.to_string(),
             item.header.mev_type.to_string(),
+            /*
             item.header
-                .token_profits
+               // .token_profits
                 .profits
                 .iter()
                 .map(|profit| profit.token.inner.symbol.to_string())
                 .collect::<Vec<String>>()
-                .join(", "),
+                .join(", "),*/
+            "ETH/ETH".to_string(),    
             item.header.eoa.to_string(),
-            item.header.mev_contract.to_string(),
+            item.header.mev_contract.unwrap().to_string(),
             item.header.profit_usd.to_string(),
             item.header.bribe_usd.to_string(),
         ]

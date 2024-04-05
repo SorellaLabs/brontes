@@ -11,7 +11,6 @@ use std::{
     thread::sleep,
 };
 
-use brontes_metrics::mev::{types::MevMetricEvent, MevMetrics};
 use brontes_types::mev::{
     bundle::Bundle,
     events::{Action, TuiEvents},
@@ -20,7 +19,6 @@ use brontes_types::mev::{
 use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use eyre::{Context, Error, Result}; //
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use ratatui::{
     prelude::{Rect, *},
     widgets::*,

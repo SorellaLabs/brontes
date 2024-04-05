@@ -53,8 +53,7 @@ use self::shared::{
 };
 use crate::cli::static_object;
 
-//TUI related
-use brontes_types::mev::events::Action;
+
 
 
 
@@ -264,7 +263,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &'_ self,
         executor: BrontesTaskExecutor,
         end_block: u64,
-        pricing_metrics: Option<DexPricingMetrics>,
+        progress_bar: Option<ProgressBar>,
+        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,        
+        tui_tx : UnboundedSender<Action>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         let chunks = self.calculate_chunks(end_block);
 
@@ -548,7 +549,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         had_end_block: bool,
         end_block: u64,
-        app_tx: UnboundedSender<Action>,
+        tui_tx: UnboundedSender<Action>,
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
@@ -602,26 +603,24 @@ fn initialize_global_progress_bar(
         .flatten()
 }
 
-#[cfg(feature = "sorella-server")]
-#[allow(unused)]
-fn calculate_buffer_size(
-    state_to_init: &StateToInitialize,
-    total_block_range: u64,
-    chunks: f64,
-) -> usize {
-    const TABLE_WEIGHTS: [(Tables, f64); 3] =
-        [(Tables::DexPrice, 0.2), (Tables::CexTrades, 0.5), (Tables::CexPrice, 1.0)];
-    const REFERENCE_BLOCK_RANGE: f64 = 4_921_227.0;
-
-    let table_ranges: Vec<(Tables, usize)> = TABLE_WEIGHTS
-        .iter()
-        .filter_map(|(table, _)| {
-            state_to_init.ranges_to_init.get(table).map(|ranges| {
-                let total_range: usize = ranges
-                    .iter()
-                    .map(|range| range.end() - range.start() + 1)
-                    .sum();
-                (*table, total_range)
+        if had_end_block && self.start_block.is_some() {
+            self.build_range_executors(
+                executor.clone(),
+                end_block,
+                progress_bar.clone(),
+                tables_with_progress,
+                tui_tx,
+            )
+            .for_each(|block_range| {
+                futures.push(
+                    executor.spawn_critical_with_graceful_shutdown_signal(
+                        "Range Executor",
+                        |shutdown| async move {
+                            block_range.run_until_graceful_shutdown(shutdown).await
+                        },
+                    ),
+                );
+                std::future::ready(())
             })
             .await;
         } else {
@@ -631,6 +630,7 @@ fn calculate_buffer_size(
                     end_block,
                     progress_bar.clone(),
                     tables_with_progress,
+                    tui_tx
                 )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -665,7 +665,7 @@ fn calculate_buffer_size(
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
         self.verify_database_fetch_missing().await?;
-        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
+        let build_future = self.build_internal(executor.clone(), had_end_block, end_block,app_tx);
 
         pin_mut!(build_future, shutdown);
         tokio::select! {
