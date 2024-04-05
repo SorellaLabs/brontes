@@ -154,7 +154,7 @@ impl ToFloatNearest for Rational {
 // }
 
 pub fn rational_to_u256_fraction(rational: &Rational) -> ([u8; 32], [u8; 32]) {
-    println!("RATIONAL: {:?}", rational);
+    // println!("RATIONAL: {:?}", rational);
 
     let (num_nat, denom_nat) = rational.to_numerator_and_denominator();
 
@@ -175,11 +175,12 @@ pub fn rational_to_u256_fraction(rational: &Rational) -> ([u8; 32], [u8; 32]) {
         } else {
             denom_nat.clone() / &u256_max
         } + Natural::from(1_u8);
+
         let scaled_num_nat = &num_nat / &scale_factor;
         let scaled_denom_nat = &denom_nat / &scale_factor;
 
-        println!("NUM: {:?}", scaled_num_nat);
-        println!("DENOM: {:?}", scaled_denom_nat);
+        // println!("NUM: {:?}", scaled_num_nat);
+        // println!("DENOM: {:?}", scaled_denom_nat);
 
         let scaled_num_u256 = U256::from_limbs_slice(&scaled_num_nat.to_limbs_asc());
         let scaled_denom_u256 = U256::from_limbs_slice(&scaled_denom_nat.to_limbs_asc());
