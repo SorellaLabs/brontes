@@ -242,6 +242,13 @@ impl CexTradeMap {
                 ));
                 if intermediary == Address::new(hex!("B8c77482e45F1F44dE1745F52C74426C631bDD52")) {
                     tracing::info!(?pair0, ?pair1, "{:#?}", res);
+                    let reg = self.0.get(&CexExchange::Binance).unwrap().get(&pair0);
+                    let flipped = self
+                        .0
+                        .get(&CexExchange::Binance)
+                        .unwrap()
+                        .get(&pair0.flip());
+                    tracing::info!("{:#?} flipped {:#?}", reg, flipped);
                 }
                 res
             })
