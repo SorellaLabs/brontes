@@ -88,6 +88,8 @@ impl Init {
                 .spawn_critical("init", async move {
                     let tables = Tables::ALL.to_vec();
 
+                   // TODO:remove progress bar
+/*
                     let multi = MultiProgress::default();
                     let tables_with_progress = Arc::new(
                         tables
@@ -98,30 +100,27 @@ impl Init {
                             })
                             .collect_vec(),
                     );
-
-                    futures::future::join_all(
-                        self.tables_to_init
-                            .unwrap_or(tables)
-                            .into_iter()
-                            .map(|table| {
-                                let tracer = tracer.clone();
-                                let tables_with_progress = tables_with_progress.clone();
-                                async move {
-                                    libmdbx
-                                        .initialize_tables(
-                                            clickhouse,
-                                            tracer,
-                                            table,
-                                            false,
-                                            range,
-                                            tables_with_progress,
-                                        )
-                                        .await
-                                        .unwrap();
-                                }
-                            }),
-                    )
-                    .await;
+*/
+                    libmdbx
+                        .initialize_tables(
+                            clickhouse,
+                            tracer,
+                            self.tables_to_init
+                                .unwrap_or({
+                                    if self.download_dex_pricing {
+                                        //TODO: Joe add non dex price download behaviour
+                                        tables
+                                    } else {
+                                        tables
+                                    }
+                                })
+                                .as_slice(),
+                            false,
+                            range,
+                            //tables_with_progress,
+                        )
+                        .await
+                        .unwrap();
                 })
                 .await
                 .unwrap();

@@ -58,7 +58,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         table: Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         table
             .initialize_table(self, block_range, clear_tables, progress_bar)
@@ -101,8 +101,19 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         futures::stream::iter(tables.to_vec())
             .map(|table| {
-                let progress_bar = progress_bar.clone();
-                async move { table.initialize_full_range_table(self, progress_bar).await }
+                //let progress_bar = progress_bar.clone();
+                let critical_state_progress_bar = critical_state_progress_bar.clone();
+                async move {
+                    table
+                        .initialize_table(
+                            self,
+                            block_range,
+                            clear_tables,
+                            critical_state_progress_bar,
+                            //progress_bar,
+                        )
+                        .await
+                }
             })
             .buffer_unordered(5)
             .collect::<Vec<_>>()
@@ -112,7 +123,20 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         Ok(())
     }
 
-    pub async fn load_config(&self) -> eyre::Result<()> {
+    pub async fn initialize_arbitrary_state(
+        &self,
+        tables: &[Tables],
+        block_range: &'static [u64],
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+    ) -> eyre::Result<()> {
+        join_all(tables.iter().map(|table| {
+            //table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+            table.initialize_table_arbitrary_state(self, block_range)
+        }))
+        .await
+        .into_iter()
+        .collect::<eyre::Result<_>>()?;
+
         join!(
             self.load_classifier_config_data(),
             self.load_searcher_config_data(),
@@ -161,9 +185,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         range: Option<(u64, u64)>,
         clear_table: bool,
-        pb: ProgressBar,
-        d: impl Fn(u64, u64, &'static CH) -> FnOutput<D> + Send + Clone + 'static,
-        f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
+        mark_init: Option<u8>,
+        cex_table_flag: bool,
+
+        //pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -194,7 +219,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             )
         };
 
-        let pair_ranges = range_chunks
+        //pb.inc_length(range_count);
+
+        let pair_ranges = block_range_chunks
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
             .filter_map(
@@ -205,22 +232,59 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
-            let pb = pb.clone();
+            //let pb = pb.clone();
             let count = end - start;
             let f = f.clone();
             let d = d.clone();
 
             async move {
-                let data = (d(start, end + 1, clickhouse)).await;
-                match data {
-                    Ok(d) => {
-                        pb.inc(count);
-                        let not = Arc::new(Notify::new());
-                        f(d, not.clone())?;
-                        not.notified().await;
+
+                if cex_table_flag {
+                    #[cfg(not(feature = "cex-dex-markout"))]
+                    {
+                        let data = clickhouse
+                            .get_cex_prices(CexRangeOrArbitrary::Range(start, end+1))
+                            .await;
+                        match data {
+                            Ok(d) => {
+                                //pb.inc(count);
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
                     }
-                    Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+
+
+                    #[cfg(feature = "cex-dex-markout")]
+                    {
+                        let data = clickhouse
+                            .get_cex_trades(CexRangeOrArbitrary::Range(start, end+1))
+                            .await;
+                        match data {
+                            Ok(d) => {
+                                //pb.inc(count);
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    }
+
+                } else {
+                    let data = clickhouse
+                    .query_many_range::<T, D>(start, end + 1)
+                    .await;
+                    match data {
+                        Ok(d) => {
+                            //pb.inc(count);
+                            libmdbx.0.write_table(&d)?;
+                        }
+                        Err(e) => {
+                            info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                        }
                     }
                 }
 
@@ -246,9 +310,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
         &self,
         block_range: &'static [u64],
-        pb: ProgressBar,
-        d: impl Fn(&'static [u64], &'static CH) -> FnOutput<D> + Send + Clone + 'static,
-        f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
+        mark_init: Option<u8>,
+        cex_table_flag: bool,
+        //pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -262,27 +326,66 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + Unpin
             + 'static,
     {
-        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000));
+        let entries = block_range.len();
+      //  pb.inc_length(entries as u64);
+
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
 
         iter(ranges.into_iter().map(|inner_range| {
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
-            let pb = pb.clone();
+           // let pb = pb.clone();
             let count = inner_range.len() as u64;
             let f = f.clone();
             let d = d.clone();
 
             async move {
-                let data = d(inner_range, clickhouse).await;
-                match data {
-                    Ok(d) => {
-                        pb.inc(count);
-                        let not = Arc::new(Notify::new());
-                        f(d, not.clone())?;
-                        not.notified().await;
+
+                if cex_table_flag {
+                    #[cfg(not(feature = "cex-dex-markout"))]
+                    {
+                        let data = clickhouse
+                            .get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range))
+                            .await;
+                        match data {
+                            Ok(d) => {
+                        //        pb.inc(count);
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
                     }
-                    Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+
+
+                    #[cfg(feature = "cex-dex-markout")]
+                    {
+                        let data = clickhouse
+                        .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))
+                        .await;
+                        match data {
+                            Ok(d) => {
+                               // pb.inc(count);
+                                libmdbx.0.write_table(&d)?;
+                            }
+                            Err(e) => {
+                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                            }
+                        }
+                    }
+
+                } else {
+                    let data = clickhouse
+                        .query_many_arbitrary::<T, D>(inner_range).await;
+                    match data {
+                        Ok(d) => {
+                           // pb.inc(count);
+                            libmdbx.0.write_table(&d)?;
+                        }
+                        Err(e) => {
+                            info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                        }
                     }
                 }
 

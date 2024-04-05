@@ -6,12 +6,20 @@ use brontes_types::MultiBlockData;
 use futures::Future;
 pub use mev::*;
 
+//tui related
+use tokio::sync::mpsc::UnboundedSender;
+use brontes_types::mev::events::Action;
+
+
 pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
     type InspectType: Send + Sync + Unpin;
 
     fn process_results<DB: DBWriter + LibmdbxReader>(
-        db: &'static DB,
-        inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
-        data: MultiBlockData,
+        db: &DB,
+        inspectors: &[&dyn Inspector<Result = Self::InspectType>],
+        tree: Arc<BlockTree<Actions>>,
+        metadata: Arc<Metadata>,
+        tui_tx: UnboundedSender<Action>
+
     ) -> impl Future<Output = ()> + Send;
 }

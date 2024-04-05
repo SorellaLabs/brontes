@@ -24,6 +24,11 @@ use tracing::debug;
 
 use crate::Processor;
 
+//tui related
+use tokio::sync::mpsc::UnboundedSender;
+use brontes_types::mev::events::Action;
+
+
 #[derive(Debug, Clone, Copy)]
 pub struct MevProcessor;
 
@@ -31,12 +36,18 @@ impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
     async fn process_results<DB: DBWriter + LibmdbxReader>(
-        db: &'static DB,
-        inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
-        data: MultiBlockData,
+        db: &DB,
+        inspectors: &[&dyn Inspector<Result = Self::InspectType>],
+        tree: Arc<BlockTree<Actions>>,
+        metadata: Arc<Metadata>,
+        tui_tx: UnboundedSender<Action>
+
     ) {
-        let last = data.get_most_recent_block().clone();
-        let BlockData { metadata, tree } = last;
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
+            target = inspect,
+            compose_mev_results(inspectors, tree.clone(), metadata.clone(),tui_tx)
+        );
+
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await

@@ -125,7 +125,7 @@ impl TraceLoader {
                 Tables::TxTraces,
                 false,
                 Some((block - 2, block + 2)),
-                tables,
+                //tables,
             )
             .await?;
         multi.clear().unwrap();
@@ -167,10 +167,9 @@ impl TraceLoader {
                 Tables::CexTrades,
                 false,
                 Some((block - 2, block + 2)),
-                tables,
-            ),
-        )?;
-
+                //tables,
+            )
+            .await?;
         multi.clear().unwrap();
 
         Ok(())
@@ -394,14 +393,23 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
 
             let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
-            let tracer = init_trace_parser(handle, tx, this, 5).await;
-            if init_crit_tables(this) {
-                tracing::info!("initting crit tables");
-                this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
-                    .await
-                    .unwrap();
-            } else {
-                tracing::info!("skipping crit table init");
+            if this.init_full_range_tables(clickhouse).await {
+                let tracer = init_trace_parser(handle, tx, this, 5).await;
+                this.initialize_tables(
+                    clickhouse,
+                    tracer.get_tracer(),
+                    &[
+                        Tables::PoolCreationBlocks,
+                        Tables::TokenDecimals,
+                        Tables::AddressToProtocolInfo,
+                        Tables::AddressMeta,
+                    ],
+                    false,
+                    None,
+                 //   tables,
+                )
+                .await
+                .unwrap();
             }
 
             this

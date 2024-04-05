@@ -163,7 +163,10 @@ impl Tables {
     pub(crate) async fn initialize_full_range_table<T: TracingProvider, CH: ClickhouseHandle>(
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
-        crit_progress: ProgressBar,
+        block_range: Option<(u64, u64)>,
+        clear_table: bool,
+        crit_progress: Option<ProgressBar>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
@@ -224,9 +227,15 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_range_quotes,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(CEX_FLAG),
+                        true,
+                        /*
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b))
+                            .cloned()
+                            .unwrap(),
+                            */
                     )
                     .await
             }
@@ -235,9 +244,13 @@ impl Tables {
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
                         block_range,
                         clear_table,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_range,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(META_FLAG),
+                        false,
+                        /*progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
+                            .unwrap(),
+                            */
                     )
                     .await
             }
@@ -246,9 +259,13 @@ impl Tables {
                     .initialize_table_from_clickhouse::<DexPrice, DexPriceData>(
                         block_range,
                         clear_table,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_range,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(TRACE_FLAG),
+                        false,
+                        /*progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
+                            .unwrap(),
+                            */
                     )
                     .await
             }
@@ -270,9 +287,12 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
                         block_range,
                         clear_table,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_range_trades,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(CEX_FLAG),
+                        true,
+                       /* progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
+                            .unwrap(),*/
                     )
                     .await
             }
@@ -288,7 +308,7 @@ impl Tables {
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: &'static [u64],
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
@@ -296,9 +316,14 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_arbitrary_quotes,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(CEX_FLAG),
+                        true,
+                        /*
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b.clone()))
+                            .unwrap(),
+                            */
                     )
                     .await
             }
@@ -306,19 +331,13 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_arbitrary,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
-                    )
-                    .await
-            }
-            Tables::DexPrice => {
-                initializer
-                    .initialize_table_from_clickhouse_arbitrary_state::<DexPrice, DexPriceData>(
-                        block_range,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_arbitrary,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(META_FLAG),
+                        false,
+                        /*progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
+                            .unwrap(),
+                            */
                     )
                     .await
             }
@@ -326,9 +345,13 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_arbitrary,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(TRACE_FLAG),
+                        false,
+                      /*  progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
+                            .unwrap(),
+                            */
                     )
                     .await
             }
@@ -337,9 +360,13 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
                         block_range,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_arbitrary_trades,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        Some(CEX_FLAG),
+                        true,
+                      /*  progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
+                            .unwrap(),
+                            */
                     )
                     .await
             }

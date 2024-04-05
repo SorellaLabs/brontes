@@ -176,7 +176,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         tables: crate::Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
             .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
@@ -196,11 +196,12 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         tracer: std::sync::Arc<T>,
         tables: crate::Tables,
         block_range: Vec<u64>,
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
-            .await
+        //.initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
+        .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range)
+        .await
     }
 
     async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
@@ -485,8 +486,9 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
-            .await
+       // .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
+        .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range)
+        .await
     }
 
     fn get_db_range(&self) -> eyre::Result<(u64, u64)> {
@@ -505,8 +507,9 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
-            .await
+        //.initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
+        .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range)
+        .await
     }
 
     async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(

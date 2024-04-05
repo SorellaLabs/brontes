@@ -16,6 +16,11 @@ use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::debug;
 
+//tui related
+use tokio::sync::mpsc::UnboundedSender;
+use brontes_types::mev::events::Action;
+
+
 use super::shared::state_collector::StateCollector;
 use crate::{executors::ProgressBar, Processor};
 
@@ -34,8 +39,8 @@ pub struct RangeExecutorWithPricing<
     end_block:      u64,
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
-    progress_bar:   Option<ProgressBar>,
-    global_metrics: Option<GlobalRangeMetrics>,
+    //progress_bar:   Option<ProgressBar>,
+    tui_tx:       UnboundedSender<Action>,
     _p:             PhantomData<P>,
 }
 
@@ -49,8 +54,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
-        progress_bar: Option<ProgressBar>,
-        global_metrics: Option<GlobalRangeMetrics>,
+        tui_tx: UnboundedSender<Action>,
+        //progress_bar: Option<ProgressBar>,
     ) -> Self {
         Self {
             id,
@@ -60,8 +65,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             end_block,
             libmdbx,
             inspectors,
-            progress_bar,
-            global_metrics,
+            tui_tx,
+            //progress_bar,
             _p: PhantomData,
         }
     }
@@ -91,22 +96,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
     fn on_price_finish(&mut self, data: MultiBlockData) {
         debug!(target:"brontes","Completed DEX pricing");
-        self.global_metrics
-            .as_ref()
-            .inspect(|m| m.inc_inspector(self.id));
+        self.insert_futures.push(Box::pin(P::process_results(
+            self.libmdbx,
+            self.inspectors,
+            tree.into(),
+            meta.into(),
+            self.tui_tx.clone()
 
-        let metrics = self.global_metrics.clone();
-        let inspectors = self.inspectors;
-        let libmdbx = self.libmdbx;
-        self.insert_futures.push(Box::pin(async move {
-            if let Some(metrics) = metrics {
-                metrics
-                    .meter_processing(|| Box::pin(P::process_results(libmdbx, inspectors, data)))
-                    .await
-            } else {
-                P::process_results(libmdbx, inspectors, data).await
-            }
-        }));
+        )));
     }
 }
 
@@ -117,22 +114,21 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
     #[brontes_macros::metrics_call(ptr=global_metrics, poll_rate, self.id)]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if !self.collector.is_collecting_state()
-            && self.collector.should_process_next_block()
-            && self.current_block != self.end_block
-            && self.insert_futures.len() < 3
-        {
-            cx.waker().wake_by_ref();
-            let block = self.current_block;
-            let id = self.id;
-            let metrics = self.global_metrics.clone();
-            self.collector.fetch_state_for(block, id, metrics);
-
-            self.current_block += 1;
-            if let Some(pb) = self.progress_bar.as_ref() {
-                pb.inc(1)
-            };
-        }
+        let mut work = 256;
+        loop {
+            if !self.collector.is_collecting_state()
+                && self.collector.should_process_next_block()
+                && self.current_block != self.end_block
+            {
+                let block = self.current_block;
+                self.collector.fetch_state_for(block);
+                self.current_block += 1;
+                /*
+                if let Some(pb) = self.progress_bar.as_ref() {
+                    pb.inc(1)
+                };
+                */
+            }
 
         while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
             match result {
