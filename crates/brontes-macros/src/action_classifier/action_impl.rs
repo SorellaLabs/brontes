@@ -23,7 +23,7 @@ pub struct ActionMacro {
     give_returns:         bool,
     /// wether we want call_data or not
     give_call_data:       bool,
-    // weather we pass down logs from delegate call in the same call frame
+    // whether we pass down logs from delegate call in the same call frame
     include_delegated_logs: bool,
     /// The closure that we use to construct the normalized type
     call_function:        ExprClosure,

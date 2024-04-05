@@ -61,7 +61,7 @@ where
 /// - `start` is the starting node.
 /// - `successors` returns a list of successors for a given node, along with the
 ///   cost of moving from the node to the successor. Costs MUST be positive.
-/// - `success` checks weather the goal has been reached.
+/// - `success` checks whether the goal has been reached.
 /// - `k` is the amount of paths requests, including the shortest one.
 ///
 /// The returned paths include both the start and the end node and are ordered
