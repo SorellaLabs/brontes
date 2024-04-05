@@ -20,19 +20,32 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap};
+// TUI related
+use brontes_types::mev::events::Action;
+use brontes_types::{
+    mev::{events::TuiEvents, MevBlock},
+    BrontesTaskExecutor, FastHashMap,
+};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
 use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
-use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    task::JoinHandle,
+};
 
 use self::shared::{
     dex_pricing::WaitingForPricerFuture, metadata::MetadataFetcher, state_collector::StateCollector,
 };
 use crate::cli::static_object;
+
+//TUI related
+use brontes_types::mev::events::Action;
+
+
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
@@ -334,6 +347,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         had_end_block: bool,
         end_block: u64,
+        app_tx: UnboundedSender<Action>,
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
@@ -434,6 +448,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         self,
         executor: BrontesTaskExecutor,
         shutdown: GracefulShutdown,
+        app_tx: UnboundedSender<Action>,
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;

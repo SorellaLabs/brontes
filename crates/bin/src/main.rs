@@ -10,7 +10,6 @@ use tracing::{error, info};
 
 fn main() -> eyre::Result<()> {
     dotenv::dotenv().ok();
-    init_tracing();
     fdlimit::raise_fd_limit().unwrap();
 
     match run() {
@@ -34,16 +33,37 @@ fn main() -> eyre::Result<()> {
 fn run() -> eyre::Result<()> {
     let opt = Args::parse();
     match opt.command {
-        Commands::Run(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
+        Commands::Run(command) => {
+            init_tracing(command.cli_only);
+
+            //TODO
+            if command.cli_only {
+                runner::run_command_until_exit(|ctx| command.execute(ctx))
+            }else{
+                runner::run_command_until_exit(|ctx| command.execute(ctx))
+
+                
+            }
+        },
         Commands::Database(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
     }
 }
 
-fn init_tracing() {
-    let default_level = "info";
 
-    let layers = vec![brontes_tracing::stdout(default_level)];
 
-    brontes_tracing::init(layers);
+fn init_tracing(tui: bool) {
+    info!("tui: {}", tui);
+    if !tui{
+    
+        let layers = vec![];
+        brontes_tracing::init(layers,true);
+
+    }else{
+        let verbosity_level = Level::INFO;
+        let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+        let layers = vec![brontes_tracing::stdout(directive)];
+
+        brontes_tracing::init(layers,false);
+}
 }

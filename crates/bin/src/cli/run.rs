@@ -15,6 +15,7 @@ use crate::{
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
 };
+use brontes_types::mev::{MevBlock, events::TuiEvents, events::Action};
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -78,6 +79,8 @@ pub struct RunArgs {
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "3")]
     pub behind_tip:             u64,
+    #[arg(long, default_value = "false")]
+    pub cli_only: bool,
 }
 
 impl RunArgs {
@@ -96,6 +99,13 @@ impl RunArgs {
         let (metrics_tx, metrics_rx) = unbounded_channel();
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
+
+        tracing::info!("Launching App");
+        let (tui_tx, mut tui_rx) = unbounded_channel();
+        let executor = task_executor.clone();
+        executor
+        .spawn_critical("TUI", { App::run(tui_rx,tui_tx.clone())});
+
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
@@ -149,7 +159,7 @@ impl RunArgs {
                     parser,
                     libmdbx,
                 )
-                .build(task_executor, shutdown)
+                .build(task_executor, shutdown, tui_tx)
                 .await
                 .map_err(|e| {
                     tracing::error!(%e);
