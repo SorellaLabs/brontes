@@ -262,6 +262,8 @@ impl CexTradeMap {
                     return None
                 }
 
+                tracing::debug!(?pair, ?intermediary, "trying via intermediary");
+
                 let (i, res) = (
                     intermediary,
                     self.get_vwam_via_intermediary_spread(exchanges, &pair0, volume, quality)?,
