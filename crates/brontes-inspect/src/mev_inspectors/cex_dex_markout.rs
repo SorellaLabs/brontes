@@ -184,7 +184,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .unwrap()
             .0;
 
-        tracing::info!(%maker_price, ?maker_delta, ?taker_delta, ?rate, "got price");
+
+        tracing::info!(%maker_price, ?maker_delta, ?taker_delta, ?rate, %token_price, "got price");
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calculate fees here
             maker_delta * &swap.amount_out * &token_price.price,
