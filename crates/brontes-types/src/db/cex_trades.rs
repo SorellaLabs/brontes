@@ -60,9 +60,12 @@ impl CexTradeMap {
                         trades.into_iter().fold(
                             FastHashMap::default(),
                             |mut acc, (pair, trades)| {
-                                acc.entry(pair.to_source())
-                                    .or_insert(vec![])
-                                    .extend(trades.into_iter().map(|t| t.to_source()));
+                                acc.entry(pair.to_source()).or_insert(vec![]).extend(
+                                    trades
+                                        .into_iter()
+                                        .map(|t| t.to_source())
+                                        .sorted_unstable_by_key(|a| a.price),
+                                );
                                 acc
                             },
                         ),
@@ -89,9 +92,12 @@ impl<'de> Deserialize<'de> for CexTradeMap {
                     FastHashMap::default(),
                     |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
                         let pair = Pair(pair.0.parse().unwrap(), pair.1.parse().unwrap());
-                        acc.entry(pair)
-                            .or_default()
-                            .extend(trades.into_iter().map(Into::into));
+                        acc.entry(pair).or_default().extend(
+                            trades
+                                .into_iter()
+                                .map(Into::into)
+                                .sorted_unstable_by_key(|a| a.price),
+                        );
                         acc
                     },
                 ));
