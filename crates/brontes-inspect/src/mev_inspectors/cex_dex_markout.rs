@@ -171,7 +171,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let token_price = metadata
             .cex_trades
-            .as_ref().unwrap()
+            .as_ref()
+            .unwrap()
             .get_price(
                 &self.cex_exchanges,
                 &pair,
@@ -179,13 +180,14 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &swap.amount_in,
                 // add lookup
                 None,
-            ).unwrap()
+            )
+            .unwrap()
             .0;
 
         tracing::info!(%maker_price, ?maker_delta, ?taker_delta, ?rate, "got price");
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calculate fees here
-            maker_delta * &swap.amount_out * token_price,
+            maker_delta * &swap.amount_out * &token_price,
             taker_delta * &swap.amount_out * token_price,
         );
         tracing::info!(?maker_profit, ?taker_profit, "profit");
