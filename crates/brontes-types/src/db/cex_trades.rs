@@ -177,6 +177,13 @@ impl CexTradeMap {
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
+        if pair.0 == pair.1 {
+            return Some((
+                ExchangePrice { exchanges: vec![], price: Rational::ONE },
+                ExchangePrice { exchanges: vec![], price: Rational::ONE },
+            ))
+        }
+
         self.get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref())
             .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()))
     }

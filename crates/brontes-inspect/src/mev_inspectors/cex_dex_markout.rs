@@ -146,7 +146,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             None,
         )?;
         tracing::info!(%maker_price, %taker_price, "got price");
-        let leg = self.profit_classifier(&swap, maker_price, taker_price);
+        let leg = self.profit_classifier(&swap, maker_price, taker_price, metadata);
 
         Some(PossibleCexDexLeg { swap, leg })
     }
@@ -159,6 +159,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         swap: &NormalizedSwap,
         maker_price: ExchangePrice,
         taker_price: ExchangePrice,
+        metadata: &Metadata,
     ) -> SwapLeg {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
@@ -166,11 +167,26 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let maker_delta = &maker_price.price - &rate;
         let taker_delta = &taker_price.price - &rate;
 
+        let pair = Pair(swap.token_in.address, self.utils.quote);
+
+        let token_price = metadata
+            .cex_trades
+            .as_ref()?
+            .get_price(
+                &self.cex_exchanges,
+                &pair,
+                // we always are buying amount in on cex
+                &swap.amount_in,
+                // add lookup
+                None,
+            )?
+            .0;
+
         tracing::info!(%maker_price, ?maker_delta, ?taker_delta, ?rate, "got price");
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calculate fees here
-            maker_delta * &swap.amount_out * &maker_price.price,
-            taker_delta * &swap.amount_out * &taker_price.price,
+            maker_delta * &swap.amount_out * token_price,
+            taker_delta * &swap.amount_out * token_price,
         );
         tracing::info!(?maker_profit, ?taker_profit, "profit");
 
