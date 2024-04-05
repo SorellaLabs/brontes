@@ -64,7 +64,7 @@ impl CexTradeMap {
                                     trades
                                         .into_iter()
                                         .map(|t| t.to_source())
-                                        .sorted_unstable_by_key(|a| a.price),
+                                        .sorted_unstable_by_key(|a| a.price.clone()),
                                 );
                                 acc
                             },
@@ -96,7 +96,7 @@ impl<'de> Deserialize<'de> for CexTradeMap {
                             trades
                                 .into_iter()
                                 .map(Into::into)
-                                .sorted_unstable_by_key(|a| a.price),
+                                .sorted_unstable_by_key(|a| a.price.clone()),
                         );
                         acc
                     },
