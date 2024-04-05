@@ -44,8 +44,6 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
             panic!("no cex trades");
         }
 
-        let trades = metadata.cex_trades.clone().unwrap();
-
         let swap_txes = tree
             .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
