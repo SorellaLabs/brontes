@@ -595,31 +595,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
-        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
-
-        (start_block..=end_block)
-            .chunks(chunk_size.try_into().unwrap())
-            .into_iter()
-            .map(|mut c| {
-                let start = c.next().unwrap();
-                let end_block = c.last().unwrap_or(start_block);
-                (start, end_block)
-            })
-            .collect_vec()
-    }
-}
-
-fn initialize_global_progress_bar(
-    cli_only: bool,
-    start_block: Option<u64>,
-    end_block: Option<u64>,
-) -> Option<ProgressBar> {
-    cli_only
-        .then(|| {
-            let start = start_block?;
-            let end = end_block?;
-            // Assuming `had_end_block` and `end_block` should be defined or passed
-            // elsewhere
+        /*
+        let progress_bar = if self.start_block.is_some() && had_end_block {
+            let total_blocks = end_block - self.start_block.unwrap();
             let progress_bar = ProgressBar::with_draw_target(
                 Some(end - start),
                 ProgressDrawTarget::stderr_with_hz(100),
@@ -639,6 +617,16 @@ fn initialize_global_progress_bar(
                 });
             progress_bar.set_style(style);
             progress_bar.set_message("Processing blocks:");
+            Some(progress_bar)
+        } else {
+            None
+        };
+*/
+        let mut tables = Tables::ALL.to_vec();
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables.retain(|t| !matches!(t, Tables::CexTrades));
+        #[cfg(feature = "cex-dex-markout")]
+        tables.retain(|t| !matches!(t, Tables::CexPrice));
 
 
                    // TODO:remove progress bar
@@ -702,7 +690,8 @@ fn initialize_global_progress_bar(
             ));
         }
 
-        Ok(Brontes { futures, progress_bar })
+        //Ok(Brontes { futures, progress_bar })
+        Ok(Brontes { futures })
     }
 
     pub async fn build(
@@ -735,23 +724,30 @@ fn initialize_global_progress_bar(
 }
 
 pub struct Brontes {
-    pub futures: FuturesUnordered<JoinHandle<()>>,
-    pub metrics: FinishedRange,
+    futures:      FuturesUnordered<JoinHandle<()>>,
+    //progress_bar: Option<ProgressBar>,
 }
 
 impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        while match self.futures.poll_next_unpin(cx) {
-            Poll::Ready(Some(_)) => {
-                tracing::info!("range finished");
-                self.metrics.running_ranges.decrement(1.0);
-                true
+        if self.futures.is_empty() {
+            /*
+            if let Some(bar) = &self.progress_bar {
+                bar.finish();
+            }*/
+            return Poll::Ready(())
+        }
+
+        if let Poll::Ready(None) = self.futures.poll_next_unpin(cx) {
+            /*
+            if let Some(bar) = &self.progress_bar {
+                bar.finish();
             }
-            Poll::Ready(None) => return Poll::Ready(()),
-            Poll::Pending => return Poll::Pending,
-        } {}
+            */
+            return Poll::Ready(())
+        }
 
         Poll::Pending
     }

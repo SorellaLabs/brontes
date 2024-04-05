@@ -97,19 +97,21 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             }
         }
 
-        let progress_bar = Self::build_critical_state_progress_bar(5).unwrap();
-
+/*
+        let critical_state_progress_bar =
+            Self::build_critical_state_progress_bar(critical_table_count as u64);
+*/
         futures::stream::iter(tables.to_vec())
             .map(|table| {
                 //let progress_bar = progress_bar.clone();
-                let critical_state_progress_bar = critical_state_progress_bar.clone();
+               // let critical_state_progress_bar = critical_state_progress_bar.clone();
                 async move {
                     table
                         .initialize_table(
                             self,
                             block_range,
                             clear_tables,
-                            critical_state_progress_bar,
+                            //critical_state_progress_bar,
                             //progress_bar,
                         )
                         .await
@@ -149,8 +151,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
-        progress_bar: ProgressBar,
-        f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
+        clear_table: bool,
+       // progress_bar: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -168,10 +170,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         match data {
             Ok(d) => {
-                progress_bar.inc(1);
-                let not = Arc::new(Notify::new());
-                f(d, not.clone())?;
-                not.notified().await;
+                //progress_bar.inc(1);
+                self.libmdbx.0.write_table(&d)?
             }
             Err(e) => {
                 error!(target: "brontes::init", error=%e, "error initing {}", T::NAME)
@@ -734,19 +734,19 @@ mod tests {
         let tables = [Tables::BlockInfo];
 
         let multi = MultiProgress::default();
+        /*
         let tables_cnt = Arc::new(
             tables
                 .iter()
                 .map(|table| (*table, table.build_init_state_progress_bar(&multi, 69)))
                 .collect_vec(),
         );
-
-        for table in tables_cnt.iter() {
-            initializer
-                .initialize(table.0, false, Some(block_range), tables_cnt.clone())
-                .await
-                .unwrap();
-        }
+*/
+        intializer
+        //.initialize(&tables, false, Some(block_range), tables_cnt)
+        .initialize(&tables, false, Some(block_range))
+        .await
+            .unwrap();
 
         // TokenDecimals
         TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)

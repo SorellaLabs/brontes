@@ -165,7 +165,7 @@ impl Tables {
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
-        crit_progress: Option<ProgressBar>,
+        //crit_progress: Option<ProgressBar>,
         //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
@@ -173,24 +173,24 @@ impl Tables {
             Tables::TokenDecimals => {
                 initializer
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
-                        crit_progress,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        clear_table,
+                        //crit_progress.unwrap(),
                     )
                     .await
             }
             Tables::AddressToProtocolInfo => {
                 initializer
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
-                        crit_progress,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        clear_table,
+                       //crit_progress.unwrap(),
                     )
                     .await
             }
             Tables::PoolCreationBlocks => {
                 initializer
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
-                        crit_progress,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        clear_table,
+                        //crit_progress.unwrap(),
                     )
                     .await
             }
@@ -269,15 +269,20 @@ impl Tables {
                     )
                     .await
             }
-            Tables::MevBlocks => Ok(()),
-            Tables::TxTraces => {
+            Tables::Builder => {
+                initializer
+                    .clickhouse_init_no_args::<Builder, BuilderData>(
+                        clear_table,
+                        //crit_progress.unwrap(),
+                    )
+                    .await
+            }
+            Tables::AddressMeta => {
                 initializer
                     .initialize_table_from_clickhouse::<TxTraces, TxTracesData>(
                         block_range,
                         clear_table,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_range,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                        //crit_progress.unwrap(),
                     )
                     .await
             }

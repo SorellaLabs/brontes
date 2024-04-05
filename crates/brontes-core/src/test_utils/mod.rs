@@ -113,11 +113,14 @@ impl TraceLoader {
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         let multi = MultiProgress::default();
-        let tables = Arc::new(vec![(
-            Tables::TxTraces,
-            Tables::TxTraces.build_init_state_progress_bar(&multi, 4),
-        )]);
-
+        /*
+        let tables = Arc::new(
+            Tables::ALL
+                .into_iter()
+                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .collect_vec(),
+        );
+*/
         self.libmdbx
             .initialize_tables(
                 clickhouse,
