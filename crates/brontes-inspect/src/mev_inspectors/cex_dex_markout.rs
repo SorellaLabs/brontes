@@ -220,8 +220,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 swaps.push(swap_with_profit.swap.clone());
                 arb_details.push(StatArbDetails {
-                    cex_exchange: most_profitable_leg.maker_price.exchanges[0].0,
-
+                    cex_exchange: most_profitable_leg
+                        .maker_price
+                        .exchanges
+                        .get(0)
+                        .map(|i| i.0)
+                        .unwrap_or_default(),
                     cex_price:    most_profitable_leg.maker_price.price.clone(),
                     dex_exchange: swap_with_profit.swap.protocol,
                     dex_price:    swap_with_profit.swap.swap_rate(),
@@ -323,7 +327,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 false,
             )
             .unwrap_or_default();
-
         let profit = addr_usd_deltas
             .values()
             .fold(Rational::ZERO, |acc, delta| acc + delta);

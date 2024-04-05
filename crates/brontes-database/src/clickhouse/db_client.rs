@@ -250,7 +250,7 @@ impl ClickhouseHandle for Clickhouse {
         #[cfg(not(feature = "cex-dex-markout"))]
         {
             tracing::info!("not markout");
-            let cex_quotes_for_block = self
+            let mut cex_quotes_for_block = self
                 .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
                 .await?;
 
