@@ -184,8 +184,15 @@ impl CexTradeMap {
             ))
         }
 
-        self.get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref())
-            .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()))
+        let res = self
+            .get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref())
+            .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()));
+
+        if res.is_none() {
+            tracing::debug!(?pair, "no vwam found");
+        }
+
+        res
     }
 
     fn calculate_intermediary_addresses(
