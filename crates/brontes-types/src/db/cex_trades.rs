@@ -1,4 +1,7 @@
-use std::{cmp::min, marker::PhantomData};
+use std::{
+    cmp::{max, min},
+    marker::PhantomData,
+};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
