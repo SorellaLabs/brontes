@@ -105,8 +105,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &'_ self,
         executor: BrontesTaskExecutor,
         end_block: u64,
-        progress_bar: Option<ProgressBar>,
-        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,        
+        //progress_bar: Option<ProgressBar>,
+        //tables_pb: Arc<Vec<(Tables, ProgressBar)>>,        
         tui_tx : UnboundedSender<Action>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
@@ -132,13 +132,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
                 let executor = executor.clone();
-                let prgrs_bar = progress_bar.clone();
-                let tables_pb = tables_pb.clone();
-
+                //let prgrs_bar = progress_bar.clone();
+               // let tables_pb = tables_pb.clone();
+                let tui_tx = tui_tx.clone();
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block, tables_pb.clone())
+                    //self.init_block_range_tables(start_block, end_block, tables_pb.clone())
+                    self.init_block_range_tables(start_block, end_block)
                         .await
                         .unwrap();
 
@@ -149,7 +150,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         self.init_state_collector(executor.clone(), start_block, end_block, false),
                         self.libmdbx,
                         self.inspectors,
-                        prgrs_bar,
+                        //prgrs_bar,
+                        tui_tx
                     )
                 }
             },
@@ -162,6 +164,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         start_block: u64,
         back_from_tip: u64,
+        tui_tx: UnboundedSender<Action>,
     ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self.init_state_collector(executor, start_block, start_block, true);
         TipInspector::new(
@@ -171,6 +174,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             self.parser,
             self.libmdbx,
             self.inspectors,
+            tui_tx,
+
         )
     }
 
@@ -228,7 +233,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         start_block: u64,
         end_block: u64,
-        tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
+        //tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         tracing::info!(start_block=%start_block, %end_block, "Verifying db fetching state that is missing");
         let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
@@ -257,7 +262,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         let tables_to_init_cont = &tables_to_init.clone();
         join_all(state_to_init_continuous.iter().map(|range| {
-            let tables_pb = tables_pb.clone();
+            //let tables_pb = tables_pb.clone();
             async move {
                 let start = range.start();
                 let end = range.end();
@@ -270,7 +275,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                             tables_to_init_cont,
                             false,
                             Some((*start, *end)),
-                            tables_pb.clone(),
+                            //tables_pb.clone(),
                         )
                         .await
                 }
@@ -297,7 +302,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.parser.get_tracer(),
                 &tables_to_init,
                 state_to_init_disc,
-                tables_pb.clone(),
+                //tables_pb.clone(),
             )
             .await?;
 
@@ -322,7 +327,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     ],
                     false,
                     None,
-                    Arc::new(vec![]),
+                    //Arc::new(vec![]),
                 )
                 .await?;
         }
@@ -385,6 +390,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         #[cfg(feature = "cex-dex-markout")]
         tables.retain(|t| !matches!(t, Tables::CexPrice));
 
+
+                   // TODO:remove progress bar
+/*
+
         let multi = MultiProgress::default();
         let tables_with_progress = Arc::new(
             tables
@@ -392,14 +401,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .map(|table| (table, table.build_init_state_progress_bar(&multi)))
                 .collect_vec(),
         );
-
+*/
         if had_end_block && self.start_block.is_some() {
             self.build_range_executors(
                 executor.clone(),
                 end_block,
-                progress_bar.clone(),
-                tables_with_progress,
-                tui_tx,
+                //progress_bar.clone(),
+                //tables_with_progress,
+                tui_tx.clone(),
             )
             .for_each(|block_range| {
                 futures.push(
@@ -418,9 +427,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.build_range_executors(
                     executor.clone(),
                     end_block,
-                    progress_bar.clone(),
-                    tables_with_progress,
-                    tui_tx
+                   // progress_bar.clone(),
+                    //tables_with_progress,
+                    tui_tx.clone()
                 )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -435,7 +444,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             }
 
             let tip_inspector =
-                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip);
+                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip,tui_tx);
 
             futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                 "Tip Inspector",

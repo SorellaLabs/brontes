@@ -120,7 +120,7 @@ impl TraceLoader {
                 &[Tables::TxTraces],
                 false,
                 Some((block - 2, block + 2)),
-                tables,
+                //tables,
             )
             .await?;
         multi.clear().unwrap();
@@ -146,7 +146,7 @@ impl TraceLoader {
                 &[Tables::BlockInfo, Tables::CexPrice],
                 false,
                 Some((block - 2, block + 2)),
-                tables,
+                //tables,
             )
             .await?;
         multi.clear().unwrap();
@@ -386,7 +386,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     ],
                     false,
                     None,
-                    tables,
+                 //   tables,
                 )
                 .await
                 .unwrap();

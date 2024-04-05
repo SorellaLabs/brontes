@@ -67,7 +67,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>,
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+      //  progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// initializes all the tables with missing data ranges via the CLI
@@ -77,7 +77,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         tracer: Arc<T>,
         tables: &[Tables],
         block_range: Vec<u64>,
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+       // progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// checks the min and max values of the clickhouse db and sees if the full
@@ -148,12 +148,13 @@ impl LibmdbxInit for LibmdbxReadWriter {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer
-            .initialize(tables, clear_tables, block_range, progress_bar)
-            .await?;
+       //.initialize(tables, clear_tables, block_range, progress_bar)
+        .initialize(tables, clear_tables, block_range)
+        .await?;
 
         Ok(())
     }
@@ -165,14 +166,15 @@ impl LibmdbxInit for LibmdbxReadWriter {
         tracer: Arc<T>,
         tables: &[Tables],
         block_range: Vec<u64>,
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+       // progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let block_range = Box::leak(Box::new(block_range));
 
         let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
         initializer
-            .initialize_arbitrary_state(tables, block_range, progress_bar)
-            .await?;
+       // .initialize_arbitrary_state(tables, block_range, progress_bar)
+        .initialize_arbitrary_state(tables, block_range)
+        .await?;
 
         Ok(())
     }

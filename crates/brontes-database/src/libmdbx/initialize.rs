@@ -53,7 +53,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         tables: &[Tables],
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let critical_table_count = tables
             .iter()
@@ -66,7 +66,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         futures::stream::iter(tables.to_vec())
             .map(|table| {
-                let progress_bar = progress_bar.clone();
+                //let progress_bar = progress_bar.clone();
                 let critical_state_progress_bar = critical_state_progress_bar.clone();
                 async move {
                     table
@@ -75,7 +75,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             block_range,
                             clear_tables,
                             critical_state_progress_bar,
-                            progress_bar,
+                            //progress_bar,
                         )
                         .await
                 }
@@ -99,10 +99,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         tables: &[Tables],
         block_range: &'static [u64],
-        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         join_all(tables.iter().map(|table| {
-            table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+            //table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+            table.initialize_table_arbitrary_state(self, block_range)
         }))
         .await
         .into_iter()
@@ -161,7 +162,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         mark_init: Option<u8>,
         cex_table_flag: bool,
 
-        pb: ProgressBar,
+        //pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -195,7 +196,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             )
         };
 
-        pb.inc_length(range_count);
+        //pb.inc_length(range_count);
 
         let pair_ranges = block_range_chunks
             .into_iter()
@@ -208,7 +209,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
-            let pb = pb.clone();
+            //let pb = pb.clone();
             let count = end - start;
 
             async move {
@@ -221,7 +222,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             .await;
                         match data {
                             Ok(d) => {
-                                pb.inc(count);
+                                //pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -238,7 +239,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             .await;
                         match data {
                             Ok(d) => {
-                                pb.inc(count);
+                                //pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -253,7 +254,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     .await;
                     match data {
                         Ok(d) => {
-                            pb.inc(count);
+                            //pb.inc(count);
                             libmdbx.0.write_table(&d)?;
                         }
                         Err(e) => {
@@ -283,7 +284,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: &'static [u64],
         mark_init: Option<u8>,
         cex_table_flag: bool,
-        pb: ProgressBar,
+        //pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -298,14 +299,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + 'static,
     {
         let entries = block_range.len();
-        pb.inc_length(entries as u64);
+      //  pb.inc_length(entries as u64);
 
         let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
 
         iter(ranges.into_iter().map(|inner_range| {
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
-            let pb = pb.clone();
+           // let pb = pb.clone();
             let count = inner_range.len() as u64;
 
             async move {
@@ -318,7 +319,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             .await;
                         match data {
                             Ok(d) => {
-                                pb.inc(count);
+                        //        pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -335,7 +336,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .await;
                         match data {
                             Ok(d) => {
-                                pb.inc(count);
+                               // pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -349,7 +350,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .query_many_arbitrary::<T, D>(inner_range).await;
                     match data {
                         Ok(d) => {
-                            pb.inc(count);
+                           // pb.inc(count);
                             libmdbx.0.write_table(&d)?;
                         }
                         Err(e) => {

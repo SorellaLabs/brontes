@@ -18,6 +18,12 @@ use tracing::debug;
 use super::shared::state_collector::StateCollector;
 use crate::Processor;
 
+//tui related
+use tokio::sync::mpsc::UnboundedSender;
+use brontes_types::mev::{MevBlock,events::TuiEvents};
+use brontes_types::mev::events::Action;
+
+
 pub struct TipInspector<
     T: TracingProvider,
     DB: LibmdbxReader + DBWriter,
@@ -31,6 +37,7 @@ pub struct TipInspector<
     database:           &'static DB,
     inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
+    tui_tx:             UnboundedSender<Action>,
     _p:                 PhantomData<P>,
 }
 
@@ -44,6 +51,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
+        tui_tx: UnboundedSender<Action>,
+
     ) -> Self {
         Self {
             back_from_tip,
@@ -53,6 +62,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             parser,
             processing_futures: FuturesUnordered::new(),
             database,
+            tui_tx,
             _p: PhantomData,
         }
     }
@@ -115,6 +125,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             self.inspectors,
             tree.into(),
             meta.into(),
+            self.tui_tx.clone()
         )));
     }
 }
