@@ -95,7 +95,7 @@ impl Metadata {
                                             &baseline_for_tokeprice,
                                             None,
                                         ),
-                                    )?
+                                    ?
                                     .0
                                     .price,
                             )
