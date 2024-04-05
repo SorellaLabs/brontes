@@ -59,7 +59,7 @@ impl CexTradeMap {
                         ex,
                         trades.into_iter().fold(
                             FastHashMap::default(),
-                            |mut acc, (pair, trades)| {
+                            |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
                                 acc.entry(pair.to_source()).or_default().extend(
                                     trades
                                         .into_iter()
