@@ -80,7 +80,7 @@ impl Metadata {
                     let trades = [CexExchange::Binance];
                     let baseline_for_tokeprice = Rational::from(100);
 
-                    self.cex_trades
+                    return self.cex_trades
                         .and_then(|trade_map| {
                             Some(
                                 trade_map
