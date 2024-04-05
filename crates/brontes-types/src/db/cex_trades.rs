@@ -241,7 +241,7 @@ impl CexTradeMap {
                     ),
                 ));
                 if intermediary == Address::new(hex!("B8c77482e45F1F44dE1745F52C74426C631bDD52")) {
-                    tracing::info!("{:#?}", res);
+                    tracing::info!(?pair0, ?pair1, "{:#?}", res);
                 }
                 res
             })
