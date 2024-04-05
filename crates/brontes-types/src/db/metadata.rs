@@ -8,7 +8,11 @@ use serde_with::serde_as;
 
 #[cfg(feature = "cex-dex-markout")]
 use super::cex_trades::CexTradeMap;
-use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
+use super::{
+    builder::BuilderInfo,
+    cex::{CexExchange, CexPriceMap},
+    dex::DexQuotes,
+};
 use crate::{
     constants::WETH_ADDRESS,
     db::redefined_types::primitives::*,
@@ -71,6 +75,31 @@ impl Metadata {
                     .map(|price| price.post_state)
                     .unwrap_or(Rational::ZERO)
             } else {
+                #[cfg(feature = "cex-dex-markout")]
+                {
+                    let trades = [CexExchange::Binance];
+                    let baseline_for_tokeprice = Rational::from(100);
+
+                    self.cex_trades
+                        .and_then(|trade_map| {
+                            Some(
+                                trade_map
+                                    .get_price(
+                                        &trades,
+                                        Pair(
+                                            WETH_ADDRESS,
+                                            quote_token,
+                                            &baseline_for_tokeprice,
+                                            None,
+                                        ),
+                                    )?
+                                    .0
+                                    .price,
+                            )
+                        })
+                        .unwrap_or(Rational::ZERO)
+                }
+
                 Rational::ZERO
             }
         } else {
