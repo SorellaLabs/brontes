@@ -135,7 +135,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     ) -> Option<PossibleCexDexLeg> {
         // token in price
         let pair = Pair(swap.token_out.address, swap.token_in.address);
-        tracing::info!(?pair, "fetching price");
 
         let (maker_price, taker_price) = metadata.cex_trades.as_ref()?.get_price(
             &self.cex_exchanges,
@@ -145,7 +144,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             // add lookup
             None,
         )?;
-        tracing::info!(%maker_price, %taker_price, "got price");
         let leg = self.profit_classifier(&swap, maker_price, taker_price, metadata)?;
 
         Some(PossibleCexDexLeg { swap, leg })
@@ -168,7 +166,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let taker_delta = &taker_price.price - &rate;
 
         let pair = Pair(swap.token_in.address, self.utils.quote);
-        tracing::info!(?pair, "fetching token price for pair");
         let baseline_for_tokeprice = Rational::from(100);
 
         let token_price = metadata
@@ -183,13 +180,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             )?
             .0;
 
-        tracing::info!(%maker_price, ?maker_delta, ?taker_delta, ?rate, %token_price, "got price");
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calculate fees here
             maker_delta * &swap.amount_out * &token_price.price,
             taker_delta * &swap.amount_out * token_price.price,
         );
-        tracing::info!(?maker_profit, ?taker_profit, "profit");
 
         Some(SwapLeg { taker_price, maker_price, pnl: StatArbPnl { maker_profit, taker_profit } })
     }
@@ -416,8 +411,8 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
             .needs_token(WETH_ADDRESS)
-            .with_expected_profit_usd(123317.44)
-            .with_gas_paid_usd(80751.62);
+            .with_expected_profit_usd(123_317.44)
+            .with_gas_paid_usd(80_751.62);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
