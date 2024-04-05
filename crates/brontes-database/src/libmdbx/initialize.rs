@@ -61,20 +61,21 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .filter(|f| *f)
             .count();
 
+/*
         let critical_state_progress_bar =
             Self::build_critical_state_progress_bar(critical_table_count as u64);
-
+*/
         futures::stream::iter(tables.to_vec())
             .map(|table| {
                 //let progress_bar = progress_bar.clone();
-                let critical_state_progress_bar = critical_state_progress_bar.clone();
+               // let critical_state_progress_bar = critical_state_progress_bar.clone();
                 async move {
                     table
                         .initialize_table(
                             self,
                             block_range,
                             clear_tables,
-                            critical_state_progress_bar,
+                            //critical_state_progress_bar,
                             //progress_bar,
                         )
                         .await
@@ -122,7 +123,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
         clear_table: bool,
-        progress_bar: ProgressBar,
+       // progress_bar: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -144,7 +145,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         match data {
             Ok(d) => {
-                progress_bar.inc(1);
+                //progress_bar.inc(1);
                 self.libmdbx.0.write_table(&d)?
             }
             Err(e) => {
@@ -696,16 +697,18 @@ mod tests {
         let tables = Tables::ALL;
 
         let multi = MultiProgress::default();
+        /*
         let tables_cnt = Arc::new(
             Tables::ALL
                 .into_iter()
                 .map(|table| (table, table.build_init_state_progress_bar(&multi)))
                 .collect_vec(),
         );
-
+*/
         intializer
-            .initialize(&tables, false, Some(block_range), tables_cnt)
-            .await
+        //.initialize(&tables, false, Some(block_range), tables_cnt)
+        .initialize(&tables, false, Some(block_range))
+        .await
             .unwrap();
 
         // TokenDecimals

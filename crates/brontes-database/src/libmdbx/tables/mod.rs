@@ -158,7 +158,7 @@ impl Tables {
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
-        crit_progress: Option<ProgressBar>,
+        //crit_progress: Option<ProgressBar>,
         //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         match self {
@@ -166,7 +166,7 @@ impl Tables {
                 initializer
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
                         clear_table,
-                        crit_progress.unwrap(),
+                        //crit_progress.unwrap(),
                     )
                     .await
             }
@@ -174,7 +174,7 @@ impl Tables {
                 initializer
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
                         clear_table,
-                        crit_progress.unwrap(),
+                       //crit_progress.unwrap(),
                     )
                     .await
             }
@@ -182,7 +182,7 @@ impl Tables {
                 initializer
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
                         clear_table,
-                        crit_progress.unwrap(),
+                        //crit_progress.unwrap(),
                     )
                     .await
             }
@@ -240,7 +240,7 @@ impl Tables {
                 initializer
                     .clickhouse_init_no_args::<Builder, BuilderData>(
                         clear_table,
-                        crit_progress.unwrap(),
+                        //crit_progress.unwrap(),
                     )
                     .await
             }
@@ -248,7 +248,7 @@ impl Tables {
                 initializer
                     .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(
                         clear_table,
-                        crit_progress.unwrap(),
+                        //crit_progress.unwrap(),
                     )
                     .await
             }

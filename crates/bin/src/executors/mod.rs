@@ -356,6 +356,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
+        /*
         let progress_bar = if self.start_block.is_some() && had_end_block {
             let total_blocks = end_block - self.start_block.unwrap();
             let progress_bar = ProgressBar::with_draw_target(
@@ -383,7 +384,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         } else {
             None
         };
-
+*/
         let mut tables = Tables::ALL.to_vec();
         #[cfg(not(feature = "cex-dex-markout"))]
         tables.retain(|t| !matches!(t, Tables::CexTrades));
@@ -452,7 +453,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             ));
         }
 
-        Ok(Brontes { futures, progress_bar })
+        //Ok(Brontes { futures, progress_bar })
+        Ok(Brontes { futures })
     }
 
     pub async fn build(
@@ -486,7 +488,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
 pub struct Brontes {
     futures:      FuturesUnordered<JoinHandle<()>>,
-    progress_bar: Option<ProgressBar>,
+    //progress_bar: Option<ProgressBar>,
 }
 
 impl Future for Brontes {
@@ -494,16 +496,19 @@ impl Future for Brontes {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.futures.is_empty() {
+            /*
             if let Some(bar) = &self.progress_bar {
                 bar.finish();
-            }
+            }*/
             return Poll::Ready(())
         }
 
         if let Poll::Ready(None) = self.futures.poll_next_unpin(cx) {
+            /*
             if let Some(bar) = &self.progress_bar {
                 bar.finish();
             }
+            */
             return Poll::Ready(())
         }
 
