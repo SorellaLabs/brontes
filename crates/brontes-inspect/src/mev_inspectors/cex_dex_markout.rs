@@ -169,6 +169,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let pair = Pair(swap.token_in.address, self.utils.quote);
         tracing::info!(?pair, "fetching token price for pair");
+        let baseline_for_tokeprice = Rational::from(100);
 
         let token_price = metadata
             .cex_trades
@@ -176,8 +177,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .get_price(
                 &self.cex_exchanges,
                 &pair,
-                // we always are buying amount in on cex
-                100,
+                &baseline_for_tokeprice,
                 // add lookup
                 None,
             )?
