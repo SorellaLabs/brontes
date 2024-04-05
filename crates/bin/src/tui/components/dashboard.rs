@@ -514,6 +514,8 @@ impl Component for Dashboard {
         Self::draw_logs(self, chunks[2], buf, 1);
         Self::render_bottom_bar(self, template[2], buf);
         if self.show_popup {
+            if let Some(selected_index) = self.stream_table_state.selected() {
+
             let block = Block::default().title("MEV Details").borders(Borders::ALL).padding(Padding::horizontal(4));
 
             let area = Self::centered_rect(80, 80, area);
@@ -561,7 +563,7 @@ impl Component for Dashboard {
 
 
 
-
+        }
             //f.render_widget(block, area);
         }
 
