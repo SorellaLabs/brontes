@@ -628,7 +628,7 @@ fn calculate_multi_cross_pair(
                 return vec![];
             };
 
-            vwam0
+            let res = vwam0
                 .into_iter()
                 .flat_map(|first_vwam| {
                     vwam1.iter().map(move |second_vwam| {
@@ -679,7 +679,9 @@ fn calculate_multi_cross_pair(
                         (volume_pct, maker, taker)
                     })
                 })
-                .collect_vec()
+                .collect_vec();
+            tracing::info!(?inter, "inter result prices: {:#?}", res);
+            res
         })
         .sorted_by(|(_, a, _), (_, b, _)| b.price.cmp(&a.price))
         .take_while(|(volume_pct, ..)| {
