@@ -116,26 +116,26 @@ action_impl!(
 );
 
 // Otc orders
-//https://etherscan.io/tx/0x07a010a8697a5d74c1c68dac628e18f5b09e593dc89f6a7d11b2bf7873dad726
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillOtcOrderCall,
     Swap,
-    [..OtcOrderFilled],
+    [OtcOrderFilled],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, logs: ZeroXFillOtcOrderCallLogs, db: &DB| {
         let logs = logs.otc_order_filled_field?;
 
-        let token_in = db.try_fetch_token_info(logs.makerToken)?;
-        let token_out = db.try_fetch_token_info(logs.takerToken)?;
+        let token_in = db.try_fetch_token_info(logs.takerToken)?;
+        let token_out = db.try_fetch_token_info(logs.makerToken)?;
 
-        let amount_in = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_in.decimals);
-        let amount_out = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_out.decimals);
+        let amount_in = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_in.decimals);
+        let amount_out = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_out.decimals);
 
         Ok(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: info.trace_idx,
-            from: logs.maker,
+            from: logs.taker,
             recipient: logs.taker,
             msg_value :info.msg_value, 
             pool: info.target_address, 
@@ -147,26 +147,26 @@ action_impl!(
     }
 );
 
-//https://etherscan.io/tx/0xb42a52833022a55565a1822c794f31b09612114fdca7b8445393547c0f45c900
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillOtcOrderForEthCall,
     Swap,
     [OtcOrderFilled],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, logs: ZeroXFillOtcOrderForEthCallLogs, db: &DB| {
         let logs = logs.otc_order_filled_field?;
 
-        let token_in = db.try_fetch_token_info(logs.makerToken)?;
-        let token_out = db.try_fetch_token_info(logs.takerToken)?;
+        let token_in = db.try_fetch_token_info(logs.takerToken)?;
+        let token_out = db.try_fetch_token_info(logs.makerToken)?;
 
-        let amount_in = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_in.decimals);
-        let amount_out = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_out.decimals);
+        let amount_in = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_in.decimals);
+        let amount_out = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_out.decimals);
 
         Ok(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: info.trace_idx,
-            from: logs.maker,
+            from: logs.taker,
             recipient: logs.taker,
             msg_value :info.msg_value, 
             pool: info.target_address, 
@@ -178,26 +178,26 @@ action_impl!(
     }
 );
 
-//https://etherscan.io/tx/0x9e9b85c90ed4bcb1a7579c048748a5c232685743bf945ec4b54399ca63268e48
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXOtcOrdersFeature::fillOtcOrderWithEthCall,
     Swap,
     [OtcOrderFilled],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, logs: ZeroXFillOtcOrderWithEthCallLogs, db: &DB| {
         let logs = logs.otc_order_filled_field?;
 
-        let token_in = db.try_fetch_token_info(logs.makerToken)?;
-        let token_out = db.try_fetch_token_info(logs.takerToken)?;
+        let token_in = db.try_fetch_token_info(logs.takerToken)?;
+        let token_out = db.try_fetch_token_info(logs.makerToken)?;
 
-        let amount_in = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_in.decimals);
-        let amount_out = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_out.decimals);
+        let amount_in = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_in.decimals);
+        let amount_out = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_out.decimals);
 
         Ok(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: info.trace_idx,
-            from: logs.maker,
+            from: logs.taker,
             recipient: logs.taker,
             msg_value :info.msg_value, 
             pool: info.target_address, 
@@ -216,19 +216,20 @@ action_impl!(
     Swap,
     [OtcOrderFilled],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, logs: ZeroXFillTakerSignedOtcOrderCallLogs, db: &DB| {
         let logs = logs.otc_order_filled_field?;
 
-        let token_in = db.try_fetch_token_info(logs.makerToken)?;
-        let token_out = db.try_fetch_token_info(logs.takerToken)?;
+        let token_in = db.try_fetch_token_info(logs.takerToken)?;
+        let token_out = db.try_fetch_token_info(logs.makerToken)?;
 
-        let amount_in = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_in.decimals);
-        let amount_out = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_out.decimals);
+        let amount_in = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_in.decimals);
+        let amount_out = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_out.decimals);
 
         Ok(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: info.trace_idx,
-            from: logs.maker,
+            from: logs.taker,
             recipient: logs.taker,
             msg_value :info.msg_value, 
             pool: info.target_address, 
@@ -250,8 +251,8 @@ action_impl!(
     |info: CallInfo, logs: ZeroXFillTakerSignedOtcOrderForEthCallLogs, db: &DB| {
         let logs = logs.otc_order_filled_field?;
 
-        let token_in = db.try_fetch_token_info(logs.makerToken)?;
-        let token_out = db.try_fetch_token_info(logs.takerToken)?;
+        let token_in = db.try_fetch_token_info(logs.takerToken)?;
+        let token_out = db.try_fetch_token_info(logs.makerToken)?;
 
         let amount_in = U256::from(logs.makerTokenFilledAmount).to_scaled_rational(token_in.decimals);
         let amount_out = U256::from(logs.takerTokenFilledAmount).to_scaled_rational(token_out.decimals);
@@ -277,13 +278,14 @@ action_impl!(
     Batch,
     [..OtcOrderFilled*],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, logs: ZeroXBatchFillTakerSignedOtcOrdersCallLogs, db: &DB| {
         let logs = logs.otc_order_filled_field?;
 
         let mut user_swaps = vec![];
         for log in logs {
-            let token_in = db.try_fetch_token_info(log.makerToken)?;
-            let token_out = db.try_fetch_token_info(log.takerToken)?;
+            let token_in = db.try_fetch_token_info(log.takerToken)?;
+            let token_out = db.try_fetch_token_info(log.makerToken)?;
 
             let amount_in = U256::from(log.makerTokenFilledAmount).to_scaled_rational(token_in.decimals);
             let amount_out = U256::from(log.takerTokenFilledAmount).to_scaled_rational(token_out.decimals);
@@ -465,12 +467,12 @@ action_impl!(
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
-        ToScaledRational, TreeSearchBuilder,
+        normalized_actions::Actions,
+        TreeSearchBuilder,
     };
 
     use super::*;
@@ -566,7 +568,8 @@ mod tests {
         let swap_tx =
             B256::from(hex!("07a010a8697a5d74c1c68dac628e18f5b09e593dc89f6a7d11b2bf7873dad726"));
 
-        let token_in = TokenInfoWithAddress {
+        let token_in = TokenInfoWithAddress::weth();
+        let token_out = TokenInfoWithAddress {
             address: Address::from_str("0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84").unwrap(),
             inner: TokenInfo {
                 decimals: 18,
@@ -576,12 +579,10 @@ mod tests {
 
         classifier_utils.ensure_token(token_in.clone());
 
-        let token_out = TokenInfoWithAddress::weth();
-
-        let amount_in = U256::from_str("4123654490488176400")
+        let amount_in = U256::from_str("4127334728116880329")
             .unwrap()
             .to_scaled_rational(token_in.decimals);
-        let amount_out = U256::from_str("4127334728116880329")
+        let amount_out = U256::from_str("4123654490488176400")
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
@@ -589,10 +590,10 @@ mod tests {
         let action = Actions::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
-            from: Address::from_str("0x807cF9A772d5a3f9CeFBc1192e939D62f0D9bD38").unwrap(),
+            from: Address::from_str("0x69Db96B584B6e25420a4Aa2ca4B20E3860d19d8C").unwrap(),
             recipient: Address::from_str("0x69Db96B584B6e25420a4Aa2ca4B20E3860d19d8C").unwrap(),
             msg_value: U256::ZERO,
-            pool: Address::ZERO,
+            pool: Address::from_str("0xdef1c0ded9bec7f1a1670819833240f027b25eff").unwrap(),
             token_in,
             token_out,
             amount_in,
@@ -604,9 +605,160 @@ mod tests {
                 swap_tx, 
                 0, 
                 action,               
-                TreeSearchBuilder::default().with_action(Actions::is_liquidation),
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
             )
             .await
             .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_fill_otc_order_for_eth() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap_tx =
+            B256::from(hex!("b42a52833022a55565a1822c794f31b09612114fdca7b8445393547c0f45c900"));
+
+        let token_in = TokenInfoWithAddress {
+            address: Address::from_str("0xdac17f958d2ee523a2206206994597c13d831ec7").unwrap(),
+            inner: TokenInfo {
+                decimals: 6,
+                symbol: "USDT".to_string()
+            }
+        };
+        let token_out = TokenInfoWithAddress::weth();
+
+
+        classifier_utils.ensure_token(token_out.clone());
+
+        let amount_in = U256::from_str("100000000000")
+            .unwrap()
+            .to_scaled_rational(token_in.decimals);
+        let amount_out = U256::from_str("41164546659018235904")
+            .unwrap()
+            .to_scaled_rational(token_out.decimals);
+
+        let action = Actions::Swap(NormalizedSwap {
+            protocol: Protocol::ZeroX,
+            trace_index: 0,
+            from: Address::from_str("0x84e8567695361adf883b6d2e12d22e9f0352bd06").unwrap(),
+            recipient: Address::from_str("0x84e8567695361adf883b6d2e12d22e9f0352bd06").unwrap(),
+            msg_value: U256::ZERO,
+            pool: Address::from_str("0xdef1c0ded9bec7f1a1670819833240f027b25eff").unwrap(),
+            token_in,
+            token_out,
+            amount_in,
+            amount_out,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap_tx, 
+                0, 
+                action,               
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_fill_otc_order_with_eth() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap_tx =
+            B256::from(hex!("9e9b85c90ed4bcb1a7579c048748a5c232685743bf945ec4b54399ca63268e48"));
+        
+            let token_in = TokenInfoWithAddress::weth();
+            let token_out = TokenInfoWithAddress {
+                address: Address::from_str("0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3").unwrap(),
+                inner: TokenInfo {
+                    decimals: 18,
+                    symbol: "ONDO".to_string()
+                }
+            };
+    
+            classifier_utils.ensure_token(token_out.clone());
+    
+            let amount_in = U256::from_str("247714108230076030")
+                .unwrap()
+                .to_scaled_rational(token_in.decimals);
+            let amount_out = U256::from_str("2448668913450061000000")
+                .unwrap()
+                .to_scaled_rational(token_out.decimals);
+    
+            let action = Actions::Swap(NormalizedSwap {
+                protocol: Protocol::ZeroX,
+                trace_index: 0,
+                from: Address::from_str("0xaaf46B4718e2251F682171a88bad79dAb3AcF35C").unwrap(),
+                recipient: Address::from_str("0xaaf46B4718e2251F682171a88bad79dAb3AcF35C").unwrap(),
+                msg_value: U256::from_str("247714108230076030").unwrap(),
+                pool: Address::from_str("0xdef1c0ded9bec7f1a1670819833240f027b25eff").unwrap(),
+                token_in,
+                token_out,
+                amount_in,
+                amount_out,
+            });
+    
+            classifier_utils
+                .contains_action(
+                    swap_tx, 
+                    0, 
+                    action,               
+                    TreeSearchBuilder::default().with_action(Actions::is_swap),
+                )
+                .await
+                .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zerox_fill_taker_signed_otc_order() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap_tx =
+            B256::from(hex!("92ea4576989a38d630867ff361c346d9317e2f61a3192a0c03698d9a70b5aee2"));
+
+        let token_in = TokenInfoWithAddress {
+            address: Address::from_str("0x6De037ef9aD2725EB40118Bb1702EBb27e4Aeb24").unwrap(),
+            inner: TokenInfo {
+                decimals: 18,
+                symbol: "RNDR".to_string()
+            }
+        };
+        let token_out = TokenInfoWithAddress {
+            address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+            inner: TokenInfo {
+                decimals: 6,
+                symbol: "USDC".to_string()
+            }
+        };
+
+        classifier_utils.ensure_token(token_in.clone());
+
+        let amount_in = U256::from_str("224799926605806500000")
+            .unwrap()
+            .to_scaled_rational(token_in.decimals);
+        let amount_out = U256::from_str("1000000000")
+            .unwrap()
+            .to_scaled_rational(token_out.decimals);
+
+        let action = Actions::Swap(NormalizedSwap {
+            protocol: Protocol::ZeroX,
+            trace_index: 0,
+            from: Address::from_str("0xCdaf004c23184aBa394A2d0476e7cEb33BA16C2c").unwrap(),
+            recipient: Address::from_str("0xCdaf004c23184aBa394A2d0476e7cEb33BA16C2c").unwrap(),
+            msg_value: U256::ZERO,
+            pool: Address::from_str("0xdef1c0ded9bec7f1a1670819833240f027b25eff").unwrap(),
+            token_in,
+            token_out,
+            amount_in,
+            amount_out,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap_tx, 
+                0, 
+                action,               
+                TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap()
     }
 }
