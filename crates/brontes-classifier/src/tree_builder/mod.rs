@@ -174,13 +174,25 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         );
 
                         if trace.trace.error.is_none() {
-                            if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
-                                *coinbase +=
-                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action)
-                                        .unwrap_or_default()
-                            } else {
-                                tx_root.gas_details.coinbase_transfer =
-                                    get_coinbase_transfer(header.beneficiary, &trace.trace.action);
+                            if let Some(coinbase_transfer) =
+                                get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                            {
+                                if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
+                                    *coinbase += coinbase_transfer;
+                                } else {
+                                    tx_root.gas_details.coinbase_transfer = Some(coinbase_transfer);
+                                }
+
+                                let classification = Actions::EthTransfer(NormalizedEthTransfer {
+                                    from:              from_addr,
+                                    to:                trace.get_to_address(),
+                                    value:             trace.get_msg_value(),
+                                    trace_index:       trace.trace_idx,
+                                    coinbase_transfer: true,
+                                });
+
+                                tx_root.insert(node, vec![classification]);
+                                continue
                             }
                         }
 
