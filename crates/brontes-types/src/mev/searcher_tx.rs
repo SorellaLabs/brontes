@@ -63,7 +63,11 @@ impl Serialize for SearcherTx {
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
 
-        let victim_transfer: ClickhouseVecNormalizedTransfer = self.transfers.clone().into();
+        let victim_transfer: ClickhouseVecNormalizedTransfer = self
+            .transfers
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
         ser_struct.serialize_field("transfers.trace_idx", &victim_transfer.trace_index)?;
         ser_struct.serialize_field("transfers.from", &victim_transfer.from)?;
         ser_struct.serialize_field("transfers.to", &victim_transfer.to)?;

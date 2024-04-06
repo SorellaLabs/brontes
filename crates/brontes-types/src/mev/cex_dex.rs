@@ -3,10 +3,7 @@ use std::{fmt, fmt::Debug};
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use alloy_primitives::U256;
-#[allow(unused)]
-use clickhouse::fixed_string::FixedString;
-use malachite::{num::conversion::traits::RoundingInto, rounding_modes::RoundingMode, Rational};
+use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -76,7 +73,11 @@ impl Serialize for CexDex {
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
 
-        let swaps: ClickhouseVecNormalizedSwap = self.swaps.clone().into();
+        let swaps: ClickhouseVecNormalizedSwap = self
+            .swaps
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("swaps.trace_idx", &swaps.trace_index)?;
         ser_struct.serialize_field("swaps.from", &swaps.from)?;
@@ -87,7 +88,11 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
-        let stat_arb_details: ClickhouseVecStatArbDetails = self.stat_arb_details.clone().into();
+        let stat_arb_details: ClickhouseVecStatArbDetails = self
+            .stat_arb_details
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         ser_struct
             .serialize_field("stat_arb_details.cex_exchange", &stat_arb_details.cex_exchanges)?;
@@ -105,8 +110,10 @@ impl Serialize for CexDex {
             &stat_arb_details.pnl_taker_profit,
         )?;
 
-        let maker_profit: ([u8; 32], [u8; 32]) = rational_to_u256_fraction(&self.pnl.maker_profit);
-        let taker_profit: ([u8; 32], [u8; 32]) = rational_to_u256_fraction(&self.pnl.taker_profit);
+        let maker_profit: ([u8; 32], [u8; 32]) =
+            rational_to_u256_fraction(&self.pnl.maker_profit).map_err(serde::ser::Error::custom)?;
+        let taker_profit: ([u8; 32], [u8; 32]) =
+            rational_to_u256_fraction(&self.pnl.taker_profit).map_err(serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("pnl", &(maker_profit, taker_profit))?;
 

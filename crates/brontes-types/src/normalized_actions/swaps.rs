@@ -119,9 +119,11 @@ pub struct ClickhouseVecNormalizedSwap {
     pub amount_out:  Vec<([u8; 32], [u8; 32])>,
 }
 
-impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
-    fn from(value: Vec<NormalizedSwap>) -> Self {
-        ClickhouseVecNormalizedSwap {
+impl TryFrom<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
+    type Error = eyre::Report;
+
+    fn try_from(value: Vec<NormalizedSwap>) -> eyre::Result<Self> {
+        Ok(ClickhouseVecNormalizedSwap {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
             from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
             recipient:   value
@@ -140,12 +142,12 @@ impl From<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
             amount_in:   value
                 .iter()
                 .map(|val| rational_to_u256_fraction(&val.amount_in))
-                .collect(),
+                .collect::<eyre::Result<Vec<_>>>()?,
             amount_out:  value
                 .iter()
                 .map(|val| rational_to_u256_fraction(&val.amount_out))
-                .collect(),
-        }
+                .collect::<eyre::Result<Vec<_>>>()?,
+        })
     }
 }
 
@@ -162,17 +164,21 @@ pub struct ClickhouseDoubleVecNormalizedSwap {
     pub amount_out:  Vec<([u8; 32], [u8; 32])>,
 }
 
-impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
-    fn from(value: (Vec<TxHash>, Vec<Vec<NormalizedSwap>>)) -> Self {
+impl TryFrom<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
+    type Error = eyre::Report;
+
+    fn try_from(value: (Vec<TxHash>, Vec<Vec<NormalizedSwap>>)) -> eyre::Result<Self> {
         let swaps: Vec<(String, ClickhouseVecNormalizedSwap, usize)> = value
             .0
             .into_iter()
             .zip(value.1)
             .map(|(tx, swaps)| {
                 let num_swaps = swaps.len();
-                (format!("{:?}", tx), swaps.into(), num_swaps)
+                swaps
+                    .try_into()
+                    .map(|s| (format!("{:?}", tx), s, num_swaps))
             })
-            .collect::<Vec<_>>();
+            .collect::<eyre::Result<Vec<_>>>()?;
 
         let mut this = ClickhouseDoubleVecNormalizedSwap::default();
 
@@ -197,17 +203,19 @@ impl From<(Vec<TxHash>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormal
             this.amount_out.extend(inner_swaps.amount_out);
         });
 
-        this
+        Ok(this)
     }
 }
 
 /// i.e. Sandwich: From <victim_tx_hashes, victim_swaps)
-impl From<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
-    fn from(value: (Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)) -> Self {
+impl TryFrom<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleVecNormalizedSwap {
+    type Error = eyre::Report;
+
+    fn try_from(value: (Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)) -> eyre::Result<Self> {
         let tx_hashes = value.0.into_iter().flatten().collect_vec();
         let swaps = value.1;
 
-        (tx_hashes, swaps).into()
+        (tx_hashes, swaps).try_into()
     }
 }
 
@@ -221,16 +229,18 @@ pub struct ClickhouseStatArbDetails {
     pub pnl_taker_profit: ([u8; 32], [u8; 32]),
 }
 
-impl From<StatArbDetails> for ClickhouseStatArbDetails {
-    fn from(value: StatArbDetails) -> Self {
-        Self {
+impl TryFrom<StatArbDetails> for ClickhouseStatArbDetails {
+    type Error = eyre::Report;
+
+    fn try_from(value: StatArbDetails) -> eyre::Result<Self> {
+        Ok(Self {
             cex_exchange:     value.cex_exchange.to_string(),
-            cex_price:        rational_to_u256_fraction(&value.cex_price),
+            cex_price:        rational_to_u256_fraction(&value.cex_price)?,
             dex_exchange:     value.dex_exchange.to_string(),
-            dex_price:        rational_to_u256_fraction(&value.dex_price),
-            pnl_maker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.maker_profit),
-            pnl_taker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.taker_profit),
-        }
+            dex_price:        rational_to_u256_fraction(&value.dex_price)?,
+            pnl_maker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.maker_profit)?,
+            pnl_taker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.taker_profit)?,
+        })
     }
 }
 
@@ -244,20 +254,26 @@ pub struct ClickhouseVecStatArbDetails {
     pub pnl_taker_profit: Vec<([u8; 32], [u8; 32])>,
 }
 
-impl From<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
-    fn from(value: Vec<StatArbDetails>) -> Self {
+impl TryFrom<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
+    type Error = eyre::Report;
+
+    fn try_from(value: Vec<StatArbDetails>) -> eyre::Result<Self> {
         let mut this = Self::default();
 
-        value.into_iter().for_each(|exch| {
-            let val: ClickhouseStatArbDetails = exch.into();
-            this.cex_exchanges.push(val.cex_exchange);
-            this.cex_price.push(val.cex_price);
-            this.dex_exchange.push(val.dex_exchange);
-            this.dex_price.push(val.dex_price);
-            this.pnl_maker_profit.push(val.pnl_maker_profit);
-            this.pnl_taker_profit.push(val.pnl_taker_profit);
-        });
+        value
+            .into_iter()
+            .map(|exch| exch.try_into())
+            .collect::<eyre::Result<Vec<ClickhouseStatArbDetails>>>()?
+            .into_iter()
+            .for_each(|val| {
+                this.cex_exchanges.push(val.cex_exchange);
+                this.cex_price.push(val.cex_price);
+                this.dex_exchange.push(val.dex_exchange);
+                this.dex_price.push(val.dex_price);
+                this.pnl_maker_profit.push(val.pnl_maker_profit);
+                this.pnl_taker_profit.push(val.pnl_taker_profit);
+            });
 
-        this
+        Ok(this)
     }
 }

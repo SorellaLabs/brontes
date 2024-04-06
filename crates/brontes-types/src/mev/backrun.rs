@@ -106,7 +106,11 @@ impl Serialize for AtomicArb {
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
 
-        let swaps: ClickhouseVecNormalizedSwap = self.swaps.clone().into();
+        let swaps: ClickhouseVecNormalizedSwap = self
+            .swaps
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("swaps.trace_idx", &swaps.trace_index)?;
         ser_struct.serialize_field("swaps.from", &swaps.from)?;

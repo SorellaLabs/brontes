@@ -177,9 +177,11 @@ pub struct ClickhouseVecNormalizedLiquidation {
     pub liquidated_collateral: Vec<([u8; 32], [u8; 32])>,
 }
 
-impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
-    fn from(value: Vec<NormalizedLiquidation>) -> Self {
-        ClickhouseVecNormalizedLiquidation {
+impl TryFrom<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
+    type Error = eyre::Report;
+
+    fn try_from(value: Vec<NormalizedLiquidation>) -> eyre::Result<Self> {
+        Ok(ClickhouseVecNormalizedLiquidation {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
             pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
             liquidator:  value
@@ -202,11 +204,11 @@ impl From<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation {
             covered_debt:          value
                 .iter()
                 .map(|val| rational_to_u256_fraction(&val.covered_debt))
-                .collect(),
+                .collect::<eyre::Result<Vec<_>>>()?,
             liquidated_collateral: value
                 .iter()
                 .map(|val| rational_to_u256_fraction(&val.liquidated_collateral))
-                .collect(),
-        }
+                .collect::<eyre::Result<Vec<_>>>()?,
+        })
     }
 }
