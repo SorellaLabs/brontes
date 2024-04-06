@@ -244,6 +244,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         join_all(ranges.into_iter().flat_map(|(table, ranges)| {
+            tracing::info!(?ranges, "initting ranges");
             let tables_pb = tables_pb.clone();
             let mut futs: Vec<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>> =
                 Vec::with_capacity(ranges.len());
