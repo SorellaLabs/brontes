@@ -454,7 +454,6 @@ impl Component for Dashboard {
         match action {
             Action::Tick => {}
             Action::Tui(tui_event) => {
-                info!("Tui event: received");
                 match tui_event {
                     TuiEvents::MevBlockMetricReceived(mevblock) => {
                         let mut blocks: std::sync::MutexGuard<'_, Vec<MevBlock>> =

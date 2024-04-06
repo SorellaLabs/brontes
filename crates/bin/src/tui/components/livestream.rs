@@ -317,7 +317,7 @@ fn update(&mut self, action: Action) -> Result<Option<Action>> {
   match action {
       Action::Tick => {}
       Action::Tui(tui_event) => {
-          info!("Tui event: received");
+         // info!("Tui event: received");
           match tui_event {
               TuiEvents::MevBlockMetricReceived(mevblock) => {
                   let mut blocks: std::sync::MutexGuard<'_, Vec<MevBlock>> =
