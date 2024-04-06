@@ -30,7 +30,7 @@ use tracing::{debug, error, info};
 use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
-use self::transfer::try_decode_transfer;
+use self::erc20::try_decode_transfer;
 use crate::{classifiers::*, ActionCollection, FactoryDiscoveryDispatch};
 
 //TODO: Document this module
