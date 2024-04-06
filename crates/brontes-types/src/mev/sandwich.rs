@@ -166,6 +166,8 @@ impl Mev for Sandwich {
         let addr: Address = Address::parse_checksummed(address, None).unwrap();
         let mut map = new_fast_hash_map();
         map.insert("WETH".to_string(), addr);
+        map.insert("OCEAN".to_string(), addr);
+        map.insert("DAI".to_string(), addr);
         map
     }
 }
