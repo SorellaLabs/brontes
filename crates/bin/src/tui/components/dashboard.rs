@@ -1,6 +1,7 @@
 use std::{
     borrow::BorrowMut,
     collections::HashMap,
+    collections::HashSet,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -200,7 +201,6 @@ impl Dashboard {
 
             
             let mut token_info_with_addresses: Vec<TokenInfoWithAddress> = Vec::new();
-    
             for transaction in &item.header.balance_deltas {
                 for address_delta in &transaction.address_deltas {
                     for token_delta in &address_delta.token_deltas {
@@ -208,22 +208,27 @@ impl Dashboard {
                     }
                 }
             }
+            let mut symbols = HashSet::new();
+            let unique_symbols: Vec<String> = token_info_with_addresses.iter()
+            .filter_map(|x| {
+                let symbol = x.inner.symbol.to_string();
+                if symbols.insert(symbol.clone()) {
+                    Some(symbol)
+                } else {
+                    None
+                }
+            })
+            .collect().join(", ");
 
-
-info!("TOKENINFOS {:#?}",token_info_with_addresses);
+//info!("TOKENINFOS {:#?}",token_info_with_addresses);
 
             let height = 1;
             let cells = vec![
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
-               /* item.data
-                    .get_tokens()
-                    .keys()
-                    .cloned()
-                    .collect::<Vec<String>>()
-                    .join(", "),*/
-                    token_info_with_addresses.iter().map(|x| x.inner.symbol.to_string()).collect::<Vec<String>>().join(", "),
+                unique_symbols,
+//                    token_info_with_addresses.iter().map(|x| x.inner.symbol.to_string()).collect::<Vec<String>>().join(", "),
                 item.header.eoa.to_string(),
                 item.header
                     .mev_contract
