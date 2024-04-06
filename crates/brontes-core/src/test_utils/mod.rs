@@ -139,11 +139,12 @@ impl TraceLoader {
                 .map(|table| (table, table.build_init_state_progress_bar(&multi)))
                 .collect_vec(),
         );
+
         self.libmdbx
             .initialize_tables(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
+                &[Tables::BlockInfo, Tables::CexPrice, Tables::CexTrades],
                 false,
                 Some((block - 2, block + 2)),
                 tables,
