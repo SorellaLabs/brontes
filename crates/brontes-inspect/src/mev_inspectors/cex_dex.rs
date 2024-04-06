@@ -530,7 +530,6 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
             .with_expected_profit_usd(6772.69)
             .with_gas_paid_usd(78993.39);
 
@@ -545,7 +544,6 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
             .with_expected_profit_usd(7201.40)
             .with_gas_paid_usd(6261.08);
 
@@ -560,8 +558,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
-            .needs_tokens(vec![WETH_ADDRESS, WBTC_ADDRESS])
-            .with_dex_prices();
+            .needs_tokens(vec![WETH_ADDRESS, WBTC_ADDRESS]);
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
@@ -574,8 +571,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into())
-            .with_dex_prices();
+            .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into());
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }

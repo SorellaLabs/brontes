@@ -243,17 +243,18 @@ impl ClickhouseHandle for Clickhouse {
         let block_meta = self
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-            .await?
+            .await
+            .unwrap()
             .value;
 
         #[cfg(not(feature = "cex-dex-markout"))]
         {
-            let cex_quotes_for_block = self
+            tracing::info!("not markout");
+            let mut cex_quotes_for_block = self
                 .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
                 .await?;
 
-            let cex_quotes = cex_quotes_for_block.first().unwrap().clone();
-
+            let cex_quotes = cex_quotes_for_block.remove(0);
             let eth_prices = determine_eth_prices(&cex_quotes.value);
 
             Ok(BlockMetadata::new(
@@ -271,18 +272,28 @@ impl ClickhouseHandle for Clickhouse {
         }
 
         #[cfg(feature = "cex-dex-markout")]
-        Ok(BlockMetadata::new(
-            block_num,
-            block_meta.block_hash,
-            block_meta.block_timestamp,
-            block_meta.relay_timestamp,
-            block_meta.p2p_timestamp,
-            block_meta.proposer_fee_recipient,
-            block_meta.proposer_mev_reward,
-            Default::default(),
-            block_meta.private_flow.into_iter().collect(),
-        )
-        .into_metadata(Default::default(), None, None, None))
+        {
+            tracing::info!("markout");
+            let cex_trades = self
+                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num))
+                .await
+                .unwrap()
+                .remove(0)
+                .value;
+
+            Ok(BlockMetadata::new(
+                block_num,
+                block_meta.block_hash,
+                block_meta.block_timestamp,
+                block_meta.relay_timestamp,
+                block_meta.p2p_timestamp,
+                block_meta.proposer_fee_recipient,
+                block_meta.proposer_mev_reward,
+                Default::default(),
+                block_meta.private_flow.into_iter().collect(),
+            )
+            .into_metadata(Default::default(), None, None, Some(cex_trades)))
+        }
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
