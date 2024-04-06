@@ -1,5 +1,5 @@
 use brontes_macros::{action_dispatch, discovery_dispatch};
-pub mod transfer;
+pub mod erc20;
 
 pub mod uniswap;
 pub use uniswap::*;
