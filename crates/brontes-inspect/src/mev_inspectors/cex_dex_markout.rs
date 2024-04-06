@@ -223,7 +223,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     cex_exchange: most_profitable_leg
                         .maker_price
                         .exchanges
-                        .get(0)
+                        .first()
                         .map(|i| i.0)
                         .unwrap_or_default(),
                     cex_price:    most_profitable_leg.maker_price.price.clone(),
