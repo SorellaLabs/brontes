@@ -106,18 +106,16 @@ impl TraceLoader {
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         let multi = MultiProgress::default();
-        let tables = Arc::new(
-            Tables::ALL
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                .collect_vec(),
-        );
+        let tables = Arc::new(vec![(
+            Tables::TxTraces,
+            Tables::TxTraces.build_init_state_progress_bar(&multi, 4),
+        )]);
 
         self.libmdbx
             .initialize_tables(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
-                &[Tables::TxTraces],
+                Tables::TxTraces,
                 false,
                 Some((block - 2, block + 2)),
                 tables,
@@ -133,22 +131,32 @@ impl TraceLoader {
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         let multi = MultiProgress::default();
-        let tables = Arc::new(
-            Tables::ALL
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                .collect_vec(),
-        );
-        self.libmdbx
-            .initialize_tables(
+        let tables = Arc::new(vec![
+            (Tables::BlockInfo, Tables::BlockInfo.build_init_state_progress_bar(&multi, 4)),
+            (Tables::CexPrice, Tables::CexPrice.build_init_state_progress_bar(&multi, 4)),
+        ]);
+        let (a, b) = futures::future::join(
+            self.libmdbx.initialize_tables(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
-                &[Tables::BlockInfo, Tables::CexPrice],
+                Tables::BlockInfo,
+                false,
+                Some((block - 2, block + 2)),
+                tables.clone(),
+            ),
+            self.libmdbx.initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                Tables::CexPrice,
                 false,
                 Some((block - 2, block + 2)),
                 tables,
-            )
-            .await?;
+            ),
+        )
+        .await;
+        a?;
+        b?;
+
         multi.clear().unwrap();
 
         Ok(())
@@ -363,35 +371,16 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
                 }),
             ));
-            let multi = MultiProgress::default();
-            let tables = Arc::new(
-                Tables::ALL
-                    .into_iter()
-                    .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                    .collect_vec(),
-            );
 
             let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
-            if this.init_full_range_tables(clickhouse).await {
+            if this.should_init_full_range_tables(clickhouse).await {
                 let tracer = init_trace_parser(handle, tx, this, 5).await;
-                this.initialize_tables(
-                    clickhouse,
-                    tracer.get_tracer(),
-                    &[
-                        Tables::PoolCreationBlocks,
-                        Tables::TokenDecimals,
-                        Tables::AddressToProtocolInfo,
-                        Tables::AddressMeta,
-                    ],
-                    false,
-                    None,
-                    tables,
-                )
-                .await
-                .unwrap();
+
+                this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
+                    .await
+                    .unwrap();
             }
-            multi.clear().unwrap();
 
             this
         })

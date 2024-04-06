@@ -230,7 +230,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                  between CEX '{}' with price '{}' and DEX '{}' with price '{}'",
                 exchange_cex_price.0,
                 exchange_cex_price.1,
-                swap.exchange,
+                swap.protocol,
                 swap.swap_rate()
             );
             return None;

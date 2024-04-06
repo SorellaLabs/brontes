@@ -104,29 +104,33 @@ impl Init {
                         tables
                             .clone()
                             .into_iter()
-                            .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                            .map(|table| (table, table.build_init_state_progress_bar(&multi, 0)))
                             .collect_vec(),
                     );
 
-                    libmdbx
-                        .initialize_tables(
-                            clickhouse,
-                            tracer,
-                            self.tables_to_init
-                                .unwrap_or({
-                                    if self.download_dex_pricing {
-                                        tables
-                                    } else {
-                                        tables
-                                    }
-                                })
-                                .as_slice(),
-                            false,
-                            range,
-                            tables_with_progress,
-                        )
-                        .await
-                        .unwrap();
+                    futures::future::join_all(
+                        self.tables_to_init
+                            .unwrap_or(tables)
+                            .into_iter()
+                            .map(|table| {
+                                let tracer = tracer.clone();
+                                let tables_with_progress = tables_with_progress.clone();
+                                async move {
+                                    libmdbx
+                                        .initialize_tables(
+                                            clickhouse,
+                                            tracer,
+                                            table,
+                                            false,
+                                            range,
+                                            tables_with_progress,
+                                        )
+                                        .await
+                                        .unwrap();
+                                }
+                            }),
+                    )
+                    .await;
                 })
                 .await
                 .unwrap();

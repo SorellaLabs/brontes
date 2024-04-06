@@ -50,39 +50,25 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     pub async fn initialize(
         &self,
-        tables: &[Tables],
+        table: Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        futures::stream::iter(tables.to_vec())
-            .map(|table| {
-                let progress_bar = progress_bar.clone();
-                async move {
-                    table
-                        .initialize_table(self, block_range, clear_tables, progress_bar)
-                        .await
-                }
-            })
-            .collect::<Vec<_>>()
-            .await;
-        Ok(())
+        table
+            .initialize_table(self, block_range, clear_tables, progress_bar)
+            .await
     }
 
     pub async fn initialize_arbitrary_state(
         &self,
-        tables: &[Tables],
+        table: Tables,
         block_range: &'static [u64],
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        join_all(tables.iter().map(|table| {
-            table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
-        }))
-        .await
-        .into_iter()
-        .collect::<eyre::Result<_>>()?;
-
-        Ok(())
+        table
+            .initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+            .await
     }
 
     pub async fn initialize_full_range_tables(&self) -> eyre::Result<()> {
@@ -93,23 +79,18 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             Tables::Builder,
             Tables::AddressMeta,
         ];
+        let progress_bar = Self::build_critical_state_progress_bar(5).unwrap();
+
+        futures::stream::iter(tables.to_vec())
+            .map(|table| {
+                let progress_bar = progress_bar.clone();
+                async move { table.initialize_full_range_table(self, progress_bar).await }
+            })
+            .collect::<Vec<_>>()
+            .await;
+
         Ok(())
     }
-
-    // pub fn initailize_progress_bars(&self) -> Vec<(Tables, ProgressBar)> {
-    //     let critical_state_progress_bar =
-    // Self::build_critical_state_progress_bar(5);
-    //
-    //     futures::stream::iter(tables.to_vec()).map(|table| {
-    //         let progress_bar = progress_bar.clone();
-    //         async move {
-    //             table
-    //                 .initialize_full_range_table(self, progress_bar, cleartable)
-    //                 .await
-    //         }
-    //     });
-    //     Ok(())
-    // }
 
     pub async fn load_config(&self) -> eyre::Result<()> {
         join!(
@@ -183,23 +164,18 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             self.libmdbx.0.clear_table::<T>()?;
         }
 
-        let (block_range_chunks, range_count) = if let Some((s, e)) = block_range {
-            ((s..e + 1).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize)), e - s)
+        let block_range_chunks = if let Some((s, e)) = block_range {
+            (s..e + 1).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
             #[cfg(feature = "local-reth")]
             let end_block = self.tracer.best_block_number()?;
             #[cfg(not(feature = "local-reth"))]
             let end_block = self.tracer.best_block_number().await?;
 
-            (
-                (DEFAULT_START_BLOCK..end_block + 1).chunks(
-                    T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
-                ),
-                end_block - DEFAULT_START_BLOCK,
+            (DEFAULT_START_BLOCK..end_block + 1).chunks(
+                T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
             )
         };
-
-        pb.inc_length(range_count);
 
         let pair_ranges = block_range_chunks
             .into_iter()
@@ -301,7 +277,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + Unpin
             + 'static,
     {
-        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000));
 
         iter(ranges.into_iter().map(|inner_range| {
             let clickhouse = self.clickhouse;

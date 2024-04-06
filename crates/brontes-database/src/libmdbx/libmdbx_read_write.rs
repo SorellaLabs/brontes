@@ -67,7 +67,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
@@ -85,7 +85,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
@@ -155,7 +155,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
@@ -173,7 +173,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
@@ -376,7 +376,7 @@ impl StateToInitialize {
         &self,
         start_block: usize,
         end_block: usize,
-    ) -> Vec<(Tables, Vec<u64>)> {
+    ) -> Vec<(Tables, Vec<RangeInclusive<u64>>)> {
         self.ranges_to_init
             .iter()
             .map(|(table, ranges)| {
@@ -394,9 +394,8 @@ impl StateToInitialize {
 
                             let new_start = std::cmp::max(start_block, start) as u64;
                             let new_end = std::cmp::min(end_block, end) as u64;
-                            Some((new_start..=new_end).collect::<Vec<_>>())
+                            Some(new_start..=new_end)
                         })
-                        .flatten()
                         .collect_vec(),
                 )
             })

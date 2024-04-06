@@ -162,7 +162,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
@@ -179,7 +179,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
@@ -188,8 +188,21 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
             .await
     }
 
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
-        self.inner.init_full_range_tables(clickhouse).await
+    async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_full_range_tables(clickhouse, tracer)
+            .await
+    }
+
+    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
+        &self,
+        clickhouse: &'static CH,
+    ) -> bool {
+        self.inner.should_init_full_range_tables(clickhouse).await
     }
 
     fn state_to_initialize(
@@ -426,7 +439,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
@@ -443,7 +456,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
@@ -452,8 +465,21 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
             .await
     }
 
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
-        self.inner.init_full_range_tables(clickhouse).await
+    async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_full_range_tables(clickhouse, tracer)
+            .await
+    }
+
+    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
+        &self,
+        clickhouse: &'static CH,
+    ) -> bool {
+        self.inner.should_init_full_range_tables(clickhouse).await
     }
 
     fn state_to_initialize(
