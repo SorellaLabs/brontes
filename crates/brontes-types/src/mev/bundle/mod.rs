@@ -181,7 +181,6 @@ pub trait Mev: erased_serde::Serialize + Send + Sync + Debug + 'static + DynClon
 
     fn protocols(&self) -> HashSet<Protocol>;
 
-    fn get_tokens(&self) -> FastHashMap<String,Address>;
 }
 
 dyn_clone::clone_trait_object!(Mev);

@@ -107,14 +107,7 @@ impl Mev for JitLiquiditySandwich {
         protocols
     }
 
-    fn get_tokens(&self) -> FastHashMap<String, Address> {
-        //TODO: get token addresses
-        let address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-        let addr: Address = Address::parse_checksummed(address, None).unwrap();
-        let mut map = new_fast_hash_map();
-        map.insert("WETH".to_string(), addr);
-        map
-    }
+
 }
 
 pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
