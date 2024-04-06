@@ -21,6 +21,7 @@ use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
+    new_fast_hash_map
 };
 
 #[serde_as]

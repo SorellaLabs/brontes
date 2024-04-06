@@ -9,6 +9,7 @@ use clickhouse::fixed_string::FixedString;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
+use alloy_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -20,13 +21,14 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
-    Protocol, ToFloatNearest,
+    Protocol, ToFloatNearest,FastHashMap
 };
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
+    new_fast_hash_map
 };
 
 #[serde_as]
@@ -65,6 +67,16 @@ impl Mev for CexDex {
     fn protocols(&self) -> HashSet<Protocol> {
         self.swaps.iter().map(|swap| swap.protocol).collect()
     }
+
+    fn get_tokens(&self) -> FastHashMap<String, Address> {
+        //TODO: get token addresses
+        let address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+        let addr: Address = Address::parse_checksummed(address, None).unwrap();
+        let mut map = new_fast_hash_map();
+        map.insert("WETH".to_string(), addr);
+        map
+    }
+
 }
 
 impl Serialize for CexDex {

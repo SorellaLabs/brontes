@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use ahash::HashSet;
+use alloy_primitives::Address;
 use clickhouse::InsertRow;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -11,6 +12,8 @@ use strum::{Display, EnumIter};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
+    FastHashMap,
+    new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
@@ -110,6 +113,15 @@ impl Mev for BundleData {
             BundleData::Liquidation(m) => m.protocols(),
             BundleData::Unknown(s) => s.protocols(),
         }
+    }
+
+    fn get_tokens(&self) -> FastHashMap<String, Address> {
+        //TODO: get token addresses
+        let address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+        let addr: Address = Address::parse_checksummed(address, None).unwrap();
+        let mut map = new_fast_hash_map();
+        map.insert("WETH".to_string(), addr);
+        map
     }
 }
 

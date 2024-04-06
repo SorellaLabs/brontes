@@ -17,13 +17,14 @@ use serde_with::serde_as;
 use strum::{AsRefStr, Display, EnumIter};
 
 use crate::{display::utils::*, Protocol};
+use crate::FastHashMap;
+
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_cex_dex, display_sandwich},
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
-
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Row, Clone, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -179,6 +180,8 @@ pub trait Mev: erased_serde::Serialize + Send + Sync + Debug + 'static + DynClon
     fn mev_transaction_hashes(&self) -> Vec<B256>;
 
     fn protocols(&self) -> HashSet<Protocol>;
+
+    fn get_tokens(&self) -> FastHashMap<String,Address>;
 }
 
 dyn_clone::clone_trait_object!(Mev);
