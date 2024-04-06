@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{env, path::Path, sync::Arc};
 
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxInit, Tables};
 use brontes_types::{db::cex::CexExchange, init_threadpools};
@@ -7,7 +7,7 @@ use indicatif::MultiProgress;
 use itertools::Itertools;
 
 use crate::{
-    cli::{get_db_path, get_tracing_provider, init_brontes_db, load_clickhouse, static_object},
+    cli::{get_env_vars, get_tracing_provider, load_clickhouse, load_database, static_object},
     runner::CliContext,
 };
 
@@ -67,9 +67,11 @@ pub struct Init {
     pub download_dex_pricing:   bool,
 }
 
-// Fix by splitting block range & full range downloads
 impl Init {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+        let db_path = get_env_vars()?;
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+
         init_threadpools(10);
         let task_executor = ctx.task_executor;
 
@@ -77,10 +79,9 @@ impl Init {
             (self.cex_time_window_before, self.cex_time_window_after),
             self.cex_exchanges.clone(),
         );
-        let libmdbx = init_brontes_db()?;
+        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
         let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
 
-        let db_path = get_db_path()?;
         let tracer = Arc::new(get_tracing_provider(Path::new(&db_path), 10, task_executor.clone()));
 
         if self.init_libmdbx {
@@ -104,7 +105,9 @@ impl Init {
                         tables
                             .clone()
                             .into_iter()
-                            .map(|table| (table, table.build_init_state_progress_bar(&multi, 0)))
+                            .map(|table| {
+                                (table, table.build_init_state_progress_bar(&multi, 1000000000))
+                            })
                             .collect_vec(),
                     );
 

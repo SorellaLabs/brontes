@@ -1,10 +1,12 @@
+use std::{env, path::Path};
+
 use brontes_analytics::BrontesAnalytics;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    cli::{determine_max_tasks, init_brontes_db, init_tracer},
+    cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
     runner::CliContext,
 };
 
@@ -17,7 +19,11 @@ pub struct GetStats {
 
 impl GetStats {
     pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
-        let libmdbx = init_brontes_db()?;
+        let db_path = get_env_vars()?;
+
+        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+
+        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
 
         let task_executor = ctx.task_executor;
 
@@ -26,7 +32,11 @@ impl GetStats {
         task_executor.spawn_critical("metrics", metrics_listener);
 
         let max_tasks = determine_max_tasks(self.max_tasks);
-        let tracer = init_tracer(task_executor.clone(), max_tasks)?;
+        let tracer = static_object(get_tracing_provider(
+            Path::new(&db_path),
+            max_tasks,
+            task_executor.clone(),
+        ));
 
         let brontes_analytics = BrontesAnalytics::new(libmdbx, tracer.clone(), None);
 

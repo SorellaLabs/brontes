@@ -13,9 +13,7 @@ use brontes_database::clickhouse::ClickhouseMiddleware;
 use brontes_database::clickhouse::ReadOnlyMiddleware;
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxReadWriter};
 use brontes_inspect::{Inspector, Inspectors};
-use brontes_metrics::{PoirotMetricEvents, PoirotMetricsListener};
 use brontes_types::{
-    constants::{USDC_ADDRESS, USDT_ADDRESS},
     db::{cex::CexExchange, traits::LibmdbxReader},
     mev::Bundle,
     BrontesTaskExecutor,
@@ -24,10 +22,7 @@ use itertools::Itertools;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tracing::info;
-
-use super::run::RunArgs;
 
 #[cfg(any(not(feature = "local-clickhouse"), feature = "local-no-inserts"))]
 pub fn load_database(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
@@ -118,76 +113,8 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     &*Box::leak(res.into_boxed_slice())
 }
 
-pub fn init_brontes_db() -> eyre::Result<&'static LibmdbxReadWriter> {
-    let brontes_db_path = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let libmdbx = static_object(load_database(brontes_db_path)?);
-    tracing::info!(target: "brontes", "Brontes database initialized");
-    Ok(libmdbx)
-}
-
-pub fn init_tracer(
-    task_executor: BrontesTaskExecutor,
-    max_tasks: u64,
-) -> eyre::Result<&'static LocalProvider> {
-    let reth_db_path = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-    let tracer =
-        static_object(get_tracing_provider(Path::new(&reth_db_path), max_tasks, task_executor));
-    tracing::info!(target: "brontes", "Tracer initialized");
-    Ok(tracer)
-}
-
-pub fn init_metrics_listener(
-    task_executor: &BrontesTaskExecutor,
-) -> UnboundedSender<PoirotMetricEvents> {
-    let (metrics_tx, metrics_rx) = unbounded_channel();
-    let metrics_listener = PoirotMetricsListener::new(metrics_rx);
-    task_executor.spawn_critical("metrics", metrics_listener);
-    metrics_tx
-}
-
-pub async fn init_clickhouse(run_args: &RunArgs) -> eyre::Result<&'static ClickhouseHttpClient> {
-    let cex_download_config = CexDownloadConfig::new(
-        (run_args.cex_time_window_before, run_args.cex_time_window_after),
-        run_args.cex_exchanges.clone(),
-    );
-
-    let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
-    tracing::info!(target: "brontes", "Initialized Clickhouse connection");
-    Ok(clickhouse)
-}
-
-pub fn load_quote_address(run_args: &RunArgs) -> eyre::Result<Address> {
-    let quote_asset = run_args.quote_asset.parse()?;
-
-    match quote_asset {
-        USDC_ADDRESS => tracing::info!(target: "brontes", "Set USDC as quote asset"),
-        USDT_ADDRESS => tracing::info!(target: "brontes", "Set USDT as quote asset"),
-        _ => tracing::info!(target: "brontes", "Set quote asset"),
-    }
-
-    Ok(quote_asset)
-}
-
-pub fn set_dex_pricing(run_args: &mut RunArgs) {
-    let only_cex_dex = run_args
-        .inspectors
-        .as_ref()
-        .map(|f| {
-            #[cfg(not(feature = "cex-dex-markout"))]
-            let cmp = Inspectors::CexDex;
-            #[cfg(feature = "cex-dex-markout")]
-            let cmp = Inspectors::CexDexMarkout;
-            f.len() == 1 && f.contains(&cmp)
-        })
-        .unwrap_or(false);
-
-    if only_cex_dex {
-        run_args.force_no_dex_pricing = true;
-    }
-}
-
-pub fn get_db_path() -> eyre::Result<String> {
-    let db_path = env::var("DB_PATH").expect("DB path is not present in env");
+pub fn get_env_vars() -> eyre::Result<String> {
+    let db_path = env::var("DB_PATH").map_err(|_| Box::new(std::env::VarError::NotPresent))?;
     info!("Found DB Path");
 
     Ok(db_path)
