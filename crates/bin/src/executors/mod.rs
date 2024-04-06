@@ -168,7 +168,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(15)
+        .buffer_unordered(4)
     }
 
     fn build_tip_inspector(
