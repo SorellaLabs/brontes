@@ -73,8 +73,14 @@ impl Metadata {
                 if dex_quotes.0.is_empty() {
                     #[cfg(feature = "cex-dex-markout")]
                     {
-                        let trades = [CexExchange::Binance];
-                        let baseline_for_tokeprice = Rational::from(100);
+                        let trades = [
+                            CexExchange::Binance,
+                            CexExchange::Coinbase,
+                            CexExchange::BybitSpot,
+                            CexExchange::Okex,
+                            CexExchange::Kucoin,
+                        ];
+                        let baseline_for_tokeprice = Rational::from(1);
                         let pair = Pair(WETH_ADDRESS, quote_token);
 
                         self.cex_trades
@@ -101,7 +107,13 @@ impl Metadata {
             } else {
                 #[cfg(feature = "cex-dex-markout")]
                 {
-                    let trades = [CexExchange::Binance];
+                    let trades = [
+                        CexExchange::Binance,
+                        CexExchange::Coinbase,
+                        CexExchange::BybitSpot,
+                        CexExchange::Okex,
+                        CexExchange::Kucoin,
+                    ];
                     let baseline_for_tokeprice = Rational::from(100);
                     let pair = Pair(WETH_ADDRESS, quote_token);
 
