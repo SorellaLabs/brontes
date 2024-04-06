@@ -8,7 +8,11 @@ use serde_with::serde_as;
 
 #[cfg(feature = "cex-dex-markout")]
 use super::cex_trades::CexTradeMap;
-use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
+use super::{
+    builder::BuilderInfo,
+    cex::{CexExchange, CexPriceMap},
+    dex::DexQuotes,
+};
 use crate::{
     constants::WETH_ADDRESS,
     db::redefined_types::primitives::*,
@@ -66,16 +70,73 @@ impl Metadata {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
         let eth_price = if self.block_metadata.eth_prices == Rational::ZERO {
             if let Some(dex_quotes) = &self.dex_quotes {
-                dex_quotes
-                    .price_at_or_before(Pair(WETH_ADDRESS, quote_token), dex_quotes.0.len())
-                    .map(|price| price.post_state)
-                    .unwrap_or(Rational::ZERO)
+                if dex_quotes.0.is_empty() {
+                    #[cfg(feature = "cex-dex-markout")]
+                    {
+                        let trades = [
+                            CexExchange::Binance,
+                            CexExchange::Coinbase,
+                            CexExchange::BybitSpot,
+                            CexExchange::Okex,
+                            CexExchange::Kucoin,
+                        ];
+                        let baseline_for_tokeprice = Rational::from(1);
+                        let pair = Pair(WETH_ADDRESS, quote_token);
+
+                        self.cex_trades
+                            .as_ref()
+                            .and_then(|trade_map| {
+                                tracing::debug!("getting eth price");
+                                Some(
+                                    trade_map
+                                        .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                        .0
+                                        .price,
+                                )
+                            })
+                            .unwrap_or(Rational::ZERO)
+                    }
+                    #[cfg(not(feature = "cex-dex-markout"))]
+                    Rational::ZERO
+                } else {
+                    dex_quotes
+                        .price_at_or_before(Pair(WETH_ADDRESS, quote_token), dex_quotes.0.len())
+                        .map(|price| price.post_state)
+                        .unwrap_or(Rational::ZERO)
+                }
             } else {
+                #[cfg(feature = "cex-dex-markout")]
+                {
+                    let trades = [
+                        CexExchange::Binance,
+                        CexExchange::Coinbase,
+                        CexExchange::BybitSpot,
+                        CexExchange::Okex,
+                        CexExchange::Kucoin,
+                    ];
+                    let baseline_for_tokeprice = Rational::from(100);
+                    let pair = Pair(WETH_ADDRESS, quote_token);
+
+                    self.cex_trades
+                        .as_ref()
+                        .and_then(|trade_map| {
+                            tracing::debug!("getting eth price");
+                            Some(
+                                trade_map
+                                    .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                    .0
+                                    .price,
+                            )
+                        })
+                        .unwrap_or(Rational::ZERO)
+                }
+                #[cfg(not(feature = "cex-dex-markout"))]
                 Rational::ZERO
             }
         } else {
             self.block_metadata.eth_prices.clone()
         };
+        tracing::debug!(?eth_price);
 
         gas_used_rational * eth_price
     }
