@@ -160,7 +160,9 @@ impl Serialize for Sandwich {
         )?;
 
         let frontrun_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.frontrun_tx_hash.clone(), self.frontrun_swaps.clone()).into();
+            (self.frontrun_tx_hash.clone(), self.frontrun_swaps.clone())
+                .try_into()
+                .map_err(serde::ser::Error::custom)?;
         ser_struct.serialize_field("frontrun_swaps.tx_hash", &frontrun_swaps.tx_hash)?;
         ser_struct.serialize_field("frontrun_swaps.trace_idx", &frontrun_swaps.trace_index)?;
         ser_struct.serialize_field("frontrun_swaps.from", &frontrun_swaps.from)?;
@@ -192,7 +194,9 @@ impl Serialize for Sandwich {
 
         // victims
         let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
+            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone())
+                .try_into()
+                .map_err(serde::ser::Error::custom)?;
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
         ser_struct.serialize_field("victim_swaps.trace_idx", &victim_swaps.trace_index)?;
         ser_struct.serialize_field("victim_swaps.from", &victim_swaps.from)?;
@@ -222,7 +226,11 @@ impl Serialize for Sandwich {
         let fixed_str_backrun_tx_hash = format!("{:?}", &self.backrun_tx_hash);
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
-        let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
+        let backrun_swaps: ClickhouseVecNormalizedSwap = self
+            .backrun_swaps
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
         let backrun_tx_hash_repeated = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()

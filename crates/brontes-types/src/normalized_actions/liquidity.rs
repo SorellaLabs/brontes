@@ -16,7 +16,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    rational_to_clickhouse_tuple, Protocol, ToFloatNearest,
+    rational_to_u256_fraction, Protocol, ToFloatNearest,
 };
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -151,9 +151,11 @@ impl fmt::Display for NormalizedCollect {
     }
 }
 
-impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
-    fn from(value: Vec<NormalizedMint>) -> Self {
-        ClickhouseVecNormalizedMintOrBurn {
+impl TryFrom<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
+    type Error = eyre::Report;
+
+    fn try_from(value: Vec<NormalizedMint>) -> eyre::Result<Self> {
+        Ok(ClickhouseVecNormalizedMintOrBurn {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
             from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
             pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
@@ -171,17 +173,19 @@ impl From<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
                 .map(|val| {
                     val.amount
                         .iter()
-                        .map(rational_to_clickhouse_tuple)
-                        .collect_vec()
+                        .map(rational_to_u256_fraction)
+                        .collect::<eyre::Result<Vec<_>>>()
                 })
-                .collect(),
-        }
+                .collect::<eyre::Result<Vec<_>>>()?,
+        })
     }
 }
 
-impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
-    fn from(value: Vec<NormalizedBurn>) -> Self {
-        ClickhouseVecNormalizedMintOrBurn {
+impl TryFrom<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
+    type Error = eyre::Report;
+
+    fn try_from(value: Vec<NormalizedBurn>) -> eyre::Result<Self> {
+        Ok(ClickhouseVecNormalizedMintOrBurn {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
             from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
             pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
@@ -199,11 +203,11 @@ impl From<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
                 .map(|val| {
                     val.amount
                         .iter()
-                        .map(rational_to_clickhouse_tuple)
-                        .collect_vec()
+                        .map(rational_to_u256_fraction)
+                        .collect::<eyre::Result<Vec<_>>>()
                 })
-                .collect(),
-        }
+                .collect::<eyre::Result<Vec<_>>>()?,
+        })
     }
 }
 
@@ -219,10 +223,12 @@ pub struct ClickhouseVecNormalizedMintOrBurnWithTxHash {
 }
 
 // (tx_hashes, mints)
-impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
+impl TryFrom<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
     for ClickhouseVecNormalizedMintOrBurnWithTxHash
 {
-    fn from(value: (Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)) -> Self {
+    type Error = eyre::Report;
+
+    fn try_from(value: (Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)) -> eyre::Result<Self> {
         let mut this = ClickhouseVecNormalizedMintOrBurnWithTxHash::default();
         value
             .0
@@ -237,9 +243,11 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
                     .into_iter()
                     .map(|t| format!("{:?}", t))
                     .collect();
-                let mint_db: ClickhouseVecNormalizedMintOrBurn = mint.into();
-                (tx_hashes_repeated, mint_db)
+                mint.try_into()
+                    .map(|mint_db: ClickhouseVecNormalizedMintOrBurn| (tx_hashes_repeated, mint_db))
             })
+            .collect::<eyre::Result<Vec<_>>>()?
+            .into_iter()
             .for_each(|(tx_hashes_repeated, db_mint_with_tx)| {
                 this.tx_hash.extend(tx_hashes_repeated);
                 this.trace_index.extend(db_mint_with_tx.trace_index);
@@ -250,15 +258,17 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedMint>>>)>
                 this.amounts.extend(db_mint_with_tx.amounts);
             });
 
-        this
+        Ok(this)
     }
 }
 
 // (tx_hashes, burns)
-impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
+impl TryFrom<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
     for ClickhouseVecNormalizedMintOrBurnWithTxHash
 {
-    fn from(value: (Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)) -> Self {
+    type Error = eyre::Report;
+
+    fn try_from(value: (Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)) -> eyre::Result<Self> {
         let mut this = ClickhouseVecNormalizedMintOrBurnWithTxHash::default();
         value
             .0
@@ -271,9 +281,11 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
                     .into_iter()
                     .map(|t| format!("{:?}", t))
                     .collect();
-                let burn_db: ClickhouseVecNormalizedMintOrBurn = burn.into();
-                (tx_hashes_repeated, burn_db)
+                burn.try_into()
+                    .map(|burn_db: ClickhouseVecNormalizedMintOrBurn| (tx_hashes_repeated, burn_db))
             })
+            .collect::<eyre::Result<Vec<_>>>()?
+            .into_iter()
             .for_each(|(tx_hashes_repeated, db_burn_with_tx)| {
                 this.tx_hash.extend(tx_hashes_repeated);
                 this.trace_index.extend(db_burn_with_tx.trace_index);
@@ -284,6 +296,6 @@ impl From<(Vec<TxHash>, Vec<Option<Vec<NormalizedBurn>>>)>
                 this.amounts.extend(db_burn_with_tx.amounts);
             });
 
-        this
+        Ok(this)
     }
 }
