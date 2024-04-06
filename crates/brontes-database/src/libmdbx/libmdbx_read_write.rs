@@ -1005,7 +1005,8 @@ impl LibmdbxReadWriter {
     }
 
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
-        let mut range_cursor = self.0.rw_tx()?.cursor_write::<InitializedState>()?;
+        let tx = self.0.rw_tx()?;
+        let mut range_cursor = tx.cursor_write::<InitializedState>()?;
 
         let mut block = *range.start();
 
@@ -1022,6 +1023,7 @@ impl LibmdbxReadWriter {
                 block += 1;
             }
         }
+        tx.commit()?;
 
         Ok(())
     }
