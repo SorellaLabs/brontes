@@ -10,7 +10,7 @@ use brontes_metrics::PoirotMetricsListener;
 use brontes_types::mev::{
     bundle::Bundle,
     events::{Action, TuiEvents},
-    MevBlock,
+    BundleData, Mev, MevBlock,
 };
 use colored::Colorize;
 use crossterm::event::{
@@ -24,7 +24,7 @@ use malachite::strings::ToDebugString;
 use ratatui::{
     prelude::*,
     text::Line,
-    widgets::{canvas::*, *},
+    widgets::{canvas::*, ScrollbarState, *},
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
@@ -40,32 +40,30 @@ use tui_logger::{self, *};
 
 use super::{Component, Frame};
 use crate::tui::{
-    colors::RgbSwatch,
-    config::{Config, KeyBindings},
     //events::{Event, EventHandler},
     app::layout,
+    colors::RgbSwatch,
+    config::{Config, KeyBindings},
     theme::THEME,
     tui::Event,
 };
-use ratatui::widgets::ScrollbarState;
-
 
 #[derive(Default, Debug)]
 pub struct Dashboard {
-    command_tx:         Option<UnboundedSender<Action>>,
-    config:             Config,
-    selected_row:       usize,
-    mevblocks:          Arc<Mutex<Vec<MevBlock>>>,
-    mev_bundles:        Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
-    data:               Vec<(&'static str, u64)>,
-    log_scroll:         u16,
-    items:              Vec<Vec<&'static str>>,
+    command_tx: Option<UnboundedSender<Action>>,
+    config: Config,
+    selected_row: usize,
+    mevblocks: Arc<Mutex<Vec<MevBlock>>>,
+    mev_bundles: Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
+    data: Vec<(&'static str, u64)>,
+    log_scroll: u16,
+    items: Vec<Vec<&'static str>>,
     stream_table_state: TableState,
-    show_popup:         bool,
+    show_popup: bool,
     pub popup_scroll_position: u16,
     pub popup_scroll_state: ScrollbarState,
 
-    leaderboard:        Vec<(&'static str, u64)>,
+    leaderboard: Vec<(&'static str, u64)>,
 }
 
 impl Dashboard {
@@ -108,73 +106,61 @@ impl Dashboard {
     }
 
     pub fn next(&mut self) {
+        if (self.show_popup) {
+            self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
+            self.popup_scroll_state = self
+                .popup_scroll_state
+                .position(self.popup_scroll_position as usize);
+        } else {
+            let i = match self.stream_table_state.selected() {
+                Some(i) => {
+                    let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+                        self.mev_bundles.lock().unwrap();
 
-
-      if (self.show_popup){
-        self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
-        self.popup_scroll_state = self.popup_scroll_state.position(self.popup_scroll_position as usize);
-
-
-
-
-      }else{
-
-        let i = match self.stream_table_state.selected() {
-            Some(i) => {
-                let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                    self.mev_bundles.lock().unwrap();
-
-                if (mevblocks_guard.len() > 0) {
-                    if i == 0 {
-                        mevblocks_guard.len() - 1
+                    if (mevblocks_guard.len() > 0) {
+                        if i == 0 {
+                            mevblocks_guard.len() - 1
+                        } else {
+                            i - 1
+                        }
                     } else {
-                        i - 1
+                        0
                     }
-                } else {
-                    0
                 }
-            }
-            None => 0,
-        };
-        self.stream_table_state.select(Some(i));
-      }
+                None => 0,
+            };
+            self.stream_table_state.select(Some(i));
+        }
     }
 
     pub fn previous(&mut self) {
+        if (self.show_popup) {
+            self.popup_scroll_position = self.popup_scroll_position.saturating_add(1);
+            self.popup_scroll_state = self
+                .popup_scroll_state
+                .position(self.popup_scroll_position as usize);
+        } else {
+            let i = match self.stream_table_state.selected() {
+                Some(i) => {
+                    let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+                        self.mev_bundles.lock().unwrap();
+                    // info!("i  - len: {} {}", i, mevblocks_guard.len());
 
-      if (self.show_popup){
-        self.popup_scroll_position = self.popup_scroll_position.saturating_add(1);
-        self.popup_scroll_state = self.popup_scroll_state.position(self.popup_scroll_position as usize);
-
-
-
-
-      }else{
-        let i = match self.stream_table_state.selected() {
-            Some(i) => {
-                let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                    self.mev_bundles.lock().unwrap();
-               // info!("i  - len: {} {}", i, mevblocks_guard.len());
-
-                if mevblocks_guard.len() > 0 {
-                    if i >= mevblocks_guard.len() - 1 {
-                        0
+                    if mevblocks_guard.len() > 0 {
+                        if i >= mevblocks_guard.len() - 1 {
+                            0
+                        } else {
+                            i + 1
+                        }
                     } else {
-                        i + 1
+                        0
                     }
-                } else {
-                    0
                 }
-            }
-            None => 0,
-        };
+                None => 0,
+            };
 
-        self.stream_table_state.select(Some(i));
-      }
-
-
-
-
+            self.stream_table_state.select(Some(i));
+        }
     }
 
     fn on_tick(&mut self) {
@@ -195,18 +181,23 @@ impl Dashboard {
             .height(1)
             .bottom_margin(1);
 
-        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> = widget.mev_bundles.lock().unwrap();
-
+        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+            widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
-            info!("token_deltas: {:#?}", item.header.balance_deltas);
+//            info!("token_deltas: {:#?}", item.header.balance_deltas);
 
             let height = 1;
             let cells = vec![
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
-                item.header.get_tokens().keys().cloned().collect::<Vec<String>>().join(", "),
+                item.data
+                    .get_tokens()
+                    .keys()
+                    .cloned()
+                    .collect::<Vec<String>>()
+                    .join(", "),
                 /*
                 item.header
                     .token_profits
@@ -216,9 +207,13 @@ impl Dashboard {
                     .collect::<Vec<String>>()
                     .join(", "),
                     */
-                //"ETH/ETH".to_string(),    
+                //"ETH/ETH".to_string(),
                 item.header.eoa.to_string(),
-                item.header.mev_contract.as_ref().map(|address| address.to_string()).unwrap_or("None".to_string()),
+                item.header
+                    .mev_contract
+                    .as_ref()
+                    .map(|address| address.to_string())
+                    .unwrap_or("None".to_string()),
                 item.header.profit_usd.to_string(),
                 item.header.bribe_usd.to_string(),
             ]
@@ -248,9 +243,6 @@ impl Dashboard {
         .highlight_symbol(">> ");
 
         ratatui::widgets::StatefulWidget::render(t, area, buf, &mut widget.stream_table_state);
-   
-
-
     }
 
     fn draw_leaderboard(widget: &Dashboard, area: Rect, buf: &mut Buffer) {
@@ -422,7 +414,9 @@ impl Component for Dashboard {
                 info!("Enter pressed");
 
                 self.popup_scroll_position = 0;
-                self.popup_scroll_state = self.popup_scroll_state.position(self.popup_scroll_position as usize);
+                self.popup_scroll_state = self
+                    .popup_scroll_state
+                    .position(self.popup_scroll_position as usize);
 
                 self.show_popup = !self.show_popup;
             }
@@ -504,67 +498,54 @@ impl Component for Dashboard {
         Self::draw_charts(self, sub_layout[0], buf);
         Self::draw_leaderboard(self, sub_layout[1], buf);
 
-
-
-
-
-
         Self::draw_livestream(self, chunks[1], buf);
-
 
         Self::draw_logs(self, chunks[2], buf, 1);
         Self::render_bottom_bar(self, template[2], buf);
         if self.show_popup {
             if let Some(selected_index) = self.stream_table_state.selected() {
+                let block = Block::default()
+                    .title("MEV Details")
+                    .borders(Borders::ALL)
+                    .padding(Padding::horizontal(4));
 
-            let block = Block::default().title("MEV Details").borders(Borders::ALL).padding(Padding::horizontal(4));
+                let area = Self::centered_rect(80, 80, area);
+                //Self::show_popup(self,area);
+                f.render_widget(Clear, area); //this clears out the background
+                let paragraph = Paragraph::new("Hello, world!");
+                f.render_widget(paragraph, area);
+                match self.stream_table_state.selected() {
+                    Some(i) => self.stream_table_state.selected(),
+                    None => None,
+                };
+                let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+                    self.mev_bundles.lock().unwrap();
 
-            let area = Self::centered_rect(80, 80, area);
-            //Self::show_popup(self,area);
-            f.render_widget(Clear, area); //this clears out the background
-            let paragraph = Paragraph::new("Hello, world!");
-            f.render_widget(paragraph, area);
-            match self.stream_table_state.selected() {
-                Some(i) => self.stream_table_state.selected(),
-                None => None,
-            };
-            let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                self.mev_bundles.lock().unwrap();
+                let text = mevblocks_guard[self.stream_table_state.selected().unwrap()]
+                    .to_string()
+                    .into_text();
 
-            let text = mevblocks_guard[self.stream_table_state.selected().unwrap()]
-                .to_string()
-                .into_text();
+                //let paragraph =
+                // Paragraph::new(mevblocks_guard[self.stream_table_state.selected().unwrap()].
+                // to_string());
+                let paragraph = Paragraph::new(text.unwrap())
+                    .block(block)
+                    .scroll((self.popup_scroll_position, 0));
 
-            //let paragraph =
-            // Paragraph::new(mevblocks_guard[self.stream_table_state.selected().unwrap()].
-            // to_string());
-            let paragraph = Paragraph::new(text.unwrap()).block(block).scroll((self.popup_scroll_position, 0));
+                // let buffer = std::fs::read("ascii/text.ascii").unwrap();
+                // let output = buffer.into_text();
 
-            // let buffer = std::fs::read("ascii/text.ascii").unwrap();
-            // let output = buffer.into_text();
+                f.render_widget(paragraph, area);
 
-            f.render_widget(paragraph, area);
-
-
-
-
-
-            f.render_stateful_widget(
-              Scrollbar::default()
-                  .orientation(ScrollbarOrientation::VerticalLeft)
-                  .begin_symbol(Some("↑"))
-                  .end_symbol(Some("↓")),
-              f.size().inner(&Margin {
-                  vertical: 10,
-                  horizontal: 10,
-              }),
-              &mut self.popup_scroll_state,
-          );
-
-
-
-
-        }
+                f.render_stateful_widget(
+                    Scrollbar::default()
+                        .orientation(ScrollbarOrientation::VerticalLeft)
+                        .begin_symbol(Some("↑"))
+                        .end_symbol(Some("↓")),
+                    f.size().inner(&Margin { vertical: 10, horizontal: 10 }),
+                    &mut self.popup_scroll_state,
+                );
+            }
             //f.render_widget(block, area);
         }
 
