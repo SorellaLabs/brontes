@@ -41,7 +41,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
 
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
         if metadata.cex_trades.is_none() {
-            panic!("no cex trades");
+            return vec![]
         }
 
         let swap_txes = tree
