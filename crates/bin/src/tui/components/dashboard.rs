@@ -185,7 +185,9 @@ impl Dashboard {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
-//            info!("token_deltas: {:#?}", item.header.balance_deltas);
+            info!("MEV TYPE: {}", item.header.mev_type.to_string());
+            info!("token_deltas: {:#?}", item.header.balance_deltas);
+            info!("========================================================");
 
             let height = 1;
             let cells = vec![
@@ -198,16 +200,6 @@ impl Dashboard {
                     .cloned()
                     .collect::<Vec<String>>()
                     .join(", "),
-                /*
-                item.header
-                    .token_profits
-                    .profits
-                    .iter()
-                    .map(|profit| profit.token.inner.symbol.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", "),
-                    */
-                //"ETH/ETH".to_string(),
                 item.header.eoa.to_string(),
                 item.header
                     .mev_contract
