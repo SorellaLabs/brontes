@@ -5,8 +5,6 @@ use std::{
 };
 
 use brontes_pricing::SubGraphsEntry;
-#[cfg(features = "cex-dex-markout")]
-use brontes_types::db::{cex_trades::CexTradeMap, initialized_state::CEX_TRADES_FLAG};
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
@@ -125,17 +123,6 @@ macro_rules! tables {
 }
 
 impl Tables {
-    pub(crate) fn is_critical_init(&self) -> bool {
-        matches!(
-            self,
-            Self::PoolCreationBlocks
-                | Self::AddressToProtocolInfo
-                | Self::TokenDecimals
-                | Self::Builder
-                | Self::AddressMeta,
-        )
-    }
-
     pub fn build_init_state_progress_bar(
         &self,
         multi_progress_bar: &MultiProgress,

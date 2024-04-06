@@ -13,7 +13,7 @@ use brontes_types::{
     unordered_buffer_map::BrontesStreamExt,
     FastHashMap, Protocol,
 };
-use futures::{future::join_all, join, stream::iter, StreamExt};
+use futures::{join, stream::iter, StreamExt};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -675,14 +675,16 @@ mod tests {
         let tables_cnt = Arc::new(
             Tables::ALL
                 .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .map(|table| (table, table.build_init_state_progress_bar(&multi, 69)))
                 .collect_vec(),
         );
 
-        intializer
-            .initialize(&tables, false, Some(block_range), tables_cnt)
-            .await
-            .unwrap();
+        for table in tables {
+            intializer
+                .initialize(table, false, Some(block_range), tables_cnt)
+                .await
+                .unwrap();
+        }
 
         // TokenDecimals
         TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)

@@ -20,8 +20,7 @@ use brontes_types::{
         cex::{CexPriceMap, CexQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
-            SKIP_FLAG, TRACE_FLAG,
+            InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
         },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
@@ -362,7 +361,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
             })
             .collect::<FastHashMap<_, _>>();
 
-        return Ok(StateToInitialize { ranges_to_init: table_ranges })
+        Ok(StateToInitialize { ranges_to_init: table_ranges })
     }
 }
 
@@ -1136,30 +1135,36 @@ pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
             .map(|t| (t, true))
             .collect_vec()
     } else {
-        let mut tables = Vec::new();
         #[cfg(all(feature = "local-reth", not(feature = "cex-dex-markout")))]
         {
-            tables.push((Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)));
-            tables.push((Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)));
-            tables.push((Tables::BlockInfo, data.is_initialized(META_FLAG)));
+            return vec![
+                (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
+                (Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)),
+                (Tables::BlockInfo, data.is_initialized(META_FLAG)),
+            ]
         }
 
         #[cfg(all(not(feature = "local-reth"), feature = "cex-dex-markout"))]
         {
-            tables.push((Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)));
-            tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
-            tables.push((Tables::BlockInfo, data.is_initialized(META_FLAG)));
-            tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
+            return vec![
+                (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
+                (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
+                (Tables::BlockInfo, data.is_initialized(META_FLAG)),
+                (Tables::TxTraces, data.is_initialized(TRACE_FLAG)),
+            ]
         }
 
         #[cfg(all(feature = "local-reth", feature = "cex-dex-markout"))]
         {
-            tables.push((Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)));
-            tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
-            tables.push((Tables::BlockInfo, data.is_initialized(META_FLAG)));
+            return vec![
+                (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
+                (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
+                (Tables::BlockInfo, data.is_initialized(META_FLAG)),
+            ]
         }
 
-        tables
+        #[allow(unreachable_code)]
+        Vec::new()
     }
 }
 

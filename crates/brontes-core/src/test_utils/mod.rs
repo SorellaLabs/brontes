@@ -15,7 +15,6 @@ use brontes_types::{
 };
 use futures::future::join_all;
 use indicatif::MultiProgress;
-use itertools::Itertools;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
 use reth_primitives::{Header, B256};

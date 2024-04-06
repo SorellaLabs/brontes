@@ -17,12 +17,17 @@ use brontes_types::{
     normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
+    traits::TracingProvider,
     BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
 use indicatif::ProgressBar;
 
 use super::Clickhouse;
-use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit, Tables};
+use crate::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{LibmdbxInit, StateToInitialize},
+    Tables,
+};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
     #[allow(dead_code)] // on tests feature
@@ -209,7 +214,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
+    ) -> eyre::Result<StateToInitialize> {
         self.inner.state_to_initialize(start_block, end_block)
     }
 }
@@ -486,7 +491,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
+    ) -> eyre::Result<StateToInitialize> {
         self.inner.state_to_initialize(start_block, end_block)
     }
 }
