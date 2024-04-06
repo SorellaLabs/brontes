@@ -206,6 +206,7 @@ impl Dashboard {
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
+                item.header.get_tokens().keys().cloned().collect::<Vec<String>>().join(", "),
                 /*
                 item.header
                     .token_profits
@@ -215,7 +216,7 @@ impl Dashboard {
                     .collect::<Vec<String>>()
                     .join(", "),
                     */
-                "ETH/ETH".to_string(),    
+                //"ETH/ETH".to_string(),    
                 item.header.eoa.to_string(),
                 item.header.mev_contract.as_ref().map(|address| address.to_string()).unwrap_or("None".to_string()),
                 item.header.profit_usd.to_string(),
