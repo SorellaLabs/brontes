@@ -199,7 +199,7 @@ impl Dashboard {
 
 
         let rows = mevblocks_guard.iter().map(|item| {
-            info!("token_deltas: {:?}", item.header.balance_deltas);
+            info!("token_deltas: {:#?}", item.header.balance_deltas);
 
             let height = 1;
             let cells = vec![
