@@ -243,8 +243,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         ranges: Vec<(Tables, Vec<RangeInclusive<u64>>)>,
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        futures::stream::iter(ranges.into_iter().flat_map(|(table, ranges)| {
-            tracing::info!(?ranges, "initting ranges");
+        tracing::info!(?ranges, "initting ranges");
+        join_all(ranges.into_iter().flat_map(|(table, ranges)| {
             let tables_pb = tables_pb.clone();
             let mut futs: Vec<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>> =
                 Vec::with_capacity(ranges.len());
@@ -282,8 +282,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             }
             futs
         }))
-        .buffer_unordered(1)
-        .collect::<Vec<_>>()
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
