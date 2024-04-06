@@ -29,7 +29,6 @@ use tracing::info;
 
 use super::run::RunArgs;
 
-
 #[cfg(any(not(feature = "local-clickhouse"), feature = "local-no-inserts"))]
 pub fn load_database(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
     LibmdbxReadWriter::init_db(db_endpoint, None)

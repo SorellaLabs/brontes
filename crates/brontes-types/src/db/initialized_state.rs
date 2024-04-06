@@ -30,7 +30,7 @@ pub const SKIP_FLAG: u8 = 0b100000;
 /// there keys are as followed,
 /// [0, 0, should_skip, has_dex_price, has_traces,
 /// has_cex_trades,has_cex_quotes, has_meta]
-pub struct InitializedStateMeta(pub u8);
+pub struct InitializedStateMeta(u8);
 
 impl InitializedStateMeta {
     pub fn new(
@@ -64,6 +64,7 @@ impl InitializedStateMeta {
         Self(this)
     }
 
+    #[inline(always)]
     pub fn set(&mut self, this: u8) {
         self.0 |= this
     }
@@ -71,6 +72,11 @@ impl InitializedStateMeta {
     #[inline(always)]
     pub fn should_ignore(&self) -> bool {
         self.0 & SKIP_FLAG != 0
+    }
+
+    #[inline(always)]
+    pub fn is_initialized(&self, flag: u8) -> bool {
+        (self.0 & flag) == 1
     }
 }
 

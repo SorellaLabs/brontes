@@ -1,15 +1,9 @@
-
-
 use brontes_analytics::BrontesAnalytics;
-
 use brontes_types::mev::bundle::MevType;
 use clap::Parser;
 
-
 use crate::{
-    cli::{
-        determine_max_tasks, init_brontes_db, init_tracer,
-    },
+    cli::{determine_max_tasks, init_brontes_db, init_tracer},
     runner::CliContext,
 };
 // Convert to polars notebook code:

@@ -1,14 +1,10 @@
-
-
 use brontes_analytics::BrontesAnalytics;
 use brontes_metrics::PoirotMetricsListener;
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    cli::{
-        determine_max_tasks, init_brontes_db, init_tracer,
-    },
+    cli::{determine_max_tasks, init_brontes_db, init_tracer},
     runner::CliContext,
 };
 

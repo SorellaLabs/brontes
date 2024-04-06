@@ -2,7 +2,6 @@
 use std::str::FromStr;
 use std::{
     cmp::max,
-    collections::hash_map::Entry,
     ops::{Bound, RangeInclusive},
     path::Path,
     sync::Arc,
@@ -21,7 +20,8 @@ use brontes_types::{
         cex::{CexPriceMap, CexQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
+            SKIP_FLAG, TRACE_FLAG,
         },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
@@ -250,7 +250,15 @@ impl LibmdbxInit for LibmdbxReadWriter {
         start_block: u64,
         end_block: u64,
     ) -> eyre::Result<StateToInitialize> {
-        let tables_to_init = default_tables_to_init();
+        let blocks = end_block - start_block;
+        let block_range = (blocks / 128 + 1) as usize;
+        let excess = blocks % 128;
+
+        let mut range = vec![0u128; block_range];
+        // mark tables out of scope as initialized;
+        range[block_range - 1] |= u128::MAX >> excess;
+
+        let mut tables: Vec<Vec<u128>> = Tables::ALL.into_iter().map(|_| range.clone()).collect();
 
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
@@ -259,154 +267,147 @@ impl LibmdbxInit for LibmdbxReadWriter {
         if peek_cur.peek().is_none() {
             tracing::info!("entire range missing");
             let mut result = FastHashMap::default();
+            let tables_to_init = default_tables_to_init();
             for table in tables_to_init {
-                result.insert(table, vec![start_block..=end_block]);
+                result.insert(table, vec![start_block as usize..=end_block as usize]);
             }
-            return Ok(StateToInitialize {
-                ranges_to_init:       FastHashMap::default(),
-                blocks_to_init_count: FastHashMap::default(),
-                blocks_skipped:       0,
-            });
+            return Ok(StateToInitialize { ranges_to_init: result })
         }
 
-        let mut result: FastHashMap<Tables, Vec<RangeInclusive<u64>>> = FastHashMap::default();
-        let mut start_block_to_init: FastHashMap<Tables, Option<u64>> = FastHashMap::default();
-        let mut blocks_to_init_count: FastHashMap<Tables, u64> = FastHashMap::default();
-        let mut blocks_skipped = 0;
+        let start_block = start_block as usize;
 
-        let mut block_tracker = start_block;
+        for next in peek_cur {
+            let Ok(entry) = next else { panic!("crit db error for InitializeState table") };
+            let block = entry.0 as usize;
+            let state = entry.1;
 
-        for entry in peek_cur {
-            if let Ok(has_info) = entry {
-                let block = has_info.0;
-                let state = has_info.1;
+            let pos = block - start_block;
 
-                if block != block_tracker {
-                    for table in tables_to_init.iter() {
-                        if start_block_to_init.get(table).is_none() {
-                            start_block_to_init.insert(*table, Some(block_tracker));
-                        }
+            for (table, bool) in tables_to_initialize(state) {
+                tables[table as u8 as usize][pos / 128] |= (bool as u8 as u128) << (127 - pos % 128)
+            }
+        }
+
+        let wanted_tables = default_tables_to_init();
+
+        let table_ranges = wanted_tables
+            .into_iter()
+            .sorted_unstable_by(|key0, key1| (*key1 as u8).cmp(&(*key0 as u8)))
+            .map(|table| {
+                // fetch table from vec
+                let table_res = tables.remove(table as u8 as usize);
+
+                let mut ranges = Vec::new();
+                let mut range_start_block: Option<usize> = None;
+
+                for (i, mut range) in table_res.into_iter().enumerate() {
+                    // if there are no zeros, then this chuck is fully init
+                    if range.count_zeros() == 0 {
+                        continue
                     }
-                    block_tracker = block + 1;
-                    continue;
-                }
 
-                if block == end_block {
-                    let tables_to_init = tables_to_initialize(state);
-                    if tables_to_init.is_empty() {
-                        blocks_skipped += 1;
-                        for table in start_block_to_init.keys().cloned().collect::<Vec<_>>() {
-                            if let Some(start) = start_block_to_init.remove(&table) {
-                                ranges_to_init.entry(table).or_default().push(start..=end_block);
-                                *blocks_to_init_count.entry(table).or_default() += end_block - start + 1;
-                            }
-                        } 
-                                result.entry(*table).or_default().push(start..=block - 1);
-
-                                let init_count = start - block - 1;
-                                blocks_to_init_count
-                                    .entry(*table)
-                                    .and_modify(|count| *count += init_count)
-                                    .or_insert(1);
-                            }
-                        }
-                    } else {
-                        for (table, should_init) in tables_to_init {
-                            if should_init {
-                                if let Some(start) = start_block_to_init
-                                    .get_mut(&table)
-                                    .and_then(|opt| opt.take())
-                                {
-                                    result.entry(table).or_default().push(start..=block);
-
-                                    blocks_to_init_count
-                                        .entry(table)
-                                        .and_modify(|count| *count += start - block)
-                                        .or_insert(1);
-                                } else {
-                                    result.entry(table).or_default().push(block..=block);
-                                    blocks_to_init_count
-                                        .entry(table)
-                                        .and_modify(|count| *count += 1)
-                                        .or_insert(1);
-                                }
-                            } else {
-                                if let Some(start) = start_block_to_init
-                                    .get_mut(&table)
-                                    .and_then(|opt| opt.take())
-                                {
-                                    result.entry(table).or_default().push(start..=block - 1);
-
-                                    blocks_to_init_count
-                                        .entry(table)
-                                        .and_modify(|count| *count += 1)
-                                        .or_insert(1);
-                                }
-                            }
-                        }
+                    let mut sft_cnt = 0;
+                    // if the range starts with a zero. set the start_block if it isn't
+                    if range & 1 << 127 == 0 && range_start_block.is_none() {
+                        range_start_block = Some(start_block + (i * 128));
+                        sft_cnt += 1;
+                        // move to left once
+                        range <<= sft_cnt;
                     }
-                } else {
-                    for (table, should_init) in tables_to_initialize(state) {
-                        if should_init {
-                            if start_block_to_init.get(&table).is_none() {
-                                start_block_to_init.insert(table, Some(block_tracker));
+
+                    // while we have ones to process, continue
+                    while range.count_ones() != 0 && sft_cnt <= 127 {
+                        let leading_zeros = range.leading_zeros();
+                        if leading_zeros == 127 {
+                            break
+                        }
+                        // if we have leading 1's, skip to the end of the leading ones
+                        else if leading_zeros == 0 {
+                            // we have ones next, lets take all of them, shift them away
+                            // and continue processing
+                            let leading_ones = range.leading_ones();
+                            range <<= leading_ones;
+                            sft_cnt += leading_ones;
+
+                            // mark the start_block now that we have shifted these out
+                            let block = start_block + (i * 128) + sft_cnt as usize;
+                            if range_start_block.is_some() || sft_cnt >= 128 {
+                                continue
                             }
+                            range_start_block = Some(block);
+
+                            continue
                         } else {
-                            if let Some(start) = start_block_to_init
-                                .get_mut(&table)
-                                .and_then(|opt| opt.take())
-                            {
-                                result.entry(table).or_default().push(start..=block - 1);
+                            // take range,
+                            range <<= leading_zeros;
+                            sft_cnt += leading_zeros;
+                        }
 
-                                let init_count = start - block - 1;
-                                blocks_to_init_count
-                                    .entry(table)
-                                    .and_modify(|count| *count += init_count)
-                                    .or_insert(1);
-                            }
+                        let block = start_block + (i * 128) + sft_cnt as usize;
+
+                        if let Some(start_block) = range_start_block.take() {
+                            ranges.push(start_block..=block - 1);
+                        } else {
+                            range_start_block = Some(block);
                         }
                     }
                 }
 
-                block_tracker = block + 1;
-            } else {
-                // Should never happen unless the database is corrupted
-                panic!("database is corrupted");
-            }
-        }
+                // needed for case the range is a multiple of u128
+                if let Some(start_block) = range_start_block.take() {
+                    ranges.push(start_block..=end_block as usize);
+                }
 
-        Ok(StateToInitialize { ranges_to_init: result, blocks_to_init_count, blocks_skipped })
+                (table, ranges)
+            })
+            .collect::<FastHashMap<_, _>>();
+
+        return Ok(StateToInitialize { ranges_to_init: table_ranges })
     }
 }
 
 #[derive(Debug, Default)]
 pub struct StateToInitialize {
-    ranges_to_init:       FastHashMap<Tables, Vec<RangeInclusive<u64>>>,
-    blocks_to_init_count: FastHashMap<Tables, u64>,
-    blocks_skipped:       u64,
+    pub ranges_to_init: FastHashMap<Tables, Vec<RangeInclusive<usize>>>,
 }
 
-fn aggregate_state_to_initialize(
-    states: Vec<StateToInitialize>,
-) -> (FastHashMap<Tables, u64>, u64) {
-    let mut blocks_to_init_count: FastHashMap<Tables, u64> = FastHashMap::default();
-    let mut total_blocks_skipped = 0;
+impl StateToInitialize {
+    pub fn get_state_for_ranges(
+        &self,
+        start_block: usize,
+        end_block: usize,
+    ) -> Vec<(Tables, Vec<u64>)> {
+        self.ranges_to_init
+            .iter()
+            .map(|(table, ranges)| {
+                (
+                    *table,
+                    ranges
+                        .iter()
+                        .filter_map(|f| {
+                            let start = *f.start();
+                            let end = *f.end();
+                            // if start or end out of range
+                            if end < start_block || start > end_block {
+                                return None
+                            }
 
-    for state in states {
-        for (table, count) in state.blocks_to_init_count {
-            match blocks_to_init_count.entry(table) {
-                Entry::Occupied(mut entry) => {
-                    *entry.get_mut() += count;
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(count);
-                }
-            }
-        }
-        total_blocks_skipped += state.blocks_skipped;
+                            let new_start = std::cmp::max(start_block, start) as u64;
+                            let new_end = std::cmp::min(end_block, end) as u64;
+                            Some((new_start..=new_end).collect::<Vec<_>>())
+                        })
+                        .flatten()
+                        .collect_vec(),
+                )
+            })
+            .collect_vec()
     }
 
-    (blocks_to_init_count, total_blocks_skipped)
+    pub fn tables_with_init_count(&self) -> impl Iterator<Item = (Tables, usize)> + '_ {
+        self.ranges_to_init
+            .iter()
+            .map(|(table, cnt)| (*table, cnt.iter().map(|r| r.end() - r.start()).sum()))
+    }
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
@@ -1116,7 +1117,7 @@ pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
 }
 
 fn default_tables_to_init() -> Vec<Tables> {
-    let mut tables_to_init = vec![Tables::BlockInfo];
+    let mut tables_to_init = vec![Tables::BlockInfo, Tables::DexPrice];
 
     #[cfg(not(feature = "sorella-server"))]
     tables_to_init.push(Tables::TxTraces);
@@ -1130,33 +1131,121 @@ fn default_tables_to_init() -> Vec<Tables> {
     tables_to_init
 }
 pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
-    let mut tables = Vec::new();
-
     if data.should_ignore() {
-        tables
+        default_tables_to_init()
+            .into_iter()
+            .map(|t| (t, true))
+            .collect_vec()
     } else {
+        let mut tables = Vec::new();
         #[cfg(all(feature = "local-reth", not(feature = "cex-dex-markout")))]
         {
-            tables.push((Tables::DexPrice, (data.0 & DEX_PRICE_FLAG) == 0));
-            tables.push((Tables::CexPrice, (data.0 & CEX_QUOTES_FLAG) == 0));
-            tables.push((Tables::BlockInfo, (data.0 & META_FLAG) == 0));
+            tables.push((Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)));
+            tables.push((Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)));
+            tables.push((Tables::BlockInfo, data.is_initialized(META_FLAG)));
         }
 
         #[cfg(all(not(feature = "local-reth"), feature = "cex-dex-markout"))]
         {
-            tables.push((Tables::DexPrice, (data.0 & DEX_PRICE_FLAG) == 0));
-            tables.push((Tables::CexTrades, (data.0 & CEX_TRADES_FLAG) == 0));
-            tables.push((Tables::BlockInfo, (data.0 & META_FLAG) == 0));
-            tables.push((Tables::TxTraces, (data.0 & TRACE_FLAG) == 0));
+            tables.push((Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)));
+            tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
+            tables.push((Tables::BlockInfo, data.is_initialized(META_FLAG)));
+            tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
         }
 
         #[cfg(all(feature = "local-reth", feature = "cex-dex-markout"))]
         {
-            tables.push((Tables::DexPrice, (data.0 & DEX_PRICE_FLAG) == 0));
-            tables.push((Tables::CexTrades, (data.0 & CEX_TRADES_FLAG) == 0));
-            tables.push((Tables::BlockInfo, (data.0 & META_FLAG) == 0));
+            tables.push((Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)));
+            tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
+            tables.push((Tables::BlockInfo, data.is_initialized(META_FLAG)));
         }
 
         tables
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+
+    fn test_bit_math() {
+        // setup bitmaps;
+        let start_block = 0;
+        let end_block = 1000;
+        let blocks = end_block - start_block;
+        let block_range = (blocks / 128 + 1) as usize;
+        let excess = blocks % 128;
+
+        let mut range = vec![0u128; block_range];
+        // mark tables out of scope as initialized;
+        range[block_range - 1] |= u128::MAX >> excess;
+
+        // go through and apply some bit flag minips
+        for i in 100..=300 {
+            range[i / 128] |= 1 << (i % 128)
+        }
+        range[500 / 128] |= 1 << (500 % 128);
+
+        let table_res = range;
+
+        let mut ranges = Vec::new();
+        let mut range_start_block: Option<usize> = None;
+
+        for (i, mut range) in table_res.into_iter().enumerate() {
+            // if there are no zeros, then this chuck is fully init
+            if range.count_zeros() == 0 {
+                continue
+            }
+
+            let mut sft_cnt = 0;
+            // while we have ones to process, continue
+            while range.count_ones() != 0 || sft_cnt <= 127 {
+                let leading_zeros = range.leading_zeros();
+                // if we have leading 1's, skip to the end of the leading ones
+                if leading_zeros == 0 {
+                    // we have ones next, lets take all of them, shift them away
+                    // and continue processing
+                    let leading_ones = range.leading_ones();
+                    range <<= leading_ones;
+                    sft_cnt += leading_ones;
+
+                    // mark the start_block now that we have shifted these out
+                    let block = start_block + (i * 128) + sft_cnt as usize + 1;
+                    if range_start_block.is_some() {
+                        unreachable!("something wrong with initialized state");
+                    }
+                    range_start_block = Some(block);
+
+                    continue
+                } else {
+                    range <<= leading_zeros;
+                    sft_cnt += leading_zeros;
+                }
+
+                let block = start_block + (i * 128) + sft_cnt as usize;
+                if let Some(start_block) = range_start_block.take() {
+                    ranges.push(start_block..=block);
+                } else {
+                    range_start_block = Some(block);
+                }
+            }
+        }
+
+        // needed for case the range is a multiple of u128
+        if let Some(start_block) = range_start_block.take() {
+            ranges.push(start_block..=end_block as usize);
+        }
+
+        // our ranges should be 0..=99, 301..=499 && 501..=1000
+        println!("{:#?}", ranges);
+
+        assert_eq!(ranges.len(), 3);
+        let next = ranges.pop().unwrap();
+        assert_eq!(next, 501..=1000);
+
+        let next = ranges.pop().unwrap();
+        assert_eq!(next, 301..=499);
+
+        let next = ranges.pop().unwrap();
+        assert_eq!(next, 0..=99);
     }
 }

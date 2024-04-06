@@ -55,14 +55,17 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        futures::stream::iter(tables.to_vec()).map(|table| {
-            let progress_bar = progress_bar.clone();
-            async move {
-                table
-                    .initialize_table(self, block_range, clear_tables, progress_bar)
-                    .await
-            }
-        });
+        futures::stream::iter(tables.to_vec())
+            .map(|table| {
+                let progress_bar = progress_bar.clone();
+                async move {
+                    table
+                        .initialize_table(self, block_range, clear_tables, progress_bar)
+                        .await
+                }
+            })
+            .collect::<Vec<_>>()
+            .await;
         Ok(())
     }
 
@@ -93,19 +96,20 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         Ok(())
     }
 
-    pub fn initailize_progress_bars(&self) -> Vec<(Tables, ProgressBar)> {
-        let critical_state_progress_bar = Self::build_critical_state_progress_bar(5);
-
-        futures::stream::iter(tables.to_vec()).map(|table| {
-            let progress_bar = progress_bar.clone();
-            async move {
-                table
-                    .initialize_full_range_table(self, progress_bar, cleartable)
-                    .await
-            }
-        });
-        Ok(())
-    }
+    // pub fn initailize_progress_bars(&self) -> Vec<(Tables, ProgressBar)> {
+    //     let critical_state_progress_bar =
+    // Self::build_critical_state_progress_bar(5);
+    //
+    //     futures::stream::iter(tables.to_vec()).map(|table| {
+    //         let progress_bar = progress_bar.clone();
+    //         async move {
+    //             table
+    //                 .initialize_full_range_table(self, progress_bar, cleartable)
+    //                 .await
+    //         }
+    //     });
+    //     Ok(())
+    // }
 
     pub async fn load_config(&self) -> eyre::Result<()> {
         join!(
@@ -297,9 +301,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + Unpin
             + 'static,
     {
-        let entries = block_range.len();
-        pb.inc_length(entries as u64);
-
         let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
 
         iter(ranges.into_iter().map(|inner_range| {

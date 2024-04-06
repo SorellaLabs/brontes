@@ -1,5 +1,7 @@
 mod processors;
 mod range;
+use std::ops::RangeInclusive;
+
 use futures::Stream;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
@@ -113,21 +115,22 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         let start_block = self.start_block.unwrap();
 
-        let total_blocks = 12;
-        let global_pb = self.initialize_global_progress_bar(has_end_block, end_block, total_blocks);
-
-        let state_to_init = self.libmdbx.state_to_initialize(start_block, end_block)?;
+        let progess_bar = self.initialize_global_progress_bar(self.start_block, self.end_block);
+        let state_to_init = Arc::new(self.libmdbx.state_to_initialize(start_block, end_block)?);
 
         let multi = MultiProgress::default();
-        let tables_with_progress = Arc::new(
-            tables
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi, 5)))
+        let tables_pb = Arc::new(
+            state_to_init
+                .tables_with_init_count()
+                .map(|(table, count)| {
+                    (table, table.build_init_state_progress_bar(&multi, count as u64))
+                })
                 .collect_vec(),
         );
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
+                let ranges = state_to_init.get_state_for_ranges(start_block, end_block);
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
                 let tables_pb = tables_pb.clone();
@@ -135,7 +138,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(start_block, end_block, tables_pb.clone())
+                    self.init_block_range_tables(ranges, tables_pb.clone())
                         .await
                         .unwrap();
 
@@ -223,76 +226,50 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     async fn init_block_range_tables(
         &self,
-        start_block: u64,
-        end_block: u64,
-        cli_only: bool,
+        ranges: Vec<(Tables, Vec<RangeInclusive<usize>>)>,
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         todo!();
 
-        tracing::info!(
-            start_block=%start_block, %end_block,
-            "Verifying the database contains the data from block {} to block {}",
-            start_block,
-            end_block
-        );
-
-        for keys in state_to_init.iter() {}
-
-        let state_to_init_continuous = state_to_init
-            .clone()
-            .into_iter()
-            .filter(|range| range.clone().collect_vec().len() >= 1000)
-            .collect_vec();
-
-        tracing::info!("Downloading missing {:#?} ranges", state_to_init);
-
-        tracing::info!("Downloading {:#?} missing continuous ranges", state_to_init_continuous);
-
-        join_all(state_to_init_continuous.iter().map(|range| {
+        join_all(ranges.into_iter().flat_map(|(table, ranges)| {
             let tables_pb = tables_pb.clone();
-            async move {
-                let start = range.start();
-                let end = range.end();
-
-                {
-                    self.libmdbx
-                        .initialize_tables(
-                            self.clickhouse,
-                            self.parser.get_tracer(),
-                            tables_to_init_cont,
-                            false,
-                            Some((*start, *end)),
-                            tables_pb.clone(),
-                        )
-                        .await
+            let futs = Vec::with_capacity(ranges.len());
+            for range in ranges {
+                let start = *range.start();
+                let end = *range.end();
+                let table = vec![table];
+                if end - start > 1000 {
+                    futs.push(Box::pin(async move {
+                        self.libmdbx
+                            .initialize_tables(
+                                self.clickhouse,
+                                self.parser.get_tracer(),
+                                &table,
+                                false,
+                                Some((start, end)),
+                                tables_pb.clone(),
+                            )
+                            .await
+                    }));
+                } else {
+                    futs.push(Box::pin(async move {
+                        self.libmdbx
+                            .initialize_tables_arbitrary(
+                                self.clickhouse,
+                                self.parser.get_tracer(),
+                                &table,
+                                range.collect_vec(),
+                                tables_pb.clone(),
+                            )
+                            .await
+                    }));
                 }
             }
+            futs
         }))
         .await
         .into_iter()
         .collect::<eyre::Result<_>>()?;
-
-        tracing::info!(
-            "Downloading {} missing discontinuous ranges",
-            state_to_init.len() - state_to_init_continuous.len()
-        );
-
-        let state_to_init_disc = state_to_init
-            .into_iter()
-            .filter(|range| range.clone().collect_vec().len() < 1000)
-            .flatten()
-            .collect_vec();
-
-        self.libmdbx
-            .initialize_tables_arbitrary(
-                self.clickhouse,
-                self.parser.get_tracer(),
-                &tables_to_init,
-                state_to_init_disc,
-                tables_pb.clone(),
-            )
-            .await?;
 
         Ok(())
     }
@@ -403,42 +380,35 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     fn initialize_global_progress_bar(
         &self,
-        has_end_block: bool,
-        end_block: u64,
-        total_blocks: u64,
+        start_block: Option<u64>,
+        end_block: Option<u64>,
     ) -> Option<ProgressBar> {
         self.cli_only.and_then(|| {
-            start_block.and_then(|start_block, total_blocks| {
-                // Assuming `had_end_block` and `end_block` should be defined or passed
-                // elsewhere
-                if had_end_block {
-                    let progress_bar = ProgressBar::with_draw_target(
-                        total_blocks,
-                        ProgressDrawTarget::stderr_with_hz(100),
-                    );
-                    let style = ProgressStyle::default_bar()
-                        .template(
-                            "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} \
-                             blocks ({percent}%) | ETA: {eta}",
-                        )
-                        .expect("Invalid progress bar template")
-                        .progress_chars("█>-")
-                        .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                            write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
-                        })
-                        .with_key(
-                            "percent",
-                            |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                                write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
-                            },
-                        );
-                    progress_bar.set_style(style);
-                    progress_bar.set_message("Processing blocks:");
-                    Some(progress_bar)
-                } else {
-                    None
-                }
-            })
+            let start = start_block?;
+            let end = end_block?;
+            // Assuming `had_end_block` and `end_block` should be defined or passed
+            // elsewhere
+            let progress_bar = ProgressBar::with_draw_target(
+                Some(end - start),
+                ProgressDrawTarget::stderr_with_hz(100),
+            );
+            let style = ProgressStyle::default_bar()
+                .template(
+                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
+                     ({percent}%) | ETA: {eta}",
+                )
+                .expect("Invalid progress bar template")
+                .progress_chars("█>-")
+                .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+                })
+                .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                });
+            progress_bar.set_style(style);
+            progress_bar.set_message("Processing blocks:");
+
+            Some(progress_bar)
         })
     }
 

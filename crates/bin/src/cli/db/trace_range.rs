@@ -1,16 +1,11 @@
-
-
 use brontes_core::decoding::Parser as DParser;
-
 use brontes_types::{init_threadpools, unordered_buffer_map::BrontesStreamExt};
 use clap::Parser;
 use futures::StreamExt;
 
-
 use crate::{
     cli::{
-        determine_max_tasks, init_brontes_db, init_metrics_listener,
-        init_tracer, static_object,
+        determine_max_tasks, init_brontes_db, init_metrics_listener, init_tracer, static_object,
     },
     runner::CliContext,
 };
