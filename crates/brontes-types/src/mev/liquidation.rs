@@ -75,7 +75,11 @@ impl Serialize for Liquidation {
         ser_struct
             .serialize_field("liquidation_tx_hash", &format!("{:?}", self.liquidation_tx_hash))?;
 
-        let liquidation_swaps: ClickhouseVecNormalizedSwap = self.liquidation_swaps.clone().into();
+        let liquidation_swaps: ClickhouseVecNormalizedSwap = self
+            .liquidation_swaps
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         ser_struct
             .serialize_field("liquidation_swaps.trace_idx", &liquidation_swaps.trace_index)?;
@@ -89,7 +93,11 @@ impl Serialize for Liquidation {
             .serialize_field("liquidation_swaps.amount_out", &liquidation_swaps.amount_out)?;
 
         // victims
-        let liquidations: ClickhouseVecNormalizedLiquidation = self.liquidations.clone().into();
+        let liquidations: ClickhouseVecNormalizedLiquidation = self
+            .liquidations
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("liquidations.trace_idx", &liquidations.trace_index)?;
         ser_struct.serialize_field("liquidations.pool", &liquidations.pool)?;
