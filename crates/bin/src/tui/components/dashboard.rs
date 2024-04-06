@@ -47,12 +47,12 @@ use crate::tui::{
     config::{Config, KeyBindings},
     theme::THEME,
     tui::Event,
-};
+    };
 
 use brontes_types::{
     db::token_info::{TokenInfo, TokenInfoWithAddress},
 };
-
+use crate::get_symbols_from_transaction_accounting;
 
 
 #[derive(Default, Debug)]
@@ -192,14 +192,13 @@ impl Dashboard {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
-            info!("MEV TYPE: {}", item.header.mev_type.to_string());
-           // info!("token_deltas: {:#?}", item.header.balance_deltas);
-           // info!("========================================================");
 
 
 
 
-            
+            let unique_symbols = get_symbols_from_transaction_accounting!(&item.header.balance_deltas);
+
+            /*
             let mut token_info_with_addresses: Vec<TokenInfoWithAddress> = Vec::new();
             for transaction in &item.header.balance_deltas {
                 for address_delta in &transaction.address_deltas {
@@ -221,7 +220,7 @@ impl Dashboard {
             .collect();
 
             let joined_symbols = unique_symbols.join(", ");
-
+*/
 
 //info!("TOKENINFOS {:#?}",token_info_with_addresses);
 
@@ -230,7 +229,7 @@ impl Dashboard {
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
-                joined_symbols,
+                unique_symbols,
 //                    token_info_with_addresses.iter().map(|x| x.inner.symbol.to_string()).collect::<Vec<String>>().join(", "),
                 item.header.eoa.to_string(),
                 item.header
