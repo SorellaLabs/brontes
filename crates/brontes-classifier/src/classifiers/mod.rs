@@ -182,5 +182,8 @@ action_dispatch!(
     ZeroXFillOtcOrderCall,
     ZeroXFillOtcOrderForEthCall,
     ZeroXFillOtcOrderWithEthCall,
-    ZeroXFillTakerSignedOtcOrderCall
+    ZeroXFillTakerSignedOtcOrderCall,
+    ZeroXFillTakerSignedOtcOrderForEthCall,
+    ZeroXBatchFillTakerSignedOtcOrdersCall,
+    ZeroXSellToLiquidityProviderCall
 );

@@ -495,7 +495,7 @@ impl ClassifierTestUtils {
 
         Ok(())
     }
-    
+
     pub async fn contains_action(
         &self,
         tx_hash: TxHash,

@@ -31,7 +31,8 @@ pub use swaps::*;
 pub use transfer::*;
 
 use crate::{
-    structured_trace::{TraceActions, TransactionTraceWithLogs}, Protocol, TreeSearchBuilder
+    structured_trace::{TraceActions, TransactionTraceWithLogs},
+    Protocol, TreeSearchBuilder,
 };
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {

@@ -21,11 +21,11 @@ pub struct ParsedLogConfig {
 }
 
 pub struct LogData<'a> {
-    exchange_name: &'a Ident,
-    action_type:   &'a Ident,
-    mod_path:      Path,
-    log_config:    &'a [LogConfig],
-    include_delegated_logs: bool
+    exchange_name:          &'a Ident,
+    action_type:            &'a Ident,
+    mod_path:               Path,
+    log_config:             &'a [LogConfig],
+    include_delegated_logs: bool,
 }
 
 impl<'a> LogData<'a> {
@@ -214,14 +214,15 @@ impl<'a> LogData<'a> {
 
         if !self.include_delegated_logs {
             stream.extend(quote!(
-                let logs = call_info.logs.iter().filter(|log| log.address == call_info.target_address).collect::<Vec<_>>();
+                let logs = call_info.logs.iter()
+                    .filter(|log| log.address == call_info.target_address)
+                    .collect::<Vec<_>>();
             ));
         } else {
             stream.extend(quote!(
                 let logs = call_info.logs;
             ));
         }
-    
 
         for (enum_i, (indexes, log_field_name, log_name, repeating, ignore_before)) in
             multizip((check_indexes, log_field_names, log_names, is_repeatings, ignore_befores))
@@ -256,7 +257,7 @@ impl<'a> LogData<'a> {
                 }
                 (false, false) => self.parse_default(log_name, log_field_name, indexes),
             };
-    
+
             stream.extend(res);
         }
 

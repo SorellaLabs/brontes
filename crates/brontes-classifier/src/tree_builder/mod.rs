@@ -113,11 +113,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                     let mut root_trace = trace.trace.remove(0);
 
-                    // Add logs of delegated calls to the root trace, only if the delegated call is from the same address / in the same call frame
+                    // Add logs of delegated calls to the root trace, only if the delegated call is
+                    // from the same address / in the same call frame
                     if let Action::Call(root_call) = &root_trace.trace.action {
                         let mut delegated_traces = Vec::new();
-                        collect_delegated_traces(&trace.trace, &root_trace.trace.trace_address, &mut delegated_traces);
-                    
+                        collect_delegated_traces(
+                            &trace.trace,
+                            &root_trace.trace.trace_address,
+                            &mut delegated_traces,
+                        );
+
                         for delegated_trace in delegated_traces {
                             if let Action::Call(delegated_call) = &delegated_trace.trace.action {
                                 if let CallType::DelegateCall = delegated_call.call_type {
@@ -162,7 +167,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         data_store:  NodeData(vec![Some(classification)]),
                     };
 
-
                     let tx_traces = trace.trace.clone();
                     for trace in trace.trace.into_iter() {
                         let mut trace = trace;
@@ -196,13 +200,19 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             }
                         }
 
-                        // Add logs of delegated calls to the root trace, only if the delegated call is from the same address / in the same call frame
+                        // Add logs of delegated calls to the root trace, only if the delegated call
+                        // is from the same address / in the same call frame
                         if let Action::Call(call) = &trace.trace.action {
                             let mut delegated_traces = Vec::new();
-                            collect_delegated_traces(&tx_traces, &trace.trace.trace_address, &mut delegated_traces);
+                            collect_delegated_traces(
+                                &tx_traces,
+                                &trace.trace.trace_address,
+                                &mut delegated_traces,
+                            );
 
                             for delegated_trace in delegated_traces {
-                                if let Action::Call(delegated_call) = &delegated_trace.trace.action {
+                                if let Action::Call(delegated_call) = &delegated_trace.trace.action
+                                {
                                     if let CallType::DelegateCall = delegated_call.call_type {
                                         if delegated_call.from == call.to {
                                             trace.logs.extend(delegated_trace.logs.clone());
@@ -593,7 +603,9 @@ fn collect_delegated_traces<'a>(
 ) {
     for trace in traces {
         let subtrace_address = &trace.trace.trace_address;
-        if subtrace_address.starts_with(parent_trace_address) && subtrace_address.len() == parent_trace_address.len() + 1 {
+        if subtrace_address.starts_with(parent_trace_address)
+            && subtrace_address.len() == parent_trace_address.len() + 1
+        {
             delegated_traces.push(trace);
             collect_delegated_traces(traces, subtrace_address, delegated_traces);
         }

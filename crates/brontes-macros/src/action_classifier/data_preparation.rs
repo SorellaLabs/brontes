@@ -31,7 +31,13 @@ impl<'a> CallDataParsing<'a> {
         let closure = ClosureDispatch::new(logs, call_data, return_data, closure);
 
         let log_data = if logs {
-            Some(LogData::new(exchange_name, action_type, fn_call_path, log_config, include_delegated_logs))
+            Some(LogData::new(
+                exchange_name,
+                action_type,
+                fn_call_path,
+                log_config,
+                include_delegated_logs,
+            ))
         } else {
             None
         };
