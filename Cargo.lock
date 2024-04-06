@@ -1879,6 +1879,7 @@ dependencies = [
  "indoc",
  "itertools 0.11.0",
  "malachite",
+ "malachite-q",
  "once_cell",
  "parking_lot 0.12.1",
  "paste",

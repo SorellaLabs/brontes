@@ -13,7 +13,7 @@ use crate::{
         redefined_types::{malachite::*, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    rational_to_clickhouse_tuple,
+    rational_to_u256_fraction,
 };
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq, Redefined)]
@@ -45,21 +45,23 @@ pub struct ClickhouseVecNormalizedTransfer {
     pub fee:         Vec<([u8; 32], [u8; 32])>,
 }
 
-impl From<Vec<NormalizedTransfer>> for ClickhouseVecNormalizedTransfer {
-    fn from(value: Vec<NormalizedTransfer>) -> Self {
-        ClickhouseVecNormalizedTransfer {
+impl TryFrom<Vec<NormalizedTransfer>> for ClickhouseVecNormalizedTransfer {
+    type Error = eyre::Report;
+
+    fn try_from(value: Vec<NormalizedTransfer>) -> eyre::Result<Self> {
+        Ok(ClickhouseVecNormalizedTransfer {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
             from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
             to:          value.iter().map(|val| format!("{:?}", val.to)).collect(),
             token:       value.iter().map(|val| format!("{:?}", val.token)).collect(),
             amount:      value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.amount))
-                .collect(),
+                .map(|val| rational_to_u256_fraction(&val.amount))
+                .collect::<eyre::Result<Vec<_>>>()?,
             fee:         value
                 .iter()
-                .map(|val| rational_to_clickhouse_tuple(&val.fee))
-                .collect(),
-        }
+                .map(|val| rational_to_u256_fraction(&val.fee))
+                .collect::<eyre::Result<Vec<_>>>()?,
+        })
     }
 }
