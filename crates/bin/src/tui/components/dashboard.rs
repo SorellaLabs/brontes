@@ -154,7 +154,7 @@ impl Dashboard {
             Some(i) => {
                 let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                     self.mev_bundles.lock().unwrap();
-                info!("i  - len: {} {}", i, mevblocks_guard.len());
+               // info!("i  - len: {} {}", i, mevblocks_guard.len());
 
                 if mevblocks_guard.len() > 0 {
                     if i >= mevblocks_guard.len() - 1 {
@@ -198,8 +198,9 @@ impl Dashboard {
         let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> = widget.mev_bundles.lock().unwrap();
 
 
-
         let rows = mevblocks_guard.iter().map(|item| {
+            info!("token_deltas: {:?}", item.header.balance_deltas);
+
             let height = 1;
             let cells = vec![
                 item.header.block_number.to_string(),
