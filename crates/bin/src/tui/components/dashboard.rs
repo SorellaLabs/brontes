@@ -48,6 +48,12 @@ use crate::tui::{
     tui::Event,
 };
 
+use brontes_types::{
+    db::token_info::{TokenInfo, TokenInfoWithAddress},
+};
+
+
+
 #[derive(Default, Debug)]
 pub struct Dashboard {
     command_tx: Option<UnboundedSender<Action>>,
@@ -186,20 +192,38 @@ impl Dashboard {
 
         let rows = mevblocks_guard.iter().map(|item| {
             info!("MEV TYPE: {}", item.header.mev_type.to_string());
-            info!("token_deltas: {:#?}", item.header.balance_deltas);
-            info!("========================================================");
+           // info!("token_deltas: {:#?}", item.header.balance_deltas);
+           // info!("========================================================");
+
+
+
+
+            
+            let mut token_info_with_addresses: Vec<TokenInfoWithAddress> = Vec::new();
+    
+            for transaction in item.header.balance_deltas {
+                for address_delta in transaction.address_deltas {
+                    for token_delta in address_delta.token_deltas {
+                        token_info_with_addresses.push(token_delta.token.clone());
+                    }
+                }
+            }
+
+
+info!("TOKENINFOS {:#?}",token_info_with_addresses);
 
             let height = 1;
             let cells = vec![
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
-                item.data
+               /* item.data
                     .get_tokens()
                     .keys()
                     .cloned()
                     .collect::<Vec<String>>()
-                    .join(", "),
+                    .join(", "),*/
+                    token_info_with_addresses.iter().map(|x| x.inner.symbol.to_string()).collect::<Vec<String>>().join(", "),
                 item.header.eoa.to_string(),
                 item.header
                     .mev_contract
