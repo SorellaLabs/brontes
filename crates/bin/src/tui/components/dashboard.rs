@@ -201,9 +201,9 @@ impl Dashboard {
             
             let mut token_info_with_addresses: Vec<TokenInfoWithAddress> = Vec::new();
     
-            for transaction in item.header.balance_deltas {
-                for address_delta in transaction.address_deltas {
-                    for token_delta in address_delta.token_deltas {
+            for transaction in &item.header.balance_deltas {
+                for address_delta in &transaction.address_deltas {
+                    for token_delta in &address_delta.token_deltas {
                         token_info_with_addresses.push(token_delta.token.clone());
                     }
                 }
