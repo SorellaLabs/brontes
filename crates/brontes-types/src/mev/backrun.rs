@@ -101,14 +101,7 @@ impl Mev for AtomicArb {
     fn protocols(&self) -> HashSet<Protocol> {
         self.swaps.iter().map(|swap| swap.protocol).collect()
     }
-    fn get_tokens(&self) -> FastHashMap<String, Address> {
-        //TODO: get token addresses
-        let address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-        let addr: Address = Address::parse_checksummed(address, None).unwrap();
-        let mut map = new_fast_hash_map();
-        map.insert("WETH".to_string(), addr);
-        map
-    }
+
 }
 
 impl Serialize for AtomicArb {

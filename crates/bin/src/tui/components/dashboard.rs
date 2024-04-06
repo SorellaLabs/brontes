@@ -1,17 +1,19 @@
 use std::{
     borrow::BorrowMut,
-    collections::HashMap,
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     time::Duration,
 };
 
 use ansi_to_tui::IntoText;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::mev::{
-    bundle::Bundle,
-    events::{Action, TuiEvents},
-    BundleData, Mev, MevBlock,
+use brontes_types::{
+    db::token_info::{TokenInfo, TokenInfoWithAddress},
+    mev::{
+        bundle::Bundle,
+        events::{Action, TuiEvents},
+        BundleData, Mev, MevBlock,
+    },
 };
 use colored::Colorize;
 use crossterm::event::{
@@ -40,6 +42,7 @@ use tracing_subscriber::{
 use tui_logger::{self, *};
 
 use super::{Component, Frame};
+use crate::get_symbols_from_transaction_accounting;
 use crate::tui::{
     //events::{Event, EventHandler},
     app::layout,
@@ -47,13 +50,7 @@ use crate::tui::{
     config::{Config, KeyBindings},
     theme::THEME,
     tui::Event,
-    };
-
-use brontes_types::{
-    db::token_info::{TokenInfo, TokenInfoWithAddress},
 };
-use crate::get_symbols_from_transaction_accounting;
-
 
 #[derive(Default, Debug)]
 pub struct Dashboard {
@@ -192,51 +189,18 @@ impl Dashboard {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
-
-
-
-
-            let unique_symbols = get_symbols_from_transaction_accounting!(&item.header.balance_deltas);
-
-            /*
-            let mut token_info_with_addresses: Vec<TokenInfoWithAddress> = Vec::new();
-            for transaction in &item.header.balance_deltas {
-                for address_delta in &transaction.address_deltas {
-                    for token_delta in &address_delta.token_deltas {
-                        token_info_with_addresses.push(token_delta.token.clone());
-                    }
-                }
-            }
-            let mut symbols = HashSet::new();
-            let unique_symbols: Vec<String> = token_info_with_addresses.iter()
-            .filter_map(|x| {
-                let symbol = x.inner.symbol.to_string();
-                if symbols.insert(symbol.clone()) {
-                    Some(symbol)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-            let joined_symbols = unique_symbols.join(", ");
-*/
-
-//info!("TOKENINFOS {:#?}",token_info_with_addresses);
-
             let height = 1;
             let cells = vec![
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
-                unique_symbols,
-//                    token_info_with_addresses.iter().map(|x| x.inner.symbol.to_string()).collect::<Vec<String>>().join(", "),
+                get_symbols_from_transaction_accounting!(&item.header.balance_deltas),
                 item.header.eoa.to_string(),
                 item.header
                     .mev_contract
                     .as_ref()
                     .map(|address| address.to_string())
-                    .unwrap_or("None".to_string()),
+                    .unwrap_or("Address info missing from db".to_string()),
                 item.header.profit_usd.to_string(),
                 item.header.bribe_usd.to_string(),
             ]
