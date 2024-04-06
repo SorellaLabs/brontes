@@ -681,7 +681,7 @@ mod tests {
 
         for table in tables {
             intializer
-                .initialize(table, false, Some(block_range), tables_cnt)
+                .initialize(table, false, Some(block_range), tables_cnt.clone())
                 .await
                 .unwrap();
         }
