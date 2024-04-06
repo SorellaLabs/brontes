@@ -7,12 +7,14 @@ use ahash::HashSet;
 use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
 use reth_primitives::B256;
+use alloy_primitives::Address;
+
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::{db::redefined_types::primitives::*, Protocol};
+use crate::{db::redefined_types::primitives::*, Protocol,FastHashMap, new_fast_hash_map};
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
@@ -63,6 +65,16 @@ impl Mev for Liquidation {
 
         protocols
     }
+
+    fn get_tokens(&self) -> FastHashMap<String, Address> {
+        //TODO: get token addresses
+        let address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+        let addr: Address = Address::parse_checksummed(address, None).unwrap();
+        let mut map = new_fast_hash_map();
+        map.insert("WETH".to_string(), addr);
+        map
+    }
+
 }
 
 impl Serialize for Liquidation {

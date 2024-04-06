@@ -1,20 +1,20 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use malachite::Rational;
+use alloy_primitives::Address;
 use redefined::Redefined;
-use reth_primitives::{Address, B256};
+use reth_primitives::B256;
+
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
 use crate::{
-    db::{redefined_types::primitives::*, token_info::TokenInfoWithAddress},
-    normalized_actions::*,
-    ClickhouseVecGasDetails, Protocol,
+    db::redefined_types::primitives::*, new_fast_hash_map, normalized_actions::*,
+    ClickhouseVecGasDetails, FastHashMap, Protocol,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -158,6 +158,15 @@ impl Mev for Sandwich {
         });
 
         protocols
+    }
+
+    fn get_tokens(&self) -> FastHashMap<String, Address> {
+        //TODO: get token addresses
+        let address = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+        let addr: Address = Address::parse_checksummed(address, None).unwrap();
+        let mut map = new_fast_hash_map();
+        map.insert("WETH".to_string(), addr);
+        map
     }
 }
 
