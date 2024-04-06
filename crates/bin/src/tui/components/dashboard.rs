@@ -218,7 +218,10 @@ impl Dashboard {
                     None
                 }
             })
-            .collect().join(", ");
+            .collect();
+
+            let joined_symbols = unique_symbols.join(", ");
+
 
 //info!("TOKENINFOS {:#?}",token_info_with_addresses);
 
@@ -227,7 +230,7 @@ impl Dashboard {
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
-                unique_symbols,
+                joined_symbols,
 //                    token_info_with_addresses.iter().map(|x| x.inner.symbol.to_string()).collect::<Vec<String>>().join(", "),
                 item.header.eoa.to_string(),
                 item.header
