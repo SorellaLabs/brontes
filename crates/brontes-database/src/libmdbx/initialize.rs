@@ -165,14 +165,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         }
 
         let block_range_chunks = if let Some((s, e)) = block_range {
-            (s..e + 1).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
+            (s..=e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
             #[cfg(feature = "local-reth")]
             let end_block = self.tracer.best_block_number()?;
             #[cfg(not(feature = "local-reth"))]
             let end_block = self.tracer.best_block_number().await?;
 
-            (DEFAULT_START_BLOCK..end_block + 1).chunks(
+            (DEFAULT_START_BLOCK..=end_block).chunks(
                 T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
             )
         };

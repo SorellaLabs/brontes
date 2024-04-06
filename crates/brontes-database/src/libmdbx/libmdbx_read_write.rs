@@ -1007,22 +1007,20 @@ impl LibmdbxReadWriter {
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
         let tx = self.0.rw_tx()?;
         let mut range_cursor = tx.cursor_write::<InitializedState>()?;
-
         let mut block = *range.start();
 
-        while let Some(mut state) = range_cursor.next()? {
-            if state.0 != block {
+        for block in range {
+            if let Some(mut state) = range_cursor.seek_exact(block)? {
+                state.1.set(flag);
+                range_cursor.upsert(state.0, state.1)?;
+            } else {
                 let mut init_state = InitializedStateMeta::default();
                 init_state.set(flag);
                 let value = InitializedStateData::from((block, init_state));
                 range_cursor.upsert(value.key, value.value)?;
-                block += 1;
-            } else {
-                state.1.set(flag);
-                range_cursor.upsert(state.0, state.1)?;
-                block += 1;
             }
         }
+
         tx.commit()?;
 
         Ok(())
