@@ -3,6 +3,9 @@ use std::{collections::HashMap, time::Duration};
 use brontes_types::mev::events::Action;
 use clap::Parser;
 use color_eyre::eyre::Result;
+use crossterm::event::{
+    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
+};
 use malachite::strings::ToDebugString;
 use palette::convert::TryIntoColor;
 use ratatui::{prelude::*, widgets::*};
@@ -11,29 +14,26 @@ use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 use tui_textarea::{Input, Key, TextArea};
 
-
-use super::{Component, Frame};
+use super::{
+    constants::UiStyle,
+    ClickableList::{default_block, selectable_list, ClickableListState},
+    Component, Frame,
+};
 use crate::{
     cli::{Args, Commands},
-    tui::config::{Config, KeyBindings},
-    tui::tui::Event,
+    tui::{
+        config::{Config, KeyBindings},
+        tui::Event,
+    },
 };
-use crossterm::event::{
-  Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
-};
-use super::ClickableList::{selectable_list,default_block, ClickableListState};
-use super::constants::UiStyle;
 #[derive(Debug)]
 pub struct Settings {
-    command_tx: Option<UnboundedSender<Action>>,
-    config:     Config,
-    args:       Args,
+    command_tx:         Option<UnboundedSender<Action>>,
+    config:             Config,
+    args:               Args,
     pub exchange_index: Option<usize>,
-    state: SettingsState,
-
-
+    state:              SettingsState,
 }
-
 
 #[derive(Debug, Default, PartialOrd, PartialEq)]
 pub enum SettingsState {
@@ -48,31 +48,24 @@ pub enum SettingsState {
 impl SettingsState {
     pub fn next(&self) -> Self {
         match self {
-          SettingsState::StartBlock => SettingsState::EndBlock,
-          SettingsState::EndBlock => SettingsState::Inspectors,
-          SettingsState::Inspectors => SettingsState::Exchanges,
-          SettingsState::Exchanges => SettingsState::Done,
-          SettingsState::Done => SettingsState::Done,
-
+            SettingsState::StartBlock => SettingsState::EndBlock,
+            SettingsState::EndBlock => SettingsState::Inspectors,
+            SettingsState::Inspectors => SettingsState::Exchanges,
+            SettingsState::Exchanges => SettingsState::Done,
+            SettingsState::Done => SettingsState::Done,
         }
     }
-
-
 
     pub fn previous(&self) -> Self {
         match self {
-          SettingsState::StartBlock => SettingsState::StartBlock,
-          SettingsState::EndBlock => SettingsState::StartBlock,
-          SettingsState::Inspectors => SettingsState::EndBlock,
-          SettingsState::Exchanges => SettingsState::Inspectors,
-          SettingsState::Done => SettingsState::Exchanges,
-
+            SettingsState::StartBlock => SettingsState::StartBlock,
+            SettingsState::EndBlock => SettingsState::StartBlock,
+            SettingsState::Inspectors => SettingsState::EndBlock,
+            SettingsState::Exchanges => SettingsState::Inspectors,
+            SettingsState::Done => SettingsState::Exchanges,
         }
     }
 }
-
-
-
 
 /*
     pub start_block:       Option<u64>,
@@ -108,13 +101,17 @@ impl SettingsState {
 
 */
 
-
-
 impl Settings {
     pub fn new() -> Self {
         let opt = Args::parse();
         info!("args: {:?}", opt);
-        Self { command_tx: Default::default(), config: Default::default(), args: opt, exchange_index:Default::default(), state: Default::default() }
+        Self {
+            command_tx:     Default::default(),
+            config:         Default::default(),
+            args:           opt,
+            exchange_index: Default::default(),
+            state:          Default::default(),
+        }
     }
 
     fn inactivate(textarea: &mut TextArea<'_>) {
@@ -138,9 +135,11 @@ impl Settings {
                 .title(" Active "),
         );
     }
+
     pub fn set_state(&mut self, state: SettingsState) {
-      self.state = state;
-  }
+        self.state = state;
+    }
+
     fn validate(textarea: &mut TextArea) -> bool {
         if let Err(err) = textarea.lines()[0].parse::<f64>() {
             textarea.set_style(Style::default().fg(Color::LightRed));
@@ -178,130 +177,128 @@ impl Component for Settings {
         Ok(())
     }
 
-
     fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
-        //TODO: handle settings 
+        //TODO: handle settings
 
-/*
-          SettingsState::EndBlock => SettingsState::Inspectors,
-          SettingsState::Inspectors => SettingsState::Exchanges,
-          SettingsState::Exchanges => SettingsState::Done,
-          SettingsState::Done => SettingsState::Done,
+        /*
+                  SettingsState::EndBlock => SettingsState::Inspectors,
+                  SettingsState::Inspectors => SettingsState::Exchanges,
+                  SettingsState::Exchanges => SettingsState::Done,
+                  SettingsState::Done => SettingsState::Done,
 
 
-      match key.code {
-        KeyCode::Up => self.state.previous(),
-        KeyCode::Down => self.state.next(),
-        _ => {},
-/*
-        _ => {
-            match self.state {
-              SettingsState::StartBlock => match key.code {
-                    KeyCode::Enter => {
-                        self.set_state(self.state.next());
-                    }
-                    _ => {
-                       //add_text
-                       self.set_state(self.state.next());
+              match key.code {
+                KeyCode::Up => self.state.previous(),
+                KeyCode::Down => self.state.next(),
+                _ => {},
+        /*
+                _ => {
+                    match self.state {
+                      SettingsState::StartBlock => match key.code {
+                            KeyCode::Enter => {
+                                self.set_state(self.state.next());
+                            }
+                            _ => {
+                               //add_text
+                               self.set_state(self.state.next());
 
-                    }
-                },
-                SettingsState::EndBlock => match key.code {
-                    KeyCode::Enter => {
+                            }
+                        },
+                        SettingsState::EndBlock => match key.code {
+                            KeyCode::Enter => {
 
-                        self.set_state(self.state.next())
-                    }
-                    KeyCode::Backspace => {
-                      self.set_state(self.state.next());
+                                self.set_state(self.state.next())
+                            }
+                            KeyCode::Backspace => {
+                              self.set_state(self.state.next());
 
-                    }
-                    _ => {
-                      self.set_state(self.state.next());
-                    }
-                },
-                SettingsState::Inspectors => match key.code {
-                    KeyCode::Enter => self.set_state(self.state.next()),
-                    KeyCode::Backspace => {
- 
-                        self.set_state(self.state.previous());
-                    }
+                            }
+                            _ => {
+                              self.set_state(self.state.next());
+                            }
+                        },
+                        SettingsState::Inspectors => match key.code {
+                            KeyCode::Enter => self.set_state(self.state.next()),
+                            KeyCode::Backspace => {
 
-                    _ => {
-                      self.set_state(self.state.next());
+                                self.set_state(self.state.previous());
+                            }
 
-                    }
-                },
-                SettingsState::Exchanges => match key.code {
-                    KeyCode::Enter => {
-                        self.set_state(self.state.next());
-                    }
-                    KeyCode::Backspace => {
-                        self.set_state(self.state.previous());
-                    }
+                            _ => {
+                              self.set_state(self.state.next());
 
-                    _ => {
-                      self.set_state(self.state.next());
+                            }
+                        },
+                        SettingsState::Exchanges => match key.code {
+                            KeyCode::Enter => {
+                                self.set_state(self.state.next());
+                            }
+                            KeyCode::Backspace => {
+                                self.set_state(self.state.previous());
+                            }
 
-                    }
-                },
-              
-               
-                SettingsState::Done => match key.code {
-                    KeyCode::Enter => {
-                      self.set_state(self.state.next());
+                            _ => {
+                              self.set_state(self.state.next());
 
-                      /*
-                        return Some(UiCallbackPreset::GeneratePlayerTeam {
-                            name: self.team_name_textarea.lines()[0].clone(),
-                            home_planet: self.planet_ids[self.planet_index].clone(),
-                            jersey_style: self.jersey_styles[self.jersey_style_index],
-                            jersey_colors: self.get_team_colors(),
-                            players: self.selected_players.clone(),
-                            balance: self.get_remaining_balance() as u32,
-                            spaceship: self.selected_ship().clone(),
-                        });
-                        */
-                    }
-                    KeyCode::Backspace => {
-                      self.set_state(self.state.next());
+                            }
+                        },
 
-                        //self.set_index(0);
-                        //return Some(UiCallbackPreset::CancelGeneratePlayerTeam);
-                    }
-                    KeyCode::Left => {
-                      self.set_state(self.state.next());
 
-                       // self.confirm = ConfirmChoice::Yes;
-                    }
-                    KeyCode::Right => {
-                      self.set_state(self.state.next());
+                        SettingsState::Done => match key.code {
+                            KeyCode::Enter => {
+                              self.set_state(self.state.next());
 
-                     //   self.confirm = ConfirmChoice::No;
-                    }
-                    _ => {
-                      self.set_state(self.state.next());
+                              /*
+                                return Some(UiCallbackPreset::GeneratePlayerTeam {
+                                    name: self.team_name_textarea.lines()[0].clone(),
+                                    home_planet: self.planet_ids[self.planet_index].clone(),
+                                    jersey_style: self.jersey_styles[self.jersey_style_index],
+                                    jersey_colors: self.get_team_colors(),
+                                    players: self.selected_players.clone(),
+                                    balance: self.get_remaining_balance() as u32,
+                                    spaceship: self.selected_ship().clone(),
+                                });
+                                */
+                            }
+                            KeyCode::Backspace => {
+                              self.set_state(self.state.next());
 
+                                //self.set_index(0);
+                                //return Some(UiCallbackPreset::CancelGeneratePlayerTeam);
+                            }
+                            KeyCode::Left => {
+                              self.set_state(self.state.next());
+
+                               // self.confirm = ConfirmChoice::Yes;
+                            }
+                            KeyCode::Right => {
+                              self.set_state(self.state.next());
+
+                             //   self.confirm = ConfirmChoice::No;
+                            }
+                            _ => {
+                              self.set_state(self.state.next());
+
+                            }
+                        },
                     }
-                },
+                }
+        */
+
+
             }
-        }
-*/
- 
-    
+        */
+        Ok(Some(Action::Tick))
     }
-*/
-      Ok(Some(Action::Tick))
-  }
 
-  fn handle_events(&mut self, event: Option<Event>) -> Result<Option<Action>> {
-      let r = match event {
-          Some(Event::Key(key_event)) => self.handle_key_events(key_event)?,
-          Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event)?,
-          _ => None,
-      };
-      Ok(r)
-  }
-
+    fn handle_events(&mut self, event: Option<Event>) -> Result<Option<Action>> {
+        let r = match event {
+            Some(Event::Key(key_event)) => self.handle_key_events(key_event)?,
+            Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event)?,
+            _ => None,
+        };
+        Ok(r)
+    }
 
     fn update(&mut self, action: Action) -> Result<Option<Action>> {
         match action {
@@ -361,27 +358,22 @@ impl Component for Settings {
                 f.render_widget(textarea.widget(), sub_sub_layout[0]);
                 f.render_widget(textarea2.widget(), sub_sub_layout[1]);
 
-                let list = selectable_list(vec![("test1".to_string(), UiStyle::DEFAULT),("test2".to_string(), UiStyle::DEFAULT),("test3".to_string(), UiStyle::DEFAULT),("test4".to_string(), UiStyle::DEFAULT),]);
+                let list = selectable_list(vec![
+                    ("test1".to_string(), UiStyle::DEFAULT),
+                    ("test2".to_string(), UiStyle::DEFAULT),
+                    ("test3".to_string(), UiStyle::DEFAULT),
+                    ("test4".to_string(), UiStyle::DEFAULT),
+                ]);
 
                 let mut constraints = vec![Constraint::Length(10)].repeat(2);
-                let rect = Rect {
-                  x: 4,
-                  y: 8,
-                  width:20,
-                  height: 20,
-              };
+                let rect = Rect { x: 4, y: 8, width: 20, height: 20 };
                 let split = Layout::vertical(constraints).split(rect);
-
 
                 f.render_stateful_widget(
                     list.block(default_block().title("Exchanges")),
                     split[1],
                     &mut ClickableListState::default().with_selected(self.exchange_index),
                 );
-
-
-
-
             }
             _ => {}
         }

@@ -10,19 +10,23 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{
+    db::metadata::Metadata,
+    mev::{
+        events::{Action, TuiEvents},
+        MevBlock,
+    },
+    normalized_actions::Actions,
+    tree::BlockTree,
+};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
+//tui related
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
 use crate::Processor;
-
-//tui related
-use tokio::sync::mpsc::UnboundedSender;
-use brontes_types::mev::{MevBlock,events::TuiEvents};
-use brontes_types::mev::events::Action;
-
 
 pub struct TipInspector<
     T: TracingProvider,
@@ -52,7 +56,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         tui_tx: UnboundedSender<Action>,
-
     ) -> Self {
         Self {
             back_from_tip,
@@ -125,7 +128,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             self.inspectors,
             tree.into(),
             meta.into(),
-            self.tui_tx.clone()
+            self.tui_tx.clone(),
         )));
     }
 }

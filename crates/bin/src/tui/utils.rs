@@ -5,8 +5,9 @@ use directories::ProjectDirs;
 use lazy_static::lazy_static;
 use tracing::error;
 use tracing_error::ErrorLayer;
-use tracing_subscriber::{self, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Layer};
-
+use tracing_subscriber::{
+    self, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Layer,
+};
 
 lazy_static! {
   pub static ref PROJECT_NAME: String = env!("CARGO_CRATE_NAME").to_uppercase().to_string();
@@ -23,85 +24,90 @@ lazy_static! {
 }
 
 fn project_directory() -> Option<ProjectDirs> {
-  ProjectDirs::from("com", "sorellalabs", env!("CARGO_PKG_NAME"))
+    ProjectDirs::from("com", "sorellalabs", env!("CARGO_PKG_NAME"))
 }
 
 pub fn initialize_panic_handler() -> Result<()> {
-  let (panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default()
-    .panic_section(format!("This is a bug. Consider reporting it at {}", env!("CARGO_PKG_REPOSITORY")))
-    .capture_span_trace_by_default(false)
-    .display_location_section(false)
-    .display_env_section(false)
-    .into_hooks();
-  eyre_hook.install()?;
-  std::panic::set_hook(Box::new(move |panic_info| {
-    if let Ok(mut t) = crate::tui::tui::Tui::new() {
-      if let Err(r) = t.exit() {
-        error!("Unable to exit Terminal: {:?}", r);
-      }
-    }
+    let (panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default()
+        .panic_section(format!(
+            "This is a bug. Consider reporting it at {}",
+            env!("CARGO_PKG_REPOSITORY")
+        ))
+        .capture_span_trace_by_default(false)
+        .display_location_section(false)
+        .display_env_section(false)
+        .into_hooks();
+    eyre_hook.install()?;
+    std::panic::set_hook(Box::new(move |panic_info| {
+        if let Ok(mut t) = crate::tui::tui::Tui::new() {
+            if let Err(r) = t.exit() {
+                error!("Unable to exit Terminal: {:?}", r);
+            }
+        }
 
+        let msg = format!("{}", panic_hook.panic_report(panic_info));
+        log::error!("Error: {}", strip_ansi_escapes::strip_str(msg));
 
-    let msg = format!("{}", panic_hook.panic_report(panic_info));
-    log::error!("Error: {}", strip_ansi_escapes::strip_str(msg));
+        #[cfg(debug_assertions)]
+        {
+            // Better Panic stacktrace that is only enabled when debugging.
+            better_panic::Settings::auto()
+                .most_recent_first(false)
+                .lineno_suffix(true)
+                .verbosity(better_panic::Verbosity::Full)
+                .create_panic_handler()(panic_info);
+        }
 
-    #[cfg(debug_assertions)]
-    {
-      // Better Panic stacktrace that is only enabled when debugging.
-      better_panic::Settings::auto()
-        .most_recent_first(false)
-        .lineno_suffix(true)
-        .verbosity(better_panic::Verbosity::Full)
-        .create_panic_handler()(panic_info);
-    }
-
-    std::process::exit(libc::EXIT_FAILURE);
-  }));
-  Ok(())
+        std::process::exit(libc::EXIT_FAILURE);
+    }));
+    Ok(())
 }
 
 pub fn get_data_dir() -> PathBuf {
-  let directory = if let Some(s) = DATA_FOLDER.clone() {
-    s
-  } else if let Some(proj_dirs) = project_directory() {
-    proj_dirs.data_local_dir().to_path_buf()
-  } else {
-    PathBuf::from(".").join(".data")
-  };
-  directory
+    let directory = if let Some(s) = DATA_FOLDER.clone() {
+        s
+    } else if let Some(proj_dirs) = project_directory() {
+        proj_dirs.data_local_dir().to_path_buf()
+    } else {
+        PathBuf::from(".").join(".data")
+    };
+    directory
 }
 
 pub fn get_config_dir() -> PathBuf {
-  let directory = if let Some(s) = CONFIG_FOLDER.clone() {
-    s
-  } else if let Some(proj_dirs) = project_directory() {
-    proj_dirs.config_local_dir().to_path_buf()
-  } else {
-    PathBuf::from(".").join("config")
-  };
-  directory
+    let directory = if let Some(s) = CONFIG_FOLDER.clone() {
+        s
+    } else if let Some(proj_dirs) = project_directory() {
+        proj_dirs.config_local_dir().to_path_buf()
+    } else {
+        PathBuf::from(".").join("config")
+    };
+    directory
 }
 
 pub fn initialize_logging() -> Result<()> {
-  let directory = get_data_dir();
-  std::fs::create_dir_all(directory.clone())?;
-  let log_path = directory.join(LOG_FILE.clone());
-  let log_file = std::fs::File::create(log_path)?;
-  std::env::set_var(
-    "RUST_LOG",
-    std::env::var("RUST_LOG")
-      .or_else(|_| std::env::var(LOG_ENV.clone()))
-      .unwrap_or_else(|_| format!("{}=info", env!("CARGO_CRATE_NAME"))),
-  );
-  let file_subscriber = tracing_subscriber::fmt::layer()
-    .with_file(true)
-    .with_line_number(true)
-    .with_writer(log_file)
-    .with_target(false)
-    .with_ansi(false)
-    .with_filter(tracing_subscriber::filter::EnvFilter::from_default_env());
-  tracing_subscriber::registry().with(file_subscriber).with(ErrorLayer::default()).init();
-  Ok(())
+    let directory = get_data_dir();
+    std::fs::create_dir_all(directory.clone())?;
+    let log_path = directory.join(LOG_FILE.clone());
+    let log_file = std::fs::File::create(log_path)?;
+    std::env::set_var(
+        "RUST_LOG",
+        std::env::var("RUST_LOG")
+            .or_else(|_| std::env::var(LOG_ENV.clone()))
+            .unwrap_or_else(|_| format!("{}=info", env!("CARGO_CRATE_NAME"))),
+    );
+    let file_subscriber = tracing_subscriber::fmt::layer()
+        .with_file(true)
+        .with_line_number(true)
+        .with_writer(log_file)
+        .with_target(false)
+        .with_ansi(false)
+        .with_filter(tracing_subscriber::filter::EnvFilter::from_default_env());
+    tracing_subscriber::registry()
+        .with(file_subscriber)
+        .with(ErrorLayer::default())
+        .init();
+    Ok(())
 }
 
 /// Similar to the `std::dbg!` macro, but generates `tracing` events rather
@@ -143,7 +149,8 @@ macro_rules! get_symbols_from_transaction_accounting {
             }
         }
         let mut symbols = HashSet::new();
-        let unique_symbols: Vec<String> = token_info_with_addresses.iter()
+        let unique_symbols: Vec<String> = token_info_with_addresses
+            .iter()
             .filter_map(|x| {
                 let symbol = x.inner.symbol.to_string();
                 if symbols.insert(symbol.clone()) {

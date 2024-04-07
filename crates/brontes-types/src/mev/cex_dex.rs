@@ -3,13 +3,12 @@ use std::{fmt, fmt::Debug};
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use alloy_primitives::U256;
+use alloy_primitives::{Address, U256};
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
-use alloy_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -21,14 +20,14 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
-    Protocol, ToFloatNearest,FastHashMap
+    FastHashMap, Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
+    new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
-    new_fast_hash_map
 };
 
 #[serde_as]
@@ -67,9 +66,6 @@ impl Mev for CexDex {
     fn protocols(&self) -> HashSet<Protocol> {
         self.swaps.iter().map(|swap| swap.protocol).collect()
     }
-
-
-
 }
 
 impl Serialize for CexDex {

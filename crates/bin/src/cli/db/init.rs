@@ -100,17 +100,17 @@ impl Init {
                     #[cfg(feature = "cex-dex-markout")]
                     tables.retain(|t| !matches!(t, Tables::CexPrice));
 
-                   // TODO:remove progress bar
-/*
-                    let multi = MultiProgress::default();
-                    let tables_with_progress = Arc::new(
-                        tables
-                            .clone()
-                            .into_iter()
-                            .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                            .collect_vec(),
-                    );
-*/
+                    // TODO:remove progress bar
+                    /*
+                                        let multi = MultiProgress::default();
+                                        let tables_with_progress = Arc::new(
+                                            tables
+                                                .clone()
+                                                .into_iter()
+                                                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                                                .collect_vec(),
+                                        );
+                    */
                     libmdbx
                         .initialize_tables(
                             clickhouse,

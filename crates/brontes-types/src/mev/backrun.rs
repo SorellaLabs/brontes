@@ -6,12 +6,11 @@ use std::{
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
+use alloy_primitives::Address;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
-use alloy_primitives::Address;
-
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -19,10 +18,9 @@ use serde_with::serde_as;
 use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::B256Redefined,
+    new_fast_hash_map,
     normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined},
-    GasDetails, Protocol,
-    FastHashMap,
-    new_fast_hash_map
+    FastHashMap, GasDetails, Protocol,
 };
 
 #[serde_as]
@@ -99,7 +97,6 @@ impl Mev for AtomicArb {
     fn protocols(&self) -> HashSet<Protocol> {
         self.swaps.iter().map(|swap| swap.protocol).collect()
     }
-
 }
 
 impl Serialize for AtomicArb {

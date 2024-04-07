@@ -49,11 +49,11 @@ use utils::{
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
-use crate::{discovery::DiscoveryInspector, Inspector};
-
 //tui related
-use brontes_types::mev::events::{Action,TuiEvents};
+use brontes_types::mev::events::{Action, TuiEvents};
 use tokio::sync::mpsc::UnboundedSender;
+
+use crate::{discovery::DiscoveryInspector, Inspector};
 //use brontes_types::mev::events::TuiEvents;
 
 #[derive(Debug)]
@@ -68,7 +68,7 @@ pub fn compose_mev_results(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
-    tui_tx: UnboundedSender<Action>
+    tui_tx: UnboundedSender<Action>,
 ) -> ComposerResults {
     let (possible_mev_txes, classified_mev) =
         run_inspectors(orchestra, tree.clone(), metadata.clone());
@@ -76,7 +76,7 @@ pub fn compose_mev_results(
     let possible_arbs = possible_mev_txes.clone();
 
     let (block_details, mev_details) =
-        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev,tui_tx );
+        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, tui_tx);
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
@@ -123,7 +123,7 @@ fn on_orchestra_resolution(
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
-    tui_tx: UnboundedSender<Action>
+    tui_tx: UnboundedSender<Action>,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
@@ -145,22 +145,23 @@ fn on_orchestra_resolution(
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
+    tui_tx
+        .send(Action::Tui(TuiEvents::MevBlockMetricReceived((header.clone()))))
+        .map_err(|e| {
+            use tracing::info;
 
-    tui_tx.send(Action::Tui(TuiEvents::MevBlockMetricReceived((header.clone())))).map_err(|e| {
-        use tracing::info;
-    
-        //info!("Failed to send: {}", e);
-        info!("Failed to send: {}", e);
-    });
-    
-    tui_tx.send(Action::Tui(TuiEvents::MevBundleEventReceived((filtered_bundles.clone())))).map_err(|e| {
-        use tracing::info;
-    
-        //info!("Failed to send: {}", e);
-        info!("Failed to send: {}", e);
-    });
-    
+            //info!("Failed to send: {}", e);
+            info!("Failed to send: {}", e);
+        });
 
+    tui_tx
+        .send(Action::Tui(TuiEvents::MevBundleEventReceived((filtered_bundles.clone()))))
+        .map_err(|e| {
+            use tracing::info;
+
+            //info!("Failed to send: {}", e);
+            info!("Failed to send: {}", e);
+        });
 
     (header, filtered_bundles)
 }

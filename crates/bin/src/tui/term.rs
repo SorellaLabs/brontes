@@ -3,18 +3,18 @@ use std::{
     ops::{Deref, DerefMut},
     time::Duration,
 };
-//use anyhow::{Context, Result};
-use eyre::{Context, Error, Result}; //
 
 use crossterm::{
     event::{self, Event},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+//use anyhow::{Context, Result};
+use eyre::{Context, Error, Result}; //
 use ratatui::prelude::*;
 
-/// A wrapper around the terminal that handles setting up and tearing down the terminal
-/// and provides a helper method to read events from the terminal.
+/// A wrapper around the terminal that handles setting up and tearing down the
+/// terminal and provides a helper method to read events from the terminal.
 #[derive(Debug)]
 pub struct Term {
     terminal: Terminal<CrosstermBackend<Stdout>>,
@@ -55,6 +55,7 @@ impl Term {
 
 impl Deref for Term {
     type Target = Terminal<CrosstermBackend<Stdout>>;
+
     fn deref(&self) -> &Self::Target {
         &self.terminal
     }

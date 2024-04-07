@@ -3,9 +3,10 @@ use ratatui::{prelude::*, widgets::*};
 
 /// A widget that renders a color swatch of RGB colors.
 ///
-/// The widget is rendered as a rectangle with the hue changing along the x-axis from 0.0 to 360.0
-/// and the value changing along the y-axis (from 1.0 to 0.0). Each pixel is rendered as a block
-/// character with the top half slightly lighter than the bottom half.
+/// The widget is rendered as a rectangle with the hue changing along the x-axis
+/// from 0.0 to 360.0 and the value changing along the y-axis (from 1.0 to 0.0).
+/// Each pixel is rendered as a block character with the top half slightly
+/// lighter than the bottom half.
 pub struct RgbSwatch;
 
 impl Widget for RgbSwatch {

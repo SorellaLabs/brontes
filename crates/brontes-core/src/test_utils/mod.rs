@@ -107,13 +107,13 @@ impl TraceLoader {
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         let multi = MultiProgress::default();
         /*
-        let tables = Arc::new(
-            Tables::ALL
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                .collect_vec(),
-        );
-*/
+                let tables = Arc::new(
+                    Tables::ALL
+                        .into_iter()
+                        .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                        .collect_vec(),
+                );
+        */
         self.libmdbx
             .initialize_tables(
                 clickhouse,
@@ -387,7 +387,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                     ],
                     false,
                     None,
-                 //   tables,
+                    //   tables,
                 )
                 .await
                 .unwrap();
@@ -419,7 +419,7 @@ pub fn init_tracing() {
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
     let layers = vec![brontes_tracing::stdout(directive)];
 
-    brontes_tracing::init(layers,false);
+    brontes_tracing::init(layers, false);
 }
 
 #[cfg(feature = "local-reth")]

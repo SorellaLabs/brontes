@@ -42,10 +42,6 @@ use self::shared::{
 };
 use crate::cli::static_object;
 
-
-
-
-
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
 
@@ -106,8 +102,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         end_block: u64,
         //progress_bar: Option<ProgressBar>,
-        //tables_pb: Arc<Vec<(Tables, ProgressBar)>>,        
-        tui_tx : UnboundedSender<Action>,
+        //tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
+        tui_tx: UnboundedSender<Action>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -133,7 +129,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             move |(batch_id, (start_block, end_block))| {
                 let executor = executor.clone();
                 //let prgrs_bar = progress_bar.clone();
-               // let tables_pb = tables_pb.clone();
+                // let tables_pb = tables_pb.clone();
                 let tui_tx = tui_tx.clone();
                 #[allow(clippy::async_yields_async)]
                 async move {
@@ -151,7 +147,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         self.libmdbx,
                         self.inspectors,
                         //prgrs_bar,
-                        tui_tx
+                        tui_tx,
                     )
                 }
             },
@@ -175,7 +171,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             self.libmdbx,
             self.inspectors,
             tui_tx,
-
         )
     }
 
@@ -357,52 +352,51 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let futures = FuturesUnordered::new();
 
         /*
-        let progress_bar = if self.start_block.is_some() && had_end_block {
-            let total_blocks = end_block - self.start_block.unwrap();
-            let progress_bar = ProgressBar::with_draw_target(
-                Some(total_blocks),
-                ProgressDrawTarget::stderr_with_hz(1),
-            );
-            progress_bar.set_style(
-                ProgressStyle::with_template(
-                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
-                     ({percent}%) | ETA: {eta}",
-                )?
-                .progress_chars("█>-")
-                .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                    write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
-                })
-                .with_key(
-                    "percent",
-                    |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                        write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
-                    },
-                ),
-            );
-            progress_bar.set_message("Processing blocks:");
-            Some(progress_bar)
-        } else {
-            None
-        };
-*/
+                let progress_bar = if self.start_block.is_some() && had_end_block {
+                    let total_blocks = end_block - self.start_block.unwrap();
+                    let progress_bar = ProgressBar::with_draw_target(
+                        Some(total_blocks),
+                        ProgressDrawTarget::stderr_with_hz(1),
+                    );
+                    progress_bar.set_style(
+                        ProgressStyle::with_template(
+                            "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
+                             ({percent}%) | ETA: {eta}",
+                        )?
+                        .progress_chars("█>-")
+                        .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                            write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+                        })
+                        .with_key(
+                            "percent",
+                            |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                                write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                            },
+                        ),
+                    );
+                    progress_bar.set_message("Processing blocks:");
+                    Some(progress_bar)
+                } else {
+                    None
+                };
+        */
         let mut tables = Tables::ALL.to_vec();
         #[cfg(not(feature = "cex-dex-markout"))]
         tables.retain(|t| !matches!(t, Tables::CexTrades));
         #[cfg(feature = "cex-dex-markout")]
         tables.retain(|t| !matches!(t, Tables::CexPrice));
 
+        // TODO:remove progress bar
+        /*
 
-                   // TODO:remove progress bar
-/*
-
-        let multi = MultiProgress::default();
-        let tables_with_progress = Arc::new(
-            tables
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                .collect_vec(),
-        );
-*/
+                let multi = MultiProgress::default();
+                let tables_with_progress = Arc::new(
+                    tables
+                        .into_iter()
+                        .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                        .collect_vec(),
+                );
+        */
         if had_end_block && self.start_block.is_some() {
             self.build_range_executors(
                 executor.clone(),
@@ -428,9 +422,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 self.build_range_executors(
                     executor.clone(),
                     end_block,
-                   // progress_bar.clone(),
+                    // progress_bar.clone(),
                     //tables_with_progress,
-                    tui_tx.clone()
+                    tui_tx.clone(),
                 )
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -445,7 +439,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             }
 
             let tip_inspector =
-                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip,tui_tx);
+                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip, tui_tx);
 
             futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                 "Tip Inspector",
@@ -466,7 +460,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
         self.verify_database_fetch_missing().await?;
-        let build_future = self.build_internal(executor.clone(), had_end_block, end_block,app_tx);
+        let build_future = self.build_internal(executor.clone(), had_end_block, end_block, app_tx);
 
         pin_mut!(build_future, shutdown);
         tokio::select! {
@@ -487,7 +481,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 }
 
 pub struct Brontes {
-    futures:      FuturesUnordered<JoinHandle<()>>,
+    futures: FuturesUnordered<JoinHandle<()>>,
     //progress_bar: Option<ProgressBar>,
 }
 

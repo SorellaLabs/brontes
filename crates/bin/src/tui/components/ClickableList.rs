@@ -6,12 +6,10 @@ use ratatui::{
     layout::{Corner, Rect},
     style::{Style, Styled},
     text::{Span, Text},
-    widgets::{Block, HighlightSpacing, StatefulWidget, Widget,Borders, BorderType,List, Paragraph},
-
+    widgets::{
+        Block, BorderType, Borders, HighlightSpacing, List, Paragraph, StatefulWidget, Widget,
+    },
 };
-
-
-
 use unicode_width::UnicodeWidthStr;
 
 use super::constants::{PrintableKeyCode, UiKey, UiStyle};
@@ -357,7 +355,6 @@ pub fn selectable_list<'a>(options: Vec<(String, Style)>) -> ClickableList<'a> {
         .highlight_style(UiStyle::SELECTED)
         .hovering_style(UiStyle::HIGHLIGHT)
 }
-
 
 pub fn default_block() -> Block<'static> {
     Block::default()

@@ -52,8 +52,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         tables: &[Tables],
         clear_tables: bool,
-        block_range: Option<(u64, u64)>, // inclusive of start only
-        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        block_range: Option<(u64, u64)>, /* inclusive of start only
+                                          *progress_bar: Arc<Vec<(Tables, ProgressBar)>>, */
     ) -> eyre::Result<()> {
         let critical_table_count = tables
             .iter()
@@ -61,14 +61,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .filter(|f| *f)
             .count();
 
-/*
-        let critical_state_progress_bar =
-            Self::build_critical_state_progress_bar(critical_table_count as u64);
-*/
+        /*
+                let critical_state_progress_bar =
+                    Self::build_critical_state_progress_bar(critical_table_count as u64);
+        */
         futures::stream::iter(tables.to_vec())
             .map(|table| {
                 //let progress_bar = progress_bar.clone();
-               // let critical_state_progress_bar = critical_state_progress_bar.clone();
+                // let critical_state_progress_bar = critical_state_progress_bar.clone();
                 async move {
                     table
                         .initialize_table(
@@ -103,7 +103,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         join_all(tables.iter().map(|table| {
-            //table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+            //table.initialize_table_arbitrary_state(self, block_range,
+            // progress_bar.clone())
             table.initialize_table_arbitrary_state(self, block_range)
         }))
         .await
@@ -123,7 +124,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
         clear_table: bool,
-       // progress_bar: ProgressBar,
+        // progress_bar: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -162,7 +163,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_table: bool,
         mark_init: Option<u8>,
         cex_table_flag: bool,
-
         //pb: ProgressBar,
     ) -> eyre::Result<()>
     where
@@ -300,7 +300,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + 'static,
     {
         let entries = block_range.len();
-      //  pb.inc_length(entries as u64);
+        //  pb.inc_length(entries as u64);
 
         let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
 
@@ -698,17 +698,17 @@ mod tests {
 
         let multi = MultiProgress::default();
         /*
-        let tables_cnt = Arc::new(
-            Tables::ALL
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
-                .collect_vec(),
-        );
-*/
+                let tables_cnt = Arc::new(
+                    Tables::ALL
+                        .into_iter()
+                        .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                        .collect_vec(),
+                );
+        */
         intializer
-        //.initialize(&tables, false, Some(block_range), tables_cnt)
-        .initialize(&tables, false, Some(block_range))
-        .await
+            //.initialize(&tables, false, Some(block_range), tables_cnt)
+            .initialize(&tables, false, Some(block_range))
+            .await
             .unwrap();
 
         // TokenDecimals

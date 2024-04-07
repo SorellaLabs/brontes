@@ -19,9 +19,9 @@ use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
+    new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
-    new_fast_hash_map
 };
 
 #[serde_as]

@@ -2,21 +2,20 @@ use std::fmt::Debug;
 
 use ::serde::ser::Serializer;
 use ahash::{HashSet, HashSetExt};
+use alloy_primitives::Address;
 use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
-use alloy_primitives::Address;
 
 use crate::{
     db::redefined_types::primitives::*,
     mev::{Mev, MevType},
+    new_fast_hash_map,
     normalized_actions::*,
-    Protocol,
-    FastHashMap,
-    new_fast_hash_map
+    FastHashMap, Protocol,
 };
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::NormalizedTransfer, GasDetails};
@@ -55,7 +54,6 @@ impl Mev for SearcherTx {
     fn protocols(&self) -> HashSet<Protocol> {
         HashSet::new()
     }
-
 }
 
 impl Serialize for SearcherTx {

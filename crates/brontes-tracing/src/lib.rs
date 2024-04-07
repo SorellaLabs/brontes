@@ -5,17 +5,8 @@ use tracing_subscriber::{filter::Directive, prelude::*, registry::LookupSpan, *}
 pub type BoxedLayer<S> = Box<dyn Layer<S> + Send + Sync>;
 
 /// Initializes a new [Subscriber] based on the given layers.
-pub fn init(layers: Vec<BoxedLayer<Registry>>,tui:bool) {
-    if tui {
-        let _ = tracing_subscriber::registry()
-        .with(tui_logger::tracing_subscriber_layer())
-        .try_init();
-    }else{
-        let _ = tracing_subscriber::registry()
-        .with(layers)
-        .try_init();
-    }
-
+pub fn init(layers: Vec<BoxedLayer<Registry>>) {
+    let _ = tracing_subscriber::registry().with(layers).try_init();
 }
 /// Builds a new tracing layer that writes to stdout.
 pub fn stdout<S>(directive: impl Into<Directive>) -> BoxedLayer<S>
