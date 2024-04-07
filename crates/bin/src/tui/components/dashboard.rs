@@ -21,13 +21,8 @@ use ratatui::{
     text::Line,
     widgets::{ScrollbarState, *},
 };
-use tokio::sync::{
-    mpsc::{UnboundedSender},
-};
+use tokio::sync::mpsc::{UnboundedSender};
 use tracing::info;
-use tracing_subscriber::{
-    Layer,
-};
 use tui_logger::{self, *};
 
 use super::{Component, Frame};
