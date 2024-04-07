@@ -269,7 +269,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if msg.block > self.current_block {
                 tracing::info!(block=%msg.block,"no pricing");
                 self.current_block = msg.block;
-                self.completed_block = msg.block;
+                self.completed_block = msg.block + 1;
             }
         }
 
