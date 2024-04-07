@@ -14,7 +14,9 @@ use brontes_types::{
         cex_trades::{CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{InitializedStateMeta, CEX_FLAG, META_FLAG, TRACE_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, META_FLAG, TRACE_FLAG,
+        },
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -49,7 +51,8 @@ pub const NUM_TABLES: usize = 15;
 
 macro_rules! tables {
     ($($table:ident),*) => {
-        #[derive(Debug, PartialEq, Copy, Clone)]
+        #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+        #[repr(u8)]
         /// Default tables that should be present inside database.
         pub enum Tables {
             $(
@@ -120,21 +123,15 @@ macro_rules! tables {
 }
 
 impl Tables {
-    pub(crate) fn is_critical_init(&self) -> bool {
-        matches!(
-            self,
-            Self::PoolCreationBlocks
-                | Self::AddressToProtocolInfo
-                | Self::TokenDecimals
-                | Self::Builder
-                | Self::AddressMeta,
-        )
-    }
-
-    pub fn build_init_state_progress_bar(&self, multi_progress_bar: &MultiProgress) -> ProgressBar {
-        let progress_bar =
-            ProgressBar::with_draw_target(Some(0), ProgressDrawTarget::stderr_with_hz(5));
-
+    pub fn build_init_state_progress_bar(
+        &self,
+        multi_progress_bar: &MultiProgress,
+        blocks_to_init: u64,
+    ) -> ProgressBar {
+        let progress_bar = ProgressBar::with_draw_target(
+            Some(blocks_to_init),
+            ProgressDrawTarget::stderr_with_hz(50),
+        );
         progress_bar.set_style(
             ProgressStyle::with_template(
                 "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len} ({percent}%)",
@@ -149,8 +146,51 @@ impl Tables {
             ),
         );
         progress_bar.set_message(format!("{}", self));
-
         multi_progress_bar.add(progress_bar)
+    }
+
+    pub(crate) async fn initialize_full_range_table<T: TracingProvider, CH: ClickhouseHandle>(
+        &self,
+        initializer: &LibmdbxInitializer<T, CH>,
+        crit_progress: ProgressBar,
+    ) -> eyre::Result<()> {
+        match self {
+            Tables::TokenDecimals => {
+                initializer
+                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
+                        true,
+                        crit_progress,
+                    )
+                    .await
+            }
+            Tables::AddressToProtocolInfo => {
+                initializer
+                    .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
+                        true,
+                        crit_progress,
+                    )
+                    .await
+            }
+            Tables::PoolCreationBlocks => {
+                initializer
+                    .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
+                        true,
+                        crit_progress,
+                    )
+                    .await
+            }
+            Tables::Builder => {
+                initializer
+                    .clickhouse_init_no_args::<Builder, BuilderData>(true, crit_progress)
+                    .await
+            }
+            Tables::AddressMeta => {
+                initializer
+                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(true, crit_progress)
+                    .await
+            }
+            _ => unimplemented!("{:?} isn't a full range table", self),
+        }
     }
 
     pub(crate) async fn initialize_table<T: TracingProvider, CH: ClickhouseHandle>(
@@ -158,40 +198,15 @@ impl Tables {
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: Option<(u64, u64)>,
         clear_table: bool,
-        crit_progress: Option<ProgressBar>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         match self {
-            Tables::TokenDecimals => {
-                initializer
-                    .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
-                        clear_table,
-                        crit_progress.unwrap(),
-                    )
-                    .await
-            }
-            Tables::AddressToProtocolInfo => {
-                initializer
-                    .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
-                        clear_table,
-                        crit_progress.unwrap(),
-                    )
-                    .await
-            }
-            Tables::PoolCreationBlocks => {
-                initializer
-                    .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
-                        clear_table,
-                        crit_progress.unwrap(),
-                    )
-                    .await
-            }
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
-                        Some(CEX_FLAG),
+                        Some(CEX_QUOTES_FLAG),
                         true,
                         progress_bar
                             .iter()
@@ -199,7 +214,8 @@ impl Tables {
                             .cloned()
                             .unwrap(),
                     )
-                    .await
+                    .await?;
+                Ok(())
             }
             Tables::BlockInfo => {
                 initializer
@@ -232,22 +248,6 @@ impl Tables {
                     )
                     .await
             }
-            Tables::Builder => {
-                initializer
-                    .clickhouse_init_no_args::<Builder, BuilderData>(
-                        clear_table,
-                        crit_progress.unwrap(),
-                    )
-                    .await
-            }
-            Tables::AddressMeta => {
-                initializer
-                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(
-                        clear_table,
-                        crit_progress.unwrap(),
-                    )
-                    .await
-            }
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
@@ -256,7 +256,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
                         block_range,
                         clear_table,
-                        Some(CEX_FLAG),
+                        Some(CEX_TRADES_FLAG),
                         true,
                         progress_bar
                             .iter()
@@ -265,6 +265,7 @@ impl Tables {
                     )
                     .await
             }
+            _ => unimplemented!("'initialize_table' not implemented for {:?}", self),
         }
     }
 
@@ -297,7 +298,7 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
-                        Some(CEX_FLAG),
+                        Some(CEX_QUOTES_FLAG),
                         true,
                         progress_bar
                             .iter()
@@ -350,7 +351,7 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
                         block_range,
-                        Some(CEX_FLAG),
+                        Some(CEX_TRADES_FLAG),
                         true,
                         progress_bar
                             .iter()
@@ -655,7 +656,7 @@ compressed_table!(
         compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(3_500),
+            init_size: Some(100),
             init_method: Clickhouse,
             http_endpoint: Some("cex-price")
         },
@@ -674,7 +675,7 @@ compressed_table!(
             compressed_value: BlockMetadataInnerRedefined
         },
         Init {
-            init_size: Some(500_000),
+            init_size: Some(1000),
             init_method: Clickhouse,
             http_endpoint: Some("block-info")
         },
@@ -768,7 +769,7 @@ compressed_table!(
             compressed_value: TxTracesInnerRedefined
         },
         Init {
-            init_size: Some(50_000),
+            init_size: Some(1000),
             init_method: Clickhouse,
             http_endpoint: Some("tx-traces")
         },
@@ -881,7 +882,7 @@ compressed_table!(
         compressed_value: CexTradeMapRedefined
         },
         Init {
-            init_size: Some(3_500),
+            init_size: Some(100),
             init_method: Clickhouse,
             http_endpoint: None
         },

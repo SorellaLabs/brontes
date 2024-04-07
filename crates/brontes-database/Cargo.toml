@@ -47,7 +47,7 @@ polars.workspace = true
 arrow.workspace = true
 parquet = { workspace = true, features = ["async"] }
 
-
+ahash = "0.8.11"
 # numbers
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
