@@ -1,3 +1,4 @@
+extern crate proc_macro;
 pub mod accounting;
 pub mod aggregator;
 pub mod batch;
@@ -34,6 +35,12 @@ use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
     TreeSearchBuilder,
 };
+use syn::parse_macro_input;
+
+
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, DeriveInput, Data, Fields};
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn is_classified(&self) -> bool;
@@ -331,7 +338,7 @@ impl Actions {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }
 
-    pub const fn is_swap_no_fee(&self) -> bool {
+    pub const fn (&self) -> bool {
         matches!(self, Actions::Swap(_))
     }
 
@@ -344,7 +351,7 @@ impl Actions {
     }
 
     pub const fn is_aggregator(&self) -> bool {
-        matches!(self, Actions::Aggregator(_))
+        matches!(self, Actions::Aggregatois_swap_no_feer(_))
     }
 
     pub const fn is_liquidation(&self) -> bool {
@@ -524,4 +531,86 @@ impl TokenAccounting for Actions {
             Actions::Revert => (), // No token deltas to apply for a revert
         }
     }
+}
+
+
+#[proc_macro_derive(ActiUtils)]
+pub fn brontes_actions(input: TokenStream) -> TokenStream {
+    
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = input.ident;
+    let variants = match input.data {
+        Data::Enum(data_enum) => data_enum.variants,
+        _ => panic!("BrontesActions can only be used with enums"),
+    };
+
+    let mut checks = Vec::new();
+    let mut functions = Vec::new();
+
+    for variant in variants {
+        let ident = &variant.ident;
+       
+        let func_name = syn::Ident::new(&format!("is_{}", ident.to_string().to_lowercase().as_str().to_snake_case()), ident.span());
+
+        let try_name = syn::Ident::new(&format!("try_{}", ident.to_string().to_lowercase().as_str().to_snake_case()), ident.span());
+        let try_name_mut = syn::Ident::new(&format!("try_{}_mut", ident.to_string().to_lowercase().as_str().to_snake_case()), ident.span());
+        let try_name_ref = syn::Ident::new(&format!("try_{}_ref", ident.to_string().to_lowercase().as_str().to_snake_case()), ident.span());
+        let try_name_dedup = syn::Ident::new(&format!("try_{}_dedup", ident.to_string().to_lowercase().as_str().to_snake_case()), ident.span());
+
+        checks.push(quote! {
+            pub const fn #func_name(&self) -> bool {
+                if #func_name.to_string() == "is_swap".to_string(){
+                    matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
+                }else if #func_name.to_string() == "is_swap_no_fee".to_string(){
+                    matches!(self, Actions::Swap(_))
+                }
+                matches!(self, #name::#ident(_))
+            }
+        });
+
+        functions.push(quote! {
+            pub fn #try_name(&self) -> Option<Self> {
+                if let #name::#ident(ref inner) = self {
+                    Some(inner)
+                } else {
+                    None
+                }
+            }
+        });
+        functions.push(quote! {
+            pub fn #try_name_mut(&self) -> Option<&mut Self> {
+                if let #name::#ident(ref inner) = self {
+                    Some(inner)
+                } else {
+                    None
+                }
+            }
+        });
+        functions.push(quote! {
+            pub fn #try_name_ref(&self) -> Option<&Self> {
+                if let #name::#ident(ref inner) = self {
+                    Some(inner)
+                } else {
+                    None
+                }
+            }
+        });
+        functions.push(quote! {
+            pub fn #try_name_dedup(&self) -> Box<dyn Fn(Actions) -> Option<$ret>> {
+                Box::new(#name::#try_name)
+                        as Box<dyn Fn(Actions) -> Option<$ret>>
+        }
+    });
+    
+}
+    let gen = quote! {
+        use to_snake_case::ToSnakeCase;
+        impl #name {
+            #(#checks)*
+            #(#functions)*
+        }
+    };
+
+    gen.into()
 }
