@@ -550,7 +550,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 })
                 .collect_vec();
 
-            self.requery_bad_state_par(failed_queries)
+            self.requery_bad_state_par(failed_queries, false)
         }
     }
 
@@ -623,7 +623,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             })
             .collect_vec();
 
-        self.requery_bad_state_par(requery);
+        self.requery_bad_state_par(requery, true);
     }
 
     /// Requeries the state of subgraphs for given pairs that encountered issues
@@ -638,7 +638,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
-    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>) {
+    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>, frayed_ext: bool) {
         if pairs.is_empty() {
             return
         }
@@ -676,8 +676,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     extends_pair,
                     block,
                     edges,
-                    true,
+                    frayed_ext,
                 ) else {
+                    tracing::info!("returning");
                     return;
                 };
                 tracing::info!("added subgraph");
