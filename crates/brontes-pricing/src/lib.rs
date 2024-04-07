@@ -534,7 +534,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
             self.graph_manager
-                .remove_pair_graph_address(pool_address, pool_pair);
+                .remove_pair_graph_address(pool_pair,pool_address);
 
             let failed_queries = deps
                 .into_iter()
