@@ -24,7 +24,7 @@ action_impl!(
     Protocol::BalancerV2,
     crate::IGeneralPool::onSwap_0Call,
     Swap,
-    [..],
+    [],
     call_data: true,
     return_data: true,
     |info: CallInfo, call_data: onSwap_0Call, return_data: onSwap_0Return, db: &DB| {
@@ -53,7 +53,7 @@ action_impl!(
     Protocol::BalancerV2,
     crate::IMinimalSwapInfoPool::onSwap_1Call,
     Swap,
-    [..],
+    [],
     call_data: true,
     return_data: true,
     |info: CallInfo, call_data: onSwap_1Call, return_data: onSwap_1Return, db: &DB| {
@@ -103,7 +103,7 @@ action_impl!(
     Protocol::BalancerV2,
     crate::BalancerV2Vault::flashLoanCall,
     FlashLoan,
-    [..FlashLoan*],
+    [],
     call_data: true,
     |info: CallInfo, call_data: flashLoanCall, db: &DB| {
         let (assets, amounts): (Vec<TokenInfoWithAddress>, Vec<Rational>) = call_data.tokens
@@ -139,7 +139,7 @@ action_impl!(
     Protocol::BalancerV2,
     crate::BalancerV2Vault::joinPoolCall,
     Mint,
-    [..PoolBalanceChanged],
+    [PoolBalanceChanged],
     call_data: true,
     logs: true,
     |info: CallInfo, call_data: joinPoolCall, log_data: BalancerV2JoinPoolCallLogs, db: &DB| {
@@ -162,7 +162,7 @@ action_impl!(
     Protocol::BalancerV2,
     crate::BalancerV2Vault::exitPoolCall,
     Burn,
-    [..PoolBalanceChanged],
+    [PoolBalanceChanged],
     call_data: true,
     logs: true,
     |info: CallInfo, call_data: exitPoolCall, log_data: BalancerV2ExitPoolCallLogs, db: &DB| {
@@ -185,7 +185,7 @@ action_impl!(
     Protocol::BalancerV2,
     crate::BalancerV2Vault::registerPoolCall,
     NewPool,
-    [..PoolRegistered],
+    [PoolRegistered],
     logs: true,
     |info: CallInfo, log_data: BalancerV2RegisterPoolCallLogs, _| {
         let logs = log_data.pool_registered_field?;
@@ -203,7 +203,7 @@ action_impl!(
     Protocol::BalancerV2,
     crate::BalancerV2Vault::registerTokensCall,
     PoolConfigUpdate,
-    [..TokensRegistered],
+    [TokensRegistered],
     logs: true,
     |info: CallInfo, log_data: BalancerV2RegisterTokensCallLogs, _| {
         let logs = log_data.tokens_registered_field?;
