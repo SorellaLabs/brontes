@@ -76,7 +76,7 @@ impl InitializedStateMeta {
 
     #[inline(always)]
     pub fn is_initialized(&self, flag: u8) -> bool {
-        (self.0 & flag) == 1
+        (self.0 & flag) == flag
     }
 }
 
