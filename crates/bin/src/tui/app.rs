@@ -308,7 +308,7 @@ impl App {
                 break;
             }
         }
-        tui.exit()?;
+        // tui.exit()?;
         Ok(())
     }
 
