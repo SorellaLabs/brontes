@@ -107,8 +107,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.subgraph_verifier.all_pairs()
     }
 
-    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: Pair) {
-        self.subgraph_verifier.pool_dep_failure(pair, &goes_through);
+    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: Pair) -> Pair {
+        self.subgraph_verifier.pool_dep_failure(pair, &goes_through)
     }
 
     pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {

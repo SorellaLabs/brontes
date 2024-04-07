@@ -528,14 +528,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else if let LoadResult::Err {
-            block,
-            pool_address,
-            pool_pair,
-            protocol,
-            deps,
-            full_pair,
-        } = load_result
+        } else if let LoadResult::Err { block, pool_address, pool_pair, protocol, deps, .. } =
+            load_result
         {
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
@@ -543,13 +537,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let failed_queries = deps
                 .into_iter()
                 .map(|(pair, goes_through)| {
+                    let full_pair = self.graph_manager.pool_dep_failure(pair, goes_through);
                     tracing::info!(?pair, ?goes_through, ?full_pair, "failed state query dep");
-                    self.graph_manager.pool_dep_failure(pair, goes_through);
                     RequeryPairs {
-                        full_pair,
-                        block,
-                        goes_through,
                         pair,
+                        full_pair,
+                        goes_through,
+                        block,
                         frayed_ends: Default::default(),
                         ignore_state: Default::default(),
                     }
