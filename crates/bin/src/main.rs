@@ -73,7 +73,7 @@ fn init_tracing(tui: bool) {
         .server_addr((std::net::Ipv4Addr::LOCALHOST, 6668))
         .spawn();
     if !tui {
-        let layers = vec![];
+        let layers = vec![Box::new(console)];
         brontes_tracing::init(layers, true);
     } else {
         let verbosity_level = Level::INFO;
