@@ -281,8 +281,9 @@ impl PairSubGraph {
     pub fn fetch_price<T: ProtocolState>(
         &self,
         edge_state: &FastHashMap<Address, T>,
+        must_go_through_pool: Option<Address>,
     ) -> Option<Rational> {
-        dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), edge_state)
+        self.dijkstra_path(edge_state, must_go_through_pool)
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -369,9 +370,7 @@ impl PairSubGraph {
 
         self.prune_subgraph_rundown(edges);
 
-        let disjoint =
-            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
-                .is_none();
+        let disjoint = self.dijkstra_path(&state, None).is_none();
 
         VerificationOutcome {
             should_requery: false,
@@ -395,9 +394,7 @@ impl PairSubGraph {
 
         self.prune_subgraph(&result.removal_state);
 
-        let disjoint =
-            dijkstra_path(&self.graph, self.start_node.into(), self.end_node.into(), &state)
-                .is_none();
+        let disjoint = self.dijkstra_path(&state, None).is_none();
 
         tracing::debug!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
 
@@ -665,6 +662,127 @@ impl PairSubGraph {
 
         frayed_ends
     }
+
+    pub fn dijkstra_path<T>(
+        &self,
+        state: &FastHashMap<Address, T>,
+        must_go_through_pool: Option<Address>,
+    ) -> Option<Rational>
+    where
+        T: ProtocolState,
+    {
+        let graph = &self.graph;
+        let start: NodeIndex<u16> = self.start_node.into();
+        let goal: NodeIndex<u16> = self.end_node.into();
+
+        let mut visited = graph.visit_map();
+        let mut scores = FastHashMap::default();
+        let mut node_price = FastHashMap::default();
+        let mut visit_next = BinaryHeap::new();
+        let zero_score = Rational::ZERO;
+        scores.insert(start, zero_score.clone());
+        visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
+
+        let mut has_gone_through_pool = must_go_through_pool.is_none();
+
+        while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
+            if visited.is_visited(&node) {
+                continue
+            }
+
+            if goal == node {
+                break
+            }
+
+            for edge in graph.edges(node) {
+                let edge_weight = edge.weight();
+
+                let ensure_only_gt_pool = if !has_gone_through_pool {
+                    // if not pair, then con't
+                    let w = edge_weight.first().unwrap();
+                    if w.get_pair().ordered() != self.must_go_through.ordered() {
+                        continue
+                    }
+                    has_gone_through_pool = true;
+                    true
+                } else {
+                    false
+                };
+
+                let next = edge.target();
+                if visited.is_visited(&next) {
+                    continue
+                }
+
+                let mut pxw = Rational::ZERO;
+                let mut weight = Rational::ZERO;
+                let mut token_0_am = Rational::ZERO;
+                let mut token_1_am = Rational::ZERO;
+
+                // calculate tvl of pool using the start token as the quote
+
+                for info in edge_weight {
+                    // if we are only looking for pricing through a specific pool for the first hop
+                    // and we don't find it. we continue
+                    if ensure_only_gt_pool
+                        && must_go_through_pool.as_ref().unwrap() != &info.pool_addr
+                    {
+                        continue
+                    }
+
+                    let Some(pool_state) = state.get(&info.pool_addr) else {
+                        continue;
+                    };
+
+                    let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
+                        continue;
+                    };
+
+                    let (t0, t1) = pool_state.tvl(info.get_base_token());
+
+                    let t0xt1 = &t0 * &t1;
+                    pxw += pool_price * &t0xt1;
+                    weight += t0xt1;
+
+                    token_0_am += t0;
+                    token_1_am += t1;
+                }
+
+                if weight == Rational::ZERO {
+                    continue
+                }
+
+                let local_weighted_price = pxw / weight;
+                let token_0_priced = token_0_am * price.clone().reciprocal();
+                let new_price = &price * local_weighted_price;
+                let token_1_priced = token_1_am * new_price.clone().reciprocal();
+                let tvl = token_0_priced + token_1_priced;
+                let next_score = &node_score + tvl.reciprocal();
+
+                match scores.entry(next) {
+                    Occupied(ent) => {
+                        if next_score < *ent.get() {
+                            *ent.into_mut() = next_score.clone();
+                            visit_next.push(MinScored(next_score, (next, new_price.clone())));
+                            node_price.insert(next, new_price);
+                        }
+                    }
+                    Vacant(ent) => {
+                        ent.insert(next_score.clone());
+                        visit_next.push(MinScored(next_score, (next, new_price.clone())));
+                        node_price.insert(next, new_price);
+                    }
+                }
+            }
+            visited.visit(node);
+        }
+
+        if !has_gone_through_pool {
+            tracing::debug!(?self.complete_pair, "has gone through pool was never triggered");
+        }
+
+        node_price.remove(&goal)
+    }
 }
 
 fn add_edge(
@@ -695,97 +813,6 @@ fn add_edge(
     weights.push(new_edge);
 
     true
-}
-
-pub fn dijkstra_path<T>(
-    graph: &DiGraph<(), Vec<SubGraphEdge>, u16>,
-    start: NodeIndex<u16>,
-    goal: NodeIndex<u16>,
-    state: &FastHashMap<Address, T>,
-) -> Option<Rational>
-where
-    T: ProtocolState,
-{
-    let mut visited = graph.visit_map();
-    let mut scores = FastHashMap::default();
-    let mut node_price = FastHashMap::default();
-    let mut visit_next = BinaryHeap::new();
-    let zero_score = Rational::ZERO;
-    scores.insert(start, zero_score.clone());
-    visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
-
-    while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
-        if visited.is_visited(&node) {
-            continue
-        }
-
-        if goal == node {
-            break
-        }
-
-        for edge in graph.edges(node) {
-            let next = edge.target();
-            if visited.is_visited(&next) {
-                continue
-            }
-
-            let mut pxw = Rational::ZERO;
-            let mut weight = Rational::ZERO;
-            let mut token_0_am = Rational::ZERO;
-            let mut token_1_am = Rational::ZERO;
-
-            // calculate tvl of pool using the start token as the quote
-            let edge_weight = edge.weight();
-
-            for info in edge_weight {
-                let Some(pool_state) = state.get(&info.pool_addr) else {
-                    continue;
-                };
-
-                let Ok(pool_price) = pool_state.price(info.get_base_token()) else {
-                    continue;
-                };
-
-                let (t0, t1) = pool_state.tvl(info.get_base_token());
-
-                let t0xt1 = &t0 * &t1;
-                pxw += pool_price * &t0xt1;
-                weight += t0xt1;
-
-                token_0_am += t0;
-                token_1_am += t1;
-            }
-
-            if weight == Rational::ZERO {
-                continue
-            }
-
-            let local_weighted_price = pxw / weight;
-            let token_0_priced = token_0_am * price.clone().reciprocal();
-            let new_price = &price * local_weighted_price;
-            let token_1_priced = token_1_am * new_price.clone().reciprocal();
-            let tvl = token_0_priced + token_1_priced;
-            let next_score = &node_score + tvl.reciprocal();
-
-            match scores.entry(next) {
-                Occupied(ent) => {
-                    if next_score < *ent.get() {
-                        *ent.into_mut() = next_score.clone();
-                        visit_next.push(MinScored(next_score, (next, new_price.clone())));
-                        node_price.insert(next, new_price);
-                    }
-                }
-                Vacant(ent) => {
-                    ent.insert(next_score.clone());
-                    visit_next.push(MinScored(next_score, (next, new_price.clone())));
-                    node_price.insert(next, new_price);
-                }
-            }
-        }
-        visited.visit(node);
-    }
-
-    node_price.remove(&goal)
 }
 
 /// `MinScored<K, T>` holds a score `K` and a scored object `T` in
@@ -938,7 +965,7 @@ pub mod test {
         state_map.insert(t3, e3_price);
 
         // (t4 / t0) = 10 * 20 * 1 /500 * 1/52 = 1/130
-        let price = graph.fetch_price(&state_map).unwrap();
+        let price = graph.fetch_price(&state_map, None).unwrap();
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
     }

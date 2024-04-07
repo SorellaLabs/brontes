@@ -2,7 +2,7 @@ use brontes_types::{
     normalized_actions::{Actions, NormalizedSwapWithFee},
     tree::BlockTree,
     unzip_either::IterExt,
-    TreeSearchBuilder,
+    TreeCollector, TreeSearchBuilder,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 
@@ -21,22 +21,32 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
         |span, data| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
                 .into_iter()
-                .filter_map(|action| {
-                    let data = data.get_ref(action.data)?;
-                    if data.is_swap() {
-                        return Some((Some((action.data, data.clone())), None))
-                    } else if data.is_transfer() {
-                        return Some((None, Some((action.data, data.clone()))))
+                .filter_map(|action| Some((action.data, data.get_ref(action.data)?)))
+                .filter_map(|(idx, data)| {
+                    let (mut swaps, mut transfers, mut eth_transfers): (Vec<_>, Vec<_>, Vec<_>) =
+                        data.clone().into_iter().split_actions((
+                            Actions::try_swap,
+                            Actions::try_transfer,
+                            Actions::try_eth_transfer,
+                        ));
+
+                    if !swaps.is_empty() {
+                        return Some((
+                            Some(((swaps.pop().unwrap(), eth_transfers.pop()), idx)),
+                            None,
+                        ))
+                    } else if !transfers.is_empty() {
+                        return Some((
+                            None,
+                            Some(((transfers.pop().unwrap(), eth_transfers.pop()), idx)),
+                        ))
                     }
                     None
                 })
                 .unzip_either();
 
-            for (swap_idx, node) in swaps {
-                transfers.iter_mut().for_each(|(_, transfer)| {
-                    let mut swap = node.clone().force_swap();
-                    let transfer = transfer.force_transfer_mut();
-
+            for ((mut swap, eth_transfer), swap_idx) in swaps {
+                transfers.iter_mut().for_each(|((transfer, _), _)| {
                     if transfer.fee == Rational::ZERO {
                         return
                     }
@@ -52,11 +62,16 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         // will be with fee.
                         swap.amount_out -= &transfer.fee;
 
-                        let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
-                            swap,
+                        let mut swap = vec![Actions::SwapWithFee(NormalizedSwapWithFee {
+                            swap: swap.clone(),
                             fee_amount,
                             fee_token: transfer.token.clone(),
-                        });
+                        })];
+
+                        if let Some(eth_t) = eth_transfer.clone() {
+                            swap.push(Actions::EthTransfer(eth_t));
+                        }
+
                         data.replace(swap_idx, swap);
                     }
                     // adjust the amount in case
@@ -67,11 +82,14 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         let fee_amount = transfer.fee.clone();
                         // swap amount in will be the amount without fee.
                         swap.amount_in += &transfer.fee;
-                        let swap = Actions::SwapWithFee(NormalizedSwapWithFee {
-                            swap,
+                        let mut swap = vec![Actions::SwapWithFee(NormalizedSwapWithFee {
+                            swap: swap.clone(),
                             fee_amount,
                             fee_token: transfer.token.clone(),
-                        });
+                        })];
+                        if let Some(eth_t) = eth_transfer.clone() {
+                            swap.push(Actions::EthTransfer(eth_t));
+                        }
                         data.replace(swap_idx, swap);
                         return
                     }
@@ -100,36 +118,4 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     //         })
     //     },
     // );
-}
-
-#[cfg(test)]
-mod test {
-    use std::sync::Arc;
-
-    use brontes_types::{normalized_actions::Actions, TreeSearchBuilder};
-    use hex_literal::hex;
-
-    use crate::test_utils::ClassifierTestUtils;
-
-    /// 7 total swaps but 1 is tax token
-    #[brontes_macros::test]
-    async fn test_filter_tax_tokens() {
-        let utils = ClassifierTestUtils::new().await;
-        let tree = Arc::new(
-            utils
-                .build_tree_tx(
-                    hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-                )
-                .await
-                .unwrap(),
-        );
-
-        let swaps = tree
-            .collect(
-                &hex!("8ea5ea6de313e466483f863071461992b3ea3278e037513b0ad9b6a29a4429c1").into(),
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
-            )
-            .collect::<Vec<_>>();
-        assert!(swaps.len() == 6, "didn't filter tax token");
-    }
 }

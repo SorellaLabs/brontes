@@ -1,15 +1,23 @@
-use std::{cmp::max, fmt::Debug};
+#[cfg(not(feature = "cex-dex-markout"))]
+use std::cmp::max;
+use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
+#[cfg(not(feature = "cex-dex-markout"))]
+use brontes_types::db::raw_cex_quotes::{CexQuotesConverter, RawCexQuotes};
+#[cfg(feature = "cex-dex-markout")]
+use brontes_types::db::raw_cex_trades::{CexTradesConverter, RawCexTrades};
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::db::{block_times::BlockTimes, cex_symbols::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
-        builder::{BuilderInfo, BuilderInfoWithAddress, BuilderStats, BuilderStatsWithAddress},
+        builder::{BuilderInfo, BuilderInfoWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         normalized_actions::TransactionRoot,
-        searcher::{JoinedSearcherInfo, SearcherInfo, SearcherStats, SearcherStatsWithAddress},
+        searcher::{JoinedSearcherInfo, SearcherInfo},
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, BundleData, MevBlock},
@@ -24,26 +32,33 @@ use db_interfaces::{
 use futures::future::join_all;
 use serde::Deserialize;
 
-use super::{dbms::*, ClickhouseHandle};
+#[cfg(not(feature = "cex-dex-markout"))]
+use super::RAW_CEX_QUOTES;
+#[cfg(feature = "cex-dex-markout")]
+use super::RAW_CEX_TRADES;
+use super::{cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle};
+#[cfg(feature = "local-clickhouse")]
+use super::{BLOCK_TIMES, CEX_SYMBOLS};
+#[cfg(feature = "local-clickhouse")]
+use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
+#[cfg(not(feature = "cex-dex-markout"))]
+use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
-    clickhouse::const_sql::{BLOCK_INFO, CEX_PRICE},
-    libmdbx::{
-        determine_eth_prices,
-        tables::{BlockInfoData, CexPriceData},
-        types::LibmdbxData,
-    },
+    clickhouse::const_sql::BLOCK_INFO,
+    libmdbx::{tables::BlockInfoData, types::LibmdbxData},
     CompressedTable,
 };
 
 #[derive(Default)]
 pub struct Clickhouse {
-    client: ClickhouseClient<BrontesClickhouseTables>,
+    client:              ClickhouseClient<BrontesClickhouseTables>,
+    cex_download_config: CexDownloadConfig,
 }
 
 impl Clickhouse {
-    pub fn new(config: ClickhouseConfig) -> Self {
+    pub fn new(config: ClickhouseConfig, cex_download_config: CexDownloadConfig) -> Self {
         let client = ClickhouseClient::new(config);
-        Self { client }
+        Self { client, cex_download_config }
     }
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
@@ -86,20 +101,6 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn write_searcher_stats(
-        &self,
-        searcher_eoa: Address,
-        searcher_stats: SearcherStats,
-    ) -> eyre::Result<()> {
-        let stats = SearcherStatsWithAddress::new_with_address(searcher_eoa, searcher_stats);
-
-        self.client
-            .insert_one::<ClickhouseSearcherStats>(&stats)
-            .await?;
-
-        Ok(())
-    }
-
     pub async fn write_builder_info(
         &self,
         builder_eoa: Address,
@@ -109,20 +110,6 @@ impl Clickhouse {
 
         self.client
             .insert_one::<ClickhouseBuilderInfo>(&info)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn write_builder_stats(
-        &self,
-        builder_eoa: Address,
-        builder_stats: BuilderStats,
-    ) -> eyre::Result<()> {
-        let stats = BuilderStatsWithAddress::new_with_address(builder_eoa, builder_stats);
-
-        self.client
-            .insert_one::<ClickhouseBuilderStats>(&stats)
             .await?;
 
         Ok(())
@@ -197,7 +184,7 @@ impl Clickhouse {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
-            .map(|root| root.into())
+            .map(|root| (root, tree.header.number).into())
             .collect::<Vec<_>>();
 
         self.client.insert_many::<ClickhouseTree>(&roots).await?;
@@ -256,35 +243,57 @@ impl ClickhouseHandle for Clickhouse {
         let block_meta = self
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-            .await?
+            .await
+            .unwrap()
             .value;
 
-        let cex_quotes = self
-            .client
-            .query_one::<CexPriceData, _>(CEX_PRICE, &(block_num))
-            .await?
-            .value;
+        #[cfg(not(feature = "cex-dex-markout"))]
+        {
+            tracing::info!("not markout");
+            let mut cex_quotes_for_block = self
+                .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+                .await?;
 
-        let eth_prices = determine_eth_prices(&cex_quotes);
+            let cex_quotes = cex_quotes_for_block.remove(0);
+            let eth_prices = determine_eth_prices(&cex_quotes.value);
 
-        Ok(BlockMetadata::new(
-            block_num,
-            block_meta.block_hash,
-            block_meta.block_timestamp,
-            block_meta.relay_timestamp,
-            block_meta.p2p_timestamp,
-            block_meta.proposer_fee_recipient,
-            block_meta.proposer_mev_reward,
-            max(eth_prices.price.0, eth_prices.price.1),
-            block_meta.private_flow.into_iter().collect(),
-        )
-        .into_metadata(
-            cex_quotes,
-            None,
-            None,
-            #[cfg(feature = "cex-dex-markout")]
-            None,
-        ))
+            Ok(BlockMetadata::new(
+                block_num,
+                block_meta.block_hash,
+                block_meta.block_timestamp,
+                block_meta.relay_timestamp,
+                block_meta.p2p_timestamp,
+                block_meta.proposer_fee_recipient,
+                block_meta.proposer_mev_reward,
+                max(eth_prices.price.0, eth_prices.price.1),
+                block_meta.private_flow.into_iter().collect(),
+            )
+            .into_metadata(cex_quotes.value, None, None))
+        }
+
+        #[cfg(feature = "cex-dex-markout")]
+        {
+            tracing::info!("markout");
+            let cex_trades = self
+                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num))
+                .await
+                .unwrap()
+                .remove(0)
+                .value;
+
+            Ok(BlockMetadata::new(
+                block_num,
+                block_meta.block_hash,
+                block_meta.block_timestamp,
+                block_meta.relay_timestamp,
+                block_meta.p2p_timestamp,
+                block_meta.proposer_fee_recipient,
+                block_meta.proposer_mev_reward,
+                Default::default(),
+                block_meta.private_flow.into_iter().collect(),
+            )
+            .into_metadata(Default::default(), None, None, Some(cex_trades)))
+        }
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
@@ -341,6 +350,198 @@ impl ClickhouseHandle for Clickhouse {
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
         &self.client
     }
+
+    #[cfg(not(feature = "cex-dex-markout"))]
+    async fn get_cex_prices(
+        &self,
+        range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> eyre::Result<Vec<crate::CexPriceData>> {
+        let block_times: Vec<BlockTimes> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(s, e) => {
+                self.client.query_many(BLOCK_TIMES, &(s, e)).await?
+            }
+            CexRangeOrArbitrary::Arbitrary(vals) => {
+                let mut query = BLOCK_TIMES.to_string();
+
+                query = query.replace(
+                    "block_number >= ? AND block_number < ?",
+                    &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
+                );
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        if block_times.is_empty() {
+            return Ok(vec![])
+        }
+
+        let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
+
+        let exchanges_str = self
+            .cex_download_config
+            .clone()
+            .exchanges_to_use
+            .into_iter()
+            .map(|s| s.to_clickhouse_filter().to_string())
+            .collect::<Vec<_>>()
+            .join(" OR ");
+
+        let data: Vec<RawCexQuotes> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(..) => {
+                let start_time = block_times
+                    .iter()
+                    .min_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap()
+                    - self.cex_download_config.time_window.0 * 1000000;
+
+                let end_time = block_times
+                    .iter()
+                    .max_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap()
+                    + self.cex_download_config.time_window.1 * 1000000;
+
+                let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
+
+                self.client
+                    .query_many(query, &(start_time, end_time))
+                    .await?
+            }
+            CexRangeOrArbitrary::Arbitrary(_) => {
+                let mut query = RAW_CEX_QUOTES.to_string();
+
+                let query_mod = block_times
+                    .iter()
+                    .map(|b| {
+                        b.convert_to_timestamp_query(
+                            self.cex_download_config.time_window.0 * 1000000,
+                            self.cex_download_config.time_window.1 * 1000000,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" OR ");
+
+                query = query.replace(
+                    "timestamp >= ? AND timestamp < ?",
+                    &format!("({query_mod}) AND ({exchanges_str})"),
+                );
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        let price_converter = CexQuotesConverter::new(
+            block_times,
+            symbols,
+            data,
+            self.cex_download_config.time_window,
+        );
+        let prices: Vec<CexPriceData> = price_converter
+            .convert_to_prices()
+            .into_iter()
+            .map(|(block_num, price_map)| CexPriceData::new(block_num, price_map))
+            .collect();
+
+        Ok(prices)
+    }
+
+    #[cfg(feature = "cex-dex-markout")]
+    async fn get_cex_trades(
+        &self,
+        range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> eyre::Result<Vec<crate::CexTradesData>> {
+        let block_times: Vec<BlockTimes> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(s, e) => {
+                self.client.query_many(BLOCK_TIMES, &(s, e)).await?
+            }
+            CexRangeOrArbitrary::Arbitrary(vals) => {
+                let mut query = BLOCK_TIMES.to_string();
+
+                query = query.replace(
+                    "block_number >= ? AND block_number < ?",
+                    &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
+                );
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        if block_times.is_empty() {
+            return Ok(vec![])
+        }
+
+        let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
+
+        let exchanges_str = self
+            .cex_download_config
+            .clone()
+            .exchanges_to_use
+            .into_iter()
+            .map(|s| s.to_clickhouse_filter().to_string())
+            .collect::<Vec<_>>()
+            .join(" OR ");
+
+        let data: Vec<RawCexTrades> = match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(..) => {
+                let start_time = block_times
+                    .iter()
+                    .min_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap()
+                    - self.cex_download_config.time_window.0 * 1000000;
+
+                let end_time = block_times
+                    .iter()
+                    .max_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap()
+                    + self.cex_download_config.time_window.1 * 1000000;
+
+                let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
+
+                self.client
+                    .query_many(query, &(start_time, end_time))
+                    .await?
+            }
+            CexRangeOrArbitrary::Arbitrary(_) => {
+                let mut query = RAW_CEX_TRADES.to_string();
+
+                let query_mod = block_times
+                    .iter()
+                    .map(|b| {
+                        b.convert_to_timestamp_query(
+                            self.cex_download_config.time_window.0 * 1000000,
+                            self.cex_download_config.time_window.1 * 1000000,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" OR ");
+
+                query = query.replace(
+                    "timestamp >= ? AND timestamp < ?",
+                    &format!("({query_mod}) AND ({exchanges_str})"),
+                );
+
+                self.client.query_many(query, &()).await?
+            }
+        };
+
+        let trades_converter = CexTradesConverter::new(
+            block_times,
+            symbols,
+            data,
+            self.cex_download_config.time_window,
+        );
+        let trades: Vec<crate::CexTradesData> = trades_converter
+            .convert_to_trades()
+            .into_iter()
+            .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
+            .collect();
+
+        Ok(trades)
+    }
 }
 
 #[cfg(test)]
@@ -355,7 +556,7 @@ mod tests {
         init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
-            MevType, PossibleMev, PossibleMevCollection, Sandwich,
+            PossibleMev, PossibleMevCollection, Sandwich,
         },
         normalized_actions::{
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
@@ -389,13 +590,17 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    #[allow(unused)]
     async fn searcher_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = JoinedSearcherInfo {
             address:         Default::default(),
             fund:            Default::default(),
-            mev:             vec![MevType::default()],
+            mev:             Default::default(),
             builder:         Some(Default::default()),
             eoa_or_contract: SearcherEoaContract::Contract,
+            config_labels:   Default::default(),
+            pnl:             Default::default(),
+            gas_bids:        Default::default(),
         };
 
         db.insert_one::<ClickhouseSearcherInfo>(&case0)
@@ -429,7 +634,10 @@ mod tests {
     //     assert_eq!(queried, case0);
     // }
 
-    async fn builder_stats(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    #[allow(unused)]
+    async fn builder_stats(_db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+        todo!();
+        /*
         let case0 = BuilderStatsWithAddress::default();
 
         db.insert_one::<ClickhouseBuilderStats>(&case0)
@@ -440,6 +648,7 @@ mod tests {
         let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
 
         assert_eq!(queried, case0);
+        */
     }
 
     async fn dex_price_mapping(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
@@ -596,7 +805,7 @@ mod tests {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
-            .map(|root| root.into())
+            .map(|root| (root, tree.header.number).into())
             .collect::<Vec<_>>();
 
         db.insert_many::<ClickhouseTree>(&roots).await.unwrap();
@@ -615,10 +824,10 @@ mod tests {
         cex_dex(database).await;
         mev_block(database).await;
         dex_price_mapping(database).await;
-        builder_stats(database).await;
+        // builder_stats(database).await;
         // searcher_stats(database).await;
         token_info(database).await;
-        searcher_info(database).await;
+        // searcher_info(database).await;
         tree(database).await;
     }
 

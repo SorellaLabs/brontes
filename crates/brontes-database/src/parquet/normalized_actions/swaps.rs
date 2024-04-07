@@ -1,7 +1,7 @@
 use arrow::{
     array::{
-        ArrayBuilder, Decimal128Builder, Float64Builder, ListArray, ListBuilder, StringBuilder,
-        StructBuilder, UInt16Builder,
+        ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
+        UInt16Builder,
     },
     datatypes::{DataType, Field},
 };
@@ -54,19 +54,29 @@ pub fn get_normalized_swap_list_array(
                 .append_value(swap.token_out.address.to_string());
 
             struct_builder
-                .field_builder::<Float64Builder>(7)
+                .field_builder::<StringBuilder>(7)
+                .unwrap()
+                .append_value(&swap.token_in.symbol);
+
+            struct_builder
+                .field_builder::<StringBuilder>(8)
+                .unwrap()
+                .append_value(&swap.token_out.symbol);
+
+            struct_builder
+                .field_builder::<Float64Builder>(9)
                 .unwrap()
                 .append_value(swap.amount_in.clone().to_float());
 
             struct_builder
-                .field_builder::<Float64Builder>(8)
+                .field_builder::<Float64Builder>(10)
                 .unwrap()
                 .append_value(swap.amount_out.clone().to_float());
 
             struct_builder
-                .field_builder::<Decimal128Builder>(9)
+                .field_builder::<StringBuilder>(11)
                 .unwrap()
-                .append_value(swap.msg_value.to());
+                .append_value(swap.msg_value.to_string());
 
             struct_builder.append(true);
         }
@@ -86,9 +96,11 @@ fn fields() -> Vec<Field> {
         Field::new("pool", DataType::Utf8, false),
         Field::new("token_in", DataType::Utf8, false),
         Field::new("token_out", DataType::Utf8, false),
+        Field::new("token_in_symbol", DataType::Utf8, false),
+        Field::new("token_out_symbol", DataType::Utf8, false),
         Field::new("amount_in", DataType::Float64, false),
         Field::new("amount_out", DataType::Float64, false),
-        Field::new("msg_value", DataType::Decimal128(38, 10), false),
+        Field::new("msg_value", DataType::Utf8, false),
     ]
 }
 
@@ -101,8 +113,10 @@ fn struct_builder() -> Vec<Box<dyn ArrayBuilder>> {
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
         Box::new(StringBuilder::new()),
+        Box::new(StringBuilder::new()),
+        Box::new(StringBuilder::new()),
         Box::new(Float64Builder::new()),
         Box::new(Float64Builder::new()),
-        Box::new(Decimal128Builder::new()),
+        Box::new(StringBuilder::new()),
     ]
 }

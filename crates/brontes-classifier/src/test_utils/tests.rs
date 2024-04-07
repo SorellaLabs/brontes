@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use alloy_primitives::{Address, TxHash, U256};
+use alloy_primitives::{Address, TxHash};
 use brontes_core::{
     decoding::TracingProvider, BlockTracesWithHeaderAnd, TraceLoader, TraceLoaderError,
     TxTracesWithHeaderAnd,
@@ -23,14 +23,12 @@ use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfo, dex::DexQuotes, token_info::TokenInfoWithAddress,
     },
-    normalized_actions::{pool::NormalizedNewPool, NormalizedSwap},
-    pair::Pair,
+    normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
     FastHashMap, TreeSearchBuilder,
 };
 use futures::{future::join_all, StreamExt};
-use malachite::{num::basic::traits::Zero, Rational};
 use reth_db::DatabaseError;
 use reth_rpc_types::trace::parity::Action;
 use serde_json::Value;
@@ -124,10 +122,7 @@ impl ClassifierTestUtils {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
 
-        let tx_roots = self
-            .classifier
-            .build_all_tx_trees(vec![trace], &header)
-            .await;
+        let tx_roots = self.classifier.build_tx_trees(vec![trace], &header).await;
 
         let mut tree = BlockTree::new(header, tx_roots.len());
 
@@ -150,7 +145,7 @@ impl ClassifierTestUtils {
                 .map(|data| async move {
                     let tx_roots = self
                         .classifier
-                        .build_all_tx_trees(data.traces, &data.header)
+                        .build_tx_trees(data.traces, &data.header)
                         .await;
 
                     let mut tree = BlockTree::new(data.header, tx_roots.len());
@@ -198,19 +193,15 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let _tree = classifier.build_block_tree(traces, header, true).await;
 
-        needs_tokens
-            .iter()
-            .zip(vec![quote_asset].into_iter().cycle())
-            .map(|(token, quote)| Pair(*token, quote))
-            .for_each(|pair| {
-                let update = DexPriceMsg::Update(PoolUpdate {
-                    block,
-                    tx_idx: 0,
-                    logs: vec![],
-                    action: make_fake_swap(pair),
-                });
-                tx.send(update).unwrap();
+        needs_tokens.iter().for_each(|token| {
+            let update = DexPriceMsg::Update(PoolUpdate {
+                block,
+                tx_idx: 0,
+                logs: vec![],
+                action: make_fake_transfer(*token),
             });
+            tx.send(update).unwrap();
+        });
         let (ctr, pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         classifier.close();
         ctr.store(true, SeqCst);
@@ -260,19 +251,15 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let _tree = classifier.build_block_tree(traces, header, true).await;
 
-        needs_tokens
-            .iter()
-            .zip(vec![quote_asset].into_iter().cycle())
-            .map(|(token, quote)| Pair(*token, quote))
-            .for_each(|pair| {
-                let update = DexPriceMsg::Update(PoolUpdate {
-                    block,
-                    tx_idx: 0,
-                    logs: vec![],
-                    action: make_fake_swap(pair),
-                });
-                tx.send(update).unwrap();
+        needs_tokens.iter().for_each(|token| {
+            let update = DexPriceMsg::Update(PoolUpdate {
+                block,
+                tx_idx: 0,
+                logs: vec![],
+                action: make_fake_transfer(*token),
             });
+            tx.send(update).unwrap();
+        });
 
         let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
 
@@ -301,19 +288,16 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(vec![trace], header, true).await;
 
-        needs_tokens
-            .iter()
-            .zip(vec![quote_asset].into_iter().cycle())
-            .map(|(token, quote)| Pair(*token, quote))
-            .for_each(|pair| {
-                let update = DexPriceMsg::Update(PoolUpdate {
-                    block,
-                    tx_idx: 0,
-                    logs: vec![],
-                    action: make_fake_swap(pair),
-                });
-                tx.send(update).unwrap();
+        needs_tokens.iter().for_each(|token| {
+            let update = DexPriceMsg::Update(PoolUpdate {
+                block,
+                tx_idx: 0,
+                logs: vec![],
+                action: make_fake_transfer(*token),
             });
+
+            tx.send(update).unwrap();
+        });
         let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         classifier.close();
         ctr.store(true, SeqCst);
@@ -378,19 +362,15 @@ impl ClassifierTestUtils {
         }
 
         (start_block..=end_block).for_each(|block| {
-            needs_tokens
-                .iter()
-                .zip(vec![quote_asset].into_iter().cycle())
-                .map(|(token, quote)| Pair(*token, quote))
-                .for_each(|pair| {
-                    let update = DexPriceMsg::Update(PoolUpdate {
-                        block,
-                        tx_idx: 0,
-                        logs: vec![],
-                        action: make_fake_swap(pair),
-                    });
-                    tx.send(update).unwrap();
+            needs_tokens.iter().for_each(|token| {
+                let update = DexPriceMsg::Update(PoolUpdate {
+                    block,
+                    tx_idx: 0,
+                    logs: vec![],
+                    action: make_fake_transfer(*token),
                 });
+                tx.send(update).unwrap();
+            });
         });
 
         let (ctr, mut pricer) = self
@@ -436,19 +416,15 @@ impl ClassifierTestUtils {
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
         let tree = classifier.build_block_tree(traces, header, true).await;
 
-        needs_tokens
-            .iter()
-            .zip(vec![quote_asset].into_iter().cycle())
-            .map(|(token, quote)| Pair(*token, quote))
-            .for_each(|pair| {
-                let update = DexPriceMsg::Update(PoolUpdate {
-                    block,
-                    tx_idx: 0,
-                    logs: vec![],
-                    action: make_fake_swap(pair),
-                });
-                tx.send(update).unwrap();
+        needs_tokens.iter().for_each(|token| {
+            let update = DexPriceMsg::Update(PoolUpdate {
+                block,
+                tx_idx: 0,
+                logs: vec![],
+                action: make_fake_transfer(*token),
             });
+            tx.send(update).unwrap();
+        });
 
         let (ctr, mut pricer) = self.init_dex_pricer(block, None, quote_asset, rx).await?;
         classifier.close();
@@ -717,27 +693,11 @@ pub enum ClassifierTestUtilsError {
 
 /// Makes a swap for initializing a virtual pool with the quote token.
 /// this swap is empty such that we don't effect the state
-const fn make_fake_swap(pair: Pair) -> Actions {
+fn make_fake_transfer(addr: Address) -> Actions {
     let t_in = TokenInfoWithAddress {
         inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
-        address: pair.0,
+        address: addr,
     };
 
-    let t_out = TokenInfoWithAddress {
-        inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
-        address: pair.1,
-    };
-
-    Actions::Swap(NormalizedSwap {
-        protocol:    Protocol::Unknown,
-        trace_index: 0,
-        from:        Address::ZERO,
-        recipient:   Address::ZERO,
-        pool:        Address::ZERO,
-        token_in:    t_in,
-        token_out:   t_out,
-        amount_in:   Rational::ZERO,
-        amount_out:  Rational::ZERO,
-        msg_value:   U256::ZERO,
-    })
+    Actions::Transfer(NormalizedTransfer { token: t_in, ..Default::default() })
 }

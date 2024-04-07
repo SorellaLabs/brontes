@@ -17,29 +17,29 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct NodeData<V: NormalizedAction>(pub Vec<Option<V>>);
+pub struct NodeData<V: NormalizedAction>(pub Vec<Option<Vec<V>>>);
 
 impl<V: NormalizedAction> NodeData<V> {
     /// adds the node data to the storage location retuning the index
     /// that the data can be found at
-    pub fn add(&mut self, data: V) -> usize {
+    pub fn add(&mut self, data: Vec<V>) -> usize {
         self.0.push(Some(data));
         self.0.len() - 1
     }
 
-    pub fn get_ref(&self, idx: usize) -> Option<&V> {
+    pub fn get_ref(&self, idx: usize) -> Option<&Vec<V>> {
         self.0.get(idx).and_then(|f| f.as_ref())
     }
 
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut V> {
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Vec<V>> {
         self.0.get_mut(idx).and_then(|f| f.as_mut())
     }
 
-    pub fn remove(&mut self, idx: usize) -> Option<V> {
+    pub fn remove(&mut self, idx: usize) -> Option<Vec<V>> {
         self.0[idx].take()
     }
 
-    pub fn replace(&mut self, idx: usize, value: V) {
+    pub fn replace(&mut self, idx: usize, value: Vec<V>) {
         self.0[idx] = Some(value);
     }
 }
@@ -70,8 +70,11 @@ impl<V: NormalizedAction> Root<V> {
             .get_ref(self.head.data)
             .unwrap()
             .clone()
+            .first()
+            .unwrap()
             .get_action()
             .get_to_address();
+
         let address_meta = database
             .try_fetch_address_metadata(to_address)
             .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))?;
@@ -89,21 +92,28 @@ impl<V: NormalizedAction> Root<V> {
         let is_classified = self
             .data_store
             .get_ref(self.head.data)
-            .map(|f| f.is_classified())
+            .map(|f| f.iter().any(|f| f.is_classified()))
             .unwrap_or_default();
 
         let emits_logs = self
             .data_store
             .get_ref(self.head.data)
             .unwrap()
-            .get_action()
-            .emitted_logs();
+            .iter()
+            .any(|a| a.get_action().emitted_logs());
 
         // TODO: get rid of this once searcher db is working & tested
-        let is_cex_dex_call = matches!(
-            self.data_store.get_ref(self.head.data).unwrap().get_action(),
-            Actions::Unclassified(data) if data.is_cex_dex_call()
-        );
+
+        let is_cex_dex_call = self
+            .data_store
+            .get_ref(self.head.data)
+            .unwrap()
+            .iter()
+            .any(|a| {
+                matches!(a.get_action(),
+                Actions::Unclassified(data) if data.is_cex_dex_call()
+                )
+            });
 
         let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
 
@@ -162,19 +172,21 @@ impl<V: NormalizedAction> Root<V> {
         self.data_store
             .get_ref(0)
             .unwrap()
+            .first()
+            .unwrap()
             .get_action()
             .get_to_address()
     }
 
     pub fn get_root_action(&self) -> &V {
-        self.data_store.get_ref(0).unwrap()
+        self.data_store.get_ref(0).unwrap().first().unwrap()
     }
 
     pub fn get_block_position(&self) -> usize {
         self.position
     }
 
-    pub fn insert(&mut self, mut node: Node, data: V) {
+    pub fn insert(&mut self, mut node: Node, data: Vec<V>) {
         let idx = self.data_store.add(data);
         node.data = idx;
 
@@ -319,6 +331,18 @@ impl GasDetails {
 
     pub fn coinbase_transfer(&self) -> u128 {
         self.coinbase_transfer.unwrap_or_default()
+    }
+
+    pub fn merge(&mut self, other: &GasDetails) {
+        self.coinbase_transfer = Some(
+            self.coinbase_transfer.unwrap_or_default()
+                + other.coinbase_transfer.unwrap_or_default(),
+        )
+        .filter(|&res| res != 0);
+
+        self.priority_fee += other.priority_fee;
+        self.gas_used += other.gas_used;
+        self.effective_gas_price += other.effective_gas_price;
     }
 
     // Pretty print after 'spaces' spaces

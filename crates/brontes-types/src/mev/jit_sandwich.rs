@@ -172,15 +172,16 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
 
     // Create new classified MEV data
     let new_classified = BundleHeader {
-        tx_index:       classified_sandwich.tx_index,
-        tx_hash:        *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
-        mev_type:       MevType::JitSandwich,
-        block_number:   classified_sandwich.block_number,
-        eoa:            jit_classified.eoa,
-        mev_contract:   classified_sandwich.mev_contract,
-        profit_usd:     classified_sandwich.profit_usd,
-        balance_deltas: classified_sandwich.balance_deltas,
-        bribe_usd:      classified_sandwich.bribe_usd,
+        tx_index:              classified_sandwich.tx_index,
+        tx_hash:               *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
+        mev_type:              MevType::JitSandwich,
+        block_number:          classified_sandwich.block_number,
+        eoa:                   jit_classified.eoa,
+        mev_contract:          classified_sandwich.mev_contract,
+        profit_usd:            classified_sandwich.profit_usd,
+        balance_deltas:        classified_sandwich.balance_deltas,
+        bribe_usd:             classified_sandwich.bribe_usd,
+        no_pricing_calculated: classified_sandwich.no_pricing_calculated,
     };
 
     Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
@@ -200,7 +201,9 @@ impl Serialize for JitLiquiditySandwich {
         )?;
 
         let frontrun_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.frontrun_tx_hash.clone(), self.frontrun_swaps.clone()).into();
+            (self.frontrun_tx_hash.clone(), self.frontrun_swaps.clone())
+                .try_into()
+                .map_err(serde::ser::Error::custom)?;
         ser_struct.serialize_field("frontrun_swaps.tx_hash", &frontrun_swaps.tx_hash)?;
         ser_struct.serialize_field("frontrun_swaps.trace_idx", &frontrun_swaps.trace_index)?;
         ser_struct.serialize_field("frontrun_swaps.from", &frontrun_swaps.from)?;
@@ -212,7 +215,9 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("frontrun_swaps.amount_out", &frontrun_swaps.amount_out)?;
 
         let frontrun_mints: ClickhouseVecNormalizedMintOrBurnWithTxHash =
-            (self.frontrun_tx_hash.clone(), self.frontrun_mints.clone()).into();
+            (self.frontrun_tx_hash.clone(), self.frontrun_mints.clone())
+                .try_into()
+                .map_err(serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("frontrun_mints.tx_hash", &frontrun_mints.tx_hash)?;
         ser_struct.serialize_field("frontrun_mints.trace_idx", &frontrun_mints.trace_index)?;
@@ -243,7 +248,9 @@ impl Serialize for JitLiquiditySandwich {
 
         // victims
         let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
+            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone())
+                .try_into()
+                .map_err(serde::ser::Error::custom)?;
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
         ser_struct.serialize_field("victim_swaps.trace_idx", &victim_swaps.trace_index)?;
         ser_struct.serialize_field("victim_swaps.from", &victim_swaps.from)?;
@@ -273,7 +280,11 @@ impl Serialize for JitLiquiditySandwich {
         let fixed_str_backrun_tx_hash = format!("{:?}", &self.backrun_tx_hash);
         ser_struct.serialize_field("backrun_tx_hash", &fixed_str_backrun_tx_hash)?;
 
-        let backrun_swaps: ClickhouseVecNormalizedSwap = self.backrun_swaps.clone().into();
+        let backrun_swaps: ClickhouseVecNormalizedSwap = self
+            .backrun_swaps
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
         let backrun_tx_hash_repeated_swaps = [&self.backrun_tx_hash]
             .repeat(backrun_swaps.amount_in.len())
             .into_iter()
@@ -290,7 +301,11 @@ impl Serialize for JitLiquiditySandwich {
         ser_struct.serialize_field("backrun_swaps.amount_in", &backrun_swaps.amount_in)?;
         ser_struct.serialize_field("backrun_swaps.amount_out", &backrun_swaps.amount_out)?;
 
-        let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
+        let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self
+            .backrun_burns
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         let backrun_tx_hash_repeated_burns = [&self.backrun_tx_hash]
             .repeat(backrun_burns.pool.len())

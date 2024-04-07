@@ -13,6 +13,7 @@ use brontes_types::{
     TreeIter, TreeSearchBuilder, UnzipPadded,
 };
 use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -187,7 +188,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
-        tracing::debug!("sando victim sets {}", victim_actions.len());
         let back_run_actions = searcher_actions.pop()?;
         let back_run_swaps = back_run_actions
             .clone()
@@ -288,15 +288,22 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .cloned()
             .collect();
 
-        let rev_usd = self.utils.get_deltas_usd(
+        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
-            mev_addresses,
+            &mev_addresses,
             &searcher_deltas,
             metadata.clone(),
-        )?;
+        ) {
+            (Some(rev), true)
+        } else {
+            (Some(Rational::ZERO), false)
+        };
 
-        let profit_usd = (rev_usd - &gas_used).to_float();
+        let profit_usd = rev
+            .map(|rev| rev - &gas_used)
+            .filter(|_| has_dex_price)
+            .unwrap_or_default();
 
         let gas_details: Vec<_> = possible_front_runs_info
             .iter()
@@ -318,11 +325,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             vec![searcher_deltas],
             bundle_hashes,
             &backrun_info,
-            profit_usd,
+            profit_usd.to_float(),
             PriceAt::After,
             &gas_details,
             metadata,
             MevType::Sandwich,
+            !has_dex_price,
         );
 
         let victim_swaps = victim_swaps
@@ -351,58 +359,107 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        let front_run_pools = front_run_swaps
-            .iter()
-            .flatten()
-            .map(|s| s.pool)
-            .collect::<FastHashSet<_>>();
+        let f_swap_len = front_run_swaps.len();
+        for (i, (chunk_victim_actions, chunk_victim_info)) in
+            victim_actions.iter().zip(victim_info).enumerate()
+        {
+            let chunk_front_run_swaps = &front_run_swaps[0..=i];
 
-        let back_run_pools = back_run_swaps
-            .iter()
-            .map(|swap| swap.pool)
-            .collect::<FastHashSet<_>>();
+            let chunk_back_run_swaps = if f_swap_len > i + 1 {
+                let mut res = vec![];
+                res.extend(front_run_swaps[i + 1..].iter().flatten().cloned());
+                res.extend(back_run_swaps.to_vec().clone());
+                res
+            } else {
+                back_run_swaps.to_vec()
+            };
 
-        let front_run_tokens = front_run_swaps
-            .iter()
-            .flatten()
-            .flat_map(|s| [s.token_in.address, s.token_out.address])
-            .collect::<FastHashSet<_>>();
-
-        let back_run_tokens = back_run_swaps
-            .iter()
-            .flat_map(|s| [s.token_in.address, s.token_out.address])
-            .collect::<FastHashSet<_>>();
-
-        // we group all victims by eoa, such that instead of a tx needing to be a
-        // victim, a eoa needs to be a victim. this allows for more complex
-        // detection such as having a approve and then a swap in different
-        // transactions.
-        let grouped_victims = itertools::Itertools::into_group_map(
-            victim_info
+            let front_run_pools = chunk_front_run_swaps
                 .iter()
-                .zip(victim_actions)
-                .flat_map(|(info, actions)| info.iter().zip(actions))
-                .map(|(info, actions)| (info.eoa, actions)),
-        );
+                .flatten()
+                .map(|s| s.pool)
+                .collect::<FastHashSet<_>>();
 
-        // for each victim eoa, ensure they are a victim of a frontrun and a backrun
-        // either through a pool or overlapping tokens
-        grouped_victims
-            .into_values()
-            .map(|v| {
-                v.iter().cloned().any(|(swaps, transfers)| {
-                    swaps.iter().any(|s| front_run_pools.contains(&s.pool))
-                        || transfers
-                            .iter()
-                            .any(|t| front_run_tokens.contains(&t.token.address))
-                }) && v.into_iter().any(|(swaps, transfers)| {
-                    swaps.iter().any(|s| back_run_pools.contains(&s.pool))
-                        || transfers
-                            .iter()
-                            .any(|t| back_run_tokens.contains(&t.token.address))
+            let back_run_pools = chunk_back_run_swaps
+                .iter()
+                .map(|swap| swap.pool)
+                .collect::<FastHashSet<_>>();
+
+            let front_run_tokens = chunk_front_run_swaps
+                .iter()
+                .flatten()
+                .flat_map(|s| {
+                    [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
                 })
-            })
-            .all(|was_victim| was_victim)
+                .collect::<FastHashSet<_>>();
+
+            let back_run_tokens = chunk_back_run_swaps
+                .iter()
+                .flat_map(|s| {
+                    [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
+                })
+                .collect::<FastHashSet<_>>();
+
+            // we group all victims by eoa, such that instead of a tx needing to be a
+            // victim, a eoa needs to be a victim. this allows for more complex
+            // detection such as having a approve and then a swap in different
+            // transactions.
+            let grouped_victims = itertools::Itertools::into_group_map(
+                chunk_victim_info
+                    .iter()
+                    .zip(chunk_victim_actions)
+                    .map(|(info, actions)| (info.eoa, actions)),
+            );
+            let amount = grouped_victims.len();
+
+            if amount == 0 {
+                return false
+            }
+
+            // for each victim eoa, ensure they are a victim of a frontrun and a backrun
+            // either through a pool or overlapping tokens
+            let was_victims: usize = grouped_victims
+                .into_values()
+                .map(|v| {
+                    v.iter()
+                        .cloned()
+                        .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
+                        .any(|(swaps, transfers)| {
+                            swaps.iter().any(|s| front_run_pools.contains(&s.pool))
+                                || transfers.iter().any(|t| {
+                                    // victim has a transfer from the pool that was a token in for
+                                    // the sandwich
+                                    front_run_tokens.contains(&(t.token.address, t.from, true))
+                            // victim has a transfer to the pool that was a token out for the
+                            // sandwich 
+                                || front_run_tokens.contains(&(t.token.address, t.to, false))
+                                })
+                        })
+                        && v.into_iter()
+                            .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
+                            .any(|(swaps, transfers)| {
+                                swaps.iter().any(|s| back_run_pools.contains(&s.pool))
+                                    || transfers.iter().any(|t| {
+                                        // victim has a transfer from the pool that was a token in
+                                        // for the sandwich
+                                        back_run_tokens.contains(&(t.token.address, t.from, true))
+                            // victim has a transfer to the pool that was a token out for the
+                            // sandwich 
+                                || back_run_tokens.contains(&(t.token.address, t.to, false))
+                                    })
+                            })
+                })
+                .map(|was_victim| was_victim as usize)
+                .sum();
+
+            // if we had more than 50% victims, then we say this was valid. This
+            // wiggle room is to deal with unkowns
+            if (was_victims as f64) / (amount as f64) < 0.5 {
+                return false
+            }
+        }
+
+        true
     }
 
     /// Aggregates potential sandwich attacks from both duplicate senders and

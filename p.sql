@@ -30,3 +30,5 @@ SELECT
 FROM sec
 GROUP BY block_number
 
+select arrayMap(x -> arrayFilter(l -> l.1.1 == lower('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2') or l.1.2 == lower('0x2260fac5e5542a773aa44fbcfedf7c193bc2c599'), x.2),data) from brontes_api.cex_trades where block_number = 19556789
+

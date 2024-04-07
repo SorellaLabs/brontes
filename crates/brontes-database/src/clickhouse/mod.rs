@@ -16,6 +16,8 @@ pub use http_client::*;
 mod middleware;
 use std::fmt::Debug;
 
+pub mod cex_config;
+
 use ::clickhouse::DbRow;
 use brontes_types::db::metadata::Metadata;
 #[cfg(feature = "local-clickhouse")]
@@ -29,11 +31,26 @@ use futures::Future;
 pub use middleware::*;
 use serde::Deserialize;
 
-use crate::{libmdbx::types::LibmdbxData, CompressedTable};
+use crate::{
+    libmdbx::{cex_utils::CexRangeOrArbitrary, types::LibmdbxData},
+    CompressedTable,
+};
 
 #[auto_impl::auto_impl(&, &mut)]
 pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     fn get_metadata(&self, block_num: u64) -> impl Future<Output = eyre::Result<Metadata>> + Send;
+
+    #[cfg(not(feature = "cex-dex-markout"))]
+    fn get_cex_prices(
+        &self,
+        range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> impl Future<Output = eyre::Result<Vec<crate::CexPriceData>>> + Send;
+
+    #[cfg(feature = "cex-dex-markout")]
+    fn get_cex_trades(
+        &self,
+        range_or_arbitrary: CexRangeOrArbitrary,
+    ) -> impl Future<Output = eyre::Result<Vec<crate::CexTradesData>>> + Send;
 
     fn query_many_range<T, D>(
         &self,

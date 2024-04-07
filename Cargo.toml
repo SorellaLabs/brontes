@@ -140,6 +140,7 @@ clap = { version = "4.4.6", features = ["derive"] }
 
 # Numbers
 malachite = "0.4.0"
+malachite-q = "0.4.0"
 
 # phf
 phf = "0.11.2"
@@ -173,6 +174,7 @@ bytes = "1.5"
 arrow = "51.0.0"
 polars = { version = "0.38.3", features = ["lazy"]}
 parquet = {version = "51.0.0", features = ["async"] }
+indicatif = "0.17.8"
 
 
 [profile.dev]
@@ -190,3 +192,4 @@ inherits = "release"
 lto = "fat"
 codegen-units = 1
 incremental = false
+
