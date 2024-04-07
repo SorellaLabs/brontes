@@ -23,6 +23,7 @@ use crate::tui::{
     config::{Config},
     tui::{Event, Frame},
 };
+use crate::get_symbols_from_transaction_accounting;
 
 #[derive(Default, Debug)]
 pub struct Livestream {
@@ -202,15 +203,7 @@ impl Livestream {
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
-                /*
-                item.header
-                   // .token_profits
-                    .profits
-                    .iter()
-                    .map(|profit| profit.token.inner.symbol.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", "),*/
-                "ETH/ETH".to_string(),
+                get_symbols_from_transaction_accounting!(&item.header.balance_deltas),
                 item.header.eoa.to_string(),
                 item.header.mev_contract.unwrap().to_string(),
                 item.header.profit_usd.to_string(),
