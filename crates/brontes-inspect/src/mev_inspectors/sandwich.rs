@@ -320,7 +320,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             }
         }
         bundle_hashes.push(backrun_info.tx_hash);
-        tracing::debug!("{:#?}", metadata.dex_quotes);
+        tracing::debug!("{:#?}", metadata.clone().dex_quotes);
 
         let header = self.utils.build_bundle_header(
             vec![searcher_deltas],
