@@ -41,31 +41,26 @@ fn run() -> eyre::Result<()> {
             //TODO
             if command.cli_only {
                 runner::run_command_until_exit(|ctx| command.execute(ctx))
-            }else{
+            } else {
                 runner::run_command_until_exit(|ctx| command.execute(ctx))
-
-                
             }
-        },
+        }
         Commands::Database(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
         Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
     }
 }
 
-
-
 fn init_tracing(tui: bool) {
     info!("tui: {}", tui);
-    if !tui{
-    
+    if !tui {
         let layers = vec![];
-        brontes_tracing::init(layers,true);
-
-    }else{
+        brontes_tracing::init(layers, true);
+    } else {
         let verbosity_level = Level::INFO;
         let directive: Directive = format!("{verbosity_level}").parse().unwrap();
-        let layers = vec![brontes_tracing::stdout(directive)];
+        let layers =
+            vec![brontes_tracing::stdout(directive), Box::new(console_subscriber::spawn())];
 
-        brontes_tracing::init(layers,false);
-}
+        brontes_tracing::init(layers, false);
+    }
 }
