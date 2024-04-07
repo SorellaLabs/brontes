@@ -385,7 +385,7 @@ pub fn get_path(
     batch_type: Tables,
     mev_type: Option<MevType>,
 ) -> Result<PathBuf> {
-    let base_path = custom_path.as_deref().unwrap_or("brontes-exports");
+    let base_path = custom_path.as_deref().unwrap_or("../brontes-notebook/data/brontes-exports");
 
     let mut path = PathBuf::from(base_path);
     path.push(batch_type.get_default_path());
