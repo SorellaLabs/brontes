@@ -33,7 +33,6 @@ use tui_logger::{self, *};
 use super::{Component, Frame};
 use crate::get_symbols_from_transaction_accounting;
 use crate::tui::{
-    //events::{Event, EventHandler},
     app::layout,
     config::{Config},
     theme::THEME,
@@ -475,7 +474,7 @@ impl Component for Dashboard {
 
         Self::draw_livestream(self, chunks[1], buf);
 
-        //Self::draw_logs(self, chunks[2], buf, 1);
+        Self::draw_logs(self, chunks[2], buf, 1);
         Self::render_bottom_bar(self, template[2], buf);
         if self.show_popup {
             if let Some(selected_index) = self.stream_table_state.selected() {
