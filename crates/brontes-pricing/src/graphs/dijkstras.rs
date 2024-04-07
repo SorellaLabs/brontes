@@ -186,10 +186,6 @@ where
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
     parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
 
-    parents.reserve(max_iter);
-    to_see.reserve(max_iter);
-    visited.reserve(max_iter);
-
     let mut target_reached = None;
 
     'outer: while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
