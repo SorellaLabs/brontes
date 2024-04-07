@@ -655,6 +655,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         new_state.into_iter().for_each(
             |StateQueryRes { pair, block, edges, extends_pair, goes_through, full_pair }| {
                 let edges = edges.into_iter().flatten().unique().collect_vec();
+                tracing::debug!(?pair, ?goes_through, ?extends_pair, ?full_pair);
                 // add regularly
                 if edges.is_empty() {
                     tracing::debug!(
@@ -679,6 +680,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 ) else {
                     return;
                 };
+                tracing::info!("added subgraph");
 
                 if force_rundown {
                     self.rundown(pair, full_pair, goes_through, block);
@@ -689,6 +691,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         );
 
         if !recusing.is_empty() {
+            tracing::debug!("recussing");
             execute_on!(target = pricing, self.try_verify_subgraph(recusing));
         }
         tracing::debug!("finished requerying bad state");
