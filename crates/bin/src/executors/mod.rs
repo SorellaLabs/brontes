@@ -130,6 +130,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .state_to_initialize(start_block, end_block)
                 .unwrap(),
         );
+        tracing::info!("{:#?}", state_to_initialize);
 
         let multi = MultiProgress::default();
         let tables_pb = Arc::new(
