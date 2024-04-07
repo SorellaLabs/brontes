@@ -59,9 +59,8 @@ fn init_tracing(tui: bool) {
         let verbosity_level = Level::INFO;
         let directive: Directive = format!("{verbosity_level}").parse().unwrap();
 
-        let console = console_subscriber::ConsoleLayer::builder()
-            .with_default_env()
-            .server_addr("127.0.0.1:6668")
+        let console = console_subscriber::Builder::default()
+            .server_addr((std::net::Ipv4Addr::LOCALHOST, 6668))
             .spawn();
         let layers = vec![brontes_tracing::stdout(directive), Box::new(console)];
 
