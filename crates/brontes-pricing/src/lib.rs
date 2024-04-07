@@ -533,6 +533,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         {
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
+            self.graph_manager
+                .remove_pair_graph_address(pool_address, pool_pair);
 
             let failed_queries = deps
                 .into_iter()
@@ -678,10 +680,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     edges,
                     frayed_ext,
                 ) else {
-                    tracing::info!("returning");
                     return;
                 };
-                tracing::info!("added subgraph");
 
                 if force_rundown {
                     self.rundown(pair, full_pair, goes_through, block);
@@ -692,7 +692,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         );
 
         if !recusing.is_empty() {
-            tracing::debug!("recussing");
             execute_on!(target = pricing, self.try_verify_subgraph(recusing));
         }
         tracing::debug!("finished requerying bad state");
