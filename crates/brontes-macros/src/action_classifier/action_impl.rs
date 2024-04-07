@@ -17,11 +17,11 @@ pub struct ActionMacro {
     action_type:            Ident,
     exchange_name_w_call:   Ident,
     log_types:              Vec<LogConfig>,
-    /// wether we want logs or not
+    /// whether we want logs or not
     give_logs:              bool,
-    /// wether we want return data or not
+    /// whether we want return data or not
     give_returns:           bool,
-    /// wether we want call_data or not
+    /// whether we want call_data or not
     give_call_data:         bool,
     // whether we pass down logs from delegate call in the same call frame
     include_delegated_logs: bool,

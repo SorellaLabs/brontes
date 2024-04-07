@@ -114,7 +114,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     let mut root_trace = trace.trace.remove(0);
 
                     // Add logs of delegated calls to the root trace, only if the delegated call is
-                    // from the same address / in the same call frame
+                    // from the same address / in the same call frame.
                     if let Action::Call(root_call) = &root_trace.trace.action {
                         let mut delegated_traces = Vec::new();
                         collect_delegated_traces(
@@ -171,6 +171,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     for trace in trace.trace.into_iter() {
                         let mut trace = trace;
                         let from_addr = trace.get_from_addr();
+
                         let node = Node::new(
                             trace.trace_idx,
                             from_addr,
@@ -201,7 +202,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         }
 
                         // Add logs of delegated calls to the root trace, only if the delegated call
-                        // is from the same address / in the same call frame
+                        // is from the same address / in the same call frame.
                         if let Action::Call(call) = &trace.trace.action {
                             let mut delegated_traces = Vec::new();
                             collect_delegated_traces(
@@ -241,7 +242,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     // Here we reverse the requests to ensure that we always classify the most
                     // nested action & its children first. This is to prevent the
                     // case where we classify a parent action where its children also require
-                    // further classification
+                    // further classification.
                     let tx_classification_requests = if !further_classification_requests.is_empty()
                     {
                         further_classification_requests.reverse();

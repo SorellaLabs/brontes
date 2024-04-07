@@ -491,7 +491,7 @@ impl ClassifierTestUtils {
         );
 
         let action = actions.remove(index);
-        assert_eq!(protocol, action.get_protocol(), "got: {:#?} != given: {:#?}", action, protocol);
+        assert_eq!(protocol, action.get_protocol(), "got: {:#?} != given: {:#?}", action.get_protocol(), protocol);
 
         Ok(())
     }
