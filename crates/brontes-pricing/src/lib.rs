@@ -617,6 +617,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     })
                 }
                 VerificationResults::Abort(pair, goes_through, block) => {
+                    tracing::info!(?pair, ?goes_through, "aborted verification process");
                     self.failed_pairs
                         .entry(block)
                         .or_default()
