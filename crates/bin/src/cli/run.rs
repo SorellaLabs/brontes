@@ -4,12 +4,9 @@ use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{
-    constants::USDT_ADDRESS_STRING,
-    db::cex::{trades::CexDexTradeConfig, CexExchange},
-    db_write_trigger::{backup_server_heartbeat, start_hr_monitor, HeartRateMonitor},
-    init_threadpools, UnboundedYapperReceiver,
-};
+//TUI related imports
+use brontes_types::mev::{events::Action, events::TuiEvents, MevBlock};
+use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -18,12 +15,9 @@ use crate::{
     //banner::rain,
     cli::{get_tracing_provider, init_inspectors, load_tip_database},
     runner::CliContext,
-    BrontesRunConfig,
-    MevProcessor,
+    tui::app::App,
+    BrontesRunConfig, MevProcessor,
 };
-//TUI related imports
-use brontes_types::mev::{MevBlock, events::TuiEvents, events::Action};
-use crate::tui::app::App;
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -71,7 +65,7 @@ pub struct RunArgs {
     #[arg(long, default_value = "3")]
     pub behind_tip:             u64,
     #[arg(long, default_value = "false")]
-    pub cli_only: bool,
+    pub cli_only:               bool,
 }
 
 impl RunArgs {
@@ -107,9 +101,7 @@ impl RunArgs {
         tracing::info!("Launching App");
         let (tui_tx, mut tui_rx) = unbounded_channel();
         let executor = task_executor.clone();
-        executor
-        .spawn_critical("TUI", { App::run(tui_rx,tui_tx.clone())});
-
+        executor.spawn_critical("TUI", { App::run(tui_rx, tui_tx.clone()) });
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 

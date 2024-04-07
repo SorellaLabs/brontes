@@ -17,17 +17,15 @@ use brontes_types::tree::BlockTree;
 use brontes_types::{
     db::block_analysis::BlockAnalysis,
     execute_on,
-    mev::{Bundle, MevBlock, MevType},
-    BlockData, MultiBlockData,
+    mev::{events::Action, Bundle, MevBlock, MevType},
+    normalized_actions::Actions,
+    tree::BlockTree,
 };
+//tui related
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
 use crate::Processor;
-
-//tui related
-use tokio::sync::mpsc::UnboundedSender;
-use brontes_types::mev::events::Action;
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct MevProcessor;
@@ -40,12 +38,11 @@ impl Processor for MevProcessor {
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-        tui_tx: UnboundedSender<Action>
-
+        tui_tx: UnboundedSender<Action>,
     ) {
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
             target = inspect,
-            compose_mev_results(inspectors, tree.clone(), metadata.clone(),tui_tx)
+            compose_mev_results(inspectors, tree.clone(), metadata.clone(), tui_tx)
         );
 
         if let Err(e) = db

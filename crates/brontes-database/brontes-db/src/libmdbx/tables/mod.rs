@@ -182,7 +182,7 @@ impl Tables {
                 initializer
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
                         clear_table,
-                       //crit_progress.unwrap(),
+                        //crit_progress.unwrap(),
                     )
                     .await
             }
@@ -247,10 +247,10 @@ impl Tables {
                         Some(META_FLAG),
                         false,
                         /*progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
-                            .unwrap(),
-                            */
+                        .iter()
+                        .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
+                        .unwrap(),
+                        */
                     )
                     .await
             }
@@ -262,10 +262,10 @@ impl Tables {
                         Some(TRACE_FLAG),
                         false,
                         /*progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
-                            .unwrap(),
-                            */
+                        .iter()
+                        .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
+                        .unwrap(),
+                        */
                     )
                     .await
             }
@@ -294,10 +294,10 @@ impl Tables {
                         clear_table,
                         Some(CEX_FLAG),
                         true,
-                       /* progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
-                            .unwrap(),*/
+                        /* progress_bar
+                        .iter()
+                        .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
+                        .unwrap(),*/
                     )
                     .await
             }
@@ -339,10 +339,10 @@ impl Tables {
                         Some(META_FLAG),
                         false,
                         /*progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
-                            .unwrap(),
-                            */
+                        .iter()
+                        .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
+                        .unwrap(),
+                        */
                     )
                     .await
             }
@@ -352,11 +352,11 @@ impl Tables {
                         block_range,
                         Some(TRACE_FLAG),
                         false,
-                      /*  progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
-                            .unwrap(),
-                            */
+                        /*  progress_bar
+                        .iter()
+                        .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
+                        .unwrap(),
+                        */
                     )
                     .await
             }
@@ -367,11 +367,11 @@ impl Tables {
                         block_range,
                         Some(CEX_FLAG),
                         true,
-                      /*  progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
-                            .unwrap(),
-                            */
+                        /*  progress_bar
+                        .iter()
+                        .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
+                        .unwrap(),
+                        */
                     )
                     .await
             }

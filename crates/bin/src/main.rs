@@ -74,14 +74,14 @@ fn init_tracing(tui: bool) {
         .spawn()
         .boxed();
     if !tui {
-        let layers = vec![console];
-        brontes_tracing::init(layers, true);
+        let layers = vec![console, tracing_subscriber_layer()];
+        brontes_tracing::init(layers);
     } else {
         let verbosity_level = Level::INFO;
         let directive: Directive = format!("{verbosity_level}").parse().unwrap();
 
         let layers = vec![brontes_tracing::stdout(directive), Box::new(console)];
 
-        brontes_tracing::init(layers, false);
+        brontes_tracing::init(layers);
     }
 }

@@ -12,10 +12,9 @@ use strum::{Display, EnumIter};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
-    FastHashMap,
     new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    GasDetails,
+    FastHashMap, GasDetails,
 };
 use crate::{mev::*, Protocol};
 
@@ -121,8 +120,6 @@ impl Mev for BundleData {
             BundleData::Unknown(s) => s.protocols(),
         }
     }
-
-
 }
 
 impl From<Sandwich> for BundleData {

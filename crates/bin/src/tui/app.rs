@@ -47,19 +47,20 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use super::components::analytics::hot_tokens::HotTokens;
 use crate::tui::{
     //action::Action,
     components::{
-        analytics::analytics::Analytics, dashboard::Dashboard, dbsize::DbSize, livestream::Livestream,
-        metrics::Metrics, navigation::Navigation, settings::Settings, tick::Tick, tokens::Tokens,
-        analytics::top_contracts::TopContracts, analytics::searcher_stats::SearcherStats, analytics::vertically_integrated::VerticallyIntegrated,Component,
+        analytics::analytics::Analytics, analytics::searcher_stats::SearcherStats,
+        analytics::top_contracts::TopContracts,
+        analytics::vertically_integrated::VerticallyIntegrated, dashboard::Dashboard,
+        dbsize::DbSize, livestream::Livestream, metrics::Metrics, navigation::Navigation,
+        settings::Settings, tick::Tick, tokens::Tokens, Component,
     },
     config::Config,
     mode::Mode,
     tui,
 };
-
-use super::components::analytics::hot_tokens::HotTokens;
 
 #[derive(Debug)]
 pub struct App {
@@ -101,7 +102,7 @@ impl App {
         let searcher_stats = SearcherStats::default();
         let vertically_integrated = VerticallyIntegrated::default();
         let hot_tokens = HotTokens::default();
-        
+
         let context = Arc::new(Mutex::new(AppContext::default()));
         let navigation = Navigation::new(context.clone());
         let navigation_box = Box::new(navigation);
@@ -116,7 +117,14 @@ impl App {
             components: vec![
                 vec![navigation_box.clone(), Box::new(dashboard)],
                 vec![navigation_box.clone(), Box::new(livestream)],
-                vec![navigation_box.clone(), Box::new(analytics), Box::new(top_contracts), Box::new(searcher_stats), Box::new(vertically_integrated), Box::new(hot_tokens)],
+                vec![
+                    navigation_box.clone(),
+                    Box::new(analytics),
+                    Box::new(top_contracts),
+                    Box::new(searcher_stats),
+                    Box::new(vertically_integrated),
+                    Box::new(hot_tokens),
+                ],
                 vec![navigation_box.clone(), Box::new(metrics), Box::new(tick), Box::new(dbsize)],
                 vec![navigation_box, Box::new(settings)],
             ],

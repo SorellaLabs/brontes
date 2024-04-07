@@ -1,8 +1,8 @@
 pub mod app;
 mod colors;
+mod misc;
 mod term;
 mod theme;
-mod misc;
 
 pub mod action;
 pub mod components;

@@ -10,16 +10,14 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_metrics::range::GlobalRangeMetrics;
-use brontes_types::MultiBlockData;
+use brontes_types::{
+    db::metadata::Metadata, mev::events::Action, normalized_actions::Actions, tree::BlockTree,
+};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
-use tracing::debug;
-
 //tui related
 use tokio::sync::mpsc::UnboundedSender;
-use brontes_types::mev::events::Action;
-
+use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
 use crate::{executors::ProgressBar, Processor};
@@ -40,7 +38,7 @@ pub struct RangeExecutorWithPricing<
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
     //progress_bar:   Option<ProgressBar>,
-    tui_tx:       UnboundedSender<Action>,
+    tui_tx:         UnboundedSender<Action>,
     _p:             PhantomData<P>,
 }
 
@@ -101,8 +99,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             self.inspectors,
             tree.into(),
             meta.into(),
-            self.tui_tx.clone()
-
+            self.tui_tx.clone(),
         )));
     }
 }

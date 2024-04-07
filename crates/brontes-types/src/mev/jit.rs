@@ -1,11 +1,10 @@
 use std::fmt::Debug;
 
 use ahash::HashSet;
+use alloy_primitives::Address;
 use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
-use alloy_primitives::Address;
-
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{
     ser::{SerializeStruct, Serializer},
@@ -21,9 +20,10 @@ use crate::{
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
+    new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     tree::GasDetails,
-    FastHashMap, new_fast_hash_map
+    FastHashMap,
 };
 
 #[serde_as]
@@ -79,9 +79,6 @@ impl Mev for JitLiquidity {
             .map(|swap| swap.protocol)
             .collect()
     }
-
-
-
 }
 
 impl Serialize for JitLiquidity {

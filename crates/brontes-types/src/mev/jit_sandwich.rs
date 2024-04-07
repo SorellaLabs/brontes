@@ -2,12 +2,11 @@ use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
+use alloy_primitives::Address;
 #[allow(unused)]
 use clickhouse::row::*;
 use redefined::Redefined;
 use reth_primitives::B256;
-use alloy_primitives::Address;
-
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -15,14 +14,14 @@ use serde_with::serde_as;
 use super::{Bundle, BundleData, BundleHeader, JitLiquidity, Mev, MevType, Sandwich};
 use crate::{
     db::redefined_types::primitives::*, normalized_actions::*, tree::ClickhouseVecGasDetails,
-    Protocol
+    Protocol,
 };
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
+    new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    GasDetails,
-    FastHashMap, new_fast_hash_map
+    FastHashMap, GasDetails,
 };
 
 #[serde_as]
@@ -107,8 +106,6 @@ impl Mev for JitLiquiditySandwich {
 
         protocols
     }
-
-
 }
 
 pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {

@@ -88,19 +88,17 @@ impl Init {
                 .spawn_critical("init", async move {
                     let tables = Tables::ALL.to_vec();
 
-                   // TODO:remove progress bar
-/*
-                    let multi = MultiProgress::default();
-                    let tables_with_progress = Arc::new(
-                        tables
-                            .clone()
-                            .into_iter()
-                            .map(|table| {
-                                (table, table.build_init_state_progress_bar(&multi, 1000000000))
-                            })
-                            .collect_vec(),
-                    );
-*/
+                    // TODO:remove progress bar
+                    /*
+                                        let multi = MultiProgress::default();
+                                        let tables_with_progress = Arc::new(
+                                            tables
+                                                .clone()
+                                                .into_iter()
+                                                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                                                .collect_vec(),
+                                        );
+                    */
                     libmdbx
                         .initialize_tables(
                             clickhouse,

@@ -6,11 +6,12 @@ use ::serde::{
     Deserialize, Serialize,
 };
 use ahash::HashSet;
-use colored::Colorize;
+use alloy_primitives::{Address, U256};
+#[allow(unused)]
+use clickhouse::fixed_string::FixedString;
 use malachite::Rational;
 use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
-use alloy_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde_with::serde_as;
 use strum::Display;
@@ -22,14 +23,14 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
-    Protocol, ToFloatNearest,FastHashMap
+    FastHashMap, Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
+    new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
-    new_fast_hash_map
 };
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
@@ -112,9 +113,6 @@ impl Mev for CexDex {
     fn protocols(&self) -> HashSet<Protocol> {
         self.swaps.iter().map(|swap| swap.protocol).collect()
     }
-
-
-
 }
 
 #[derive(

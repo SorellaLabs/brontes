@@ -1,25 +1,20 @@
 use std::{
     collections::HashMap,
+    fmt,
     pin::Pin,
+    string::ToString,
     task::{ready, Context, Poll},
 };
 
 use futures::Future;
-
-use tokio::sync::mpsc::{unbounded_channel,UnboundedReceiver, UnboundedSender};
-
-
-use std::{fmt, string::ToString};
-
 use serde::{
-  de::{self, Deserializer, Visitor},
-  Deserialize, Serialize,
+    de::{self, Deserializer, Visitor},
+    Deserialize, Serialize,
 };
 use strum::Display;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
-use crate::mev::MevBlock;
-use crate::mev::Bundle;
-
+use crate::mev::{Bundle, MevBlock};
 
 /// metric event for traces
 #[derive(Debug, Clone, Serialize, Display, Deserialize)]
@@ -28,23 +23,19 @@ pub enum TuiEvents {
     MevBundleEventReceived(Vec<Bundle>),
 }
 
-
-
-#[derive(Debug, Clone,  PartialEq, Eq, Serialize, Display, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Display, Deserialize)]
 pub enum Action {
-  Tick,
-  Render,
-  Resize(u16, u16),
-  Suspend,
-  Resume,
-  Quit,
-  Refresh,
-  Tui(TuiEvents),
-  Error(String),
-  Help,
+    Tick,
+    Render,
+    Resize(u16, u16),
+    Suspend,
+    Resume,
+    Quit,
+    Refresh,
+    Tui(TuiEvents),
+    Error(String),
+    Help,
 }
-
-
 
 impl PartialEq for TuiEvents {
     fn eq(&self, other: &Self) -> bool {
