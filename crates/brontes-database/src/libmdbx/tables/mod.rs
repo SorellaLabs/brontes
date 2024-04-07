@@ -215,7 +215,7 @@ impl Tables {
                             .unwrap(),
                     )
                     .await?;
-                        Ok(())
+                Ok(())
             }
             Tables::BlockInfo => {
                 initializer
