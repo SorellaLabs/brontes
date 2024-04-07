@@ -214,7 +214,9 @@ impl Tables {
                             .cloned()
                             .unwrap(),
                     )
-                    .await
+                    .await?;
+                    tracing::info!("finished cex quotes");
+                        Ok(())
             }
             Tables::BlockInfo => {
                 initializer
