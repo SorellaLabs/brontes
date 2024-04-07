@@ -169,7 +169,7 @@ where
         let prev_weight = &routes[ki].weights;
 
         let k_routes_vec = (0..(previous.len() - 1))
-            .into_par_iter()
+            .into_iter()
             .filter_map(|i| {
                 let spur_node = &previous[i];
                 let root_path = &previous[0..i];
