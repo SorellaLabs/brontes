@@ -338,7 +338,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 }
 
                 if let Some(flag) = mark_init {
+                    tracing::info!("writing flag");
                     libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
+                    tracing::info!("wrote flag");
                 }
 
                 Ok::<(), eyre::Report>(())
