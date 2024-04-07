@@ -185,6 +185,11 @@ where
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
     parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
+
+    parents.reserve(max_iter);
+    to_see.reserve(max_iter);
+    visited.reserve(max_iter);
+
     let mut target_reached = None;
 
     'outer: while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
@@ -274,6 +279,8 @@ where
 
                 let new_cost = cost + move_cost;
                 let value = path_value(&base_node, &successor);
+                let q_break = stop(&successor);
+
                 let n;
                 match parents.entry(successor) {
                     Vacant(e) => {
@@ -288,6 +295,11 @@ where
                             continue
                         }
                     }
+                }
+
+                if q_break {
+                    target_reached = Some(n);
+                    break 'outer
                 }
 
                 to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
