@@ -10,7 +10,7 @@ use crossterm::{
     ExecutableCommand,
 };
 //use anyhow::{Context, Result};
-use eyre::{Context, Error, Result}; //
+use eyre::{Context, Result}; //
 use ratatui::prelude::*;
 
 /// A wrapper around the terminal that handles setting up and tearing down the

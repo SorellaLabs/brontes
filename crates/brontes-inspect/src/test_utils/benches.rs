@@ -10,7 +10,7 @@ use brontes_types::{
     BlockData, MultiBlockData,
 };
 use criterion::{black_box, Criterion};
-
+use tokio::sync::mpsc::{unbounded_channel};
 use super::InspectorTestUtilsError;
 use crate::{composer::run_block_inspection, Inspectors};
 
@@ -288,6 +288,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false),
         )?;
         metadata.dex_quotes = Some(prices);
+        let (tui_tx, tui_rx) = unbounded_channel();   
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         let data = BlockData { metadata, tree };
@@ -297,7 +298,12 @@ impl InspectorBenchUtils {
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(run_block_inspection(inspectors.as_slice(), multi.clone(), db));
+                    black_box(compose_mev_results(
+                        inspectors.as_slice(),
+                        tree.clone(),
+                        metadata.clone(),
+                        tui_tx.clone(),
+                    ));
                 }
             });
         });
@@ -340,6 +346,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false),
         )?;
         metadata.dex_quotes = prices;
+        let (tui_tx, tui_rx) = unbounded_channel();        
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         let data = BlockData { metadata, tree };
@@ -348,7 +355,12 @@ impl InspectorBenchUtils {
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(run_block_inspection(inspectors.as_slice(), multi.clone(), db));
+                    black_box(compose_mev_results(
+                        inspectors.as_slice(),
+                        tree.clone(),
+                        metadata.clone(),
+                        tui_tx.clone(),
+                    ));
                 }
             });
         });

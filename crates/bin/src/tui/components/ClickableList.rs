@@ -1,5 +1,4 @@
 //use super::ui_callback::{CallbackRegistry, UiCallbackPreset};
-use std::sync::{Arc, Mutex};
 
 use ratatui::{
     buffer::Buffer,
@@ -7,12 +6,12 @@ use ratatui::{
     style::{Style, Styled},
     text::{Span, Text},
     widgets::{
-        Block, BorderType, Borders, HighlightSpacing, List, Paragraph, StatefulWidget, Widget,
+        Block, BorderType, Borders, HighlightSpacing, StatefulWidget, Widget,
     },
 };
 use unicode_width::UnicodeWidthStr;
 
-use super::constants::{PrintableKeyCode, UiKey, UiStyle};
+use super::constants::{UiStyle};
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash)]
 pub struct ClickableListState {
@@ -256,7 +255,7 @@ impl<'a> StatefulWidget for ClickableList<'a> {
         let mut current_height = 0;
         let selection_spacing = state.selected.is_some();
 
-        let mut selected_element: Option<(Rect, usize)> = None;
+        let selected_element: Option<(Rect, usize)> = None;
         for (i, item) in self
             .items
             .iter_mut()

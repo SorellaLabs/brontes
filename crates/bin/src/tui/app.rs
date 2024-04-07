@@ -260,7 +260,7 @@ impl App {
                                                                // block
                             }
                             TuiEvents::MevBundleEventReceived(bundle) => {
-                                let mut bundles: std::sync::MutexGuard<'_, Vec<Bundle>> =
+                                let bundles: std::sync::MutexGuard<'_, Vec<Bundle>> =
                                     self.mev_bundles.lock().unwrap();
                                 //bundles.extend(*bundle.into_iter());
                             }

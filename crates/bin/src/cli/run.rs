@@ -5,7 +5,6 @@ use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 //TUI related imports
-use brontes_types::mev::{events::Action, events::TuiEvents, MevBlock};
 use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
@@ -99,9 +98,9 @@ impl RunArgs {
         task_executor.spawn_critical("metrics", metrics_listener);
 
         tracing::info!("Launching App");
-        let (tui_tx, mut tui_rx) = unbounded_channel();
+        let (tui_tx, tui_rx) = unbounded_channel();
         let executor = task_executor.clone();
-        executor.spawn_critical("TUI", { App::run(tui_rx, tui_tx.clone()) });
+        executor.spawn_critical("TUI", App::run(tui_rx, tui_tx.clone()));
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 

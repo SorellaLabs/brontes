@@ -1,16 +1,14 @@
-use std::{collections::HashMap, fmt, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
 use brontes_types::mev::events::Action;
 use color_eyre::eyre::Result;
-use config::Value;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use derive_deref::{Deref, DerefMut};
 use ratatui::style::{Color, Modifier, Style};
 use serde::{
-    de::{self, Deserializer, MapAccess, Visitor},
-    Deserialize, Serialize,
+    de::{Deserializer},
+    Deserialize,
 };
-use serde_json::Value as JsonValue;
 
 use crate::tui::mode::Mode;
 
@@ -416,7 +414,7 @@ fn parse_color(s: &str) -> Option<Color> {
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
+    //use pretty_assertions::assert_eq;
 
     use super::*;
 
@@ -472,7 +470,7 @@ mod tests {
         let c = Config::new()?;
         assert_eq!(
             c.keybindings
-                .get(&Mode::Home)
+                .get(&Mode::Dashboard)
                 .unwrap()
                 .get(&parse_key_sequence("<q>").unwrap_or_default())
                 .unwrap(),

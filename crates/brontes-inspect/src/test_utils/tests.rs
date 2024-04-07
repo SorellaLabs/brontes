@@ -37,6 +37,7 @@ use brontes_types::{
     BlockData, MultiBlockData,
 };
 use thiserror::Error;
+use tokio::sync::mpsc::{unbounded_channel};
 
 use crate::{composer::run_block_inspection, Inspectors};
 
@@ -363,11 +364,8 @@ impl InspectorTestUtils {
                 )
             })
             .collect::<Vec<_>>();
-        let db = self.classifier_inspector.trace_loader.libmdbx;
-        let data = BlockData { metadata: metadata.into(), tree: tree.into() };
-        let multi = MultiBlockData { blocks: 1, per_block_data: vec![data] };
-
-        let results = run_block_inspection(inspector.as_slice(), multi, db);
+        let (tui_tx, tui_rx) = unbounded_channel();   
+        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into(),tui_tx.clone());
 
         let mut results = results
             .mev_details
