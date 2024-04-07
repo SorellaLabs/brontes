@@ -291,10 +291,15 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
         let table_ranges = wanted_tables
             .into_iter()
-            .sorted_unstable_by(|key0, key1| (*key1 as u8).cmp(&(*key0 as u8)))
             .map(|table| {
                 // fetch table from vec
-                let table_res = tables.remove(table as u8 as usize);
+                let offset = table as u8 as usize;
+
+                let table_res = unsafe {
+                    let ptr = tables.as_mut_ptr();
+                    let loc = ptr.add(offset);
+                    loc.replace(vec![])
+                };
 
                 let mut ranges = Vec::new();
                 let mut range_start_block: Option<usize> = None;
