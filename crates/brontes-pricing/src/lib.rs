@@ -201,7 +201,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             }
         }
 
-        tracing::info!(%self.current_block);
+        tracing::info!(%self.current_block, %self.completed_block);
 
         // insert new pools accessed on this block.
         updates
