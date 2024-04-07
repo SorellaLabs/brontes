@@ -201,8 +201,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             }
         }
 
-        tracing::info!(%self.current_block, %self.completed_block);
-
         // insert new pools accessed on this block.
         updates
             .iter()
@@ -267,7 +265,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
-                tracing::info!(block=%msg.block,"no pricing");
                 self.current_block = msg.block;
                 self.completed_block = msg.block + 1;
             }
