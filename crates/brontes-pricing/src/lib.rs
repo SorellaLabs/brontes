@@ -657,6 +657,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 let edges = edges.into_iter().flatten().unique().collect_vec();
                 // add regularly
                 if edges.is_empty() {
+                    tracing::debug!(
+                        ?pair,
+                        ?goes_through,
+                        ?extends_pair,
+                        ?full_pair,
+                        "no edges found"
+                    );
                     self.rundown(pair, full_pair, goes_through, block);
                     return
                 }
