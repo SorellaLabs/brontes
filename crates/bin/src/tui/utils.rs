@@ -8,7 +8,6 @@ use tracing_error::ErrorLayer;
 use tracing_subscriber::{
     self, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Layer,
 };
-use brontes_types::db::token_info::TokenInfoWithAddress;
 
 
 
@@ -143,6 +142,8 @@ macro_rules! trace_dbg {
 macro_rules! get_symbols_from_transaction_accounting {
     ($data:expr) => {{
         use std::collections::HashSet;
+        use brontes_types::db::token_info::TokenInfoWithAddress;
+
         let mut token_info_with_addresses: Vec<TokenInfoWithAddress> = Vec::new();
         for transaction in $data {
             for address_delta in &transaction.address_deltas {
