@@ -1,28 +1,25 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use anyhow::Result;
-pub use app::*;
-pub use colors::*;
-pub use root::*;
-pub use term::*;
-pub use theme::*;
-pub use misc::*;
-
-
 use std::{
     future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
+use anyhow::Result;
+pub use app::*;
 use brontes_metrics::prometheus_exporter::initialize;
+pub use colors::*;
 use futures::pin_mut;
 use metrics_process::Collector;
+pub use misc::*;
 use reth_tasks::{TaskExecutor, TaskManager};
+pub use root::*;
+pub use term::*;
+pub use theme::*;
 use tracing::{error, info, trace};
 
 use crate::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
-
 
 pub fn run_tui<F, E>(command: impl FnOnce(AppContext) -> F) -> Result<(), E>
 where
@@ -157,5 +154,3 @@ pub struct AppContext {
     /// Used to execute/spawn tasks
     pub task_executor: TaskExecutor,
 }
-
-

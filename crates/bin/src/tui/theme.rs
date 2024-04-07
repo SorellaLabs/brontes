@@ -1,6 +1,5 @@
 use ratatui::prelude::*;
 
-
 pub struct Theme {
     pub root:              Style,
     pub content:           Style,
@@ -11,7 +10,6 @@ pub struct Theme {
     pub description:       Style,
     pub description_title: Style,
     pub key_binding:       KeyBinding,
-
 }
 
 pub struct KeyBinding {
@@ -35,12 +33,11 @@ pub const THEME: Theme = Theme {
     borders:           Style::new().fg(LIGHT_GRAY),
     description:       Style::new().fg(LIGHT_GRAY).bg(DARK_BLUE),
     description_title: Style::new().fg(LIGHT_GRAY).add_modifier(Modifier::BOLD),
-   
-    key_binding:       KeyBinding {
+
+    key_binding: KeyBinding {
         key:         Style::new().fg(BLACK).bg(DARK_GRAY),
         description: Style::new().fg(DARK_GRAY).bg(BLACK),
     },
-  
 };
 
 const DARK_BLUE: Color = Color::Rgb(16, 24, 48);

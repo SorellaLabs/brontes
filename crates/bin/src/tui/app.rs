@@ -323,8 +323,6 @@ impl App {
             }
             None => 0,
         };
-        //&mut self.context.state.select(Some(i));
-        //self.scroll_state = self.scroll_state.position(i * ITEM_HEIGHT);
     }
 
     pub fn previous(&self) {
