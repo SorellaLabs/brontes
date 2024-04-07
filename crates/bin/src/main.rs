@@ -52,6 +52,9 @@ fn run() -> eyre::Result<()> {
 
 fn init_tracing(tui: bool) {
     info!("tui: {}", tui);
+    let console = console_subscriber::Builder::default()
+        .server_addr((std::net::Ipv4Addr::LOCALHOST, 6668))
+        .spawn();
     if !tui {
         let layers = vec![];
         brontes_tracing::init(layers, true);
@@ -59,9 +62,6 @@ fn init_tracing(tui: bool) {
         let verbosity_level = Level::INFO;
         let directive: Directive = format!("{verbosity_level}").parse().unwrap();
 
-        let console = console_subscriber::Builder::default()
-            .server_addr((std::net::Ipv4Addr::LOCALHOST, 6668))
-            .spawn();
         let layers = vec![brontes_tracing::stdout(directive), Box::new(console)];
 
         brontes_tracing::init(layers, false);
