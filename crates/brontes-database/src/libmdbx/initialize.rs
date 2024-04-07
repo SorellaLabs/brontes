@@ -86,6 +86,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 let progress_bar = progress_bar.clone();
                 async move { table.initialize_full_range_table(self, progress_bar).await }
             })
+            .buffer_unordered(5)
             .collect::<Vec<_>>()
             .await;
 
