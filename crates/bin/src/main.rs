@@ -57,7 +57,7 @@ fn init_tracing(tui: bool) {
         .spawn()
         .boxed();
     if !tui {
-        let layers = vec![console, Box::new(tracing_subscriber_layer())];
+        let layers = vec![Box::new(tracing_subscriber_layer())];
         brontes_tracing::init(layers);
     } else {
         let verbosity_level = Level::INFO;
