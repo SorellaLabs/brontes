@@ -149,8 +149,6 @@ fn on_orchestra_resolution(
         .send(Action::Tui(TuiEvents::MevBlockMetricReceived((header.clone()))))
         .map_err(|e| {
             use tracing::info;
-
-            //info!("Failed to send: {}", e);
             info!("Failed to send: {}", e);
         });
 
@@ -158,8 +156,6 @@ fn on_orchestra_resolution(
         .send(Action::Tui(TuiEvents::MevBundleEventReceived((filtered_bundles.clone()))))
         .map_err(|e| {
             use tracing::info;
-
-            //info!("Failed to send: {}", e);
             info!("Failed to send: {}", e);
         });
 

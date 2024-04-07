@@ -1,6 +1,5 @@
 use ratatui::prelude::*;
 
-//TODO: Clean this file up
 
 pub struct Theme {
     pub root:              Style,
@@ -12,54 +11,12 @@ pub struct Theme {
     pub description:       Style,
     pub description_title: Style,
     pub key_binding:       KeyBinding,
-    pub logo:              Logo,
-    pub email:             Email,
-    pub traceroute:        Traceroute,
-    pub recipe:            Recipe,
+
 }
 
 pub struct KeyBinding {
     pub key:         Style,
     pub description: Style,
-}
-
-pub struct Logo {
-    pub rat:         Color,
-    pub rat_eye:     Color,
-    pub rat_eye_alt: Color,
-    pub term:        Color,
-}
-
-pub struct Email {
-    pub tabs:          Style,
-    pub tabs_selected: Style,
-    pub inbox:         Style,
-    pub item:          Style,
-    pub selected_item: Style,
-    pub header:        Style,
-    pub header_value:  Style,
-    pub body:          Style,
-}
-
-pub struct Traceroute {
-    pub header:   Style,
-    pub selected: Style,
-    pub ping:     Style,
-    pub map:      Map,
-}
-
-pub struct Map {
-    pub style:            Style,
-    pub color:            Color,
-    pub path:             Color,
-    pub source:           Color,
-    pub destination:      Color,
-    pub background_color: Color,
-}
-
-pub struct Recipe {
-    pub ingredients:        Style,
-    pub ingredients_header: Style,
 }
 
 pub const THEME: Theme = Theme {
@@ -78,51 +35,12 @@ pub const THEME: Theme = Theme {
     borders:           Style::new().fg(LIGHT_GRAY),
     description:       Style::new().fg(LIGHT_GRAY).bg(DARK_BLUE),
     description_title: Style::new().fg(LIGHT_GRAY).add_modifier(Modifier::BOLD),
-    logo:              Logo {
-        rat:         WHITE,
-        rat_eye:     BLACK,
-        rat_eye_alt: RED,
-        term:        BLACK,
-    },
+   
     key_binding:       KeyBinding {
         key:         Style::new().fg(BLACK).bg(DARK_GRAY),
         description: Style::new().fg(DARK_GRAY).bg(BLACK),
     },
-    email:             Email {
-        tabs:          Style::new().fg(MID_GRAY).bg(DARK_BLUE),
-        tabs_selected: Style::new()
-            .fg(WHITE)
-            .bg(DARK_BLUE)
-            .add_modifier(Modifier::BOLD),
-        inbox:         Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
-        item:          Style::new().fg(LIGHT_GRAY),
-        selected_item: Style::new().fg(LIGHT_YELLOW),
-        header:        Style::new().add_modifier(Modifier::BOLD),
-        header_value:  Style::new().fg(LIGHT_GRAY),
-        body:          Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
-    },
-    traceroute:        Traceroute {
-        header:   Style::new()
-            .bg(DARK_BLUE)
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED),
-        selected: Style::new().fg(LIGHT_YELLOW),
-        ping:     Style::new().fg(WHITE),
-        map:      Map {
-            style:            Style::new().bg(DARK_BLUE),
-            background_color: DARK_BLUE,
-            color:            LIGHT_GRAY,
-            path:             LIGHT_BLUE,
-            source:           LIGHT_GREEN,
-            destination:      LIGHT_RED,
-        },
-    },
-    recipe:            Recipe {
-        ingredients:        Style::new().bg(DARK_BLUE).fg(LIGHT_GRAY),
-        ingredients_header: Style::new()
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED),
-    },
+  
 };
 
 const DARK_BLUE: Color = Color::Rgb(16, 24, 48);
