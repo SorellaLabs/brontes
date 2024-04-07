@@ -1108,13 +1108,10 @@ pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
 
 fn default_tables_to_init() -> Vec<Tables> {
     let mut tables_to_init = vec![Tables::BlockInfo, Tables::DexPrice];
-
-    #[cfg(not(feature = "sorella-server"))]
+    #[cfg(not(feature = "local-reth"))]
     tables_to_init.push(Tables::TxTraces);
-
     #[cfg(not(feature = "cex-dex-markout"))]
     tables_to_init.push(Tables::CexPrice);
-
     #[cfg(feature = "cex-dex-markout")]
     tables_to_init.push(Tables::CexTrades);
 
