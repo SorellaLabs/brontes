@@ -17,7 +17,7 @@ use brontes::{
 use clap::Parser;
 use eyre::eyre;
 use tracing::{error, info, Level};
-use tracing_subscriber::filter::Directive;
+use tracing_subscriber::{filter::Directive, Layer};
 use tui_logger::tracing_subscriber_layer;
 
 fn main() -> eyre::Result<()> {
@@ -71,9 +71,10 @@ fn init_tracing(tui: bool) {
     info!("tui: {}", tui);
     let console = console_subscriber::Builder::default()
         .server_addr((std::net::Ipv4Addr::LOCALHOST, 6668))
-        .spawn();
+        .spawn()
+        .boxed();
     if !tui {
-        let layers = vec![Box::new(console)];
+        let layers = vec![console];
         brontes_tracing::init(layers, true);
     } else {
         let verbosity_level = Level::INFO;
