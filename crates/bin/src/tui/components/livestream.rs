@@ -205,7 +205,11 @@ impl Livestream {
                 item.header.mev_type.to_string(),
                 get_symbols_from_transaction_accounting!(&item.header.balance_deltas),
                 item.header.eoa.to_string(),
-                item.header.mev_contract.unwrap().to_string(),
+                item.header
+                    .mev_contract
+                    .as_ref()
+                    .map(|address| address.to_string())
+                    .unwrap_or("Address info missing from db".to_string()),
                 item.header.profit_usd.to_string(),
                 item.header.bribe_usd.to_string(),
             ]
