@@ -507,7 +507,7 @@ pub fn init_tracing() {
     let directive: Directive = format!("{verbosity_level}").parse().unwrap();
     let layers = vec![brontes_tracing::stdout(directive)];
 
-    brontes_tracing::init(layers, false);
+    brontes_tracing::init(layers);
 }
 
 pub fn init_trace_parser(
