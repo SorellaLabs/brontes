@@ -1,6 +1,5 @@
 use std::{
     sync::{Arc, Mutex},
-    time::Instant,
 };
 
 use ansi_to_tui::IntoText;
@@ -11,21 +10,17 @@ use brontes_types::mev::{
 };
 use color_eyre::eyre::Result;
 use crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
+    KeyCode, KeyEvent,
 };
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::{
-    broadcast::Sender,
-    mpsc::{unbounded_channel, UnboundedSender},
+    mpsc::{UnboundedSender},
 };
 use tracing::info;
 
 use super::Component;
 use crate::tui::{
-    app::layout,
-    colors::RgbSwatch,
-    config::{Config, KeyBindings},
-    theme::THEME,
+    config::{Config},
     tui::{Event, Frame},
 };
 
@@ -106,7 +101,7 @@ impl Livestream {
     */
 
     pub fn next(&mut self) {
-        if (self.show_popup) {
+        if self.show_popup {
             self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
             self.popup_scroll_state = self
                 .popup_scroll_state
@@ -117,7 +112,7 @@ impl Livestream {
                     let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                         self.mev_bundles.lock().unwrap();
 
-                    if (mevblocks_guard.len() > 0) {
+                    if mevblocks_guard.len() > 0 {
                         if i == 0 {
                             mevblocks_guard.len() - 1
                         } else {
@@ -134,7 +129,7 @@ impl Livestream {
     }
 
     pub fn previous(&mut self) {
-        if (self.show_popup) {
+        if self.show_popup {
             self.popup_scroll_position = self.popup_scroll_position.saturating_add(1);
             self.popup_scroll_state = self
                 .popup_scroll_state

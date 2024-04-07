@@ -4,7 +4,7 @@ use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
 use brontes_types::db::{cex::CexExchange, metadata::Metadata};
 use criterion::{black_box, Criterion};
-
+use tokio::sync::mpsc::{unbounded_channel};
 use super::InspectorTestUtilsError;
 use crate::{composer::compose_mev_results, Inspectors};
 
@@ -270,6 +270,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false),
         )?;
         metadata.dex_quotes = Some(prices);
+        let (tui_tx, tui_rx) = unbounded_channel();   
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
@@ -279,6 +280,7 @@ impl InspectorBenchUtils {
                         inspectors.as_slice(),
                         tree.clone(),
                         metadata.clone(),
+                        tui_tx.clone(),
                     ));
                 }
             });
@@ -320,6 +322,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false),
         )?;
         metadata.dex_quotes = prices;
+        let (tui_tx, tui_rx) = unbounded_channel();        
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
@@ -329,6 +332,7 @@ impl InspectorBenchUtils {
                         inspectors.as_slice(),
                         tree.clone(),
                         metadata.clone(),
+                        tui_tx.clone(),
                     ));
                 }
             });

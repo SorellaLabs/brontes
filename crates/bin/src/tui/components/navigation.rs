@@ -1,26 +1,21 @@
 use std::{
-    collections::HashMap,
     sync::{Arc, Mutex},
-    time::Duration,
 };
 
 use brontes_types::mev::events::Action;
 use color_eyre::eyre::Result;
 use crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
+    KeyCode, KeyEvent, KeyModifiers,
 };
 use ratatui::{prelude::*, widgets::*};
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
 
 use super::{Component, Frame};
 use crate::tui::app::AppContext;
 use crate::tui::{
     //events::{Event, EventHandler},
     app::layout,
-    colors::RgbSwatch,
-    config::{Config, KeyBindings},
+    config::{Config},
     theme::THEME,
     tui::Event,
 };

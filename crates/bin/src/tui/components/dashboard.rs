@@ -1,43 +1,32 @@
 use std::{
-    borrow::BorrowMut,
-    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
-    time::Duration,
 };
 
 use ansi_to_tui::IntoText;
-use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
-    db::token_info::{TokenInfo, TokenInfoWithAddress},
+    db::token_info::{TokenInfoWithAddress},
     mev::{
         bundle::Bundle,
-        events::{Action, TuiEvents},
-        BundleData, Mev, MevBlock,
+        events::{Action, TuiEvents}, Mev, MevBlock,
     },
 };
-use colored::Colorize;
 use crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
+    KeyCode, KeyEvent,
 };
-use eyre::{Context, Error, Result}; //
+use eyre::{Result}; //
 use itertools::Itertools;
-use lazy_static::lazy_static;
-use log::{LevelFilter, *};
-use malachite::strings::ToDebugString;
+use log::{*};
 use ratatui::{
     prelude::*,
     text::Line,
-    widgets::{canvas::*, ScrollbarState, *},
+    widgets::{ScrollbarState, *},
 };
-use serde::{Deserialize, Serialize};
 use tokio::sync::{
-    broadcast::Sender,
-    mpsc::{unbounded_channel, UnboundedSender},
+    mpsc::{UnboundedSender},
 };
 use tracing::info;
-use tracing_log::{self, LogTracer};
 use tracing_subscriber::{
-    fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer, Registry,
+    Layer,
 };
 use tui_logger::{self, *};
 
@@ -46,8 +35,7 @@ use crate::get_symbols_from_transaction_accounting;
 use crate::tui::{
     //events::{Event, EventHandler},
     app::layout,
-    colors::RgbSwatch,
-    config::{Config, KeyBindings},
+    config::{Config},
     theme::THEME,
     tui::Event,
 };
@@ -110,7 +98,7 @@ impl Dashboard {
     }
 
     pub fn next(&mut self) {
-        if (self.show_popup) {
+        if self.show_popup {
             self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
             self.popup_scroll_state = self
                 .popup_scroll_state
@@ -121,7 +109,7 @@ impl Dashboard {
                     let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                         self.mev_bundles.lock().unwrap();
 
-                    if (mevblocks_guard.len() > 0) {
+                    if mevblocks_guard.len() > 0 {
                         if i == 0 {
                             mevblocks_guard.len() - 1
                         } else {
@@ -138,7 +126,7 @@ impl Dashboard {
     }
 
     pub fn previous(&mut self) {
-        if (self.show_popup) {
+        if self.show_popup {
             self.popup_scroll_position = self.popup_scroll_position.saturating_add(1);
             self.popup_scroll_state = self
                 .popup_scroll_state

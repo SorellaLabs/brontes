@@ -1,14 +1,11 @@
-use std::{collections::HashMap, time::Duration};
 
 use brontes_types::mev::events::Action;
 use color_eyre::eyre::Result;
-use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::{Component, Frame};
-use crate::tui::config::{Config, KeyBindings};
+use crate::tui::config::{Config};
 
 #[derive(Default, Debug)]
 pub struct Metrics {

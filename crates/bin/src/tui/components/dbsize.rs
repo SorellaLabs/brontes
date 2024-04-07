@@ -1,32 +1,16 @@
 use std::{
-    collections::HashMap,
     env,
-    sync::{Arc, Mutex},
-    time::Duration,
 };
 
-use brontes_database::libmdbx::{
-    implementation::compressed_wrappers::tx::CompressedLibmdbxTx, tables::*, Libmdbx,
-};
 use brontes_types::mev::events::Action;
 use color_eyre::eyre::Result;
-use crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
-};
 use ratatui::{prelude::*, widgets::*};
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
 
 use super::{Component, Frame};
-use crate::tui::app::AppContext;
 use crate::tui::{
     //events::{Event, EventHandler},
-    app::layout,
-    colors::RgbSwatch,
-    config::{Config, KeyBindings},
-    theme::THEME,
-    tui::Event,
+    config::{Config},
 };
 
 #[derive(Clone, Debug, Default)]

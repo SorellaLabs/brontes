@@ -1,18 +1,14 @@
-use std::{collections::HashMap, time::Duration};
 
 use brontes_types::mev::events::Action;
 use clap::Parser;
 use color_eyre::eyre::Result;
 use crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent,
+    KeyEvent,
 };
-use malachite::strings::ToDebugString;
-use palette::convert::TryIntoColor;
 use ratatui::{prelude::*, widgets::*};
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
-use tui_textarea::{Input, Key, TextArea};
+use tui_textarea::{TextArea};
 
 use super::{
     constants::UiStyle,
@@ -22,7 +18,7 @@ use super::{
 use crate::{
     cli::{Args, Commands},
     tui::{
-        config::{Config, KeyBindings},
+        config::{Config},
         tui::Event,
     },
 };
@@ -330,7 +326,7 @@ impl Component for Settings {
             .split(sub_layout[0]);
 
         let opt = Args::parse();
-        let mut command_string = "";
+        let command_string = "";
 
         match opt.command {
             Commands::Run(command) => {
@@ -365,7 +361,7 @@ impl Component for Settings {
                     ("test4".to_string(), UiStyle::DEFAULT),
                 ]);
 
-                let mut constraints = vec![Constraint::Length(10)].repeat(2);
+                let constraints = vec![Constraint::Length(10)].repeat(2);
                 let rect = Rect { x: 4, y: 8, width: 20, height: 20 };
                 let split = Layout::vertical(constraints).split(rect);
 
