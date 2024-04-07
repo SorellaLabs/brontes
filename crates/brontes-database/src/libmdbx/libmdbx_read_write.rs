@@ -284,7 +284,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
             for (table, bool) in tables_to_initialize(state) {
                 if table == Tables::CexPrice {
-                    tracing::info!("cex price");
+                    tracing::info!(?bool, "cex price");
                 }
                 tables[table as u8 as usize][pos / 128] |= (bool as u8 as u128) << (127 - pos % 128)
             }
