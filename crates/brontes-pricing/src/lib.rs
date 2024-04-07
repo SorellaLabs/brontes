@@ -192,7 +192,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the decentralized exchange pricing mechanism.
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
-            tracing::info!("empty updates");
             return
         };
 
@@ -268,8 +267,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
-                self.current_block = msg.block;
-                self.completed_block = msg.block;
+                self.current_block = msg.block + 1;
+                self.completed_block = msg.block + 1;
             }
         }
 
