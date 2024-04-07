@@ -43,7 +43,15 @@ pub trait LoadState {
 
 impl LoadState for Protocol {
     fn has_state_updater(&self) -> bool {
-        matches!(self, Self::UniswapV2 | Self::UniswapV3 | Self::SushiSwapV2 | Self::SushiSwapV3)
+        matches!(
+            self,
+            Self::UniswapV2
+                | Self::UniswapV3
+                | Self::SushiSwapV2
+                | Self::SushiSwapV3
+                | Self::PancakeSwapV2
+                | Self::PancakeSwapV3
+        )
     }
 
     async fn try_load_state<T: TracingProvider>(
@@ -55,7 +63,7 @@ impl LoadState for Protocol {
         fp: Pair,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
-            Self::UniswapV2 | Self::SushiSwapV2 => {
+            Self::UniswapV2 | Self::SushiSwapV2 | Self::PancakeSwapV2 => {
                 let (pool, res) = if let Ok(pool) =
                     UniswapV2Pool::new_load_on_block(address, provider.clone(), block_number - 1)
                         .await
@@ -83,7 +91,7 @@ impl LoadState for Protocol {
                     res,
                 ))
             }
-            Self::UniswapV3 | Self::SushiSwapV3 => {
+            Self::UniswapV3 | Self::SushiSwapV3 | Self::PancakeSwapV3 => {
                 let (pool, res) = if let Ok(pool) =
                     UniswapV3Pool::new_from_address(address, block_number - 1, provider.clone())
                         .await
