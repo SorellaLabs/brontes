@@ -6,7 +6,6 @@ use std::{
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use alloy_primitives::Address;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::{self_convert_redefined, Redefined};
@@ -18,9 +17,7 @@ use serde_with::serde_as;
 use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::B256Redefined,
-    new_fast_hash_map,
-    normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined},
-    FastHashMap, GasDetails, Protocol,
+    normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined}, GasDetails, Protocol,
 };
 
 #[serde_as]

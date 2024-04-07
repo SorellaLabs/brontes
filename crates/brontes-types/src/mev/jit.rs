@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use ahash::HashSet;
-use alloy_primitives::Address;
 use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;

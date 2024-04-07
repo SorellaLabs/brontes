@@ -1,9 +1,8 @@
-use std::{fmt::Debug, str::FromStr};
+use std::{fmt::Debug};
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use alloy_primitives::Address;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -12,8 +11,8 @@ use serde_with::serde_as;
 
 use super::{Mev, MevType};
 use crate::{
-    db::redefined_types::primitives::*, new_fast_hash_map, normalized_actions::*,
-    ClickhouseVecGasDetails, FastHashMap, Protocol,
+    db::redefined_types::primitives::*, normalized_actions::*,
+    ClickhouseVecGasDetails, Protocol,
 };
 #[allow(unused_imports)]
 use crate::{

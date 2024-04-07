@@ -3,7 +3,7 @@ use std::{fmt, fmt::Debug};
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use alloy_primitives::{Address, U256};
+use alloy_primitives::{U256};
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use malachite::Rational;
@@ -19,8 +19,7 @@ use crate::{
         cex::CexExchange,
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
-    normalized_actions::*,
-    FastHashMap, Protocol, ToFloatNearest,
+    normalized_actions::*, Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{

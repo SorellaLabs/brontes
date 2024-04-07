@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use alloy_primitives::Address;
 #[allow(unused)]
 use clickhouse::row::*;
 use redefined::Redefined;
