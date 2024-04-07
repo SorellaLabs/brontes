@@ -88,7 +88,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
             self.reschedule(pricer);
 
             if let Some((block, prices)) = inner {
-                info!(target:"brontes","Generated dex prices for block: {}", block);
+                info!(target:"brontes","Generated dex prices for block: {} {:#?}", block, prices);
                 info!("{:#?}", self.pending_trees.keys());
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
