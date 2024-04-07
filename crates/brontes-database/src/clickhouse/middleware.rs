@@ -203,13 +203,6 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
             .await
     }
 
-    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
-        &self,
-        clickhouse: &'static CH,
-    ) -> bool {
-        self.inner.should_init_full_range_tables(clickhouse).await
-    }
-
     fn state_to_initialize(
         &self,
         start_block: u64,
@@ -478,13 +471,6 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         self.inner
             .initialize_full_range_tables(clickhouse, tracer)
             .await
-    }
-
-    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
-        &self,
-        clickhouse: &'static CH,
-    ) -> bool {
-        self.inner.should_init_full_range_tables(clickhouse).await
     }
 
     fn state_to_initialize(

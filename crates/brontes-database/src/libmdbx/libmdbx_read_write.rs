@@ -1,5 +1,3 @@
-#[cfg(feature = "local-clickhouse")]
-use std::str::FromStr;
 use std::{
     cmp::max,
     ops::{Bound, RangeInclusive},
@@ -37,24 +35,14 @@ use brontes_types::{
     traits::TracingProvider,
     BlockTree, FastHashMap, SubGraphsEntry,
 };
-#[cfg(feature = "local-clickhouse")]
-use db_interfaces::Database;
 use eyre::{eyre, ErrReport};
 use futures::Future;
-#[cfg(feature = "local-clickhouse")]
-use futures::{FutureExt, StreamExt};
 use indicatif::ProgressBar;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::info;
 
-#[cfg(feature = "local-clickhouse")]
-use crate::clickhouse::{
-    MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS, MIN_MAX_TOKEN_DECIMALS,
-};
-#[cfg(feature = "local-clickhouse")]
-use crate::libmdbx::CompressedTable;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
@@ -89,13 +77,6 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
-    /// checks the min and max values of the clickhouse db and sees if the full
-    /// range tables have the values.
-    fn should_init_full_range_tables<CH: ClickhouseHandle>(
-        &self,
-        clickhouse: &'static CH,
-    ) -> impl Future<Output = bool> + Send;
-
     fn state_to_initialize(
         &self,
         start_block: u64,
@@ -108,43 +89,6 @@ pub struct LibmdbxReadWriter(pub Libmdbx);
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
-    }
-
-    #[cfg(feature = "local-clickhouse")]
-    async fn has_clickhouse_min_max<TB, CH: ClickhouseHandle>(
-        &self,
-        query: &str,
-        clickhouse: &'static CH,
-    ) -> eyre::Result<bool>
-    where
-        TB: CompressedTable,
-        TB::Value: From<TB::DecompressedValue> + Into<TB::DecompressedValue>,
-        <TB as reth_db::table::Table>::Key: FromStr + Send + Sync,
-    {
-        let (min, max) = clickhouse
-            .inner()
-            .query_one::<(String, String), _>(query, &())
-            .await?;
-
-        let Ok(min_parsed) = min.parse::<TB::Key>() else {
-            return Ok(false);
-        };
-
-        let Ok(max_parsed) = max.parse::<TB::Key>() else {
-            return Ok(false);
-        };
-
-        let tx = self.0.ro_tx()?;
-        let mut cur = tx.new_cursor::<TB>()?;
-
-        let Some(has_min) = cur.first()?.map(|v| v.0 <= min_parsed) else {
-            return Ok(false);
-        };
-        let Some(has_max) = cur.last()?.map(|v| v.0 >= max_parsed) else {
-            return Ok(false);
-        };
-
-        Ok(has_min && has_max)
     }
 }
 
@@ -184,53 +128,6 @@ impl LibmdbxInit for LibmdbxReadWriter {
             .await?;
 
         Ok(())
-    }
-
-    /// checks the min and max values of the clickhouse db and sees if the full
-    /// range tables have the values.
-    #[cfg(feature = "local-clickhouse")]
-    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
-        &self,
-        clickhouse: &'static CH,
-    ) -> bool {
-        futures::stream::iter([
-            Tables::PoolCreationBlocks,
-            Tables::AddressToProtocolInfo,
-            Tables::TokenDecimals,
-        ])
-        .map(|table| async move {
-            match table {
-                Tables::AddressToProtocolInfo => self
-                    .has_clickhouse_min_max::<AddressToProtocolInfo, CH>(
-                        MIN_MAX_ADDRESS_TO_PROTOCOL,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                Tables::TokenDecimals => self
-                    .has_clickhouse_min_max::<TokenDecimals, CH>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
-                    .await
-                    .unwrap_or_default(),
-                Tables::PoolCreationBlocks => self
-                    .has_clickhouse_min_max::<PoolCreationBlocks, CH>(
-                        MIN_MAX_POOL_CREATION_BLOCKS,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                _ => true,
-            }
-        })
-        .any(|f| f.map(|f| !f))
-        .await
-    }
-
-    #[cfg(not(feature = "local-clickhouse"))]
-    async fn should_init_full_range_tables<CH: ClickhouseHandle>(
-        &self,
-        _clickhouse: &'static CH,
-    ) -> bool {
-        true
     }
 
     async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(

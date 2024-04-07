@@ -373,13 +373,11 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
 
             let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
-            if this.should_init_full_range_tables(clickhouse).await {
-                let tracer = init_trace_parser(handle, tx, this, 5).await;
+            let tracer = init_trace_parser(handle, tx, this, 5).await;
 
-                this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
-                    .await
-                    .unwrap();
-            }
+            this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
+                .await
+                .unwrap();
 
             this
         })

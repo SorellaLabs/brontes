@@ -80,6 +80,8 @@ pub struct RunArgs {
     pub behind_tip:             u64,
     #[arg(long, default_value = "false")]
     pub cli_only:               bool,
+    #[arg(long, default_value = "false")]
+    pub init_crit_tables:       bool,
 }
 
 impl RunArgs {
@@ -151,6 +153,7 @@ impl RunArgs {
                     parser,
                     libmdbx,
                     self.cli_only,
+                    self.init_crit_tables,
                 )
                 .build(task_executor, shutdown)
                 .await
