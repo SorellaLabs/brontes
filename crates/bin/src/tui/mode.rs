@@ -4,4 +4,9 @@ use serde::{Deserialize, Serialize};
 pub enum Mode {
     #[default]
     Dashboard,
+    Livestream,
+    Analytics,
+    Metrics,
+    Settings,
+    About,
 }
