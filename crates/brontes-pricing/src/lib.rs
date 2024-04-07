@@ -543,6 +543,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let failed_queries = deps
                 .into_iter()
                 .map(|(pair, goes_through)| {
+                    tracing::info!(?pair, ?goes_through, "failed state query dep");
                     self.graph_manager.pool_dep_failure(pair, goes_through);
                     RequeryPairs {
                         full_pair,
