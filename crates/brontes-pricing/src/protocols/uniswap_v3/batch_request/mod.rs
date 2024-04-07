@@ -63,6 +63,9 @@ const TOKEN1_RANGE: std::ops::Range<usize> = 9128..9128 + 40;
 const FEE_RANGE: std::ops::Range<usize> = 6682..6682 + 6;
 const TICK_SPACING_RANGE: std::ops::Range<usize> = 6146..6146 + 64;
 
+//TODO: Good first issue for someone to prune the unnecessary data we are
+// loading for the pools TODO: We don't need ticks or fees, we should already
+// have token 0 & token 1 TODO: We also don't need bytecode or tick spacing
 pub fn extract_uni_v3_immutables(bytecode: Bytes) -> (Address, Address, u32, i32) {
     // Slices
     let token0_slice = &bytecode[TOKEN0_RANGE];

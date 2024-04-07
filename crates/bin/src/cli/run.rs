@@ -41,12 +41,12 @@ pub struct RunArgs {
     #[cfg(not(feature = "cex-dex-markout"))]
     /// The sliding time window (BEFORE) for cex prices relative to the block
     /// timestamp
-    #[arg(long = "price-tw-before", default_value = "12")]
+    #[arg(long = "price-tw-before", default_value = "4")]
     pub cex_time_window_before: u64,
     #[cfg(not(feature = "cex-dex-markout"))]
     /// The sliding time window (AFTER) for cex prices relative to the block
     /// timestamp
-    #[arg(long = "price-tw-after", default_value = "0")]
+    #[arg(long = "price-tw-after", default_value = "4")]
     pub cex_time_window_after:  u64,
     #[cfg(feature = "cex-dex-markout")]
     /// The sliding time window (BEFORE) for cex trades relative to the block
@@ -78,6 +78,10 @@ pub struct RunArgs {
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "3")]
     pub behind_tip:             u64,
+    #[arg(long, default_value = "false")]
+    pub cli_only:               bool,
+    #[arg(long, default_value = "false")]
+    pub init_crit_tables:       bool,
 }
 
 impl RunArgs {
@@ -148,6 +152,8 @@ impl RunArgs {
                     clickhouse,
                     parser,
                     libmdbx,
+                    self.cli_only,
+                    self.init_crit_tables,
                 )
                 .build(task_executor, shutdown)
                 .await
