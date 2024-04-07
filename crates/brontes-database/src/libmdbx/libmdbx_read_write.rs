@@ -1007,7 +1007,6 @@ impl LibmdbxReadWriter {
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
         let tx = self.0.rw_tx()?;
         let mut range_cursor = tx.cursor_write::<InitializedState>()?;
-        let mut block = *range.start();
 
         for block in range {
             if let Some(mut state) = range_cursor.seek_exact(block)? {
@@ -1128,35 +1127,18 @@ pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
             .map(|t| (t, true))
             .collect_vec()
     } else {
-        #[cfg(all(feature = "local-reth", not(feature = "cex-dex-markout")))]
-        {
-            return vec![
-                (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
-                (Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)),
-                (Tables::BlockInfo, data.is_initialized(META_FLAG)),
-            ]
-        }
+        let mut tables = vec![
+            (Tables::BlockInfo, data.is_initialized(META_FLAG)),
+            (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
+        ];
 
-        #[cfg(all(not(feature = "local-reth"), feature = "cex-dex-markout"))]
-        {
-            return vec![
-                (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
-                (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
-                (Tables::BlockInfo, data.is_initialized(META_FLAG)),
-                (Tables::TxTraces, data.is_initialized(TRACE_FLAG)),
-            ]
-        }
+        #[cfg(not(feature = "local-reth"))]
+        tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables.push((Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)));
+        #[cfg(feature = "cex-dex-markout")]
+        tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
 
-        #[cfg(all(feature = "local-reth", feature = "cex-dex-markout"))]
-        {
-            return vec![
-                (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
-                (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
-                (Tables::BlockInfo, data.is_initialized(META_FLAG)),
-            ]
-        }
-
-        #[allow(unreachable_code)]
-        Vec::new()
+        tables
     }
 }
