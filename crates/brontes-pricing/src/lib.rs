@@ -18,8 +18,7 @@
 //! ensuring that all valid trading paths are represented.
 //!
 //! ### Lazy Loading
-//! New pools and their states are fetched as required, optimizing resource
-//! usage and performance.
+//! New pools and their states are fetched as required
 
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
@@ -74,9 +73,8 @@ const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(2, 10);
 
 /// # Brontes Batch Pricer
 ///
-/// [`BrontesBatchPricer`] establishes a token graph for pricing tokens against
-/// a chosen quote token, highlighting differences between centralized and
-/// decentralized exchange prices.
+/// [`BrontesBatchPricer`] establishes a token graph with liquidity pools as
+/// edges
 ///
 /// ## Workflow
 /// The system operates on a block-by-block basis as follows:
@@ -214,7 +212,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     .add_pool(pair, pool_addr, protocol, block);
             });
 
-        tracing::debug!("search triggered by on pool updates");
+        tracing::debug!("search triggered by pool updates");
         let (state, pools) = execute_on!(target = pricing, {
             graph_search_par(&self.graph_manager, self.quote_asset, updates)
         });
@@ -503,21 +501,20 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
     }
 
-    /// Processes the result of lazy pool state loading. It updates the graph
-    /// state or handles errors.
+    /// Processes the result of lazy pool state loading.
+    ///
+    /// Updates the graph state or handles errors.
     ///
     /// # Behavior
     /// If the pool state is successfully loaded, the function updates the graph
-    /// manager with the new state. If the pool was initialized in the
-    /// current block and the load result indicates an error, an override is set
-    /// to prevent invalid state application. It then triggers subgraph
-    /// verification for relevant pairs. In case of a load error, it handles
-    /// the error by calling `on_state_load_error`.
+    /// manager with the new state.
     ///
-    /// # Usage
-    /// This function is used within the system to handle the outcomes of
-    /// asynchronous pool state loading operations, ensuring the graph remains
-    /// accurate and up-to-date.
+    /// If the pool was initialized in the current block and the load result
+    /// indicates an error, an override is set to prevent invalid state
+    /// application. It then triggers subgraph verification for relevant
+    /// pairs. In case of a load error, it handles the error by calling
+    /// `on_state_load_error`.
+
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
 
@@ -887,13 +884,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             && self.completed_block < self.current_block
     }
 
-    /// allows for pre-processing of up to 10 future blocks
-    /// before we only will focus on clearing current state
+    /// The price can pre-process up to 10 blocks in the future
     fn process_future_blocks(&self) -> bool {
         self.completed_block + 10 > self.current_block
     }
 
-    // called when we try to progress to the next block
+    /// Attempts to resolve the block & start processing the next block.
     fn try_resolve_block(&mut self) -> Option<(u64, DexQuotes)> {
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
@@ -1087,7 +1083,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                     inner.and_then(|action| match action {
                         DexPriceMsg::DisablePricingFor(block) => {
                             self.skip_pricing.push_back(block);
-                            tracing::debug!(?block, "skipping for pricing");
+                            tracing::debug!(?block, "skipping pricing");
                             Some(PollResult::Skip)
                         }
                         DexPriceMsg::Update(update) => Some(PollResult::State(update)),
@@ -1170,7 +1166,7 @@ pub struct StateBuffer {
     pub updates:   FastHashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     /// when we have a override for a given address at a block. it means that
     /// we don't want to apply any pool updates for the block. This is useful
-    /// for when a pool is initted at a block and we can only query the end
+    /// for when a pool is  at a block and we can only query the end
     /// of block state. we can override all pool updates for the init block
     /// to ensure our pool state is in sync
     pub overrides: FastHashMap<u64, FastHashSet<Address>>,
