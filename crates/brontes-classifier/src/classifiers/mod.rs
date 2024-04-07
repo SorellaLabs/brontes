@@ -185,5 +185,15 @@ action_dispatch!(
     ZeroXFillTakerSignedOtcOrderCall,
     ZeroXFillTakerSignedOtcOrderForEthCall,
     ZeroXBatchFillTakerSignedOtcOrdersCall,
-    ZeroXSellToLiquidityProviderCall
+    ZeroXSellToLiquidityProviderCall,
+    ZeroXMultiplexBatchSellEthForTokenCall,
+    ZeroXMultiplexBatchSellTokenForEthCall,
+    ZeroXMultiplexBatchSellTokenForTokenCall,
+    ZeroXMultiplexMultiHopSellEthForTokenCall,
+    ZeroXMultiplexMultiHopSellTokenForEthCall,
+    ZeroXMultiplexMultiHopSellTokenForTokenCall,
+    ZeroXFillLimitOrderCall,
+    ZeroXFillRfqOrderCall,
+    ZeroXFillOrKillLimitOrderCall,
+    ZeroXFillOrKillRfqOrderCall
 );
