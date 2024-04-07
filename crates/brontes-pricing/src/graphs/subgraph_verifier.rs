@@ -97,7 +97,7 @@ impl SubgraphVerifier {
             .is_some()
     }
 
-    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: &Pair) -> Pair {
+    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: &Pair) {
         self.subgraph_verification_state.retain(|k, v| {
             if *k != pair {
                 return true
@@ -107,22 +107,13 @@ impl SubgraphVerifier {
             !v.is_empty()
         });
 
-        let mut full_pair = vec![];
         self.pending_subgraphs.retain(|k, v| {
             if *k != pair {
                 return true
             }
-            v.retain(|(k, s)| {
-                let keep = k != goes_through;
-                if !keep {
-                    full_pair.push(s.subgraph.complete_pair);
-                }
-                keep
-            });
+            v.retain(|(k, s)| k != goes_through);
             !v.is_empty()
         });
-
-        full_pair.remove(0)
     }
 
     // creates a new subgraph returning

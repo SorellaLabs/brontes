@@ -534,12 +534,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
             self.graph_manager
-                .remove_pair_graph_address(pool_pair,pool_address);
+                .remove_pair_graph_address(pool_pair, pool_address);
 
             let failed_queries = deps
                 .into_iter()
                 .map(|(pair, goes_through)| {
-                    let full_pair = self.graph_manager.pool_dep_failure(pair, goes_through);
+                    self.graph_manager.pool_dep_failure(pair, goes_through);
+                    let full_pair = Pair(pair.0, self.quote);
                     tracing::debug!(?pair, ?goes_through, ?full_pair, "failed state query dep");
                     RequeryPairs {
                         pair,
@@ -1050,7 +1051,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
 
         let pairs = self.lazy_loader.pairs_to_verify();
-
         execute_on!(target = pricing, self.try_verify_subgraph(pairs));
 
         // check if we can progress to the next block.
