@@ -332,7 +332,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             MevType::Sandwich,
             !has_dex_price,
         );
-        tracing::debug!("{:#?}", header.dex_quotes);
+        tracing::debug!("{:#?}", metadata.dex_quotes);
 
         let victim_swaps = victim_swaps
             .into_iter()
