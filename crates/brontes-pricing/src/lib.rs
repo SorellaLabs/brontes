@@ -998,6 +998,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if self.completed_block > self.current_block {
             return None
         }
+        tracing::info!("on close");
 
         self.graph_manager.finalize_block(self.completed_block);
 
