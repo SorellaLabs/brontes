@@ -215,7 +215,6 @@ impl Tables {
                             .unwrap(),
                     )
                     .await?;
-                    tracing::info!("finished cex quotes");
                         Ok(())
             }
             Tables::BlockInfo => {
