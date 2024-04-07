@@ -111,7 +111,7 @@ impl SubgraphVerifier {
             if *k != pair {
                 return true
             }
-            v.retain(|(k, s)| k != goes_through);
+            v.retain(|(k, _)| k != goes_through);
             !v.is_empty()
         });
     }
