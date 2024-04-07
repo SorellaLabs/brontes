@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use ahash::HashSet;
-use alloy_primitives::Address;
 use clickhouse::InsertRow;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -14,7 +13,7 @@ use crate::{
     display::utils::display_sandwich,
     new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    FastHashMap, GasDetails,
+    GasDetails,
 };
 use crate::{mev::*, Protocol};
 

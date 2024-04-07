@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use ::serde::ser::Serializer;
 use ahash::{HashSet, HashSetExt};
-use alloy_primitives::Address;
 use clickhouse::DbRow;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -13,9 +12,7 @@ use serde_with::serde_as;
 use crate::{
     db::redefined_types::primitives::*,
     mev::{Mev, MevType},
-    new_fast_hash_map,
-    normalized_actions::*,
-    FastHashMap, Protocol,
+    normalized_actions::*, Protocol,
 };
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::NormalizedTransfer, GasDetails};

@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use strum::{AsRefStr, Display, EnumIter};
 
-use crate::{display::utils::*, FastHashMap, Protocol};
+use crate::{display::utils::*, Protocol};
 #[allow(unused_imports)]
 use crate::{
     display::utils::{display_cex_dex, display_sandwich},

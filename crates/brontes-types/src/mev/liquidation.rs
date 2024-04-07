@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
-use alloy_primitives::Address;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::Redefined;
@@ -13,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
-use crate::{db::redefined_types::primitives::*, new_fast_hash_map, FastHashMap, Protocol};
+use crate::{db::redefined_types::primitives::*, Protocol};
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails};
 
