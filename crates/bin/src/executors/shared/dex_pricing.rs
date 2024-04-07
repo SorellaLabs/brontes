@@ -89,7 +89,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
             if let Some((block, prices)) = inner {
                 info!(target:"brontes","Generated dex prices for block: {}", block);
-                info!("{:#?}", self.pending_trees);
+                info!("{:#?}", self.pending_trees.keys());
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None);
