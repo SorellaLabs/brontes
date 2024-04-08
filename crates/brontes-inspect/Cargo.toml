@@ -90,6 +90,9 @@ statrs = "0.16"
 
 
 [features]
+default = ["pretty-print"]
+tui =[]
+cex-dex-markout = ["brontes-types/cex-dex-markout"]
 sorella-server = ["local-reth", "local-clickhouse"]
 
 tests = [
