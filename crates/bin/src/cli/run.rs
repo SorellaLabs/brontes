@@ -5,9 +5,9 @@ use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 //TUI related imports
-use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
+use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools,mev::{events::Action}};
 use clap::Parser;
-use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::mpsc::{unbounded_channel,UnboundedSender};
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
@@ -17,6 +17,10 @@ use crate::{
     tui::app::App,
     BrontesRunConfig, MevProcessor,
 };
+
+
+
+
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -101,6 +105,10 @@ impl RunArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
 
+
+        //let tui_tx = Option(None);
+        let tui_tx: Option<UnboundedSender<Action>> = None;
+
         #[cfg(feature = "tui")]
         {
             let (tui_tx, tui_rx) = unbounded_channel();
@@ -112,9 +120,8 @@ impl RunArgs {
                 //executor.block_on(App::run(tui_rx, tui_tx.clone()));
             }
         }
-        
-        #[cfg(not(feature = "tui"))]
-        let tui_tx = None;
+
+   
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
