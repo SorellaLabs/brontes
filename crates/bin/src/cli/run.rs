@@ -97,9 +97,9 @@ impl RunArgs {
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
+        let (tui_tx, tui_rx) = unbounded_channel();
         if !self.cli_only {
             tracing::info!("Launching App");
-            let (tui_tx, tui_rx) = unbounded_channel();
             let executor = task_executor.clone();
             executor.spawn_critical("TUI", App::run(tui_rx, tui_tx.clone()));
         }
