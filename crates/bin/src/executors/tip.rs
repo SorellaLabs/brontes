@@ -13,8 +13,7 @@ use brontes_inspect::Inspector;
 use brontes_types::{
     db::metadata::Metadata,
     mev::{
-        events::{Action, TuiEvents},
-        MevBlock,
+        events::{Action},
     },
     normalized_actions::Actions,
     tree::BlockTree,

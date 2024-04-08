@@ -156,17 +156,17 @@ impl Component for Root {
 
     fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
 
-        const TAB_COUNT: usize = 5;
+        const tab_count: usize = 5;
 
 
         match key.code {
             
             KeyCode::Tab | KeyCode::BackTab if key.modifiers.contains(KeyModifiers::SHIFT) => {
                 let tab_index = self.tab_index + TAB_COUNT; // to wrap around properly
-                self.tab_index = tab_index.saturating_sub(1) % TAB_COUNT;
+                self.tab_index = tab_index.saturating_sub(1) % tab_count;
             }
             KeyCode::Tab | KeyCode::BackTab => {
-                self.tab_index = self.tab_index.saturating_add(1) % TAB_COUNT;
+                self.tab_index = self.tab_index.saturating_add(1) % tab_count;
             }
 
 

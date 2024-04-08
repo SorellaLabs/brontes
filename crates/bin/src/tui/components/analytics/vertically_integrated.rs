@@ -20,7 +20,7 @@ impl VerticallyIntegrated {
         Self::default()
     }
 
-    fn draw_vertically_integrated(widget: &VerticallyIntegrated, area: Rect, buf: &mut Buffer) {
+    fn draw_vertically_integrated(_widget: &VerticallyIntegrated, area: Rect, buf: &mut Buffer) {
         // Construct the final Vec<(&str, u64)> with the total counts
         let data: Vec<(&str, u64)> = vec![
             ("Sandwich", 20),

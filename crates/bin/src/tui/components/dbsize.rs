@@ -17,7 +17,6 @@ use crate::tui::{
 pub struct DbSize {
     command_tx:  Option<UnboundedSender<Action>>,
     config:      Config,
-    leaderboard: Vec<(&'static str, u64)>,
 }
 
 impl DbSize {
@@ -25,20 +24,11 @@ impl DbSize {
         Self {
             command_tx:  Default::default(),
             config:      Default::default(),
-            leaderboard: vec![
-                ("jaredfromsubway.eth", 1_200_000),
-                ("0x23892382394..212", 1_100_000),
-                ("0x13897682394..243", 1_000_000),
-                ("0x33899882394..223", 900_000),
-                ("0x43894082394..265", 800_000),
-                ("0x53894082394..283", 700_000),
-                ("0x83894082394..293", 600_000),
-                // Repeat as necessary
-            ],
+
         }
     }
 
-    fn draw_dbsize(widget: &DbSize, area: Rect, buf: &mut Buffer) {
+    fn draw_dbsize(_widget: &DbSize, area: Rect, buf: &mut Buffer) {
         // Construct the final Vec<(&str, u64)> with the total counts
         let data: Vec<(&str, u64)> = vec![
             ("Sandwich", 20),

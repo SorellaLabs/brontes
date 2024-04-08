@@ -20,7 +20,7 @@ impl SearcherStats {
         Self::default()
     }
 
-    fn draw_searcher_stats(widget: &SearcherStats, area: Rect, buf: &mut Buffer) {
+    fn draw_searcher_stats(_widget: &SearcherStats, area: Rect, buf: &mut Buffer) {
         // Construct the final Vec<(&str, u64)> with the total counts
         let data: Vec<(&str, u64)> = vec![
             ("Sandwich", 20),

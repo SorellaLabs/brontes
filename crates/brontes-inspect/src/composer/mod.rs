@@ -145,15 +145,15 @@ fn on_orchestra_resolution(
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
-    tui_tx
-        .send(Action::Tui(TuiEvents::MevBlockMetricReceived((header.clone()))))
+    let _ = tui_tx
+        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
         .map_err(|e| {
             use tracing::info;
             info!("Failed to send: {}", e);
         });
 
-    tui_tx
-        .send(Action::Tui(TuiEvents::MevBundleEventReceived((filtered_bundles.clone()))))
+    let _ = tui_tx
+        .send(Action::Tui(TuiEvents::MevBundleEventReceived(filtered_bundles.clone())))
         .map_err(|e| {
             use tracing::info;
             info!("Failed to send: {}", e);
