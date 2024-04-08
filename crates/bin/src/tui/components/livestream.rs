@@ -197,7 +197,8 @@ impl Livestream {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
-            let mut protocol_names = item.data.protocols().iter().map(|p| p.to_string()).collect::<Vec<_>>();
+            let protocols = item.data.protocols();
+            let mut protocol_names = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>();
             protocol_names.sort();
             let protocol_list = protocol_names.join(", ");
 
