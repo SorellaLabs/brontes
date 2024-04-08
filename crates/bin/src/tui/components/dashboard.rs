@@ -377,7 +377,7 @@ impl Dashboard {
 fn render_progress(&self, area: Rect, buf: &mut Buffer) {
     let progress = self.progress_counter.unwrap_or(0);
     Gauge::default()
-    .block(Block::bordered().title("progress-task"))
+    .block(Block::bordered().title("PROGRESS:"))
     .gauge_style((Color::White, Modifier::ITALIC))
     .percent(progress)
     .render(area, buf);
@@ -492,6 +492,11 @@ impl Component for Dashboard {
 
     fn init(&mut self, area: Rect) -> Result<()> {
         Dashboard::new(Default::default(), self.mevblocks.clone(), self.mev_bundles.clone());
+
+        info!("Starting progress task");
+        //TODO: this can come from anywhere
+        thread::spawn(move || progress_task(self.command_tx).unwrap());
+
         Ok(())
     }
 
@@ -515,6 +520,8 @@ impl Component for Dashboard {
             .split(chunks[0]);
 
         let buf = f.buffer_mut();
+
+
 
         //Self::render_title_bar(self, template[0], buf);
         Self::draw_charts(self, sub_layout[0], buf);
