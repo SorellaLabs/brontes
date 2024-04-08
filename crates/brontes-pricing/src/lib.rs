@@ -606,7 +606,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     });
 
                     Some(RequeryPairs {
-                        pair:         failed.pair,
+                        pair:         failed.full_pair,
                         goes_through: failed.goes_through,
                         block:        failed.block,
                         frayed_ends:  failed.frayed_ends,
@@ -783,7 +783,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         });
 
         if edges.is_empty() {
-            error!(?pair, ?block, "failed to find connection for graph");
+            error!(?pair, ?goes_through, ?block, "failed to find connection for graph");
             return
         } else {
             let Some((id, need_state, _)) =
