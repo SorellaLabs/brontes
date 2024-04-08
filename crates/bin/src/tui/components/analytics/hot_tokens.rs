@@ -20,7 +20,7 @@ impl HotTokens {
         Self::default()
     }
 
-    fn draw_hot_tokens(widget: &HotTokens, area: Rect, buf: &mut Buffer) {
+    fn draw_hot_tokens(_widget: &HotTokens, area: Rect, buf: &mut Buffer) {
         // Construct the final Vec<(&str, u64)> with the total counts
         let data: Vec<(&str, u64)> = vec![
             ("WETH", 20),

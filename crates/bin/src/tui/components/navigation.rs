@@ -62,16 +62,16 @@ impl Component for Navigation {
     }
 
     fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
-        let TAB_COUNT = 5;
+        let tab_count = 5;
 
         match key.code {
             KeyCode::Tab | KeyCode::BackTab if key.modifiers.contains(KeyModifiers::SHIFT) => {
                 let mut appcontext_lock = self.context.lock().unwrap();
-                appcontext_lock.tab_index = appcontext_lock.tab_index.saturating_sub(1) % TAB_COUNT;
+                appcontext_lock.tab_index = appcontext_lock.tab_index.saturating_sub(1) % tab_count;
             }
             KeyCode::Tab | KeyCode::BackTab => {
                 let mut appcontext_lock = self.context.lock().unwrap();
-                appcontext_lock.tab_index = appcontext_lock.tab_index.saturating_add(1) % TAB_COUNT;
+                appcontext_lock.tab_index = appcontext_lock.tab_index.saturating_add(1) % tab_count;
             }
 
             _ => (),

@@ -33,7 +33,6 @@ use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 // TUI related
 use brontes_types::mev::events::Action;
 use brontes_types::{
-    mev::{events::TuiEvents, MevBlock},
     BrontesTaskExecutor, FastHashMap,
 };
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
@@ -43,7 +42,7 @@ pub use range::RangeExecutorWithPricing;
 use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{unbounded_channel, UnboundedSender},
     task::JoinHandle,
 };
 

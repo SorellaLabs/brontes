@@ -1,45 +1,28 @@
 use std::{
     sync::{Arc, Mutex},
-    thread, time
+    thread, time,
 };
-
-
-
-
 
 use ansi_to_tui::IntoText;
-use brontes_types::{
-    db::token_info::{TokenInfoWithAddress},
-    mev::{
-        bundle::Bundle,
-        events::{Action, TuiEvents}, Mev, MevBlock,
-    },
+use brontes_types::mev::{
+    bundle::Bundle,
+    events::{Action, TuiEvents},
+    Mev, MevBlock,
 };
-use crossterm::event::{
-    KeyCode, KeyEvent,
-};
-use eyre::{Result}; //
+use crossterm::event::{KeyCode, KeyEvent};
+use eyre::Result; //
 use itertools::Itertools;
-use log::{*};
-
-use ratatui::{
-    prelude::*,
-    text::Line,
-    widgets::*,
-};
-use tokio::sync::mpsc::{UnboundedSender};
+use log::*;
+use ratatui::{prelude::*, widgets::*};
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
-use tui_logger::{self, *};
+use tui_logger::*;
 
 use super::{Component, Frame};
-use crate::get_symbols_from_transaction_accounting;
-use crate::tui::{
-    app::layout,
-    config::{Config},
-    theme::THEME,
-    tui::Event,
+use crate::{
+    get_symbols_from_transaction_accounting,
+    tui::{app::layout, config::Config, theme::THEME, tui::Event},
 };
-
 
 #[derive(Default, Debug)]
 pub struct Dashboard {
@@ -165,10 +148,19 @@ impl Dashboard {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
         let normal_style = Style::default().bg(Color::Blue);
 
-        let header_cells =
-            ["Block#", "Tx Index", "MEV Type", "Tokens", "Protocols", "From", "Contract", "Profit", "Cost"]
-                .iter()
-                .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
+        let header_cells = [
+            "Block#",
+            "Tx Index",
+            "MEV Type",
+            "Tokens",
+            "Protocols",
+            "From",
+            "Contract",
+            "Profit",
+            "Cost",
+        ]
+        .iter()
+        .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
         let header = Row::new(header_cells)
             .style(normal_style)
             .height(1)
@@ -178,11 +170,10 @@ impl Dashboard {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
-           let protocols = item.data.protocols();
-           let mut protocol_names = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>();
-           protocol_names.sort();
-           let protocol_list = protocol_names.join(", ");
-
+            let protocols = item.data.protocols();
+            let mut protocol_names = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>();
+            protocol_names.sort();
+            let protocol_list = protocol_names.join(", ");
 
             let height = 1;
             let cells = vec![
@@ -355,7 +346,7 @@ impl Dashboard {
             .split(popup_layout[1])[1]
     }
 
-    fn draw_logs(widget: &Dashboard, area: Rect, buf: &mut Buffer, selected_row: usize) {
+    fn draw_logs(_widget: &Dashboard, area: Rect, buf: &mut Buffer) {
         TuiLoggerSmartWidget::default()
             .style_error(Style::default().fg(Color::Red))
             .style_debug(Style::default().fg(Color::Green))
@@ -381,43 +372,39 @@ impl Dashboard {
         }
     }
 
-
-fn render_progress(&self, area: Rect, buf: &mut Buffer) {
-    let progress = self.progress_counter.unwrap_or(0);
-    Gauge::default()
-    .block(Block::bordered().title("PROGRESS:"))
-    .gauge_style((Color::White, Modifier::ITALIC))
-    .percent(progress)
-    .render(area, buf);
-}
-
-
-
-/*
-    tui_tx
-        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
-        .map_err(|e| {
-            use tracing::info;
-            info!("Failed to send: {}", e);
-        });
-ProgressChanged(Option<u16>)
-*/
-
-/// A simulated task that sends a counter value to the UI ranging from 0 to 100 every second.
-fn progress_task(tx: UnboundedSender<Action>) -> Result<()> {
-    for progress in 0..100 {
-        debug!(target:"progress-task", "Send progress to UI thread. Value: {:?}", progress);
-        tx.send(Action::ProgressChanged(Some(progress)))?;
-
-        trace!(target:"progress-task", "Sleep one second");
-        thread::sleep(time::Duration::from_millis(1000));
+    fn render_progress(&self, area: Rect, buf: &mut Buffer) {
+        let progress = self.progress_counter.unwrap_or(0);
+        Gauge::default()
+            .block(Block::bordered().title("PROGRESS:"))
+            .gauge_style((Color::White, Modifier::ITALIC))
+            .percent(progress)
+            .render(area, buf);
     }
-    info!(target:"progress-task", "Progress task finished");
-    tx.send(Action::ProgressChanged(None))?;
-    Ok(())
-}
 
+    /*
+        tui_tx
+            .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
+            .map_err(|e| {
+                use tracing::info;
+                info!("Failed to send: {}", e);
+            });
+    ProgressChanged(Option<u16>)
+    */
 
+    /// A simulated task that sends a counter value to the UI ranging from 0 to
+    /// 100 every second.
+    fn progress_task(tx: UnboundedSender<Action>) -> Result<()> {
+        for progress in 0..100 {
+            debug!(target:"progress-task", "Send progress to UI thread. Value: {:?}", progress);
+            tx.send(Action::ProgressChanged(Some(progress)))?;
+
+            trace!(target:"progress-task", "Sleep one second");
+            thread::sleep(time::Duration::from_millis(1000));
+        }
+        info!(target:"progress-task", "Progress task finished");
+        tx.send(Action::ProgressChanged(None))?;
+        Ok(())
+    }
 }
 
 impl Component for Dashboard {
@@ -490,7 +477,6 @@ impl Component for Dashboard {
                             self.mev_bundles.lock().unwrap();
                         bundles.extend(bundle.into_iter());
                     }
-                    _ => (),
                 }
             }
             _ => {}
@@ -500,23 +486,28 @@ impl Component for Dashboard {
 
     fn init(&mut self, area: Rect) -> Result<()> {
         Dashboard::new(Default::default(), self.mevblocks.clone(), self.mev_bundles.clone());
-//let progress_tx = self.command_tx.clone().unwrap();
+        //let progress_tx = self.command_tx.clone().unwrap();
         info!("Starting progress task");
         //TODO: this can come from anywhere
-    //    thread::spawn(move || Self::progress_task(self.command_tx.unwrap()).unwrap());
-        //Self::progress_task(progress_tx).unwrap();
+        //    thread::spawn(move ||
+        // Self::progress_task(self.command_tx.unwrap()).unwrap());
+        // Self::progress_task(progress_tx).unwrap();
 
         Ok(())
     }
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
-        // f.render_widget(self,area,);
-        // self.render(area,f.buffer_mut());
+
 
         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
 
         let template = Layout::default()
-            .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(3), Constraint::Length(1)])
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Min(8),
+                Constraint::Length(3),
+                Constraint::Length(1),
+            ])
             .split(area);
 
         let chunks = Layout::default()
@@ -530,19 +521,17 @@ impl Component for Dashboard {
 
         let buf = f.buffer_mut();
 
-
-
         //Self::render_title_bar(self, template[0], buf);
         Self::draw_charts(self, sub_layout[0], buf);
         Self::draw_leaderboard(self, sub_layout[1], buf);
 
         Self::draw_livestream(self, chunks[1], buf);
 
-        Self::draw_logs(self, chunks[2], buf, 1);
+        Self::draw_logs(self, chunks[2], buf);
         Self::render_progress(self, template[2], buf);
         Self::render_bottom_bar(self, template[3], buf);
         if self.show_popup {
-            if let Some(selected_index) = self.stream_table_state.selected() {
+            if let Some(_selected_index) = self.stream_table_state.selected() {
                 let block = Block::default()
                     .title("MEV Details")
                     .borders(Borders::ALL)
@@ -564,15 +553,12 @@ impl Component for Dashboard {
                     .to_string()
                     .into_text();
 
-                //let paragraph =
-                // Paragraph::new(mevblocks_guard[self.stream_table_state.selected().unwrap()].
-                // to_string());
+
                 let paragraph = Paragraph::new(text.unwrap())
                     .block(block)
                     .scroll((self.popup_scroll_position, 0));
 
-                // let buffer = std::fs::read("ascii/text.ascii").unwrap();
-                // let output = buffer.into_text();
+
 
                 f.render_widget(paragraph, area);
 

@@ -20,7 +20,7 @@ impl TopContracts {
         Self::default()
     }
 
-    fn draw_top_contracts(widget: &TopContracts, area: Rect, buf: &mut Buffer) {
+    fn draw_top_contracts(_widget: &TopContracts, area: Rect, buf: &mut Buffer) {
         // Construct the final Vec<(&str, u64)> with the total counts
         let data: Vec<(&str, u64)> = vec![
             ("Sandwich", 20),
