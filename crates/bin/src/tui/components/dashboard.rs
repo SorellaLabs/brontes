@@ -28,12 +28,10 @@ use crate::{
 pub struct Dashboard {
     command_tx: Option<UnboundedSender<Action>>,
     config: Config,
-    selected_row: usize,
     mevblocks: Arc<Mutex<Vec<MevBlock>>>,
     mev_bundles: Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
     data: Vec<(&'static str, u64)>,
     log_scroll: u16,
-    items: Vec<Vec<&'static str>>,
     stream_table_state: TableState,
     show_popup: bool,
     pub popup_scroll_position: u16,
@@ -44,13 +42,8 @@ pub struct Dashboard {
 }
 
 impl Dashboard {
-    pub fn new(
-        selected_row: usize,
-        mevblocks: Arc<Mutex<Vec<MevBlock>>>,
-        mev_bundles: Arc<Mutex<Vec<Bundle>>>,
-    ) -> Self {
+    pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
         Self {
-            selected_row,
             log_scroll: 0,
             mevblocks,
             mev_bundles,
@@ -66,7 +59,6 @@ impl Dashboard {
 
             stream_table_state: TableState::default().with_selected(Some(0)),
 
-            items: vec![],
             leaderboard: vec![
                 ("jaredfromsubway.eth", 1_200_000),
                 ("0x23892382394..212", 1_100_000),
@@ -140,8 +132,8 @@ impl Dashboard {
     }
 
     fn on_tick(&mut self) {
-        self.log_scroll += 1;
-        self.log_scroll %= 10;
+        // self.log_scroll += 1;
+        // self.log_scroll %= 10;
     }
 
     fn draw_livestream(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
@@ -294,21 +286,28 @@ impl Dashboard {
         barchart.render(area, buf);
     }
 
-    fn render_title_bar(&self, area: Rect, buf: &mut Buffer) {
-        let area = layout(area, Direction::Horizontal, vec![0, 58]);
+    /*
+        fn render_title_bar(&self, area: Rect, buf: &mut Buffer) {
+            let area = layout(area, Direction::Horizontal, vec![0, 58]);
 
-        Paragraph::new(Span::styled("Brontes", THEME.app_title)).render(area[0], buf);
-        let titles = vec!["DASHBOARD", " LIVESTREAM ", " ANALYTICS ", " METRICS ", " SETTINGS "];
-        Tabs::new(titles)
-            .style(THEME.tabs)
-            .highlight_style(THEME.tabs_selected)
-            //.select(self.context.tab_index)
-            .divider("")
-            .render(area[1], buf);
-    }
-
+            Paragraph::new(Span::styled("Brontes", THEME.app_title)).render(area[0], buf);
+            let titles = vec!["DASHBOARD", " LIVESTREAM ", " ANALYTICS ", " METRICS ", " SETTINGS "];
+            Tabs::new(titles)
+                .style(THEME.tabs)
+                .highlight_style(THEME.tabs_selected)
+                //.select(self.context.tab_index)
+                .divider("")
+                .render(area[1], buf);
+        }
+    */
     fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {
-        let keys = [("Q/Esc", "Quit"), ("Tab", "Next Tab"), ("↑/k", "Up"), ("↓/j", "Down"), ("Enter", "Open Mev Details")];
+        let keys = [
+            ("Q/Esc", "Quit"),
+            ("Tab", "Next Tab"),
+            ("↑/k", "Up"),
+            ("↓/j", "Down"),
+            ("Enter", "Open Mev Details"),
+        ];
         let spans = keys
             .iter()
             .flat_map(|(key, desc)| {
@@ -485,7 +484,7 @@ impl Component for Dashboard {
     }
 
     fn init(&mut self, area: Rect) -> Result<()> {
-        Dashboard::new(Default::default(), self.mevblocks.clone(), self.mev_bundles.clone());
+        Dashboard::new(self.mevblocks.clone(), self.mev_bundles.clone());
         //let progress_tx = self.command_tx.clone().unwrap();
         info!("Starting progress task");
         //TODO: this can come from anywhere
@@ -497,8 +496,6 @@ impl Component for Dashboard {
     }
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
-
-
         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
 
         let template = Layout::default()
@@ -553,12 +550,9 @@ impl Component for Dashboard {
                     .to_string()
                     .into_text();
 
-
                 let paragraph = Paragraph::new(text.unwrap())
                     .block(block)
                     .scroll((self.popup_scroll_position, 0));
-
-
 
                 f.render_widget(paragraph, area);
 
