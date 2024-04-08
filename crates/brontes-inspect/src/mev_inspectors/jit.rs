@@ -3,6 +3,7 @@ use std::{collections::hash_map::Entry, sync::Arc};
 use alloy_primitives::{Address, B256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
+    collect_address_set_for_accounting,
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::accounting::ActionAccounting,
@@ -158,11 +159,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        let mev_addresses: FastHashSet<Address> = info
-            .iter()
-            .map(|i| i.eoa)
-            .chain(info.iter().filter_map(|i| i.mev_contract))
-            .collect::<FastHashSet<_>>();
+        let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info);
 
         let has_collect = !collect.is_empty();
         let deltas = searcher_actions
