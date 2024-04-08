@@ -647,6 +647,7 @@ impl AddressMetadataConfig {
 
 #[cfg(test)]
 mod tests {
+
     use std::sync::Arc;
 
     use brontes_core::test_utils::{get_db_handle, init_trace_parser};
@@ -669,21 +670,23 @@ mod tests {
         let tracing_client =
             init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;
 
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
+        let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = Tables::ALL;
+        initializer.initialize_full_range_tables().await.unwrap();
+
+        let tables = vec![Tables::TxTraces, Tables::BlockInfo];
 
         let multi = MultiProgress::default();
         let tables_cnt = Arc::new(
-            Tables::ALL
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi, 69)))
+            tables
+                .iter()
+                .map(|table| (table.clone(), table.build_init_state_progress_bar(&multi, 69)))
                 .collect_vec(),
         );
 
-        for table in tables {
-            intializer
-                .initialize(table, false, Some(block_range), tables_cnt.clone())
+        for table in tables_cnt.iter() {
+            initializer
+                .initialize(table.0.clone(), false, Some(block_range), tables_cnt.clone())
                 .await
                 .unwrap();
         }
