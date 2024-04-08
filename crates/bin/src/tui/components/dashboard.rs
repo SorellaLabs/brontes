@@ -21,7 +21,7 @@ use tui_logger::*;
 use super::{Component, Frame};
 use crate::{
     get_symbols_from_transaction_accounting,
-    tui::{app::layout, config::Config, theme::THEME, tui::Event},
+    tui::{config::Config, theme::THEME, tui::Event},
 };
 
 #[derive(Default, Debug)]
@@ -232,6 +232,7 @@ impl Dashboard {
         barchart.render(area, buf);
     }
 
+    #[allow(unused_variables)]
     fn draw_charts(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
         // Initialize counters
         let mut sandwich_total = 0;
@@ -253,7 +254,7 @@ impl Dashboard {
             atomic_backrun_total += item.mev_count.atomic_backrun_count.unwrap_or(0);
             liquidation_total += item.mev_count.liquidation_count.unwrap_or(0);
         }
-
+/*
         // Construct the final Vec<(&str, u64)> with the total counts
         let data: Vec<(&str, u64)> = vec![
             ("Sandwich", sandwich_total),
@@ -263,14 +264,14 @@ impl Dashboard {
             ("Atomic Backrun", atomic_backrun_total),
             ("Liquidation", liquidation_total),
         ];
-
+*/
         let barchart = BarChart::default()
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title("Performance of MEV Types"),
             )
-            .data(&data)
+            .data(&widget.data)
             .bar_width(1)
             .bar_gap(0)
             .bar_set(symbols::bar::NINE_LEVELS)
@@ -484,7 +485,7 @@ impl Component for Dashboard {
         Ok(None)
     }
 
-    fn init(&mut self, area: Rect) -> Result<()> {
+    fn init(&mut self, _area: Rect) -> Result<()> {
         Dashboard::new(self.mevblocks.clone(), self.mev_bundles.clone());
         //let progress_tx = self.command_tx.clone().unwrap();
         info!("Starting progress task");
@@ -540,10 +541,13 @@ impl Component for Dashboard {
                 f.render_widget(Clear, area); //this clears out the background
                 let paragraph = Paragraph::new("Hello, world!");
                 f.render_widget(paragraph, area);
+                /*
                 match self.stream_table_state.selected() {
                     Some(i) => self.stream_table_state.selected(),
                     None => None,
                 };
+                */
+                
                 let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                     self.mev_bundles.lock().unwrap();
 
