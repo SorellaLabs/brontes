@@ -23,6 +23,7 @@ pub enum Action {
     Quit,
     Refresh,
     Tui(TuiEvents),
+    ProgressChanged(Option<u16>),
     Error(String),
     Help,
 }

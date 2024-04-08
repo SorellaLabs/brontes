@@ -1,6 +1,11 @@
 use std::{
     sync::{Arc, Mutex},
+    thread, time
 };
+
+
+
+
 
 use ansi_to_tui::IntoText;
 use brontes_types::{
@@ -16,10 +21,11 @@ use crossterm::event::{
 use eyre::{Result}; //
 use itertools::Itertools;
 use log::{*};
+
 use ratatui::{
     prelude::*,
     text::Line,
-    widgets::{ScrollbarState, *},
+    widgets::*,
 };
 use tokio::sync::mpsc::{UnboundedSender};
 use tracing::info;
@@ -33,6 +39,7 @@ use crate::tui::{
     theme::THEME,
     tui::Event,
 };
+
 
 #[derive(Default, Debug)]
 pub struct Dashboard {
@@ -48,6 +55,7 @@ pub struct Dashboard {
     show_popup: bool,
     pub popup_scroll_position: u16,
     pub popup_scroll_state: ScrollbarState,
+    pub progress_counter: Option<u16>,
 
     leaderboard: Vec<(&'static str, u64)>,
 }
@@ -72,8 +80,7 @@ impl Dashboard {
                 ("Atomic Backrun", 0),
                 ("Liquidation", 0),
             ],
-            //stream_table_state: TableState::default(),
-            //            stream_table_state: Arc::new(Mutex::new(TableState::default())),
+
             stream_table_state: TableState::default().with_selected(Some(0)),
 
             items: vec![],
@@ -357,6 +364,52 @@ impl Dashboard {
             .title_log("Logs")
             .render(area, buf);
     }
+
+    fn update_progress_bar(&mut self, event: Action, value: Option<u16>) {
+        trace!(target: "App", "Updating progress bar {:?}",event);
+        self.progress_counter = value;
+        if value.is_none() {
+            info!(target: "App", "Background task finished");
+        }
+    }
+
+
+fn render_progress(&self, area: Rect, buf: &mut Buffer) {
+    let progress = self.progress_counter.unwrap_or(0);
+    Gauge::default()
+    .block(Block::bordered().title("progress-task"))
+    .gauge_style((Color::White, Modifier::ITALIC))
+    .percent(progress)
+    .render(area, buf);
+}
+
+
+
+/*
+    tui_tx
+        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
+        .map_err(|e| {
+            use tracing::info;
+            info!("Failed to send: {}", e);
+        });
+ProgressChanged(Option<u16>)
+*/
+
+/// A simulated task that sends a counter value to the UI ranging from 0 to 100 every second.
+fn progress_task(tx: UnboundedSender<Action>) -> Result<()> {
+    for progress in 0..100 {
+        debug!(target:"progress-task", "Send progress to UI thread. Value: {:?}", progress);
+        tx.send(Action::ProgressChanged(Some(progress)))?;
+
+        trace!(target:"progress-task", "Sleep one second");
+        thread::sleep(time::Duration::from_millis(1000));
+    }
+    info!(target:"progress-task", "Progress task finished");
+    tx.send(Action::ProgressChanged(None))?;
+    Ok(())
+}
+
+
 }
 
 impl Component for Dashboard {
@@ -449,7 +502,7 @@ impl Component for Dashboard {
         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
 
         let template = Layout::default()
-            .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(1)])
+            .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(3), Constraint::Length(1)])
             .split(area);
 
         let chunks = Layout::default()
@@ -470,7 +523,8 @@ impl Component for Dashboard {
         Self::draw_livestream(self, chunks[1], buf);
 
         Self::draw_logs(self, chunks[2], buf, 1);
-        Self::render_bottom_bar(self, template[2], buf);
+        Self::render_progress(self, template[2], buf);
+        Self::render_bottom_bar(self, template[3], buf);
         if self.show_popup {
             if let Some(selected_index) = self.stream_table_state.selected() {
                 let block = Block::default()
