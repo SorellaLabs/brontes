@@ -1,91 +1,49 @@
-use std::{
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use ansi_to_tui::IntoText;
 use brontes_types::mev::{
-    bundle::Bundle, events::{Action, TuiEvents}, Mev, MevBlock
+    bundle::Bundle,
+    events::{Action, TuiEvents},
+    Mev, MevBlock,
 };
 use color_eyre::eyre::Result;
-use crossterm::event::{
-    KeyCode, KeyEvent,
-};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
-use tokio::sync::{
-    mpsc::{UnboundedSender},
-};
+use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 
 use super::Component;
-use crate::tui::{
-    config::{Config},
-    tui::{Event, Frame},
+use crate::{
+    get_symbols_from_transaction_accounting,
+    tui::tui::{Event, Frame},
 };
-use crate::get_symbols_from_transaction_accounting;
 
 #[derive(Default, Debug)]
 pub struct Livestream {
-    command_tx: Option<UnboundedSender<Action>>,
-    config: Config,
-    selected_row: usize,
-    mevblocks: Arc<Mutex<Vec<MevBlock>>>,
-    mev_bundles: Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
-    data: Vec<(&'static str, u64)>,
-    log_scroll: u16,
-    items: Vec<Vec<&'static str>>,
-    stream_table_state: TableState,
-    show_popup: bool,
+    #[allow(dead_code)]
+    command_tx:                Option<UnboundedSender<Action>>,
+    mevblocks:                 Arc<Mutex<Vec<MevBlock>>>,
+    mev_bundles:               Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
+    stream_table_state:        TableState,
+    show_popup:                bool,
     pub popup_scroll_position: u16,
-    pub popup_scroll_state: ScrollbarState,
+    pub popup_scroll_state:    ScrollbarState,
 
-    leaderboard: Vec<(&'static str, u64)>,
 }
-/*
-impl Default for Livestream {
-  fn default() -> Self {
-    Self::new()
-  }
-}
-*/
+
 impl Livestream {
     pub fn new(
-        selected_row: usize,
         mevblocks: Arc<Mutex<Vec<MevBlock>>>,
         mev_bundles: Arc<Mutex<Vec<Bundle>>>,
     ) -> Self {
         Self {
-            selected_row,
-            log_scroll: 0,
             mevblocks,
             mev_bundles,
             show_popup: false,
-            data: vec![
-                ("Sandwich", 0),
-                ("Jit Sandwich", 0),
-                ("Cex-Dex", 0),
-                ("Jit", 0),
-                ("Atomic Backrun", 0),
-                ("Liquidation", 0),
-            ],
-            //stream_table_state: TableState::default(),
-            //            stream_table_state: Arc::new(Mutex::new(TableState::default())),
             stream_table_state: TableState::default().with_selected(Some(0)),
-
-            items: vec![],
-            leaderboard: vec![
-                ("jaredfromsubway.eth", 1_200_000),
-                ("0x23892382394..212", 1_100_000),
-                ("0x13897682394..243", 1_000_000),
-                ("0x33899882394..223", 900_000),
-                ("0x43894082394..265", 800_000),
-                ("0x53894082394..283", 700_000),
-                ("0x83894082394..293", 600_000),
-                // Repeat as necessary
-            ],
             ..Default::default()
         }
     }
-
 
     pub fn next(&mut self) {
         if self.show_popup {
@@ -170,10 +128,19 @@ impl Livestream {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
         let normal_style = Style::default().bg(Color::Blue);
 
-        let header_cells =
-            ["Block#", "Tx Index", "MEV Type", "Tokens", "Protocols", "From", "Contract", "Profit", "Cost"]
-                .iter()
-                .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
+        let header_cells = [
+            "Block#",
+            "Tx Index",
+            "MEV Type",
+            "Tokens",
+            "Protocols",
+            "From",
+            "Contract",
+            "Profit",
+            "Cost",
+        ]
+        .iter()
+        .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
         let header = Row::new(header_cells)
             .style(normal_style)
             .height(1)
@@ -317,9 +284,7 @@ impl Component for Livestream {
             .constraints([Constraint::Length(9), Constraint::Min(20), Constraint::Length(8)])
             .split(template[1]);
 
-  
         let buf = f.buffer_mut();
-
 
         Self::draw_livestream(self, template[1], buf);
 
@@ -348,11 +313,9 @@ impl Component for Livestream {
                 .to_string()
                 .into_text();
 
-
             let paragraph = Paragraph::new(text.unwrap())
                 .block(block)
                 .scroll((self.popup_scroll_position, 0));
-
 
             f.render_widget(paragraph, area);
 
@@ -364,7 +327,6 @@ impl Component for Livestream {
                 f.size().inner(&Margin { vertical: 10, horizontal: 10 }),
                 &mut self.popup_scroll_state,
             );
-
         }
 
         Ok(())

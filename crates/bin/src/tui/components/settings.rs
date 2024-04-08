@@ -26,7 +26,6 @@ use crate::{
 pub struct Settings {
     command_tx:         Option<UnboundedSender<Action>>,
     config:             Config,
-    args:               Args,
     pub exchange_index: Option<usize>,
     state:              SettingsState,
 }
@@ -104,7 +103,6 @@ impl Settings {
         Self {
             command_tx:     Default::default(),
             config:         Default::default(),
-            args:           opt,
             exchange_index: Default::default(),
             state:          Default::default(),
         }
