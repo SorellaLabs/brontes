@@ -311,6 +311,9 @@ impl<'a> StatefulWidget for ClickableList<'a> {
                 buf.set_style(area, self.highlight_style);
             }
         }
+
+        //TODO: Implement this
+        #[allow(unused_variables)]
         if let Some((area, index)) = selected_element {
             /*
             self.callback_registry.lock().unwrap().register_callback(

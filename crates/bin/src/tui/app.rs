@@ -269,7 +269,7 @@ impl App {
                                     self.mev_bundles.lock().unwrap();
                                 //bundles.extend(*bundle.into_iter());
                             }
-                            _ => (),
+                           // _ => (),
                         }
 
                         //app_tx.send(Action::Tui(TuiEvents::MevBlockMetricReceived((header.clone())))).map_err(|e| {

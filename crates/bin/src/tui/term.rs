@@ -9,7 +9,6 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-//use anyhow::{Context, Result};
 use eyre::{Context, Result}; //
 use ratatui::prelude::*;
 

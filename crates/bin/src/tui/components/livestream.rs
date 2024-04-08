@@ -262,7 +262,7 @@ impl Component for Livestream {
                             self.mev_bundles.lock().unwrap();
                         bundles.extend(bundle.into_iter());
                     }
-                    _ => (),
+                    //_ => (),
                 }
             }
             _ => {}
@@ -280,9 +280,7 @@ impl Component for Livestream {
             .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(1)])
             .split(area);
 
-        let chunks = Layout::default()
-            .constraints([Constraint::Length(9), Constraint::Min(20), Constraint::Length(8)])
-            .split(template[1]);
+
 
         let buf = f.buffer_mut();
 
@@ -300,12 +298,13 @@ impl Component for Livestream {
             let paragraph = Paragraph::new("Hello, world!");
             f.render_widget(paragraph, area);
 
+            /*
             // why is this here?
             match self.stream_table_state.selected() {
                 Some(i) => self.stream_table_state.selected(),
                 None => None,
             };
-
+*/
             let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                 self.mev_bundles.lock().unwrap();
 

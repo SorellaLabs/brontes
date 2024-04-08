@@ -1,4 +1,8 @@
 
+#![allow(unused_variables)]
+
+// Finish this file as a last thing to do
+
 use brontes_types::mev::events::Action;
 use clap::Parser;
 use color_eyre::eyre::Result;
