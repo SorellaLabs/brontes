@@ -13,7 +13,7 @@ use brontes_types::{
     unordered_buffer_map::BrontesStreamExt,
     FastHashMap, Protocol,
 };
-use futures::{future::join_all, join, stream::iter, StreamExt};
+use futures::{join, stream::iter, StreamExt};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -50,64 +50,51 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     pub async fn initialize(
         &self,
-        tables: &[Tables],
+        table: Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        let critical_table_count = tables
-            .iter()
-            .map(Tables::is_critical_init)
-            .filter(|f| *f)
-            .count();
-
-        let critical_state_progress_bar =
-            Self::build_critical_state_progress_bar(critical_table_count as u64);
-
-        futures::stream::iter(tables.to_vec())
-            .map(|table| {
-                let progress_bar = progress_bar.clone();
-                let critical_state_progress_bar = critical_state_progress_bar.clone();
-                async move {
-                    table
-                        .initialize_table(
-                            self,
-                            block_range,
-                            clear_tables,
-                            critical_state_progress_bar,
-                            progress_bar,
-                        )
-                        .await
-                }
-            })
-            .buffer_unordered(2)
-            .collect::<Vec<_>>()
+        table
+            .initialize_table(self, block_range, clear_tables, progress_bar)
             .await
-            .into_iter()
-            .collect::<eyre::Result<()>>()?;
-
-        join!(
-            self.load_classifier_config_data(),
-            self.load_searcher_config_data(),
-            self.load_builder_config_data(),
-            self.load_address_metadata_config(),
-        );
-        Ok(())
     }
 
     pub async fn initialize_arbitrary_state(
         &self,
-        tables: &[Tables],
+        table: Tables,
         block_range: &'static [u64],
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
-        join_all(tables.iter().map(|table| {
-            table.initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
-        }))
-        .await
-        .into_iter()
-        .collect::<eyre::Result<_>>()?;
+        table
+            .initialize_table_arbitrary_state(self, block_range, progress_bar.clone())
+            .await
+    }
 
+    pub async fn initialize_full_range_tables(&self) -> eyre::Result<()> {
+        let tables = &[
+            Tables::PoolCreationBlocks,
+            Tables::AddressToProtocolInfo,
+            Tables::TokenDecimals,
+            Tables::Builder,
+            Tables::AddressMeta,
+        ];
+        self.load_config().await?;
+        let progress_bar = Self::build_critical_state_progress_bar(5).unwrap();
+
+        futures::stream::iter(tables.to_vec())
+            .map(|table| {
+                let progress_bar = progress_bar.clone();
+                async move { table.initialize_full_range_table(self, progress_bar).await }
+            })
+            .buffer_unordered(5)
+            .collect::<Vec<_>>()
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn load_config(&self) -> eyre::Result<()> {
         join!(
             self.load_classifier_config_data(),
             self.load_searcher_config_data(),
@@ -179,23 +166,18 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             self.libmdbx.0.clear_table::<T>()?;
         }
 
-        let (block_range_chunks, range_count) = if let Some((s, e)) = block_range {
-            ((s..e + 1).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize)), e - s)
+        let block_range_chunks = if let Some((s, e)) = block_range {
+            (s..=e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
             #[cfg(feature = "local-reth")]
             let end_block = self.tracer.best_block_number()?;
             #[cfg(not(feature = "local-reth"))]
             let end_block = self.tracer.best_block_number().await?;
 
-            (
-                (DEFAULT_START_BLOCK..end_block + 1).chunks(
-                    T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
-                ),
-                end_block - DEFAULT_START_BLOCK,
+            (DEFAULT_START_BLOCK..=end_block).chunks(
+                T::INIT_CHUNK_SIZE.unwrap_or((end_block - DEFAULT_START_BLOCK + 1) as usize),
             )
         };
-
-        pb.inc_length(range_count);
 
         let pair_ranges = block_range_chunks
             .into_iter()
@@ -297,10 +279,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + Unpin
             + 'static,
     {
-        let entries = block_range.len();
-        pb.inc_length(entries as u64);
-
-        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000000) / 100);
+        let ranges = block_range.chunks(T::INIT_CHUNK_SIZE.unwrap_or(1000));
 
         iter(ranges.into_iter().map(|inner_range| {
             let clickhouse = self.clickhouse;
@@ -359,7 +338,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 }
 
                 if let Some(flag) = mark_init {
-                    libmdbx.inited_range(inner_range.iter().copied(), flag)?;
+                    libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
                 }
 
                 Ok::<(), eyre::Report>(())
@@ -698,14 +677,16 @@ mod tests {
         let tables_cnt = Arc::new(
             Tables::ALL
                 .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi)))
+                .map(|table| (table, table.build_init_state_progress_bar(&multi, 69)))
                 .collect_vec(),
         );
 
-        intializer
-            .initialize(&tables, false, Some(block_range), tables_cnt)
-            .await
-            .unwrap();
+        for table in tables {
+            intializer
+                .initialize(table, false, Some(block_range), tables_cnt.clone())
+                .await
+                .unwrap();
+        }
 
         // TokenDecimals
         TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)

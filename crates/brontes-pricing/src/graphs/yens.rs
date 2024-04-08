@@ -7,10 +7,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use brontes_types::{pair::Pair, FastHashMap, FastHashSet, FastHasher};
-use dashmap::DashSet;
+use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
 use pathfinding::num_traits::Zero;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 pub use crate::graphs::dijkstras::*;
 
@@ -146,7 +144,7 @@ where
     // A vector containing our paths.
     let mut routes = vec![Path { nodes: n, weights: e, cost: c }];
 
-    let visited = DashSet::with_hasher(FastHasher::new());
+    let mut visited = FastHashSet::default();
     let iter_k = k.unwrap_or(usize::MAX);
 
     // A min-heap to store our lowest-cost route candidate
@@ -169,7 +167,6 @@ where
         let prev_weight = &routes[ki].weights;
 
         let k_routes_vec = (0..(previous.len() - 1))
-            .into_par_iter()
             .filter_map(|i| {
                 let spur_node = &previous[i];
                 let root_path = &previous[0..i];

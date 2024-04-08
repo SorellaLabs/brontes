@@ -185,9 +185,10 @@ where
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
     parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
+
     let mut target_reached = None;
 
-    while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
+    'outer: while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
         if hops >= MAX_LEN {
             continue
         }
@@ -231,6 +232,8 @@ where
 
             let new_cost = cost + move_cost;
             let value = path_value(&base_node, &successor);
+            let q_break = stop(&successor);
+
             let n;
             match parents.entry(successor) {
                 Vacant(e) => {
@@ -245,6 +248,13 @@ where
                         continue
                     }
                 }
+            }
+
+            // because our weight system is arbitrary,
+            // we don't want to prove we have the shortest path
+            if q_break {
+                target_reached = Some(n);
+                break 'outer
             }
 
             to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
@@ -265,6 +275,8 @@ where
 
                 let new_cost = cost + move_cost;
                 let value = path_value(&base_node, &successor);
+                let q_break = stop(&successor);
+
                 let n;
                 match parents.entry(successor) {
                     Vacant(e) => {
@@ -279,6 +291,11 @@ where
                             continue
                         }
                     }
+                }
+
+                if q_break {
+                    target_reached = Some(n);
+                    break 'outer
                 }
 
                 to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });

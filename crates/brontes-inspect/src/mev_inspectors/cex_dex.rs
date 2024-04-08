@@ -225,7 +225,14 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
         if smaller * Rational::from(3) < larger {
-            tracing::info!("to big of delta");
+            tracing::info!(
+                "Filtered out possible CEX-DEX due to significant price delta.\n Price delta \
+                 between CEX '{}' with price '{}' and DEX '{}' with price '{}'",
+                exchange_cex_price.0,
+                exchange_cex_price.1,
+                swap.protocol,
+                swap.swap_rate()
+            );
             return None
         }
 
@@ -531,7 +538,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(6772.69)
-            .with_gas_paid_usd(78993.39);
+            .with_gas_paid_usd(78711.5);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -545,7 +552,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(7201.40)
-            .with_gas_paid_usd(6261.08);
+            .with_gas_paid_usd(6238.738);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
