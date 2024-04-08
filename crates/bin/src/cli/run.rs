@@ -120,12 +120,33 @@ impl RunArgs {
                 //executor.spawn_critical("TUI", App::run(tui_rx, tui_tx.clone()));
 
                 if let Some(ref tx) = tui_tx {
-                    executor.spawn_critical("TUI", App::run(tui_rx, tx.clone()));
+                    let thread_handle = executor.spawn_critical("TUI", App::run(tui_rx, tx.clone()));
                 }
 
                 //executor.block_on(App::run(tui_rx, tui_tx.clone()));
             }
         }
+
+        #[cfg(not(feature = "tui"))]
+        {
+            let (tx, tui_rx) = unbounded_channel();
+            tui_tx = Some(tx);
+            if !self.cli_only {
+                tracing::info!("Launching App");
+                let executor = task_executor.clone();
+                //TODO - fix - tui should be running even brontes inspectors are finished
+                //executor.spawn_critical("TUI", App::run(tui_rx, tui_tx.clone()));
+
+                if let Some(ref tx) = tui_tx {
+                    let thread_handle = executor.spawn_critical("TUI", App::run(tui_rx, tx.clone()));
+                }
+
+                //executor.block_on(App::run(tui_rx, tui_tx.clone()));
+            }
+        }
+
+
+
 
    
 
@@ -190,6 +211,7 @@ impl RunArgs {
                     brontes.await;
                 }
             });
+
 
         result.await?;
 

@@ -523,9 +523,7 @@ impl Component for Dashboard {
         //Self::render_title_bar(self, template[0], buf);
         Self::draw_charts(self, sub_layout[0], buf);
         Self::draw_leaderboard(self, sub_layout[1], buf);
-
         Self::draw_livestream(self, chunks[1], buf);
-
         Self::draw_logs(self, chunks[2], buf);
         Self::render_progress(self, template[2], buf);
         Self::render_bottom_bar(self, template[3], buf);

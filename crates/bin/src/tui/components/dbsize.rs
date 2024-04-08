@@ -85,9 +85,10 @@ impl Component for DbSize {
         Ok(None)
     }
 
+    // TODO: Get tables and sizes
+    #[allow(unused_variables)]
     fn init(&mut self, area: Rect) -> Result<()> {
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-        // TODO: Get tables and sizes
 
         Ok(())
     }
