@@ -86,18 +86,6 @@ impl Livestream {
         }
     }
 
-    /*
-      pub fn new() -> Self {
-        Self {
-          app_start_time: Instant::now(),
-          app_frames: 0,
-          app_fps: 0.0,
-          render_start_time: Instant::now(),
-          render_frames: 0,
-          render_fps: 0.0,
-        }
-      }
-    */
 
     pub fn next(&mut self) {
         if self.show_popup {
@@ -329,18 +317,12 @@ impl Component for Livestream {
             .constraints([Constraint::Length(9), Constraint::Min(20), Constraint::Length(8)])
             .split(template[1]);
 
-        let sub_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(chunks[0]);
-
+  
         let buf = f.buffer_mut();
 
-        //Self::render_title_bar(self, template[0], buf);
 
         Self::draw_livestream(self, template[1], buf);
 
-        //Self::render_bottom_bar(self, template[2], buf);
         if self.show_popup {
             let block = Block::default()
                 .title("MEV Details")
@@ -348,14 +330,17 @@ impl Component for Livestream {
                 .padding(Padding::horizontal(4));
 
             let area = Self::centered_rect(80, 80, area);
-            //Self::show_popup(self,area);
             f.render_widget(Clear, area); //this clears out the background
+
             let paragraph = Paragraph::new("Hello, world!");
             f.render_widget(paragraph, area);
+
+            // why is this here?
             match self.stream_table_state.selected() {
                 Some(i) => self.stream_table_state.selected(),
                 None => None,
             };
+
             let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                 self.mev_bundles.lock().unwrap();
 
@@ -363,15 +348,11 @@ impl Component for Livestream {
                 .to_string()
                 .into_text();
 
-            //let paragraph =
-            // Paragraph::new(mevblocks_guard[self.stream_table_state.selected().unwrap()].
-            // to_string());
+
             let paragraph = Paragraph::new(text.unwrap())
                 .block(block)
                 .scroll((self.popup_scroll_position, 0));
 
-            // let buffer = std::fs::read("ascii/text.ascii").unwrap();
-            // let output = buffer.into_text();
 
             f.render_widget(paragraph, area);
 
@@ -384,7 +365,6 @@ impl Component for Livestream {
                 &mut self.popup_scroll_state,
             );
 
-            //f.render_widget(block, area);
         }
 
         Ok(())

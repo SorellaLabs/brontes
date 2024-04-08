@@ -108,6 +108,7 @@ impl RunArgs {
                 //executor.block_on(App::run(tui_rx, tui_tx.clone()));
             }
         }
+        
         #[cfg(not(feature = "tui"))]
         let tui_tx = None;
 

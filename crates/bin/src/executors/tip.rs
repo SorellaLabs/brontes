@@ -41,7 +41,7 @@ pub struct TipInspector<
     database:           &'static DB,
     inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-    tui_tx:             UnboundedSender<Action>,
+    tui_tx:             Option<UnboundedSender<Action>>,
     _p:                 PhantomData<P>,
 }
 
