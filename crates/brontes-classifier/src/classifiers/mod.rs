@@ -169,5 +169,6 @@ action_dispatch!(
     ClipperExchangeTransmitAndSwapCall,
     ClipperExchangeTransmitAndSellTokenForEthCall,
     CowswapSettleCall,
-    CowswapSwapCall
+    CowswapSwapCall,
+    MakerDssFlashFlashLoanCall
 );

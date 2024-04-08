@@ -51,6 +51,7 @@ sol!(OneInchFusionSettlement, "./classifier-abis/OneInchFusionSettlement.json");
 sol!(ClipperExchange, "./classifier-abis/ClipperExchange.json");
 
 sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
+sol!(MakerDssFlash, "./classifier-abis/MakerDssFlash.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
