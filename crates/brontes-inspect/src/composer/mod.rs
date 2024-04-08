@@ -149,7 +149,7 @@ fn on_orchestra_resolution(
 
     #[cfg(feature = "tui")]
     {
-        let _ = tui_tx.unwrap()
+        let _ = tui_tx.clone().unwrap()
             .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
             .map_err(|e| {
                 use tracing::info;
