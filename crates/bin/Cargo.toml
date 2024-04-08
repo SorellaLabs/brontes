@@ -113,6 +113,9 @@ unicode-width = "0.1.11"
 console-subscriber = "0.1"
 
 
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = "0.5.4"
+
 [features]
 default = [
   "brontes-core/default",
