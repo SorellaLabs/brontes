@@ -178,11 +178,9 @@ impl Dashboard {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
-            let protocols = item.data.protocols();
-           // info!("Protocols: {:?}", protocols);
-
-           let protocol_list = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ");
-
+           let mut protocol_names = item.data.protocols().iter().map(|p| p.to_string()).collect::<Vec<_>>();
+           protocol_names.sort();
+           let protocol_list = protocol_names.join(", ");
 
             info!("Protocols: {}", protocol_list);
 
