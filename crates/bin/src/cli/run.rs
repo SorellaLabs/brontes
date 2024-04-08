@@ -222,7 +222,7 @@ impl RunArgs {
             });
 
 //        tokio::join!(tui_handle, result).await();
-        let _ = tokio::join!(tui_handle, result_handle).await?;
+        let _ = tokio::join!(tui_handle, result).await?;
 
 
         //result.await?;
