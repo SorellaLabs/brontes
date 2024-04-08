@@ -33,7 +33,7 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
     pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
-        let (tx, rx) = channel(2);
+        let (tx, rx) = channel(100);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
             let block = pricer.current_block_processing();
@@ -88,7 +88,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
             self.reschedule(pricer);
 
             if let Some((block, prices)) = inner {
-                info!(target:"brontes","Generated dex prices for block: {}", block);
+                info!(target:"brontes","Generated dex prices for block: {} ", block);
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None);

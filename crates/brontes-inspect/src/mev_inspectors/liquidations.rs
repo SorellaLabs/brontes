@@ -65,6 +65,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .action_split((Actions::try_swaps_merged, Actions::try_liquidation));
 
         if liqs.is_empty() {
+            tracing::debug!("no liquidation events");
             return None
         }
 

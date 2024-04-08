@@ -692,7 +692,7 @@ mod tests {
 
     /// this is a jit sandwich
     #[brontes_macros::test]
-    async fn test_sandwich_part_of_jit_sandwich() {
+    async fn test_sandwich_part_of_jit_sandwich_default() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
