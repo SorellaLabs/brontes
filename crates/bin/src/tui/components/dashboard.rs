@@ -178,6 +178,9 @@ impl Dashboard {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
+            let protocols = item.data.protocols();
+            info!("Protocols: {:?}", protocols);
+
             let height = 1;
             let cells = vec![
                 item.header.block_number.to_string(),
