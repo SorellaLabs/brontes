@@ -505,7 +505,6 @@ mod tests {
     //TODO: Joe I am changing this for now because your quotes data seems to still
     // be incorrect. Please fix it, the previous value was 6772.69
     #[brontes_macros::test]
-    #[brontes_macros::test]
     async fn test_cex_dex() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
