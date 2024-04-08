@@ -77,7 +77,7 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
-    tui_tx: UnboundedSender<Action>,
+    tui_tx: Option<UnboundedSender<Action>>,
 ) -> ComposerResults {
     let this_data = data.get_most_recent_block().clone();
     let BlockData { metadata, tree } = this_data;
@@ -142,7 +142,7 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
-    tui_tx: UnboundedSender<Action>,
+    tui_tx: Option<UnboundedSender<Action>>,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
@@ -179,20 +179,22 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
-    let _ = tui_tx
-        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
-        .map_err(|e| {
-            use tracing::info;
-            info!("Failed to send: {}", e);
-        });
+    #[cfg(feature = "tui")]
+    {
+        let _ = tui_tx.unwrap()
+            .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
+            .map_err(|e| {
+                use tracing::info;
+                info!("Failed to send: {}", e);
+            });
 
-    let _ = tui_tx
-        .send(Action::Tui(TuiEvents::MevBundleEventReceived(filtered_bundles.clone())))
-        .map_err(|e| {
-            use tracing::info;
-            info!("Failed to send: {}", e);
-        });
-
+        let _ = tui_tx.unwrap()
+            .send(Action::Tui(TuiEvents::MevBundleEventReceived(filtered_bundles.clone())))
+            .map_err(|e| {
+                use tracing::info;
+                info!("Failed to send: {}", e);
+            });
+    }
     (header, filtered_bundles)
 }
 

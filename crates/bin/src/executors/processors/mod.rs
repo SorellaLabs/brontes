@@ -18,6 +18,6 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-        tui_tx: UnboundedSender<Action>,
+        tui_tx: Option<UnboundedSender<Action>>,
     ) -> impl Future<Output = ()> + Send;
 }

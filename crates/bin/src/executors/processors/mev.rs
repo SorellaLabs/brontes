@@ -38,7 +38,7 @@ impl Processor for MevProcessor {
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-        tui_tx: UnboundedSender<Action>,
+        tui_tx: Option<UnboundedSender<Action>>,
     ) {
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
             target = inspect,

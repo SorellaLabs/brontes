@@ -52,7 +52,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
-        tui_tx: UnboundedSender<Action>,
+        tui_tx: Option<UnboundedSender<Action>>,
         //progress_bar: Option<ProgressBar>,
     ) -> Self {
         Self {
