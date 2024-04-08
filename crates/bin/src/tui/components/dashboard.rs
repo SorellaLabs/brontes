@@ -271,7 +271,7 @@ impl Dashboard {
                     .borders(Borders::ALL)
                     .title("Count of MEV Types"),
             )
-            .data(&widget.data)
+            .data(&data)
             .bar_width(1)
             .bar_gap(0)
             .bar_set(symbols::bar::NINE_LEVELS)
