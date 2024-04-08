@@ -492,11 +492,11 @@ impl Component for Dashboard {
 
     fn init(&mut self, area: Rect) -> Result<()> {
         Dashboard::new(Default::default(), self.mevblocks.clone(), self.mev_bundles.clone());
-let progress_tx = self.command_tx.clone().unwrap();
+//let progress_tx = self.command_tx.clone().unwrap();
         info!("Starting progress task");
         //TODO: this can come from anywhere
     //    thread::spawn(move || Self::progress_task(self.command_tx.unwrap()).unwrap());
-        Self::progress_task(progress_tx).unwrap();
+        //Self::progress_task(progress_tx).unwrap();
 
         Ok(())
     }
