@@ -7,7 +7,14 @@ use eyre::Ok;
 #[derive(Debug, Parser)]
 pub struct Clear {
     /// Tables to clear
-    #[arg(long, short, value_delimiter = ',')]
+    #[arg(
+        long,
+        short,
+        value_delimiter = ',',
+        default_value = "CexPrice,DexPrice,CexTrades,BlockInfo,InitializedState,MevBlocks,\
+                         TokenDecimals,AddressToProtocolInfo,PoolCreationBlocks,Builder,\
+                         AddressMeta,SearcherEOAs,SearcherContracts,SubGraphs,TxTraces"
+    )]
     pub tables: Vec<Tables>,
 }
 

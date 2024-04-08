@@ -18,7 +18,7 @@ use brontes_types::{
 };
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tracing::{info, span, Instrument, Level};
+use tracing::{debug, span, Instrument, Level};
 
 pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
 pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
@@ -88,7 +88,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
             self.reschedule(pricer);
 
             if let Some((block, prices)) = inner {
-                info!(target:"brontes","Generated dex prices for block: {} ", block);
+                debug!(target:"brontes","Generated dex prices for block: {} ", block);
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None);
