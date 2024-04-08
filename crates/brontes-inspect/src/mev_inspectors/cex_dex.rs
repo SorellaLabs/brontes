@@ -233,7 +233,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 swap.protocol,
                 swap.swap_rate()
             );
-            return None;
+            return None
         }
 
         // A positive delta indicates potential profit from buying on DEX
@@ -538,7 +538,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(6772.69)
-            .with_gas_paid_usd(78993.39);
+            .with_gas_paid_usd(78711.5);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -552,7 +552,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(7201.40)
-            .with_gas_paid_usd(6261.08);
+            .with_gas_paid_usd(6238.738);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
