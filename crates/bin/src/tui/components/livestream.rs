@@ -258,6 +258,12 @@ impl Component for Livestream {
             }
             KeyCode::Enter => {
                 info!("Enter pressed");
+
+                self.popup_scroll_position = 0;
+                self.popup_scroll_state = self
+                    .popup_scroll_state
+                    .position(self.popup_scroll_position as usize);
+
                 self.show_popup = !self.show_popup;
             }
             KeyCode::Up => {
