@@ -674,19 +674,19 @@ mod tests {
 
         initializer.initialize_full_range_tables().await.unwrap();
 
-        let tables = vec![Tables::TxTraces, Tables::BlockInfo];
+        let tables = [Tables::TxTraces, Tables::BlockInfo];
 
         let multi = MultiProgress::default();
         let tables_cnt = Arc::new(
             tables
                 .iter()
-                .map(|table| (table.clone(), table.build_init_state_progress_bar(&multi, 69)))
+                .map(|table| (*table, table.build_init_state_progress_bar(&multi, 69)))
                 .collect_vec(),
         );
 
         for table in tables_cnt.iter() {
             initializer
-                .initialize(table.0.clone(), false, Some(block_range), tables_cnt.clone())
+                .initialize(table.0, false, Some(block_range), tables_cnt.clone())
                 .await
                 .unwrap();
         }

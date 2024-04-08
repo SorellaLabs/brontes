@@ -296,8 +296,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     pub fn is_triangular_arb(
         &self,
         possible_cex_dex: &PossibleCexDex,
-        tx_info: &TxInfo,
-        metadata: Arc<Metadata>,
+        _tx_info: &TxInfo,
+        _metadata: Arc<Metadata>,
     ) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if possible_cex_dex.swaps.len() < 2 {
@@ -307,33 +307,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let original_token = possible_cex_dex.swaps[0].token_in.address;
         let final_token = possible_cex_dex.swaps.last().unwrap().token_out.address;
 
-        // Check if there is a cycle
-        if original_token != final_token {
-            return false
-        }
-        let deltas = possible_cex_dex
-            .swaps
-            .clone()
-            .into_iter()
-            .map(Actions::from)
-            .account_for_actions();
-
-        let addr_usd_deltas = self
-            .utils
-            .usd_delta_by_address(
-                tx_info.tx_index,
-                PriceAt::Average,
-                &deltas,
-                metadata.clone(),
-                false,
-            )
-            .unwrap_or_default();
-        let profit = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid(), self.utils.quote)
-            > Rational::ZERO
+        original_token == final_token
     }
 }
 
