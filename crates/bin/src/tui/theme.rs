@@ -45,7 +45,7 @@ const WHITE: Color = Color::Indexed(255); // not really white, often #eeeeee
 const BLACK: Color = Color::Indexed(232); // not really black, often #080808
 const DARK_GRAY: Color = Color::Indexed(238);
 const MID_GRAY: Color = Color::Indexed(244);
-const LIGHT_GRAY: Color = Color::Indexed(250);
+
 
 // Not used currently, leaving for reference. might add later
 //
@@ -54,3 +54,4 @@ const LIGHT_GRAY: Color = Color::Indexed(250);
 //const LIGHT_GREEN: Color = Color::Rgb(64, 192, 96);
 //const LIGHT_RED: Color = Color::Rgb(192, 96, 96);
 //const RED: Color = Color::Indexed(160);
+//const LIGHT_GRAY: Color = Color::Indexed(250);

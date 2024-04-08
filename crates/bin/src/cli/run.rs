@@ -102,7 +102,7 @@ impl RunArgs {
         task_executor.spawn_critical("metrics", metrics_listener);
 
 
-        //let tui_tx = Option(None);
+        #[allow(unused_assignments)]
         let mut tui_tx: Option<UnboundedSender<Action>> = None;
 
         #[cfg(feature = "tui")]
