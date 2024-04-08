@@ -211,7 +211,7 @@ impl Dashboard {
             rows,
             [
                 Constraint::Max(10),
-                Constraint::Min(5),
+                Constraint::Max(5),
                 Constraint::Min(20),
                 Constraint::Min(20),
                 Constraint::Min(20),

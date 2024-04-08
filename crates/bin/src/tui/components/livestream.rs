@@ -185,7 +185,7 @@ impl Livestream {
         let normal_style = Style::default().bg(Color::Blue);
 
         let header_cells =
-            ["Block#", "Tx Index", "MEV Type", "Tokens", "From", "Contract", "Profit", "Cost"]
+            ["Block#", "Tx Index", "MEV Type", "Tokens", "Protocols", "From", "Contract", "Profit", "Cost"]
                 .iter()
                 .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
         let header = Row::new(header_cells)
@@ -197,12 +197,17 @@ impl Livestream {
             widget.mev_bundles.lock().unwrap();
 
         let rows = mevblocks_guard.iter().map(|item| {
+            let mut protocol_names = item.data.protocols().iter().map(|p| p.to_string()).collect::<Vec<_>>();
+            protocol_names.sort();
+            let protocol_list = protocol_names.join(", ");
+
             let height = 1;
             let cells = vec![
                 item.header.block_number.to_string(),
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
                 get_symbols_from_transaction_accounting!(&item.header.balance_deltas),
+                protocol_list,
                 item.header.eoa.to_string(),
                 item.header
                     .mev_contract
@@ -223,7 +228,8 @@ impl Livestream {
             rows,
             [
                 Constraint::Max(10),
-                Constraint::Min(5),
+                Constraint::Max(5),
+                Constraint::Min(20),
                 Constraint::Min(20),
                 Constraint::Min(20),
                 Constraint::Min(32),
