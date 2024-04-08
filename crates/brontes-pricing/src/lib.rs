@@ -200,6 +200,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 self.current_block = msg.block;
             }
         }
+
         // insert new pools accessed on this block.
         updates
             .iter()
@@ -264,7 +265,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
-                self.current_block = msg.block + 1;
+                self.current_block = msg.block;
                 self.completed_block = msg.block + 1;
             }
         }
@@ -527,34 +528,32 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if !load_result.is_ok() {
                 self.buffer.overrides.entry(block).or_default().insert(addr);
             }
-        } else if let LoadResult::Err {
-            block,
-            pool_address,
-            pool_pair,
-            protocol,
-            deps,
-            full_pair,
-        } = load_result
+        } else if let LoadResult::Err { block, pool_address, pool_pair, protocol, deps, .. } =
+            load_result
         {
             self.new_graph_pairs
                 .insert(pool_address, (protocol, pool_pair));
+            self.graph_manager
+                .remove_pair_graph_address(pool_pair, pool_address);
 
             let failed_queries = deps
                 .into_iter()
                 .map(|(pair, goes_through)| {
                     self.graph_manager.pool_dep_failure(pair, goes_through);
+                    let full_pair = Pair(pair.0, self.quote_asset);
+                    tracing::debug!(?pair, ?goes_through, ?full_pair, "failed state query dep");
                     RequeryPairs {
-                        full_pair,
-                        block,
-                        goes_through,
                         pair,
+                        full_pair,
+                        goes_through,
+                        block,
                         frayed_ends: Default::default(),
                         ignore_state: Default::default(),
                     }
                 })
                 .collect_vec();
 
-            self.requery_bad_state_par(failed_queries)
+            self.requery_bad_state_par(failed_queries, false)
         }
     }
 
@@ -616,6 +615,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     })
                 }
                 VerificationResults::Abort(pair, goes_through, block) => {
+                    tracing::debug!(?pair, ?goes_through, "aborted verification process");
                     self.failed_pairs
                         .entry(block)
                         .or_default()
@@ -626,7 +626,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             })
             .collect_vec();
 
-        self.requery_bad_state_par(requery);
+        self.requery_bad_state_par(requery, true);
     }
 
     /// Requeries the state of subgraphs for given pairs that encountered issues
@@ -641,7 +641,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
-    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>) {
+    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>, frayed_ext: bool) {
         if pairs.is_empty() {
             return
         }
@@ -658,8 +658,16 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         new_state.into_iter().for_each(
             |StateQueryRes { pair, block, edges, extends_pair, goes_through, full_pair }| {
                 let edges = edges.into_iter().flatten().unique().collect_vec();
+                tracing::debug!(?pair, ?goes_through, ?extends_pair, ?full_pair);
                 // add regularly
                 if edges.is_empty() {
+                    tracing::debug!(
+                        ?pair,
+                        ?goes_through,
+                        ?extends_pair,
+                        ?full_pair,
+                        "no edges found"
+                    );
                     self.rundown(pair, full_pair, goes_through, block);
                     return
                 }
@@ -671,7 +679,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     extends_pair,
                     block,
                     edges,
-                    true,
+                    frayed_ext,
                 ) else {
                     return;
                 };
@@ -1043,7 +1051,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
 
         let pairs = self.lazy_loader.pairs_to_verify();
-
         execute_on!(target = pricing, self.try_verify_subgraph(pairs));
 
         // check if we can progress to the next block.
