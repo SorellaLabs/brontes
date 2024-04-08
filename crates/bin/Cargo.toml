@@ -110,7 +110,11 @@ directories = "5.0.1"
 ansi-to-tui = "4.0.0"
 throbber-widgets-tui= "0.5.0"
 unicode-width = "0.1.11"
+#console-subscriber = "0.1"
 
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = "0.5.4"
 
 [features]
 default = [

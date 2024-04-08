@@ -11,7 +11,12 @@ use tracing_subscriber::{filter::Directive, Layer};
 use tui_logger::tracing_subscriber_layer;
 
 
+#[cfg(not(target_env = "msvc"))]
+use jemallocator::Jemalloc;
 
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() -> eyre::Result<()> {
     dotenv::dotenv().ok();
