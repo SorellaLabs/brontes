@@ -101,13 +101,19 @@ impl RunArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        let (tui_tx, tui_rx) = unbounded_channel();
-        if !self.cli_only {
-            tracing::info!("Launching App");
-            let executor = task_executor.clone();
-            executor.spawn_critical("TUI", App::run(tui_rx, tui_tx.clone()));
+        #[cfg(feature = "tui")]
+        {
+            let (tui_tx, tui_rx) = unbounded_channel();
+            if !self.cli_only {
+                tracing::info!("Launching App");
+                let executor = task_executor.clone();
+                //TODO - fix - tui should be running even brontes inspectors are finished
+                executor.spawn_critical("TUI", App::run(tui_rx, tui_tx.clone()));
+                //executor.block_on(App::run(tui_rx, tui_tx.clone()));
+            }
         }
-        //executor.block_on(App::run(tui_rx, tui_tx.clone()));
+        #[cfg(not(feature = "tui"))]
+        let tui_tx = None;
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 

@@ -83,15 +83,13 @@ itertools.workspace = true
 fdlimit = "0.3.0"
 
 
-#TODO: add feature flags for tui
-#tui 
+#[cfg(feature = "tui")]
 crossterm = { version = "0.27", features = ["event-stream", "serde"] }
 ratatui = { version = "0.26.1", features = ["all-widgets"] }
 palette = "0.7.3"
 lazy_static = "1.4.0"
 tui-textarea = "0.4.0"
 tui-logger = {version = "0.11", features = ["tracing","tracing-support"]}
-tui-nodes = "0.3.1"
 tracing-log = "0.2.0"
 log = "0.4"
 config = "0.14.0"
@@ -110,8 +108,6 @@ directories = "5.0.1"
 ansi-to-tui = "4.0.0"
 throbber-widgets-tui= "0.5.0"
 unicode-width = "0.1.11"
-#console-subscriber = "0.1"
-
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = "0.5.4"
@@ -125,6 +121,9 @@ default = [
   "pretty-print",
 ]
 
+tui = [
+
+]
 sorella-server = ["local-reth", "local-clickhouse"]
 
 cex-dex-markout = [

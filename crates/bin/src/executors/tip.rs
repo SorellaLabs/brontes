@@ -54,7 +54,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
-        tui_tx: UnboundedSender<Action>,
+        tui_tx: Option<UnboundedSender<Action>>,
     ) -> Self {
         Self {
             back_from_tip,
