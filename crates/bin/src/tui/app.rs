@@ -76,6 +76,7 @@ pub struct App {
     mev_bundles:              Arc<Mutex<Vec<Bundle>>>,
     pub mode:                 Mode,
     pub last_tick_key_events: Vec<KeyEvent>,
+    pub progress_counter: Option<u16>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -137,6 +138,7 @@ impl App {
             context,
             mev_blocks: Arc::new(Mutex::new(Vec::new())),
             mev_bundles: Arc::new(Mutex::new(Vec::new())),
+            progress_counter: None,
         })
     }
 
@@ -148,6 +150,9 @@ impl App {
             info!("Error occurred: {:?}", e);
         }
     }
+
+
+
 
     pub async fn run_inner(
         &mut self,
@@ -345,6 +350,7 @@ pub fn layout(area: Rect, direction: Direction, heights: Vec<u16>) -> Rc<[Rect]>
         .iter()
         .map(|&h| if h > 0 { Constraint::Length(h) } else { Constraint::Min(0) })
         .collect_vec();
+
     Layout::default()
         .direction(direction)
         .constraints(constraints)
