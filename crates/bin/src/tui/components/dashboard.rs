@@ -254,7 +254,7 @@ impl Dashboard {
             atomic_backrun_total += item.mev_count.atomic_backrun_count.unwrap_or(0);
             liquidation_total += item.mev_count.liquidation_count.unwrap_or(0);
         }
-/*
+
         // Construct the final Vec<(&str, u64)> with the total counts
         let data: Vec<(&str, u64)> = vec![
             ("Sandwich", sandwich_total),
@@ -264,12 +264,12 @@ impl Dashboard {
             ("Atomic Backrun", atomic_backrun_total),
             ("Liquidation", liquidation_total),
         ];
-*/
+
         let barchart = BarChart::default()
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title("Performance of MEV Types"),
+                    .title("Count of MEV Types"),
             )
             .data(&widget.data)
             .bar_width(1)
