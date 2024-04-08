@@ -181,11 +181,7 @@ impl Dashboard {
             let protocols = item.data.protocols();
            // info!("Protocols: {:?}", protocols);
 
-           let protocol_list = if protocols.is_empty() {
-            "no protocol".to_string()
-        } else {
-            protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ")
-        };
+           let protocol_list = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ");
 
 
             info!("Protocols: {}", protocol_list);
@@ -218,6 +214,7 @@ impl Dashboard {
             [
                 Constraint::Max(10),
                 Constraint::Min(5),
+                Constraint::Min(20),
                 Constraint::Min(20),
                 Constraint::Min(20),
                 Constraint::Min(32),
