@@ -4,9 +4,7 @@ use std::{
 
 use ansi_to_tui::IntoText;
 use brontes_types::mev::{
-    bundle::Bundle,
-    events::{Action, TuiEvents},
-    MevBlock,
+    bundle::Bundle, events::{Action, TuiEvents}, Mev, MevBlock
 };
 use color_eyre::eyre::Result;
 use crossterm::event::{
