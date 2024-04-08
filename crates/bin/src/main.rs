@@ -10,12 +10,6 @@ use tracing::{error, info, Level};
 use tracing_subscriber::{filter::Directive, Layer};
 use tui_logger::tracing_subscriber_layer;
 
-#[cfg(not(target_env = "msvc"))]
-use jemallocator::Jemalloc;
-
-#[cfg(not(target_env = "msvc"))]
-#[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
 
 
 
@@ -61,10 +55,7 @@ fn run() -> eyre::Result<()> {
 
 fn init_tracing(tui: bool) {
     info!("tui: {}", tui);
-    let console = console_subscriber::Builder::default()
-        .server_addr((std::net::Ipv4Addr::LOCALHOST, 6668))
-        .spawn()
-        .boxed();
+
     if !tui {
         let layers = vec![tracing_subscriber_layer().boxed()];
         brontes_tracing::init(layers);
@@ -72,7 +63,7 @@ fn init_tracing(tui: bool) {
         let verbosity_level = Level::INFO;
         let directive: Directive = format!("{verbosity_level}").parse().unwrap();
 
-        let layers = vec![brontes_tracing::stdout(directive), Box::new(console)];
+        let layers = vec![brontes_tracing::stdout(directive)];
 
         brontes_tracing::init(layers);
     }
