@@ -304,9 +304,10 @@ impl Dashboard {
         let keys = [
             ("Q/Esc", "Quit"),
             ("Tab", "Next Tab"),
-            ("↑/k", "Up"),
-            ("↓/j", "Down"),
-            ("Enter", "Open Mev Details"),
+            ("BackTab", "Previous Tab"),
+            ("↑/w", "Up"),
+            ("↓/s", "Down"),
+            ("↵", "Open/Close Mev Details"),
         ];
         let spans = keys
             .iter()

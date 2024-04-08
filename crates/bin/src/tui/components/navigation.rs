@@ -65,11 +65,11 @@ impl Component for Navigation {
         let tab_count = 5;
 
         match key.code {
-            KeyCode::Tab | KeyCode::BackTab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            KeyCode::BackTab if key.modifiers.contains(KeyModifiers::SHIFT) => {
                 let mut appcontext_lock = self.context.lock().unwrap();
                 appcontext_lock.tab_index = appcontext_lock.tab_index.saturating_sub(1) % tab_count;
             }
-            KeyCode::Tab | KeyCode::BackTab => {
+            KeyCode::Tab => {
                 let mut appcontext_lock = self.context.lock().unwrap();
                 appcontext_lock.tab_index = appcontext_lock.tab_index.saturating_add(1) % tab_count;
             }
