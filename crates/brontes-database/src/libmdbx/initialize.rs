@@ -79,7 +79,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             Tables::Builder,
             Tables::AddressMeta,
         ];
-        self.load_config().await?;
         let progress_bar = Self::build_critical_state_progress_bar(5).unwrap();
 
         futures::stream::iter(tables.to_vec())
@@ -90,6 +89,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .buffer_unordered(5)
             .collect::<Vec<_>>()
             .await;
+        self.load_config().await?;
 
         Ok(())
     }
