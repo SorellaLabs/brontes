@@ -31,7 +31,7 @@ pub struct Dashboard {
     mevblocks: Arc<Mutex<Vec<MevBlock>>>,
     mev_bundles: Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
     data: Vec<(&'static str, u64)>,
-    log_scroll: u16,
+    //log_scroll: u16,
     stream_table_state: TableState,
     show_popup: bool,
     pub popup_scroll_position: u16,
@@ -44,7 +44,7 @@ pub struct Dashboard {
 impl Dashboard {
     pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
         Self {
-            log_scroll: 0,
+            //log_scroll: 0,
             mevblocks,
             mev_bundles,
             show_popup: false,

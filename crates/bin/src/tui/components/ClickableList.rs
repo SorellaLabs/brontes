@@ -1,5 +1,6 @@
-//use super::ui_callback::{CallbackRegistry, UiCallbackPreset};
+#![allow(non_snake_case)]
 
+//use super::ui_callback::{CallbackRegistry, UiCallbackPreset};
 use ratatui::{
     buffer::Buffer,
     layout::{Corner, Rect},
