@@ -166,7 +166,7 @@ impl Dashboard {
         let normal_style = Style::default().bg(Color::Blue);
 
         let header_cells =
-            ["Block#", "Tx Index", "MEV Type", "Tokens", "From", "Contract", "Profit", "Cost"]
+            ["Block#", "Tx Index", "MEV Type", "Tokens", "Protocols", "From", "Contract", "Profit", "Cost"]
                 .iter()
                 .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
         let header = Row::new(header_cells)
@@ -179,7 +179,16 @@ impl Dashboard {
 
         let rows = mevblocks_guard.iter().map(|item| {
             let protocols = item.data.protocols();
-            info!("Protocols: {:?}", protocols);
+           // info!("Protocols: {:?}", protocols);
+
+           let protocol_list = if protocols.is_empty() {
+            "no protocol".to_string()
+        } else {
+            protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(", ")
+        };
+
+
+            info!("Protocols: {}", protocol_list);
 
             let height = 1;
             let cells = vec![
@@ -187,6 +196,7 @@ impl Dashboard {
                 item.header.tx_index.to_string(),
                 item.header.mev_type.to_string(),
                 get_symbols_from_transaction_accounting!(&item.header.balance_deltas),
+                protocol_list,
                 item.header.eoa.to_string(),
                 item.header
                     .mev_contract
