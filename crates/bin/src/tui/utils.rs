@@ -84,6 +84,7 @@ pub fn get_config_dir() -> PathBuf {
     } else {
         PathBuf::from(".").join("config")
     };
+    info!("Config directory: {:?}", directory);
     directory
 }
 
