@@ -9,7 +9,7 @@ use eyre::eyre;
 use tracing::{error, info};
 
 fn main() -> eyre::Result<()> {
-    dotenv::dotenv().ok();
+    dotenv::dotenv().expect("Failed to load .env file");
     init_tracing();
     fdlimit::raise_fd_limit().unwrap();
 
