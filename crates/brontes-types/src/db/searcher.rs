@@ -13,7 +13,7 @@ use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
     mev::{BundleHeader, MevCount, MevType},
-    serde_utils::{addresss, option_addresss},
+    serde_utils::{addresss, option_addresss, vec_address},
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
@@ -21,25 +21,28 @@ use crate::{
 pub struct SearcherInfo {
     #[redefined(same_fields)]
     #[serde(default)]
-    pub fund:          Fund,
+    pub fund:              Fund,
     #[redefined(same_fields)]
     #[serde(default)]
-    pub mev_count:     MevCount,
+    pub mev_count:         MevCount,
     #[redefined(same_fields)]
     #[serde(default)]
-    pub pnl:           TollByType,
+    pub pnl:               TollByType,
     #[redefined(same_fields)]
     #[serde(default)]
-    pub gas_bids:      TollByType,
+    pub gas_bids:          TollByType,
     /// If the searcher is vertically integrated, this will contain the
     /// corresponding builder's information.
     #[serde(with = "option_addresss")]
     #[serde(default)]
-    pub builder:       Option<Address>,
+    pub builder:           Option<Address>,
     #[redefined(same_fields)]
     #[serde(default)]
     #[serde(rename = "mev_types")]
-    pub config_labels: Vec<MevType>,
+    pub config_labels:     Vec<MevType>,
+    #[serde(with = "vec_address")]
+    #[serde(default)]
+    pub sibling_searchers: Vec<Address>,
 }
 
 impl SearcherInfo {
@@ -51,6 +54,10 @@ impl SearcherInfo {
         self.get_bundle_count_for_type(mev_type)
             .map(|count| count >= threshold)
             .unwrap_or(false)
+    }
+
+    pub fn get_sibling_searchers(&self) -> &Vec<Address> {
+        self.sibling_searchers.as_ref()
     }
 
     pub fn get_bundle_count_for_type(&self, mev_type: MevType) -> Option<u64> {
@@ -83,6 +90,8 @@ impl SearcherInfo {
             self.mev_count = other.mev_count;
         }
         self.builder = other.builder.or(self.builder.take());
+
+        self.sibling_searchers = other.sibling_searchers;
     }
 
     pub fn describe(&self) -> String {

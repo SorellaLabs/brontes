@@ -3,7 +3,7 @@ use alloy_primitives::{Address, TxHash};
 use crate::{
     db::{address_metadata::ContractType, searcher::SearcherInfo},
     mev::MevType,
-    GasDetails,
+    FastHashSet, GasDetails,
 };
 
 #[derive(Debug, Clone)]
@@ -72,6 +72,30 @@ impl TxInfo {
         self.searcher_contract_info.as_ref()
     }
 
+    pub fn collect_address_set_for_accounting(&self) -> FastHashSet<Address> {
+        let mut mev_addresses: FastHashSet<Address> = vec![self.eoa]
+            .into_iter()
+            .chain(self.mev_contract.into_iter())
+            .collect();
+
+        self.get_sibling_searchers(&mut mev_addresses);
+        mev_addresses
+    }
+
+    pub fn get_sibling_searchers(&self, searchers: &mut FastHashSet<Address>) {
+        if let Some(ref searcher_info) = self.searcher_eoa_info {
+            for address in searcher_info.get_sibling_searchers() {
+                searchers.insert(*address);
+            }
+        }
+
+        if let Some(ref searcher_info) = self.searcher_contract_info {
+            for address in searcher_info.get_sibling_searchers() {
+                searchers.insert(*address);
+            }
+        }
+    }
+
     pub fn is_searcher_of_type(&self, mev_type: MevType) -> bool {
         self.searcher_eoa_info
             .as_ref()
@@ -121,4 +145,17 @@ impl TxInfo {
     pub fn is_cex_dex_call(&self) -> bool {
         self.is_cex_dex_call
     }
+}
+
+pub fn collect_address_set_for_accounting(tx_infos: &[TxInfo]) -> FastHashSet<Address> {
+    let mut mev_addresses: FastHashSet<Address> = tx_infos
+        .iter()
+        .flat_map(|tx_info| std::iter::once(tx_info.eoa).chain(tx_info.mev_contract.into_iter()))
+        .collect();
+
+    for tx_info in tx_infos {
+        tx_info.get_sibling_searchers(&mut mev_addresses);
+    }
+
+    mev_addresses
 }
