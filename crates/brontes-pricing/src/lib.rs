@@ -543,7 +543,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     let full_pair = Pair(pair.0, self.quote_asset);
                     tracing::debug!(?pair, ?goes_through, ?full_pair, "failed state query dep");
                     RequeryPairs {
-                        pair,
+                        pair: full_pair,
                         full_pair,
                         goes_through,
                         block,
