@@ -107,6 +107,7 @@ impl TraceActions for TransactionTraceWithLogs {
             target_address: self.get_to_address(),
             from_address:   self.get_from_addr(),
             logs:           &self.logs,
+            delegate_logs:  vec![],
             msg_sender:     self.msg_sender,
             msg_value:      self.get_msg_value(),
         }
@@ -144,6 +145,7 @@ pub struct CallFrameInfo<'a> {
     pub target_address: Address,
     pub from_address:   Address,
     pub logs:           &'a [Log],
+    pub delegate_logs:  Vec<&'a Log>,
     pub msg_sender:     Address,
     pub msg_value:      U256,
 }
@@ -171,13 +173,13 @@ impl CallFrameInfo<'_> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
-    pub trace:        TransactionTrace,
-    pub logs:         Vec<Log>,
+    pub trace:         TransactionTrace,
+    pub logs:          Vec<Log>,
     /// the msg.sender of the trace. This allows us to properly deal with
     /// delegate calls and the headache they cause when it comes to proxies
-    pub msg_sender:   Address,
-    pub trace_idx:    u64,
-    pub decoded_data: Option<DecodedCallData>,
+    pub msg_sender:    Address,
+    pub trace_idx:     u64,
+    pub decoded_data:  Option<DecodedCallData>,
 }
 
 impl TransactionTraceWithLogs {

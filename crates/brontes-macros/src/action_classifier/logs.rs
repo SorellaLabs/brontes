@@ -212,12 +212,14 @@ impl<'a> LogData<'a> {
 
         let mut stream = TokenStream::new();
 
-        if !self.include_delegated_logs {
+        if self.include_delegated_logs {
             stream.extend(quote!(
-                let logs = call_info.logs.iter()
-                    .filter(|log| log.address == call_info.target_address)
-                    .collect::<Vec<_>>();
-            ));
+                let mut merged_logs: Vec<&alloy_primitives::Log> = Vec::with_capacity(call_info.logs.len() + call_info.delegate_logs.len());
+                merged_logs.extend(call_info.logs.iter());
+                merged_logs.extend(call_info.delegate_logs.iter());
+
+                let logs = merged_logs.as_slice();
+           ));
         } else {
             stream.extend(quote!(
                 let logs = call_info.logs;
