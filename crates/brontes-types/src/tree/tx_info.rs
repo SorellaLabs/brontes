@@ -75,7 +75,7 @@ impl TxInfo {
     pub fn collect_address_set_for_accounting(&self) -> FastHashSet<Address> {
         let mut mev_addresses: FastHashSet<Address> = vec![self.eoa]
             .into_iter()
-            .chain(self.mev_contract.into_iter())
+            .chain(self.mev_contract)
             .collect();
 
         self.get_sibling_searchers(&mut mev_addresses);
@@ -150,7 +150,7 @@ impl TxInfo {
 pub fn collect_address_set_for_accounting(tx_infos: &[TxInfo]) -> FastHashSet<Address> {
     let mut mev_addresses: FastHashSet<Address> = tx_infos
         .iter()
-        .flat_map(|tx_info| std::iter::once(tx_info.eoa).chain(tx_info.mev_contract.into_iter()))
+        .flat_map(|tx_info| std::iter::once(tx_info.eoa).chain(tx_info.mev_contract))
         .collect();
 
     for tx_info in tx_infos {
