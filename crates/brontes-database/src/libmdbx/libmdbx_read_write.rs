@@ -1,5 +1,3 @@
-#[cfg(feature = "local-clickhouse")]
-use std::str::FromStr;
 use std::{
     cmp::max,
     ops::{Bound, RangeInclusive},
@@ -10,7 +8,7 @@ use std::{
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 #[cfg(feature = "cex-dex-markout")]
-use brontes_types::db::cex_trades::CexTradeMap;
+use brontes_types::db::{cex_trades::CexTradeMap, initialized_state::CEX_TRADES_FLAG};
 use brontes_types::{
     constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
@@ -19,7 +17,9 @@ use brontes_types::{
         builder::BuilderInfo,
         cex::{CexPriceMap, CexQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
-        initialized_state::{CEX_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
+        },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
@@ -35,24 +35,14 @@ use brontes_types::{
     traits::TracingProvider,
     BlockTree, FastHashMap, SubGraphsEntry,
 };
-#[cfg(feature = "local-clickhouse")]
-use db_interfaces::Database;
 use eyre::{eyre, ErrReport};
 use futures::Future;
-#[cfg(feature = "local-clickhouse")]
-use futures::{FutureExt, StreamExt};
 use indicatif::ProgressBar;
 use itertools::Itertools;
 use reth_db::DatabaseError;
 use reth_interfaces::db::LogLevel;
 use tracing::info;
 
-#[cfg(feature = "local-clickhouse")]
-use crate::clickhouse::{
-    MIN_MAX_ADDRESS_TO_PROTOCOL, MIN_MAX_POOL_CREATION_BLOCKS, MIN_MAX_TOKEN_DECIMALS,
-};
-#[cfg(feature = "local-clickhouse")]
-use crate::libmdbx::CompressedTable;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
@@ -64,10 +54,17 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+    ) -> impl Future<Output = eyre::Result<()>> + Send;
+
+    /// Initialize the small tables that aren't indexed by block number
+    fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// initializes all the tables with missing data ranges via the CLI
@@ -75,23 +72,16 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
-
-    /// checks the min and max values of the clickhouse db and sees if the full
-    /// range tables have the values.
-    fn init_full_range_tables<CH: ClickhouseHandle>(
-        &self,
-        clickhouse: &'static CH,
-    ) -> impl Future<Output = bool> + Send;
 
     fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<RangeInclusive<u64>>>;
+    ) -> eyre::Result<StateToInitialize>;
 }
 
 pub struct LibmdbxReadWriter(pub Libmdbx);
@@ -99,43 +89,6 @@ pub struct LibmdbxReadWriter(pub Libmdbx);
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self(Libmdbx::init_db(path, log_level)?))
-    }
-
-    #[cfg(feature = "local-clickhouse")]
-    async fn has_clickhouse_min_max<TB, CH: ClickhouseHandle>(
-        &self,
-        query: &str,
-        clickhouse: &'static CH,
-    ) -> eyre::Result<bool>
-    where
-        TB: CompressedTable,
-        TB::Value: From<TB::DecompressedValue> + Into<TB::DecompressedValue>,
-        <TB as reth_db::table::Table>::Key: FromStr + Send + Sync,
-    {
-        let (min, max) = clickhouse
-            .inner()
-            .query_one::<(String, String), _>(query, &())
-            .await?;
-
-        let Ok(min_parsed) = min.parse::<TB::Key>() else {
-            return Ok(false);
-        };
-
-        let Ok(max_parsed) = max.parse::<TB::Key>() else {
-            return Ok(false);
-        };
-
-        let tx = self.0.ro_tx()?;
-        let mut cur = tx.new_cursor::<TB>()?;
-
-        let Some(has_min) = cur.first()?.map(|v| v.0 <= min_parsed) else {
-            return Ok(false);
-        };
-        let Some(has_max) = cur.last()?.map(|v| v.0 >= max_parsed) else {
-            return Ok(false);
-        };
-
-        Ok(has_min && has_max)
     }
 }
 
@@ -145,7 +98,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
@@ -163,7 +116,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
-        tables: &[Tables],
+        tables: Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
@@ -177,94 +130,183 @@ impl LibmdbxInit for LibmdbxReadWriter {
         Ok(())
     }
 
-    /// checks the min and max values of the clickhouse db and sees if the full
-    /// range tables have the values.
-    #[cfg(feature = "local-clickhouse")]
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
-        futures::stream::iter([
-            Tables::PoolCreationBlocks,
-            Tables::AddressToProtocolInfo,
-            Tables::TokenDecimals,
-        ])
-        .map(|table| async move {
-            match table {
-                Tables::AddressToProtocolInfo => self
-                    .has_clickhouse_min_max::<AddressToProtocolInfo, CH>(
-                        MIN_MAX_ADDRESS_TO_PROTOCOL,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                Tables::TokenDecimals => self
-                    .has_clickhouse_min_max::<TokenDecimals, CH>(MIN_MAX_TOKEN_DECIMALS, clickhouse)
-                    .await
-                    .unwrap_or_default(),
-                Tables::PoolCreationBlocks => self
-                    .has_clickhouse_min_max::<PoolCreationBlocks, CH>(
-                        MIN_MAX_POOL_CREATION_BLOCKS,
-                        clickhouse,
-                    )
-                    .await
-                    .unwrap_or_default(),
-                _ => true,
-            }
-        })
-        .any(|f| f.map(|f| !f))
-        .await
-    }
+    async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+    ) -> eyre::Result<()> {
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        initializer.initialize_full_range_tables().await?;
 
-    #[cfg(not(feature = "local-clickhouse"))]
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, _clickhouse: &'static CH) -> bool {
-        true
+        Ok(())
     }
 
     fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<RangeInclusive<u64>>> {
+    ) -> eyre::Result<StateToInitialize> {
+        let blocks = end_block - start_block;
+        let block_range = (blocks / 128 + 1) as usize;
+        let excess = blocks % 128;
+
+        let mut range = vec![0u128; block_range];
+        // mark tables out of scope as initialized;
+        range[block_range - 1] |= u128::MAX >> excess;
+
+        let mut tables: Vec<Vec<u128>> = Tables::ALL.into_iter().map(|_| range.clone()).collect();
+
         let tx = self.0.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
-
         let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
+
         if peek_cur.peek().is_none() {
             tracing::info!("entire range missing");
-            return Ok(vec![start_block..=end_block])
+            let mut result = FastHashMap::default();
+            let tables_to_init = default_tables_to_init();
+            for table in tables_to_init {
+                result.insert(table, vec![start_block as usize..=end_block as usize]);
+            }
+            return Ok(StateToInitialize { ranges_to_init: result })
         }
 
-        let mut result = Vec::new();
-        let mut block_tracking = start_block;
+        let start_block = start_block as usize;
 
-        for entry in peek_cur {
-            if let Ok(has_info) = entry {
-                let block = has_info.0;
-                let state = has_info.1;
-                // if we are missing the block, we add it to the range
-                if block != block_tracking {
-                    tracing::info!(block, block_tracking, "block != tracking");
-                    result.push(block_tracking..=block);
-                    block_tracking = block + 1;
+        for next in peek_cur {
+            let Ok(entry) = next else { panic!("crit db error for InitializeState table") };
+            let block = entry.0 as usize;
+            let state = entry.1;
 
-                    continue
-                }
+            let pos = block - start_block;
 
-                block_tracking += 1;
-
-                if !state.is_init() {
-                    tracing::trace!(?state, "state isn't init");
-                    result.push(block..=block);
-                }
-            } else {
-                // should never happen unless a courput db
-                panic!("database is corrupted");
+            for (table, bool) in tables_to_initialize(state) {
+                tables[table as u8 as usize][pos / 128] |= (bool as u8 as u128) << (127 - pos % 128)
             }
         }
 
-        if block_tracking - 1 != end_block {
-            result.push(block_tracking - 1..=end_block);
-        }
+        let wanted_tables = default_tables_to_init();
 
-        Ok(result)
+        let table_ranges = wanted_tables
+            .into_iter()
+            .map(|table| {
+                // fetch table from vec
+                let offset = table as u8 as usize;
+
+                let table_res = unsafe {
+                    let ptr = tables.as_mut_ptr();
+                    let loc = ptr.add(offset);
+                    loc.replace(vec![])
+                };
+
+                let mut ranges = Vec::new();
+                let mut range_start_block: Option<usize> = None;
+
+                for (i, mut range) in table_res.into_iter().enumerate() {
+                    // if there are no zeros, then this chuck is fully init
+                    if range.count_zeros() == 0 {
+                        continue
+                    }
+
+                    let mut sft_cnt = 0;
+                    // if the range starts with a zero. set the start_block if it isn't
+                    if range & 1 << 127 == 0 && range_start_block.is_none() {
+                        range_start_block = Some(start_block + (i * 128));
+                        sft_cnt += 1;
+                        // move to left once
+                        range <<= sft_cnt;
+                    }
+
+                    // while we have ones to process, continue
+                    while range.count_ones() != 0 && sft_cnt <= 127 {
+                        let leading_zeros = range.leading_zeros();
+                        if leading_zeros == 127 {
+                            break
+                        }
+                        // if we have leading 1's, skip to the end of the leading ones
+                        else if leading_zeros == 0 {
+                            // we have ones next, lets take all of them, shift them away
+                            // and continue processing
+                            let leading_ones = range.leading_ones();
+                            range <<= leading_ones;
+                            sft_cnt += leading_ones;
+
+                            // mark the start_block now that we have shifted these out
+                            let block = start_block + (i * 128) + sft_cnt as usize;
+                            if range_start_block.is_some() || sft_cnt >= 128 {
+                                continue
+                            }
+                            range_start_block = Some(block);
+
+                            continue
+                        } else {
+                            // take range,
+                            range <<= leading_zeros;
+                            sft_cnt += leading_zeros;
+                        }
+
+                        let block = start_block + (i * 128) + sft_cnt as usize;
+
+                        if let Some(start_block) = range_start_block.take() {
+                            ranges.push(start_block..=block - 1);
+                        } else {
+                            range_start_block = Some(block);
+                        }
+                    }
+                }
+
+                // needed for case the range is a multiple of u128
+                if let Some(start_block) = range_start_block.take() {
+                    ranges.push(start_block..=end_block as usize);
+                }
+
+                (table, ranges)
+            })
+            .collect::<FastHashMap<_, _>>();
+
+        Ok(StateToInitialize { ranges_to_init: table_ranges })
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct StateToInitialize {
+    pub ranges_to_init: FastHashMap<Tables, Vec<RangeInclusive<usize>>>,
+}
+
+impl StateToInitialize {
+    pub fn get_state_for_ranges(
+        &self,
+        start_block: usize,
+        end_block: usize,
+    ) -> Vec<(Tables, Vec<RangeInclusive<u64>>)> {
+        self.ranges_to_init
+            .iter()
+            .map(|(table, ranges)| {
+                (
+                    *table,
+                    ranges
+                        .iter()
+                        .filter_map(|f| {
+                            let start = *f.start();
+                            let end = *f.end();
+                            // if start or end out of range
+                            if end < start_block || start > end_block {
+                                return None
+                            }
+
+                            let new_start = std::cmp::max(start_block, start) as u64;
+                            let new_end = std::cmp::min(end_block, end) as u64;
+                            Some(new_start..=new_end)
+                        })
+                        .collect_vec(),
+                )
+            })
+            .collect_vec()
+    }
+
+    pub fn tables_with_init_count(&self) -> impl Iterator<Item = (Tables, usize)> + '_ {
+        self.ranges_to_init
+            .iter()
+            .map(|(table, cnt)| (*table, cnt.iter().map(|r| r.end() - r.start()).sum()))
     }
 }
 
@@ -293,7 +335,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        self.init_state_updating(block_num, CEX_FLAG)?;
+        self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         #[cfg(feature = "cex-dex-markout")]
         let trades = self.fetch_trades(block_num).ok();
@@ -322,7 +364,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        self.init_state_updating(block_num, CEX_FLAG)?;
+        self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
 
@@ -864,7 +906,32 @@ impl LibmdbxReadWriter {
         Ok(())
     }
 
-    pub fn inited_range(&self, range: impl Iterator<Item = u64>, flag: u8) -> eyre::Result<()> {
+    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
+        let tx = self.0.rw_tx()?;
+        let mut range_cursor = tx.cursor_write::<InitializedState>()?;
+
+        for block in range {
+            if let Some(mut state) = range_cursor.seek_exact(block)? {
+                state.1.set(flag);
+                range_cursor.upsert(state.0, state.1)?;
+            } else {
+                let mut init_state = InitializedStateMeta::default();
+                init_state.set(flag);
+                let value = InitializedStateData::from((block, init_state));
+                range_cursor.upsert(value.key, value.value)?;
+            }
+        }
+
+        tx.commit()?;
+
+        Ok(())
+    }
+
+    pub fn inited_range_arbitrary(
+        &self,
+        range: impl Iterator<Item = u64>,
+        flag: u8,
+    ) -> eyre::Result<()> {
         for block in range {
             self.init_state_updating(block, flag)?;
         }
@@ -938,5 +1005,39 @@ pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
         cex_quotes
             .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
             .unwrap_or_default()
+    }
+}
+
+fn default_tables_to_init() -> Vec<Tables> {
+    let mut tables_to_init = vec![Tables::BlockInfo, Tables::DexPrice];
+    #[cfg(not(feature = "local-reth"))]
+    tables_to_init.push(Tables::TxTraces);
+    #[cfg(not(feature = "cex-dex-markout"))]
+    tables_to_init.push(Tables::CexPrice);
+    #[cfg(feature = "cex-dex-markout")]
+    tables_to_init.push(Tables::CexTrades);
+
+    tables_to_init
+}
+pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
+    if data.should_ignore() {
+        default_tables_to_init()
+            .into_iter()
+            .map(|t| (t, true))
+            .collect_vec()
+    } else {
+        let mut tables = vec![
+            (Tables::BlockInfo, data.is_initialized(META_FLAG)),
+            (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
+        ];
+
+        #[cfg(not(feature = "local-reth"))]
+        tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
+        #[cfg(not(feature = "cex-dex-markout"))]
+        tables.push((Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)));
+        #[cfg(feature = "cex-dex-markout")]
+        tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
+
+        tables
     }
 }
