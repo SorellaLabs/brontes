@@ -63,7 +63,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
@@ -783,7 +783,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         });
 
         if edges.is_empty() {
-            error!(?pair, ?goes_through, ?block, "failed to find connection for graph");
+            if goes_through == Pair::default() {
+                debug!(?pair, ?block, "Failed to find connection for graph");
+            } else {
+                debug!(?pair, ?goes_through, ?block, "Failed to find connection for graph");
+            }
+
             return
         } else {
             let Some((id, need_state, _)) =

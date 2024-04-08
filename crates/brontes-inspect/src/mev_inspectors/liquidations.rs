@@ -69,15 +69,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
-        let mev_addresses: FastHashSet<Address> = vec![info.eoa]
-            .into_iter()
-            .chain(
-                info.mev_contract
-                    .as_ref()
-                    .map(|a| vec![*a])
-                    .unwrap_or_default(),
-            )
-            .collect::<FastHashSet<_>>();
+        let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
         let deltas = actions.into_iter().account_for_actions();
 

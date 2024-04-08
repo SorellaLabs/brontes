@@ -99,15 +99,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
-        let mev_addresses: FastHashSet<Address> = vec![info.eoa]
-            .into_iter()
-            .chain(
-                info.mev_contract
-                    .as_ref()
-                    .map(|a| vec![*a])
-                    .unwrap_or_default(),
-            )
-            .collect::<FastHashSet<_>>();
+        let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
         let account_deltas = transfers
             .into_iter()
