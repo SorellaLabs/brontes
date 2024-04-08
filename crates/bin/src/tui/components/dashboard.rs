@@ -308,7 +308,7 @@ impl Dashboard {
     }
 
     fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {
-        let keys = [("Q/Esc", "Quit"), ("Tab", "Next Tab"), ("↑/k", "Up"), ("↓/j", "Down")];
+        let keys = [("Q/Esc", "Quit"), ("Tab", "Next Tab"), ("↑/k", "Up"), ("↓/j", "Down"), ("Enter", "Open Mev Details")];
         let spans = keys
             .iter()
             .flat_map(|(key, desc)| {
