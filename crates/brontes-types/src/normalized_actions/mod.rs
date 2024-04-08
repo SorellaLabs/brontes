@@ -334,74 +334,7 @@ impl Actions {
         }
     }
 
-    pub const fn is_swap(&self) -> bool {
-        matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
-    }
-
-    pub const fn (&self) -> bool {
-        matches!(self, Actions::Swap(_))
-    }
-
-    pub const fn is_swap_with_fee(&self) -> bool {
-        matches!(self, Actions::SwapWithFee(_))
-    }
-
-    pub const fn is_flash_loan(&self) -> bool {
-        matches!(self, Actions::FlashLoan(_))
-    }
-
-    pub const fn is_aggregator(&self) -> bool {
-        matches!(self, Actions::Aggregatois_swap_no_feer(_))
-    }
-
-    pub const fn is_liquidation(&self) -> bool {
-        matches!(self, Actions::Liquidation(_))
-    }
-
-    pub const fn is_batch(&self) -> bool {
-        matches!(self, Actions::Batch(_))
-    }
-
-    pub const fn is_burn(&self) -> bool {
-        matches!(self, Actions::Burn(_))
-    }
-
-    pub const fn is_revert(&self) -> bool {
-        matches!(self, Actions::Revert)
-    }
-
-    pub const fn is_mint(&self) -> bool {
-        matches!(self, Actions::Mint(_))
-    }
-
-    pub const fn is_transfer(&self) -> bool {
-        matches!(self, Actions::Transfer(_))
-    }
-
-    pub const fn is_collect(&self) -> bool {
-        matches!(self, Actions::Collect(_))
-    }
-
-    pub const fn is_self_destruct(&self) -> bool {
-        matches!(self, Actions::SelfDestruct(_))
-    }
-
-    pub const fn is_new_pool(&self) -> bool {
-        matches!(self, Actions::NewPool(_))
-    }
-
-    pub const fn is_pool_config_update(&self) -> bool {
-        matches!(self, Actions::PoolConfigUpdate(_))
-    }
-
-    pub const fn is_unclassified(&self) -> bool {
-        matches!(self, Actions::Unclassified(_))
-    }
-
-    pub const fn is_eth_transfer(&self) -> bool {
-        matches!(self, Actions::EthTransfer(_))
-    }
-
+   
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
             return u.is_static_call()
@@ -564,6 +497,11 @@ pub fn brontes_actions(input: TokenStream) -> TokenStream {
                     matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
                 }else if #func_name.to_string() == "is_swap_no_fee".to_string(){
                     matches!(self, Actions::Swap(_))
+                }else if #func_name.to_string() == "is_static_call".to_string(){
+                    if let #name::Unclassified(u) = &self {
+                        return u.is_static_call()
+                    }
+                    false
                 }
                 matches!(self, #name::#ident(_))
             }
