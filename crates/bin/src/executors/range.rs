@@ -34,7 +34,7 @@ pub struct RangeExecutorWithPricing<
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
     //progress_bar:   Option<ProgressBar>,
-    tui_tx:         UnboundedSender<Action>,
+    tui_tx:         Option<UnboundedSender<Action>>,
     _p:             PhantomData<P>,
 }
 

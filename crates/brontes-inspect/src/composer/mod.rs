@@ -49,12 +49,14 @@ use utils::{
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
-//tui related
-use brontes_types::mev::events::{Action, TuiEvents};
+#[cfg(feature = "tui")]
+use brontes_types::mev::events::TuiEvents;
+
+
+use brontes_types::mev::events::Action;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{discovery::DiscoveryInspector, Inspector};
-//use brontes_types::mev::events::TuiEvents;
 
 #[derive(Debug)]
 pub struct ComposerResults {
