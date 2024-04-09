@@ -111,7 +111,6 @@ impl Dashboard {
                 Some(i) => {
                     let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                         self.mev_bundles.lock().unwrap();
-                    // info!("i  - len: {} {}", i, mevblocks_guard.len());
 
                     if mevblocks_guard.len() > 0 {
                         if i >= mevblocks_guard.len() - 1 {
