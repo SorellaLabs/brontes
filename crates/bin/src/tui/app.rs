@@ -40,7 +40,6 @@ use crate::{
 };
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
-const ITEM_HEIGHT: usize = 4;
 
 use std::{
     collections::HashSet,
@@ -49,7 +48,6 @@ use std::{
 
 use super::components::analytics::hot_tokens::HotTokens;
 use crate::tui::{
-    //action::Action,
     components::{
         analytics::analytics::Analytics, analytics::searcher_stats::SearcherStats,
         analytics::top_contracts::TopContracts,
@@ -151,9 +149,6 @@ impl App {
         }
     }
 
-
-
-
     pub async fn run_inner(
         &mut self,
         mut action_rx: UnboundedReceiver<Action>,
@@ -163,21 +158,27 @@ impl App {
             .tick_rate(self.tick_rate)
             .frame_rate(self.frame_rate);
 
-        // TODO: Add mouse support
+        // TODO: Add mouse support & handling
         // tui.mouse(true);
 
         tui.enter()?;
 
+
+        // register action handlers for components 
         for inner_tabs in self.components.iter_mut() {
             for component in inner_tabs.iter_mut() {
                 component.register_action_handler(action_tx.clone())?;
             }
         }
+
+        // register config handlers for components
         for inner_tabs in self.components.iter_mut() {
             for component in inner_tabs.iter_mut() {
                 component.register_config_handler(self.config.clone())?;
             }
         }
+
+        //init components
         for inner_tabs in self.components.iter_mut() {
             for component in inner_tabs.iter_mut() {
                 component.init(tui.size()?)?;
