@@ -102,8 +102,9 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 
         let eth_prices = determine_eth_prices(&cex_quotes.value);
 
+        //TODO: Joe please appropriately handle the cex-dex-markout feature
         Ok({
-            BlockMetadata::new(
+            let metadata = BlockMetadata::new(
                 block_num,
                 block_meta.value.block_hash,
                 block_meta.value.block_timestamp,
@@ -113,8 +114,12 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 block_meta.value.proposer_mev_reward,
                 max(eth_prices.price.0, eth_prices.price.1),
                 block_meta.value.private_flow.into_iter().collect(),
-            )
-            .into_metadata(cex_quotes.value, dex_quotes, None)
+            );
+            #[cfg(feature = "cex-dex-markout")]
+            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
+            #[cfg(not(feature = "cex-dex-markout"))]
+            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None);
+            metadata
         })
     }
 

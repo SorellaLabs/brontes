@@ -79,7 +79,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             Tables::Builder,
             Tables::AddressMeta,
         ];
-        self.load_config().await?;
         let progress_bar = Self::build_critical_state_progress_bar(5).unwrap();
 
         futures::stream::iter(tables.to_vec())
@@ -90,6 +89,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .buffer_unordered(5)
             .collect::<Vec<_>>()
             .await;
+        self.load_config().await?;
 
         Ok(())
     }
@@ -647,6 +647,7 @@ impl AddressMetadataConfig {
 
 #[cfg(test)]
 mod tests {
+
     use std::sync::Arc;
 
     use brontes_core::test_utils::{get_db_handle, init_trace_parser};
@@ -669,21 +670,23 @@ mod tests {
         let tracing_client =
             init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;
 
-        let intializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
+        let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
 
-        let tables = Tables::ALL;
+        initializer.initialize_full_range_tables().await.unwrap();
+
+        let tables = [Tables::TxTraces, Tables::BlockInfo];
 
         let multi = MultiProgress::default();
         let tables_cnt = Arc::new(
-            Tables::ALL
-                .into_iter()
-                .map(|table| (table, table.build_init_state_progress_bar(&multi, 69)))
+            tables
+                .iter()
+                .map(|table| (*table, table.build_init_state_progress_bar(&multi, 69)))
                 .collect_vec(),
         );
 
-        for table in tables {
-            intializer
-                .initialize(table, false, Some(block_range), tables_cnt.clone())
+        for table in tables_cnt.iter() {
+            initializer
+                .initialize(table.0, false, Some(block_range), tables_cnt.clone())
                 .await
                 .unwrap();
         }
