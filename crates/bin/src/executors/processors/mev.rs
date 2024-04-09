@@ -62,29 +62,24 @@ impl Processor for MevProcessor {
         #[cfg(feature = "local-clickhouse")]
         insert_tree(db, tree.clone(), metadata.block_num).await;
 
-        let opt = Args::parse();
-        match opt.command {
-            Commands::Run(command) => {
-                if !command.cli_only {
-                    let _ = tui_tx
-                        .clone()
-                        .unwrap()
-                        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(block_details.clone())))
-                        .map_err(|e| {
-                            use tracing::info;
-                            info!("Failed to send: {}", e);
-                        });
+        // if there is a tui_tx, send the block details and mev details to the tui
+        if let Some(tui_tx) = tui_tx {
+            let _ = tui_tx
+                .clone()
+                .unwrap()
+                .send(Action::Tui(TuiEvents::MevBlockMetricReceived(block_details.clone())))
+                .map_err(|e| {
+                    use tracing::info;
+                    info!("Failed to send: {}", e);
+                });
 
-                    let _ = tui_tx
-                        .unwrap()
-                        .send(Action::Tui(TuiEvents::MevBundleEventReceived(mev_details.clone())))
-                        .map_err(|e| {
-                            use tracing::info;
-                            info!("Failed to send: {}", e);
-                        });
-                }
-            }
-            _ => {}
+            let _ = tui_tx
+                .unwrap()
+                .send(Action::Tui(TuiEvents::MevBundleEventReceived(mev_details.clone())))
+                .map_err(|e| {
+                    use tracing::info;
+                    info!("Failed to send: {}", e);
+                });
         }
 
         insert_mev_results(db, block_details, mev_details).await;
