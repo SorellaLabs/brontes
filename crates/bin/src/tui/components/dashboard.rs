@@ -25,6 +25,9 @@ use crate::{
     tui::{config::Config, theme::THEME, tui::Event},
 };
 
+use crate::tui::polars::{bundles_to_dataframe, dataframe_to_table_rows};
+
+
 #[derive(Default, Debug)]
 pub struct Dashboard {
     command_tx: Option<UnboundedSender<Action>>,
@@ -129,7 +132,7 @@ impl Dashboard {
             self.stream_table_state.select(Some(i));
         }
     }
-
+/*
     // Function to convert a Vec<Bundle> to a Polars DataFrame
     fn bundles_to_dataframe(bundles: Vec<Bundle>) -> Result<DataFrame> {
         let mut block_numbers = Vec::new();
@@ -204,7 +207,7 @@ impl Dashboard {
 
         rows
     }
-
+*/
     fn draw_livestream(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
         let normal_style = Style::default().bg(Color::Blue);
@@ -230,8 +233,8 @@ impl Dashboard {
         let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
             widget.mev_bundles.lock().unwrap();
 
-        let df = Self::bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
-        let rows = Self::dataframe_to_table_rows(&df);
+        let df = bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
+        let rows = dataframe_to_table_rows(&df);
 
         let t = Table::new(
             rows,
