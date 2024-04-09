@@ -66,7 +66,6 @@ pub fn compose_mev_results(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
-    tui_tx: Option<UnboundedSender<Action>>,
 ) -> ComposerResults {
     let (possible_mev_txes, classified_mev) =
         run_inspectors(orchestra, tree.clone(), metadata.clone());
@@ -74,7 +73,7 @@ pub fn compose_mev_results(
     let possible_arbs = possible_mev_txes.clone();
 
     let (block_details, mev_details) =
-        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, tui_tx);
+        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev);
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
@@ -121,7 +120,6 @@ fn on_orchestra_resolution(
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
-    tui_tx: Option<UnboundedSender<Action>>,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
