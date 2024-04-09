@@ -161,8 +161,8 @@ let df = Self::bundles_to_dataframe(mevblocks_guard).unwrap();
 println!("df_created");
 let rows = Self::dataframe_to_table_rows(&df);
 println!("rows_created");
-/*
 
+/*
         let rows = mevblocks_guard.iter().map(|item| {
             let protocols = item.data.protocols();
             let mut protocol_names = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>();
@@ -237,7 +237,7 @@ println!("rows_created");
 
 // Function to convert a Vec<Bundle> to a Polars DataFrame
 fn bundles_to_dataframe(bundles:  std::sync::MutexGuard<Vec<Bundle>>) -> Result<DataFrame> {
-    println!("bundles_to_dataframe_entered");
+    info!("bundles_to_dataframe_entered");
 
     let mut block_numbers = Vec::new();
     let mut tx_indexes = Vec::new();
@@ -279,7 +279,7 @@ fn bundles_to_dataframe(bundles:  std::sync::MutexGuard<Vec<Bundle>>) -> Result<
         Series::new("Profit USD", &profits_usd),
         Series::new("Bribe USD", &bribes_usd),
     ])?;
-    println!("bundles_to_dataframe_finish");
+    info!("bundles_to_dataframe_finish");
 
     Ok(df)
 }
@@ -296,7 +296,7 @@ fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
 */
 
 fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
-    println!("dataframe_table_rows_entered");
+    info!("dataframe_table_rows_entered");
 
     let height = 1;
     let bottom_margin = 0;
@@ -318,7 +318,7 @@ fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
         }
         rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
     }
-    println!("dataframe_table_rows_finish");
+    info!("dataframe_table_rows_finish");
 
     rows
 }
