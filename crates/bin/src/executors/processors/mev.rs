@@ -28,6 +28,8 @@ use tracing::debug;
 use crate::Processor;
 
 use crate::cli::run::RunArgs;
+use clap::Parser;
+
 
 
 #[derive(Debug, Clone, Copy)]
@@ -65,8 +67,10 @@ impl Processor for MevProcessor {
             return
         }
 
-        //if BrontesRunConfig::get()
-        tracing::info!("PROCESS_RESULTS_cli_only: {}", RunArgs.cli_only);
+
+      //  let args = RunArgs::parse();
+    //    tracing::info!("PROCESS_RESULTS_cli_only: {}", args.cli_only);
+//        tracing::info!("PROCESS_RESULTS_cli_only: {}", RunArgs);
 
 
         insert_mev_results(db, block_details, mev_details).await;
