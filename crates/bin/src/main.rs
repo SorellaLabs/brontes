@@ -16,13 +16,11 @@ use brontes::{
 };
 use clap::Parser;
 use eyre::eyre;
+#[cfg(not(target_env = "msvc"))]
+use jemallocator::Jemalloc;
 use tracing::{error, info, Level};
 use tracing_subscriber::{filter::Directive, Layer};
 use tui_logger::tracing_subscriber_layer;
-
-
-#[cfg(not(target_env = "msvc"))]
-use jemallocator::Jemalloc;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
@@ -61,10 +59,8 @@ fn run() -> eyre::Result<()> {
 
     match opt.command {
         Commands::Run(command) => {
-            init_tracing_for_tui(command.cli_only);
+            init_tracing(command.cli_only);
 
-
-            //TODO - fix - tui should be running even brontes inspectors are finished
             if command.cli_only {
                 runner::run_command_until_exit(|ctx| command.execute(ctx))
             } else {
@@ -75,15 +71,16 @@ fn run() -> eyre::Result<()> {
         Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
     }
 }
-
-fn init_tracing_for_tui(tui: bool) {
+fn init_tracing(tui: bool) {
     if !tui {
-        let layers = vec![tracing_subscriber_layer().boxed()];
+        let layers = vec![];
         brontes_tracing::init(layers);
     } else {
         let verbosity_level = Level::INFO;
         let directive: Directive = format!("{verbosity_level}").parse().unwrap();
+
         let layers = vec![brontes_tracing::stdout(directive)];
+
         brontes_tracing::init(layers);
     }
 }
