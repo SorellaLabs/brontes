@@ -27,7 +27,7 @@ use tracing::debug;
 
 use crate::Processor;
 
-use crate::cli::run::RunArgs;
+use crate::cli::Args;
 use clap::Parser;
 
 
@@ -58,18 +58,14 @@ impl Processor for MevProcessor {
         }
 
         #[cfg(feature = "local-clickhouse")]
-        {
-            let inner_tree = Arc::unwrap_or_clone(tree.clone());
-            insert_tree(db, inner_tree, metadata.block_num).await;
-        }
-
-        if tree.tx_roots.is_empty() {
-            return
-        }
+        insert_tree(db, tree.clone(), metadata.block_num).await;
+       
+       
+        let opt = Args::parse();
 
 
       //  let args = RunArgs::parse();
-    //    tracing::info!("PROCESS_RESULTS_cli_only: {}", args.cli_only);
+        tracing::info!("PROCESS_RESULTS_cli_only: {}", opt.command.cli_only);
 //        tracing::info!("PROCESS_RESULTS_cli_only: {}", RunArgs);
 
 
