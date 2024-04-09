@@ -17,7 +17,10 @@ use brontes_types::tree::BlockTree;
 use brontes_types::{
     db::block_analysis::BlockAnalysis,
     execute_on,
-    mev::{events::Action, Bundle, MevBlock, MevType},
+    mev::{
+        events::{Action, TuiEvents},
+        Bundle, MevBlock, MevType,
+    },
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -66,7 +69,7 @@ impl Processor for MevProcessor {
                     let _ = tui_tx
                         .clone()
                         .unwrap()
-                        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
+                        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(block_details.clone())))
                         .map_err(|e| {
                             use tracing::info;
                             info!("Failed to send: {}", e);
@@ -74,9 +77,7 @@ impl Processor for MevProcessor {
 
                     let _ = tui_tx
                         .unwrap()
-                        .send(Action::Tui(TuiEvents::MevBundleEventReceived(
-                            filtered_bundles.clone(),
-                        )))
+                        .send(Action::Tui(TuiEvents::MevBundleEventReceived(mev_details.clone())))
                         .map_err(|e| {
                             use tracing::info;
                             info!("Failed to send: {}", e);
