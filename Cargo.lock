@@ -567,7 +567,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8438af3d7e7dccdb98eff55e5351587d9bec2294daff505fc9a061bd14d22db0"
 dependencies = [
  "nom",
- "ratatui 0.26.1",
+ "ratatui",
  "simdutf8",
  "smallvec",
  "thiserror",
@@ -1527,7 +1527,8 @@ dependencies = [
  "metrics-process",
  "num_cpus",
  "palette",
- "ratatui 0.26.1",
+ "polars",
+ "ratatui",
  "rayon",
  "reqwest",
  "reth-beacon-consensus",
@@ -1558,7 +1559,6 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "tui-logger",
- "tui-nodes",
  "tui-textarea",
  "unicode-width",
 ]
@@ -7009,18 +7009,6 @@ dependencies = [
 
 [[package]]
 name = "ratatui"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce841e0486e7c2412c3740168ede33adeba8e154a15107b879d8162d77c7174e"
-dependencies = [
- "bitflags 1.3.2",
- "cassowary",
- "unicode-segmentation",
- "unicode-width",
-]
-
-[[package]]
-name = "ratatui"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bcb12f8fbf6c62614b0d56eb352af54f6a22410c3b079eb53ee93c7b97dd31d8"
@@ -9370,12 +9358,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sorted-vec"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6734caf0b6f51addd5eeacca12fb39b2c6c14e8d4f3ac42f3a78955c0467458"
-
-[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9793,7 +9775,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "431b847a60fc7b1df94a5b1bcb3cdd7027bb0013b431b08038505e8891c577a2"
 dependencies = [
  "rand 0.8.5",
- "ratatui 0.26.1",
+ "ratatui",
 ]
 
 [[package]]
@@ -10333,20 +10315,9 @@ dependencies = [
  "lazy_static",
  "log",
  "parking_lot 0.12.1",
- "ratatui 0.26.1",
+ "ratatui",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "tui-nodes"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce75f8db4349a4ab6b70850d3e0ca7619f617b6d3540be56b27a48e59a01819f"
-dependencies = [
- "log",
- "ratatui 0.21.0",
- "sorted-vec",
 ]
 
 [[package]]
@@ -10356,7 +10327,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e38ced1f941a9cfc923fbf2fe6858443c42cc5220bfd35bdd3648371e7bd8e"
 dependencies = [
  "crossterm",
- "ratatui 0.26.1",
+ "ratatui",
  "unicode-width",
 ]
 
