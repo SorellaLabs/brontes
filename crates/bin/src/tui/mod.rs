@@ -4,6 +4,7 @@ pub mod config;
 pub mod mode;
 pub mod tui;
 pub mod utils;
+pub mod polars;
 
 mod term;
 mod theme;
