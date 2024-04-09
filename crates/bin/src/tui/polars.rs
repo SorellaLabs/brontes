@@ -1,29 +1,10 @@
-use std::{
-    sync::{Arc, Mutex},
-    thread, time,
-};
-
-use ansi_to_tui::IntoText;
-use brontes_types::mev::{
-    bundle::Bundle,
-    events::{Action, TuiEvents},
-    Mev, MevBlock,
-};
-use crossterm::event::{KeyCode, KeyEvent};
+use brontes_types::mev::{bundle::Bundle, Mev};
 use eyre::Result; //
 use itertools::Itertools;
-use log::*;
 use polars::prelude::*;
 use ratatui::{prelude::*, widgets::*};
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
-use tui_logger::*;
 
-use crate::{
-    get_symbols_from_transaction_accounting,
-    tui::{config::Config, theme::THEME, tui::Event},
-};
-
+use crate::get_symbols_from_transaction_accounting;
 
 // Function to convert a Vec<Bundle> to a Polars DataFrame
 pub fn bundles_to_dataframe(bundles: Vec<Bundle>) -> Result<DataFrame> {
@@ -75,7 +56,6 @@ pub fn bundles_to_dataframe(bundles: Vec<Bundle>) -> Result<DataFrame> {
         Series::new("Profit USD", &profits_usd),
         Series::new("Bribe USD", &bribes_usd),
     ])?;
-    //info!("bundles_to_dataframe_finish");
 
     Ok(df)
 }
