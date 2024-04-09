@@ -22,10 +22,10 @@ use crate::{
 };
 
 /// TODO: lets prob not set this to 100%
-const BASE_EXECUTION_QUALITY: usize = 100;
+const BASE_EXECUTION_QUALITY: usize = 80;
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
-const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(5, 100);
+const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(10, 100);
 
 /// the calcuated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge

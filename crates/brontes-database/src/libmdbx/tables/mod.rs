@@ -158,7 +158,7 @@ impl Tables {
             Tables::TokenDecimals => {
                 initializer
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
-                        true,
+                        false,
                         crit_progress,
                     )
                     .await
@@ -166,7 +166,7 @@ impl Tables {
             Tables::AddressToProtocolInfo => {
                 initializer
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
-                        true,
+                        false,
                         crit_progress,
                     )
                     .await
@@ -174,19 +174,19 @@ impl Tables {
             Tables::PoolCreationBlocks => {
                 initializer
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
-                        true,
+                        false,
                         crit_progress,
                     )
                     .await
             }
             Tables::Builder => {
                 initializer
-                    .clickhouse_init_no_args::<Builder, BuilderData>(true, crit_progress)
+                    .clickhouse_init_no_args::<Builder, BuilderData>(false, crit_progress)
                     .await
             }
             Tables::AddressMeta => {
                 initializer
-                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(true, crit_progress)
+                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(false, crit_progress)
                     .await
             }
             _ => unimplemented!("{:?} isn't a full range table", self),
