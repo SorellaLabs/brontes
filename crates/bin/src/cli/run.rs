@@ -106,7 +106,9 @@ impl RunArgs {
         #[allow(unused_assignments)]
         let mut tui_tx: Option<UnboundedSender<Action>> = None;
 
-        let tui_handle: tokio::task::JoinHandle<()> = if cfg!(feature = "tui") && !self.cli_only {
+
+        let tui_handle: tokio::task::JoinHandle<()> = if !self.cli_only {
+            
             tracing::info!("Launching App");
             let (tx, tui_rx) = unbounded_channel::<Action>(); // Ensure the channel type is specified, if not already inferred
             tui_tx = Some(tx.clone()); // Set tui_tx for potential use outside
