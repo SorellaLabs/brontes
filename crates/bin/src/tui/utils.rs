@@ -62,6 +62,6 @@ macro_rules! get_symbols_from_transaction_accounting {
             });
         
         let unique_symbols = symbols.into_iter().collect::<Vec<String>>().join(", ");
-
+        unique_symbols
     }};
 }
