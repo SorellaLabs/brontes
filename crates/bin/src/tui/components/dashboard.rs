@@ -159,10 +159,10 @@ impl Dashboard {
 // Usage example
 let df = Self::bundles_to_dataframe(mevblocks_guard).unwrap();
 //println!("df_created");
-let rows = Self::dataframe_to_table_rows(&df);
+//let rows = Self::dataframe_to_table_rows(&df);
 //println!("rows_created");
 
-/*
+
         let rows = mevblocks_guard.iter().map(|item| {
             let protocols = item.data.protocols();
             let mut protocol_names = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>();
@@ -191,7 +191,7 @@ let rows = Self::dataframe_to_table_rows(&df);
 
             Row::new(cells).height(height as u16).bottom_margin(0)
         });
-*/
+
         let t = Table::new(
             rows,
             [
