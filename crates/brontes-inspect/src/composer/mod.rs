@@ -177,23 +177,6 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
-    //TODO: check cli-only
-    let _ = tui_tx
-        .clone()
-        .unwrap()
-        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
-        .map_err(|e| {
-            use tracing::info;
-            info!("Failed to send: {}", e);
-        });
-
-    let _ = tui_tx
-        .unwrap()
-        .send(Action::Tui(TuiEvents::MevBundleEventReceived(filtered_bundles.clone())))
-        .map_err(|e| {
-            use tracing::info;
-            info!("Failed to send: {}", e);
-        });
     (header, filtered_bundles)
 }
 

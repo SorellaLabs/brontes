@@ -21,16 +21,15 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
+use clap::Parser;
 //tui related
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
-use crate::Processor;
-
-use crate::cli::Args;
-use clap::Parser;
-
-
+use crate::{
+    cli::{Args, Commands},
+    Processor,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct MevProcessor;
@@ -59,15 +58,33 @@ impl Processor for MevProcessor {
 
         #[cfg(feature = "local-clickhouse")]
         insert_tree(db, tree.clone(), metadata.block_num).await;
-       
-       
+
         let opt = Args::parse();
+        match opt.command {
+            Commands::Run(command) => {
+                if !command.cli_only {
+                    let _ = tui_tx
+                        .clone()
+                        .unwrap()
+                        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
+                        .map_err(|e| {
+                            use tracing::info;
+                            info!("Failed to send: {}", e);
+                        });
 
-
-      //  let args = RunArgs::parse();
-        tracing::info!("PROCESS_RESULTS_cli_only: {}", opt.command.cli_only);
-//        tracing::info!("PROCESS_RESULTS_cli_only: {}", RunArgs);
-
+                    let _ = tui_tx
+                        .unwrap()
+                        .send(Action::Tui(TuiEvents::MevBundleEventReceived(
+                            filtered_bundles.clone(),
+                        )))
+                        .map_err(|e| {
+                            use tracing::info;
+                            info!("Failed to send: {}", e);
+                        });
+                }
+            }
+            _ => {}
+        }
 
         insert_mev_results(db, block_details, mev_details).await;
     }

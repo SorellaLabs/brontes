@@ -18,9 +18,8 @@ use crate::{
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
-    new_fast_hash_map,
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
-    FastHashMap, GasDetails,
+    GasDetails,
 };
 
 #[serde_as]
