@@ -132,8 +132,6 @@ impl Dashboard {
 
     // Function to convert a Vec<Bundle> to a Polars DataFrame
     fn bundles_to_dataframe(bundles: Vec<Bundle>) -> Result<DataFrame> {
-        //info!("bundles_to_dataframe_entered");
-
         let mut block_numbers = Vec::new();
         let mut tx_indexes = Vec::new();
         let mut mev_types = Vec::new();
@@ -187,31 +185,22 @@ impl Dashboard {
         Ok(df)
     }
 
+    // Function to convert a DataFrame to a Vec<Row> for the Table widget
     fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
-        //info!("dataframe_table_rows_entered");
-
         let height = 1;
         let bottom_margin = 0;
 
-        // This approach assumes you know the schema of your DataFrame
-        // and can access each column as needed. It's not a direct replacement
-        // for a row-wise iterator but demonstrates manual assembly of rows.
         let num_rows = df.height();
         let mut rows = Vec::with_capacity(num_rows);
 
         for i in 0..num_rows {
             let mut cells = Vec::new();
             for series in df.get_columns() {
-                // Assuming you can handle the specific type of each column,
-                // you would extract the value for the current row (`i`) from each column's
-                // ChunkedArray. This snippet assumes a generic approach, not
-                // specific to any data type.
                 let value_str = series.get(i).unwrap().to_string();
                 cells.push(Cell::from(value_str));
             }
             rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
         }
-        //info!("dataframe_table_rows_finish");
 
         rows
     }
