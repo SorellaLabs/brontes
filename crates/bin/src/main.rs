@@ -72,8 +72,9 @@ fn run() -> eyre::Result<()> {
     }
 }
 fn init_tracing(tui: bool) {
+
     if !tui {
-        let layers = vec![];
+        let layers = vec![tracing_subscriber_layer().boxed()];
         brontes_tracing::init(layers);
     } else {
         let verbosity_level = Level::INFO;
