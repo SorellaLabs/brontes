@@ -8,7 +8,6 @@ use tracing_error::ErrorLayer;
 use tracing_subscriber::{
     prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Layer,
 };
-use brontes_types::hasher::FastHashSet;
 
 pub fn get_config_dir() -> PathBuf {
     let directory = PathBuf::from(".").join("config");
@@ -18,9 +17,8 @@ pub fn get_config_dir() -> PathBuf {
 
 #[macro_export]
 macro_rules! get_symbols_from_transaction_accounting {
-    ($data:expr) => {{
-        use std::collections::HashSet;
-
+    ($data:expr) => {
+        use brontes_types::hasher::FastHashSet;
         use brontes_types::db::token_info::TokenInfoWithAddress;
 
         let mut symbols = FastHashSet::default();
@@ -32,5 +30,5 @@ macro_rules! get_symbols_from_transaction_accounting {
             });
         
         let unique_symbols = symbols.into_iter().collect::<Vec<String>>().join(", ");
-    }};
+    };
 }
