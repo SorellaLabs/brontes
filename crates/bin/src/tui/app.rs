@@ -290,9 +290,7 @@ impl App {
                             }
                         })?;
                     }
-                    _ => {
-                        info!("Unhandled action: {action:?}");
-                    }
+                    _ => {}
                 }
                 for inner_vec in self.components.iter_mut() {
                     for component in inner_vec.iter_mut() {
