@@ -18,8 +18,11 @@ pub fn get_config_dir() -> PathBuf {
 #[macro_export]
 macro_rules! get_symbols_from_transaction_accounting {
     ($data:expr) => {{
-        use brontes_types::hasher::FastHashSet;
 
+
+
+        /*
+        use brontes_types::hasher::FastHashSet;
         use brontes_types::db::token_info::TokenInfoWithAddress;
 
         let mut token_info_with_addresses: Vec<TokenInfoWithAddress> = Vec::new();
@@ -44,5 +47,21 @@ macro_rules! get_symbols_from_transaction_accounting {
             .collect();
 
         unique_symbols.join(", ")
+        */
+
+
+        use std::collections::HashSet;
+        use brontes_types::db::token_info::TokenInfoWithAddress;
+        
+        let mut symbols = HashSet::new();
+        $data.iter()
+            .flat_map(|transaction| &transaction.address_deltas)
+            .flat_map(|address_delta| &address_delta.token_deltas)
+            .for_each(|token_delta| {
+                symbols.insert(token_delta.token.inner.symbol.clone());
+            });
+        
+        let unique_symbols = symbols.into_iter().collect::<Vec<String>>().join(", ");
+
     }};
 }
