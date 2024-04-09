@@ -5,9 +5,11 @@ use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 //TUI related imports
-use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools,mev::{events::Action}};
+use brontes_types::{
+    constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools, mev::events::Action,
+};
 use clap::Parser;
-use tokio::sync::mpsc::{unbounded_channel,UnboundedSender};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
@@ -17,10 +19,6 @@ use crate::{
     tui::app::App,
     BrontesRunConfig, MevProcessor,
 };
-
-
-
-
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -105,59 +103,20 @@ impl RunArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
 
-
         #[allow(unused_assignments)]
         let mut tui_tx: Option<UnboundedSender<Action>> = None;
 
-
-
         let tui_handle: tokio::task::JoinHandle<()> = if cfg!(feature = "tui") && !self.cli_only {
             tracing::info!("Launching App");
-            let (tx, tui_rx) = unbounded_channel();
-            // If tui_tx is meant to be used outside this scope, make sure it's properly defined.
-            // Assuming tui_tx should be a global or a passed mutable reference, it should be set here.
-            // tui_tx = Some(tx);
+            let (tx, tui_rx) = unbounded_channel::<Action>(); // Ensure the channel type is specified, if not already inferred
+            tui_tx = Some(tx.clone()); // Set tui_tx for potential use outside
+
+            // Directly use tx for spawning the task, avoiding unnecessary checks
             task_executor.spawn_critical("TUI", App::run(tui_rx, tx))
         } else {
-            // Use spawn_blocking to immediately return from the spawned task.
-            // This is a no-op task that finishes immediately.
+            // Use spawn_blocking or simply spawn for a no-op task, as appropriate
             tokio::spawn(async {})
         };
-
-        /*
-
-
-        #[cfg(feature = "tui")]
-        {
-            let (tx, tui_rx) = unbounded_channel();
-            tui_tx = Some(tx);
-            if !self.cli_only {
-                tracing::info!("Launching App");
-                let executor = task_executor.clone();
-                //TODO - fix - tui should be running even brontes inspectors are finished
-                //executor.spawn_critical("TUI", App::run(tui_rx, tui_tx.clone()));
-
-                if let Some(ref tx) = tui_tx {
-                    let tui_handle = executor.spawn_critical("TUI", App::run(tui_rx, tx.clone()));
-                }
-
-                //executor.block_on(App::run(tui_rx, tui_tx.clone()));
-            }
-        }
-
-        #[cfg(not(feature = "tui"))]
-        {
-            //return a thread immediately
-            let tui_handle = executor.spawn_blocking(|| {
-                // return immediately
-
-            });
-        }
-
-*/
-
-
-   
 
         let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
@@ -221,12 +180,10 @@ impl RunArgs {
                 }
             });
 
-//        tokio::join!(tui_handle, result).await();
-        let _ = tokio::join!(tui_handle, result).await?;
-
+        //        tokio::join!(tui_handle, result).await();
+        let _ = tokio::join!(tui_handle, result);
 
         //result.await?;
-        
 
         Ok(())
     }
