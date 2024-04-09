@@ -31,7 +31,6 @@ pub struct Dashboard {
     mevblocks: Arc<Mutex<Vec<MevBlock>>>,
     mev_bundles: Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
     data: Vec<(&'static str, u64)>,
-    //log_scroll: u16,
     stream_table_state: TableState,
     show_popup: bool,
     pub popup_scroll_position: u16,
@@ -131,10 +130,6 @@ impl Dashboard {
         }
     }
 
-    fn on_tick(&mut self) {
-        // self.log_scroll += 1;
-        // self.log_scroll %= 10;
-    }
 
     fn draw_livestream(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
@@ -287,20 +282,7 @@ impl Dashboard {
         barchart.render(area, buf);
     }
 
-    /*
-        fn render_title_bar(&self, area: Rect, buf: &mut Buffer) {
-            let area = layout(area, Direction::Horizontal, vec![0, 58]);
 
-            Paragraph::new(Span::styled("Brontes", THEME.app_title)).render(area[0], buf);
-            let titles = vec!["DASHBOARD", " LIVESTREAM ", " ANALYTICS ", " METRICS ", " SETTINGS "];
-            Tabs::new(titles)
-                .style(THEME.tabs)
-                .highlight_style(THEME.tabs_selected)
-                //.select(self.context.tab_index)
-                .divider("")
-                .render(area[1], buf);
-        }
-    */
     fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {
         let keys = [
             ("Q/Esc", "Quit"),
