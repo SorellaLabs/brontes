@@ -129,6 +129,7 @@ directories = "5.0.1"
 ansi-to-tui = "4.0.0"
 throbber-widgets-tui= "0.5.0"
 unicode-width = "0.1.11"
+polars = {features = ["lazy", "parquet", "group_by_list", "polars-io", "is_in"], workspace = true}
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = "0.5.4"
