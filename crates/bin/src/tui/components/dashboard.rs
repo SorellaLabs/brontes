@@ -382,15 +382,6 @@ impl Dashboard {
             .render(area, buf);
     }
 
-    /*
-        tui_tx
-            .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
-            .map_err(|e| {
-                use tracing::info;
-                info!("Failed to send: {}", e);
-            });
-    ProgressChanged(Option<u16>)
-    */
 
     /// A simulated task that sends a counter value to the UI ranging from 0 to
     /// 100 every second.
@@ -425,12 +416,7 @@ impl Component for Dashboard {
 
     fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
         match key.code {
-            KeyCode::Esc => {
-                info!("Esc pressed");
-            }
             KeyCode::Enter => {
-                info!("Enter pressed");
-
                 self.popup_scroll_position = 0;
                 self.popup_scroll_state = self
                     .popup_scroll_state
@@ -439,13 +425,9 @@ impl Component for Dashboard {
                 self.show_popup = !self.show_popup;
             }
             KeyCode::Up => {
-                //info!("Up pressed");
-
                 self.next();
             }
             KeyCode::Down => {
-                //info!("Down pressed");
-
                 self.previous();
             }
             _ => (),
@@ -487,10 +469,11 @@ impl Component for Dashboard {
 
     fn init(&mut self, _area: Rect) -> Result<()> {
         Dashboard::new(self.mevblocks.clone(), self.mev_bundles.clone());
-        //let progress_tx = self.command_tx.clone().unwrap();
         info!("Starting progress task");
-        //TODO: this can come from anywhere
-        //    thread::spawn(move ||
+        
+        // TODO: this can come from anywhere
+        // let progress_tx = self.command_tx.clone().unwrap();
+        // thread::spawn(move ||
         // Self::progress_task(self.command_tx.unwrap()).unwrap());
         // Self::progress_task(progress_tx).unwrap();
 
@@ -520,7 +503,6 @@ impl Component for Dashboard {
 
         let buf = f.buffer_mut();
 
-        //Self::render_title_bar(self, template[0], buf);
         Self::draw_charts(self, sub_layout[0], buf);
         Self::draw_leaderboard(self, sub_layout[1], buf);
         Self::draw_livestream(self, chunks[1], buf);
@@ -539,13 +521,7 @@ impl Component for Dashboard {
                 f.render_widget(Clear, area); //this clears out the background
                 let paragraph = Paragraph::new("Hello, world!");
                 f.render_widget(paragraph, area);
-                /*
-                match self.stream_table_state.selected() {
-                    Some(i) => self.stream_table_state.selected(),
-                    None => None,
-                };
-                */
-                
+
                 let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                     self.mev_bundles.lock().unwrap();
 
@@ -574,24 +550,3 @@ impl Component for Dashboard {
         Ok(())
     }
 }
-/*
-impl Widget for Dashboard {
-    fn render(mut self, area: Rect, buf: &mut Buffer) {
-        let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
-
-        let template = Layout::default()
-            .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(1)])
-            .split(area);
-
-        let chunks = Layout::default()
-            .constraints([Constraint::Length(9), Constraint::Min(8), Constraint::Length(20)])
-            .split(template[1]);
-
-        let sub_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(chunks[0]);
-
-    }
-}
-*/
