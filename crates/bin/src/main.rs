@@ -44,11 +44,8 @@ fn run() -> eyre::Result<()> {
     let opt = Args::parse();
     match opt.command {
         Commands::Run(command) => {
-            #[cfg(feature = "tui")]
             init_tracing_for_tui(command.cli_only);
 
-            #[cfg(not(feature = "tui"))]
-            init_tracing();
 
             //TODO - fix - tui should be running even brontes inspectors are finished
             if command.cli_only {
@@ -62,7 +59,6 @@ fn run() -> eyre::Result<()> {
     }
 }
 
-#[cfg(feature = "tui")]
 fn init_tracing_for_tui(tui: bool) {
     if !tui {
         let layers = vec![tracing_subscriber_layer().boxed()];
@@ -73,12 +69,4 @@ fn init_tracing_for_tui(tui: bool) {
         let layers = vec![brontes_tracing::stdout(directive)];
         brontes_tracing::init(layers);
     }
-}
-
-#[cfg(not(feature = "tui"))]
-fn init_tracing() {
-        let verbosity_level = Level::INFO;
-        let directive: Directive = format!("{verbosity_level}").parse().unwrap();
-        let layers = vec![brontes_tracing::stdout(directive)];
-        brontes_tracing::init(layers);
 }
