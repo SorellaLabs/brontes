@@ -44,11 +44,18 @@ use std::{
 use super::components::analytics::hot_tokens::HotTokens;
 use crate::tui::{
     components::{
-        analytics::analytics::Analytics, analytics::searcher_stats::SearcherStats,
-        analytics::top_contracts::TopContracts,
-        analytics::vertically_integrated::VerticallyIntegrated, dashboard::Dashboard,
-        dbsize::DbSize, livestream::Livestream, metrics::Metrics, navigation::Navigation,
-        settings::Settings, tick::Tick, Component,
+        analytics::{
+            analytics::Analytics, searcher_stats::SearcherStats, top_contracts::TopContracts,
+            vertically_integrated::VerticallyIntegrated,
+        },
+        dashboard::Dashboard,
+        dbsize::DbSize,
+        livestream::Livestream,
+        metrics::Metrics,
+        navigation::Navigation,
+        settings::Settings,
+        tick::Tick,
+        Component,
     },
     config::Config,
     mode::Mode,
@@ -69,7 +76,7 @@ pub struct App {
     mev_bundles:              Arc<Mutex<Vec<Bundle>>>,
     pub mode:                 Mode,
     pub last_tick_key_events: Vec<KeyEvent>,
-    pub progress_counter: Option<u16>,
+    pub progress_counter:     Option<u16>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -139,8 +146,7 @@ impl App {
         let mut app = Self::new().unwrap();
 
         if let Err(e) = app.run_inner(rx, tx).await {
-            // Log the error, or handle it as needed
-            info!("Error occurred: {:?}", e);
+            error!("TUI Error: {:?}", e);
         }
     }
 
@@ -158,8 +164,7 @@ impl App {
 
         tui.enter()?;
 
-
-        // register action handlers for components 
+        // register action handlers for components
         for inner_tabs in self.components.iter_mut() {
             for component in inner_tabs.iter_mut() {
                 component.register_action_handler(action_tx.clone())?;

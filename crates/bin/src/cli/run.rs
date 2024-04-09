@@ -102,17 +102,13 @@ impl RunArgs {
         #[allow(unused_assignments)]
         let mut tui_tx: Option<UnboundedSender<Action>> = None;
 
-
         let tui_handle: tokio::task::JoinHandle<()> = if !self.cli_only {
-            
-            tracing::info!("Launching App");
-            let (tx, tui_rx) = unbounded_channel::<Action>(); // Ensure the channel type is specified, if not already inferred
-            tui_tx = Some(tx.clone()); // Set tui_tx for potential use outside
+            tracing::info!("Launching Brontes TUI");
+            let (tx, tui_rx) = unbounded_channel::<Action>();
+            tui_tx = Some(tx.clone());
 
-            // Directly use tx for spawning the task, avoiding unnecessary checks
             task_executor.spawn_critical("TUI", App::run(tui_rx, tx))
         } else {
-            // Use spawn_blocking or simply spawn for a no-op task, as appropriate
             tokio::spawn(async {})
         };
 
