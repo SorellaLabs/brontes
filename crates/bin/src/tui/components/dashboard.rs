@@ -157,7 +157,7 @@ impl Dashboard {
 
 
 // Usage example
-let df = Self::bundles_to_dataframe(mevblocks_guard).unwrap();
+let df = Self::bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
 //println!("df_created");
 //let rows = Self::dataframe_to_table_rows(&df);
 //println!("rows_created");
