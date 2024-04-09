@@ -1,7 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-//use std::error::Error;
 use std::{
     error,
     future::Future,
@@ -52,7 +48,7 @@ use crate::tui::{
         analytics::top_contracts::TopContracts,
         analytics::vertically_integrated::VerticallyIntegrated, dashboard::Dashboard,
         dbsize::DbSize, livestream::Livestream, metrics::Metrics, navigation::Navigation,
-        settings::Settings, tick::Tick, tokens::Tokens, Component,
+        settings::Settings, tick::Tick, Component,
     },
     config::Config,
     mode::Mode,
@@ -95,7 +91,7 @@ impl App {
         let tick = Tick::default();
         let metrics = Metrics::default();
         let settings = Settings::new();
-        let tokens = Tokens::default();
+        //let tokens = Tokens::default();
         let top_contracts = TopContracts::default();
         let searcher_stats = SearcherStats::default();
         let vertically_integrated = VerticallyIntegrated::default();
@@ -256,26 +252,6 @@ impl App {
                             }
                         })?;
                     }
-                    /*
-                    Action::Tui(ref tui_event) => {
-                        match tui_event {
-                            TuiEvents::MevBlockMetricReceived(mevblock) => {
-                                let mut blocks: std::sync::MutexGuard<'_, Vec<MevBlock>> =
-                                    self.mev_blocks.lock().unwrap();
-                                blocks.push(mevblock.clone()); // Store received
-                                                               // block
-                            }
-                            TuiEvents::MevBundleEventReceived(bundle) => {
-                                let bundles: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                                    self.mev_bundles.lock().unwrap();
-                                //bundles.extend(*bundle.into_iter());
-                            }
-                           // _ => (),
-                        }
-
-                        //app_tx.send(Action::Tui(TuiEvents::MevBlockMetricReceived((header.clone())))).map_err(|e| {
-                    }
-                    */
                     Action::Render => {
                         tui.draw(|f| {
                             let tab_index = self.context.lock().unwrap().tab_index;
@@ -292,6 +268,8 @@ impl App {
                     }
                     _ => {}
                 }
+
+                // Send actions to each component
                 for inner_vec in self.components.iter_mut() {
                     for component in inner_vec.iter_mut() {
                         if let Some(action) = component.update(action.clone())? {
@@ -318,7 +296,7 @@ impl App {
     }
 
     pub fn next(&self) {
-        let i = match self.context.lock().unwrap().state.selected() {
+        let _i = match self.context.lock().unwrap().state.selected() {
             Some(i) => {
                 if i >= self.mev_bundles.lock().unwrap().len() - 1 {
                     0
@@ -331,7 +309,7 @@ impl App {
     }
 
     pub fn previous(&self) {
-        let i = match self.context.lock().unwrap().state.selected() {
+        let _i = match self.context.lock().unwrap().state.selected() {
             Some(i) => {
                 if i == 0 {
                     self.mev_bundles.lock().unwrap().len() - 1
