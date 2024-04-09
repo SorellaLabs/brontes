@@ -13,11 +13,11 @@ use crossterm::event::{KeyCode, KeyEvent};
 use eyre::Result; //
 use itertools::Itertools;
 use log::*;
+use polars::prelude::*;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 use tui_logger::*;
-use polars::prelude::*;
 
 use super::{Component, Frame};
 use crate::{
@@ -130,85 +130,91 @@ impl Dashboard {
         }
     }
 
+    // Function to convert a Vec<Bundle> to a Polars DataFrame
+    fn bundles_to_dataframe(bundles: Vec<Bundle>) -> Result<DataFrame> {
+        //info!("bundles_to_dataframe_entered");
 
-// Function to convert a Vec<Bundle> to a Polars DataFrame
-fn bundles_to_dataframe(bundles:  Vec<Bundle>) -> Result<DataFrame> {
-    //info!("bundles_to_dataframe_entered");
+        let mut block_numbers = Vec::new();
+        let mut tx_indexes = Vec::new();
+        let mut mev_types = Vec::new();
+        let mut symbols = Vec::new();
+        let mut protocols = Vec::new();
+        let mut eoas = Vec::new();
+        let mut mev_contracts = Vec::new();
+        let mut profits_usd = Vec::new();
+        let mut bribes_usd = Vec::new();
 
-    let mut block_numbers = Vec::new();
-    let mut tx_indexes = Vec::new();
-    let mut mev_types = Vec::new();
-    let mut symbols = Vec::new();
-    let mut protocols = Vec::new();
-    let mut eoas = Vec::new();
-    let mut mev_contracts = Vec::new();
-    let mut profits_usd = Vec::new();
-    let mut bribes_usd = Vec::new();
-
-    for bundle in bundles.iter() {
-        block_numbers.push(bundle.header.block_number);
-        tx_indexes.push(bundle.header.tx_index);
-        mev_types.push(bundle.header.mev_type.to_string());
-        symbols.push(get_symbols_from_transaction_accounting!(&bundle.header.balance_deltas)); // Assuming this macro/functionality
-        protocols.push(bundle.data.protocols().iter().map(|p| p.to_string()).sorted().join(", "));
-        eoas.push(bundle.header.eoa.to_string());
-        mev_contracts.push(
-            bundle
-                .header
-                .mev_contract
-                .as_ref()
-                .map(|address| address.to_string())
-                .unwrap_or_else(|| "Not an Mev Contract".to_string()),
-        );
-        profits_usd.push(bundle.header.profit_usd);
-        bribes_usd.push(bundle.header.bribe_usd);
-    }
-
-    let df = DataFrame::new(vec![
-        Series::new("Block Number", &block_numbers),
-        Series::new("Tx Index", &tx_indexes),
-        Series::new("MEV Type", &mev_types),
-        Series::new("Symbols", &symbols),
-        Series::new("Protocols", &protocols),
-        Series::new("EOA", &eoas),
-        Series::new("MEV Contract", &mev_contracts),
-        Series::new("Profit USD", &profits_usd),
-        Series::new("Bribe USD", &bribes_usd),
-    ])?;
-    //info!("bundles_to_dataframe_finish");
-
-    Ok(df)
-}
-
-
-
-fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
-    //info!("dataframe_table_rows_entered");
-
-    let height = 1;
-    let bottom_margin = 0;
-
-    // This approach assumes you know the schema of your DataFrame
-    // and can access each column as needed. It's not a direct replacement
-    // for a row-wise iterator but demonstrates manual assembly of rows.
-    let num_rows = df.height();
-    let mut rows = Vec::with_capacity(num_rows);
-
-    for i in 0..num_rows {
-        let mut cells = Vec::new();
-        for series in df.get_columns() {
-            // Assuming you can handle the specific type of each column,
-            // you would extract the value for the current row (`i`) from each column's ChunkedArray.
-            // This snippet assumes a generic approach, not specific to any data type.
-            let value_str = series.get(i).unwrap().to_string();
-            cells.push(Cell::from(value_str));
+        for bundle in bundles.iter() {
+            block_numbers.push(bundle.header.block_number);
+            tx_indexes.push(bundle.header.tx_index);
+            mev_types.push(bundle.header.mev_type.to_string());
+            symbols.push(get_symbols_from_transaction_accounting!(&bundle.header.balance_deltas)); // Assuming this macro/functionality
+            protocols.push(
+                bundle
+                    .data
+                    .protocols()
+                    .iter()
+                    .map(|p| p.to_string())
+                    .sorted()
+                    .join(", "),
+            );
+            eoas.push(bundle.header.eoa.to_string());
+            mev_contracts.push(
+                bundle
+                    .header
+                    .mev_contract
+                    .as_ref()
+                    .map(|address| address.to_string())
+                    .unwrap_or_else(|| "Not an Mev Contract".to_string()),
+            );
+            profits_usd.push(bundle.header.profit_usd);
+            bribes_usd.push(bundle.header.bribe_usd);
         }
-        rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
-    }
-    //info!("dataframe_table_rows_finish");
 
-    rows
-}
+        let df = DataFrame::new(vec![
+            Series::new("Block Number", &block_numbers),
+            Series::new("Tx Index", &tx_indexes),
+            Series::new("MEV Type", &mev_types),
+            Series::new("Symbols", &symbols),
+            Series::new("Protocols", &protocols),
+            Series::new("EOA", &eoas),
+            Series::new("MEV Contract", &mev_contracts),
+            Series::new("Profit USD", &profits_usd),
+            Series::new("Bribe USD", &bribes_usd),
+        ])?;
+        //info!("bundles_to_dataframe_finish");
+
+        Ok(df)
+    }
+
+    fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
+        //info!("dataframe_table_rows_entered");
+
+        let height = 1;
+        let bottom_margin = 0;
+
+        // This approach assumes you know the schema of your DataFrame
+        // and can access each column as needed. It's not a direct replacement
+        // for a row-wise iterator but demonstrates manual assembly of rows.
+        let num_rows = df.height();
+        let mut rows = Vec::with_capacity(num_rows);
+
+        for i in 0..num_rows {
+            let mut cells = Vec::new();
+            for series in df.get_columns() {
+                // Assuming you can handle the specific type of each column,
+                // you would extract the value for the current row (`i`) from each column's
+                // ChunkedArray. This snippet assumes a generic approach, not
+                // specific to any data type.
+                let value_str = series.get(i).unwrap().to_string();
+                cells.push(Cell::from(value_str));
+            }
+            rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
+        }
+        //info!("dataframe_table_rows_finish");
+
+        rows
+    }
 
     fn draw_livestream(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
@@ -232,44 +238,12 @@ fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
             .height(1)
             .bottom_margin(1);
 
-        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> = widget.mev_bundles.lock().unwrap();
+        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+            widget.mev_bundles.lock().unwrap();
 
+        let df = Self::bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
+        let rows = Self::dataframe_to_table_rows(&df);
 
-let df = Self::bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
-let rows = Self::dataframe_to_table_rows(&df);
-//println!("rows_created");
-
-
-/*
-        let rows = mevblocks_guard.iter().map(|item| {
-            let protocols = item.data.protocols();
-            let mut protocol_names = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>();
-            protocol_names.sort();
-            let protocol_list = protocol_names.join(", ");
-
-            let height = 1;
-            let cells = vec![
-                item.header.block_number.to_string(),
-                item.header.tx_index.to_string(),
-                item.header.mev_type.to_string(),
-                get_symbols_from_transaction_accounting!(&item.header.balance_deltas),
-                protocol_list,
-                item.header.eoa.to_string(),
-                item.header
-                    .mev_contract
-                    .as_ref()
-                    .map(|address| address.to_string())
-                    .unwrap_or("Not an Mev Contract".to_string()),
-                item.header.profit_usd.to_string(),
-                item.header.bribe_usd.to_string(),
-            ]
-            .iter()
-            .map(|s| Cell::from(s.to_string())) // Convert each String to a Cell
-            .collect::<Vec<Cell>>(); // Collect into a Vec<Cell>
-
-            Row::new(cells).height(height as u16).bottom_margin(0)
-        });
-*/
         let t = Table::new(
             rows,
             [
@@ -311,10 +285,6 @@ let rows = Self::dataframe_to_table_rows(&df);
         .bar_style(Style::default().fg(Color::Green));
         barchart.render(area, buf);
     }
-
-
-
-
 
     #[allow(unused_variables)]
     fn draw_charts(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
@@ -370,7 +340,6 @@ let rows = Self::dataframe_to_table_rows(&df);
             .bar_style(Style::default().fg(Color::Green));
         barchart.render(area, buf);
     }
-
 
     fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {
         let keys = [
@@ -452,7 +421,6 @@ let rows = Self::dataframe_to_table_rows(&df);
             .percent(progress)
             .render(area, buf);
     }
-
 
     /// A simulated task that sends a counter value to the UI ranging from 0 to
     /// 100 every second.
@@ -541,7 +509,7 @@ impl Component for Dashboard {
     fn init(&mut self, _area: Rect) -> Result<()> {
         Dashboard::new(self.mevblocks.clone(), self.mev_bundles.clone());
         info!("Starting progress task");
-        
+
         // TODO: this can come from anywhere
         // let progress_tx = self.command_tx.clone().unwrap();
         // thread::spawn(move ||
