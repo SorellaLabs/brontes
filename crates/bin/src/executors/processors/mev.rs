@@ -49,7 +49,7 @@ impl Processor for MevProcessor {
     ) {
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
             target = inspect,
-            compose_mev_results(inspectors, tree.clone(), metadata.clone(), tui_tx.clone())
+            compose_mev_results(inspectors, tree.clone(), metadata.clone())
         );
 
         if let Err(e) = db
