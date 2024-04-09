@@ -1,8 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod db;
-mod misc;
-mod run;
+pub mod run;
 mod utils;
 
 pub use utils::*;

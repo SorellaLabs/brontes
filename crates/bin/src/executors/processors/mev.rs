@@ -27,6 +27,9 @@ use tracing::debug;
 
 use crate::Processor;
 
+use crate::cli::run::RunArgs;
+
+
 #[derive(Debug, Clone, Copy)]
 pub struct MevProcessor;
 
@@ -62,10 +65,11 @@ impl Processor for MevProcessor {
             return
         }
 
-        let ComposerResults { block_details, mev_details, block_analysis, .. } =
-            execute_on!(async_inspect, { run_block_inspection(inspectors, data, db) }).await;
+        //if BrontesRunConfig::get()
+        tracing::info!("PROCESS_RESULTS_cli_only: {}", RunArgs.cli_only);
 
-        insert_mev_results(db, block_details, mev_details, block_analysis).await;
+
+        insert_mev_results(db, block_details, mev_details).await;
     }
 }
 
