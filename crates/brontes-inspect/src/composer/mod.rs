@@ -57,11 +57,7 @@ use utils::{
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
-#[cfg(feature = "tui")]
-use brontes_types::mev::events::TuiEvents;
-
-
-use brontes_types::mev::events::Action;
+use brontes_types::mev::events::{Action, TuiEvents};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{discovery::DiscoveryInspector, Inspector};
@@ -181,22 +177,23 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 
-    #[cfg(feature = "tui")]
-    {
-        let _ = tui_tx.clone().unwrap()
-            .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
-            .map_err(|e| {
-                use tracing::info;
-                info!("Failed to send: {}", e);
-            });
+    //TODO: check cli-only
+    let _ = tui_tx
+        .clone()
+        .unwrap()
+        .send(Action::Tui(TuiEvents::MevBlockMetricReceived(header.clone())))
+        .map_err(|e| {
+            use tracing::info;
+            info!("Failed to send: {}", e);
+        });
 
-        let _ = tui_tx.unwrap()
-            .send(Action::Tui(TuiEvents::MevBundleEventReceived(filtered_bundles.clone())))
-            .map_err(|e| {
-                use tracing::info;
-                info!("Failed to send: {}", e);
-            });
-    }
+    let _ = tui_tx
+        .unwrap()
+        .send(Action::Tui(TuiEvents::MevBundleEventReceived(filtered_bundles.clone())))
+        .map_err(|e| {
+            use tracing::info;
+            info!("Failed to send: {}", e);
+        });
     (header, filtered_bundles)
 }
 
