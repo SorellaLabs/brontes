@@ -66,7 +66,6 @@ impl Processor for MevProcessor {
         if let Some(tui_tx) = tui_tx {
             let _ = tui_tx
                 .clone()
-                .unwrap()
                 .send(Action::Tui(TuiEvents::MevBlockMetricReceived(block_details.clone())))
                 .map_err(|e| {
                     use tracing::info;
@@ -74,7 +73,6 @@ impl Processor for MevProcessor {
                 });
 
             let _ = tui_tx
-                .unwrap()
                 .send(Action::Tui(TuiEvents::MevBundleEventReceived(mev_details.clone())))
                 .map_err(|e| {
                     use tracing::info;
