@@ -17,6 +17,7 @@ use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 use tui_logger::*;
+use polars::prelude::*;
 
 use super::{Component, Frame};
 use crate::{
@@ -152,8 +153,15 @@ impl Dashboard {
             .height(1)
             .bottom_margin(1);
 
-        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-            widget.mev_bundles.lock().unwrap();
+        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> = widget.mev_bundles.lock().unwrap();
+
+
+// Usage example
+let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> = widget.mev_bundles.lock().unwrap();
+let df = Self::bundles_to_dataframe(mevblocks_guard).unwrap();
+let rows = Self::dataframe_to_table_rows(&df);
+
+/*
 
         let rows = mevblocks_guard.iter().map(|item| {
             let protocols = item.data.protocols();
@@ -183,7 +191,7 @@ impl Dashboard {
 
             Row::new(cells).height(height as u16).bottom_margin(0)
         });
-
+*/
         let t = Table::new(
             rows,
             [
@@ -225,6 +233,91 @@ impl Dashboard {
         .bar_style(Style::default().fg(Color::Green));
         barchart.render(area, buf);
     }
+
+
+// Function to convert a Vec<Bundle> to a Polars DataFrame
+fn bundles_to_dataframe(bundles:  std::sync::MutexGuard<Vec<Bundle>>) -> Result<DataFrame> {
+    let mut block_numbers = Vec::new();
+    let mut tx_indexes = Vec::new();
+    let mut mev_types = Vec::new();
+    let mut symbols = Vec::new();
+    let mut protocols = Vec::new();
+    let mut eoas = Vec::new();
+    let mut mev_contracts = Vec::new();
+    let mut profits_usd = Vec::new();
+    let mut bribes_usd = Vec::new();
+
+    for bundle in bundles.iter() {
+        block_numbers.push(bundle.header.block_number);
+        tx_indexes.push(bundle.header.tx_index);
+        mev_types.push(bundle.header.mev_type.to_string());
+        symbols.push(get_symbols_from_transaction_accounting!(&bundle.header.balance_deltas)); // Assuming this macro/functionality
+        protocols.push(bundle.data.protocols().iter().map(|p| p.to_string()).sorted().join(", "));
+        eoas.push(bundle.header.eoa.to_string());
+        mev_contracts.push(
+            bundle
+                .header
+                .mev_contract
+                .as_ref()
+                .map(|address| address.to_string())
+                .unwrap_or_else(|| "Not an Mev Contract".to_string()),
+        );
+        profits_usd.push(bundle.header.profit_usd);
+        bribes_usd.push(bundle.header.bribe_usd);
+    }
+
+    let df = DataFrame::new(vec![
+        Series::new("Block Number", &block_numbers),
+        Series::new("Tx Index", &tx_indexes),
+        Series::new("MEV Type", &mev_types),
+        Series::new("Symbols", &symbols),
+        Series::new("Protocols", &protocols),
+        Series::new("EOA", &eoas),
+        Series::new("MEV Contract", &mev_contracts),
+        Series::new("Profit USD", &profits_usd),
+        Series::new("Bribe USD", &bribes_usd),
+    ])?;
+
+    Ok(df)
+}
+
+/*
+// Function to convert DataFrame rows to tui-rs Table rows
+fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
+    df.iter_rows().map(|row| {
+        let row = row.unwrap();
+        let cells = row.into_iter().map(|cell| Cell::from(format!("{}", cell))).collect::<Vec<_>>();
+        Row::new(cells).height(1).bottom_margin(0)
+    }).collect()
+}
+*/
+
+fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
+    let height = 1;
+    let bottom_margin = 0;
+
+    // This approach assumes you know the schema of your DataFrame
+    // and can access each column as needed. It's not a direct replacement
+    // for a row-wise iterator but demonstrates manual assembly of rows.
+    let num_rows = df.height();
+    let mut rows = Vec::with_capacity(num_rows);
+
+    for i in 0..num_rows {
+        let mut cells = Vec::new();
+        for series in df.get_columns() {
+            // Assuming you can handle the specific type of each column,
+            // you would extract the value for the current row (`i`) from each column's ChunkedArray.
+            // This snippet assumes a generic approach, not specific to any data type.
+            let value_str = series.get(i).unwrap().to_string();
+            cells.push(Cell::from(value_str));
+        }
+        rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
+    }
+
+    rows
+}
+
+
 
     #[allow(unused_variables)]
     fn draw_charts(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
