@@ -22,6 +22,9 @@ use tracing::debug;
 
 use crate::Processor;
 
+use crate::cli::run::RunArgs;
+
+
 #[derive(Debug, Clone, Copy)]
 pub struct MevProcessor;
 
@@ -49,6 +52,10 @@ impl Processor for MevProcessor {
 
         #[cfg(feature = "local-clickhouse")]
         insert_tree(db, tree.clone(), metadata.block_num).await;
+
+        //if BrontesRunConfig::get()
+        tracing::info!("PROCESS_RESULTS_cli_only: {}", RunArgs.cli_only);
+
 
         insert_mev_results(db, block_details, mev_details).await;
     }
