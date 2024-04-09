@@ -17,7 +17,7 @@ pub fn get_config_dir() -> PathBuf {
 
 #[macro_export]
 macro_rules! get_symbols_from_transaction_accounting {
-    ($data:expr) => {
+    ($data:expr) => {{
         use brontes_types::hasher::FastHashSet;
         use brontes_types::db::token_info::TokenInfoWithAddress;
 
@@ -30,5 +30,6 @@ macro_rules! get_symbols_from_transaction_accounting {
             });
         
         let unique_symbols = symbols.into_iter().collect::<Vec<String>>().join(", ");
-    };
+        unique_symbols
+    }};
 }
