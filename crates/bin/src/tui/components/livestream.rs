@@ -135,7 +135,7 @@ impl Livestream {
             "Tokens",
             "Protocols",
             "From",
-            "Contract",
+            "Mev Contract",
             "Profit",
             "Cost",
         ]
@@ -167,7 +167,7 @@ impl Livestream {
                     .mev_contract
                     .as_ref()
                     .map(|address| address.to_string())
-                    .unwrap_or("Address info missing from db".to_string()),
+                    .unwrap_or("Not an Mev Contract".to_string()),
                 item.header.profit_usd.to_string(),
                 item.header.bribe_usd.to_string(),
             ]
