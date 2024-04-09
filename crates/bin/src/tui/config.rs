@@ -16,8 +16,7 @@ const CONFIG: &str = include_str!("./config/config.json5");
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct AppConfig {
-    #[serde(default)]
-    pub _data_dir:   PathBuf,
+
     #[serde(default)]
     pub _config_dir: PathBuf,
 }
@@ -35,11 +34,9 @@ pub struct Config {
 impl Config {
     pub fn new() -> Result<Self, config::ConfigError> {
         let default_config: Config = json5::from_str(CONFIG).unwrap();
-        let data_dir = crate::tui::utils::get_data_dir();
         let config_dir = crate::tui::utils::get_config_dir();
         
         let mut builder = config::Config::builder()
-            .set_default("_data_dir", data_dir.to_str().unwrap())?
             .set_default("_config_dir", config_dir.to_str().unwrap())?;
 
         let config_files = [
