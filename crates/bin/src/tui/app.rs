@@ -256,6 +256,7 @@ impl App {
                             }
                         })?;
                     }
+                    /*
                     Action::Tui(ref tui_event) => {
                         match tui_event {
                             TuiEvents::MevBlockMetricReceived(mevblock) => {
@@ -274,6 +275,7 @@ impl App {
 
                         //app_tx.send(Action::Tui(TuiEvents::MevBlockMetricReceived((header.clone())))).map_err(|e| {
                     }
+                    */
                     Action::Render => {
                         tui.draw(|f| {
                             let tab_index = self.context.lock().unwrap().tab_index;
