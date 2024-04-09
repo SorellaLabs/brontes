@@ -34,7 +34,6 @@ use tokio::{
 use tracing::{info, trace};
 
 use crate::{
-    misc::banner,
     runner::CliContext,
     tui::{term::Term, tui::Event},
 };

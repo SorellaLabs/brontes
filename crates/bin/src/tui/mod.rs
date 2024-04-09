@@ -1,5 +1,4 @@
 pub mod app;
-mod misc;
 mod term;
 mod theme;
 
