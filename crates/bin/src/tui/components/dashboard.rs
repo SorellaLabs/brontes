@@ -236,7 +236,7 @@ let df = Self::bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
 
 
 // Function to convert a Vec<Bundle> to a Polars DataFrame
-fn bundles_to_dataframe(bundles:  std::sync::MutexGuard<Vec<Bundle>>) -> Result<DataFrame> {
+fn bundles_to_dataframe(bundles:  Vec<Bundle>) -> Result<DataFrame> {
     //info!("bundles_to_dataframe_entered");
 
     let mut block_numbers = Vec::new();
