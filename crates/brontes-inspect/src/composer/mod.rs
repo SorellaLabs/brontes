@@ -75,7 +75,6 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Actions>>,
     metadata: Arc<Metadata>,
-    tui_tx: Option<UnboundedSender<Action>>,
 ) -> ComposerResults {
     let this_data = data.get_most_recent_block().clone();
     let BlockData { metadata, tree } = this_data;
@@ -87,7 +86,7 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
     let quote_token = orchestra[0].get_quote_token();
 
     let (block_details, mev_details) =
-        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, tui_tx);
+        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev);
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
@@ -140,7 +139,6 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
-    tui_tx: Option<UnboundedSender<Action>>,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
