@@ -42,7 +42,6 @@ pub struct Dashboard {
     pub popup_scroll_position: u16,
     pub popup_scroll_state: ScrollbarState,
     pub progress_counter: Option<u16>,
-
     leaderboard: Vec<(&'static str, u64)>,
 }
 

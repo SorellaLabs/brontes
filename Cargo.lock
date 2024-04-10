@@ -1553,6 +1553,7 @@ dependencies = [
  "thiserror",
  "throbber-widgets-tui",
  "tokio",
+ "tokio-stream",
  "tokio-util",
  "toml",
  "tracing",
