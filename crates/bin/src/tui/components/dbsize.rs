@@ -1,6 +1,4 @@
-use std::{
-    env,
-};
+use std::env;
 
 use brontes_types::mev::events::Action;
 use color_eyre::eyre::Result;
@@ -10,22 +8,18 @@ use tokio::sync::mpsc::UnboundedSender;
 use super::{Component, Frame};
 use crate::tui::{
     //events::{Event, EventHandler},
-    config::{Config},
+    config::Config,
 };
 
 #[derive(Clone, Debug, Default)]
 pub struct DbSize {
-    command_tx:  Option<UnboundedSender<Action>>,
-    config:      Config,
+    command_tx: Option<UnboundedSender<Action>>,
+    config:     Config,
 }
 
 impl DbSize {
     pub fn new() -> Self {
-        Self {
-            command_tx:  Default::default(),
-            config:      Default::default(),
-
-        }
+        Self { command_tx: Default::default(), config: Default::default() }
     }
 
     fn draw_dbsize(_widget: &DbSize, area: Rect, buf: &mut Buffer) {

@@ -22,9 +22,7 @@ use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 // TUI related
 use brontes_types::mev::events::Action;
-use brontes_types::{
-    BrontesTaskExecutor, FastHashMap,
-};
+use brontes_types::{BrontesTaskExecutor, FastHashMap};
 use futures::{future::join_all, stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;

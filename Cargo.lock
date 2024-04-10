@@ -1527,6 +1527,7 @@ dependencies = [
  "metrics-process",
  "num_cpus",
  "palette",
+ "parking_lot 0.12.1",
  "polars",
  "ratatui",
  "rayon",

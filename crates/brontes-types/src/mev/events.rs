@@ -1,7 +1,4 @@
-
-use serde::{
-    Deserialize, Serialize,
-};
+use serde::{Deserialize, Serialize};
 use strum::Display;
 
 use crate::mev::{Bundle, MevBlock};

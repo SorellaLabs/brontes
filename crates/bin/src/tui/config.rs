@@ -5,10 +5,7 @@ use color_eyre::eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use derive_deref::{Deref, DerefMut};
 use ratatui::style::{Color, Modifier, Style};
-use serde::{
-    de::{Deserializer},
-    Deserialize,
-};
+use serde::{de::Deserializer, Deserialize};
 
 use crate::tui::mode::Mode;
 
@@ -16,7 +13,6 @@ const CONFIG: &str = include_str!("./config/config.json5");
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct AppConfig {
-
     #[serde(default)]
     pub _config_dir: PathBuf,
 }
@@ -35,9 +31,9 @@ impl Config {
     pub fn new() -> Result<Self, config::ConfigError> {
         let default_config: Config = json5::from_str(CONFIG).unwrap();
         let config_dir = crate::tui::utils::get_config_dir();
-        
-        let mut builder = config::Config::builder()
-            .set_default("_config_dir", config_dir.to_str().unwrap())?;
+
+        let mut builder =
+            config::Config::builder().set_default("_config_dir", config_dir.to_str().unwrap())?;
 
         let config_files = [
             ("config.json5", config::FileFormat::Json5),

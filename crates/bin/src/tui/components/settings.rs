@@ -1,4 +1,3 @@
-
 #![allow(unused_variables)]
 
 // Finish this file as a last thing to do
@@ -6,13 +5,11 @@
 use brontes_types::mev::events::Action;
 use clap::Parser;
 use color_eyre::eyre::Result;
-use crossterm::event::{
-    KeyEvent,
-};
+use crossterm::event::KeyEvent;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
-use tui_textarea::{TextArea};
+use tui_textarea::TextArea;
 
 use super::{
     constants::UiStyle,
@@ -21,10 +18,7 @@ use super::{
 };
 use crate::{
     cli::{Args, Commands},
-    tui::{
-        config::{Config},
-        tui::Event,
-    },
+    tui::{config::Config, tui::Event},
 };
 #[derive(Debug)]
 pub struct Settings {
