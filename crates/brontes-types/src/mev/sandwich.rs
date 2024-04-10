@@ -1,4 +1,4 @@
-use std::{fmt::Debug};
+use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
@@ -11,8 +11,7 @@ use serde_with::serde_as;
 
 use super::{Mev, MevType};
 use crate::{
-    db::redefined_types::primitives::*, normalized_actions::*,
-    ClickhouseVecGasDetails, Protocol,
+    db::redefined_types::primitives::*, normalized_actions::*, ClickhouseVecGasDetails, Protocol,
 };
 #[allow(unused_imports)]
 use crate::{

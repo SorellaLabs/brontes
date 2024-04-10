@@ -17,7 +17,8 @@ use serde_with::serde_as;
 use super::{Mev, MevType};
 use crate::{
     db::redefined_types::primitives::B256Redefined,
-    normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined}, GasDetails, Protocol,
+    normalized_actions::{ClickhouseVecNormalizedSwap, NormalizedSwap, NormalizedSwapRedefined},
+    GasDetails, Protocol,
 };
 
 #[serde_as]

@@ -37,12 +37,404 @@ use crate::{
 #[derive(Default, Debug)]
 pub struct Dashboard {
     command_tx: Option<UnboundedSender<Action>>,
-    config:     Config,
-    navigation: Navigation,
-    mev_count:  MevCount,
-    livestream: Livestream,
-    progress:   Progress,
-    focus:      Focus,
+    config: Config,
+    mevblocks: Arc<Mutex<Vec<MevBlock>>>,
+    mev_bundles: Arc<Mutex<Vec<Bundle>>>,
+    data: Vec<(&'static str, u64)>,
+    stream_table_state: TableState,
+    show_popup: bool,
+    pub popup_scroll_position: u16,
+    pub popup_scroll_state: ScrollbarState,
+    pub progress_counter: Option<u16>,
+
+    leaderboard: Vec<(&'static str, u64)>,
+}
+
+impl Dashboard {
+    pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
+        Self {
+            //log_scroll: 0,
+            mevblocks,
+            mev_bundles,
+            show_popup: false,
+            data: vec![
+                ("Sandwich", 0),
+                ("Jit Sandwich", 0),
+                ("Cex-Dex", 0),
+                ("Jit", 0),
+                ("Atomic Backrun", 0),
+                ("Liquidation", 0),
+            ],
+
+            stream_table_state: TableState::default().with_selected(Some(0)),
+
+            leaderboard: vec![
+                ("jaredfromsubway.eth", 1_200_000),
+                ("0x23892382394..212", 1_100_000),
+                ("0x13897682394..243", 1_000_000),
+                ("0x33899882394..223", 900_000),
+                ("0x43894082394..265", 800_000),
+                ("0x53894082394..283", 700_000),
+                ("0x83894082394..293", 600_000),
+                // Repeat as necessary
+            ],
+            ..Default::default()
+        }
+    }
+
+    pub fn next(&mut self) {
+        if self.show_popup {
+            self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
+            self.popup_scroll_state = self
+                .popup_scroll_state
+                .position(self.popup_scroll_position as usize);
+        } else {
+            let i = match self.stream_table_state.selected() {
+                Some(i) => {
+                    let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+                        self.mev_bundles.lock().unwrap();
+
+                    if mevblocks_guard.len() > 0 {
+                        if i == 0 {
+                            mevblocks_guard.len() - 1
+                        } else {
+                            i - 1
+                        }
+                    } else {
+                        0
+                    }
+                }
+                None => 0,
+            };
+            self.stream_table_state.select(Some(i));
+        }
+    }
+
+    pub fn previous(&mut self) {
+        if self.show_popup {
+            self.popup_scroll_position = self.popup_scroll_position.saturating_add(1);
+            self.popup_scroll_state = self
+                .popup_scroll_state
+                .position(self.popup_scroll_position as usize);
+        } else {
+            let i = match self.stream_table_state.selected() {
+                Some(i) => {
+                    let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+                        self.mev_bundles.lock().unwrap();
+
+                    if mevblocks_guard.len() > 0 {
+                        if i >= mevblocks_guard.len() - 1 {
+                            0
+                        } else {
+                            i + 1
+                        }
+                    } else {
+                        0
+                    }
+                }
+                None => 0,
+            };
+
+            self.stream_table_state.select(Some(i));
+        }
+    }
+
+    /*
+        // Function to convert a Vec<Bundle> to a Polars DataFrame
+        fn bundles_to_dataframe(bundles: Vec<Bundle>) -> Result<DataFrame> {
+            let mut block_numbers = Vec::new();
+            let mut tx_indexes = Vec::new();
+            let mut mev_types = Vec::new();
+            let mut symbols = Vec::new();
+            let mut protocols = Vec::new();
+            let mut eoas = Vec::new();
+            let mut mev_contracts = Vec::new();
+            let mut profits_usd = Vec::new();
+            let mut bribes_usd = Vec::new();
+
+            for bundle in bundles.iter() {
+                block_numbers.push(bundle.header.block_number);
+                tx_indexes.push(bundle.header.tx_index);
+                mev_types.push(bundle.header.mev_type.to_string());
+                symbols.push(get_symbols_from_transaction_accounting!(&bundle.header.balance_deltas)); // Assuming this macro/functionality
+                protocols.push(
+                    bundle
+                        .data
+                        .protocols()
+                        .iter()
+                        .map(|p| p.to_string())
+                        .sorted()
+                        .join(", "),
+                );
+                eoas.push(bundle.header.eoa.to_string());
+                mev_contracts.push(
+                    bundle
+                        .header
+                        .mev_contract
+                        .as_ref()
+                        .map(|address| address.to_string())
+                        .unwrap_or_else(|| "Not an Mev Contract".to_string()),
+                );
+                profits_usd.push(bundle.header.profit_usd);
+                bribes_usd.push(bundle.header.bribe_usd);
+            }
+
+            let df = DataFrame::new(vec![
+                Series::new("Block Number", &block_numbers),
+                Series::new("Tx Index", &tx_indexes),
+                Series::new("MEV Type", &mev_types),
+                Series::new("Symbols", &symbols),
+                Series::new("Protocols", &protocols),
+                Series::new("EOA", &eoas),
+                Series::new("MEV Contract", &mev_contracts),
+                Series::new("Profit USD", &profits_usd),
+                Series::new("Bribe USD", &bribes_usd),
+            ])?;
+            //info!("bundles_to_dataframe_finish");
+
+            Ok(df)
+        }
+
+        // Function to convert a DataFrame to a Vec<Row> for the Table widget
+        fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
+            let height = 1;
+            let bottom_margin = 0;
+
+            let num_rows = df.height();
+            let mut rows = Vec::with_capacity(num_rows);
+
+            for i in 0..num_rows {
+                let mut cells = Vec::new();
+                for series in df.get_columns() {
+                    let value_str = series.get(i).unwrap().to_string();
+                    cells.push(Cell::from(value_str));
+                }
+                rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
+            }
+
+            rows
+        }
+    */
+    fn draw_livestream(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
+        let selected_style = Style::default().add_modifier(Modifier::REVERSED);
+        let normal_style = Style::default().bg(Color::Blue);
+
+        let header_cells = [
+            "Block#",
+            "Tx Index",
+            "MEV Type",
+            "Tokens",
+            "Protocols",
+            "From",
+            "Mev Contract",
+            "Profit",
+            "Cost",
+        ]
+        .iter()
+        .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
+        let header = Row::new(header_cells)
+            .style(normal_style)
+            .height(1)
+            .bottom_margin(1);
+
+        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+            widget.mev_bundles.lock().unwrap();
+
+        let df = bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
+        let rows = dataframe_to_table_rows(&df);
+
+        let t = Table::new(
+            rows,
+            [
+                Constraint::Max(10),
+                Constraint::Min(5),
+                Constraint::Min(20),
+                Constraint::Min(20),
+                Constraint::Min(20),
+                Constraint::Min(32),
+                Constraint::Min(32),
+                Constraint::Max(10),
+                Constraint::Max(10),
+            ],
+        )
+        .header(header)
+        .block(Block::default().borders(Borders::ALL).title("Live Stream"))
+        .highlight_style(selected_style)
+        .highlight_symbol(">> ");
+
+        ratatui::widgets::StatefulWidget::render(t, area, buf, &mut widget.stream_table_state);
+    }
+
+    fn draw_leaderboard(widget: &Dashboard, area: Rect, buf: &mut Buffer) {
+        let barchart = BarChart::default()
+        .block(Block::default().borders(Borders::ALL).title("Leaderboard"))
+        //.data(&widget.leaderboard.iter().map(|x| (x[0], x[1].parse().unwrap())).collect::<Vec<_>>())
+        .data(&widget.leaderboard)
+        .bar_width(1)
+        .bar_gap(0)
+        .bar_set(symbols::bar::NINE_LEVELS)
+        .value_style(
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Green)
+                .add_modifier(Modifier::ITALIC),
+        )
+        .direction(Direction::Horizontal)
+        .label_style(Style::default().fg(Color::Yellow))
+        .bar_style(Style::default().fg(Color::Green));
+        barchart.render(area, buf);
+    }
+
+    #[allow(unused_variables)]
+    fn draw_charts(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
+        // Initialize counters
+        let mut sandwich_total = 0;
+        let mut cex_dex_total = 0;
+        let mut jit_total = 0;
+        let mut jit_sandwich_total = 0;
+        let mut atomic_backrun_total = 0;
+        let mut liquidation_total = 0;
+
+        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<MevBlock>> =
+            widget.mevblocks.lock().unwrap();
+
+        // Aggregate counts
+        for item in mevblocks_guard.iter() {
+            sandwich_total += item.mev_count.sandwich_count.unwrap_or(0);
+            cex_dex_total += item.mev_count.cex_dex_count.unwrap_or(0);
+            jit_total += item.mev_count.jit_count.unwrap_or(0);
+            jit_sandwich_total += item.mev_count.jit_sandwich_count.unwrap_or(0);
+            atomic_backrun_total += item.mev_count.atomic_backrun_count.unwrap_or(0);
+            liquidation_total += item.mev_count.liquidation_count.unwrap_or(0);
+        }
+
+        // Construct the final Vec<(&str, u64)> with the total counts
+        let data: Vec<(&str, u64)> = vec![
+            ("Sandwich", sandwich_total),
+            ("Cex-Dex", cex_dex_total),
+            ("Jit", jit_total),
+            ("Jit Sandwich", jit_sandwich_total),
+            ("Atomic Backrun", atomic_backrun_total),
+            ("Liquidation", liquidation_total),
+        ];
+
+        let barchart = BarChart::default()
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Count of MEV Types"),
+            )
+            .data(&data)
+            .bar_width(1)
+            .bar_gap(0)
+            .bar_set(symbols::bar::NINE_LEVELS)
+            .value_style(
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Green)
+                    .add_modifier(Modifier::ITALIC),
+            )
+            .direction(Direction::Horizontal)
+            .label_style(Style::default().fg(Color::Yellow))
+            .bar_style(Style::default().fg(Color::Green));
+        barchart.render(area, buf);
+    }
+
+    fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {
+        let keys = [
+            ("Q/Esc", "Quit"),
+            ("Tab", "Next Tab"),
+            ("BackTab", "Previous Tab"),
+            ("↑/w", "Up"),
+            ("↓/s", "Down"),
+            ("↵", "Open/Close Mev Details"),
+        ];
+        let spans = keys
+            .iter()
+            .flat_map(|(key, desc)| {
+                let key = Span::styled(format!(" {} ", key), THEME.key_binding.key);
+                let desc = Span::styled(format!(" {} ", desc), THEME.key_binding.description);
+                [key, desc]
+            })
+            .collect_vec();
+        Paragraph::new(Line::from(spans))
+            .alignment(Alignment::Center)
+            .fg(Color::Indexed(236))
+            .bg(Color::Indexed(232))
+            .render(area, buf);
+    }
+
+    /// helper function to create a centered rect using up certain percentage of
+    /// the available rect `r`
+    fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ])
+            .split(r);
+
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ])
+            .split(popup_layout[1])[1]
+    }
+
+    fn draw_logs(_widget: &Dashboard, area: Rect, buf: &mut Buffer) {
+        TuiLoggerSmartWidget::default()
+            .style_error(Style::default().fg(Color::Red))
+            .style_debug(Style::default().fg(Color::Green))
+            .style_warn(Style::default().fg(Color::Yellow))
+            .style_trace(Style::default().fg(Color::Magenta))
+            .style_info(Style::default().fg(Color::Cyan))
+            .output_separator(':')
+            .output_timestamp(Some("%H:%M:%S".to_string()))
+            .output_level(Some(TuiLoggerLevelOutput::Abbreviated))
+            .output_target(true)
+            .output_file(true)
+            .output_line(true)
+            .title_target("Target Selector")
+            .title_log("Logs")
+            .render(area, buf);
+    }
+
+    fn update_progress_bar(&mut self, event: Action, value: Option<u16>) {
+        trace!(target: "App", "Updating progress bar {:?}",event);
+        self.progress_counter = value;
+        if value.is_none() {
+            info!(target: "App", "Background task finished");
+        }
+    }
+
+    fn render_progress(&self, area: Rect, buf: &mut Buffer) {
+        let progress = self.progress_counter.unwrap_or(0);
+        Gauge::default()
+            .block(Block::bordered().title("PROGRESS:"))
+            .gauge_style((Color::White, Modifier::ITALIC))
+            .percent(progress)
+            .render(area, buf);
+    }
+
+    /// A simulated task that sends a counter value to the UI ranging from 0 to
+    /// 100 every second.
+    fn progress_task(tx: UnboundedSender<Action>) -> Result<()> {
+        for progress in 0..100 {
+            debug!(target:"progress-task", "Send progress to UI thread. Value: {:?}", progress);
+            tx.send(Action::ProgressChanged(Some(progress)))?;
+
+            trace!(target:"progress-task", "Sleep one second");
+            thread::sleep(time::Duration::from_millis(1000));
+        }
+        info!(target:"progress-task", "Progress task finished");
+        tx.send(Action::ProgressChanged(None))?;
+        Ok(())
+    }
 }
 
 impl Component for Dashboard {
@@ -93,7 +485,6 @@ impl Component for Dashboard {
 
     fn data_update(&mut self, data: BrontesData) -> Result<Option<Action>> {
         match action {
-            Action::Tick => {}
             Action::Tui(tui_event) => {
                 match tui_event {
                     BrontesData(mevblock) => {

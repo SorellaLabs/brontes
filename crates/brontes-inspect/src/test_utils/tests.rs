@@ -32,7 +32,7 @@ use brontes_types::{
     tree::BlockTree,
 };
 use thiserror::Error;
-use tokio::sync::mpsc::{unbounded_channel};
+use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{composer::compose_mev_results, Inspectors};
 
@@ -354,8 +354,9 @@ impl InspectorTestUtils {
                 )
             })
             .collect::<Vec<_>>();
-        let (tui_tx, tui_rx) = unbounded_channel();   
-        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into(),tui_tx.clone());
+        let (tui_tx, tui_rx) = unbounded_channel();
+        let results =
+            compose_mev_results(inspector.as_slice(), tree.into(), metadata.into(), tui_tx.clone());
 
         let mut results = results
             .mev_details
