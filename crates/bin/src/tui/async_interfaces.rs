@@ -26,6 +26,10 @@ pub trait HeadAsyncComponent {
     fn poll_with_ctx(&mut self, should_render: bool, cx: &mut Context<'_>) -> Poll<()>;
 }
 
+/// For each Sub Component of a head component.
+/// the head component will call poll_render to progress the state updates of
+/// these sub components, however the head component will decide if the sub
+/// component update is worthy of a render
 pub trait SubAsyncComponent {
     fn handle_key_events(&mut self, _key: KeyEvent) {
         return
