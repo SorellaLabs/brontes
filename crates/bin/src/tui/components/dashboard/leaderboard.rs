@@ -1,3 +1,8 @@
+pub struct Leaderboard {
+    config:      Config,
+    leaderboard: Vec<(String, u64)>,
+}
+
 fn draw_leaderboard(widget: &Dashboard, area: Rect, buf: &mut Buffer) {
     let barchart = BarChart::default()
     .block(Block::default().borders(Borders::ALL).title("Leaderboard"))

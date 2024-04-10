@@ -32,7 +32,7 @@ impl Navigation {
         let area = layout(area, Direction::Horizontal, vec![0, 58]);
         let tab_index = self.context.lock().unwrap().tab_index;
         Paragraph::new(Span::styled("Brontes", THEME.app_title)).render(area[0], buf);
-        let titles = vec!["DASHBOARD", " LIVESTREAM ", " ANALYTICS ", " METRICS ", " SETTINGS "];
+        let titles = vec!["DASHBOARD", "EXPLORER", " ANALYTICS ", " METRICS ", " SETTINGS "];
         Tabs::new(titles)
             .style(THEME.tabs)
             .highlight_style(THEME.tabs_selected)

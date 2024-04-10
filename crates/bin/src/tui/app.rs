@@ -42,7 +42,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use super::components::analytics::hot_tokens::HotTokens;
+use super::{components::analytics::hot_tokens::HotTokens, mode::Page};
 use crate::tui::{
     components::{
         analytics::{
@@ -73,21 +73,9 @@ pub struct App {
     pub should_quit:          bool,
     pub should_suspend:       bool,
     pub context:              Arc<Mutex<AppContext>>,
-    mev_blocks:               Arc<Mutex<Vec<MevBlock>>>,
-    mev_bundles:              Arc<Mutex<Vec<Bundle>>>,
-    pub mode:                 Mode,
+    pub mode:                 Page,
     pub last_tick_key_events: Vec<KeyEvent>,
-    pub progress_counter:     Option<u16>,
     pub events:               EventStream,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct AppContext {
-    pub tab_index:        usize,
-    pub row_index:        usize,
-    pub state:            TableState,
-    pub dashboard_state:  TableState,
-    pub livestream_state: TableState,
 }
 
 impl App {
