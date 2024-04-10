@@ -3,7 +3,6 @@ mod livestream;
 mod mev_count;
 mod navigation;
 pub mod progress;
-
 use std::{
     sync::{Arc, Mutex},
     thread, time,
@@ -27,27 +26,14 @@ use crate::{
     events::*,
     get_symbols_from_transaction_accounting,
     tui::{
+        asycn_interfaces::*,
+        async_interfaces::HeadAsyncComponent,
         config::Config,
         polars::{bundles_to_dataframe, dataframe_to_table_rows},
         theme::THEME,
         tui::Event,
     },
 };
-
-#[derive(Default, Debug)]
-pub struct Dashboard {
-    command_tx: Option<UnboundedSender<Action>>,
-    config: Config,
-    mevblocks: Arc<Mutex<Vec<MevBlock>>>,
-    mev_bundles: Arc<Mutex<Vec<Bundle>>>,
-    data: Vec<(&'static str, u64)>,
-    stream_table_state: TableState,
-    show_popup: bool,
-    pub popup_scroll_position: u16,
-    pub popup_scroll_state: ScrollbarState,
-    pub progress_counter: Option<u16>,
-    leaderboard: Vec<(&'static str, u64)>,
-}
 
 #[derive(Default, Debug)]
 pub struct Dashboard {
@@ -63,34 +49,7 @@ pub struct Dashboard {
 
 impl Dashboard {
     pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
-        Self {
-            //log_scroll: 0,
-            mevblocks,
-            mev_bundles,
-            show_popup: false,
-            data: vec![
-                ("Sandwich", 0),
-                ("Jit Sandwich", 0),
-                ("Cex-Dex", 0),
-                ("Jit", 0),
-                ("Atomic Backrun", 0),
-                ("Liquidation", 0),
-            ],
-
-            stream_table_state: TableState::default().with_selected(Some(0)),
-
-            leaderboard: vec![
-                ("jaredfromsubway.eth", 1_200_000),
-                ("0x23892382394..212", 1_100_000),
-                ("0x13897682394..243", 1_000_000),
-                ("0x33899882394..223", 900_000),
-                ("0x43894082394..265", 800_000),
-                ("0x53894082394..283", 700_000),
-                ("0x83894082394..293", 600_000),
-                // Repeat as necessary
-            ],
-            ..Default::default()
-        }
+        Self { ..Default::default() }
     }
 
     pub fn next(&mut self) {
