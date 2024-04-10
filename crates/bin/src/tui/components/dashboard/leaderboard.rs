@@ -1,6 +1,7 @@
 pub struct Leaderboard {
     config:      Config,
     leaderboard: Vec<(String, u64)>,
+    active:      bool,
 }
 
 fn draw_leaderboard(widget: &Dashboard, area: Rect, buf: &mut Buffer) {
