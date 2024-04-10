@@ -147,8 +147,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         data_store:  NodeData(vec![Some(classification)]),
                     };
 
-                    let tx_traces = trace.trace.clone();
-                    for trace in trace.trace.into_iter() {
+                    let tx_trace = &trace.trace;
+                    for trace in &trace.trace {
                         let from_addr = trace.get_from_addr();
 
                         let node = Node::new(
@@ -188,7 +188,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 tx_idx as u64,
                                 trace.trace_idx,
                                 trace.clone(),
-                                &tx_traces,
+                                tx_trace,
                                 &mut further_classification_requests,
                                 &mut pool_updates,
                             )
