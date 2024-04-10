@@ -44,7 +44,7 @@ pub trait SubAsyncComponent {
 
     /// will render the given sub components on the given frame with a config to
     /// pass in for specifc sub component rendering
-    fn render<C>(&mut self, f: &mut Frame<'_>, area: Rect, config: Option<C>) -> Result<()>;
+    fn render<C>(&mut self, f: &mut Frame<'_>, area: Rect, config: Option<C>);
 }
 
 pub type ComponentFnOutput<T> = Pin<Box<dyn Future<Output = T> + Send + Unpin + Sync + 'static>>;
