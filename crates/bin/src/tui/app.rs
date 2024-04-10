@@ -3,6 +3,7 @@ use std::{
     future::Future,
     rc::Rc,
     sync::{Arc, Mutex},
+    task::Poll,
     thread,
     thread::sleep,
 };
@@ -325,7 +326,9 @@ impl Future for App {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         if let Poll::Ready(item) = self.events.poll_next_unpin(cx) {
-            match item {}
+            match item {
+                Some(Ok(events)) => {}
+            }
         }
 
         Poll::Pending
