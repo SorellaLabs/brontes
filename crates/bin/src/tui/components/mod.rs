@@ -15,6 +15,7 @@ pub mod ClickableList;
 pub mod analytics;
 pub mod constants;
 pub mod dashboard;
+pub mod dashboard;
 pub mod dbsize;
 pub mod livestream;
 pub mod metrics;
@@ -64,7 +65,6 @@ pub trait Component: Debug {
     /// # Returns
     ///
     /// * `Result<()>` - An Ok result or an error.
-    /// 
     #[allow(unused_variables)]
     fn init(&mut self, area: Rect) -> Result<()> {
         Ok(())

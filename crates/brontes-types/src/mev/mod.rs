@@ -16,4 +16,3 @@ pub mod block;
 pub use block::*;
 pub mod searcher_tx;
 pub use searcher_tx::*;
-pub mod events;

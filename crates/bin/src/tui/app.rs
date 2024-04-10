@@ -218,8 +218,7 @@ impl App {
 
                 for inner_tabs in self.components.iter_mut() {
                     for component in inner_tabs.iter_mut() {
-                        let component_id = component.name(); // Get the unique identifier for the component
-
+                        let component_id = component.name();
                         if !component_cache.contains(&component_id) {
                             if let Some(action) = component.handle_events(Some(e.clone()))? {
                                 action_tx.send(action)?;
