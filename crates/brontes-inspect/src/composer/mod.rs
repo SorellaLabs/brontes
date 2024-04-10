@@ -57,10 +57,13 @@ use utils::{
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
-use brontes_types::mev::events::{Action, TuiEvents};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{discovery::DiscoveryInspector, Inspector};
+use crate::{
+    discovery::DiscoveryInspector,
+    events::{Action, TuiEvents},
+    Inspector,
+};
 
 #[derive(Debug)]
 pub struct ComposerResults {
