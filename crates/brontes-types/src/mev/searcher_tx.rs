@@ -12,7 +12,8 @@ use serde_with::serde_as;
 use crate::{
     db::redefined_types::primitives::*,
     mev::{Mev, MevType},
-    normalized_actions::*, Protocol,
+    normalized_actions::*,
+    Protocol,
 };
 #[allow(unused_imports)]
 use crate::{display::utils::display_sandwich, normalized_actions::NormalizedTransfer, GasDetails};

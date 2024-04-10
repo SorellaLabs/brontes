@@ -7,10 +7,17 @@ use std::{
     thread::sleep,
 };
 
-use brontes_database::tui::events::{Action, Event};
-use brontes_types::mev::{bundle::Bundle, MevBlock};
-use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use eyre::{Context, Error, Result}; //
+use brontes_types::mev::{
+    bundle::Bundle,
+    events::{Action, TuiEvents},
+    MevBlock,
+};
+use crossterm::event::{
+    Event as CrosstermEvent, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
+};
+use eyre::{Context, Error, Result};
+use futures::{StreamExt, TryStreamExt};
+//
 use itertools::Itertools;
 use ratatui::{
     prelude::{Rect, *},
@@ -74,6 +81,7 @@ pub struct App {
     pub mode:                 Mode,
     pub last_tick_key_events: Vec<KeyEvent>,
     pub progress_counter:     Option<u16>,
+    pub events:               EventStream,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -110,6 +118,7 @@ impl App {
         let frame_rate = 60.0;
 
         Ok(Self {
+            events: EventStream,
             tick_rate,
             frame_rate,
             components: vec![
@@ -289,7 +298,7 @@ impl App {
                 tui.enter()?;
             } else if self.should_quit {
                 tui.stop()?;
-                break;
+                break
             }
         }
         tui.exit()?;
@@ -320,6 +329,21 @@ impl App {
             }
             None => 0,
         };
+    }
+}
+
+impl Future for App {
+    type Output = ();
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        if let Poll::Ready(item) = self.events.poll_next_unpin(cx) {
+            match item {}
+        }
+
+        Poll::Pending
     }
 }
 

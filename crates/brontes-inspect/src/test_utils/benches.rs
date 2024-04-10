@@ -10,7 +10,8 @@ use brontes_types::{
     BlockData, MultiBlockData,
 };
 use criterion::{black_box, Criterion};
-use tokio::sync::mpsc::{unbounded_channel};
+use tokio::sync::mpsc::unbounded_channel;
+
 use super::InspectorTestUtilsError;
 use crate::{composer::run_block_inspection, Inspectors};
 
@@ -288,7 +289,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false),
         )?;
         metadata.dex_quotes = Some(prices);
-        let (tui_tx, tui_rx) = unbounded_channel();   
+        let (tui_tx, tui_rx) = unbounded_channel();
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         let data = BlockData { metadata, tree };
@@ -346,7 +347,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false),
         )?;
         metadata.dex_quotes = prices;
-        let (tui_tx, tui_rx) = unbounded_channel();        
+        let (tui_tx, tui_rx) = unbounded_channel();
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         let data = BlockData { metadata, tree };

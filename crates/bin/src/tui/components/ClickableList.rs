@@ -6,13 +6,11 @@ use ratatui::{
     layout::{Corner, Rect},
     style::{Style, Styled},
     text::{Span, Text},
-    widgets::{
-        Block, BorderType, Borders, HighlightSpacing, StatefulWidget, Widget,
-    },
+    widgets::{Block, BorderType, Borders, HighlightSpacing, StatefulWidget, Widget},
 };
 use unicode_width::UnicodeWidthStr;
 
-use super::constants::{UiStyle};
+use super::constants::UiStyle;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash)]
 pub struct ClickableListState {

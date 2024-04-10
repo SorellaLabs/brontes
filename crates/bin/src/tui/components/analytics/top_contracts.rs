@@ -1,4 +1,4 @@
-use brontes_database::tui::events::Action;
+use brontes_types::mev::events::Action;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;

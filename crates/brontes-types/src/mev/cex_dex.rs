@@ -6,7 +6,7 @@ use ::serde::{
     Deserialize, Serialize,
 };
 use ahash::HashSet;
-use alloy_primitives::{U256};
+use alloy_primitives::U256;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use malachite::Rational;
@@ -22,7 +22,8 @@ use crate::{
         cex::CexExchange,
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
-    normalized_actions::*, Protocol, ToFloatNearest,
+    normalized_actions::*,
+    Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
