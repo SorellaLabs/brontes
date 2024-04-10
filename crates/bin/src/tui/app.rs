@@ -146,7 +146,7 @@ impl App {
         let mut app = Self::new().unwrap();
 
         if let Err(e) = app.run_inner(rx, tx).await {
-            error!("TUI Error: {:?}", e);
+            tracing::error!("TUI Error: {:?}", e);
         }
     }
 
