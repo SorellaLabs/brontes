@@ -45,11 +45,33 @@ pub struct Dashboard {
     focus:      Focus,
 }
 
-impl Component for Dashboard {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
-        self.command_tx = Some(tx);
-        Ok(())
-    }
+#[derive(Default, Debug)]
+pub struct Dashboard {
+    command_tx:  Option<UnboundedSender<Action>>,
+    config:      Config,
+    navigation:  Navigation,
+    mev_count:   MevCount,
+    livestream:  Livestream,
+    leaderboard: Leaderboard,
+    progress:    Progress,
+    focus:       Focus,
+}
+
+impl Dashboard {
+    pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
+        Self {
+            //log_scroll: 0,
+            mevblocks,
+            mev_bundles,
+            show_popup: false,
+            data: vec![
+                ("Sandwich", 0),
+                ("Jit Sandwich", 0),
+                ("Cex-Dex", 0),
+                ("Jit", 0),
+                ("Atomic Backrun", 0),
+                ("Liquidation", 0),
+            ],
 
     fn register_config_handler(&mut self, config: Config) -> Result<()> {
         self.config = config;
@@ -270,82 +292,26 @@ impl Dashboard {
         }
     }
 
-    /*
-        // Function to convert a Vec<Bundle> to a Polars DataFrame
-        fn bundles_to_dataframe(bundles: Vec<Bundle>) -> Result<DataFrame> {
-            let mut block_numbers = Vec::new();
-            let mut tx_indexes = Vec::new();
-            let mut mev_types = Vec::new();
-            let mut symbols = Vec::new();
-            let mut protocols = Vec::new();
-            let mut eoas = Vec::new();
-            let mut mev_contracts = Vec::new();
-            let mut profits_usd = Vec::new();
-            let mut bribes_usd = Vec::new();
+    // Function to convert a DataFrame to a Vec<Row> for the Table widget
+    fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
+        let height = 1;
+        let bottom_margin = 0;
 
-            for bundle in bundles.iter() {
-                block_numbers.push(bundle.header.block_number);
-                tx_indexes.push(bundle.header.tx_index);
-                mev_types.push(bundle.header.mev_type.to_string());
-                symbols.push(get_symbols_from_transaction_accounting!(&bundle.header.balance_deltas)); // Assuming this macro/functionality
-                protocols.push(
-                    bundle
-                        .data
-                        .protocols()
-                        .iter()
-                        .map(|p| p.to_string())
-                        .sorted()
-                        .join(", "),
-                );
-                eoas.push(bundle.header.eoa.to_string());
-                mev_contracts.push(
-                    bundle
-                        .header
-                        .mev_contract
-                        .as_ref()
-                        .map(|address| address.to_string())
-                        .unwrap_or_else(|| "Not an Mev Contract".to_string()),
-                );
-                profits_usd.push(bundle.header.profit_usd);
-                bribes_usd.push(bundle.header.bribe_usd);
+        let num_rows = df.height();
+        let mut rows = Vec::with_capacity(num_rows);
+
+        for i in 0..num_rows {
+            let mut cells = Vec::new();
+            for series in df.get_columns() {
+                let value_str = series.get(i).unwrap().to_string();
+                cells.push(Cell::from(value_str));
             }
-
-            let df = DataFrame::new(vec![
-                Series::new("Block Number", &block_numbers),
-                Series::new("Tx Index", &tx_indexes),
-                Series::new("MEV Type", &mev_types),
-                Series::new("Symbols", &symbols),
-                Series::new("Protocols", &protocols),
-                Series::new("EOA", &eoas),
-                Series::new("MEV Contract", &mev_contracts),
-                Series::new("Profit USD", &profits_usd),
-                Series::new("Bribe USD", &bribes_usd),
-            ])?;
-            //info!("bundles_to_dataframe_finish");
-
-            Ok(df)
+            rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
         }
 
-        // Function to convert a DataFrame to a Vec<Row> for the Table widget
-        fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
-            let height = 1;
-            let bottom_margin = 0;
+        rows
+    }
 
-            let num_rows = df.height();
-            let mut rows = Vec::with_capacity(num_rows);
-
-            for i in 0..num_rows {
-                let mut cells = Vec::new();
-                for series in df.get_columns() {
-                    let value_str = series.get(i).unwrap().to_string();
-                    cells.push(Cell::from(value_str));
-                }
-                rows.push(Row::new(cells).height(height).bottom_margin(bottom_margin));
-            }
-
-            rows
-        }
-    */
     fn draw_livestream(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
         let normal_style = Style::default().bg(Color::Blue);
@@ -469,6 +435,30 @@ impl Dashboard {
             .label_style(Style::default().fg(Color::Yellow))
             .bar_style(Style::default().fg(Color::Green));
         barchart.render(area, buf);
+    }
+
+    fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {
+        let keys = [
+            ("Q/Esc", "Quit"),
+            ("Tab", "Next Tab"),
+            ("BackTab", "Previous Tab"),
+            ("↑/w", "Up"),
+            ("↓/s", "Down"),
+            ("↵", "S"),
+        ];
+        let spans = keys
+            .iter()
+            .flat_map(|(key, desc)| {
+                let key = Span::styled(format!(" {} ", key), THEME.key_binding.key);
+                let desc = Span::styled(format!(" {} ", desc), THEME.key_binding.description);
+                [key, desc]
+            })
+            .collect_vec();
+        Paragraph::new(Line::from(spans))
+            .alignment(Alignment::Center)
+            .fg(Color::Indexed(236))
+            .bg(Color::Indexed(232))
+            .render(area, buf);
     }
 
     /// helper function to create a centered rect using up certain percentage of

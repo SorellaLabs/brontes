@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Mode {
+pub enum Page {
     #[default]
     Dashboard,
-    Livestream,
+    Explorer,
     Analytics,
     Metrics,
     Settings,
