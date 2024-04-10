@@ -11,6 +11,8 @@ action_impl!(
     call_data: true,
     logs: true,
     |call_info: CallInfo, call_data: flashLoanCall, log_data: MakerDssFlashFlashLoanCallLogs, db_tx: &DB| {
+        let logs = log_data.flash_loan_field?;
+
         let token = db_tx.try_fetch_token_info(call_data.token)?;
         let amount = call_data.amount.to_scaled_rational(token.decimals);
 
@@ -20,7 +22,7 @@ action_impl!(
             from: call_info.from_address,
             pool: call_info.target_address,
             msg_value: call_info.msg_value,
-            receiver_contract: call_data.receiver,
+            receiver_contract: logs.receiver,
             assets: vec![token],
             amounts: vec![amount],
 
@@ -37,7 +39,7 @@ action_impl!(
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, B256};
+    use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress}, normalized_actions::{Actions, NormalizedTransfer},
