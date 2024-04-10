@@ -23,7 +23,7 @@ pub trait HeadAsyncComponent {
         return
     }
 
-    fn poll_with_ctx(&mut self, should_render: bool, cx: &mut Context<'_>) -> Poll<()>;
+    fn poll_with_ctx(&mut self, can_render: bool, cx: &mut Context<'_>) -> Poll<()>;
 }
 
 /// For each Sub Component of a head component.
