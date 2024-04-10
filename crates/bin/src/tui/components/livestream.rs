@@ -1,26 +1,38 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    future::Future,
+    sync::{Arc, Mutex},
+};
 
 use ansi_to_tui::IntoText;
 use brontes_database::tui::events::{Action, TuiEvents};
 use brontes_types::mev::{bundle::Bundle, Mev, MevBlock};
 use color_eyre::eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
+use polars::frame::DataFrame;
 use ratatui::{prelude::*, widgets::*};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::info;
 
 use super::Component;
 use crate::{
     get_symbols_from_transaction_accounting,
-    tui::tui::{Event, Frame},
+    tui::{
+        async_interfaces::{ComponentUpdater, HeadAsyncComponent},
+        tui::{Event, Frame},
+    },
 };
 
 #[derive(Default, Debug)]
 pub struct Livestream {
     #[allow(dead_code)]
-    command_tx:                Option<UnboundedSender<Action>>,
-    mevblocks:                 Arc<Mutex<Vec<MevBlock>>>,
-    mev_bundles:               Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
+    command_tx:  Option<UnboundedSender<Action>>,
+    mevblocks:   Arc<Mutex<Vec<MevBlock>>>,
+    mev_bundles: DataFrame,
+    updater:     ComponentUpdater<Action, DataFrame>,
+
+    terminal: Arc<parking_lot::Mutex<Tui>>,
+
     stream_table_state:        TableState,
     show_popup:                bool,
     pub popup_scroll_position: u16,
@@ -28,14 +40,32 @@ pub struct Livestream {
 }
 
 impl Livestream {
-    pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
+    pub fn new(
+        mevblocks: Arc<Mutex<Vec<MevBlock>>>,
+        rx: UnboundedReceiver<Action>,
+        terminal: Arc<parking_lot::Mutex<Tui>>,
+    ) -> Self {
+        let mut stream = UnboundedReceiverStream::new(rx);
+        let stream = Box::pin(stream.filter(|action| {
+            // filter here
+            true
+        }));
+
+        let updater = ComponentUpdater::new(stream, Box::new(Self::process_new_data));
+
         Self {
+            terminal,
             mevblocks,
-            mev_bundles,
+            updater,
+            mev_bundles: DataFrame::default(),
             show_popup: false,
             stream_table_state: TableState::default().with_selected(Some(0)),
             ..Default::default()
         }
+    }
+
+    pub async fn process_new_data(action: Action) -> DataFrame {
+        todo!(" whatever needs to be done to clean / manipulate data");
     }
 
     pub fn next(&mut self) {
@@ -117,7 +147,7 @@ impl Livestream {
             .split(popup_layout[1])[1]
     }
 
-    fn draw_livestream(widget: &mut Livestream, area: Rect, buf: &mut Buffer) {
+    fn draw_livestream(&mut self, area: Rect, buf: &mut Buffer) {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
         let normal_style = Style::default().bg(Color::Blue);
 
@@ -139,43 +169,13 @@ impl Livestream {
             .height(1)
             .bottom_margin(1);
 
-        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-            widget.mev_bundles.lock().unwrap();
-
-        let rows = mevblocks_guard.iter().map(|item| {
-            let protocols = item.data.protocols();
-            let mut protocol_names = protocols.iter().map(|p| p.to_string()).collect::<Vec<_>>();
-            protocol_names.sort();
-            let protocol_list = protocol_names.join(", ");
-
-            let height = 1;
-            let cells = vec![
-                item.header.block_number.to_string(),
-                item.header.tx_index.to_string(),
-                item.header.mev_type.to_string(),
-                get_symbols_from_transaction_accounting!(&item.header.balance_deltas),
-                protocol_list,
-                item.header.eoa.to_string(),
-                item.header
-                    .mev_contract
-                    .as_ref()
-                    .map(|address| address.to_string())
-                    .unwrap_or("Not an Mev Contract".to_string()),
-                item.header.profit_usd.to_string(),
-                item.header.bribe_usd.to_string(),
-            ]
-            .iter()
-            .map(|s| Cell::from(s.to_string())) // Convert each String to a Cell
-            .collect::<Vec<Cell>>(); // Collect into a Vec<Cell>
-
-            Row::new(cells).height(height as u16).bottom_margin(0)
-        });
+        let rows = dataframe_to_table_rows(&self.mev_bundles);
 
         let t = Table::new(
             rows,
             [
                 Constraint::Max(10),
-                Constraint::Max(5),
+                Constraint::Min(5),
                 Constraint::Min(20),
                 Constraint::Min(20),
                 Constraint::Min(20),
@@ -190,16 +190,72 @@ impl Livestream {
         .highlight_style(selected_style)
         .highlight_symbol(">> ");
 
-        ratatui::widgets::StatefulWidget::render(t, area, buf, &mut widget.stream_table_state);
+        ratatui::widgets::StatefulWidget::render(t, area, buf, &mut self.stream_table_state);
+    }
+
+    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
+        // f.render_widget(self,area,);
+        // self.render(area,f.buffer_mut());
+
+        let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
+
+        let template = Layout::default()
+            .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(1)])
+            .split(area);
+
+        let buf = f.buffer_mut();
+
+        self.draw_livestream(template[1], buf);
+
+        if self.show_popup {
+            let block = Block::default()
+                .title("MEV Details")
+                .borders(Borders::ALL)
+                .padding(Padding::horizontal(4));
+
+            let area = Self::centered_rect(80, 80, area);
+            f.render_widget(Clear, area); //this clears out the background
+
+            let paragraph = Paragraph::new("Hello, world!");
+            f.render_widget(paragraph, area);
+
+            /*
+                        // why is this here?
+                        match self.stream_table_state.selected() {
+                            Some(i) => self.stream_table_state.selected(),
+                            None => None,
+                        };
+            */
+
+            let text = self
+                .mev_bundles
+                .get_row(self.stream_table_state.selected().unwrap())
+                .unwrap()
+                .to_string()
+                .into_text();
+
+            let paragraph = Paragraph::new(text.unwrap())
+                .block(block)
+                .scroll((self.popup_scroll_position, 0));
+
+            f.render_widget(paragraph, area);
+
+            f.render_stateful_widget(
+                Scrollbar::default()
+                    .orientation(ScrollbarOrientation::VerticalLeft)
+                    .begin_symbol(Some("↑"))
+                    .end_symbol(Some("↓")),
+                f.size().inner(&Margin { vertical: 10, horizontal: 10 }),
+                &mut self.popup_scroll_state,
+            );
+        }
+
+        Ok(())
     }
 }
 
-impl Component for Livestream {
-    fn name(&self) -> String {
-        "Livestream".to_string()
-    }
-
-    fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
+impl HeadAsyncComponent for Livestream {
+    fn handle_key_events(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => {
                 info!("Esc pressed");
@@ -226,98 +282,148 @@ impl Component for Livestream {
             }
             _ => (),
         };
-
-        Ok(Some(Action::Tick))
     }
 
-    fn handle_events(&mut self, event: Option<Event>) -> Result<Option<Action>> {
-        let r = match event {
-            Some(Event::Key(key_event)) => self.handle_key_events(key_event)?,
-            Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event)?,
-            _ => None,
-        };
-        Ok(r)
-    }
-
-    fn update(&mut self, action: Action) -> Result<Option<Action>> {
-        match action {
-            Action::Tick => {}
-            Action::Tui(tui_event) => {
-                // info!("Tui event: received");
-                match tui_event {
-                    TuiEvents::MevBlockMetricReceived(mevblock) => {
-                        let mut blocks: std::sync::MutexGuard<'_, Vec<MevBlock>> =
-                            self.mevblocks.lock().unwrap();
-                        blocks.push(mevblock.clone()); // Store received block
-                    }
-                    TuiEvents::MevBundleEventReceived(bundle) => {
-                        let mut bundles: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                            self.mev_bundles.lock().unwrap();
-                        bundles.extend(bundle.into_iter());
-                    } //_ => (),
-                }
+    fn poll_with_ctx(&mut self, should_render: bool, cx: &mut Context<'_>) -> Poll<()> {
+        if let Poll::Ready(Some(updated_data)) = self.updater.poll_next_unpin(cx) {
+            self.mev_bundles.extend(&updated_data).unwrap();
+            if should_render {
+                self.terminal.lock().draw(|f| {
+                    self.draw(f, f.size());
+                })
             }
-            _ => {}
+            // reschedule since we resolved
+            cx.waker().wake_by_ref();
         }
-        Ok(None)
-    }
-
-    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
-        // f.render_widget(self,area,);
-        // self.render(area,f.buffer_mut());
-
-        let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
-
-        let template = Layout::default()
-            .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(1)])
-            .split(area);
-
-        let buf = f.buffer_mut();
-
-        Self::draw_livestream(self, template[1], buf);
-
-        if self.show_popup {
-            let block = Block::default()
-                .title("MEV Details")
-                .borders(Borders::ALL)
-                .padding(Padding::horizontal(4));
-
-            let area = Self::centered_rect(80, 80, area);
-            f.render_widget(Clear, area); //this clears out the background
-
-            let paragraph = Paragraph::new("Hello, world!");
-            f.render_widget(paragraph, area);
-
-            /*
-                        // why is this here?
-                        match self.stream_table_state.selected() {
-                            Some(i) => self.stream_table_state.selected(),
-                            None => None,
-                        };
-            */
-            let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                self.mev_bundles.lock().unwrap();
-
-            let text = mevblocks_guard[self.stream_table_state.selected().unwrap()]
-                .to_string()
-                .into_text();
-
-            let paragraph = Paragraph::new(text.unwrap())
-                .block(block)
-                .scroll((self.popup_scroll_position, 0));
-
-            f.render_widget(paragraph, area);
-
-            f.render_stateful_widget(
-                Scrollbar::default()
-                    .orientation(ScrollbarOrientation::VerticalLeft)
-                    .begin_symbol(Some("↑"))
-                    .end_symbol(Some("↓")),
-                f.size().inner(&Margin { vertical: 10, horizontal: 10 }),
-                &mut self.popup_scroll_state,
-            );
-        }
-
-        Ok(())
+        Poll::Pending
     }
 }
+
+// impl Component for Livestream {
+//     fn name(&self) -> String {
+//         "Livestream".to_string()
+//     }
+//
+//     fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>>
+// {         match key.code {
+//             KeyCode::Esc => {
+//                 info!("Esc pressed");
+//             }
+//             KeyCode::Enter => {
+//                 info!("Enter pressed");
+//
+//                 self.popup_scroll_position = 0;
+//                 self.popup_scroll_state = self
+//                     .popup_scroll_state
+//                     .position(self.popup_scroll_position as usize);
+//
+//                 self.show_popup = !self.show_popup;
+//             }
+//             KeyCode::Up => {
+//                 //info!("Up pressed");
+//
+//                 self.next();
+//             }
+//             KeyCode::Down => {
+//                 //info!("Down pressed");
+//
+//                 self.previous();
+//             }
+//             _ => (),
+//         };
+//
+//         Ok(Some(Action::Tick))
+//     }
+//
+//     fn handle_events(&mut self, event: Option<Event>) ->
+// Result<Option<Action>> {         let r = match event {
+//             Some(Event::Key(key_event)) =>
+// self.handle_key_events(key_event)?,
+// Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event)?,
+//             _ => None,
+//         };
+//         Ok(r)
+//     }
+//
+//     fn update(&mut self, action: Action) -> Result<Option<Action>> {
+//         match action {
+//             Action::Tick => {}
+//             Action::Tui(tui_event) => {
+//                 // info!("Tui event: received");
+//                 match tui_event {
+//                     TuiEvents::MevBlockMetricReceived(mevblock) => {
+//                         let mut blocks: std::sync::MutexGuard<'_,
+// Vec<MevBlock>> =                             self.mevblocks.lock().unwrap();
+//                         blocks.push(mevblock.clone()); // Store received
+// block                     }
+//                     TuiEvents::MevBundleEventReceived(bundle) => {
+//                         let mut bundles: std::sync::MutexGuard<'_,
+// Vec<Bundle>> =                             self.mev_bundles.lock().unwrap();
+//                         bundles.extend(bundle.into_iter());
+//                     } //_ => (),
+//                 }
+//             }
+//             _ => {}
+//         }
+//         Ok(None)
+//     }
+//
+//     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
+//         // f.render_widget(self,area,);
+//         // self.render(area,f.buffer_mut());
+//
+//         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
+//
+//         let template = Layout::default()
+//             .constraints([Constraint::Length(1), Constraint::Min(8),
+// Constraint::Length(1)])             .split(area);
+//
+//         let buf = f.buffer_mut();
+//
+//         Self::draw_livestream(self, template[1], buf);
+//
+//         if self.show_popup {
+//             let block = Block::default()
+//                 .title("MEV Details")
+//                 .borders(Borders::ALL)
+//                 .padding(Padding::horizontal(4));
+//
+//             let area = Self::centered_rect(80, 80, area);
+//             f.render_widget(Clear, area); //this clears out the background
+//
+//             let paragraph = Paragraph::new("Hello, world!");
+//             f.render_widget(paragraph, area);
+//
+//             /*
+//                         // why is this here?
+//                         match self.stream_table_state.selected() {
+//                             Some(i) => self.stream_table_state.selected(),
+//                             None => None,
+//                         };
+//             */
+//             let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
+//                 self.mev_bundles.lock().unwrap();
+//
+//             let text =
+// mevblocks_guard[self.stream_table_state.selected().unwrap()]
+// .to_string()                 .into_text();
+//
+//             let paragraph = Paragraph::new(text.unwrap())
+//                 .block(block)
+//                 .scroll((self.popup_scroll_position, 0));
+//
+//             f.render_widget(paragraph, area);
+//
+//             f.render_stateful_widget(
+//                 Scrollbar::default()
+//                     .orientation(ScrollbarOrientation::VerticalLeft)
+//                     .begin_symbol(Some("↑"))
+//                     .end_symbol(Some("↓")),
+//                 f.size().inner(&Margin { vertical: 10, horizontal: 10 }),
+//                 &mut self.popup_scroll_state,
+//             );
+//         }
+//
+//         Ok(())
+//     }
+// }

@@ -37,24 +37,16 @@ use crate::{
 #[derive(Default, Debug)]
 pub struct Dashboard {
     command_tx: Option<UnboundedSender<Action>>,
-    config:     Config,
-    navigation: Navigation,
-    mev_count:  MevCount,
-    livestream: Livestream,
-    progress:   Progress,
-    focus:      Focus,
-}
-
-#[derive(Default, Debug)]
-pub struct Dashboard {
-    command_tx:  Option<UnboundedSender<Action>>,
-    config:      Config,
-    navigation:  Navigation,
-    mev_count:   MevCount,
-    livestream:  Livestream,
-    leaderboard: Leaderboard,
-    progress:    Progress,
-    focus:       Focus,
+    config: Config,
+    mevblocks: Arc<Mutex<Vec<MevBlock>>>,
+    mev_bundles: Arc<Mutex<Vec<Bundle>>>, // Shared state for MevBlocks
+    data: Vec<(&'static str, u64)>,
+    stream_table_state: TableState,
+    show_popup: bool,
+    pub popup_scroll_position: u16,
+    pub popup_scroll_state: ScrollbarState,
+    pub progress_counter: Option<u16>,
+    leaderboard: Vec<(&'static str, u64)>,
 }
 
 impl Dashboard {
