@@ -59,11 +59,7 @@ const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{
-    discovery::DiscoveryInspector,
-    events::{Action, TuiEvents},
-    Inspector,
-};
+use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]
 pub struct ComposerResults {

@@ -1,12 +1,8 @@
-use std::{
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use brontes_types::mev::events::Action;
+use brontes_database::tui::events::Action;
 use color_eyre::eyre::Result;
-use crossterm::event::{
-    KeyCode, KeyEvent, KeyModifiers,
-};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -15,7 +11,7 @@ use crate::tui::app::AppContext;
 use crate::tui::{
     //events::{Event, EventHandler},
     app::layout,
-    config::{Config},
+    config::Config,
     theme::THEME,
     tui::Event,
 };
