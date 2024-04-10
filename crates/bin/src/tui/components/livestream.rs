@@ -1,11 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use ansi_to_tui::IntoText;
-use brontes_types::mev::{
-    bundle::Bundle,
-    events::{Action, TuiEvents},
-    Mev, MevBlock,
-};
+use brontes_database::tui::events::{Action, TuiEvents};
+use brontes_types::mev::{bundle::Bundle, Mev, MevBlock};
 use color_eyre::eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
@@ -28,14 +25,10 @@ pub struct Livestream {
     show_popup:                bool,
     pub popup_scroll_position: u16,
     pub popup_scroll_state:    ScrollbarState,
-
 }
 
 impl Livestream {
-    pub fn new(
-        mevblocks: Arc<Mutex<Vec<MevBlock>>>,
-        mev_bundles: Arc<Mutex<Vec<Bundle>>>,
-    ) -> Self {
+    pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
         Self {
             mevblocks,
             mev_bundles,
@@ -261,8 +254,7 @@ impl Component for Livestream {
                         let mut bundles: std::sync::MutexGuard<'_, Vec<Bundle>> =
                             self.mev_bundles.lock().unwrap();
                         bundles.extend(bundle.into_iter());
-                    }
-                    //_ => (),
+                    } //_ => (),
                 }
             }
             _ => {}
@@ -279,8 +271,6 @@ impl Component for Livestream {
         let template = Layout::default()
             .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(1)])
             .split(area);
-
-
 
         let buf = f.buffer_mut();
 
@@ -299,12 +289,12 @@ impl Component for Livestream {
             f.render_widget(paragraph, area);
 
             /*
-            // why is this here?
-            match self.stream_table_state.selected() {
-                Some(i) => self.stream_table_state.selected(),
-                None => None,
-            };
-*/
+                        // why is this here?
+                        match self.stream_table_state.selected() {
+                            Some(i) => self.stream_table_state.selected(),
+                            None => None,
+                        };
+            */
             let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
                 self.mev_bundles.lock().unwrap();
 

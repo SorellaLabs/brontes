@@ -7,11 +7,8 @@ use std::{
     thread::sleep,
 };
 
-use brontes_types::mev::{
-    bundle::Bundle,
-    events::{Action, TuiEvents},
-    MevBlock,
-};
+use brontes_database::tui::events::{Action, Event};
+use brontes_types::mev::{bundle::Bundle, MevBlock};
 use crossterm::event::{Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use eyre::{Context, Error, Result}; //
 use itertools::Itertools;
@@ -27,7 +24,7 @@ use tokio::{
     },
     time::Duration,
 };
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
 use crate::{
     runner::CliContext,

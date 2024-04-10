@@ -1,10 +1,11 @@
 use std::{fmt, fmt::Debug};
 
-use brontes_types::mev::events::Action;
+use brontes_database::tui::events::Action;
 use color_eyre::eyre::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::layout::Rect;
 use tokio::sync::mpsc::UnboundedSender;
+pub mod shared;
 
 use crate::tui::{
     config::Config,

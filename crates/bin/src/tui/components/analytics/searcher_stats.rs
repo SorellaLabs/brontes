@@ -1,12 +1,11 @@
-
-use brontes_types::mev::events::Action;
+use brontes_database::tui::events::Action;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::tui::{
     components::{Component, Frame},
-    config::{Config},
+    config::Config,
 };
 
 #[derive(Default, Debug)]

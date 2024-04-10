@@ -1,13 +1,11 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::cex_config::CexDownloadConfig;
+use brontes_database::{clickhouse::cex_config::CexDownloadConfig, tui::events::Action};
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 //TUI related imports
-use brontes_types::{
-    constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools, mev::events::Action,
-};
+use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
