@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 
+[lib]
+proc-macro = true
+
 [dependencies]
 # reth 
 reth-rpc-types.workspace = true
@@ -63,6 +66,8 @@ zstd = "0.13"
 paste = "1.0.14"
 pin-project = "1.1.4"
 clap.workspace = true
+
+
 
 # stats
 statrs = "0.16" 

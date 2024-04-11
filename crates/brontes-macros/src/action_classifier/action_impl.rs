@@ -1,11 +1,13 @@
+use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     bracketed, parenthesized,
     parse::Parse,
+    parse_macro_input,
     spanned::Spanned,
     token::{Paren, Star},
-    Error, ExprClosure, Ident, LitBool, Path, Token,
+    Data, DeriveInput, Error, ExprClosure, Fields, Ident, LitBool, Path, Token,
 };
 
 use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME};
@@ -316,4 +318,125 @@ fn uppercase_first_char(s: &str) -> String {
         None => String::new(),
         Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
     }
+}
+
+#[proc_macro_derive(ActiUtils)]
+pub fn brontes_actions(input: TokenStream) -> TokenStream {
+// Convert the input from the TokenStream (which represents the code where the macro is applied)
+// into a syntax tree structure that we can manipulate (DeriveInput).
+let input = parse_macro_input!(input as DeriveInput);
+
+// Extract the identifier of the enum (its name) from the input syntax tree.
+let name = input.ident;
+
+// Extract the variants of the enum from the input. Here, we expect the data to be an enum type.
+// This part should handle the case where the input is not an enum properly.
+let variants = if let Data::Enum(data_enum) = input.data {
+    data_enum.variants
+} else {
+    // Instead of panicking, we should handle this case properly, possibly by returning
+    // a compile error or skipping the generation.
+    return TokenStream::new(); // Return an empty TokenStream if it's not an enum.
+};
+
+// Initialize vectors to hold the generated checking functions and accessor functions.
+let mut checks = Vec::new();
+let mut functions = Vec::new();
+
+// Iterate over each variant in the enum.
+for variant in variants {
+    // Get the identifier for the current variant.
+    let ident = &variant.ident;
+
+    // Generate identifiers for our utility functions using the variant's name, converting it
+    // to snake case and prefixing appropriately for different utility functions.
+    let func_name = syn::Ident::new(
+        &format!("is_{}", ident.to_string().to_lowercase().to_snake_case()),
+        ident.span(),
+    );
+
+    let try_name = syn::Ident::new(
+        &format!("try_{}", ident.to_string().to_lowercase().to_snake_case()),
+        ident.span(),
+    );
+
+    let try_name_mut = syn::Ident::new(
+        &format!("try_{}_mut", ident.to_string().to_lowercase().to_snake_case()),
+        ident.span(),
+    );
+
+    let try_name_ref = syn::Ident::new(
+        &format!("try_{}_ref", ident.to_string().to_lowercase().to_snake_case()),
+        ident.span(),
+    );
+
+    let try_name_dedup = syn::Ident::new(
+        &format!("try_{}_dedup", ident.to_string().to_lowercase().to_snake_case()),
+        ident.span(),
+    );
+
+    // Generate checking functions for each variant.
+    // These functions use pattern matching to determine if an enum instance matches a specific variant.
+    checks.push(quote! {
+        pub const fn #func_name(&self) -> bool {
+            matches!(self, #name::#ident(_))
+        };
+    });
+
+    // Generate functions to attempt to extract data from the variant.
+    // This includes functions to get non-mutable and mutable references, or the data itself.
+    functions.push(quote! {
+        pub fn #try_name(self) -> Option<inner> {
+            if let #name::#ident(inner) = self {
+                Some(inner)
+            } else {
+                None
+            }
+        }
+        impl From<inner> for #name {
+            fn from(value: inner) -> #name {
+                #name::#ident(value)
+            }
+        }
+    });
+
+    functions.push(quote! {
+        pub fn #try_name_mut(&mut self) -> Option<&mut inner> {
+            if let #name::#ident(inner) = self {
+                Some(inner)
+            } else {
+                None
+            }
+        }
+    });
+
+    functions.push(quote! {
+        pub fn #try_name_ref(&self) -> Option<&inner> {
+            if let #name::#ident(inner) = self {
+                Some(inner)
+            } else {
+                None
+            }
+        }
+    });
+
+    functions.push(quote! {
+        pub fn #try_name_dedup() -> Box<dyn Fn(#name) -> Option<inner>> {
+            Box::new(#name::#try_name)
+                    as Box<dyn Fn(#name) -> Option<inner>>
+        }
+    });
+}
+
+// Assemble all generated code into one final piece, using the `quote!` macro to interpolate
+// the generated parts into the implementation block for the enum.
+let gen = quote! {
+    impl #name {
+        #(#checks)*
+        #(#functions)*
+    }
+};
+
+// Convert the generated code back into a TokenStream to be integrated into the user's code.
+gen.into()
 }

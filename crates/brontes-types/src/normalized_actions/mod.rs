@@ -1,3 +1,4 @@
+extern crate proc_macro;
 pub mod accounting;
 pub mod aggregator;
 pub mod batch;
@@ -34,6 +35,10 @@ use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
     TreeSearchBuilder,
 };
+use syn::parse_macro_input;
+
+
+
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn is_classified(&self) -> bool;
@@ -327,145 +332,11 @@ impl Actions {
         }
     }
 
-    pub const fn is_swap(&self) -> bool {
-        matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
-    }
-
-    pub const fn is_swap_no_fee(&self) -> bool {
-        matches!(self, Actions::Swap(_))
-    }
-
-    pub const fn is_swap_with_fee(&self) -> bool {
-        matches!(self, Actions::SwapWithFee(_))
-    }
-
-    pub const fn is_flash_loan(&self) -> bool {
-        matches!(self, Actions::FlashLoan(_))
-    }
-
-    pub const fn is_aggregator(&self) -> bool {
-        matches!(self, Actions::Aggregator(_))
-    }
-
-    pub const fn is_liquidation(&self) -> bool {
-        matches!(self, Actions::Liquidation(_))
-    }
-
-    pub const fn is_batch(&self) -> bool {
-        matches!(self, Actions::Batch(_))
-    }
-
-    pub const fn is_burn(&self) -> bool {
-        matches!(self, Actions::Burn(_))
-    }
-
-    pub const fn is_revert(&self) -> bool {
-        matches!(self, Actions::Revert)
-    }
-
-    pub const fn is_mint(&self) -> bool {
-        matches!(self, Actions::Mint(_))
-    }
-
-    pub const fn is_transfer(&self) -> bool {
-        matches!(self, Actions::Transfer(_))
-    }
-
-    pub const fn is_collect(&self) -> bool {
-        matches!(self, Actions::Collect(_))
-    }
-
-    pub const fn is_self_destruct(&self) -> bool {
-        matches!(self, Actions::SelfDestruct(_))
-    }
-
-    pub const fn is_new_pool(&self) -> bool {
-        matches!(self, Actions::NewPool(_))
-    }
-
-    pub const fn is_pool_config_update(&self) -> bool {
-        matches!(self, Actions::PoolConfigUpdate(_))
-    }
-
-    pub const fn is_unclassified(&self) -> bool {
-        matches!(self, Actions::Unclassified(_))
-    }
-
-    pub const fn is_eth_transfer(&self) -> bool {
-        matches!(self, Actions::EthTransfer(_))
-    }
-
-    pub fn is_static_call(&self) -> bool {
-        if let Self::Unclassified(u) = &self {
-            return u.is_static_call()
-        }
-        false
-    }
+   
+   
 }
 
-macro_rules! extra_impls {
-    ($(($action_name:ident, $ret:ident)),*) => {
-        paste::paste!(
 
-            impl Actions {
-                $(
-                    pub fn [<try _$action_name:snake _ref>](&self) -> Option<&$ret> {
-                        if let Actions::$action_name(action) = self {
-                            Some(action)
-                        } else {
-                            None
-                        }
-                    }
-
-                    pub fn [<try _$action_name:snake _mut>](&mut self) -> Option<&mut $ret> {
-                        if let Actions::$action_name(action) = self {
-                            Some(action)
-                        } else {
-                            None
-                        }
-                    }
-
-                    pub fn [<try _$action_name:snake>](self) -> Option<$ret> {
-                        if let Actions::$action_name(action) = self {
-                            Some(action)
-                        } else {
-                            None
-                        }
-                    }
-
-                    pub fn [<try _$action_name:snake _dedup>]()
-                        -> Box<dyn Fn(Actions) -> Option<$ret>> {
-                        Box::new(Actions::[<try _$action_name:snake>])
-                                as Box<dyn Fn(Actions) -> Option<$ret>>
-                    }
-                )*
-            }
-
-            $(
-                impl From<$ret> for Actions {
-                    fn from(value: $ret) -> Actions {
-                        Actions::$action_name(value)
-                    }
-                }
-            )*
-        );
-
-    };
-}
-
-extra_impls!(
-    (Collect, NormalizedCollect),
-    (Mint, NormalizedMint),
-    (Burn, NormalizedBurn),
-    (Swap, NormalizedSwap),
-    (SwapWithFee, NormalizedSwapWithFee),
-    (Transfer, NormalizedTransfer),
-    (EthTransfer, NormalizedEthTransfer),
-    (Liquidation, NormalizedLiquidation),
-    (FlashLoan, NormalizedFlashLoan),
-    (Aggregator, NormalizedAggregator),
-    (Batch, NormalizedBatch)
-);
 
 /// Custom impl for itering over swaps and swap with fee
 impl Actions {
@@ -525,3 +396,5 @@ impl TokenAccounting for Actions {
         }
     }
 }
+
+
