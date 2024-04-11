@@ -51,10 +51,9 @@ use crate::tui::{
             analytics::Analytics, searcher_stats::SearcherStats, top_contracts::TopContracts,
             vertically_integrated::VerticallyIntegrated,
         }*/
-        metrics::Metrics, settings::Settings, tick::Tick, Component,
+        metrics::Metrics, Component,
     },
     config::Config,
-    tui,
 };
 const TAB_COUNT: usize = 5;
 
@@ -62,7 +61,7 @@ const TAB_COUNT: usize = 5;
 pub struct App {
     pub config:               Config,
     pub components:           Vec<Box<dyn Component + Send>>,
-    term:                     Mutex<Terminal<CrosstermBackend<Stdout>>>,
+    term:                     Terminal<CrosstermBackend<Stdout>>,
     pub page_index:           usize,
     pub last_tick_key_events: Vec<KeyEvent>,
     pub events:               EventStream,
@@ -75,11 +74,11 @@ impl App {
 
         Ok(Self {
             events: EventStream::new(),
-            components: vec![Box::new(Dashboard::default())],
+            components: vec![Box::new(Dashboard::new())],
             config,
             page_index: 0,
             last_tick_key_events: Vec::new(),
-            term: Mutex::new(Term::start()?),
+            term: start_terminal()?,
             tui_rx: rx,
         })
     }
@@ -90,11 +89,13 @@ impl App {
             Event::Key(key) => match key.code {
                 KeyCode::BackTab => {
                     self.page_index.saturating_sub(1) % TAB_COUNT;
-                    self.components[self.page_index].on_select()
+                    self.term
+                        .draw(|f| self.components[self.page_index].on_select(f));
                 }
                 KeyCode::Tab => {
                     self.page_index.saturating_add(1) % TAB_COUNT;
-                    self.components[self.page_index].on_select()
+                    self.term
+                        .draw(|f| self.components[self.page_index].on_select(f));
                 }
                 KeyCode::Char('q') => {
                     stop_terminal()?;
@@ -103,7 +104,7 @@ impl App {
             },
             Event::Resize(width, height) => {
                 //TODO: handle resize by redrawing on active componentJ
-                self.term.lock().resize(Rect::new(0, 0, width, height));
+                self.term.resize(Rect::new(0, 0, width, height));
             }
             _ => {}
         }
@@ -114,7 +115,7 @@ impl App {
 impl Future for App {
     //TODO: Use app output to send signal back to main & control graceful shutdown
     // or reruns based on user input via settings
-    type Output = Result<()>;
+    type Output = ();
 
     fn poll(
         mut self: std::pin::Pin<&mut Self>,
@@ -123,9 +124,11 @@ impl Future for App {
         loop {
             if let Poll::Ready(item) = self.events.poll_next_unpin(cx) {
                 match item {
-                    Some(Ok(event)) => self.handle_key_event(event),
-                    Some(Err(e)) => Err(()),
-                    None => return Poll::Ready(Ok(())),
+                    Some(Ok(event)) => self
+                        .handle_key_event(event)
+                        .expect("Panicked handling key event"),
+                    Some(Err(e)) => panic!("Error: {:?}", e),
+                    None => return Poll::Ready(()),
                 }
             }
         }

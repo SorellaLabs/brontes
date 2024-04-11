@@ -51,7 +51,7 @@ pub trait Component: Debug {
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {}
 
-    fn on_select(&mut self) {}
+    fn on_select(&mut self, f: &mut Frame<'_>) {}
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Component")

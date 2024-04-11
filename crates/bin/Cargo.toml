@@ -86,7 +86,7 @@ polars = {features = ["lazy", "parquet", "group_by_list", "polars-io", "is_in"],
 
 #[cfg(feature = "tui")]
 crossterm = { version = "0.27.0", features = ["event-stream", "serde"] }
-ratatui = { version = "0.26.1", features = ["all-widgets"] }
+ratatui = { version = "0.26.1", features = ["all-widgets", "unstable-widget-ref"] }
 palette = "0.7.3"
 lazy_static = "1.4.0"
 tui-textarea = "0.4.0"

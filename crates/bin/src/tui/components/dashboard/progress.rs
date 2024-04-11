@@ -1,19 +1,19 @@
 use brontes_database::{
-    tui::events::{InitProgress, ProgressUpdate},
+    tui::events::{ProgressBar, ProgressUpdate},
     Tables,
 };
-use brontes_types::{FastHashMap, ProgressBar};
+use brontes_types::FastHashMap;
 use eyre::Result;
 use ratatui::{
     layout::{Constraint, Direction, Flex, Layout},
-    prelude::{Buffer, Color, Modifier, Rect, Style, Widget},
-    widgets::{Block, Gauge},
+    prelude::{Buffer, Color, Modifier, Rect, Style},
+    widgets::{Block, Gauge, Widget, WidgetRef},
 };
 use tokio::sync::mpsc::UnboundedReceiver;
 #[derive(Default, Debug)]
 pub struct Progress {
     pub global_progress_bar: ProgressBar,
-    pub init_progress_bars:  FastHashMap<Tables, InitProgress>,
+    pub init_progress_bars:  FastHashMap<Tables, ProgressBar>,
 }
 
 impl Progress {
@@ -30,7 +30,6 @@ impl Progress {
     }
 
     fn render_global_progress_bar(&self, area: Rect, buf: &mut Buffer) {
-        let progress = self.global_progress_bar.unwrap_or(0);
         Gauge::default()
             .block(Block::bordered().title("Global Progress:"))
             .gauge_style(
@@ -38,7 +37,9 @@ impl Progress {
                     .fg(Color::Green)
                     .add_modifier(Modifier::ITALIC),
             )
-            .ratio(self.global_progress_bar.position as f64 / self.global_progress_bar.total as f64)
+            .ratio(
+                self.global_progress_bar.position as f64 / self.global_progress_bar.target as f64,
+            )
             .render(area, buf);
     }
 
@@ -47,7 +48,7 @@ impl Progress {
         area: Rect,
         buf: &mut Buffer,
         table: &Tables,
-        progress: &InitProgress,
+        progress: &ProgressBar,
     ) {
         Gauge::default()
             .block(Block::bordered().title(format!("{} Initialization:", table)))
@@ -56,7 +57,7 @@ impl Progress {
                     .fg(Color::Green)
                     .add_modifier(Modifier::ITALIC),
             )
-            .ratio(progress.position as f64 / progress.total as f64)
+            .ratio(progress.position as f64 / progress.target as f64)
             .use_unicode(true)
             .render(area, buf);
     }
@@ -76,7 +77,7 @@ impl Progress {
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(layout[1]);
 
-        let first_half_size: u32 = (self.init_progress_bars.len() + 1) / 2;
+        let first_half_size: u32 = ((self.init_progress_bars.len() + 1) / 2) as u32;
         let second_half_size: u32 = (self.init_progress_bars.len() as u32) - first_half_size;
 
         let constraints_first_half =
@@ -103,8 +104,8 @@ impl Progress {
     }
 }
 
-impl Widget for Progress {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl WidgetRef for Progress {
+    fn render_ref(&self, area: Rect, buf: &mut Buffer) {
         let layout = self.create_layout(area);
 
         self.render_global_progress_bar(layout[0], buf);

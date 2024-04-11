@@ -1,14 +1,11 @@
 mod leaderboard;
 mod livestream;
-use ratatui::widgets::canvas::Line;
+use parking_lot::Mutex;
+use ratatui::text::Line;
 mod log;
 mod mev_count;
 pub mod progress;
-use std::{
-    io::Stdout,
-    sync::{Arc, Mutex},
-    thread, time,
-};
+use std::{io::Stdout, sync::Arc, thread, time};
 
 use ansi_to_tui::IntoText;
 use brontes_database::tui::events::TuiUpdate;
@@ -48,7 +45,7 @@ use crate::{
         utils::{bundles_to_dataframe, dataframe_to_table_rows},
     },
 };
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Dashboard {
     config:     Config,
     navigation: Navigation,
@@ -57,12 +54,23 @@ pub struct Dashboard {
     //leaderboard: Leaderboard,
     progress:   Progress,
     focus:      Focus,
-    term:       Mutex<Terminal<CrosstermBackend<Stdout>>>,
 }
 
 pub const DASHBOARD_INDEX: usize = 0;
 
 impl Dashboard {
+    pub fn new() -> Self {
+        Self {
+            config:     Config::default(),
+            navigation: Navigation::default(),
+            mev_count:  MevCount::default(),
+            livestream: Livestream::default(),
+            //leaderboard: Leaderboard::new(),
+            progress:   Progress::default(),
+            focus:      Focus::Dashboard,
+        }
+    }
+
     /*pub fn next(&mut self) {
         if self.show_popup {
             self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
@@ -161,16 +169,13 @@ impl Component for Dashboard {
         match event {
             TuiUpdate::Block((block, bundles)) => self.mev_count.update_count(bundles),
 
-            _ => None,
+            _ => (),
         };
     }
 
-    fn on_select(&mut self) {
-        self.term.lock().draw(|f| {
-            let page_index = DASHBOARD_INDEX;
-
-            self.navigation.draw(f, f.size(), DASHBOARD_INDEX);
-        });
+    fn on_select(&mut self, f: &mut Frame<'_>) {
+        let page_index = DASHBOARD_INDEX;
+        self.navigation.draw(f, f.size(), DASHBOARD_INDEX);
     }
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
@@ -197,11 +202,11 @@ impl Component for Dashboard {
         let buf = f.buffer_mut();
 
         self.mev_count.draw(sub_layout[0], buf);
+        self.progress.render(template[2], buf);
         //Self::draw_leaderboard(self, sub_layout[1], buf);
         //Self::draw_logs(self, chunks[2], buf);
         self.livestream.draw_livestream(chunks[1], buf);
 
-        self.progress.render(template[2], buf);
         Self::render_bottom_bar(self, template[3], buf);
     }
 }
@@ -224,6 +229,7 @@ impl Dashboard {
                 [key, desc]
             })
             .collect_vec();
+
         Paragraph::new(Line::from(spans))
             .alignment(Alignment::Center)
             .fg(Color::Indexed(236))
