@@ -333,77 +333,10 @@ impl Actions {
     }
 
    
-    pub fn is_static_call(&self) -> bool {
-        if let Self::Unclassified(u) = &self {
-            return u.is_static_call()
-        }
-        false
-    }
+   
 }
 
-macro_rules! extra_impls {
-    ($(($action_name:ident, $ret:ident)),*) => {
-        paste::paste!(
 
-            impl Actions {
-                $(
-                    pub fn [<try _$action_name:snake _ref>](&self) -> Option<&$ret> {
-                        if let Actions::$action_name(action) = self {
-                            Some(action)
-                        } else {
-                            None
-                        }
-                    }
-
-                    pub fn [<try _$action_name:snake _mut>](&mut self) -> Option<&mut $ret> {
-                        if let Actions::$action_name(action) = self {
-                            Some(action)
-                        } else {
-                            None
-                        }
-                    }
-
-                    pub fn [<try _$action_name:snake>](self) -> Option<$ret> {
-                        if let Actions::$action_name(action) = self {
-                            Some(action)
-                        } else {
-                            None
-                        }
-                    }
-
-                    pub fn [<try _$action_name:snake _dedup>]()
-                        -> Box<dyn Fn(Actions) -> Option<$ret>> {
-                        Box::new(Actions::[<try _$action_name:snake>])
-                                as Box<dyn Fn(Actions) -> Option<$ret>>
-                    }
-                )*
-            }
-
-            $(
-                impl From<$ret> for Actions {
-                    fn from(value: $ret) -> Actions {
-                        Actions::$action_name(value)
-                    }
-                }
-            )*
-        );
-
-    };
-}
-
-extra_impls!(
-    (Collect, NormalizedCollect),
-    (Mint, NormalizedMint),
-    (Burn, NormalizedBurn),
-    (Swap, NormalizedSwap),
-    (SwapWithFee, NormalizedSwapWithFee),
-    (Transfer, NormalizedTransfer),
-    (EthTransfer, NormalizedEthTransfer),
-    (Liquidation, NormalizedLiquidation),
-    (FlashLoan, NormalizedFlashLoan),
-    (Aggregator, NormalizedAggregator),
-    (Batch, NormalizedBatch)
-);
 
 /// Custom impl for itering over swaps and swap with fee
 impl Actions {
