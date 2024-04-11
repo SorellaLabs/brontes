@@ -140,6 +140,7 @@ clap = { version = "4.4.6", features = ["derive"] }
 
 # Numbers
 malachite = "0.4.0"
+malachite-q = "0.4.0"
 
 # phf
 phf = "0.11.2"

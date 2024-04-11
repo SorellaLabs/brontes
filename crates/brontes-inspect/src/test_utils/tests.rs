@@ -243,6 +243,7 @@ impl InspectorTestUtils {
                 CexExchange::Okex,
                 CexExchange::BybitSpot,
                 CexExchange::Kucoin,
+                CexExchange::Upbit,
             ],
         );
 

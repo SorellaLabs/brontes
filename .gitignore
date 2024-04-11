@@ -27,7 +27,7 @@
 /crates/brontes-database/benches/**/*.version
 
 # Parquet exports
-/data_exports/**
+/brontes-exports/**
 
 # Juptyer Notebook 
 /notebook/** 

@@ -17,7 +17,8 @@ use tui_logger::tracing_subscriber_layer;
 static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() -> eyre::Result<()> {
-    dotenv::dotenv().ok();
+    dotenv::dotenv().expect("Failed to load .env file");
+    init_tracing();
     fdlimit::raise_fd_limit().unwrap();
 
     match run() {

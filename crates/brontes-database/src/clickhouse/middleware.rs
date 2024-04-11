@@ -17,12 +17,17 @@ use brontes_types::{
     normalized_actions::Actions,
     pair::Pair,
     structured_trace::TxTrace,
+    traits::TracingProvider,
     BlockTree, FastHashMap, Protocol, SubGraphEdge,
 };
 use indicatif::ProgressBar;
 
 use super::Clickhouse;
-use crate::{clickhouse::ClickhouseHandle, libmdbx::LibmdbxInit, Tables};
+use crate::{
+    clickhouse::ClickhouseHandle,
+    libmdbx::{LibmdbxInit, StateToInitialize},
+    Tables,
+};
 
 pub struct ClickhouseMiddleware<I: DBWriter> {
     #[allow(dead_code)] // on tests feature
@@ -162,7 +167,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, /* inclusive of start only
                                           *progress_bar: Arc<Vec<(Tables, ProgressBar)>>, */
@@ -180,7 +185,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         block_range: Vec<u64>,
         //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
@@ -190,15 +195,21 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
             .await
     }
 
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
-        self.inner.init_full_range_tables(clickhouse).await
+    async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_full_range_tables(clickhouse, tracer)
+            .await
     }
 
     fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
+    ) -> eyre::Result<StateToInitialize> {
         self.inner.state_to_initialize(start_block, end_block)
     }
 }
@@ -428,7 +439,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         clear_tables: bool,
         block_range: Option<(u64, u64)>, /* inclusive of start only
                                           *progress_bar: Arc<Vec<(Tables, ProgressBar)>>, */
@@ -447,7 +458,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
-        tables: &[crate::Tables],
+        tables: crate::Tables,
         block_range: Vec<u64>,
         //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
@@ -457,15 +468,21 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
             .await
     }
 
-    async fn init_full_range_tables<CH: ClickhouseHandle>(&self, clickhouse: &'static CH) -> bool {
-        self.inner.init_full_range_tables(clickhouse).await
+    async fn initialize_full_range_tables<T: TracingProvider, CH: ClickhouseHandle>(
+        &'static self,
+        clickhouse: &'static CH,
+        tracer: Arc<T>,
+    ) -> eyre::Result<()> {
+        self.inner
+            .initialize_full_range_tables(clickhouse, tracer)
+            .await
     }
 
     fn state_to_initialize(
         &self,
         start_block: u64,
         end_block: u64,
-    ) -> eyre::Result<Vec<std::ops::RangeInclusive<u64>>> {
+    ) -> eyre::Result<StateToInitialize> {
         self.inner.state_to_initialize(start_block, end_block)
     }
 }

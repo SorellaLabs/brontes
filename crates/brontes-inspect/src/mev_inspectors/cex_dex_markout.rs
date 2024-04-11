@@ -40,6 +40,10 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+        if metadata.cex_trades.is_none() {
+            return vec![]
+        }
+
         let swap_txes = tree
             .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
@@ -55,7 +59,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_solver_settlement() {
-                        return None;
+                        return None
                     }
                 }
 
@@ -127,19 +131,18 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         swap: NormalizedSwap,
         metadata: &Metadata,
     ) -> Option<PossibleCexDexLeg> {
+        // token in price
         let pair = Pair(swap.token_out.address, swap.token_in.address);
 
         let (maker_price, taker_price) = metadata.cex_trades.as_ref()?.get_price(
             &self.cex_exchanges,
             &pair,
             // we always are buying amount in on cex
-            &swap.amount_in,
-            // arbitrary for now
-            25,
+            &swap.amount_out,
             // add lookup
             None,
         )?;
-        let leg = self.profit_classifier(&swap, maker_price, taker_price);
+        let leg = self.profit_classifier(&swap, maker_price, taker_price, metadata)?;
 
         Some(PossibleCexDexLeg { swap, leg })
     }
@@ -152,20 +155,36 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         swap: &NormalizedSwap,
         maker_price: ExchangePrice,
         taker_price: ExchangePrice,
-    ) -> SwapLeg {
+        metadata: &Metadata,
+    ) -> Option<SwapLeg> {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let rate = swap.swap_rate();
         let maker_delta = &maker_price.price - &rate;
         let taker_delta = &taker_price.price - &rate;
 
+        let pair = Pair(swap.token_in.address, self.utils.quote);
+        let baseline_for_tokeprice = Rational::from(100);
+
+        let token_price = metadata
+            .cex_trades
+            .as_ref()?
+            .get_price(
+                &self.cex_exchanges,
+                &pair,
+                &baseline_for_tokeprice,
+                // add lookup
+                None,
+            )?
+            .0;
+
         let (maker_profit, taker_profit) = (
             // prices are fee adjusted already so no need to calculate fees here
-            maker_delta * &swap.amount_out * &maker_price.price,
-            taker_delta * &swap.amount_out * &taker_price.price,
+            maker_delta * &swap.amount_out * &token_price.price,
+            taker_delta * &swap.amount_out * token_price.price,
         );
 
-        SwapLeg { taker_price, maker_price, pnl: StatArbPnl { maker_profit, taker_profit } }
+        Some(SwapLeg { taker_price, maker_price, pnl: StatArbPnl { maker_profit, taker_profit } })
     }
 
     /// Accounts for gas costs in the calculation of potential arbitrage
@@ -201,8 +220,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 swaps.push(swap_with_profit.swap.clone());
                 arb_details.push(StatArbDetails {
-                    cex_exchange: most_profitable_leg.maker_price.exchanges[0].0,
-
+                    cex_exchange: most_profitable_leg
+                        .maker_price
+                        .exchanges
+                        .first()
+                        .map(|i| i.0)
+                        .unwrap_or_default(),
                     cex_price:    most_profitable_leg.maker_price.price.clone(),
                     dex_exchange: swap_with_profit.swap.protocol,
                     dex_price:    swap_with_profit.swap.swap_rate(),
@@ -218,6 +241,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         }
 
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
+        tracing::debug!(?gas_cost);
 
         let pnl = StatArbPnl {
             maker_profit: total_arb_pre_gas.maker_profit - &gas_cost,
@@ -272,8 +296,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     pub fn is_triangular_arb(
         &self,
         possible_cex_dex: &PossibleCexDex,
-        tx_info: &TxInfo,
-        metadata: Arc<Metadata>,
+        _tx_info: &TxInfo,
+        _metadata: Arc<Metadata>,
     ) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if possible_cex_dex.swaps.len() < 2 {
@@ -283,34 +307,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let original_token = possible_cex_dex.swaps[0].token_in.address;
         let final_token = possible_cex_dex.swaps.last().unwrap().token_out.address;
 
-        // Check if there is a cycle
-        if original_token != final_token {
-            return false
-        }
-        let deltas = possible_cex_dex
-            .swaps
-            .clone()
-            .into_iter()
-            .map(Actions::from)
-            .account_for_actions();
-
-        let addr_usd_deltas = self
-            .utils
-            .usd_delta_by_address(
-                tx_info.tx_index,
-                PriceAt::Average,
-                &deltas,
-                metadata.clone(),
-                false,
-            )
-            .unwrap_or_default();
-
-        let profit = addr_usd_deltas
-            .values()
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        profit - metadata.get_gas_price_usd(tx_info.gas_details.gas_paid(), self.utils.quote)
-            > Rational::ZERO
+        original_token == final_token
     }
 }
 
@@ -353,4 +350,63 @@ pub struct SwapLeg {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+
+    use alloy_primitives::hex;
+    use brontes_types::constants::{USDT_ADDRESS, WETH_ADDRESS};
+
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig},
+        Inspectors,
+    };
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout() {
+        // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .needs_token(WETH_ADDRESS)
+            .with_gas_paid_usd(38.31)
+            .with_expected_profit_usd(148.430);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_vs_non() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .needs_token(WETH_ADDRESS)
+            .with_expected_profit_usd(123_317.44)
+            .with_gas_paid_usd(80_751.62);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_psm() {
+        // https://etherscan.io/tx/0x5ea3ca12cac835172fa24066c6d895886c1917005e06d7b49b48cc99d5750557
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("5ea3ca12cac835172fa24066c6d895886c1917005e06d7b49b48cc99d5750557").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .needs_token(WETH_ADDRESS)
+            .with_expected_profit_usd(123_317.44)
+            .with_gas_paid_usd(67.89);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+}

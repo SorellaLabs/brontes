@@ -195,3 +195,8 @@ mev_types = ["Sandwich, CexDex"]
 [searcher_contracts."0xe8cFAd4C75a5e1CaF939Fd80AfCf837DdE340a69"]
 fund = "Beelder"
 mev_types = ["CexDex"]
+
+[searcher_contracts."0x000000000035B5e5ad9019092C665357240f594e"]
+mev_types = ["AtomicArb"]
+sibling_searchers = ["0x00000000032962B51589768828ad878876299E14"]
+

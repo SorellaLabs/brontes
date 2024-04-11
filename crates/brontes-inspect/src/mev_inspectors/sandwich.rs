@@ -1,4 +1,4 @@
-use std::{collections::hash_map::Entry, hash::Hash, iter, sync::Arc};
+use std::{collections::hash_map::Entry, hash::Hash, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -8,9 +8,9 @@ use brontes_types::{
         accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedSwap,
         NormalizedTransfer,
     },
-    tree::{BlockTree, GasDetails, TxInfo},
+    tree::{collect_address_set_for_accounting, BlockTree, GasDetails},
     ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
-    TreeIter, TreeSearchBuilder, UnzipPadded,
+    TreeIter, TreeSearchBuilder, TxInfo, UnzipPadded,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -281,12 +281,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
             .account_for_actions();
 
-        let mev_addresses: FastHashSet<Address> = possible_front_runs_info
-            .iter()
-            .chain(iter::once(&backrun_info))
-            .flat_map(|tx_info| iter::once(&tx_info.eoa).chain(tx_info.mev_contract.as_ref()))
-            .cloned()
-            .collect();
+        let mut mev_addresses: FastHashSet<Address> =
+            collect_address_set_for_accounting(&possible_front_runs_info);
+
+        let backrun_addresses: FastHashSet<Address> =
+            collect_address_set_for_accounting(std::slice::from_ref(&backrun_info));
+
+        mev_addresses.extend(backrun_addresses);
 
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             backrun_info.tx_index,
@@ -691,7 +692,7 @@ mod tests {
 
     /// this is a jit sandwich
     #[brontes_macros::test]
-    async fn test_sandwich_part_of_jit_sandwich() {
+    async fn test_sandwich_part_of_jit_sandwich_default() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)

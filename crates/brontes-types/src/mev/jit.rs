@@ -92,7 +92,11 @@ impl Serialize for JitLiquidity {
             &format!("{:?}", self.frontrun_mint_tx_hash),
         )?;
 
-        let frontrun_mints: ClickhouseVecNormalizedMintOrBurn = self.frontrun_mints.clone().into();
+        let frontrun_mints: ClickhouseVecNormalizedMintOrBurn = self
+            .frontrun_mints
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("frontrun_mints.trace_idx", &frontrun_mints.trace_index)?;
         ser_struct.serialize_field("frontrun_mints.from", &frontrun_mints.from)?;
@@ -112,7 +116,9 @@ impl Serialize for JitLiquidity {
 
         // victim swaps
         let victim_swaps: ClickhouseDoubleVecNormalizedSwap =
-            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone()).into();
+            (self.victim_swaps_tx_hashes.clone(), self.victim_swaps.clone())
+                .try_into()
+                .map_err(serde::ser::Error::custom)?;
         ser_struct.serialize_field("victim_swaps.tx_hash", &victim_swaps.tx_hash)?;
         ser_struct.serialize_field("victim_swaps.trace_idx", &victim_swaps.trace_index)?;
         ser_struct.serialize_field("victim_swaps.from", &victim_swaps.from)?;
@@ -145,7 +151,11 @@ impl Serialize for JitLiquidity {
         ser_struct
             .serialize_field("backrun_burn_tx_hash", &format!("{:?}", self.backrun_burn_tx_hash))?;
 
-        let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self.backrun_burns.clone().into();
+        let backrun_burns: ClickhouseVecNormalizedMintOrBurn = self
+            .backrun_burns
+            .clone()
+            .try_into()
+            .map_err(serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("backrun_burns.trace_idx", &backrun_burns.trace_index)?;
         ser_struct.serialize_field("backrun_burns.from", &backrun_burns.from)?;

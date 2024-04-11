@@ -18,7 +18,7 @@ use brontes_types::{
 };
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tracing::{info, span, Instrument, Level};
+use tracing::{debug, span, Instrument, Level};
 
 pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
 pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
@@ -33,7 +33,7 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
     pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
-        let (tx, rx) = channel(2);
+        let (tx, rx) = channel(100);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
             let block = pricer.current_block_processing();
@@ -55,7 +55,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         self.pending_trees.is_empty()
     }
 
-    fn resechedule(&mut self, mut pricer: BrontesBatchPricer<T, DB>) {
+    fn reschedule(&mut self, mut pricer: BrontesBatchPricer<T, DB>) {
         let tx = self.tx.clone();
         let fut = Box::pin(async move {
             let block = pricer.current_block_processing();
@@ -85,10 +85,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let (pricer, inner) = handle.unwrap();
-            self.resechedule(pricer);
+            self.reschedule(pricer);
 
             if let Some((block, prices)) = inner {
-                info!(target:"brontes","Collected dex prices for block: {}", block);
+                debug!(target:"brontes","Generated dex prices for block: {} ", block);
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
                     return Poll::Ready(None);
