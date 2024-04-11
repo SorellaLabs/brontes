@@ -1,19 +1,16 @@
 use std::env;
 
-use brontes_database::tui::events::Action;
+use brontes_database::tui::events::TuiUpdate;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::{Component, Frame};
-use crate::tui::{
-    //events::{Event, EventHandler},
-    config::Config,
-};
+use crate::tui::{config::Config, tui::Tui};
 
 #[derive(Clone, Debug, Default)]
 pub struct DbSize {
-    command_tx: Option<UnboundedSender<Action>>,
+    command_tx: Option<UnboundedSender<TuiUpdate>>,
     config:     Config,
 }
 
@@ -57,11 +54,6 @@ impl DbSize {
 }
 
 impl Component for DbSize {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
-        self.command_tx = Some(tx);
-        Ok(())
-    }
-
     fn register_config_handler(&mut self, config: Config) -> Result<()> {
         self.config = config;
         Ok(())
@@ -71,23 +63,7 @@ impl Component for DbSize {
         "DbSize".to_string()
     }
 
-    fn update(&mut self, action: Action) -> Result<Option<Action>> {
-        match action {
-            Action::Tick => {}
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    // TODO: Get tables and sizes
-    #[allow(unused_variables)]
-    fn init(&mut self, area: Rect) -> Result<()> {
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
-
-        Ok(())
-    }
-
-    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
+    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
 
         let template = Layout::default()
@@ -106,7 +82,5 @@ impl Component for DbSize {
         let buf = f.buffer_mut();
 
         Self::draw_dbsize(self, sub_layout[0], buf);
-
-        Ok(())
     }
 }

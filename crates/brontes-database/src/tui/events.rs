@@ -4,26 +4,19 @@ use strum::Display;
 use crate::Tables;
 
 #[derive(Debug, Clone, Display)]
-pub enum BrontesData {
+pub enum TuiUpdate {
     Block((MevBlock, Vec<Bundle>)),
     Init(ProgressUpdate),
 }
 
 #[derive(Debug, Clone, Display)]
 pub enum ProgressUpdate {
-    Global(u16),
-    Table((Tables, u16)),
+    Global(ProgressBar),
+    Table((Tables, ProgressBar)),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Display)]
-pub enum Action {
-    Tick,
-    Render,
-    Resize(u16, u16),
-    Suspend,
-    Resume,
-    Quit,
-    Refresh,
-    Error(String),
-    Help,
+#[derive(Debug, Clone)]
+pub struct ProgressBar {
+    pub position: usize,
+    pub target:   usize,
 }

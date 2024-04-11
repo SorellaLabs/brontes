@@ -1,1 +1,1 @@
-mod navigation;
+pub mod navigation;

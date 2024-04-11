@@ -1,43 +1,40 @@
 use std::{
     error,
     future::Future,
+    io::{self, stdout, Stdout},
+    ops::{Deref, DerefMut},
     rc::Rc,
-    sync::{Arc, Mutex},
+    sync::Arc,
     task::Poll,
     thread,
     thread::sleep,
+    time::Duration,
 };
 
-use brontes_types::mev::{
-    bundle::Bundle,
-    events::{Action, TuiEvents},
-    MevBlock,
-};
-use crossterm::event::{
-    Event as CrosstermEvent, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers,
+use brontes_database::tui::events::TuiUpdate;
+use brontes_types::mev::{bundle::Bundle, MevBlock};
+use crossterm::{
+    event::{self, Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
 };
 use eyre::{Context, Error, Result};
 use futures::{StreamExt, TryStreamExt};
-//
 use itertools::Itertools;
+use parking_lot::Mutex;
+use polars::frame::DataFrame;
 use ratatui::{
-    prelude::{Rect, *},
-    widgets::*,
+    prelude::{Color, Constraint, Direction, Layout, Rect, Style, *},
+    widgets::{Block, Borders, ScrollbarState, *},
 };
 use reth_tasks::{TaskExecutor, TaskManager};
-use tokio::{
-    sync::{
-        broadcast::Sender,
-        mpsc::{self, unbounded_channel, UnboundedReceiver, UnboundedSender},
-    },
-    time::Duration,
+use tokio::sync::{
+    broadcast::Sender,
+    mpsc::{self, unbounded_channel, UnboundedReceiver, UnboundedSender},
 };
 use tracing::{error, info, trace};
 
-use crate::{
-    runner::CliContext,
-    tui::{term::Term, tui::Event},
-};
+use crate::runner::CliContext;
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -46,299 +43,95 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use super::{components::analytics::hot_tokens::HotTokens, mode::Page};
+//use super::{components::analytics::hot_tokens::HotTokens, mode::Page};
 use crate::tui::{
     components::{
-        analytics::{
+        dashboard::Dashboard,
+        /*analytics::{
             analytics::Analytics, searcher_stats::SearcherStats, top_contracts::TopContracts,
             vertically_integrated::VerticallyIntegrated,
-        },
-        dashboard::Dashboard,
-        dbsize::DbSize,
-        livestream::Livestream,
-        metrics::Metrics,
-        navigation::Navigation,
-        settings::Settings,
-        tick::Tick,
-        Component,
+        }*/
+        metrics::Metrics, settings::Settings, tick::Tick, Component,
     },
     config::Config,
-    mode::Mode,
     tui,
 };
+const TAB_COUNT: usize = 5;
 
 #[derive(Debug)]
 pub struct App {
     pub config:               Config,
-    pub tick_rate:            f64,
-    pub frame_rate:           f64,
-    pub components:           Vec<Vec<Box<dyn Component + Send>>>,
-    term:                     Term,
-    pub should_quit:          bool,
-    pub should_suspend:       bool,
-    pub context:              Arc<Mutex<AppContext>>,
-    pub mode:                 Page,
+    pub components:           Vec<Box<dyn Component + Send>>,
+    term:                     Mutex<Terminal<CrosstermBackend<Stdout>>>,
+    pub page_index:           usize,
     pub last_tick_key_events: Vec<KeyEvent>,
     pub events:               EventStream,
+    tui_rx:                   UnboundedReceiver<TuiUpdate>,
 }
 
 impl App {
-    pub fn new() -> Result<Self> {
-        let analytics = Analytics::new();
-
-        let dashboard = Dashboard::default();
-        let livestream = Livestream::default();
-        let dbsize = DbSize::default();
-        let tick = Tick::default();
-        let metrics = Metrics::default();
-        let settings = Settings::new();
-        //let tokens = Tokens::default();
-        let top_contracts = TopContracts::default();
-        let searcher_stats = SearcherStats::default();
-        let vertically_integrated = VerticallyIntegrated::default();
-        let hot_tokens = HotTokens::default();
-
-        let context = Arc::new(Mutex::new(AppContext::default()));
-        let navigation = Navigation::new(context.clone());
-        let navigation_box = Box::new(navigation);
+    pub fn new(rx: UnboundedReceiver<TuiUpdate>) -> Result<Self> {
         let config = Config::new()?;
-        let mode = Mode::Dashboard;
-        let tick_rate = 1.0;
-        let frame_rate = 60.0;
 
         Ok(Self {
-            events: EventStream,
-            tick_rate,
-            frame_rate,
-            components: vec![
-                vec![navigation_box.clone(), Box::new(dashboard)],
-                vec![navigation_box.clone(), Box::new(livestream)],
-                vec![
-                    navigation_box.clone(),
-                    Box::new(analytics),
-                    Box::new(top_contracts),
-                    Box::new(searcher_stats),
-                    Box::new(vertically_integrated),
-                    Box::new(hot_tokens),
-                ],
-                vec![navigation_box.clone(), Box::new(metrics), Box::new(tick), Box::new(dbsize)],
-                vec![navigation_box, Box::new(settings)],
-            ],
+            events: EventStream::new(),
+            components: vec![Box::new(Dashboard::default())],
             config,
-            mode,
+            page_index: 0,
             last_tick_key_events: Vec::new(),
-            term: Term::start()?,
-            should_quit: false,
-            should_suspend: false,
-            context,
-            mev_blocks: Arc::new(Mutex::new(Vec::new())),
-            mev_bundles: Arc::new(Mutex::new(Vec::new())),
-            progress_counter: None,
+            term: Mutex::new(Term::start()?),
+            tui_rx: rx,
         })
     }
 
-    pub async fn run(rx: UnboundedReceiver<Action>, tx: UnboundedSender<Action>) {
-        let mut app = Self::new().unwrap();
-
-        if let Err(e) = app.run_inner(rx, tx).await {
-            tracing::error!("TUI Error: {:?}", e);
-        }
-    }
-
-    pub async fn run_inner(
-        &mut self,
-        mut action_rx: UnboundedReceiver<Action>,
-        action_tx: UnboundedSender<Action>,
-    ) -> Result<(), Error> {
-        let mut tui = tui::Tui::new()?
-            .tick_rate(self.tick_rate)
-            .frame_rate(self.frame_rate);
-
-        // TODO: Add mouse support & handling
-        // tui.mouse(true);
-
-        tui.enter()?;
-
-        // register action handlers for components
-        for inner_tabs in self.components.iter_mut() {
-            for component in inner_tabs.iter_mut() {
-                component.register_action_handler(action_tx.clone())?;
-            }
-        }
-
-        // register config handlers for components
-        for inner_tabs in self.components.iter_mut() {
-            for component in inner_tabs.iter_mut() {
-                component.register_config_handler(self.config.clone())?;
-            }
-        }
-
-        //init components
-        for inner_tabs in self.components.iter_mut() {
-            for component in inner_tabs.iter_mut() {
-                component.init(tui.size()?)?;
-            }
-        }
-
-        loop {
-            if let Some(e) = tui.next().await {
-                match e {
-                    tui::Event::Quit => action_tx.send(Action::Quit)?,
-                    tui::Event::Tick => action_tx.send(Action::Tick)?,
-                    tui::Event::Render => action_tx.send(Action::Render)?,
-                    tui::Event::Resize(x, y) => action_tx.send(Action::Resize(x, y))?,
-                    tui::Event::Key(key) => {
-                        if let Some(keymap) = self.config.keybindings.get(&self.mode) {
-                            if let Some(action) = keymap.get(&vec![key]) {
-                                log::info!("Got action: {action:?}");
-                                action_tx.send(action.clone())?;
-                            } else {
-                                // If the key was not handled as a single key action,
-                                // then consider it for multi-key combinations.
-                                self.last_tick_key_events.push(key);
-
-                                // Check for multi-key combinations
-                                if let Some(action) = keymap.get(&self.last_tick_key_events) {
-                                    log::info!("Got action: {action:?}");
-                                    action_tx.send(action.clone())?;
-                                }
-                            }
-                        };
-                    }
-                    _ => {}
+    // Return state to the poll loop & handle graceful shutdown
+    pub fn handle_key_event(&mut self, event: Event) -> Result<()> {
+        match event {
+            Event::Key(key) => match key.code {
+                KeyCode::BackTab => {
+                    self.page_index.saturating_sub(1) % TAB_COUNT;
+                    self.components[self.page_index].on_select()
                 }
-
-                // handling events one time for each component
-                let mut component_cache = HashSet::new();
-
-                for inner_tabs in self.components.iter_mut() {
-                    for component in inner_tabs.iter_mut() {
-                        let component_id = component.name();
-                        if !component_cache.contains(&component_id) {
-                            if let Some(action) = component.handle_events(Some(e.clone()))? {
-                                action_tx.send(action)?;
-                                component_cache.insert(component_id); // Mark this component as processed
-                            }
-                        }
-                    }
+                KeyCode::Tab => {
+                    self.page_index.saturating_add(1) % TAB_COUNT;
+                    self.components[self.page_index].on_select()
                 }
+                KeyCode::Char('q') => {
+                    stop_terminal()?;
+                }
+                _ => self.components[self.page_index].handle_key_events(key),
+            },
+            Event::Resize(width, height) => {
+                //TODO: handle resize by redrawing on active componentJ
+                self.term.lock().resize(Rect::new(0, 0, width, height));
             }
-
-            while let Ok(action) = action_rx.try_recv() {
-                if action != Action::Tick && action != Action::Render {
-                    log::debug!("{action:?}");
-                }
-                match action {
-                    Action::Tick => {
-                        self.last_tick_key_events.drain(..);
-                    }
-                    Action::Quit => self.should_quit = true,
-                    Action::Suspend => self.should_suspend = true,
-                    Action::Resume => self.should_suspend = false,
-                    Action::Resize(w, h) => {
-                        tui.resize(Rect::new(0, 0, w, h))?;
-
-                        tui.draw(|f| {
-                            let tab_index = self.context.lock().unwrap().tab_index;
-
-                            for component in self.components[tab_index].iter_mut() {
-                                let r = component.draw(f, f.size());
-                                if let Err(e) = r {
-                                    action_tx
-                                        .send(Action::Error(format!("Failed to draw: {:?}", e)))
-                                        .unwrap();
-                                }
-                            }
-                        })?;
-                    }
-                    Action::Render => {
-                        tui.draw(|f| {
-                            let tab_index = self.context.lock().unwrap().tab_index;
-
-                            for component in self.components[tab_index].iter_mut() {
-                                let r = component.draw(f, f.size());
-                                if let Err(e) = r {
-                                    action_tx
-                                        .send(Action::Error(format!("Failed to draw: {:?}", e)))
-                                        .unwrap();
-                                }
-                            }
-                        })?;
-                    }
-                    _ => {}
-                }
-
-                // Send actions to each component
-                for inner_vec in self.components.iter_mut() {
-                    for component in inner_vec.iter_mut() {
-                        if let Some(action) = component.update(action.clone())? {
-                            action_tx.send(action)?;
-                        };
-                    }
-                }
-            }
-            if self.should_suspend {
-                tui.suspend()?;
-                action_tx.send(Action::Resume)?;
-                tui = tui::Tui::new()?
-                    .tick_rate(self.tick_rate)
-                    .frame_rate(self.frame_rate);
-                // tui.mouse(true);
-                tui.enter()?;
-            } else if self.should_quit {
-                tui.stop()?;
-                break
-            }
+            _ => {}
         }
-        tui.exit()?;
         Ok(())
-    }
-
-    pub fn next(&self) {
-        let _i = match self.context.lock().unwrap().state.selected() {
-            Some(i) => {
-                if i >= self.mev_bundles.lock().unwrap().len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-    }
-
-    pub fn previous(&self) {
-        let _i = match self.context.lock().unwrap().state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.mev_bundles.lock().unwrap().len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
     }
 }
 
 impl Future for App {
-    type Output = ();
+    //TODO: Use app output to send signal back to main & control graceful shutdown
+    // or reruns based on user input via settings
+    type Output = Result<()>;
 
     fn poll(
-        self: std::pin::Pin<&mut Self>,
+        mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if let Poll::Ready(item) = self.events.poll_next_unpin(cx) {
-            match item {
-                Some(Ok(events)) => {}
+        loop {
+            if let Poll::Ready(item) = self.events.poll_next_unpin(cx) {
+                match item {
+                    Some(Ok(event)) => self.handle_key_event(event),
+                    Some(Err(e)) => Err(()),
+                    None => return Poll::Ready(Ok(())),
+                }
             }
         }
-
-        Poll::Pending
     }
 }
 
-/// simple helper method to split an area into multiple sub-areas
 pub fn layout(area: Rect, direction: Direction, heights: Vec<u16>) -> Rc<[Rect]> {
     let constraints = heights
         .iter()
@@ -349,4 +142,22 @@ pub fn layout(area: Rect, direction: Direction, heights: Vec<u16>) -> Rc<[Rect]>
         .direction(direction)
         .constraints(constraints)
         .split(area)
+}
+
+pub fn start_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+    let options = TerminalOptions { viewport: Viewport::Fullscreen };
+    let terminal = Terminal::with_options(CrosstermBackend::new(io::stdout()), options)?;
+    enable_raw_mode().context("enable raw mode")?;
+    stdout()
+        .execute(EnterAlternateScreen)
+        .context("enter alternate screen")?;
+    Ok(terminal)
+}
+
+pub fn stop_terminal() -> Result<()> {
+    disable_raw_mode().context("disable raw mode")?;
+    stdout()
+        .execute(LeaveAlternateScreen)
+        .context("leave alternate screen")?;
+    Ok(())
 }

@@ -1,10 +1,14 @@
 {
-    "keybindings": {
-      "Dashboard": {
-        "<q>": "Quit",
-        "<Ctrl-d>": "Quit",
-        "<Ctrl-c>": "Quit",
-        "<Ctrl-z>": "Suspend"
-      }
-    }
-  }
+  keybindings: {
+    Dashboard: {
+      "<q>": "Quit",
+      "<Ctrl-d>": "Quit",
+      "<Ctrl-c>": "Quit",
+      "<Ctrl-z>": "Suspend",
+      "<j>": "Down",
+      "<k>": "Up",
+      "<l>": "Right",
+      "<h>": "Left",
+    },
+  },
+}

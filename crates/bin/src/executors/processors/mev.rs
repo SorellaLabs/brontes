@@ -1,7 +1,10 @@
 #[cfg(feature = "local-clickhouse")]
 use std::sync::Arc;
 
-use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
+use brontes_database::{
+    libmdbx::{DBWriter, LibmdbxReader},
+    tui::events::TuiUpdate,
+};
 use brontes_inspect::{
     composer::{run_block_inspection, ComposerResults},
     Inspector,
@@ -17,10 +20,7 @@ use brontes_types::tree::BlockTree;
 use brontes_types::{
     db::block_analysis::BlockAnalysis,
     execute_on,
-    mev::{
-        events::{Action, TuiEvents},
-        Bundle, MevBlock, MevType,
-    },
+    mev::{Bundle, MevBlock, MevType},
     normalized_actions::Actions,
     tree::BlockTree,
 };
@@ -45,7 +45,7 @@ impl Processor for MevProcessor {
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-        tui_tx: Option<UnboundedSender<Action>>,
+        tui_tx: Option<UnboundedSender<TuiUpdate>>,
     ) {
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
             target = inspect,
@@ -65,18 +65,10 @@ impl Processor for MevProcessor {
         // if there is a tui_tx, send the block details and mev details to the tui
         if let Some(tui_tx) = tui_tx {
             let _ = tui_tx
-                .clone()
-                .send(Action::Tui(TuiEvents::MevBlockMetricReceived(block_details.clone())))
+                .send(TuiUpdate::Block((block_details.clone(), mev_details.clone())))
                 .map_err(|e| {
                     use tracing::info;
-                    info!("Failed to send: {}", e);
-                });
-
-            let _ = tui_tx
-                .send(Action::Tui(TuiEvents::MevBundleEventReceived(mev_details.clone())))
-                .map_err(|e| {
-                    use tracing::info;
-                    info!("Failed to send: {}", e);
+                    info!("Failed to send block update to TUI: {}", e);
                 });
         }
 

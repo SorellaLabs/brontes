@@ -1,28 +1,29 @@
 #![allow(unused_variables)]
 
 // Finish this file as a last thing to do
-
-use brontes_database::tui::events::Action;
+use brontes_database::tui::events::TuiUpdate;
 use clap::Parser;
 use color_eyre::eyre::Result;
-use crossterm::event::KeyEvent;
+use crossterm::event::{Event, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
 use tui_textarea::TextArea;
 
-use super::{
-    constants::UiStyle,
-    ClickableList::{default_block, selectable_list, ClickableListState},
-    Component, Frame,
-};
 use crate::{
     cli::{Args, Commands},
-    tui::{config::Config, tui::Event},
+    tui::{
+        components::{
+            constants::UiStyle,
+            ClickableList::{default_block, selectable_list, ClickableListState},
+            Component, Frame,
+        },
+        config::Config,
+    },
 };
 #[derive(Debug)]
 pub struct Settings {
-    command_tx:         Option<UnboundedSender<Action>>,
+    command_tx:         Option<UnboundedSender<TuiUpdate>>,
     config:             Config,
     pub exchange_index: Option<usize>,
     state:              SettingsState,
@@ -147,11 +148,6 @@ impl Settings {
     }
 }
 impl Component for Settings {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
-        self.command_tx = Some(tx);
-        Ok(())
-    }
-
     fn name(&self) -> String {
         "settings".to_string()
     }
@@ -161,15 +157,7 @@ impl Component for Settings {
         Ok(())
     }
 
-    fn init(&mut self, area: Rect) -> Result<()> {
-        let mut textarea = [TextArea::default(), TextArea::default()];
-
-        Self::activate(&mut textarea[0]);
-        Self::inactivate(&mut textarea[1]);
-        Ok(())
-    }
-
-    fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
+    fn handle_key_events(&mut self, key: KeyEvent) {
         //TODO: handle settings
 
         /*
@@ -280,27 +268,17 @@ impl Component for Settings {
 
             }
         */
-        Ok(Some(Action::Tick))
     }
 
-    fn handle_events(&mut self, event: Option<Event>) -> Result<Option<Action>> {
-        let r = match event {
-            Some(Event::Key(key_event)) => self.handle_key_events(key_event)?,
-            Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event)?,
-            _ => None,
-        };
-        Ok(r)
-    }
-
-    fn update(&mut self, action: Action) -> Result<Option<Action>> {
-        match action {
-            Action::Tick => {}
-            _ => {}
+    fn handle_events(&mut self, event: Option<Event>) {
+        match event {
+            Some(Event::Key(key_event)) => self.handle_key_events(key_event),
+            Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event),
+            _ => (),
         }
-        Ok(None)
     }
 
-    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
+    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
 
         let template = Layout::default()
@@ -369,7 +347,5 @@ impl Component for Settings {
             }
             _ => {}
         }
-
-        Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use std::{
+/*use std::{
     future::Future,
     sync::{Arc, Mutex},
 };
@@ -26,7 +26,7 @@ use crate::{
 #[derive(Default, Debug)]
 pub struct Livestream {
     #[allow(dead_code)]
-    command_tx:  Option<UnboundedSender<Action>>,
+    command_tx:  Option<UnboundedSender<TuiUpdate>>,
     mevblocks:   Arc<Mutex<Vec<MevBlock>>>,
     mev_bundles: DataFrame,
     updater:     ComponentUpdater<Action, DataFrame>,
@@ -46,7 +46,7 @@ pub struct Livestream {
 impl Livestream {
     pub fn new(
         mevblocks: Arc<Mutex<Vec<MevBlock>>>,
-        rx: UnboundedReceiver<Action>,
+        rx: UnboundedReceiver<TuiUpdate>,
         terminal: Arc<parking_lot::Mutex<Tui>>,
     ) -> Self {
         let mut stream = UnboundedReceiverStream::new(rx);
@@ -304,3 +304,4 @@ impl HeadAsyncComponent for Livestream {
         Poll::Pending
     }
 }
+*/

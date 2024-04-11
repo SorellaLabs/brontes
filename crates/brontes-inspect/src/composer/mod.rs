@@ -57,8 +57,6 @@ use utils::{
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
-use tokio::sync::mpsc::UnboundedSender;
-
 use crate::{discovery::DiscoveryInspector, Inspector};
 
 #[derive(Debug)]

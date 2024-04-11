@@ -1,4 +1,4 @@
-use brontes_types::mev::events::Action;
+/*use brontes_database::tui::events::Action;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
@@ -10,7 +10,7 @@ use crate::tui::{
 
 #[derive(Default, Debug)]
 pub struct HotTokens {
-    command_tx: Option<UnboundedSender<Action>>,
+    command_tx: Option<UnboundedSender<TuiUpdate>>,
     config:     Config,
 }
 
@@ -50,7 +50,7 @@ impl HotTokens {
 }
 
 impl Component for HotTokens {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
+    fn register_action_handler(&mut self, tx: UnboundedSender<TuiUpdate>) -> Result<()> {
         self.command_tx = Some(tx);
         Ok(())
     }
@@ -95,3 +95,4 @@ impl Component for HotTokens {
         Ok(())
     }
 }
+*/

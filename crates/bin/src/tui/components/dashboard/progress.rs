@@ -1,95 +1,122 @@
-use std::{Debug, Default};
-
-use ahash::FastHashMap;
-use ratatui::Widget;
-
-use crate::events::BrontesData;
-
+use brontes_database::{
+    tui::events::{InitProgress, ProgressUpdate},
+    Tables,
+};
+use brontes_types::{FastHashMap, ProgressBar};
+use eyre::Result;
+use ratatui::{
+    layout::{Constraint, Direction, Flex, Layout},
+    prelude::{Buffer, Color, Modifier, Rect, Style, Widget},
+    widgets::{Block, Gauge},
+};
+use tokio::sync::mpsc::UnboundedReceiver;
 #[derive(Default, Debug)]
 pub struct Progress {
     pub global_progress_bar: ProgressBar,
-    pub init_progress_bars:  FastHashMap<Tables, ProgressBar>,
-}
-
-#[derive(Default, Debug)]
-pub struct ProgressBar {
-    pub position: usize,
-    pub total:    usize,
+    pub init_progress_bars:  FastHashMap<Tables, InitProgress>,
 }
 
 impl Progress {
-    fn progress_task(tx: UnboundedReceiver<BrontesData>) -> Result<()> {
-        if let Some(BrontesData::ProgressUpdate(update)) = tx.recv().try_recv()? {
-            match update {
-                ProgressUpdate::Global(block) => self.global_progress_bar = block,
-                ProgressUpdate::Table(table, block) => {
-                    self.init_progress_bars
-                        .entry(table)
-                        .and_modify(|e| e.position = block.position)
-                        .or_insert_with(|| ProgressBar {
-                            position: block.position,
-                            total:    block.total,
-                        });
-                }
+    fn progress_task(&mut self, update: ProgressUpdate) {
+        match update {
+            ProgressUpdate::Global(progress) => self.global_progress_bar = progress,
+            ProgressUpdate::Table((table, progress)) => {
+                self.init_progress_bars
+                    .entry(table)
+                    .and_modify(|e| e.position = progress.target)
+                    .or_insert_with(|| progress);
             }
         }
-        Ok(())
     }
 
-    fn render_progress(&self, area: Rect, buf: &mut Buffer) {
-        let progress = self.progress_counter.unwrap_or(0);
+    fn render_global_progress_bar(&self, area: Rect, buf: &mut Buffer) {
+        let progress = self.global_progress_bar.unwrap_or(0);
         Gauge::default()
-            .block(Block::bordered().title("Initialization Progress:"))
-            .gauge_style((Color::Green, Modifier::ITALIC))
-            .percent(progress)
+            .block(Block::bordered().title("Global Progress:"))
+            .gauge_style(
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::ITALIC),
+            )
+            .ratio(self.global_progress_bar.position as f64 / self.global_progress_bar.total as f64)
             .render(area, buf);
+    }
+
+    fn render_init_progress_bar(
+        &self,
+        area: Rect,
+        buf: &mut Buffer,
+        table: &Tables,
+        progress: &InitProgress,
+    ) {
+        Gauge::default()
+            .block(Block::bordered().title(format!("{} Initialization:", table)))
+            .gauge_style(
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::ITALIC),
+            )
+            .ratio(progress.position as f64 / progress.total as f64)
+            .use_unicode(true)
+            .render(area, buf);
+    }
+
+    fn create_layout(&self, area: Rect) -> Vec<Rect> {
+        let mut layouts = Vec::new();
+
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(25), Constraint::Percentage(75)])
+            .split(area);
+
+        layouts.push(layout[0]);
+
+        let split_init_bars = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(layout[1]);
+
+        let first_half_size: u32 = (self.init_progress_bars.len() + 1) / 2;
+        let second_half_size: u32 = (self.init_progress_bars.len() as u32) - first_half_size;
+
+        let constraints_first_half =
+            vec![Constraint::Ratio(1, first_half_size); first_half_size as usize];
+        let constraints_second_half =
+            vec![Constraint::Ratio(1, second_half_size); second_half_size as usize];
+
+        let init_progress_bars_area_first_half = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints_first_half)
+            .split(split_init_bars[0]);
+
+        layouts.extend(init_progress_bars_area_first_half.iter());
+
+        let init_progress_bars_area_second_half = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints_second_half)
+            .flex(Flex::Start)
+            .split(split_init_bars[1]);
+
+        layouts.extend(init_progress_bars_area_second_half.iter());
+
+        layouts
     }
 }
 
 impl Widget for Progress {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let total_progress_bars = self.init_progress_bars.len() + 1;
-        let global_progress_bar_height = (area.height as f32 * 0.3).ceil() as u16;
-        let remaining_height = area.height - global_progress_bar_height;
-        let sub_progress_bar_height = remaining_height / total_progress_bars as u16;
+        let layout = self.create_layout(area);
 
-        // Render the global progress bar
-        let global_progress_bar_area =
-            Rect::new(area.left(), area.top(), area.width, global_progress_bar_height);
-        let global_progress_percent = self.global_progress_bar.position as f32
-            / self.global_progress_bar.total as f32
-            * 100.0;
-        Gauge::default()
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Global Progress"),
-            )
-            .gauge_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::ITALIC),
-            )
-            .percent(global_progress_percent as u16)
-            .render(global_progress_bar_area, buf);
+        self.render_global_progress_bar(layout[0], buf);
 
-        // Render the sub progress bars
-        let mut sub_progress_bar_top = global_progress_bar_area.bottom() + 1;
-        for (key, progress_bar) in &self.init_progress_bars {
-            let sub_progress_bar_area =
-                Rect::new(area.left(), sub_progress_bar_top, area.width, sub_progress_bar_height);
-            let sub_progress_percent =
-                progress_bar.position as f32 / progress_bar.total as f32 * 100.0;
-            Gauge::default()
-                .block(Block::default().borders(Borders::ALL).title(key))
-                .gauge_style(
-                    Style::default()
-                        .fg(Color::White)
-                        .add_modifier(Modifier::ITALIC),
-                )
-                .percent(sub_progress_percent as u16)
-                .render(sub_progress_bar_area, buf);
-            sub_progress_bar_top += sub_progress_bar_height;
+        for (index, (table, progress)) in self.init_progress_bars.iter().enumerate() {
+            self.render_init_progress_bar(layout[index + 1], buf, table, progress);
         }
     }
 }
+
+/*let init_block = Block::bordered()
+    .title("Initialization Progress")
+    .title_style(Style::new().gree().bold());
+
+let inner_block_area = init_block.inner(area); */
