@@ -328,7 +328,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         if let Action::Call(root_call) = &trace.trace.action {
             let mut delegated_traces = Vec::new();
             collect_delegated_traces(
-                &full_trace,
+                full_trace,
                 &trace.trace.trace_address,
                 &mut delegated_traces,
             );

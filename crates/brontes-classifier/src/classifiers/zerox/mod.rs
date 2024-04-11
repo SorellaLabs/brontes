@@ -12,7 +12,7 @@ action_impl!(
     Protocol::ZeroX,
     crate::ZeroXUniswapFeaure::sellToUniswapCall,
     Aggregator,
-    [Swap],
+    [],
     |info: CallInfo, _| {
         Ok(NormalizedAggregator {
             protocol:      Protocol::ZeroX,
@@ -30,7 +30,7 @@ action_impl!(
     Protocol::ZeroX,
     crate::ZeroXUniswapV3Feature::sellEthForTokenToUniswapV3Call,
     Aggregator,
-    [Swap],
+    [],
     call_data: true,
     |info: CallInfo, call_data: sellEthForTokenToUniswapV3Call, _| {
         Ok(NormalizedAggregator {
@@ -48,7 +48,7 @@ action_impl!(
     Protocol::ZeroX,
     crate::ZeroXUniswapV3Feature::sellTokenForEthToUniswapV3Call,
     Aggregator,
-    [Swap],
+    [],
     call_data: true,
     |info: CallInfo, call_data: sellTokenForEthToUniswapV3Call, _| {
         Ok(NormalizedAggregator {
@@ -66,7 +66,7 @@ action_impl!(
     Protocol::ZeroX,
     crate::ZeroXUniswapV3Feature::sellTokenForTokenToUniswapV3Call,
     Aggregator,
-    [Swap],
+    [],
     call_data: true,
     |info: CallInfo, call_data: sellTokenForTokenToUniswapV3Call, _| {
         Ok(NormalizedAggregator {
@@ -85,7 +85,7 @@ action_impl!(
     Protocol::ZeroX,
     crate::ZeroXTransformERC20Feature::transformERC20Call,
     Aggregator,
-    [Swap],
+    [],
     |info: CallInfo, _| {
         Ok(NormalizedAggregator {
             protocol:      Protocol::ZeroX,
@@ -103,7 +103,7 @@ action_impl!(
     Protocol::ZeroX,
     crate::ZeroXPancakeSwapFeature::sellToPancakeSwapCall,
     Aggregator,
-    [Swap],
+    [],
     |info: CallInfo, _| {
         Ok(NormalizedAggregator {
             protocol:      Protocol::ZeroX,

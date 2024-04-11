@@ -454,7 +454,7 @@ impl ToTokens for LogData<'_> {
             self.generate_decoded_log_struct(&log_names, &log_field_names, &is_repeatings);
 
         let log_result = quote!(
-            if call_info.logs.is_empty() {
+            if call_info.logs.is_empty() && call_info.delegate_logs.is_empty() {
                 ::tracing::error!(?call_info, "tried to decode using logs when no logs where found \
                                   for call");
             }
