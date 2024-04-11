@@ -1,3 +1,6 @@
+use alloy_rpc_types::{
+    state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
+};
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
 use reth_primitives::{
@@ -6,9 +9,7 @@ use reth_primitives::{
 };
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
-};
+use reth_rpc_types::{AnyReceiptEnvelope, ReceiptEnvelope};
 
 use crate::TracingClient;
 
@@ -67,6 +68,21 @@ impl TracingProvider for TracingClient {
             .block_receipts(BlockId::Number(number))
             .await
             .map_err(Into::into)
+            .map(|t| {
+                t.map(|vals| {
+                    vals.iter()
+                        .map(|tx| {
+                            <TransactionReceipt<AnyReceiptEnvelope<reth_rpc_types::Log>> as Clone>::clone(&tx).map_inner(|r| match r.r#type {
+                                0 => ReceiptEnvelope::Legacy(r.inner),
+                                1 => ReceiptEnvelope::Eip2930(r.inner),
+                                2 => ReceiptEnvelope::Eip1559(r.inner),
+                                3 => ReceiptEnvelope::Eip4844(r.inner),
+                                _ => unreachable!(),
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                })
+            })
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {
@@ -74,7 +90,7 @@ impl TracingProvider for TracingClient {
             return Err(eyre!("no transaction found"));
         };
 
-        Ok((tx.block_number.unwrap().to::<u64>(), tx.transaction_index.unwrap().to::<usize>()))
+        Ok((tx.block_number.unwrap(), tx.transaction_index.unwrap() as usize))
     }
 
     async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>> {

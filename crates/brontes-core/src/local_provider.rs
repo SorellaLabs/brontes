@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_provider::{network::Ethereum, Provider, RootProvider};
+use alloy_provider::{Provider, RootProvider};
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use reth_primitives::{
@@ -13,7 +13,7 @@ use reth_rpc_types::{
 
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
-    provider: Arc<RootProvider<Ethereum, Http<reqwest::Client>>>,
+    provider: Arc<RootProvider<Http<reqwest::Client>>>,
     retries:  u8,
 }
 
@@ -85,10 +85,7 @@ impl TracingProvider for LocalProvider {
         let tx = self.provider.get_transaction_by_hash(hash).await?;
         let err = || eyre::eyre!("failed to unwrap option");
 
-        Ok((
-            tx.block_number.ok_or_else(err)?.to::<u64>(),
-            tx.transaction_index.ok_or_else(err)?.to::<usize>(),
-        ))
+        Ok((tx.block_number.ok_or_else(err)?, tx.transaction_index.ok_or_else(err)? as usize))
     }
 
     async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>> {

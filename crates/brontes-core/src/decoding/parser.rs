@@ -253,8 +253,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
                         block_num,
                         tx_hash,
                         receipt.transaction_index.try_into().unwrap(),
-                        receipt.gas_used.unwrap().to(),
-                        receipt.effective_gas_price.to(),
+                        receipt.gas_used.unwrap() as u128,
+                        receipt.effective_gas_price as u128,
                     )
                 },
             ))

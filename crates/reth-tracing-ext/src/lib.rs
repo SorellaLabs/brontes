@@ -126,6 +126,7 @@ impl TracingClient {
             blocking,
             fee_history,
             EthEvmConfig::default(),
+            None,
         );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as usize);
