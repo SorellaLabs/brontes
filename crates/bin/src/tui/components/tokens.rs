@@ -27,7 +27,7 @@ impl Component for Tokens {
         Ok(())
     }
 
-    fn handle_data_events(&mut self, event: TuiUpdate) {}
+    fn handle_data_events(&mut self, _event: TuiUpdate) {}
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         f.render_widget(Paragraph::new("Tokens component"), area);

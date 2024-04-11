@@ -10,7 +10,7 @@ use super::mode::Page;
 
 const CONFIG: &str = include_str!("./config/config.json5");
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub enum Action {
     Up,
     Down,
@@ -95,7 +95,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
     where
         D: Deserializer<'de>,
     {
-        let parsed_map = HashMap::<Mode, HashMap<String, Action>>::deserialize(deserializer)?;
+        let parsed_map = HashMap::<Page, HashMap<String, Action>>::deserialize(deserializer)?;
 
         let keybindings = parsed_map
             .into_iter()
@@ -468,7 +468,7 @@ mod tests {
         let c = Config::new()?;
         assert_eq!(
             c.keybindings
-                .get(&Mode::Dashboard)
+                .get(&Page::Dashboard)
                 .unwrap()
                 .get(&parse_key_sequence("<q>").unwrap_or_default())
                 .unwrap(),

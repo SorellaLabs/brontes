@@ -15,7 +15,7 @@ pub enum ProgressUpdate {
     Table((Tables, ProgressBar)),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ProgressBar {
     pub position: usize,
     pub target:   usize,

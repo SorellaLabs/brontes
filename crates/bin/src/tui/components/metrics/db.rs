@@ -6,7 +6,7 @@ use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::{Component, Frame};
-use crate::tui::{config::Config, tui::Tui};
+use crate::tui::config::Config;
 
 #[derive(Clone, Debug, Default)]
 pub struct DbSize {
