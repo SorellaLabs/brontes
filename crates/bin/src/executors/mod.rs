@@ -19,7 +19,7 @@ use brontes_classifier::Classifier;
 use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 // TUI related
-use brontes_database::tui::events::Action;
+use brontes_database::tui::events::TuiUpdate;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
 use brontes_types::{BrontesTaskExecutor, FastHashMap};
@@ -100,7 +100,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
         //progress_bar: Option<ProgressBar>,
         //tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
-        tui_tx: Option<UnboundedSender<Action>>,
+        tui_tx: Option<UnboundedSender<TuiUpdate>>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -157,7 +157,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         start_block: u64,
         back_from_tip: u64,
-        tui_tx: Option<UnboundedSender<Action>>,
+        tui_tx: Option<UnboundedSender<TuiUpdate>>,
     ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self.init_state_collector(executor, start_block, start_block, true);
         TipInspector::new(
@@ -344,7 +344,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         had_end_block: bool,
         end_block: u64,
-        tui_tx: Option<UnboundedSender<Action>>,
+        tui_tx: Option<UnboundedSender<TuiUpdate>>,
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
@@ -452,7 +452,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         self,
         executor: BrontesTaskExecutor,
         shutdown: GracefulShutdown,
-        app_tx: Option<UnboundedSender<Action>>,
+        app_tx: Option<UnboundedSender<TuiUpdate>>,
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;

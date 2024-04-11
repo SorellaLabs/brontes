@@ -1,4 +1,4 @@
-use brontes_database::tui::events::Action;
+use brontes_database::tui::events::TuiUpdate;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
@@ -8,8 +8,7 @@ use crate::tui::config::Config;
 
 #[derive(Default, Debug)]
 pub struct Tokens {
-    command_tx: Option<UnboundedSender<Action>>,
-    config:     Config,
+    config: Config,
 }
 
 impl Tokens {
@@ -19,11 +18,6 @@ impl Tokens {
 }
 
 impl Component for Tokens {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
-        self.command_tx = Some(tx);
-        Ok(())
-    }
-
     fn name(&self) -> String {
         "tokens".to_string()
     }
@@ -33,16 +27,9 @@ impl Component for Tokens {
         Ok(())
     }
 
-    fn update(&mut self, action: Action) -> Result<Option<Action>> {
-        match action {
-            Action::Tick => {}
-            _ => {}
-        }
-        Ok(None)
-    }
+    fn handle_data_events(&mut self, event: TuiUpdate) {}
 
-    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
+    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         f.render_widget(Paragraph::new("Tokens component"), area);
-        Ok(())
     }
 }

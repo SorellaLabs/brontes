@@ -8,11 +8,10 @@ use brontes_core::decoding::TracingProvider;
 use brontes_database::{
     clickhouse::ClickhouseHandle,
     libmdbx::{DBWriter, LibmdbxReader},
+    tui::events::TuiUpdate,
 };
 use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::Metadata, mev::events::Action, normalized_actions::Actions, tree::BlockTree,
-};
+use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 //tui related
@@ -34,7 +33,7 @@ pub struct RangeExecutorWithPricing<
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
     //progress_bar:   Option<ProgressBar>,
-    tui_tx:         Option<UnboundedSender<Action>>,
+    tui_tx:         Option<UnboundedSender<TuiUpdate>>,
     _p:             PhantomData<P>,
 }
 
@@ -47,7 +46,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         state_collector: StateCollector<T, DB, CH>,
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
-        tui_tx: Option<UnboundedSender<Action>>,
+        tui_tx: Option<UnboundedSender<TuiUpdate>>,
         //progress_bar: Option<ProgressBar>,
     ) -> Self {
         Self {

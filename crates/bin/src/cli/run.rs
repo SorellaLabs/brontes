@@ -1,7 +1,7 @@
 use std::{env, path::Path};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::{clickhouse::cex_config::CexDownloadConfig, tui::events::Action};
+use brontes_database::{clickhouse::cex_config::CexDownloadConfig, tui::events::TuiUpdate};
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 //TUI related imports
@@ -102,14 +102,14 @@ impl RunArgs {
         task_executor.spawn_critical("metrics", metrics_listener);
 
         #[allow(unused_assignments)]
-        let mut tui_tx: Option<UnboundedSender<Action>> = None;
+        let mut tui_tx: Option<UnboundedSender<TuiUpdate>> = None;
 
         let tui_handle: tokio::task::JoinHandle<()> = if !self.cli_only {
             tracing::info!("Launching Brontes TUI");
-            let (tx, tui_rx) = unbounded_channel::<Action>();
+            let (tx, tui_rx) = unbounded_channel::<TuiUpdate>();
             tui_tx = Some(tx.clone());
 
-            task_executor.spawn_critical("TUI", App::run(tui_rx, tx))
+            task_executor.spawn_critical("TUI", App::new(tui_rx).unwrap())
         } else {
             tokio::spawn(async {})
         };

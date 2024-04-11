@@ -1,4 +1,4 @@
-use std::time::Instant;
+/*use std::time::Instant;
 
 use brontes_database::tui::events::Action;
 use color_eyre::eyre::Result;
@@ -98,3 +98,4 @@ impl Component for Tick {
         Ok(())
     }
 }
+*/

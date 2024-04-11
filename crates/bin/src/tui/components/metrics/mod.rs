@@ -1,6 +1,6 @@
 mod db;
 
-use brontes_database::tui::events::Action;
+use brontes_database::tui::events::TuiUpdate;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
@@ -10,7 +10,7 @@ use crate::tui::config::Config;
 
 #[derive(Default, Debug)]
 pub struct Metrics {
-    command_tx: Option<UnboundedSender<Action>>,
+    command_tx: Option<UnboundedSender<TuiUpdate>>,
     config:     Config,
 }
 
@@ -21,11 +21,6 @@ impl Metrics {
 }
 
 impl Component for Metrics {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
-        self.command_tx = Some(tx);
-        Ok(())
-    }
-
     fn register_config_handler(&mut self, config: Config) -> Result<()> {
         self.config = config;
         Ok(())
@@ -35,15 +30,7 @@ impl Component for Metrics {
         "metrics".to_string()
     }
 
-    fn update(&mut self, action: Action) -> Result<Option<Action>> {
-        match action {
-            Action::Tick => {}
-            _ => {}
-        }
-        Ok(None)
-    }
-
-    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
+    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         let rect = area.inner(&Margin { vertical: 1, horizontal: 4 });
 
         let rects = Layout::default()
@@ -62,6 +49,5 @@ impl Component for Metrics {
             ),
             rect,
         );
-        Ok(())
     }
 }

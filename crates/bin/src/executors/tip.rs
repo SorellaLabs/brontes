@@ -8,11 +8,10 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::ClickhouseHandle,
     libmdbx::{DBWriter, LibmdbxReader},
+    tui::events::TuiUpdate,
 };
 use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::Metadata, mev::events::Action, normalized_actions::Actions, tree::BlockTree,
-};
+use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 //tui related
@@ -35,7 +34,7 @@ pub struct TipInspector<
     database:           &'static DB,
     inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
-    tui_tx:             Option<UnboundedSender<Action>>,
+    tui_tx:             Option<UnboundedSender<TuiUpdate>>,
     _p:                 PhantomData<P>,
 }
 
@@ -49,7 +48,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         parser: &'static Parser<'static, T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
-        tui_tx: Option<UnboundedSender<Action>>,
+        tui_tx: Option<UnboundedSender<TuiUpdate>>,
     ) -> Self {
         Self {
             back_from_tip,

@@ -49,7 +49,7 @@ pub const NUM_TABLES: usize = 15;
 
 macro_rules! tables {
     ($($table:ident),*) => {
-        #[derive(Debug, PartialEq, Copy, Clone)]
+        #[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
         /// Default tables that should be present inside database.
         pub enum Tables {
             $(

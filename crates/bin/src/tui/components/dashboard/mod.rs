@@ -1,58 +1,69 @@
 mod leaderboard;
 mod livestream;
+use ratatui::widgets::canvas::Line;
+mod log;
 mod mev_count;
-mod navigation;
 pub mod progress;
 use std::{
+    io::Stdout,
     sync::{Arc, Mutex},
     thread, time,
 };
 
 use ansi_to_tui::IntoText;
-use brontes_database::tui::events::{Action, BrontesData};
+use brontes_database::tui::events::TuiUpdate;
 use brontes_types::mev::{bundle::Bundle, Mev, MevBlock};
 use crossterm::event::{KeyCode, KeyEvent};
-use eyre::Result; //
+use eyre::Result;
+use futures::channel::mpsc::UnboundedReceiver;
+//
 use itertools::Itertools;
+use livestream::Livestream;
 use log::*;
+use mev_count::MevCount;
 use polars::prelude::*;
-use ratatui::{prelude::*, widgets::*};
+use progress::Progress;
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::Layout,
+    prelude::{
+        Alignment, Buffer, Color, Constraint, Direction, Margin, Modifier, Rect, Span, Style,
+    },
+    style::Stylize,
+    widgets::{
+        Block, Borders, Cell, Clear, Gauge, Padding, Paragraph, Row, Scrollbar,
+        ScrollbarOrientation, ScrollbarState, Table, Widget,
+    },
+    Terminal,
+};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
-use tui_logger::*;
 
-use super::{Component, Frame};
+use super::{shared::navigation::Navigation, Component, Frame};
 use crate::{
-    events::*,
     get_symbols_from_transaction_accounting,
     tui::{
-        asycn_interfaces::*,
-        async_interfaces::HeadAsyncComponent,
         config::Config,
-        polars::{bundles_to_dataframe, dataframe_to_table_rows},
         theme::THEME,
-        tui::Event,
+        utils::{bundles_to_dataframe, dataframe_to_table_rows},
     },
 };
-
 #[derive(Default, Debug)]
 pub struct Dashboard {
-    command_tx:  Option<UnboundedSender<Action>>,
-    config:      Config,
-    navigation:  Navigation,
-    mev_count:   MevCount,
-    livestream:  Livestream,
-    leaderboard: Leaderboard,
-    progress:    Progress,
-    focus:       Focus,
+    config:     Config,
+    navigation: Navigation,
+    mev_count:  MevCount,
+    livestream: Livestream,
+    //leaderboard: Leaderboard,
+    progress:   Progress,
+    focus:      Focus,
+    term:       Mutex<Terminal<CrosstermBackend<Stdout>>>,
 }
 
-impl Dashboard {
-    pub fn new(mevblocks: Arc<Mutex<Vec<MevBlock>>>, mev_bundles: Arc<Mutex<Vec<Bundle>>>) -> Self {
-        Self { ..Default::default() }
-    }
+pub const DASHBOARD_INDEX: usize = 0;
 
-    pub fn next(&mut self) {
+impl Dashboard {
+    /*pub fn next(&mut self) {
         if self.show_popup {
             self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
             self.popup_scroll_state = self
@@ -107,7 +118,7 @@ impl Dashboard {
 
             self.stream_table_state.select(Some(i));
         }
-    }
+    }*/
 
     // Function to convert a DataFrame to a Vec<Row> for the Table widget
     fn dataframe_to_table_rows(df: &DataFrame) -> Vec<Row> {
@@ -128,235 +139,9 @@ impl Dashboard {
 
         rows
     }
-
-    fn draw_livestream(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
-        let selected_style = Style::default().add_modifier(Modifier::REVERSED);
-        let normal_style = Style::default().bg(Color::Blue);
-
-        let header_cells = [
-            "Block#",
-            "Tx Index",
-            "MEV Type",
-            "Tokens",
-            "Protocols",
-            "From",
-            "Mev Contract",
-            "Profit",
-            "Cost",
-        ]
-        .iter()
-        .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
-        let header = Row::new(header_cells)
-            .style(normal_style)
-            .height(1)
-            .bottom_margin(1);
-
-        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-            widget.mev_bundles.lock().unwrap();
-
-        let df = bundles_to_dataframe(mevblocks_guard.clone()).unwrap();
-        let rows = dataframe_to_table_rows(&df);
-
-        let t = Table::new(
-            rows,
-            [
-                Constraint::Max(10),
-                Constraint::Min(5),
-                Constraint::Min(20),
-                Constraint::Min(20),
-                Constraint::Min(20),
-                Constraint::Min(32),
-                Constraint::Min(32),
-                Constraint::Max(10),
-                Constraint::Max(10),
-            ],
-        )
-        .header(header)
-        .block(Block::default().borders(Borders::ALL).title("Live Stream"))
-        .highlight_style(selected_style)
-        .highlight_symbol(">> ");
-
-        ratatui::widgets::StatefulWidget::render(t, area, buf, &mut widget.stream_table_state);
-    }
-
-    fn draw_leaderboard(widget: &Dashboard, area: Rect, buf: &mut Buffer) {
-        let barchart = BarChart::default()
-        .block(Block::default().borders(Borders::ALL).title("Leaderboard"))
-        //.data(&widget.leaderboard.iter().map(|x| (x[0], x[1].parse().unwrap())).collect::<Vec<_>>())
-        .data(&widget.leaderboard)
-        .bar_width(1)
-        .bar_gap(0)
-        .bar_set(symbols::bar::NINE_LEVELS)
-        .value_style(
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Green)
-                .add_modifier(Modifier::ITALIC),
-        )
-        .direction(Direction::Horizontal)
-        .label_style(Style::default().fg(Color::Yellow))
-        .bar_style(Style::default().fg(Color::Green));
-        barchart.render(area, buf);
-    }
-
-    #[allow(unused_variables)]
-    fn draw_charts(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
-        // Initialize counters
-        let mut sandwich_total = 0;
-        let mut cex_dex_total = 0;
-        let mut jit_total = 0;
-        let mut jit_sandwich_total = 0;
-        let mut atomic_backrun_total = 0;
-        let mut liquidation_total = 0;
-
-        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<MevBlock>> =
-            widget.mevblocks.lock().unwrap();
-
-        // Aggregate counts
-        for item in mevblocks_guard.iter() {
-            sandwich_total += item.mev_count.sandwich_count.unwrap_or(0);
-            cex_dex_total += item.mev_count.cex_dex_count.unwrap_or(0);
-            jit_total += item.mev_count.jit_count.unwrap_or(0);
-            jit_sandwich_total += item.mev_count.jit_sandwich_count.unwrap_or(0);
-            atomic_backrun_total += item.mev_count.atomic_backrun_count.unwrap_or(0);
-            liquidation_total += item.mev_count.liquidation_count.unwrap_or(0);
-        }
-
-        // Construct the final Vec<(&str, u64)> with the total counts
-        let data: Vec<(&str, u64)> = vec![
-            ("Sandwich", sandwich_total),
-            ("Cex-Dex", cex_dex_total),
-            ("Jit", jit_total),
-            ("Jit Sandwich", jit_sandwich_total),
-            ("Atomic Backrun", atomic_backrun_total),
-            ("Liquidation", liquidation_total),
-        ];
-
-        let barchart = BarChart::default()
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Count of MEV Types"),
-            )
-            .data(&data)
-            .bar_width(1)
-            .bar_gap(0)
-            .bar_set(symbols::bar::NINE_LEVELS)
-            .value_style(
-                Style::default()
-                    .fg(Color::Black)
-                    .bg(Color::Green)
-                    .add_modifier(Modifier::ITALIC),
-            )
-            .direction(Direction::Horizontal)
-            .label_style(Style::default().fg(Color::Yellow))
-            .bar_style(Style::default().fg(Color::Green));
-        barchart.render(area, buf);
-    }
-
-    fn render_bottom_bar(&self, area: Rect, buf: &mut Buffer) {
-        let keys = [
-            ("Q/Esc", "Quit"),
-            ("Tab", "Next Tab"),
-            ("BackTab", "Previous Tab"),
-            ("↑/w", "Up"),
-            ("↓/s", "Down"),
-            ("↵", "S"),
-        ];
-        let spans = keys
-            .iter()
-            .flat_map(|(key, desc)| {
-                let key = Span::styled(format!(" {} ", key), THEME.key_binding.key);
-                let desc = Span::styled(format!(" {} ", desc), THEME.key_binding.description);
-                [key, desc]
-            })
-            .collect_vec();
-        Paragraph::new(Line::from(spans))
-            .alignment(Alignment::Center)
-            .fg(Color::Indexed(236))
-            .bg(Color::Indexed(232))
-            .render(area, buf);
-    }
-
-    /// helper function to create a centered rect using up certain percentage of
-    /// the available rect `r`
-    fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-        let popup_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Percentage((100 - percent_y) / 2),
-                Constraint::Percentage(percent_y),
-                Constraint::Percentage((100 - percent_y) / 2),
-            ])
-            .split(r);
-
-        Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage((100 - percent_x) / 2),
-                Constraint::Percentage(percent_x),
-                Constraint::Percentage((100 - percent_x) / 2),
-            ])
-            .split(popup_layout[1])[1]
-    }
-
-    fn draw_logs(_widget: &Dashboard, area: Rect, buf: &mut Buffer) {
-        TuiLoggerSmartWidget::default()
-            .style_error(Style::default().fg(Color::Red))
-            .style_debug(Style::default().fg(Color::Green))
-            .style_warn(Style::default().fg(Color::Yellow))
-            .style_trace(Style::default().fg(Color::Magenta))
-            .style_info(Style::default().fg(Color::Cyan))
-            .output_separator(':')
-            .output_timestamp(Some("%H:%M:%S".to_string()))
-            .output_level(Some(TuiLoggerLevelOutput::Abbreviated))
-            .output_target(true)
-            .output_file(true)
-            .output_line(true)
-            .title_target("Target Selector")
-            .title_log("Logs")
-            .render(area, buf);
-    }
-
-    fn update_progress_bar(&mut self, event: Action, value: Option<u16>) {
-        trace!(target: "App", "Updating progress bar {:?}",event);
-        self.progress_counter = value;
-        if value.is_none() {
-            info!(target: "App", "Background task finished");
-        }
-    }
-
-    fn render_progress(&self, area: Rect, buf: &mut Buffer) {
-        let progress = self.progress_counter.unwrap_or(0);
-        Gauge::default()
-            .block(Block::bordered().title("PROGRESS:"))
-            .gauge_style((Color::White, Modifier::ITALIC))
-            .percent(progress)
-            .render(area, buf);
-    }
-
-    /// A simulated task that sends a counter value to the UI ranging from 0 to
-    /// 100 every second.
-    fn progress_task(tx: UnboundedSender<Action>) -> Result<()> {
-        for progress in 0..100 {
-            debug!(target:"progress-task", "Send progress to UI thread. Value: {:?}", progress);
-            tx.send(Action::ProgressChanged(Some(progress)))?;
-
-            trace!(target:"progress-task", "Sleep one second");
-            thread::sleep(time::Duration::from_millis(1000));
-        }
-        info!(target:"progress-task", "Progress task finished");
-        tx.send(Action::ProgressChanged(None))?;
-        Ok(())
-    }
 }
 
 impl Component for Dashboard {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
-        self.command_tx = Some(tx);
-        Ok(())
-    }
-
     fn register_config_handler(&mut self, config: Config) -> Result<()> {
         self.config = config;
         Ok(())
@@ -366,63 +151,29 @@ impl Component for Dashboard {
         "Dashboard".to_string()
     }
 
-    fn handle_key_events(&mut self, key: KeyEvent) -> Result<Option<Action>> {
+    fn handle_key_events(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Enter => {
-                self.popup_scroll_position = 0;
-                self.popup_scroll_state = self
-                    .popup_scroll_state
-                    .position(self.popup_scroll_position as usize);
-
-                self.show_popup = !self.show_popup;
-            }
-            KeyCode::Up => {
-                self.next();
-            }
-            KeyCode::Down => {
-                self.previous();
-            }
             _ => (),
         };
-
-        Ok(Some(Action::Tick))
     }
 
-    fn handle_events(&mut self, event: Option<Event>) -> Result<Option<Action>> {
-        let r = match event {
-            Some(Event::Key(key_event)) => self.handle_key_events(key_event)?,
-            Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event)?,
+    fn handle_data_events(&mut self, event: TuiUpdate) {
+        match event {
+            TuiUpdate::Block((block, bundles)) => self.mev_count.update_count(bundles),
+
             _ => None,
         };
-        Ok(r)
     }
 
-    fn data_update(&mut self, data: BrontesData) -> Result<Option<Action>> {
-        match action {
-            Action::Tui(tui_event) => {
-                match tui_event {
-                    BrontesData(mevblock) => {
-                        let mut blocks: std::sync::MutexGuard<'_, Vec<MevBlock>> =
-                            self.mevblocks.lock().unwrap();
-                        blocks.push(mevblock.clone()); // Store received block
-                    }
-                    TuiEvents::MevBundleEventReceived(bundle) => {
-                        let mut bundles: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                            self.mev_bundles.lock().unwrap();
-                        bundles.extend(bundle.into_iter());
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(None)
+    fn on_select(&mut self) {
+        self.term.lock().draw(|f| {
+            let page_index = DASHBOARD_INDEX;
+
+            self.navigation.draw(f, f.size(), DASHBOARD_INDEX);
+        });
     }
 
-    fn init(&mut self, _area: Rect) -> Result<()> {
-        Ok(())
-    }
-
-    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()> {
+    fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });
 
         let template = Layout::default()
@@ -445,51 +196,13 @@ impl Component for Dashboard {
 
         let buf = f.buffer_mut();
 
-        Self::draw_charts(self, sub_layout[0], buf);
-        Self::draw_leaderboard(self, sub_layout[1], buf);
-        Self::draw_livestream(self, chunks[1], buf);
-        Self::draw_logs(self, chunks[2], buf);
-        Self::render_progress(self, template[2], buf);
+        self.mev_count.draw(sub_layout[0], buf);
+        //Self::draw_leaderboard(self, sub_layout[1], buf);
+        //Self::draw_logs(self, chunks[2], buf);
+        self.livestream.draw_livestream(chunks[1], buf);
+
+        self.progress.render(template[2], buf);
         Self::render_bottom_bar(self, template[3], buf);
-        if self.show_popup {
-            if let Some(_selected_index) = self.stream_table_state.selected() {
-                let block = Block::default()
-                    .title("MEV Details")
-                    .borders(Borders::ALL)
-                    .padding(Padding::horizontal(4));
-
-                let area = Self::centered_rect(80, 80, area);
-                //Self::show_popup(self,area);
-                f.render_widget(Clear, area); //this clears out the background
-                let paragraph = Paragraph::new("Hello, world!");
-                f.render_widget(paragraph, area);
-
-                let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                    self.mev_bundles.lock().unwrap();
-
-                let text = mevblocks_guard[self.stream_table_state.selected().unwrap()]
-                    .to_string()
-                    .into_text();
-
-                let paragraph = Paragraph::new(text.unwrap())
-                    .block(block)
-                    .scroll((self.popup_scroll_position, 0));
-
-                f.render_widget(paragraph, area);
-
-                f.render_stateful_widget(
-                    Scrollbar::default()
-                        .orientation(ScrollbarOrientation::VerticalLeft)
-                        .begin_symbol(Some("↑"))
-                        .end_symbol(Some("↓")),
-                    f.size().inner(&Margin { vertical: 10, horizontal: 10 }),
-                    &mut self.popup_scroll_state,
-                );
-            }
-            //f.render_widget(block, area);
-        }
-
-        Ok(())
     }
 }
 
@@ -517,153 +230,11 @@ impl Dashboard {
             .bg(Color::Indexed(232))
             .render(area, buf);
     }
-
-    pub fn next(&mut self) {
-        if self.show_popup {
-            self.popup_scroll_position = self.popup_scroll_position.saturating_sub(1);
-            self.popup_scroll_state = self
-                .popup_scroll_state
-                .position(self.popup_scroll_position as usize);
-        } else {
-            let i = match self.stream_table_state.selected() {
-                Some(i) => {
-                    let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                        self.mev_bundles.lock().unwrap();
-
-                    if mevblocks_guard.len() > 0 {
-                        if i == 0 {
-                            mevblocks_guard.len() - 1
-                        } else {
-                            i - 1
-                        }
-                    } else {
-                        0
-                    }
-                }
-                None => 0,
-            };
-            self.stream_table_state.select(Some(i));
-        }
-    }
-
-    pub fn previous(&mut self) {
-        if self.show_popup {
-            self.popup_scroll_position = self.popup_scroll_position.saturating_add(1);
-            self.popup_scroll_state = self
-                .popup_scroll_state
-                .position(self.popup_scroll_position as usize);
-        } else {
-            let i = match self.stream_table_state.selected() {
-                Some(i) => {
-                    let mevblocks_guard: std::sync::MutexGuard<'_, Vec<Bundle>> =
-                        self.mev_bundles.lock().unwrap();
-
-                    if mevblocks_guard.len() > 0 {
-                        if i >= mevblocks_guard.len() - 1 {
-                            0
-                        } else {
-                            i + 1
-                        }
-                    } else {
-                        0
-                    }
-                }
-                None => 0,
-            };
-
-            self.stream_table_state.select(Some(i));
-        }
-    }
-
-    #[allow(unused_variables)]
-    fn draw_charts(widget: &mut Dashboard, area: Rect, buf: &mut Buffer) {
-        // Initialize counters
-        let mut sandwich_total = 0;
-        let mut cex_dex_total = 0;
-        let mut jit_total = 0;
-        let mut jit_sandwich_total = 0;
-        let mut atomic_backrun_total = 0;
-        let mut liquidation_total = 0;
-
-        let mevblocks_guard: std::sync::MutexGuard<'_, Vec<MevBlock>> =
-            widget.mevblocks.lock().unwrap();
-
-        // Aggregate counts
-        for item in mevblocks_guard.iter() {
-            sandwich_total += item.mev_count.sandwich_count.unwrap_or(0);
-            cex_dex_total += item.mev_count.cex_dex_count.unwrap_or(0);
-            jit_total += item.mev_count.jit_count.unwrap_or(0);
-            jit_sandwich_total += item.mev_count.jit_sandwich_count.unwrap_or(0);
-            atomic_backrun_total += item.mev_count.atomic_backrun_count.unwrap_or(0);
-            liquidation_total += item.mev_count.liquidation_count.unwrap_or(0);
-        }
-
-        // Construct the final Vec<(&str, u64)> with the total counts
-        let data: Vec<(&str, u64)> = vec![
-            ("Sandwich", sandwich_total),
-            ("Cex-Dex", cex_dex_total),
-            ("Jit", jit_total),
-            ("Jit Sandwich", jit_sandwich_total),
-            ("Atomic Backrun", atomic_backrun_total),
-            ("Liquidation", liquidation_total),
-        ];
-
-        let barchart = BarChart::default()
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Count of MEV Types"),
-            )
-            .data(&data)
-            .bar_width(1)
-            .bar_gap(0)
-            .bar_set(symbols::bar::NINE_LEVELS)
-            .value_style(
-                Style::default()
-                    .fg(Color::Black)
-                    .bg(Color::Green)
-                    .add_modifier(Modifier::ITALIC),
-            )
-            .direction(Direction::Horizontal)
-            .label_style(Style::default().fg(Color::Yellow))
-            .bar_style(Style::default().fg(Color::Green));
-        barchart.render(area, buf);
-    }
-
-    /// helper function to create a centered rect using up certain percentage of
-    /// the available rect `r`
-    fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-        let popup_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Percentage((100 - percent_y) / 2),
-                Constraint::Percentage(percent_y),
-                Constraint::Percentage((100 - percent_y) / 2),
-            ])
-            .split(r);
-
-        Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage((100 - percent_x) / 2),
-                Constraint::Percentage(percent_x),
-                Constraint::Percentage((100 - percent_x) / 2),
-            ])
-            .split(popup_layout[1])[1]
-    }
-
-    fn render_progress(&self, area: Rect, buf: &mut Buffer) {
-        let progress = self.progress_counter.unwrap_or(0);
-        Gauge::default()
-            .block(Block::bordered().title("PROGRESS:"))
-            .gauge_style((Color::White, Modifier::ITALIC))
-            .percent(progress)
-            .render(area, buf);
-    }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum Focus {
-    #[derive(Default)]
+    #[default]
     Dashboard,
     Livestream,
     Progress,

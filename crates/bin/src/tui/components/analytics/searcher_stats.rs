@@ -1,4 +1,4 @@
-use brontes_database::tui::events::Action;
+/*use brontes_database::tui::events::Action;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
@@ -10,7 +10,7 @@ use crate::tui::{
 
 #[derive(Default, Debug)]
 pub struct SearcherStats {
-    command_tx: Option<UnboundedSender<Action>>,
+    command_tx: Option<UnboundedSender<TuiUpdate>>,
     config:     Config,
 }
 
@@ -54,7 +54,7 @@ impl SearcherStats {
 }
 
 impl Component for SearcherStats {
-    fn register_action_handler(&mut self, tx: UnboundedSender<Action>) -> Result<()> {
+    fn register_action_handler(&mut self, tx: UnboundedSender<TuiUpdate>) -> Result<()> {
         self.command_tx = Some(tx);
         Ok(())
     }
@@ -99,3 +99,4 @@ impl Component for SearcherStats {
         Ok(())
     }
 }
+*/

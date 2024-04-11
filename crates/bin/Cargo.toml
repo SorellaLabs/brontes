@@ -85,7 +85,7 @@ fdlimit = "0.3.0"
 polars = {features = ["lazy", "parquet", "group_by_list", "polars-io", "is_in"], workspace = true}
 
 #[cfg(feature = "tui")]
-crossterm = { verRUSsion = "0.27", features = ["event-stream", "serde"] }
+crossterm = { version = "0.27.0", features = ["event-stream", "serde"] }
 ratatui = { version = "0.26.1", features = ["all-widgets"] }
 palette = "0.7.3"
 lazy_static = "1.4.0"
