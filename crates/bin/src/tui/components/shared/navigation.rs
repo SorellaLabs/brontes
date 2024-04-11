@@ -1,15 +1,14 @@
-use std::sync::{Arc, Mutex};
 
-use brontes_database::tui::events::TuiUpdate;
-use color_eyre::eyre::Result;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+
+
+
 use ratatui::{prelude::*, widgets::*, Frame};
-use tokio::sync::mpsc::UnboundedSender;
+
 
 use crate::tui::{
     //events::{Event, EventHandler},
     app::layout,
-    config::Config,
     theme::THEME,
 };
 

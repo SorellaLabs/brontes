@@ -1,7 +1,7 @@
 use brontes_database::tui::events::TuiUpdate;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
-use tokio::sync::mpsc::UnboundedSender;
+
 
 use super::{Component, Frame};
 use crate::tui::config::Config;

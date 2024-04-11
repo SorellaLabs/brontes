@@ -3,13 +3,13 @@ use brontes_database::{
     Tables,
 };
 use brontes_types::FastHashMap;
-use eyre::Result;
+
 use ratatui::{
     layout::{Constraint, Direction, Flex, Layout},
     prelude::{Buffer, Color, Modifier, Rect, Style},
     widgets::{Block, Gauge, Widget, WidgetRef},
 };
-use tokio::sync::mpsc::UnboundedReceiver;
+
 #[derive(Default, Debug)]
 pub struct Progress {
     pub global_progress_bar: ProgressBar,

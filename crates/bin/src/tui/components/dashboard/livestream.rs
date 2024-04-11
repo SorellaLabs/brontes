@@ -1,10 +1,10 @@
-use brontes_types::mev::Bundle;
+
 use polars::frame::DataFrame;
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    prelude::{Buffer, Color, Margin, Modifier, Rect, Style},
+    prelude::{Buffer, Color, Modifier, Rect, Style},
     widgets::{
-        Block, Borders, Cell, Clear, Padding, Paragraph, Scrollbar, ScrollbarOrientation,
+        Block, Borders, Cell,
         ScrollbarState, Table, TableState,
     },
     Frame,
@@ -13,7 +13,7 @@ use ratatui::{
 use crate::tui::{
     components::dashboard::Row,
     config::KeyBindings,
-    utils::{bundles_to_dataframe, dataframe_to_table_rows},
+    utils::{dataframe_to_table_rows},
 };
 
 //TODO: need to add Vec<Bundles> buffer to store the text string of the bundles

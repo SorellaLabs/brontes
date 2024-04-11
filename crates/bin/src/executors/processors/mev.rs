@@ -24,13 +24,12 @@ use brontes_types::{
     normalized_actions::Actions,
     tree::BlockTree,
 };
-use clap::Parser;
+
 //tui related
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
 use crate::{
-    cli::{Args, Commands},
     Processor,
 };
 

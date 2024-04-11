@@ -2,56 +2,41 @@ use std::{
     error,
     future::Future,
     io::{self, stdout, Stdout},
-    ops::{Deref, DerefMut},
     rc::Rc,
-    sync::Arc,
     task::Poll,
-    thread,
-    thread::sleep,
-    time::Duration,
 };
 
 use brontes_database::tui::events::TuiUpdate;
-use brontes_types::mev::{bundle::Bundle, MevBlock};
+
 use crossterm::{
-    event::{self, Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
+    event::{Event, EventStream, KeyCode, KeyEvent},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use eyre::{Context, Error, Result};
-use futures::{StreamExt, TryStreamExt};
+use eyre::{Context, Result};
+use futures::{StreamExt};
 use itertools::Itertools;
-use parking_lot::Mutex;
-use polars::frame::DataFrame;
-use ratatui::{
-    prelude::{Color, Constraint, Direction, Layout, Rect, Style, *},
-    widgets::{Block, Borders, ScrollbarState, *},
-};
-use reth_tasks::{TaskExecutor, TaskManager};
-use tokio::sync::{
-    broadcast::Sender,
-    mpsc::{self, unbounded_channel, UnboundedReceiver, UnboundedSender},
-};
-use tracing::{error, info, trace};
 
-use crate::runner::CliContext;
+
+use ratatui::{
+    prelude::{Constraint, Direction, Layout, Rect, *},
+};
+
+use tokio::sync::{
+    mpsc::{UnboundedReceiver},
+};
+
+
+
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
-use std::{
-    collections::HashSet,
-    hash::{Hash, Hasher},
-};
+
 
 //use super::{components::analytics::hot_tokens::HotTokens, mode::Page};
 use crate::tui::{
     components::{
-        dashboard::Dashboard,
-        /*analytics::{
-            analytics::Analytics, searcher_stats::SearcherStats, top_contracts::TopContracts,
-            vertically_integrated::VerticallyIntegrated,
-        }*/
-        metrics::Metrics, Component,
+        dashboard::Dashboard, Component,
     },
     config::Config,
 };

@@ -1,16 +1,16 @@
 use std::path::PathBuf;
 
 use brontes_types::mev::{bundle::Bundle, Mev};
-use directories::ProjectDirs;
+
 use eyre::Result;
 use itertools::Itertools;
-use lazy_static::lazy_static;
+
 use polars::prelude::*;
-use ratatui::{prelude::*, widgets::*};
-use tracing::error;
-use tracing_error::ErrorLayer;
+use ratatui::{widgets::*};
+
+
 use tracing_subscriber::{
-    prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Layer,
+    Layer,
 };
 
 use crate::get_symbols_from_transaction_accounting;
