@@ -1,14 +1,13 @@
 use brontes_types::mev::{bundle::Bundle, MevType};
 use crossterm::event::{KeyEvent, MouseEvent};
-use eyre::ErrReport;
+
 use ratatui::{
-    prelude::{Buffer, Color, Constraint, Direction, Modifier, Rect, Style},
+    prelude::{Buffer, Color, Direction, Modifier, Rect, Style},
     symbols::bar,
-    widgets::{BarChart, Block, Borders, ScrollbarState, Widget},
-    Frame,
+    widgets::{BarChart, Block, Borders, Widget},
 };
 
-use super::Component;
+
 
 #[derive(Default, Debug)]
 pub struct MevCount {

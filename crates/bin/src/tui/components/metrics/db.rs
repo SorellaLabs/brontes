@@ -1,4 +1,4 @@
-use std::env;
+
 
 use brontes_database::tui::events::TuiUpdate;
 use color_eyre::eyre::Result;

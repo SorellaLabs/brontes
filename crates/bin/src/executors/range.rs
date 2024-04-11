@@ -19,7 +19,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
-use crate::{executors::ProgressBar, Processor};
+use crate::{Processor};
 pub struct RangeExecutorWithPricing<
     T: TracingProvider,
     DB: DBWriter + LibmdbxReader,

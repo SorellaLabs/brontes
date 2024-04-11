@@ -4,7 +4,7 @@ use brontes_database::tui::events::TuiUpdate;
 use color_eyre::eyre::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::layout::Rect;
-use tokio::sync::mpsc::UnboundedSender;
+
 
 pub mod shared;
 

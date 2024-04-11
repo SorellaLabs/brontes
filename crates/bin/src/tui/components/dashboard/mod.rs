@@ -1,48 +1,43 @@
 mod leaderboard;
 mod livestream;
-use parking_lot::Mutex;
+
 use ratatui::text::Line;
 mod log;
 mod mev_count;
 pub mod progress;
-use std::{io::Stdout, sync::Arc, thread, time};
 
-use ansi_to_tui::IntoText;
+
+
 use brontes_database::tui::events::TuiUpdate;
-use brontes_types::mev::{bundle::Bundle, Mev, MevBlock};
-use crossterm::event::{KeyCode, KeyEvent};
+
+use crossterm::event::{KeyEvent};
 use eyre::Result;
-use futures::channel::mpsc::UnboundedReceiver;
+
 //
 use itertools::Itertools;
 use livestream::Livestream;
-use log::*;
+
 use mev_count::MevCount;
 use polars::prelude::*;
 use progress::Progress;
 use ratatui::{
-    backend::CrosstermBackend,
     layout::Layout,
     prelude::{
-        Alignment, Buffer, Color, Constraint, Direction, Margin, Modifier, Rect, Span, Style,
+        Alignment, Buffer, Color, Constraint, Direction, Margin, Rect, Span,
     },
     style::Stylize,
     widgets::{
-        Block, Borders, Cell, Clear, Gauge, Padding, Paragraph, Row, Scrollbar,
-        ScrollbarOrientation, ScrollbarState, Table, Widget,
+        Cell, Paragraph, Row, Widget,
     },
-    Terminal,
 };
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+
+
 
 use super::{shared::navigation::Navigation, Component, Frame};
 use crate::{
-    get_symbols_from_transaction_accounting,
     tui::{
         config::Config,
         theme::THEME,
-        utils::{bundles_to_dataframe, dataframe_to_table_rows},
     },
 };
 #[derive(Debug)]
