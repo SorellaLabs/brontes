@@ -255,25 +255,29 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
         let back_run_actions = searcher_actions.pop()?;
-        let back_run_swaps = back_run_actions
-            .clone()
-            .into_iter()
-            .collect_action_vec(Actions::try_swaps_merged);
-
-        let front_run_swaps = searcher_actions
-            .clone()
-            .into_iter()
-            .map(|action| {
-                action
-                    .into_iter()
-                    .collect_action_vec(Actions::try_swaps_merged)
-            })
-            .collect::<Vec<_>>();
+        // let back_run_swaps = back_run_actions
+        //     .clone()
+        //     .into_iter()
+        //     .collect_action_vec(Actions::try_swaps_merged);
+        //
+        // let front_run_swaps = searcher_actions
+        //     .clone()
+        //     .into_iter()
+        //     .map(|action| {
+        //         action
+        //             .into_iter()
+        //             .collect_action_vec(Actions::try_swaps_merged)
+        //     })
+        //     .collect::<Vec<_>>();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
         // front run that is unrelated
-        if !Self::has_pool_overlap(&front_run_swaps, &back_run_swaps, &victim_actions, &victim_info)
-        {
+        if !Self::has_pool_overlap(
+            &searcher_actions,
+            &back_run_actions,
+            &victim_actions,
+            &victim_info,
+        ) {
             // if we don't satisfy a sandwich but we have more than 1 possible front run
             // tx remaining, lets remove the false positive backrun tx and try again
             if possible_front_runs_info.len() > 1 {
@@ -315,6 +319,21 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         }
 
         let victim_swaps = victim_actions.into_iter().flatten().collect::<Vec<_>>();
+
+        let back_run_swaps = back_run_actions
+            .clone()
+            .into_iter()
+            .collect_action_vec(Actions::try_swaps_merged);
+
+        let front_run_swaps = searcher_actions
+            .clone()
+            .into_iter()
+            .map(|action| {
+                action
+                    .into_iter()
+                    .collect_action_vec(Actions::try_swaps_merged)
+            })
+            .collect::<Vec<_>>();
 
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
@@ -418,12 +437,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     fn has_pool_overlap(
-        front_run_swaps: &[Vec<NormalizedSwap>],
-        back_run_swaps: &[NormalizedSwap],
+        front_run_swaps: &[Vec<Actions>],
+        back_run_swaps: &[Actions],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        tracing::info!("{:#?},{:#?},{:#?},", victim_actions, front_run_swaps, back_run_swaps);
+        tracing::info!("{:#?}\n{:#?}\n{:#?}", victim_actions, front_run_swaps, back_run_swaps);
 
         let f_swap_len = front_run_swaps.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
@@ -440,26 +459,88 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 back_run_swaps.to_vec()
             };
 
-            let front_run_pools = chunk_front_run_swaps
-                .iter()
-                .flatten()
-                .map(|s| s.pool)
-                .collect::<FastHashSet<_>>();
+            let front_run: Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)> =
+                chunk_front_run_swaps
+                    .iter()
+                    .map(|action| {
+                        action
+                            .clone()
+                            .into_iter()
+                            .split_actions((Actions::try_swaps_merged, Actions::try_transfer))
+                    })
+                    .collect_vec();
 
-            let back_run_pools = chunk_back_run_swaps
-                .iter()
-                .map(|swap| swap.pool)
-                .collect::<FastHashSet<_>>();
+            // collect all addresses that have exactly two transfers two and from.
+            // this should cover all pools that we didn't have classified
 
-            let front_run_tokens = chunk_front_run_swaps
-                .iter()
-                .flatten()
-                .flat_map(|s| {
-                    [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
+            let (front_pools, front_tokens): (Vec<_>, Vec<_>) = front_run
+                .into_iter()
+                .map(|(swaps, transfers)| {
+                    let front_run_pools = itertools::Itertools::into_group_map(
+                        transfers
+                            .into_iter()
+                            .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
+                    )
+                    .into_iter()
+                    .filter(|(_, v)| {
+                        if v.len() != 2 {
+                            return false
+                        }
+                        let first = v.get(0).unwrap();
+                        let second = v.get(1).unwrap();
+                        first.token.address != second.token.address
+                    })
+                    .map(|(k, _)| k)
+                    .chain(swaps.iter().map(|s| s.pool))
+                    .collect::<Vec<_>>();
+
+                    let front_run_tokens = swaps
+                        .iter()
+                        .flat_map(|s| {
+                            [
+                                (s.token_in.address, s.pool, true),
+                                (s.token_out.address, s.pool, false),
+                            ]
+                        })
+                        .collect::<Vec<_>>();
+                    (front_run_pools, front_run_tokens)
                 })
+                .unzip();
+
+            let front_run_pools = front_pools
+                .into_iter()
+                .flatten()
                 .collect::<FastHashSet<_>>();
 
-            let back_run_tokens = chunk_back_run_swaps
+            let front_run_tokens = front_tokens
+                .into_iter()
+                .flatten()
+                .collect::<FastHashSet<_>>();
+
+            let (back_swap, back_transfer): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) =
+                chunk_back_run_swaps
+                    .into_iter()
+                    .split_actions((Actions::try_swaps_merged, Actions::try_transfer));
+
+            let back_run_pools = itertools::Itertools::into_group_map(
+                back_transfer
+                    .into_iter()
+                    .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
+            )
+            .into_iter()
+            .filter(|(_, v)| {
+                if v.len() != 2 {
+                    return false
+                }
+                let first = v.get(0).unwrap();
+                let second = v.get(1).unwrap();
+                first.token.address != second.token.address
+            })
+            .map(|(k, _)| k)
+            .chain(back_swap.iter().map(|s| s.pool))
+            .collect::<FastHashSet<_>>();
+
+            let back_run_tokens = back_swap
                 .iter()
                 .flat_map(|s| {
                     [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
@@ -898,6 +979,7 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
+    /// This is a balancer sandwich
     #[brontes_macros::test]
     async fn test_sandwich_not_classified() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
