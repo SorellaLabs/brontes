@@ -626,7 +626,7 @@ fn get_possible_sandwich_duplicate_contracts(
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::WETH_ADDRESS;
+    use brontes_types::constants::{DAI_ADDRESS, USDT_ADDRESS,WETH_ADDRESS};
 
     use super::*;
     use crate::{
@@ -826,6 +826,30 @@ mod tests {
                 WETH_ADDRESS,
                 hex!("4309e88d1d511f3764ee0f154cee98d783b61f09").into(),
                 hex!("6bc40d4099f9057b23af309c08d935b890d7adc0").into(),
+            ])
+            .with_gas_paid_usd(30.0)
+            .with_expected_profit_usd(0.03);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_sandwich_not_classified() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("8d67edc3404d17caa0ab07835d160d67b6b3414b01737c4693f95db5462238eb").into(),
+                hex!("eda2a0759b04a5b92886b0146df4ca018236d3ea479ee4309b36ba82dfab2cd6").into(),
+                hex!("4cb2e73cb144fb6926055473c925bb3a094255460d3d438f31aa2b4a10a489f3").into(),
+            ])
+            .needs_tokens(vec![
+                hex!("4ddc2d193948926d02f9b1fe9e1daa0718270ed5").into(),
+                WETH_ADDRESS,
+                DAI_ADDRESS,
+                USDT_ADDRESS,
+                USDC_ADDRESS,
             ])
             .with_gas_paid_usd(30.0)
             .with_expected_profit_usd(0.03);
