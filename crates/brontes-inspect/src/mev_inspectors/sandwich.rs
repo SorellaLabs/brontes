@@ -550,7 +550,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             if front_run_pools.intersection(&back_run_pools).count() == 0 {
                 tracing::debug!("no pool intersection for frontrun / backrun");
             }
-            tracing::info!(?front_run_pools, ?back_run_pools);
 
             // we group all victims by eoa, such that instead of a tx needing to be a
             // victim, a eoa needs to be a victim. this allows for more complex
@@ -569,12 +568,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 return false
             }
 
+            let mut has_sandwich = false;
+
             // for each victim eoa, ensure they are a victim of a frontrun and a backrun
-            // either through a pool or overlapping tokens
+            // either through a pool or overlapping tokens. However, we also ensure that
+            // there exisits at-least one sandwhich..
             let was_victims: usize = grouped_victims
                 .into_values()
                 .map(|v| {
-                    v.iter()
+                    let front_run = v
+                        .iter()
                         .cloned()
                         .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
                         .any(|(swaps, transfers)| {
@@ -587,46 +590,55 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                             // sandwich 
                                 || front_run_tokens.contains(&(t.token.address, t.to, false))
                                 })
-                        })
-                        || v.iter()
-                            .cloned()
-                            .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
-                            .any(|(swaps, transfers)| {
-                                swaps.iter().any(|s| back_run_pools.contains(&s.pool))
-                                    || transfers.iter().any(|t| {
-                                        // victim has a transfer from the pool that was a token in
-                                        // for the sandwich
-                                        back_run_tokens.contains(&(t.token.address, t.from, true))
+                        });
+                    let backrun = v
+                        .iter()
+                        .cloned()
+                        .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
+                        .any(|(swaps, transfers)| {
+                            swaps.iter().any(|s| back_run_pools.contains(&s.pool))
+                                || transfers.iter().any(|t| {
+                                    // victim has a transfer from the pool that was a token in
+                                    // for the sandwich
+                                    back_run_tokens.contains(&(t.token.address, t.from, true))
                             // victim has a transfer to the pool that was a token out for the
                             // sandwich 
                                 || back_run_tokens.contains(&(t.token.address, t.to, false))
-                                    })
-                            })
-                        || itertools::Itertools::into_group_map(
-                            v.into_iter()
-                                .flat_map(|(_, t)| t)
-                                .flat_map(|t| [(t.to, t.clone()), (t.from, t.clone())]),
-                        )
-                        .into_iter()
-                        .filter(|(_, v)| {
-                            if v.len() != 2 {
-                                return false
-                            }
-                            let first = v.get(0).unwrap();
-                            let second = v.get(1).unwrap();
-                            first.token.address != second.token.address
-                        })
-                        .map(|(k, _)| k)
-                        .any(|pool| {
-                            front_run_pools.contains(&pool) || back_run_pools.contains(&pool)
-                        })
+                                })
+                        });
+
+                    let generated_pool_overlap = itertools::Itertools::into_group_map(
+                        v.into_iter()
+                            .flat_map(|(_, t)| t)
+                            .flat_map(|t| [(t.to, t.clone()), (t.from, t.clone())]),
+                    )
+                    .into_iter()
+                    .filter(|(_, v)| {
+                        if v.len() != 2 {
+                            return false
+                        }
+                        let first = v.get(0).unwrap();
+                        let second = v.get(1).unwrap();
+                        first.token.address != second.token.address
+                    })
+                    .map(|(k, _)| k)
+                    .any(|pool| {
+                        let fp = front_run_pools.contains(&pool);
+                        let bp = back_run_pools.contains(&pool);
+                        has_sandwich |= fp && bp;
+
+                        fp || bp
+                    });
+                    has_sandwich |= front_run && backrun;
+
+                    front_run || backrun || generated_pool_overlap
                 })
                 .map(|was_victim| was_victim as usize)
                 .sum();
 
             // if we had more than 50% victims, then we say this was valid. This
             // wiggle room is to deal with unknowns
-            if (was_victims as f64) / (amount as f64) < 0.5 {
+            if (was_victims as f64) / (amount as f64) < 0.5  || !has_sandwich {
                 return false
             }
         }
