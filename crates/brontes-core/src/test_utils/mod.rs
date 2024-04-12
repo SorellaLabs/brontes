@@ -117,7 +117,7 @@ impl TraceLoader {
                 Tables::TxTraces,
                 false,
                 Some((block - 2, block + 2)),
-                //tables,
+                tables,
             )
             .await?;
         multi.clear().unwrap();

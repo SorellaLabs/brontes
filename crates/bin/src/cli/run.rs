@@ -1,9 +1,11 @@
 use std::{env, path::Path};
 
+use alloy_primitives::Address;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, tui::events::TuiUpdate};
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
+use brontes_types::constants::{USDC_ADDRESS, USDT_ADDRESS};
 //TUI related imports
 use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
@@ -88,12 +90,14 @@ pub struct RunArgs {
 
 impl RunArgs {
     pub async fn execute(mut self, ctx: CliContext) -> eyre::Result<()> {
-        banner::print_banner();
-        // Fetch required environment variables.
-        let db_path = get_env_vars()?;
-        tracing::info!(target: "brontes", "got env vars");
-        let quote_asset = self.quote_asset.parse()?;
-        tracing::info!(target: "brontes", "parsed quote asset");
+        if self.cli_only {
+            banner::print_banner();
+        }
+
+        let db_path = get_env_vars().expect("Reth DB path not found in .env");
+
+        let quote_asset = self.load_quote_address()?;
+
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
@@ -103,7 +107,6 @@ impl RunArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        #[allow(unused_assignments)]
         let mut tui_tx: Option<UnboundedSender<TuiUpdate>> = None;
 
         let tui_handle: tokio::task::JoinHandle<()> = if !self.cli_only {
@@ -151,7 +154,7 @@ impl RunArgs {
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         let executor = task_executor.clone();
-        let result = executor
+        let brontes = executor
             .clone()
             .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
                 if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
@@ -180,11 +183,22 @@ impl RunArgs {
                 }
             });
 
-        //        tokio::join!(tui_handle, result).await();
-        let _ = tokio::join!(tui_handle, result);
+        let _ = tokio::join!(tui_handle, brontes);
 
         //result.await?;
 
         Ok(())
+    }
+
+    pub fn load_quote_address(&self) -> eyre::Result<Address> {
+        let quote_asset = self.quote_asset.parse()?;
+
+        match quote_asset {
+            USDC_ADDRESS => tracing::info!(target: "brontes", "Set USDC as quote asset"),
+            USDT_ADDRESS => tracing::info!(target: "brontes", "Set USDT as quote asset"),
+            _ => tracing::info!(target: "brontes", "Set quote asset"),
+        }
+
+        Ok(quote_asset)
     }
 }

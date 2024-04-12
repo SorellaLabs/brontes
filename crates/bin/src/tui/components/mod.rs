@@ -5,7 +5,6 @@ use color_eyre::eyre::Result;
 use crossterm::event::{KeyEvent, MouseEvent};
 use ratatui::layout::Rect;
 
-
 pub mod shared;
 
 use crossterm::event::Event;
@@ -33,21 +32,27 @@ pub trait Component: Debug {
         "".to_string()
     }
 
-    fn handle_events(&mut self, event: Option<Event>) {
-        let r = match event {
+    /*fn handle_events(&mut self, event: Option<Event>) -> Result<()> {
+        match event {
             Some(Event::Key(key_event)) => self.handle_key_events(key_event),
             Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event),
-            _ => (),
-        };
+            _ => Ok(()),
+        }
+    }*/
+
+    #[allow(unused_variables)]
+    fn handle_key_events(&mut self, key: KeyEvent) -> Result<()> {
+        Ok(())
     }
 
     #[allow(unused_variables)]
-    fn handle_key_events(&mut self, key: KeyEvent) {}
+    fn handle_mouse_events(&mut self, mouse: MouseEvent) -> Result<()> {
+        Ok(())
+    }
 
-    #[allow(unused_variables)]
-    fn handle_mouse_events(&mut self, mouse: MouseEvent) {}
-
-    fn handle_data_events(&mut self, event: TuiUpdate) {}
+    fn handle_data_events(&mut self, event: TuiUpdate) -> Result<()> {
+        Ok(())
+    }
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {}
 

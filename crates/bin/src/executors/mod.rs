@@ -158,8 +158,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 let ranges =
                     state_to_init.get_state_for_ranges(start_block as usize, end_block as usize);
                 let executor = executor.clone();
-                //let prgrs_bar = progress_bar.clone();
-                // let tables_pb = tables_pb.clone();
+                let prgrs_bar = progress_bar.clone();
+                let tables_pb = tables_pb.clone();
                 let tui_tx = tui_tx.clone();
                 #[allow(clippy::async_yields_async)]
                 async move {
@@ -338,7 +338,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let futures = FuturesUnordered::new();
 
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block)
+            self.build_range_executors(executor.clone(), end_block, tui_tx.clone())
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -351,7 +351,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .await;
         } else {
             if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block)
+                self.build_range_executors(executor.clone(), end_block, tui_tx.clone())
                     .for_each(|block_range| {
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                             "Range Executor",
@@ -385,7 +385,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
         self.verify_global_tables().await?;
-        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
+        let build_future = self.build_internal(executor.clone(), had_end_block, end_block, app_tx);
 
         pin_mut!(build_future, shutdown);
         tokio::select! {

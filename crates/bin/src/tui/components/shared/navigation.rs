@@ -1,14 +1,12 @@
-
-
-
-
-
-use ratatui::{prelude::*, widgets::*, Frame};
-
+use ratatui::{
+    layout::{Direction, Layout},
+    prelude::*,
+    widgets::*,
+    Frame,
+};
 
 use crate::tui::{
     //events::{Event, EventHandler},
-    app::layout,
     theme::THEME,
 };
 
@@ -16,9 +14,7 @@ use crate::tui::{
 pub struct Navigation {}
 
 impl Navigation {
-    fn render_title_bar(&self, area: Rect, buf: &mut Buffer, page_index: usize) {
-        let area = layout(area, Direction::Horizontal, vec![0, 58]);
-
+    fn render_title_bar(&self, area: Rc<Rect>, buf: &mut Buffer, page_index: usize) {
         Paragraph::new(Span::styled("Brontes", THEME.app_title)).render(area[0], buf);
         let titles = vec!["DASHBOARD", "EXPLORER", " ANALYTICS ", " METRICS ", " SETTINGS "];
         Tabs::new(titles)
