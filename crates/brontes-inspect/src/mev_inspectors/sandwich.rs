@@ -545,6 +545,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 })
                 .collect::<FastHashSet<_>>();
 
+            // ensure the intersection of frontrun and backrun pools exists
+
+            if front_run_pools.intersection(&back_run_pools).count() == 0 {
+                tracing::debug!("no pool intersection for frontrun / backrun");
+            }
+
             // we group all victims by eoa, such that instead of a tx needing to be a
             // victim, a eoa needs to be a victim. this allows for more complex
             // detection such as having a approve and then a swap in different
@@ -558,7 +564,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             let amount = grouped_victims.len();
 
             if amount == 0 {
-                tracing::info!(" no grouped victims");
+                tracing::debug!(" no grouped victims");
                 return false
             }
 
@@ -618,7 +624,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .sum();
 
             // if we had more than 50% victims, then we say this was valid. This
-            // wiggle room is to deal with unkowns
+            // wiggle room is to deal with unknowns
             if (was_victims as f64) / (amount as f64) < 0.5 {
                 return false
             }
