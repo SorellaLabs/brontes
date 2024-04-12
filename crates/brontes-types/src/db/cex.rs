@@ -391,8 +391,8 @@ impl MulAssign for CexQuote {
 impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         if value.1.exchange == CexExchange::Binance
-            && value.1.symbol.contains("BTC")
-            && value.1.symbol.contains("USD")
+        // && value.1.symbol.contains("BTC")
+        // && value.1.symbol.contains("USD")
         {
             println!("VALUE: {:?}", value);
         }
