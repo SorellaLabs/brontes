@@ -167,15 +167,15 @@ impl TracingClient {
         };
 
         self.api
-        .trace_block_with_inspector(
-            block_id,
-            insp_setup,
-            move |tx_info, inspector, res, _, _| {
-
-                Ok(inspector.into_trace_results(tx_info, &res))
-            },
-        )
-        .await
+            .trace_block_with_inspector(
+                block_id,
+                insp_setup,
+                move |tx_info, inspector, res, _, _| {
+                    tracing::debug!(?res);
+                    Ok(inspector.into_trace_results(tx_info, &res))
+                },
+            )
+            .await
     }
 }
 
