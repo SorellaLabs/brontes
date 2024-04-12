@@ -20,8 +20,6 @@ use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
-const MAX_REV_TO_BRIBE_AM: Rational = Rational::const_from_unsigneds(3, 10);
-
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
 }
@@ -136,17 +134,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
-        if gas_used_usd != Rational::ZERO
-            && rev.clone().unwrap_or(Rational::ONE) / &gas_used_usd > MAX_REV_TO_BRIBE_AM
-        {
-            tracing::trace!(hash=?info.tx_hash, "atomic arb found with profit margin over 30%");
-            return None
-        }
-
         let profit = rev
-            .map(|rev| rev - gas_used_usd)
+            .map(|rev| rev - &gas_used_usd)
             .filter(|_| has_dex_price)
             .unwrap_or_default();
+
+        if profit > Rational::from(3) * gas_used_usd {
+            tracing::trace!("profit double gas used for atomic");
+            return None
+        }
 
         let is_profitable = profit > Rational::ZERO;
 
