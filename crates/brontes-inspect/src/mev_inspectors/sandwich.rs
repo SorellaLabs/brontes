@@ -484,7 +484,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         if v.len() != 2 {
                             return false
                         }
-                        let first = v.get(0).unwrap();
+                        let first = v.first().unwrap();
                         let second = v.get(1).unwrap();
                         first.token.address != second.token.address
                     })
@@ -530,7 +530,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 if v.len() != 2 {
                     return false
                 }
-                let first = v.get(0).unwrap();
+                let first = v.first().unwrap();
                 let second = v.get(1).unwrap();
                 first.token.address != second.token.address
             })
@@ -617,7 +617,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         if v.len() != 2 {
                             return false
                         }
-                        let first = v.get(0).unwrap();
+                        let first = v.first().unwrap();
                         let second = v.get(1).unwrap();
                         first.token.address != second.token.address
                     })

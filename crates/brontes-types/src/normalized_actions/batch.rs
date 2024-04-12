@@ -24,7 +24,7 @@ impl NormalizedBatch {
     pub fn fetch_underlying_actions(self) -> impl Iterator<Item = Actions> {
         self.user_swaps
             .into_iter()
-            .chain(self.solver_swaps.unwrap_or(vec![]))
+            .chain(self.solver_swaps.unwrap_or_default())
             .map(Actions::from)
     }
 
