@@ -171,7 +171,6 @@ impl TracingClient {
                 block_id,
                 insp_setup,
                 move |tx_info, inspector, res, _, _| {
-                    tracing::debug!(?res);
                     Ok(inspector.into_trace_results(tx_info, &res))
                 },
             )
