@@ -1020,7 +1020,7 @@ mod tests {
                 USDT_ADDRESS,
                 USDC_ADDRESS,
             ])
-            .with_gas_paid_usd(30.0)
+            .with_gas_paid_usd(700.27)
             .with_expected_profit_usd(0.03);
 
         inspector_util.run_inspector(config, None).await.unwrap();
