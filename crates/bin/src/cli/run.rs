@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
@@ -85,10 +85,14 @@ pub struct RunArgs {
 }
 
 impl RunArgs {
-    pub async fn execute(mut self, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(
+        mut self,
+        brontes_db_endpoint: String,
+        ctx: CliContext,
+    ) -> eyre::Result<()> {
         banner::print_banner();
         // Fetch required environment variables.
-        let db_path = get_env_vars()?;
+        let reth_db_path = get_env_vars()?;
         tracing::info!(target: "brontes", "got env vars");
         let quote_asset = self.quote_asset.parse()?;
         tracing::info!(target: "brontes", "parsed quote asset");
@@ -100,8 +104,6 @@ impl RunArgs {
         let (metrics_tx, metrics_rx) = unbounded_channel();
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
-
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         tracing::info!(target: "brontes", "starting database initialization");
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
@@ -131,7 +133,8 @@ impl RunArgs {
         }
 
         let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
-        let tracer = get_tracing_provider(Path::new(&db_path), max_tasks, task_executor.clone());
+        let tracer =
+            get_tracing_provider(Path::new(&reth_db_path), max_tasks, task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 

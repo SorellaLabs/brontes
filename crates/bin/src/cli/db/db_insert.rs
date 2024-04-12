@@ -1,5 +1,3 @@
-use std::env;
-
 use brontes_database::{libmdbx::Libmdbx, IntoTableKey, Tables};
 use brontes_types::init_threadpools;
 use clap::Parser;
@@ -18,8 +16,7 @@ pub struct Insert {
 }
 
 impl Insert {
-    pub async fn execute(self) -> eyre::Result<()> {
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    pub async fn execute(self, brontes_db_endpoint: String) -> eyre::Result<()> {
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
         init_threadpools(10);
 

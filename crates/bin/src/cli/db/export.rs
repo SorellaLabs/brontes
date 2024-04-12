@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::{parquet::ParquetExporter, Tables};
 use clap::Parser;
@@ -29,8 +29,7 @@ pub struct Export {
 }
 
 impl Export {
-    pub async fn execute(self, _ctx: CliContext) -> eyre::Result<()> {
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    pub async fn execute(self, brontes_db_endpoint: String, _ctx: CliContext) -> eyre::Result<()> {
         let libmdbx = static_object(load_libmdbx(brontes_db_endpoint)?);
         let exporter =
             Arc::new(ParquetExporter::new(self.start_block, self.end_block, self.path, libmdbx));
