@@ -232,8 +232,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 exchange_cex_price.1,
                 swap.protocol,
                 swap.swap_rate(),
-                (swap.token_in.inner.symbol, swap.token_in.address),
-                (swap.token_out.inner.symbol, swap.token_out.address),
+                (&swap.token_in.inner.symbol, &swap.token_in.address),
+                (&swap.token_out.inner.symbol, &swap.token_out.address),
             );
             return None
         }
