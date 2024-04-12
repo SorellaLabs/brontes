@@ -105,9 +105,9 @@ impl RunArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        tracing::info!(target: "brontes", "starting database initialization at {}", brontes_db_endpoint);
+        tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
-        tracing::info!(target: "brontes", "Initialize Libmdbx");
+        tracing::info!(target: "brontes", "initialized libmdbx database");
 
         let cex_download_config = CexDownloadConfig::new(
             (self.cex_time_window_before, self.cex_time_window_after),
