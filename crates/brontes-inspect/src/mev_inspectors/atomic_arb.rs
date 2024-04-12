@@ -12,10 +12,7 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
-use malachite::{
-    num::basic::traits::{One, Zero},
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
