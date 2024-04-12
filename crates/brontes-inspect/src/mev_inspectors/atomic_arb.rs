@@ -139,7 +139,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         if gas_used_usd != Rational::ZERO
             && rev.clone().unwrap_or(Rational::ONE) / &gas_used_usd > MAX_REV_TO_BRIBE_AM
         {
-            tracing::info!(hash=?info.tx_hash, "atomic arb found with profit margin over 30%");
+            tracing::trace!(hash=?info.tx_hash, "atomic arb found with profit margin over 30%");
             return None
         }
 
