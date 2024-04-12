@@ -105,7 +105,7 @@ impl RunArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        tracing::info!(target: "brontes", "starting database initialization");
+        tracing::info!(target: "brontes", "starting database initialization at {}", brontes_db_endpoint);
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
         tracing::info!(target: "brontes", "Initialize Libmdbx");
 
