@@ -4,7 +4,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
-    mev::{AtomicArb, AtomicArbType, Bundle, MevType},
+    mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedFlashLoan,
         NormalizedSwap, NormalizedTransfer,
@@ -15,7 +15,7 @@ use brontes_types::{
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
-use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, Metadata};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -132,9 +132,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
         let profit = rev
-            .map(|rev| rev - gas_used_usd)
+            .map(|rev| rev - &gas_used_usd)
             .filter(|_| has_dex_price)
             .unwrap_or_default();
+
+        if profit > Rational::from(3) * gas_used_usd {
+            tracing::trace!("profit double gas used for atomic");
+            return None
+        }
 
         let is_profitable = profit > Rational::ZERO;
 

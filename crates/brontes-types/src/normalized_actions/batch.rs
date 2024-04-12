@@ -21,6 +21,13 @@ pub struct NormalizedBatch {
 }
 
 impl NormalizedBatch {
+    pub fn fetch_underlying_actions(self) -> impl Iterator<Item = Actions> {
+        self.user_swaps
+            .into_iter()
+            .chain(self.solver_swaps.unwrap_or_default())
+            .map(Actions::from)
+    }
+
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         let mut nodes_to_prune = Vec::new();
 
@@ -61,6 +68,17 @@ impl NormalizedBatch {
                         break
                     } else {
                         self.solver_swaps = Some(vec![s.clone()]);
+                        nodes_to_prune.push(*trace_index);
+                        break
+                    }
+                }
+                Actions::SwapWithFee(s) => {
+                    if let Some(swaps) = &mut self.solver_swaps {
+                        swaps.push(s.swap.clone());
+                        nodes_to_prune.push(*trace_index);
+                        break
+                    } else {
+                        self.solver_swaps = Some(vec![s.swap.clone()]);
                         nodes_to_prune.push(*trace_index);
                         break
                     }

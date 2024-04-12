@@ -14,7 +14,7 @@ use crate::{
 pub struct Export {
     /// Optional tables to exports, if omitted will export all supported tables
     //TODO: ignore double searcher info passed, ensure searcher info export triggered only once
-    #[arg(long, short,default_values = &["MevBlocks", "AddressMeta", "SearcherContracts", "Builder"], value_delimiter = ',', ignore_case=true)]
+    #[arg(long, short, default_values = &["MevBlocks", "AddressMeta", "SearcherContracts", "Builder"], value_delimiter = ',', ignore_case=true)]
     pub tables:      Vec<Tables>,
     /// Optional Start Block, if omitted it will export the entire range to
     /// parquet
@@ -47,11 +47,11 @@ impl Export {
                 Ok(Ok(_)) => (),
                 Ok(Err(e)) => {
                     error!("Failed to export table: {}", e);
-                    return Err(e);
+                    return Err(e)
                 }
                 Err(e) => {
                     error!("Task failed: {}", e);
-                    return Err(eyre::eyre!("Task failed: {}", e));
+                    return Err(eyre::eyre!("Task failed: {}", e))
                 }
             }
         }

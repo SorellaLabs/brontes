@@ -251,8 +251,8 @@ impl InspectorTestUtils {
         assert_eq!(
             results.len(),
             1,
-            "Identified an incorrect number of MEV bundles. Expected 1, found: {}",
-            results.len()
+            "Identified an incorrect number of MEV bundles. Expected 1, found: {:#?}",
+            results
         );
 
         let bundle = results.remove(0);
