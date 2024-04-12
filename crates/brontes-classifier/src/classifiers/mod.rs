@@ -25,6 +25,9 @@ pub use compound::*;
 pub mod maker;
 pub use maker::*;
 
+pub mod zerox;
+pub use zerox::*;
+
 pub mod cowswap;
 pub use cowswap::*;
 
@@ -169,5 +172,28 @@ action_dispatch!(
     ClipperExchangeTransmitAndSwapCall,
     ClipperExchangeTransmitAndSellTokenForEthCall,
     CowswapSettleCall,
-    CowswapSwapCall
+    CowswapSwapCall,
+    ZeroXSellToUniswapCall,
+    ZeroXSellEthForTokenToUniswapV3Call,
+    ZeroXSellTokenForEthToUniswapV3Call,
+    ZeroXSellTokenForTokenToUniswapV3Call,
+    ZeroXTransformERC20Call,
+    ZeroXSellToPancakeSwapCall,
+    ZeroXFillOtcOrderCall,
+    ZeroXFillOtcOrderForEthCall,
+    ZeroXFillOtcOrderWithEthCall,
+    ZeroXFillTakerSignedOtcOrderCall,
+    ZeroXFillTakerSignedOtcOrderForEthCall,
+    ZeroXBatchFillTakerSignedOtcOrdersCall,
+    ZeroXSellToLiquidityProviderCall,
+    ZeroXMultiplexBatchSellEthForTokenCall,
+    ZeroXMultiplexBatchSellTokenForEthCall,
+    ZeroXMultiplexBatchSellTokenForTokenCall,
+    ZeroXMultiplexMultiHopSellEthForTokenCall,
+    ZeroXMultiplexMultiHopSellTokenForEthCall,
+    ZeroXMultiplexMultiHopSellTokenForTokenCall,
+    ZeroXFillLimitOrderCall,
+    ZeroXFillRfqOrderCall,
+    ZeroXFillOrKillLimitOrderCall,
+    ZeroXFillOrKillRfqOrderCall
 );

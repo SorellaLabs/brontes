@@ -21,10 +21,11 @@ pub struct ParsedLogConfig {
 }
 
 pub struct LogData<'a> {
-    exchange_name: &'a Ident,
-    action_type:   &'a Ident,
-    mod_path:      Path,
-    log_config:    &'a [LogConfig],
+    exchange_name:          &'a Ident,
+    action_type:            &'a Ident,
+    mod_path:               Path,
+    log_config:             &'a [LogConfig],
+    include_delegated_logs: bool,
 }
 
 impl<'a> LogData<'a> {
@@ -33,12 +34,13 @@ impl<'a> LogData<'a> {
         action_type: &'a Ident,
         fn_call_path: &'a Path,
         log_config: &'a [LogConfig],
+        include_delegated_logs: bool,
     ) -> Self {
         let mut mod_path = fn_call_path.clone();
         mod_path.segments.pop().unwrap();
         mod_path.segments.pop_punct();
 
-        Self { action_type, exchange_name, log_config, mod_path }
+        Self { action_type, exchange_name, log_config, mod_path, include_delegated_logs }
     }
 
     fn parse_log_config(&self) -> ParsedLogConfig {
@@ -210,6 +212,21 @@ impl<'a> LogData<'a> {
 
         let mut stream = TokenStream::new();
 
+        if self.include_delegated_logs {
+            stream.extend(quote!(
+                 let mut merged_logs: Vec<&alloy_primitives::Log> =
+                     Vec::with_capacity(call_info.logs.len() + call_info.delegate_logs.len());
+                 merged_logs.extend(call_info.logs.iter());
+                 merged_logs.extend(call_info.delegate_logs.iter());
+
+                 let logs = merged_logs.as_slice();
+            ));
+        } else {
+            stream.extend(quote!(
+                let logs = call_info.logs;
+            ));
+        }
+
         for (enum_i, (indexes, log_field_name, log_name, repeating, ignore_before)) in
             multizip((check_indexes, log_field_names, log_names, is_repeatings, ignore_befores))
                 .enumerate()
@@ -278,7 +295,7 @@ impl<'a> LogData<'a> {
             let mut i = 0usize;
             let mut started = false;
             loop {
-                if let Some(log) = &call_info.logs.get(#index + repeating_modifier + i) {
+                if let Some(log) = &logs.get(#index + repeating_modifier + i) {
                     #(
                         if let Ok(decoded_result) = <#mod_path::#log_name
                             as ::alloy_sol_types::SolEvent>
@@ -357,7 +374,7 @@ impl<'a> LogData<'a> {
             let mut i = 0usize;
                 let mut started = false;
                 loop {
-                    if let Some(log) = &call_info.logs.get(
+                    if let Some(log) = &logs.get(
                         #indexes + repeating_modifier + i) {
 
                         let mut any_parsed = false;
@@ -404,7 +421,7 @@ impl<'a> LogData<'a> {
         let mod_path = &self.mod_path;
         quote!(
         'possible: {
-                if let Some(log) = &call_info.logs.get(#indexes + repeating_modifier) {
+                if let Some(log) = &logs.get(#indexes + repeating_modifier) {
                     ::paste::paste!(
                     #(
                         if let Ok(decoded) = <#mod_path::#log_name
@@ -438,7 +455,7 @@ impl ToTokens for LogData<'_> {
             self.generate_decoded_log_struct(&log_names, &log_field_names, &is_repeatings);
 
         let log_result = quote!(
-            if call_info.logs.is_empty() {
+            if call_info.logs.is_empty() && call_info.delegate_logs.is_empty() {
                 ::tracing::error!(?call_info, "tried to decode using logs when no logs where found \
                                   for call");
             }

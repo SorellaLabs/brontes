@@ -32,7 +32,7 @@ pub use transfer::*;
 
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
-    TreeSearchBuilder,
+    Protocol, TreeSearchBuilder,
 };
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
@@ -389,6 +389,23 @@ impl Actions {
 
     pub const fn is_unclassified(&self) -> bool {
         matches!(self, Actions::Unclassified(_))
+    }
+
+    pub const fn get_protocol(&self) -> Protocol {
+        match self {
+            Actions::Swap(s) => s.protocol,
+            Actions::SwapWithFee(s) => s.swap.protocol,
+            Actions::FlashLoan(f) => f.protocol,
+            Actions::Batch(b) => b.protocol,
+            Actions::Mint(m) => m.protocol,
+            Actions::Burn(b) => b.protocol,
+            Actions::Collect(c) => c.protocol,
+            Actions::Liquidation(c) => c.protocol,
+            Actions::NewPool(p) => p.protocol,
+            Actions::PoolConfigUpdate(p) => p.protocol,
+            Actions::Aggregator(a) => a.protocol,
+            _ => Protocol::Unknown,
+        }
     }
 
     pub const fn is_eth_transfer(&self) -> bool {

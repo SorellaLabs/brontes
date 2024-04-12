@@ -107,6 +107,7 @@ impl TraceActions for TransactionTraceWithLogs {
             target_address: self.get_to_address(),
             from_address:   self.get_from_addr(),
             logs:           &self.logs,
+            delegate_logs:  vec![],
             msg_sender:     self.msg_sender,
             msg_value:      self.get_msg_value(),
         }
@@ -144,6 +145,7 @@ pub struct CallFrameInfo<'a> {
     pub target_address: Address,
     pub from_address:   Address,
     pub logs:           &'a [Log],
+    pub delegate_logs:  Vec<&'a Log>,
     pub msg_sender:     Address,
     pub msg_value:      U256,
 }

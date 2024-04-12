@@ -1,6 +1,6 @@
 use std::{cmp::min, sync::Arc};
 
-use alloy_primitives::U256;
+use alloy_primitives::{Log, U256};
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
     normalized_actions::{
@@ -24,7 +24,7 @@ use futures::future::join_all;
 use itertools::Itertools;
 use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
-use reth_rpc_types::trace::parity::Action;
+use reth_rpc_types::trace::parity::{Action, CallType};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, error, info};
 use tree_pruning::account_for_tax_tokens;
@@ -105,6 +105,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .map(|(tx_idx, mut trace)| async move {
                     // here only traces where the root tx failed are filtered out
                     if trace.trace.is_empty() || !trace.is_success {
+                        tracing::debug!(
+                            empty = trace.trace.is_empty(),
+                            is_success = trace.is_success
+                        );
                         return None
                     }
                     // post classification processing collectors
@@ -112,6 +116,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     let mut pool_updates: Vec<DexPriceMsg> = Vec::new();
 
                     let root_trace = trace.trace.remove(0);
+
                     let address = root_trace.get_from_addr();
                     let trace_idx = root_trace.trace_idx;
 
@@ -123,6 +128,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             tx_idx as u64,
                             trace_idx,
                             root_trace,
+                            &trace.trace,
                             &mut further_classification_requests,
                             &mut pool_updates,
                         )
@@ -145,8 +151,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         data_store:  NodeData(vec![Some(classification)]),
                     };
 
-                    for trace in trace.trace.into_iter() {
+                    let tx_trace = &trace.trace;
+                    for trace in &trace.trace {
                         let from_addr = trace.get_from_addr();
+
                         let node = Node::new(
                             trace.trace_idx,
                             from_addr,
@@ -184,6 +192,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 tx_idx as u64,
                                 trace.trace_idx,
                                 trace.clone(),
+                                tx_trace,
                                 &mut further_classification_requests,
                                 &mut pool_updates,
                             )
@@ -195,7 +204,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     // Here we reverse the requests to ensure that we always classify the most
                     // nested action & its children first. This is to prevent the
                     // case where we classify a parent action where its children also require
-                    // further classification
+                    // further classification.
                     let tx_classification_requests = if !further_classification_requests.is_empty()
                     {
                         further_classification_requests.reverse();
@@ -224,11 +233,20 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         tx_index: u64,
         trace_index: u64,
         trace: TransactionTraceWithLogs,
+        full_trace: &[TransactionTraceWithLogs],
         further_classification_requests: &mut Vec<u64>,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Vec<Actions> {
         let (update, classification) = self
-            .classify_node(block_number, root_head, node_data_store, tx_index, trace, trace_index)
+            .classify_node(
+                block_number,
+                root_head,
+                node_data_store,
+                tx_index,
+                trace,
+                full_trace,
+                trace_index,
+            )
             .await;
 
         // Here we are marking more complex actions that require data
@@ -263,6 +281,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         node_data_store: &NodeData<Actions>,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
+        full_trace: &[TransactionTraceWithLogs],
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Vec<Actions>) {
         if trace.trace.error.is_some() {
@@ -270,7 +289,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         }
         let (pricing, base_action) = match trace.action_type() {
             Action::Call(_) => {
-                self.classify_call(block, tx_idx, trace.clone(), trace_index)
+                self.classify_call(block, tx_idx, trace.clone(), full_trace, trace_index)
                     .await
             }
             Action::Create(_) => {
@@ -307,12 +326,31 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
+        full_trace: &[TransactionTraceWithLogs],
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
             return (vec![], Actions::Unclassified(trace))
         }
-        let call_info = trace.get_callframe_info();
+        let mut call_info = trace.get_callframe_info();
+
+        // Add logs of delegated calls to the root trace, only if the delegated call is
+        // from the same address / in the same call frame.
+        if let Action::Call(root_call) = &trace.trace.action {
+            let mut delegated_traces = Vec::new();
+            collect_delegated_traces(full_trace, &trace.trace.trace_address, &mut delegated_traces);
+
+            for delegated_trace in delegated_traces {
+                if let Action::Call(delegated_call) = &delegated_trace.trace.action {
+                    if let CallType::DelegateCall = delegated_call.call_type {
+                        if delegated_call.from == root_call.to {
+                            let logs_internal = delegated_trace.logs.iter().collect::<Vec<&Log>>();
+                            call_info.delegate_logs.extend(logs_internal);
+                        }
+                    }
+                }
+            }
+        }
 
         if let Some(results) =
             ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
@@ -547,6 +585,22 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
     ) {
         tree.collect_and_classify(&further_classification_requests)
+    }
+}
+
+fn collect_delegated_traces<'a>(
+    traces: &'a [TransactionTraceWithLogs],
+    parent_trace_address: &[usize],
+    delegated_traces: &mut Vec<&'a TransactionTraceWithLogs>,
+) {
+    for trace in traces {
+        let subtrace_address = &trace.trace.trace_address;
+        if subtrace_address.starts_with(parent_trace_address)
+            && subtrace_address.len() == parent_trace_address.len() + 1
+        {
+            delegated_traces.push(trace);
+            collect_delegated_traces(traces, subtrace_address, delegated_traces);
+        }
     }
 }
 

@@ -471,6 +471,37 @@ impl ClassifierTestUtils {
         Ok(())
     }
 
+    pub async fn detects_protocol_at(
+        &self,
+        tx_hash: TxHash,
+        index: usize,
+        protocol: Protocol,
+        tree_collect_builder: TreeSearchBuilder<Actions>,
+    ) -> Result<(), ClassifierTestUtilsError> {
+        let mut tree = self.build_tree_tx(tx_hash).await?;
+
+        assert!(!tree.tx_roots.is_empty(), "empty tree. most likely a invalid hash");
+
+        let root = tree.tx_roots.remove(0);
+        let mut actions = root.collect(&tree_collect_builder);
+        assert!(
+            !actions.is_empty(),
+            "no actions collected. protocol is either missing
+                from db or not added to dispatch"
+        );
+
+        let action = actions.remove(index);
+        assert_eq!(
+            protocol,
+            action.get_protocol(),
+            "got: {:#?} != given: {:#?}",
+            action.get_protocol(),
+            protocol
+        );
+
+        Ok(())
+    }
+
     pub async fn contains_action(
         &self,
         tx_hash: TxHash,
