@@ -4,7 +4,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
-    mev::{AtomicArb, AtomicArbType, Bundle, MevType},
+    mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedFlashLoan,
         NormalizedSwap, NormalizedTransfer,
@@ -12,10 +12,15 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::basic::traits::{One, Zero},
+    Rational,
+};
 use reth_primitives::Address;
 
-use crate::{shared_utils::SharedInspectorUtils, BundleData, Inspector, Metadata};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+
+const MAX_REV_TO_BRIBE_AM: Rational = Rational::const_from_unsigneds(3, 10);
 
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -130,6 +135,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
+
+        if gas_used_usd != Rational::ZERO
+            && rev.clone().unwrap_or(Rational::ONE) / &gas_used_usd > MAX_REV_TO_BRIBE_AM
+        {
+            tracing::info!(hash=?info.tx_hash, "atomic arb found with profit margin over 30%");
+            return None
+        }
 
         let profit = rev
             .map(|rev| rev - gas_used_usd)
