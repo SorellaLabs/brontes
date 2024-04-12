@@ -443,6 +443,7 @@ action_impl!(
     Aggregator,
     [],
     |info: CallInfo, _| {
+        tracing::debug!("token for token sell");
         Ok(NormalizedAggregator {
             protocol:      Protocol::ZeroX,
             trace_index:   info.trace_idx,

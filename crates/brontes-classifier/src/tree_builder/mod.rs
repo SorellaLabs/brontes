@@ -105,6 +105,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .map(|(tx_idx, mut trace)| async move {
                     // here only traces where the root tx failed are filtered out
                     if trace.trace.is_empty() || !trace.is_success {
+                        tracing::debug!(empty=trace.trace.is_empty(), is_success=trace.is_success);
                         return None
                     }
                     // post classification processing collectors
