@@ -233,7 +233,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         tx_index: u64,
         trace_index: u64,
         trace: TransactionTraceWithLogs,
-        full_trace: &Vec<TransactionTraceWithLogs>,
+        full_trace: &[TransactionTraceWithLogs],
         further_classification_requests: &mut Vec<u64>,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Vec<Actions> {
@@ -281,7 +281,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         node_data_store: &NodeData<Actions>,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        full_trace: &Vec<TransactionTraceWithLogs>,
+        full_trace: &[TransactionTraceWithLogs],
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Vec<Actions>) {
         if trace.trace.error.is_some() {
@@ -326,7 +326,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         block: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
-        full_trace: &Vec<TransactionTraceWithLogs>,
+        full_trace: &[TransactionTraceWithLogs],
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Actions) {
         if trace.is_static_call() {
