@@ -6,6 +6,7 @@ use super::types;
 /// This type will be populated via the
 /// [TracingInspector](crate::tracing::TracingInspector).
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CallTraceArena {
     /// The arena of recorded trace nodes
     pub(crate) arena: Vec<CallTraceNode>,
@@ -71,6 +72,15 @@ impl CallTraceArena {
     /// Consumes the arena and returns the nodes
     pub fn into_nodes(self) -> Vec<CallTraceNode> {
         self.arena
+    }
+
+    /// Clears the arena
+    ///
+    /// Note that this method has no effect on the allocated capacity of the
+    /// arena.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.arena.clear();
     }
 }
 
