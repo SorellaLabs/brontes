@@ -550,6 +550,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             if front_run_pools.intersection(&back_run_pools).count() == 0 {
                 tracing::debug!("no pool intersection for frontrun / backrun");
             }
+            tracing::info!(?front_run_pools, ?back_run_pools);
 
             // we group all victims by eoa, such that instead of a tx needing to be a
             // victim, a eoa needs to be a victim. this allows for more complex
