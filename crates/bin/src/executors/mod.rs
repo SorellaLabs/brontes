@@ -294,8 +294,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 let ranges =
                     state_to_init.get_state_for_ranges(start_block as usize, end_block as usize);
                 let executor = executor.clone();
-                //let prgrs_bar = progress_bar.clone();
-                // let tables_pb = tables_pb.clone();
+                let prgrs_bar = progress_bar.clone();
+                let tables_pb = tables_pb.clone();
                 let tui_tx = tui_tx.clone();
                 #[allow(clippy::async_yields_async)]
                 async move {
@@ -628,34 +628,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 );
         */
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(
-                executor.clone(),
-                end_block,
-                //progress_bar.clone(),
-                //tables_with_progress,
-                tui_tx.clone(),
-            )
-            .for_each(|block_range| {
-                futures.push(
-                    executor.spawn_critical_with_graceful_shutdown_signal(
-                        "Range Executor",
-                        |shutdown| async move {
-                            block_range.run_until_graceful_shutdown(shutdown).await
-                        },
-                    ),
-                );
-                std::future::ready(())
-            })
-            .await;
-        } else {
-            if self.start_block.is_some() {
-                self.build_range_executors(
-                    executor.clone(),
-                    end_block,
-                    // progress_bar.clone(),
-                    //tables_with_progress,
-                    tui_tx.clone(),
-                )
+            self.build_range_executors(executor.clone(), end_block, tui_tx.clone())
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -666,6 +639,19 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     std::future::ready(())
                 })
                 .await;
+        } else {
+            if self.start_block.is_some() {
+                self.build_range_executors(executor.clone(), end_block, tui_tx.clone())
+                    .for_each(|block_range| {
+                        futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                            "Range Executor",
+                            |shutdown| async move {
+                                block_range.run_until_graceful_shutdown(shutdown).await
+                            },
+                        ));
+                        std::future::ready(())
+                    })
+                    .await;
             }
 
             let tip_inspector =
@@ -689,7 +675,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
         let (had_end_block, end_block) = self.get_end_block().await;
-        self.verify_database_fetch_missing().await?;
+        self.verify_global_tables().await?;
         let build_future = self.build_internal(executor.clone(), had_end_block, end_block, app_tx);
 
         pin_mut!(build_future, shutdown);

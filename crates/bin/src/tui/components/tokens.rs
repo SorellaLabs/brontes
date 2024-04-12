@@ -2,7 +2,6 @@ use brontes_database::tui::events::TuiUpdate;
 use color_eyre::eyre::Result;
 use ratatui::{prelude::*, widgets::*};
 
-
 use super::{Component, Frame};
 use crate::tui::config::Config;
 
@@ -26,8 +25,6 @@ impl Component for Tokens {
         self.config = config;
         Ok(())
     }
-
-    fn handle_data_events(&mut self, _event: TuiUpdate) {}
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         f.render_widget(Paragraph::new("Tokens component"), area);

@@ -157,7 +157,7 @@ impl Component for Settings {
         Ok(())
     }
 
-    fn handle_key_events(&mut self, key: KeyEvent) {
+    fn handle_key_events(&mut self, key: KeyEvent) -> Result<()> {
         //TODO: handle settings
 
         /*
@@ -268,15 +268,16 @@ impl Component for Settings {
 
             }
         */
+        Ok(())
     }
 
-    fn handle_events(&mut self, event: Option<Event>) {
+    /*fn handle_events(&mut self, event: Option<Event>) -> Result<()> {
         match event {
             Some(Event::Key(key_event)) => self.handle_key_events(key_event),
             Some(Event::Mouse(mouse_event)) => self.handle_mouse_events(mouse_event),
             _ => (),
         }
-    }
+    } */
 
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) {
         let area = area.inner(&Margin { vertical: 1, horizontal: 4 });

@@ -27,7 +27,7 @@ use tui_logger::tracing_subscriber_layer;
 static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() -> eyre::Result<()> {
-    dotenv::dotenv().ok();
+    dotenv::dotenv().expect("Failed to load .env file");
     fdlimit::raise_fd_limit().unwrap();
     #[cfg(all(feature = "dhat-heap", not(feature = "jemalloc")))]
     let _profiler = dhat::Profiler::new_heap();
@@ -60,27 +60,26 @@ fn run() -> eyre::Result<()> {
     match opt.command {
         Commands::Run(command) => {
             init_tracing(command.cli_only);
-
-            if command.cli_only {
-                runner::run_command_until_exit(|ctx| command.execute(ctx))
-            } else {
-                runner::run_command_until_exit(|ctx| command.execute(ctx))
-            }
+            runner::run_command_until_exit(|ctx| command.execute(ctx))
         }
-        Commands::Database(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
-        Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
+        Commands::Database(command) => {
+            init_tracing(true);
+            runner::run_command_until_exit(|ctx| command.execute(ctx))
+        }
+        Commands::Analytics(command) => {
+            init_tracing(true);
+            runner::run_command_until_exit(|ctx| command.execute(ctx))
+        }
     }
 }
-fn init_tracing(tui: bool) {
-    if !tui {
-        let layers = vec![tracing_subscriber_layer().boxed()];
-        brontes_tracing::init(layers);
-    } else {
+fn init_tracing(cli_only: bool) {
+    if cli_only {
         let verbosity_level = Level::INFO;
         let directive: Directive = format!("{verbosity_level}").parse().unwrap();
-
         let layers = vec![brontes_tracing::stdout(directive)];
-
+        brontes_tracing::init(layers);
+    } else {
+        let layers = vec![tracing_subscriber_layer().boxed()];
         brontes_tracing::init(layers);
     }
 }

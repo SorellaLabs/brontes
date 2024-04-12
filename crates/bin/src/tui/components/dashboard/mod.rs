@@ -6,40 +6,27 @@ mod log;
 mod mev_count;
 pub mod progress;
 
-
-
 use brontes_database::tui::events::TuiUpdate;
-
-use crossterm::event::{KeyEvent};
+use crossterm::event::KeyEvent;
 use eyre::Result;
-
 //
 use itertools::Itertools;
 use livestream::Livestream;
-
 use mev_count::MevCount;
 use polars::prelude::*;
 use progress::Progress;
 use ratatui::{
     layout::Layout,
-    prelude::{
-        Alignment, Buffer, Color, Constraint, Direction, Margin, Rect, Span,
-    },
+    prelude::{Alignment, Buffer, Color, Constraint, Direction, Margin, Rect, Span},
     style::Stylize,
-    widgets::{
-        Cell, Paragraph, Row, Widget,
-    },
+    widgets::{Cell, Paragraph, Row, Widget},
 };
 
-
-
+//TODO: Basic livestream display
+//TODO: Input & data handlers for the dashboard
+// TODO: Filter + sort + search functionality on the livestream framme
 use super::{shared::navigation::Navigation, Component, Frame};
-use crate::{
-    tui::{
-        config::Config,
-        theme::THEME,
-    },
-};
+use crate::tui::{config::Config, theme::THEME};
 #[derive(Debug)]
 pub struct Dashboard {
     config:     Config,
@@ -62,7 +49,7 @@ impl Dashboard {
             livestream: Livestream::default(),
             //leaderboard: Leaderboard::new(),
             progress:   Progress::default(),
-            focus:      Focus::Dashboard,
+            focus:      Focus::Livestream,
         }
     }
 
@@ -154,18 +141,22 @@ impl Component for Dashboard {
         "Dashboard".to_string()
     }
 
-    fn handle_key_events(&mut self, key: KeyEvent) {
+
+
+    fn handle_key_events(&mut self, key: KeyEvent) -> Result<()> {
         match key.code {
-            _ => (),
+             => (),
         };
+        Ok(())
     }
 
-    fn handle_data_events(&mut self, event: TuiUpdate) {
+    fn handle_data_events(&mut self, event: TuiUpdate) -> Result<()> {
         match event {
             TuiUpdate::Block((block, bundles)) => self.mev_count.update_count(bundles),
 
             _ => (),
         };
+        Ok(())
     }
 
     fn on_select(&mut self, f: &mut Frame<'_>) {
@@ -233,10 +224,72 @@ impl Dashboard {
     }
 }
 
+impl Focus {
+    fn render_command_bar(&self, area: Rect, buf: &mut Buffer) {
+        let keys = match self {
+            Focus::Livestream => [
+                ("Q/Esc", "Quit"),
+                ("Tab", "Next Tab"),
+                ("BackTab", "Previous Tab"),
+                ("k", "Up"),
+                ("j", "Down"),
+                ("l", "Right"),
+                ("h", "Left"),
+                ("↵", "Select Livestream"),
+            ],
+            _ => [
+                ("Q/Esc", "Quit"),
+                ("Tab", "Next Tab"),
+                ("BackTab", "Previous Tab"),
+                ("k", "Up"),
+                ("j", "Down"),
+                ("l", "Right"),
+                ("h", "Left"),
+                ("↵", "Select"),
+            ],
+        };
+
+        let spans = keys
+            .iter()
+            .flat_map(|(key, desc)| {
+                let key = Span::styled(format!(" {} ", key), THEME.key_binding.key);
+                let desc = Span::styled(format!(" {} ", desc), THEME.key_binding.description);
+                [key, desc]
+            })
+            .collect_vec();
+
+        Paragraph::new(Line::from(spans))
+            .alignment(Alignment::Center)
+            .fg(Color::Indexed(236))
+            .bg(Color::Indexed(232))
+            .render(area, buf);
+    }
+
+    pub fn right(&self) -> Self {
+        match self {
+            Focus::Livestream => Focus::Progress,
+            Focus::Progress => Focus::Logs,
+            Focus::Logs => Focus::MevCount,
+            Focus::MevCount => Focus::LeaderBoard,
+            Focus::LeaderBoard => Focus::Livestream,
+        }
+    }
+
+    pub fn left(&self) -> Self {
+        match self {
+            Focus::Progress => Focus::Livestream,
+            Focus::Logs => Focus::Progress,
+            Focus::MevCount => Focus::Logs,
+            Focus::LeaderBoard => Focus::MevCount,
+            Focus::Livestream => Focus::Livestream,
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum Focus {
     #[default]
-    Dashboard,
     Livestream,
     Progress,
     Logs,

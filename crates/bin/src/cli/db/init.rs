@@ -3,6 +3,8 @@ use std::{path::Path, sync::Arc};
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_types::{db::cex::CexExchange, init_threadpools};
 use clap::Parser;
+use indicatif::MultiProgress;
+use itertools::Itertools;
 
 use crate::{
     cli::{get_env_vars, get_tracing_provider, load_clickhouse, load_database, static_object},

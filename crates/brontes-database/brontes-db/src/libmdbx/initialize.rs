@@ -57,8 +57,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         table: Tables,
         clear_tables: bool,
-        block_range: Option<(u64, u64)>, /* inclusive of start only
-                                          *progress_bar: Arc<Vec<(Tables, ProgressBar)>>, */
+        block_range: Option<(u64, u64)>,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         table
             .initialize_table(self, block_range, clear_tables, progress_bar)
@@ -153,7 +153,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
         clear_table: bool,
-        // progress_bar: ProgressBar,
+        progress_bar: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -171,7 +171,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         match data {
             Ok(d) => {
-                //progress_bar.inc(1);
+                progress_bar.inc(1);
                 self.libmdbx.0.write_table(&d)?
             }
             Err(e) => {
@@ -188,7 +188,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_table: bool,
         mark_init: Option<u8>,
         cex_table_flag: bool,
-        //pb: ProgressBar,
+        pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -232,7 +232,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         iter(pair_ranges.into_iter().map(|(start, end)| {
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
-            //let pb = pb.clone();
+            let pb = pb.clone();
             let count = end - start;
             let f = f.clone();
             let d = d.clone();
@@ -247,7 +247,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             .await;
                         match data {
                             Ok(d) => {
-                                //pb.inc(count);
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -264,7 +264,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             .await;
                         match data {
                             Ok(d) => {
-                                //pb.inc(count);
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -279,7 +279,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     .await;
                     match data {
                         Ok(d) => {
-                            //pb.inc(count);
+                            pb.inc(count);
                             libmdbx.0.write_table(&d)?;
                         }
                         Err(e) => {
@@ -312,7 +312,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         block_range: &'static [u64],
         mark_init: Option<u8>,
         cex_table_flag: bool,
-        //pb: ProgressBar,
+        pb: ProgressBar,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -334,7 +334,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         iter(ranges.into_iter().map(|inner_range| {
             let clickhouse = self.clickhouse;
             let libmdbx = self.libmdbx;
-           // let pb = pb.clone();
+            let pb = pb.clone();
             let count = inner_range.len() as u64;
             let f = f.clone();
             let d = d.clone();
@@ -349,7 +349,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             .await;
                         match data {
                             Ok(d) => {
-                        //        pb.inc(count);
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -366,7 +366,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .await;
                         match data {
                             Ok(d) => {
-                               // pb.inc(count);
+                                pb.inc(count);
                                 libmdbx.0.write_table(&d)?;
                             }
                             Err(e) => {
@@ -380,7 +380,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         .query_many_arbitrary::<T, D>(inner_range).await;
                     match data {
                         Ok(d) => {
-                           // pb.inc(count);
+                            pb.inc(count);
                             libmdbx.0.write_table(&d)?;
                         }
                         Err(e) => {

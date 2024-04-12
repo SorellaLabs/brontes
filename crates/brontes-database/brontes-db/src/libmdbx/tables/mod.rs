@@ -228,13 +228,11 @@ impl Tables {
                         clear_table,
                         Some(CEX_FLAG),
                         true,
-                        /*
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b))
                             .cloned()
                             .unwrap(),
-                            */
                     )
                     .await
             }
@@ -245,11 +243,10 @@ impl Tables {
                         clear_table,
                         Some(META_FLAG),
                         false,
-                        /*progress_bar
-                        .iter()
-                        .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
-                        .unwrap(),
-                        */
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
+                            .unwrap(),
                     )
                     .await
             }
@@ -260,11 +257,10 @@ impl Tables {
                         clear_table,
                         Some(TRACE_FLAG),
                         false,
-                        /*progress_bar
-                        .iter()
-                        .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
-                        .unwrap(),
-                        */
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
+                            .unwrap(),
                     )
                     .await
             }
@@ -293,10 +289,10 @@ impl Tables {
                         clear_table,
                         Some(CEX_FLAG),
                         true,
-                        /* progress_bar
-                        .iter()
-                        .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
-                        .unwrap(),*/
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
+                            .unwrap(),
                     )
                     .await
             }
@@ -312,7 +308,7 @@ impl Tables {
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
         block_range: &'static [u64],
-        //progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
@@ -322,12 +318,10 @@ impl Tables {
                         block_range,
                         Some(CEX_FLAG),
                         true,
-                        /*
                         progress_bar
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b.clone()))
                             .unwrap(),
-                            */
                     )
                     .await
             }
@@ -337,11 +331,10 @@ impl Tables {
                         block_range,
                         Some(META_FLAG),
                         false,
-                        /*progress_bar
-                        .iter()
-                        .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
-                        .unwrap(),
-                        */
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
+                            .unwrap(),
                     )
                     .await
             }
@@ -351,11 +344,10 @@ impl Tables {
                         block_range,
                         Some(TRACE_FLAG),
                         false,
-                        /*  progress_bar
-                        .iter()
-                        .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
-                        .unwrap(),
-                        */
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
+                            .unwrap(),
                     )
                     .await
             }
@@ -366,11 +358,10 @@ impl Tables {
                         block_range,
                         Some(CEX_FLAG),
                         true,
-                        /*  progress_bar
-                        .iter()
-                        .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
-                        .unwrap(),
-                        */
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
+                            .unwrap(),
                     )
                     .await
             }

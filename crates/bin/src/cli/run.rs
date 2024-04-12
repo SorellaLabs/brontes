@@ -1,9 +1,11 @@
 use std::{path::Path, time::Duration};
 
+use alloy_primitives::Address;
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, tui::events::TuiUpdate};
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
+use brontes_types::constants::{USDC_ADDRESS, USDT_ADDRESS};
 //TUI related imports
 use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
@@ -68,21 +70,15 @@ pub struct RunArgs {
 }
 
 impl RunArgs {
-    pub async fn execute(
-        mut self,
-        brontes_db_endpoint: String,
-        ctx: CliContext,
-    ) -> eyre::Result<()> {
-        self.check_proper_range()?;
+    pub async fn execute(mut self, ctx: CliContext) -> eyre::Result<()> {
+        if self.cli_only {
+            banner::print_banner();
+        }
 
-        let snapshot_mode = !cfg!(feature = "local-clickhouse");
-        tracing::info!(%snapshot_mode);
+        let db_path = get_env_vars().expect("Reth DB path not found in .env");
 
-        // Fetch required environment variables.
-        let reth_db_path = get_env_vars()?;
-        tracing::info!(target: "brontes", "got env vars");
-        let quote_asset = self.quote_asset.parse()?;
-        tracing::info!(target: "brontes", "parsed quote asset");
+        let quote_asset = self.load_quote_address()?;
+
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
@@ -97,7 +93,6 @@ impl RunArgs {
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        #[allow(unused_assignments)]
         let mut tui_tx: Option<UnboundedSender<TuiUpdate>> = None;
 
         let tui_handle: tokio::task::JoinHandle<()> = if !self.cli_only {
@@ -152,7 +147,7 @@ impl RunArgs {
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         let executor = task_executor.clone();
-        let result = executor
+        let brontes = executor
             .clone()
             .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
                 if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
@@ -184,61 +179,22 @@ impl RunArgs {
                 }
             });
 
-        //        tokio::join!(tui_handle, result).await();
-        let _ = tokio::join!(tui_handle, result);
+        let _ = tokio::join!(tui_handle, brontes);
 
         //result.await?;
 
         Ok(())
     }
 
-    async fn try_start_fallback_server(&self) -> Option<HeartRateMonitor> {
-        if self.enable_fallback {
-            if let Some(fallback_server) = self.fallback_server.clone() {
-                tracing::info!("starting heartbeat");
-                backup_server_heartbeat(fallback_server, Duration::from_secs(4)).await;
-                None
-            } else {
-                tracing::info!("starting monitor");
-                let (tx, rx) = tokio::sync::mpsc::channel(10);
-                if let Err(e) = start_hr_monitor(tx).await {
-                    tracing::error!(err=%e);
-                }
-                tracing::info!("monitor server started");
-                Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
-            }
-        } else {
-            None
-        }
-    }
+    pub fn load_quote_address(&self) -> eyre::Result<Address> {
+        let quote_asset = self.quote_asset.parse()?;
 
-    /// the time window in seconds for downloading
-    fn load_time_window(&self) -> usize {
-        self.time_window_args
-            .time_window_before
-            .max(self.time_window_args.time_window_after)
-            .max(self.time_window_args.time_window_before_optimistic)
-            .max(self.time_window_args.time_window_after_optimistic) as usize
-    }
-
-    fn check_proper_range(&self) -> eyre::Result<()> {
-        if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
-            if start > end {
-                return Err(eyre::eyre!("start block must be less than end block"))
-            }
+        match quote_asset {
+            USDC_ADDRESS => tracing::info!(target: "brontes", "Set USDC as quote asset"),
+            USDT_ADDRESS => tracing::info!(target: "brontes", "Set USDT as quote asset"),
+            _ => tracing::info!(target: "brontes", "Set quote asset"),
         }
-        Ok(())
-    }
 
-    fn trade_config(&self) -> CexDexTradeConfig {
-        CexDexTradeConfig {
-            time_window_after_us:  self.time_window_args.time_window_after as u64 * SECONDS_TO_US,
-            time_window_before_us: self.time_window_args.time_window_before as u64 * SECONDS_TO_US,
-            optimistic_before_us:  self.time_window_args.time_window_before_optimistic as u64
-                * SECONDS_TO_US,
-            optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
-                * SECONDS_TO_US,
-            quotes_fetch_time:     (self.time_window_args.quotes_price_time * 1000000.0) as u64,
-        }
+        Ok(quote_asset)
     }
 }
