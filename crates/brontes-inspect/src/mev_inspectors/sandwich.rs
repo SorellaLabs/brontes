@@ -442,8 +442,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        tracing::info!("{:#?}\n{:#?}\n{:#?}", victim_actions, front_run_swaps, back_run_swaps);
-
         let f_swap_len = front_run_swaps.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
             victim_actions.iter().zip(victim_info).enumerate()
@@ -563,8 +561,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 tracing::info!(" no grouped victims");
                 return false
             }
-
-            tracing::info!("{:#?},{:#?}", front_run_pools, back_run_pools);
 
             // for each victim eoa, ensure they are a victim of a frontrun and a backrun
             // either through a pool or overlapping tokens

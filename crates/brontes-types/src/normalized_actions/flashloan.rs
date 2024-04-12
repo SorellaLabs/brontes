@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use clickhouse::Row;
-use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
