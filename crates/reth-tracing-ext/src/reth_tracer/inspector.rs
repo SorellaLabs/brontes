@@ -285,16 +285,9 @@ impl BrontesTracingInspector {
             None
         };
 
-        let op = OpCode::new(interp.current_opcode())
-            .or_else(|| {
-                // if the opcode is invalid, we'll use the invalid opcode to represent it
-                // because this is invoked before the opcode is executed, the
-                // evm will eventually return a `Halt` with invalid/unknown
-                // opcode as result
-                let invalid_opcode = 0xfe;
-                OpCode::new(invalid_opcode)
-            })
-            .expect("is valid opcode;");
+        // we always want an OpCode, even it is unknown because it could be an
+        // additional opcode that not a known constant
+        let op = unsafe { OpCode::new_unchecked(interp.current_opcode()) };
 
         trace.trace.steps.push(CallTraceStep {
             depth: context.journaled_state.depth(),
@@ -638,15 +631,15 @@ where
     }
 
     fn step(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+        self.gas_inspector.step(interp, context);
         if self.config.record_steps {
-            self.gas_inspector.step(interp, context);
             self.start_step(interp, context);
         }
     }
 
     fn step_end(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+        self.gas_inspector.step_end(interp, context);
         if self.config.record_steps {
-            self.gas_inspector.step_end(interp, context);
             self.fill_step_on_step_end(interp, context);
         }
     }
@@ -758,20 +751,6 @@ where
         outcome: CreateOutcome,
     ) -> CreateOutcome {
         let outcome = self.gas_inspector.create_end(context, inputs, outcome);
-
-        // get the code of the created contract
-        let _code = outcome
-            .address
-            .and_then(|address| {
-                context
-                    .journaled_state
-                    .account(address)
-                    .info
-                    .code
-                    .as_ref()
-                    .map(|code| code.bytes()[..code.len()].to_vec())
-            })
-            .unwrap_or_default();
 
         self.fill_trace_on_call_end(context, outcome.result.clone(), outcome.address);
 
