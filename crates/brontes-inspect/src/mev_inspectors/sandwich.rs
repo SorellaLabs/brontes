@@ -560,8 +560,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             let amount = grouped_victims.len();
 
             if amount == 0 {
+                tracing::info!(" no grouped victims");
                 return false
             }
+
+            tracing::info!("{:#?},{:#?}", front_run_pools, back_run_pools);
 
             // for each victim eoa, ensure they are a victim of a frontrun and a backrun
             // either through a pool or overlapping tokens
@@ -582,7 +585,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 || front_run_tokens.contains(&(t.token.address, t.to, false))
                                 })
                         })
-                        || v.into_iter()
+                        || v.iter()
+                            .cloned()
                             .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
                             .any(|(swaps, transfers)| {
                                 swaps.iter().any(|s| back_run_pools.contains(&s.pool))
@@ -595,6 +599,24 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 || back_run_tokens.contains(&(t.token.address, t.to, false))
                                     })
                             })
+                        || itertools::Itertools::into_group_map(
+                            v.into_iter()
+                                .flat_map(|(_, t)| t)
+                                .flat_map(|t| [(t.to, t.clone()), (t.from, t.clone())]),
+                        )
+                        .into_iter()
+                        .filter(|(_, v)| {
+                            if v.len() != 2 {
+                                return false
+                            }
+                            let first = v.get(0).unwrap();
+                            let second = v.get(1).unwrap();
+                            first.token.address != second.token.address
+                        })
+                        .map(|(k, _)| k)
+                        .any(|pool| {
+                            front_run_pools.contains(&pool) || back_run_pools.contains(&pool)
+                        })
                 })
                 .map(|was_victim| was_victim as usize)
                 .sum();
