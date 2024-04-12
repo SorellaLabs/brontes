@@ -5,8 +5,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedSwap,
-        NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedBatch,
+        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
     },
     tree::{collect_address_set_for_accounting, BlockTree, GasDetails},
     ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
@@ -55,6 +55,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_transfer,
             Actions::is_eth_transfer,
             Actions::is_aggregator,
+            Actions::is_batch,
+            Actions::is_flash_loan,
         ]);
 
         Self::get_possible_sandwich(tree.clone())
@@ -78,16 +80,42 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 tree.clone()
                                     .collect_txes(&victim, search_args.clone())
                                     .t_map(|a| {
-                                        a.into_iter().flatten_specified(
-                                            Actions::try_aggregator_ref,
-                                            |actions: NormalizedAggregator| {
-                                                actions
-                                                    .child_actions
-                                                    .into_iter()
-                                                    .filter(|f| f.is_swap() || f.is_transfer())
-                                                    .collect::<Vec<_>>()
-                                            },
-                                        )
+                                        a.into_iter()
+                                            .flatten_specified(
+                                                Actions::try_aggregator_ref,
+                                                |actions: NormalizedAggregator| {
+                                                    actions
+                                                        .child_actions
+                                                        .into_iter()
+                                                        .filter(|f| {
+                                                            f.is_swap()
+                                                                || f.is_transfer()
+                                                                || f.is_eth_transfer()
+                                                        })
+                                                        .collect::<Vec<_>>()
+                                                },
+                                            )
+                                            .flatten_specified(
+                                                Actions::try_flash_loan_ref,
+                                                |action: NormalizedFlashLoan| {
+                                                    action
+                                                        .fetch_underlying_actions()
+                                                        .filter(|f| {
+                                                            f.is_swap()
+                                                                || f.is_transfer()
+                                                                || f.is_eth_transfer()
+                                                        })
+                                                        .collect::<Vec<_>>()
+                                                },
+                                            )
+                                            .flatten_specified(
+                                                Actions::try_batch_ref,
+                                                |action: NormalizedBatch| {
+                                                    action
+                                                        .fetch_underlying_actions()
+                                                        .collect::<Vec<_>>()
+                                                },
+                                            )
                                     }),
                                 victim,
                             )
@@ -160,6 +188,44 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 .as_slice(),
                             search_args.clone(),
                         )
+                        .map(|actions| {
+                            actions
+                                .into_iter()
+                                .flatten_specified(
+                                    Actions::try_aggregator_ref,
+                                    |actions: NormalizedAggregator| {
+                                        actions
+                                            .child_actions
+                                            .into_iter()
+                                            .filter(|f| {
+                                                f.is_swap()
+                                                    || f.is_transfer()
+                                                    || f.is_eth_transfer()
+                                            })
+                                            .collect::<Vec<_>>()
+                                    },
+                                )
+                                .flatten_specified(
+                                    Actions::try_flash_loan_ref,
+                                    |action: NormalizedFlashLoan| {
+                                        action
+                                            .fetch_underlying_actions()
+                                            .filter(|f| {
+                                                f.is_swap()
+                                                    || f.is_transfer()
+                                                    || f.is_eth_transfer()
+                                            })
+                                            .collect::<Vec<_>>()
+                                    },
+                                )
+                                .flatten_specified(
+                                    Actions::try_batch_ref,
+                                    |action: NormalizedBatch| {
+                                        action.fetch_underlying_actions().collect::<Vec<_>>()
+                                    },
+                                )
+                                .collect_vec()
+                        })
                         .collect::<Vec<_>>();
 
                     self.calculate_sandwich(
@@ -334,10 +400,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             !has_dex_price,
         );
 
-        let victim_swaps = victim_swaps
-            .into_iter()
-            .map(|(swaps, _)| swaps)
-            .collect_vec();
+        let victim_swaps = victim_swaps.into_iter().map(|(s, _)| s).collect_vec();
 
         let sandwich = Sandwich {
             frontrun_tx_hash,
@@ -424,7 +487,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|v| {
                     v.iter()
                         .cloned()
-                        .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
+                        .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
                         .any(|(swaps, transfers)| {
                             swaps.iter().any(|s| front_run_pools.contains(&s.pool))
                                 || transfers.iter().any(|t| {
@@ -436,7 +499,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 || front_run_tokens.contains(&(t.token.address, t.to, false))
                                 })
                         })
-                        && v.into_iter()
+                        || v.into_iter()
                             .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
                             .any(|(swaps, transfers)| {
                                 swaps.iter().any(|s| back_run_pools.contains(&s.pool))
@@ -626,7 +689,7 @@ fn get_possible_sandwich_duplicate_contracts(
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::{DAI_ADDRESS, USDT_ADDRESS,WETH_ADDRESS};
+    use brontes_types::constants::{DAI_ADDRESS, USDT_ADDRESS, WETH_ADDRESS};
 
     use super::*;
     use crate::{

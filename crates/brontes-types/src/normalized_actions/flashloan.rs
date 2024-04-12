@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use clickhouse::Row;
+use itertools::Itertools;
 use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
@@ -44,6 +45,12 @@ impl TokenAccounting for NormalizedFlashLoan {
 }
 
 impl NormalizedFlashLoan {
+    pub fn fetch_underlying_actions(self) -> impl Iterator<Item = Actions> {
+        self.child_actions
+            .into_iter()
+            .chain(self.repayments.into_iter().map(Actions::from))
+    }
+
     pub fn finish_classification(&mut self, actions: Vec<(u64, Actions)>) -> Vec<u64> {
         let mut nodes_to_prune = Vec::new();
         let mut a_token_addresses = Vec::new();
