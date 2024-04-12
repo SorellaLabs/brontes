@@ -12,19 +12,21 @@ use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME}
 
 pub struct ActionMacro {
     // required for all
-    protocol_path:        Path,
-    path_to_call:         Path,
-    action_type:          Ident,
-    exchange_name_w_call: Ident,
-    log_types:            Vec<LogConfig>,
-    /// wether we want logs or not
-    give_logs:            bool,
-    /// wether we want return data or not
-    give_returns:         bool,
-    /// wether we want call_data or not
-    give_call_data:       bool,
+    protocol_path:          Path,
+    path_to_call:           Path,
+    action_type:            Ident,
+    exchange_name_w_call:   Ident,
+    log_types:              Vec<LogConfig>,
+    /// whether we want logs or not
+    give_logs:              bool,
+    /// whether we want return data or not
+    give_returns:           bool,
+    /// whether we want call_data or not
+    give_call_data:         bool,
+    // whether we pass down logs from delegate call in the same call frame
+    include_delegated_logs: bool,
     /// The closure that we use to construct the normalized type
-    call_function:        ExprClosure,
+    call_function:          ExprClosure,
 }
 
 impl ActionMacro {
@@ -37,6 +39,7 @@ impl ActionMacro {
             log_types,
             give_logs,
             give_call_data,
+            include_delegated_logs,
             give_returns,
             call_function,
         } = self;
@@ -45,6 +48,7 @@ impl ActionMacro {
             give_logs,
             give_call_data,
             give_returns,
+            include_delegated_logs,
             &exchange_name_w_call,
             &action_type,
             &path_to_call,
@@ -122,7 +126,7 @@ impl Parse for ActionMacro {
         let possible_logs = parse_logs(&mut input)?;
         input.parse::<Token![,]>()?;
 
-        let (logs, return_data, call_data) = parse_config(&mut input)?;
+        let (logs, return_data, call_data, include_delegated_logs) = parse_config(&mut input)?;
         let call_function = parse_closure(&mut input)?;
 
         let uppercase_path_to_call = uppercase_first_char(
@@ -147,6 +151,7 @@ impl Parse for ActionMacro {
             call_function,
             give_logs: logs,
             give_call_data: call_data,
+            include_delegated_logs,
             action_type,
             protocol_path,
             exchange_name_w_call,
@@ -181,10 +186,11 @@ fn parse_closure(input: &mut syn::parse::ParseStream) -> syn::Result<ExprClosure
     Ok(call_function)
 }
 
-fn parse_config(input: &mut syn::parse::ParseStream) -> syn::Result<(bool, bool, bool)> {
+fn parse_config(input: &mut syn::parse::ParseStream) -> syn::Result<(bool, bool, bool, bool)> {
     let mut logs = false;
     let mut return_data = false;
     let mut call_data = false;
+    let mut include_delegated_logs = false;
 
     while !input.peek(Token![|]) {
         let arg: Ident = input.parse()?;
@@ -195,12 +201,13 @@ fn parse_config(input: &mut syn::parse::ParseStream) -> syn::Result<(bool, bool,
             "logs" => logs = enabled.value(),
             "call_data" => call_data = enabled.value(),
             "return_data" => return_data = enabled.value(),
+            "include_delegated_logs" => include_delegated_logs = enabled.value(),
             _ => {
                 return Err(Error::new(
                     arg.span(),
                     format!(
                         "{} is not a valid config option, valid options are: \n logs , call_data, \
-                         return_data",
+                         return_data , include_delegated_logs",
                         arg,
                     ),
                 ))
@@ -209,7 +216,7 @@ fn parse_config(input: &mut syn::parse::ParseStream) -> syn::Result<(bool, bool,
         input.parse::<Token![,]>()?;
     }
 
-    Ok((logs, return_data, call_data))
+    Ok((logs, return_data, call_data, include_delegated_logs))
 }
 
 fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path> {
