@@ -173,13 +173,13 @@ impl CallFrameInfo<'_> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TransactionTraceWithLogs {
-    pub trace:         TransactionTrace,
-    pub logs:          Vec<Log>,
+    pub trace:        TransactionTrace,
+    pub logs:         Vec<Log>,
     /// the msg.sender of the trace. This allows us to properly deal with
     /// delegate calls and the headache they cause when it comes to proxies
-    pub msg_sender:    Address,
-    pub trace_idx:     u64,
-    pub decoded_data:  Option<DecodedCallData>,
+    pub msg_sender:   Address,
+    pub trace_idx:    u64,
+    pub decoded_data: Option<DecodedCallData>,
 }
 
 impl TransactionTraceWithLogs {
