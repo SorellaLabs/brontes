@@ -423,7 +423,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        tracing::info!(?victim_actions, ?front_run_swaps, ?back_run_swaps);
+        tracing::info!("{:#?},{:#?},{:#?},", victim_actions, front_run_swaps, back_run_swaps);
 
         let f_swap_len = front_run_swaps.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
