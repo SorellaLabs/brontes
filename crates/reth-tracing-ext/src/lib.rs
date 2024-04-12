@@ -218,7 +218,7 @@ pub mod test {
     async fn ensure_no_failure() {
         let block = 19586294;
         let loader = TraceLoader::new().await;
-        let mut tp = loader.tracing_provider.get_tracer();
+        let tp = loader.tracing_provider.get_tracer();
         let mut traces = tp
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block)))
             .await
