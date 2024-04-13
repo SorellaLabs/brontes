@@ -227,11 +227,13 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         if smaller * Rational::from(3) < larger {
             tracing::info!(
                 "Filtered out possible CEX-DEX due to significant price delta.\n Price delta \
-                 between CEX '{}' with price '{}' and DEX '{}' with price '{}'",
+                 between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in '{:?}' and token out '{:?}'",
                 exchange_cex_price.0,
                 exchange_cex_price.1,
                 swap.protocol,
-                swap.swap_rate()
+                swap.swap_rate(),
+                (&swap.token_in.inner.symbol, &swap.token_in.address),
+                (&swap.token_out.inner.symbol, &swap.token_out.address),
             );
             return None
         }

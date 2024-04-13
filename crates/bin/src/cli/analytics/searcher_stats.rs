@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::path::Path;
 
 use brontes_analytics::BrontesAnalytics;
 use brontes_metrics::PoirotMetricsListener;
@@ -18,10 +18,8 @@ pub struct GetStats {
 }
 
 impl GetStats {
-    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
-
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         let libmdbx = static_object(load_database(brontes_db_endpoint)?);
 

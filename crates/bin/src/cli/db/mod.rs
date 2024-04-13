@@ -50,18 +50,18 @@ pub enum DatabaseCommands {
 }
 
 impl Database {
-    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         match self.command {
-            DatabaseCommands::DbInserts(cmd) => cmd.execute().await,
-            DatabaseCommands::DbQuery(cmd) => cmd.execute().await,
-            DatabaseCommands::TraceRange(cmd) => cmd.execute(ctx).await,
-            DatabaseCommands::Init(cmd) => cmd.execute(ctx).await,
-            DatabaseCommands::DbClear(cmd) => cmd.execute().await,
-            DatabaseCommands::Export(cmd) => cmd.execute(ctx).await,
+            DatabaseCommands::DbInserts(cmd) => cmd.execute(brontes_db_endpoint).await,
+            DatabaseCommands::DbQuery(cmd) => cmd.execute(brontes_db_endpoint).await,
+            DatabaseCommands::TraceRange(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::Init(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
+            DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
-            DatabaseCommands::TestTracesInit(cmd) => cmd.execute(ctx).await,
+            DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
-            DatabaseCommands::TraceAtTip(cmd) => cmd.execute(ctx).await,
+            DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
         }
     }
 }
