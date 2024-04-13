@@ -255,20 +255,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
         let back_run_actions = searcher_actions.pop()?;
-        // let back_run_swaps = back_run_actions
-        //     .clone()
-        //     .into_iter()
-        //     .collect_action_vec(Actions::try_swaps_merged);
-        //
-        // let front_run_swaps = searcher_actions
-        //     .clone()
-        //     .into_iter()
-        //     .map(|action| {
-        //         action
-        //             .into_iter()
-        //             .collect_action_vec(Actions::try_swaps_merged)
-        //     })
-        //     .collect::<Vec<_>>();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
         // front run that is unrelated
