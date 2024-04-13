@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// TODO: lets prob not set this to 100%
-const BASE_EXECUTION_QUALITY: usize = 80;
+const BASE_EXECUTION_QUALITY: usize = 45;
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
 const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(10, 100);
