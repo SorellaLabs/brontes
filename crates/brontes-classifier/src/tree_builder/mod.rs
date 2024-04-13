@@ -4,7 +4,8 @@ use alloy_primitives::{Log, U256};
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
     normalized_actions::{
-        pool::NormalizedNewPool, NormalizedAction, NormalizedEthTransfer, NormalizedTransfer,
+        pool::NormalizedNewPool, MultiCallFrameClassification, MultiFrameRequest, NormalizedAction,
+        NormalizedEthTransfer, NormalizedTransfer,
     },
     tree::root::NodeData,
     ToScaledRational,
@@ -31,7 +32,10 @@ use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
 use self::erc20::try_decode_transfer;
-use crate::{classifiers::*, ActionCollection, FactoryDiscoveryDispatch};
+use crate::{
+    classifiers::*, multi_frame_classification::parse_multi_frame_requests, ActionCollection,
+    FactoryDiscoveryDispatch,
+};
 
 //TODO: Document this module
 #[derive(Debug, Clone)]
@@ -79,7 +83,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         &self,
         tx_roots: Vec<TxTreeResult>,
         tree: &mut BlockTree<Actions>,
-    ) -> Vec<Option<(usize, Vec<u64>)>> {
+    ) -> Vec<Option<(usize, Vec<MultiCallFrameClassification<Actions>>)>> {
         tx_roots
             .into_iter()
             .map(|root_data| {
@@ -88,7 +92,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     tracing::debug!("sending update");
                     self.pricing_update_sender.send(update).unwrap();
                 });
-                root_data.further_classification_requests
+
+                root_data
+                    .further_classification_requests
+                    .map(|(tx, requests)| (tx, parse_multi_frame_requests(requests)))
             })
             .collect_vec()
     }
@@ -234,7 +241,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace_index: u64,
         trace: TransactionTraceWithLogs,
         full_trace: &[TransactionTraceWithLogs],
-        further_classification_requests: &mut Vec<u64>,
+        further_classification_requests: &mut Vec<MultiFrameRequest>,
         pool_updates: &mut Vec<DexPriceMsg>,
     ) -> Vec<Actions> {
         let (update, classification) = self
@@ -252,9 +259,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // Here we are marking more complex actions that require data
         // that can only be retrieved by classifying it's action and
         // all subsequent child actions.
-        if classification.first().unwrap().continue_classification() {
-            further_classification_requests.push(classification.first().unwrap().get_trace_index());
-        }
+        further_classification_requests.extend(
+            classification
+                .iter()
+                .filter_map(|action| action.multi_frame_classification()),
+        );
 
         update.into_iter().for_each(|update| {
             match update {
@@ -582,7 +591,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     fn finish_classification(
         &self,
         tree: &mut BlockTree<Actions>,
-        further_classification_requests: Vec<Option<(usize, Vec<u64>)>>,
+        further_classification_requests: Vec<
+            Option<(usize, Vec<MultiCallFrameClassification<Actions>>)>,
+        >,
     ) {
         tree.collect_and_classify(&further_classification_requests)
     }
@@ -606,6 +617,6 @@ fn collect_delegated_traces<'a>(
 
 pub struct TxTreeResult {
     pub pool_updates: Vec<DexPriceMsg>,
-    pub further_classification_requests: Option<(usize, Vec<u64>)>,
+    pub further_classification_requests: Option<(usize, Vec<MultiFrameRequest>)>,
     pub root: Root<Actions>,
 }
