@@ -254,6 +254,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
+        tracing::debug!(
+            "front: {:#?}\nvictim: {:#?} \nbackrun: {:#?}",
+            possible_front_runs_info,
+            victim_info,
+            backrun_info
+        );
+
         let back_run_actions = searcher_actions.pop()?;
 
         //TODO: Check later if this method correctly identifies an incorrect middle
@@ -1087,7 +1094,6 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-
 
     #[brontes_macros::test]
     async fn test_zero_x_dydx() {
