@@ -262,7 +262,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         further_classification_requests.extend(
             classification
                 .iter()
-                .filter_map(|action| action.multi_frame_classification(action.get_trace_index())),
+                .filter_map(|action| action.multi_frame_classification()),
         );
 
         update.into_iter().for_each(|update| {
