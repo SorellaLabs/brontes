@@ -28,7 +28,7 @@ impl MultiCallFrameClassifier for OneInchAggregator {
     }
 }
 
-impl MultiCallFrameClassifier for OneInchFusion{
+impl MultiCallFrameClassifier for OneInchFusion {
     const KEY: [u8; 2] = [Protocol::OneInchFusion as u8, MultiFrameAction::Aggregator as u8];
 
     fn create_classifier(
