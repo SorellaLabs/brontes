@@ -92,6 +92,7 @@ impl Node {
 
             clear_collapsed_nodes
                 .into_iter()
+                // remove the outer indexes first to ensure no unreachable
                 .sorted_unstable_by(|a, b| b.multi_data_idx.cmp(&a.multi_data_idx))
                 .for_each(|index| {
                     self.clear_node_data(index, nodes);

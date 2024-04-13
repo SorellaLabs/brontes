@@ -1066,4 +1066,22 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_jared_looks_atomic_arb() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("eaa48d2f9d13f4d9985e1c59546f000ef5a0710532f5f461deb39d2c08b4931e").into(),
+                hex!("ccd2236c2036efffbb9b492a5867a11b535963c5f7387b174b6e6105e7689ffe").into(),
+                hex!("1a9b39a84ba847541706626c40fab246892311f8b0b7db226fdb9155858093d2").into(),
+            ])
+            .needs_tokens(vec![WETH_ADDRESS, DAI_ADDRESS, USDT_ADDRESS, USDC_ADDRESS])
+            .with_gas_paid_usd(164.35)
+            .with_expected_profit_usd(0.8);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }

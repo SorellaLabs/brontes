@@ -9,8 +9,8 @@ pub mod batch;
 pub mod flash_loan;
 pub mod liquidations;
 
-use aggregator::OneInchAggregator;
-use batch::UniswapX;
+use aggregator::{OneInchAggregator, OneInchFusion};
+use batch::{Cowswap, UniswapX};
 use brontes_types::normalized_actions::{Actions, MultiCallFrameClassification, MultiFrameRequest};
 use flash_loan::BalancerV2;
 use itertools::Itertools;
@@ -36,7 +36,9 @@ pub fn parse_multi_frame_requests(
         .into_iter()
         .filter_map(|request| match request.make_key() {
             OneInchAggregator::KEY => OneInchAggregator::create_classifier(request),
+            OneInchFusion::KEY => OneInchFusion::create_classifier(request),
             UniswapX::KEY => UniswapX::create_classifier(request),
+            Cowswap::KEY => Cowswap::create_classifier(request),
             BalancerV2::KEY => BalancerV2::create_classifier(request),
             AaveV2::KEY => AaveV2::create_classifier(request),
             AaveV3::KEY => AaveV3::create_classifier(request),
