@@ -636,7 +636,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|was_victim| was_victim as usize)
                 .sum();
 
-            tracing::debug!(?was_victim, ?has_sandwich);
+            tracing::debug!(?was_victims, ?has_sandwich);
             // if we had more than 50% victims, then we say this was valid. This
             // wiggle room is to deal with unknowns
             if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
