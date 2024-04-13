@@ -38,8 +38,8 @@ pub use oneinch::*;
 pub mod clipper;
 pub use clipper::*;
 
-pub mod dodo;
-pub use dodo::*;
+pub mod bancor;
+pub use bancor::*;
 
 discovery_dispatch!(
     DiscoveryClassifier,
@@ -201,12 +201,6 @@ action_dispatch!(
     ZeroXFillRfqOrderCall,
     ZeroXFillOrKillLimitOrderCall,
     ZeroXFillOrKillRfqOrderCall,
-    DodoCreateDODOVendingMachineCall,
-    DodoCreateDODOStablePoolCall,
-    DodoInitDODOPrivatePoolCall,
-    DodoBuySharesCall,
-    DodoSellSharesCall,
-    DodoSellBaseCall,
-    DodoSellQuoteCall,
-    DodoFlashLoanCall
+    BancorV3TradeBySourceAmountCall,
+    BancorV3TradeByTargetAmountCall
 );

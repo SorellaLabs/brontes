@@ -64,8 +64,7 @@ sol!(ZeroXPancakeSwapFeature, "./classifier-abis/zero-x/ZeroXPancakeSwapFeature.
 sol!(ZeroXOtcOrdersFeature, "./classifier-abis/zero-x/ZeroXOtcOrdersFeature.json");
 sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProviderFeature.json");
 sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
-sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
-sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
+sol!(BancorNetwork, "./classifier-abis/bancor/BancorNetwork.json");
 
 sol!(UniswapV2, "./abis/UniswapV2.json");
 sol!(SushiSwapV2, "./abis/SushiSwapV2.json");
