@@ -5,7 +5,7 @@ use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, span, Level};
 
-use crate::tree::types::NodeWithDataRef;
+use crate::{normalized_actions::MultiCallFrameClassification, tree::types::NodeWithDataRef};
 
 pub mod frontend_prunes;
 use crate::db::traits::LibmdbxReader;
@@ -213,7 +213,10 @@ impl<V: NormalizedAction> BlockTree<V> {
     /// for every action index of a transaction index, This function grabs all
     /// child nodes of the action index if and only if they are specified in
     /// the classification function of the action index node.
-    pub fn collect_and_classify(&mut self, search_params: &[Option<(usize, Vec<u64>)>]) {
+    pub fn collect_and_classify(
+        &mut self,
+        search_params: &[Option<(usize, Vec<MultiCallFrameClassification<V>>)>],
+    ) {
         self.run_in_span_mut(|this| {
             this.tx_roots
                 .iter_mut()
