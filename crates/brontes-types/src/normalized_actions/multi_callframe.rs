@@ -1,11 +1,12 @@
 use super::{Actions, NormalizedAction};
 use crate::{Protocol, TreeSearchBuilder};
 
-type ParseFn = Box<dyn Fn(&mut V, Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex>>;
+type ParseFn<V> = Box<dyn Fn(&mut V, Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex>>;
+
 pub struct MultiCallFrameClassification<V: NormalizedAction> {
     pub trace_index:         u64,
     pub tree_search_builder: TreeSearchBuilder<V>,
-    pub parse_fn:            ParseFn,
+    pub parse_fn:            ParseFn<V>,
 }
 
 impl<V: NormalizedAction> MultiCallFrameClassification<V> {
