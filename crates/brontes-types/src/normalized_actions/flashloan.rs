@@ -77,8 +77,7 @@ impl NormalizedFlashLoan {
                     }
                     // if the receiver contract is sending the token to the AToken address then this
                     // is the flashloan repayment
-                    else if t.from == self.receiver_contract && a_token_addresses.contains(&t.to)
-                    {
+                    if t.from == self.receiver_contract && a_token_addresses.contains(&t.to) {
                         repay_transfers.push(t.clone());
                         nodes_to_prune.push(index);
                         continue
