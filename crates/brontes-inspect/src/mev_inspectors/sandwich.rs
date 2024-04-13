@@ -476,6 +476,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|(swaps, transfers)| {
                     let front_run_pools = itertools::Itertools::into_group_map(
                         transfers
+                            .clone()
                             .into_iter()
                             .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
                     )
@@ -500,6 +501,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 (s.token_out.address, s.pool, false),
                             ]
                         })
+                        .chain(transfers.into_iter().flat_map(|t| {
+                            [(t.token.address, t.to, true), (t.token.address, t.from, false)]
+                        }))
                         .collect::<Vec<_>>();
                     (front_run_pools, front_run_tokens)
                 })
@@ -522,6 +526,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             let back_run_pools = itertools::Itertools::into_group_map(
                 back_transfer
+                    .clone()
                     .into_iter()
                     .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
             )
@@ -543,6 +548,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .flat_map(|s| {
                     [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
                 })
+                .chain(back_transfer.into_iter().flat_map(|t| {
+                    [(t.token.address, t.to, true), (t.token.address, t.from, false)]
+                }))
                 .collect::<FastHashSet<_>>();
 
             // ensure the intersection of frontrun and backrun pools exists

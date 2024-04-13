@@ -136,11 +136,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .filter(|_| has_dex_price)
             .unwrap_or_default();
 
-        if profit > Rational::from(3) * gas_used_usd {
-            tracing::trace!("profit double gas used for atomic");
-            return None
-        }
-
         let is_profitable = profit > Rational::ZERO;
 
         let requirement_multiplier = if has_dex_price { 2 } else { 1 };
