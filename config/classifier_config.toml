@@ -35,6 +35,9 @@ symbol = "USDC"
 [MakerPSM."0x961Ae24a1Ceba861D1FDf723794f6024Dc5485Cf"]
 init_block = 13057085
 
+[MakerDssFlash."0x60744434d6339a6B27d73d9Eda62b6F66a0a04FA"]
+init_block = 14787503
+
 [[MakerPSM."0x961Ae24a1Ceba861D1FDf723794f6024Dc5485Cf".token_info]]
 address = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
 decimals = 18
