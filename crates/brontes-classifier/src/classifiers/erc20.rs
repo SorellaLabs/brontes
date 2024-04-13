@@ -40,7 +40,7 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
         (from_addr, to_addr, amount)
     } else if let Ok(amount) = withdrawCall::abi_decode(&calldata, false) {
         (from, Address::ZERO, amount.wad)
-    } else if let Ok(_) = depositCall::abi_decode(&calldata, false) {
+    } else if depositCall::abi_decode(&calldata, false).is_ok() {
         (token, from, value)
     } else {
         return Err(eyre::eyre!("failed to decode transfer for token: {:?}", token))

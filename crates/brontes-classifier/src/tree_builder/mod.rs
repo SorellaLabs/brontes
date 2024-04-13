@@ -414,7 +414,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             self.libmdbx,
             &self.provider,
             block,
-            trace.get_msg_value()
+            trace.get_msg_value(),
         )
         .await
         {
