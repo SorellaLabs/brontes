@@ -69,7 +69,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-                     tracing::debug!(?possible_frontruns, ?possible_backrun, ?victims);
+                    tracing::debug!(?possible_frontruns, ?possible_backrun, ?victims);
 
                     if victims.iter().flatten().count() == 0 {
                         return None
@@ -676,10 +676,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         );
 
         // Combine and deduplicate results
-        let combined_results = result_senders.into_iter().chain(result_contracts);
-        let unique_results: FastHashSet<_> = combined_results.collect();
-
-        unique_results.into_iter().collect()
+        Itertools::dedup(result_senders.into_iter().chain(result_contracts)).collect()
     }
 }
 
