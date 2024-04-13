@@ -41,7 +41,7 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn is_classified(&self) -> bool;
     fn emitted_logs(&self) -> bool;
     fn get_action(&self) -> &Actions;
-    fn multi_frame_classification(&self, trace_idx: u64) -> Option<MultiFrameRequest>;
+    fn multi_frame_classification(&self) -> Option<MultiFrameRequest>;
     fn get_trace_index(&self) -> u64;
 }
 
@@ -67,8 +67,8 @@ impl NormalizedAction for Actions {
         self
     }
 
-    fn multi_frame_classification(&self, trace_idx: u64) -> Option<MultiFrameRequest> {
-        MultiFrameRequest::new(self, trace_idx)
+    fn multi_frame_classification(&self) -> Option<MultiFrameRequest> {
+        MultiFrameRequest::new(self, self.try_get_trace_index()?)
     }
 
     fn get_trace_index(&self) -> u64 {
@@ -167,6 +167,27 @@ impl Actions {
             Actions::Liquidation(l) => l,
             _ => unreachable!("not liquidation"),
         }
+    }
+
+    fn try_get_trace_index(&self) -> Option<u64> {
+        Some(match self {
+            Self::Swap(s) => s.trace_index,
+            Self::SwapWithFee(s) => s.trace_index,
+            Self::FlashLoan(f) => f.trace_index,
+            Self::Batch(b) => b.trace_index,
+            Self::Mint(m) => m.trace_index,
+            Self::Burn(b) => b.trace_index,
+            Self::Transfer(t) => t.trace_index,
+            Self::Liquidation(t) => t.trace_index,
+            Self::Collect(c) => c.trace_index,
+            Self::SelfDestruct(c) => c.trace_index,
+            Self::EthTransfer(e) => e.trace_index,
+            Self::Unclassified(u) => u.trace_idx,
+            Self::NewPool(p) => p.trace_index,
+            Self::PoolConfigUpdate(p) => p.trace_index,
+            Self::Aggregator(a) => a.trace_index,
+            Self::Revert => return None,
+        })
     }
 
     pub fn force_swap(self) -> NormalizedSwap {

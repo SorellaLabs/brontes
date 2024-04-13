@@ -845,7 +845,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    // annoying
     async fn test_sandwich_part_of_jit_sandwich_simple() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
