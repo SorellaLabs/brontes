@@ -356,7 +356,7 @@ impl Node {
             if cur_inner_node.index == index.trace_index {
                 return cur_inner_node.clear_node_data(index, data)
             } else if next_inner_node.index == index.trace_index {
-                return cur_inner_node.clear_node_data(index, data)
+                return next_inner_node.clear_node_data(index, data)
             }
 
             // if the next node is smaller than the head, we continue
@@ -373,7 +373,7 @@ impl Node {
         if cur_inner_node.index == index.trace_index {
             return cur_inner_node.clear_node_data(index, data)
         } else if next_inner_node.index == index.trace_index {
-            return cur_inner_node.clear_node_data(index, data)
+            return next_inner_node.clear_node_data(index, data)
         } else if next_inner_node.index > index.trace_index {
             return cur_inner_node.clear_node_data(index, data)
         } else if let Some(last) = self.inner.last_mut() {
@@ -415,7 +415,7 @@ impl Node {
             if cur_inner_node.index == index {
                 return cur_inner_node.remove_node_and_children(index, data)
             } else if next_inner_node.index == index {
-                return cur_inner_node.remove_node_and_children(index, data)
+                return next_inner_node.remove_node_and_children(index, data)
             }
 
             // if the next node is smaller than the head, we continue
@@ -432,7 +432,7 @@ impl Node {
         if cur_inner_node.index == index {
             return cur_inner_node.remove_node_and_children(index, data)
         } else if next_inner_node.index == index {
-            return cur_inner_node.remove_node_and_children(index, data)
+            return next_inner_node.remove_node_and_children(index, data)
         } else if next_inner_node.index > index {
             return cur_inner_node.remove_node_and_children(index, data)
         } else if let Some(last) = self.inner.last_mut() {
