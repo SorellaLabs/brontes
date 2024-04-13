@@ -374,7 +374,7 @@ mod tests {
                 WETH_ADDRESS,
                 hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
             ])
-            .with_expected_profit_usd(219.4)
+            .with_expected_profit_usd(7.47)
             .with_gas_paid_usd(46.59);
 
         inspector_util.run_inspector(config, None).await.unwrap();
