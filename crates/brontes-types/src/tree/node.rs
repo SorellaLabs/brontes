@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use reth_primitives::Address;
 use tracing::error;
 
@@ -89,9 +90,12 @@ impl Node {
             let this = nodes.get_mut(self.data).unwrap().first_mut().unwrap();
             let clear_collapsed_nodes = head.parse(this, results);
 
-            clear_collapsed_nodes.into_iter().for_each(|index| {
-                self.clear_node_data(index, nodes);
-            });
+            clear_collapsed_nodes
+                .into_iter()
+                .sorted_unstable_by(|a, b| b.multi_data_idx.cmp(&a.multi_data_idx))
+                .for_each(|index| {
+                    self.clear_node_data(index, nodes);
+                });
 
             return
         }
