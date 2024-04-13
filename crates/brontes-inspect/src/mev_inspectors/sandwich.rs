@@ -418,7 +418,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
-        tracing::debug!("{:#?}", sandwich);
+        tracing::debug!("{:#?}{:#?}", header, sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
