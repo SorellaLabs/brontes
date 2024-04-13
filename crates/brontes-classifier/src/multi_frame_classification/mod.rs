@@ -9,10 +9,10 @@ pub mod batch;
 pub mod flash_loan;
 pub mod liquidations;
 
-use aggregator::{OneInchAggregator, OneInchFusion};
-use batch::{Cowswap, UniswapX};
+use aggregator::{OneInchAggregator, OneInchFusion, ZeroXAgg};
+use batch::{Cowswap, UniswapX, ZeroXBatch};
 use brontes_types::normalized_actions::{Actions, MultiCallFrameClassification, MultiFrameRequest};
-use flash_loan::BalancerV2;
+use flash_loan::{BalancerV2, MakerDss};
 use itertools::Itertools;
 use liquidations::{AaveV2, AaveV3};
 use tracing::debug;
@@ -42,6 +42,9 @@ pub fn parse_multi_frame_requests(
             BalancerV2::KEY => BalancerV2::create_classifier(request),
             AaveV2::KEY => AaveV2::create_classifier(request),
             AaveV3::KEY => AaveV3::create_classifier(request),
+            ZeroXAgg::KEY => ZeroXAgg::create_classifier(request),
+            ZeroXBatch::KEY => ZeroXBatch::create_classifier(request),
+            MakerDss::KEY => MakerDss::create_classifier(request),
             _ => {
                 debug!(?request, "no multi frame classification impl for this request");
                 None
