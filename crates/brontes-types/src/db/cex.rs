@@ -398,15 +398,19 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
         }
         let (pair, quote) = value;
 
-        CexQuote {
-            exchange:  quote.exchange,
-            timestamp: quote.timestamp,
-            price:     (
+        let price = if pair == pair.ordered() {
+            (
                 Rational::try_from_float_simplest(quote.ask_price).unwrap(),
                 Rational::try_from_float_simplest(quote.bid_price).unwrap(),
-            ),
-            token0:    pair.0,
-        }
+            )
+        } else {
+            (
+                Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
+                Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
+            )
+        };
+
+        CexQuote { exchange: quote.exchange, timestamp: quote.timestamp, price, token0: pair.0 }
     }
 }
 
