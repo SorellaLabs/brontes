@@ -1087,4 +1087,21 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_zero_x_dydx() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("b1d88d24517c0bcbcbd566150edaacf702eac451ae85dad5008e4733d3a6eca7").into(),
+                hex!("b1aa6baba57e9e2c32f6f4a5599eb2a581eb875dedc8a0d21a02f537d6145c30").into(),
+                hex!("eaf680c0815ee63870d519570d96032ac93bed8931746cb73221101c88fa0a6b").into(),
+            ])
+            .with_gas_paid_usd(493.0)
+            .with_expected_profit_usd(68.6);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
