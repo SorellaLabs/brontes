@@ -2,12 +2,9 @@ use clickhouse::Row;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
-use super::{
-    accounting::{AddressDeltas, TokenAccounting},
-    NormalizedAction,
-};
+use super::accounting::{AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
-use crate::{db::token_info::TokenInfoWithAddress, Protocol};
+use crate::Protocol;
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
 pub struct NormalizedAggregator {
     pub protocol:    Protocol,

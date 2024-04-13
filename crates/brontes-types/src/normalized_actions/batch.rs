@@ -3,11 +3,10 @@ use std::fmt::Debug;
 use alloy_primitives::{Address, U256};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
-use tracing::error;
 
 use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
 pub use super::{Actions, NormalizedSwap};
-use crate::{db::token_info::TokenInfoWithAddress, utils::ToScaledRational, Protocol};
+use crate::Protocol;
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct NormalizedBatch {
