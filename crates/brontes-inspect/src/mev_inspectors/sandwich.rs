@@ -418,6 +418,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
+        tracing::debug!("{:#?}", sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
@@ -428,7 +429,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        tracing::debug!("{:#?}", victim_actions);
         let f_swap_len = front_run_swaps.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
             victim_actions.iter().zip(victim_info).enumerate()
@@ -631,7 +631,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|was_victim| was_victim as usize)
                 .sum();
 
-            tracing::debug!(?was_victims, ?has_sandwich);
             // if we had more than 50% victims, then we say this was valid. This
             // wiggle room is to deal with unknowns
             if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
