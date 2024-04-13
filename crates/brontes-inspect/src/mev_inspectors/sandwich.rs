@@ -636,6 +636,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|was_victim| was_victim as usize)
                 .sum();
 
+            tracing::debug!(?was_victim, ?has_sandwich);
             // if we had more than 50% victims, then we say this was valid. This
             // wiggle room is to deal with unknowns
             if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
@@ -1052,12 +1053,7 @@ mod tests {
                 hex!("027141d059be231b0a0be8f5030edb70a70b5a75a64a72671b7cd04e2523e65e").into(),
                 hex!("b102f59420b7ee268a269f33d6728d84d344b17758fa78da18e1ce60cd05e5ae").into(),
             ])
-            .needs_tokens(vec![
-                WETH_ADDRESS,
-                DAI_ADDRESS,
-                USDT_ADDRESS,
-                USDC_ADDRESS,
-            ])
+            .needs_tokens(vec![WETH_ADDRESS, DAI_ADDRESS, USDT_ADDRESS, USDC_ADDRESS])
             .with_gas_paid_usd(106.9)
             .with_expected_profit_usd(2.6);
 
