@@ -167,15 +167,14 @@ impl TracingClient {
         };
 
         self.api
-        .trace_block_with_inspector(
-            block_id,
-            insp_setup,
-            move |tx_info, inspector, res, _, _| {
-
-                Ok(inspector.into_trace_results(tx_info, &res))
-            },
-        )
-        .await
+            .trace_block_with_inspector(
+                block_id,
+                insp_setup,
+                move |tx_info, inspector, res, _, _| {
+                    Ok(inspector.into_trace_results(tx_info, &res))
+                },
+            )
+            .await
     }
 }
 
@@ -192,7 +191,6 @@ pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
 
 #[cfg(all(test, feature = "local-reth"))]
 pub mod test {
-
     use brontes_core::test_utils::TraceLoader;
     use futures::future::join_all;
     use reth_primitives::{BlockId, BlockNumberOrTag};
@@ -214,5 +212,20 @@ pub mod test {
         traces
             .into_iter()
             .for_each(|trace| assert_eq!(cmp, trace, "got traces that aren't equal"));
+    }
+
+    #[brontes_macros::test]
+    async fn ensure_no_failure() {
+        let block = 19586294;
+        let loader = TraceLoader::new().await;
+        let tp = loader.tracing_provider.get_tracer();
+        let mut traces = tp
+            .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block)))
+            .await
+            .unwrap()
+            .unwrap();
+        let res = traces.remove(6);
+        let not_broken = res.is_success;
+        assert!(not_broken, "shit failed when shouldn't of: {:#?}", res);
     }
 }

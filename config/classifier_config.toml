@@ -71,6 +71,9 @@ symbol = "FRONT"
 [Cowswap."0x9008D19f58AAbD9eD0D60971565AA8510560ab41"]
 init_block = 12593265
 
+[ZeroX."0xDef1C0ded9bec7F1a1670819833240f027b25EfF"]
+init_block = 10247094
+
 # Curve V1 Metapool Implementation Contracts
 
 [CurveV1MetapoolImpl."0x2f956eee002b0debd468cf2e0490d1aec65e027f"]
