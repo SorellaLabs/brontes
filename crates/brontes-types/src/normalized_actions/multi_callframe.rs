@@ -5,11 +5,11 @@ use crate::{Protocol, TreeSearchBuilder};
 pub struct MultiCallFrameClassification<V: NormalizedAction> {
     pub trace_index:         u64,
     pub tree_search_builder: TreeSearchBuilder<V>,
-    pub parse_fn:            fn(Vec<(u64, V)>) -> Vec<u64>,
+    pub parse_fn:            fn(Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex>,
 }
 
 impl<V: NormalizedAction> MultiCallFrameClassification<V> {
-    pub fn parse(&self, actions: Vec<(u64, V)>) -> Vec<u64> {
+    pub fn parse(&self, actions: Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex> {
         (self.parse_fn)(actions)
     }
 
@@ -23,7 +23,7 @@ pub struct NodeDataIndex {
     /// the index of the node data struct
     pub data_idx:       u64,
     /// the index for the vec that we get from the node data struct
-    pub multi_data_idx: u64,
+    pub multi_data_idx: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
