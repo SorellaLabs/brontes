@@ -593,10 +593,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 || transfers.iter().any(|t| {
                                     // victim has a transfer from the pool that was a token in for
                                     // the sandwich
-                                    front_run_tokens.contains(&(t.token.address, t.from, true))
+                                    front_run_tokens.contains(&(t.token.address, t.to, true))
                             // victim has a transfer to the pool that was a token out for the
                             // sandwich 
-                                || front_run_tokens.contains(&(t.token.address, t.to, false))
+                                || front_run_tokens.contains(&(t.token.address, t.from, false))
                                 })
                         });
                     let backrun = v
