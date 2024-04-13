@@ -7,7 +7,7 @@ use brontes_types::{
 };
 use tracing::error;
 
-use super::MultiCallFrameClassifier;
+use crate::multi_frame_classification::MultiCallFrameClassifier;
 
 pub struct UniswapX;
 

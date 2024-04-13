@@ -4,13 +4,18 @@
 //! is the tree will mark the index and fetch all child actions of this node
 //! and pass this into the multi frame classification.
 
-pub mod one_inch;
-pub mod uni_x;
+pub mod aggregator;
+pub mod batch;
+pub mod flash_loan;
+pub mod liquidations;
 
+use aggregator::OneInchAggregator;
+use batch::UniswapX;
 use brontes_types::normalized_actions::{Actions, MultiCallFrameClassification, MultiFrameRequest};
+use flash_loan::BalancerV2;
 use itertools::Itertools;
-use one_inch::OneInchAggregator;
-use tracing::warn;
+use liquidations::{AaveV2, AaveV3};
+use tracing::debug;
 
 /// for multi call-frame classifier
 pub trait MultiCallFrameClassifier {
@@ -31,8 +36,12 @@ pub fn parse_multi_frame_requests(
         .into_iter()
         .filter_map(|request| match request.make_key() {
             OneInchAggregator::KEY => OneInchAggregator::create_classifier(request),
+            UniswapX::KEY => UniswapX::create_classifier(request),
+            BalancerV2::KEY => BalancerV2::create_classifier(request),
+            AaveV2::KEY => AaveV2::create_classifier(request),
+            AaveV3::KEY => AaveV3::create_classifier(request),
             _ => {
-                warn!(?request, "no multi frame classification impl for this request");
+                debug!(?request, "no multi frame classification impl for this request");
                 None
             }
         })

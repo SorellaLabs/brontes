@@ -5,7 +5,7 @@ use brontes_types::{
     Protocol, TreeSearchBuilder,
 };
 
-use super::MultiCallFrameClassifier;
+use crate::multi_frame_classification::MultiCallFrameClassifier;
 
 pub struct OneInchAggregator;
 
