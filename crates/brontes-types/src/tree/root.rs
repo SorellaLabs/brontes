@@ -229,7 +229,7 @@ impl<V: NormalizedAction> Root<V> {
     pub fn collect_child_traces_and_classify(&mut self, heads: &[MultiCallFrameClassification<V>]) {
         heads.iter().for_each(|search_head| {
             self.head
-                .get_all_children_for_complex_classification(*search_head, &mut self.data_store)
+                .get_all_children_for_complex_classification(search_head, &mut self.data_store)
         });
     }
 

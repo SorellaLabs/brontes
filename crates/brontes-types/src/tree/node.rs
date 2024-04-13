@@ -63,7 +63,7 @@ impl Node {
     ///   4 has child 6, it is found!
     pub fn get_all_children_for_complex_classification<V: NormalizedAction>(
         &mut self,
-        head: MultiCallFrameClassification<V>,
+        head: &MultiCallFrameClassification<V>,
         nodes: &mut NodeData<V>,
     ) {
         if head.trace_index == self.index {
@@ -74,14 +74,20 @@ impl Node {
                 head.collect_args(),
                 &|data| {
                     (
-                        NodeDataIndex { data_idx: data.node.index, multi_data_idx: data.idx },
+                        NodeDataIndex {
+                            trace_index:    data.node.index,
+                            data_idx:       data.node.data as u64,
+                            multi_data_idx: data.idx,
+                        },
                         data.data.clone(),
                     )
                 },
                 nodes,
             );
 
-            let clear_collapsed_nodes = head.parse(results);
+            // should always be the first index
+            let this = nodes.get_mut(self.data).unwrap().first_mut().unwrap();
+            let clear_collapsed_nodes = head.parse(this, results);
 
             clear_collapsed_nodes.into_iter().for_each(|index| {
                 self.clear_node_data(index, nodes);
@@ -324,7 +330,7 @@ impl Node {
         index: NodeDataIndex,
         data: &mut NodeData<V>,
     ) {
-        if index.data_idx == self.index {
+        if index.trace_index == self.index {
             data.get_mut(index.data_idx as usize)
                 .unwrap()
                 .remove(index.multi_data_idx);
@@ -347,14 +353,14 @@ impl Node {
 
         for next_node in iter {
             // check if past nodes are the head
-            if cur_inner_node.index == index.data_idx {
+            if cur_inner_node.index == index.trace_index {
                 return cur_inner_node.clear_node_data(index, data)
-            } else if next_inner_node.index == index.data_idx {
+            } else if next_inner_node.index == index.trace_index {
                 return cur_inner_node.clear_node_data(index, data)
             }
 
             // if the next node is smaller than the head, we continue
-            if next_inner_node.index <= index.data_idx {
+            if next_inner_node.index <= index.trace_index {
                 cur_inner_node = next_inner_node;
                 next_inner_node = next_node;
             } else {
@@ -364,11 +370,11 @@ impl Node {
         }
 
         // handle case where there are only two inner nodes to look at
-        if cur_inner_node.index == index.data_idx {
+        if cur_inner_node.index == index.trace_index {
             return cur_inner_node.clear_node_data(index, data)
-        } else if next_inner_node.index == index.data_idx {
+        } else if next_inner_node.index == index.trace_index {
             return cur_inner_node.clear_node_data(index, data)
-        } else if next_inner_node.index > index.data_idx {
+        } else if next_inner_node.index > index.trace_index {
             return cur_inner_node.clear_node_data(index, data)
         } else if let Some(last) = self.inner.last_mut() {
             return last.clear_node_data(index, data)

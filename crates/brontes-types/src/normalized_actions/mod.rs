@@ -12,7 +12,7 @@ pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
 pub mod transfer;
-use std::{fmt::Debug, ops::Mul};
+use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use accounting::{AddressDeltas, TokenAccounting};

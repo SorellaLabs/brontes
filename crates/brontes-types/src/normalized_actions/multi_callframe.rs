@@ -1,16 +1,15 @@
 use super::{Actions, NormalizedAction};
 use crate::{Protocol, TreeSearchBuilder};
 
-#[derive(Debug, Clone)]
 pub struct MultiCallFrameClassification<V: NormalizedAction> {
     pub trace_index:         u64,
     pub tree_search_builder: TreeSearchBuilder<V>,
-    pub parse_fn:            fn(Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex>,
+    pub parse_fn:            Box<dyn Fn(&mut V, Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex>>,
 }
 
 impl<V: NormalizedAction> MultiCallFrameClassification<V> {
-    pub fn parse(&self, actions: Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex> {
-        (self.parse_fn)(actions)
+    pub fn parse(&self, this: &mut V, actions: Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex> {
+        (self.parse_fn)(this, actions)
     }
 
     pub fn collect_args(&self) -> &TreeSearchBuilder<V> {
@@ -20,6 +19,8 @@ impl<V: NormalizedAction> MultiCallFrameClassification<V> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct NodeDataIndex {
+    /// the index of the call-frame trace in the tree
+    pub trace_index:    u64,
     /// the index of the node data struct
     pub data_idx:       u64,
     /// the index for the vec that we get from the node data struct
@@ -27,6 +28,7 @@ pub struct NodeDataIndex {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[repr(u8)]
 pub enum MultiFrameAction {
     FlashLoan,
     Batch,
@@ -64,5 +66,9 @@ impl MultiFrameRequest {
             }),
             _ => None,
         }
+    }
+
+    pub const fn make_key(&self) -> [u8; 2] {
+        [self.protocol as u8, self.call_type as u8]
     }
 }
