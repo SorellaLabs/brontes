@@ -69,6 +69,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
+                     tracing::debug!(?possible_frontruns, ?possible_backrun, ?victims);
+
                     if victims.iter().flatten().count() == 0 {
                         return None
                     };
@@ -254,12 +256,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
-        tracing::debug!(
-            "front: {:#?}\nvictim: {:#?} \nbackrun: {:#?}",
-            possible_front_runs_info,
-            victim_info,
-            backrun_info
-        );
+        // tracing::debug!(
+        //     "front: {:#?}\nvictim: {:#?} \nbackrun: {:#?}",
+        //     possible_front_runs_info,
+        //     victim_info,
+        //     backrun_info
+        // );
 
         let back_run_actions = searcher_actions.pop()?;
 
