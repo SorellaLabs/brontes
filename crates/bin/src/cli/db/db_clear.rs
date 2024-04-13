@@ -1,5 +1,3 @@
-use std::env;
-
 use brontes_database::{libmdbx::Libmdbx, Tables};
 use clap::Parser;
 use eyre::Ok;
@@ -19,8 +17,7 @@ pub struct Clear {
 }
 
 impl Clear {
-    pub async fn execute(self) -> eyre::Result<()> {
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    pub async fn execute(self, brontes_db_endpoint: String) -> eyre::Result<()> {
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
         macro_rules! clear_table {
