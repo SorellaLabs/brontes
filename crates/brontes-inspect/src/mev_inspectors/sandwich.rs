@@ -418,6 +418,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
+        tracing::debug!("{:#?}{:#?}", header, sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
@@ -428,7 +429,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
     ) -> bool {
-        tracing::debug!("{:#?}", victim_actions);
         let f_swap_len = front_run_swaps.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
             victim_actions.iter().zip(victim_info).enumerate()
@@ -631,7 +631,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|was_victim| was_victim as usize)
                 .sum();
 
-            tracing::debug!(?was_victims, ?has_sandwich);
             // if we had more than 50% victims, then we say this was valid. This
             // wiggle room is to deal with unknowns
             if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
@@ -1068,6 +1067,23 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS, DAI_ADDRESS, USDT_ADDRESS, USDC_ADDRESS])
             .with_gas_paid_usd(164.35)
             .with_expected_profit_usd(0.8);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_maker_dss_sando() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("113ff55702e51113c79ad0fa0d53f2f4525b7e6263f3cdeee8441cd499b0ea85").into(),
+                hex!("dae4ce3ee05c58c9393a2babaa7460bcbc8f3ecdcb49e67d9e13d24dfbde1207").into(),
+                hex!("2290880629aad334c189ea7be36291481f55d97b7dfcc3d34623fd7db76682e4").into(),
+            ])
+            .with_gas_paid_usd(294.0)
+            .with_expected_profit_usd(155.66);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
