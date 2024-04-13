@@ -1,8 +1,12 @@
+use itertools::Itertools;
 use reth_primitives::Address;
 use tracing::error;
 
 use super::{types::NodeWithDataRef, NodeData};
-use crate::{normalized_actions::NormalizedAction, TreeSearchArgs, TreeSearchBuilder};
+use crate::{
+    normalized_actions::{MultiCallFrameClassification, NodeDataIndex, NormalizedAction},
+    TreeSearchArgs, TreeSearchBuilder,
+};
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -60,38 +64,39 @@ impl Node {
     ///   4 has child 6, it is found!
     pub fn get_all_children_for_complex_classification<V: NormalizedAction>(
         &mut self,
-        head: u64,
+        head: &MultiCallFrameClassification<V>,
         nodes: &mut NodeData<V>,
     ) {
-        if head == self.index {
+        if head.trace_index == self.index {
             let mut results = Vec::new();
-            let collect_fn = nodes
-                .get_mut(self.data)
-                .unwrap()
-                .first()
-                .unwrap()
-                .continued_classification_types();
 
             self.collect(
                 &mut results,
-                &collect_fn,
-                &|data| (data.node.index, data.data.clone()),
+                head.collect_args(),
+                &|data| {
+                    (
+                        NodeDataIndex {
+                            trace_index:    data.node.index,
+                            data_idx:       data.node.data as u64,
+                            multi_data_idx: data.idx,
+                        },
+                        data.data.clone(),
+                    )
+                },
                 nodes,
             );
 
-            // Now that we have the child actions of interest we can finalize the parent
-            // node's classification which mutates the parents data in place & returns the
-            // indexes of child nodes that should be removed
-            let prune_collapsed_nodes = nodes
-                .get_mut(self.data)
-                .unwrap()
-                .first_mut()
-                .unwrap()
-                .finalize_classification(results);
+            // should always be the first index
+            let this = nodes.get_mut(self.data).unwrap().first_mut().unwrap();
+            let clear_collapsed_nodes = head.parse(this, results);
 
-            prune_collapsed_nodes.into_iter().for_each(|index| {
-                self.remove_node_and_children(index, nodes);
-            });
+            clear_collapsed_nodes
+                .into_iter()
+                // remove the outer indexes first to ensure no unreachable
+                .sorted_unstable_by(|a, b| b.multi_data_idx.cmp(&a.multi_data_idx))
+                .for_each(|index| {
+                    self.clear_node_data(index, nodes);
+                });
 
             return
         }
@@ -112,14 +117,14 @@ impl Node {
 
         for next_node in iter {
             // check if past nodes are the head
-            if cur_inner_node.index == head {
+            if cur_inner_node.index == head.trace_index {
                 return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
-            } else if next_inner_node.index == head {
+            } else if next_inner_node.index == head.trace_index {
                 return next_inner_node.get_all_children_for_complex_classification(head, nodes)
             }
 
             // if the next node is smaller than the head, we continue
-            if next_inner_node.index <= head {
+            if next_inner_node.index <= head.trace_index {
                 cur_inner_node = next_inner_node;
                 next_inner_node = next_node;
             } else {
@@ -129,11 +134,11 @@ impl Node {
         }
 
         // handle case where there are only two inner nodes to look at
-        if cur_inner_node.index == head {
+        if cur_inner_node.index == head.trace_index {
             return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
-        } else if next_inner_node.index == head {
+        } else if next_inner_node.index == head.trace_index {
             return next_inner_node.get_all_children_for_complex_classification(head, nodes)
-        } else if next_inner_node.index > head {
+        } else if next_inner_node.index > head.trace_index {
             return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
         }
         // handle inf case that is shown in the function docs
@@ -322,35 +327,124 @@ impl Node {
             .for_each(|node| node.get_bounded_info(lower, upper, res, info_fn));
     }
 
+    /// clears the data for the given node at the specified index. This is used
+    /// for complex classification as we want to avoid the double count but
+    /// don't want to mess up the structure of the tree.
+    pub fn clear_node_data<V: NormalizedAction>(
+        &mut self,
+        index: NodeDataIndex,
+        data: &mut NodeData<V>,
+    ) {
+        if index.trace_index == self.index {
+            data.get_mut(index.data_idx as usize)
+                .unwrap()
+                .remove(index.multi_data_idx);
+            return
+        }
+
+        if self.inner.len() <= 1 {
+            if let Some(inner) = self.inner.first_mut() {
+                return inner.clear_node_data(index, data)
+            }
+            error!("was not able to find node in tree for clearing node data");
+            return
+        }
+
+        let mut iter = self.inner.iter_mut();
+
+        // init the sliding window
+        let mut cur_inner_node = iter.next().unwrap();
+        let mut next_inner_node = iter.next().unwrap();
+
+        for next_node in iter {
+            // check if past nodes are the head
+            if cur_inner_node.index == index.trace_index {
+                return cur_inner_node.clear_node_data(index, data)
+            } else if next_inner_node.index == index.trace_index {
+                return next_inner_node.clear_node_data(index, data)
+            }
+
+            // if the next node is smaller than the head, we continue
+            if next_inner_node.index <= index.trace_index {
+                cur_inner_node = next_inner_node;
+                next_inner_node = next_node;
+            } else {
+                // next node is bigger than head. thus current node is proper path
+                return cur_inner_node.clear_node_data(index, data)
+            }
+        }
+
+        // handle case where there are only two inner nodes to look at
+        if cur_inner_node.index == index.trace_index {
+            return cur_inner_node.clear_node_data(index, data)
+        } else if next_inner_node.index == index.trace_index {
+            return next_inner_node.clear_node_data(index, data)
+        } else if next_inner_node.index > index.trace_index {
+            return cur_inner_node.clear_node_data(index, data)
+        } else if let Some(last) = self.inner.last_mut() {
+            return last.clear_node_data(index, data)
+        }
+
+        error!("was not able to find node in tree, should be unreachable");
+    }
+
     pub fn remove_node_and_children<V: NormalizedAction>(
         &mut self,
         index: u64,
         data: &mut NodeData<V>,
     ) {
-        let mut iter = self.inner.iter_mut().enumerate();
-
-        let res = loop {
-            if let Some((i, inner)) = iter.next() {
-                if inner.index == index {
-                    break Some(i)
-                }
-
-                if inner.index < index {
-                    inner.remove_node_and_children(index, data)
-                } else {
-                    break None
-                }
-            } else {
-                break None
-            }
-        };
-
-        if let Some(val) = res {
-            let ret = self.inner.remove(val);
-            ret.get_all_sub_actions().into_iter().for_each(|f| {
+        if index == self.index {
+            data.remove(self.data);
+            self.get_all_sub_actions().into_iter().for_each(|f| {
                 data.remove(f);
             });
+            return
         }
+
+        if self.inner.len() <= 1 {
+            if let Some(inner) = self.inner.first_mut() {
+                return inner.remove_node_and_children(index, data)
+            }
+            error!("was not able to find node in tree for clearing node data");
+            return
+        }
+
+        let mut iter = self.inner.iter_mut();
+
+        // init the sliding window
+        let mut cur_inner_node = iter.next().unwrap();
+        let mut next_inner_node = iter.next().unwrap();
+
+        for next_node in iter {
+            // check if past nodes are the head
+            if cur_inner_node.index == index {
+                return cur_inner_node.remove_node_and_children(index, data)
+            } else if next_inner_node.index == index {
+                return next_inner_node.remove_node_and_children(index, data)
+            }
+
+            // if the next node is smaller than the head, we continue
+            if next_inner_node.index <= index {
+                cur_inner_node = next_inner_node;
+                next_inner_node = next_node;
+            } else {
+                // next node is bigger than head. thus current node is proper path
+                return cur_inner_node.remove_node_and_children(index, data)
+            }
+        }
+
+        // handle case where there are only two inner nodes to look at
+        if cur_inner_node.index == index {
+            return cur_inner_node.remove_node_and_children(index, data)
+        } else if next_inner_node.index == index {
+            return next_inner_node.remove_node_and_children(index, data)
+        } else if next_inner_node.index > index {
+            return cur_inner_node.remove_node_and_children(index, data)
+        } else if let Some(last) = self.inner.last_mut() {
+            return last.remove_node_and_children(index, data)
+        }
+
+        error!("was not able to find node in tree, should be unreachable");
     }
 
     // only grabs the lowest subset of specified actions
@@ -406,7 +500,7 @@ impl Node {
         if collect_current_node {
             if let Some(datas) = data.get_ref(self.data) {
                 for idx in collect_idxs {
-                    results.push(wanted_data(NodeWithDataRef::new(self, &datas[idx])))
+                    results.push(wanted_data(NodeWithDataRef::new(self, &datas[idx], idx)))
                 }
             }
         }
