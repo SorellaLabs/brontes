@@ -63,13 +63,13 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             .into_iter()
             .filter_map(
                 |PossibleSandwich {
-                     eoa: _,
+                     eoa: _e,
                      possible_frontruns,
                      possible_backrun,
                      mev_executor_contract,
                      victims,
                  }| {
-                    tracing::debug!(?possible_frontruns, ?possible_backrun, ?victims);
+                    tracing::debug!(?_e, ?mev_executor_contract, ?possible_frontruns, ?possible_backrun, ?victims);
 
                     if victims.iter().flatten().count() == 0 {
                         return None
