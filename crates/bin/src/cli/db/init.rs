@@ -1,4 +1,4 @@
-use std::{env, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxInit, Tables};
 use brontes_types::{db::cex::CexExchange, init_threadpools};
@@ -68,9 +68,8 @@ pub struct Init {
 }
 
 impl Init {
-    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
 
         init_threadpools(10);
         let task_executor = ctx.task_executor;
