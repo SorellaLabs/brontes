@@ -1,5 +1,3 @@
-use std::env;
-
 use brontes_database::{
     libmdbx::{cursor::CompressedCursor, Libmdbx},
     CompressedTable, IntoTableKey, Tables,
@@ -24,8 +22,7 @@ pub struct DatabaseQuery {
 }
 
 impl DatabaseQuery {
-    pub async fn execute(self) -> eyre::Result<()> {
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env");
+    pub async fn execute(self, brontes_db_endpoint: String) -> eyre::Result<()> {
         init_threadpools(10);
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 

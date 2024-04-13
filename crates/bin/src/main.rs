@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{env, error::Error};
 
 use brontes::{
     cli::{Args, Commands},
@@ -33,10 +33,20 @@ fn main() -> eyre::Result<()> {
 
 fn run() -> eyre::Result<()> {
     let opt = Args::parse();
+    let brontes_db_endpoint = opt
+        .brontes_db_path
+        .unwrap_or(env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env"));
+
     match opt.command {
-        Commands::Run(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
-        Commands::Database(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
-        Commands::Analytics(command) => runner::run_command_until_exit(|ctx| command.execute(ctx)),
+        Commands::Run(command) => {
+            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
+        }
+        Commands::Database(command) => {
+            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
+        }
+        Commands::Analytics(command) => {
+            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
+        }
     }
 }
 

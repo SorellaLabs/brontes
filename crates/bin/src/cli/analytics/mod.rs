@@ -24,10 +24,10 @@ pub enum AnalyticsCommands {
 }
 
 impl Analytics {
-    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         match self.command {
-            AnalyticsCommands::ViBuilders(cmd) => cmd.execute(ctx).await,
-            AnalyticsCommands::SearcherStats(cmd) => cmd.execute(ctx).await,
+            AnalyticsCommands::ViBuilders(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            AnalyticsCommands::SearcherStats(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
         }
     }
 }

@@ -13,7 +13,10 @@ pub use utils::*;
 #[command(propagate_version = true)]
 pub struct Args {
     #[clap(subcommand)]
-    pub command: Commands,
+    pub command:         Commands,
+    /// path to the brontes libmdbx db
+    #[arg(long = "brontes-db-path", global = true)]
+    pub brontes_db_path: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]

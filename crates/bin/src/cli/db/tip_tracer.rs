@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
@@ -20,7 +20,7 @@ pub struct TipTraceArgs {
 }
 
 impl TipTraceArgs {
-    pub async fn execute(self, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
         let max_tasks = (num_cpus::get_physical() as f64 * 0.7) as u64 + 1;
@@ -30,11 +30,6 @@ impl TipTraceArgs {
         let metrics_listener = PoirotMetricsListener::new(metrics_rx);
         ctx.task_executor
             .spawn_critical("metrics", metrics_listener);
-
-        let brontes_db_endpoint = env::var("BRONTES_DB_PATH").expect(
-            "No
-        BRONTES_DB_PATH in .env",
-        );
 
         let libmdbx = static_object(load_read_only_database(brontes_db_endpoint)?);
 
