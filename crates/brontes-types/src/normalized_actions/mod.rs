@@ -7,6 +7,7 @@ pub mod flashloan;
 pub mod lending;
 pub mod liquidation;
 pub mod liquidity;
+pub mod multi_callframe;
 pub mod pool;
 pub mod self_destruct;
 pub mod swaps;
@@ -24,6 +25,7 @@ pub use flashloan::*;
 pub use lending::*;
 pub use liquidation::*;
 pub use liquidity::*;
+pub use multi_callframe::*;
 pub use pool::*;
 use reth_rpc_types::trace::parity::Action;
 pub use self_destruct::*;
@@ -32,17 +34,15 @@ pub use transfer::*;
 
 use crate::{
     structured_trace::{TraceActions, TransactionTraceWithLogs},
-    Protocol, TreeSearchBuilder,
+    Protocol,
 };
 
 pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn is_classified(&self) -> bool;
     fn emitted_logs(&self) -> bool;
     fn get_action(&self) -> &Actions;
-    fn continue_classification(&self) -> bool;
+    fn multi_frame_classification(&self) -> Option<MultiFrameRequest>;
     fn get_trace_index(&self) -> u64;
-    fn continued_classification_types(&self) -> TreeSearchBuilder<Self>;
-    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64>;
 }
 
 impl NormalizedAction for Actions {
@@ -67,53 +67,8 @@ impl NormalizedAction for Actions {
         self
     }
 
-    fn continue_classification(&self) -> bool {
-        match self {
-            Self::Swap(_) => false,
-            Self::SwapWithFee(_) => false,
-            Self::FlashLoan(_) => true,
-            Self::Batch(_) => true,
-            Self::Mint(_) => false,
-            Self::Burn(_) => false,
-            Self::Transfer(_) => false,
-            Self::Liquidation(_) => true,
-            Self::Collect(_) => false,
-            Self::SelfDestruct(_) => false,
-            Self::EthTransfer(_) => false,
-            Self::Unclassified(_) => false,
-            Self::Revert => false,
-            Self::NewPool(_) => false,
-            Self::PoolConfigUpdate(_) => false,
-            Self::Aggregator(_) => true,
-        }
-    }
-
-    fn continued_classification_types(&self) -> TreeSearchBuilder<Self> {
-        match self {
-            Self::FlashLoan(_) => TreeSearchBuilder::default().with_actions([
-                Self::is_batch,
-                Self::is_swap,
-                Self::is_liquidation,
-                Self::is_mint,
-                Self::is_burn,
-                Self::is_transfer,
-                Self::is_collect,
-            ]),
-            Self::Batch(_) => TreeSearchBuilder::default().with_actions([
-                Self::is_swap,
-                Self::is_transfer,
-                Self::is_eth_transfer,
-            ]),
-            Self::Aggregator(_) => TreeSearchBuilder::default().with_actions([
-                Self::is_batch,
-                Self::is_swap,
-                Self::is_mint,
-                Self::is_burn,
-                Self::is_transfer,
-            ]),
-            Self::Liquidation(_) => TreeSearchBuilder::default().with_action(Self::is_transfer),
-            action => unreachable!("no continue_classification function for {action:?}"),
-        }
+    fn multi_frame_classification(&self) -> Option<MultiFrameRequest> {
+        MultiFrameRequest::new(self, self.try_get_trace_index()?)
     }
 
     fn get_trace_index(&self) -> u64 {
@@ -134,16 +89,6 @@ impl NormalizedAction for Actions {
             Self::PoolConfigUpdate(p) => p.trace_index,
             Self::Aggregator(a) => a.trace_index,
             Self::Revert => unreachable!("no trace index for revert"),
-        }
-    }
-
-    fn finalize_classification(&mut self, actions: Vec<(u64, Self)>) -> Vec<u64> {
-        match self {
-            Self::FlashLoan(f) => f.finish_classification(actions),
-            Self::Batch(f) => f.finish_classification(actions),
-            Self::Liquidation(l) => l.finish_classification(actions),
-            Self::Aggregator(a) => a.finish_classification(actions),
-            action => unreachable!("{action:?} never require complex classification"),
         }
     }
 }
@@ -222,6 +167,27 @@ impl Actions {
             Actions::Liquidation(l) => l,
             _ => unreachable!("not liquidation"),
         }
+    }
+
+    fn try_get_trace_index(&self) -> Option<u64> {
+        Some(match self {
+            Self::Swap(s) => s.trace_index,
+            Self::SwapWithFee(s) => s.trace_index,
+            Self::FlashLoan(f) => f.trace_index,
+            Self::Batch(b) => b.trace_index,
+            Self::Mint(m) => m.trace_index,
+            Self::Burn(b) => b.trace_index,
+            Self::Transfer(t) => t.trace_index,
+            Self::Liquidation(t) => t.trace_index,
+            Self::Collect(c) => c.trace_index,
+            Self::SelfDestruct(c) => c.trace_index,
+            Self::EthTransfer(e) => e.trace_index,
+            Self::Unclassified(u) => u.trace_idx,
+            Self::NewPool(p) => p.trace_index,
+            Self::PoolConfigUpdate(p) => p.trace_index,
+            Self::Aggregator(a) => a.trace_index,
+            Self::Revert => return None,
+        })
     }
 
     pub fn force_swap(self) -> NormalizedSwap {
