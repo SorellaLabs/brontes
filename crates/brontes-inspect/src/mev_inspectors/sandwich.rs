@@ -1088,6 +1088,7 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
+
     #[brontes_macros::test]
     async fn test_zero_x_dydx() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
