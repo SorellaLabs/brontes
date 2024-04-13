@@ -1040,6 +1040,27 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-    // this test next
-    // https://eigenphi.io/mev/ethereum/tx/0x0c7d892bac2ac9b59f66353c555fd99380b5dd61dfbd7220340b53993e13fe4a
+
+    #[brontes_macros::test]
+    async fn test_dodo_balancer_flashloan() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("5047cf41c74ea639a25fdb1940effe4be284ed2ae9b563a2800c94e9a8b43135").into(),
+                hex!("027141d059be231b0a0be8f5030edb70a70b5a75a64a72671b7cd04e2523e65e").into(),
+                hex!("b102f59420b7ee268a269f33d6728d84d344b17758fa78da18e1ce60cd05e5ae").into(),
+            ])
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                DAI_ADDRESS,
+                USDT_ADDRESS,
+                USDC_ADDRESS,
+            ])
+            .with_gas_paid_usd(106.9)
+            .with_expected_profit_usd(2.6);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
