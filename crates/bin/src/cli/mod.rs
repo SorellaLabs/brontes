@@ -2,10 +2,13 @@ use clap::{Parser, Subcommand};
 
 mod analytics;
 mod db;
+mod misc;
 mod run;
 mod utils;
 
 pub use utils::*;
+
+use self::misc::Verbosity;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -17,6 +20,9 @@ pub struct Args {
     /// path to the brontes libmdbx db
     #[arg(long = "brontes-db-path", global = true)]
     pub brontes_db_path: Option<String>,
+    /// verbosity fo the logs
+    #[clap(flatten)]
+    pub verbosity:       Verbosity,
 }
 
 #[derive(Debug, Subcommand)]
