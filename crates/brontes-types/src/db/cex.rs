@@ -278,7 +278,7 @@ impl CexPriceMap {
                 return None;
             } else {
                 info!(
-                    "\n\x1b[1;31mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
+                    "\n\x1b[1;32mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
                      - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
                      - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
                      - Intermediary Prices:\n\
