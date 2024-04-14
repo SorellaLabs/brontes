@@ -397,7 +397,6 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
             println!("VALUE: {:?}", value);
         }
         let (pair, quote) = value;
-
         let price = if pair == pair.ordered() {
             (
                 Rational::try_from_float_simplest(quote.ask_price).unwrap(),

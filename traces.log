@@ -1,6 +1,0 @@
-nohup: ignoring input
-[2m2024-02-22T17:43:13.014096Z[0m [32m INFO[0m [2mbrontes::runner[0m[2m:[0m Initialized prometheus endpoint
-[2m2024-02-22T17:43:13.014938Z[0m [32m INFO[0m [2mbrontes::cli::utils[0m[2m:[0m Found DB Path
-[2m2024-02-22T17:43:13.171118Z[0m [32m INFO[0m [2mbrontes::cli::trace_range[0m[2m:[0m tracing 0.00% done
-[2m2024-02-22T17:43:14.545217Z[0m [32m INFO[0m [2mbrontes::cli::trace_range[0m[2m:[0m tracing 0.21% done
-[2m2024-02-22T17:43:28.724173Z[0m [32m INFO[0m [2mbrontes[0m[2m:[0m successful shutdown

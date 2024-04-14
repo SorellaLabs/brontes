@@ -255,20 +255,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
         let back_run_actions = searcher_actions.pop()?;
-        // let back_run_swaps = back_run_actions
-        //     .clone()
-        //     .into_iter()
-        //     .collect_action_vec(Actions::try_swaps_merged);
-        //
-        // let front_run_swaps = searcher_actions
-        //     .clone()
-        //     .into_iter()
-        //     .map(|action| {
-        //         action
-        //             .into_iter()
-        //             .collect_action_vec(Actions::try_swaps_merged)
-        //     })
-        //     .collect::<Vec<_>>();
 
         //TODO: Check later if this method correctly identifies an incorrect middle
         // front run that is unrelated
@@ -432,6 +418,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
+        tracing::debug!("{:#?}{:#?}", header, sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
@@ -476,6 +463,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .map(|(swaps, transfers)| {
                     let front_run_pools = itertools::Itertools::into_group_map(
                         transfers
+                            .clone()
                             .into_iter()
                             .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
                     )
@@ -500,6 +488,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 (s.token_out.address, s.pool, false),
                             ]
                         })
+                        .chain(transfers.into_iter().flat_map(|t| {
+                            [(t.token.address, t.to, true), (t.token.address, t.from, false)]
+                        }))
                         .collect::<Vec<_>>();
                     (front_run_pools, front_run_tokens)
                 })
@@ -522,6 +513,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             let back_run_pools = itertools::Itertools::into_group_map(
                 back_transfer
+                    .clone()
                     .into_iter()
                     .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
             )
@@ -543,6 +535,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .flat_map(|s| {
                     [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
                 })
+                .chain(back_transfer.into_iter().flat_map(|t| {
+                    [(t.token.address, t.to, true), (t.token.address, t.from, false)]
+                }))
                 .collect::<FastHashSet<_>>();
 
             // ensure the intersection of frontrun and backrun pools exists
@@ -585,10 +580,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 || transfers.iter().any(|t| {
                                     // victim has a transfer from the pool that was a token in for
                                     // the sandwich
-                                    front_run_tokens.contains(&(t.token.address, t.from, true))
+                                    front_run_tokens.contains(&(t.token.address, t.to, true))
                             // victim has a transfer to the pool that was a token out for the
                             // sandwich 
-                                || front_run_tokens.contains(&(t.token.address, t.to, false))
+                                || front_run_tokens.contains(&(t.token.address, t.from, false))
                                 })
                         });
                     let backrun = v
@@ -836,7 +831,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    // annoying
     async fn test_sandwich_part_of_jit_sandwich_simple() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.0).await;
 
@@ -1040,6 +1034,74 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-    // this test next
-    // https://eigenphi.io/mev/ethereum/tx/0x0c7d892bac2ac9b59f66353c555fd99380b5dd61dfbd7220340b53993e13fe4a
+
+    #[brontes_macros::test]
+    async fn test_dodo_balancer_flashloan() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("5047cf41c74ea639a25fdb1940effe4be284ed2ae9b563a2800c94e9a8b43135").into(),
+                hex!("027141d059be231b0a0be8f5030edb70a70b5a75a64a72671b7cd04e2523e65e").into(),
+                hex!("b102f59420b7ee268a269f33d6728d84d344b17758fa78da18e1ce60cd05e5ae").into(),
+            ])
+            .needs_tokens(vec![WETH_ADDRESS, DAI_ADDRESS, USDT_ADDRESS, USDC_ADDRESS])
+            .with_gas_paid_usd(106.9)
+            .with_expected_profit_usd(2.6);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_jared_looks_atomic_arb() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("eaa48d2f9d13f4d9985e1c59546f000ef5a0710532f5f461deb39d2c08b4931e").into(),
+                hex!("ccd2236c2036efffbb9b492a5867a11b535963c5f7387b174b6e6105e7689ffe").into(),
+                hex!("1a9b39a84ba847541706626c40fab246892311f8b0b7db226fdb9155858093d2").into(),
+            ])
+            .needs_tokens(vec![WETH_ADDRESS, DAI_ADDRESS, USDT_ADDRESS, USDC_ADDRESS])
+            .with_gas_paid_usd(164.35)
+            .with_expected_profit_usd(0.8);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_maker_dss_sando() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("113ff55702e51113c79ad0fa0d53f2f4525b7e6263f3cdeee8441cd499b0ea85").into(),
+                hex!("dae4ce3ee05c58c9393a2babaa7460bcbc8f3ecdcb49e67d9e13d24dfbde1207").into(),
+                hex!("2290880629aad334c189ea7be36291481f55d97b7dfcc3d34623fd7db76682e4").into(),
+            ])
+            .with_gas_paid_usd(294.0)
+            .with_expected_profit_usd(155.66);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zero_x_dydx() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("b1d88d24517c0bcbcbd566150edaacf702eac451ae85dad5008e4733d3a6eca7").into(),
+                hex!("b1aa6baba57e9e2c32f6f4a5599eb2a581eb875dedc8a0d21a02f537d6145c30").into(),
+                hex!("eaf680c0815ee63870d519570d96032ac93bed8931746cb73221101c88fa0a6b").into(),
+            ])
+            .with_gas_paid_usd(493.0)
+            .with_expected_profit_usd(68.6);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }

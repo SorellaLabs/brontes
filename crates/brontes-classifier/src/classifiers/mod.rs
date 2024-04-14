@@ -140,6 +140,7 @@ action_dispatch!(
     CurveV2PlainPoolImplRemove_liquidity_one_coin_1Call,
     MakerPSMBuyGemCall,
     MakerPSMSellGemCall,
+    MakerDssFlashFlashLoanCall,
     AaveV2LiquidationCallCall,
     AaveV3LiquidationCallCall,
     AaveV2FlashLoanCall,

@@ -10,11 +10,13 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
+use reth_primitives::U256;
 
 alloy_sol_macro::sol!(
     function transfer(address, uint) returns(bool);
     function transferFrom(address, address, uint) returns(bool);
     function withdraw(uint wad);
+    function deposit();
 );
 
 pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWriter>(
@@ -25,6 +27,7 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
     db: &DB,
     provider: &Arc<T>,
     block: u64,
+    value: U256,
 ) -> eyre::Result<NormalizedTransfer> {
     let (from_addr, to_addr, amount) = if let Some((from_addr, to_addr, amount)) =
         transferCall::abi_decode(&calldata, false)
@@ -37,6 +40,8 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
         (from_addr, to_addr, amount)
     } else if let Ok(amount) = withdrawCall::abi_decode(&calldata, false) {
         (from, Address::ZERO, amount.wad)
+    } else if depositCall::abi_decode(&calldata, false).is_ok() {
+        (token, from, value)
     } else {
         return Err(eyre::eyre!("failed to decode transfer for token: {:?}", token))
     };
