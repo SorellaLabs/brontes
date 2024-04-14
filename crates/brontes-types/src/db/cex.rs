@@ -231,7 +231,7 @@ impl CexPriceMap {
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
                     let combined_price =
-                        (&quote1.price.0 * &quote2.price.0, &quote1.price.1 * &quote2.price.1);
+                        (&quote1.price.0 / &quote2.price.0, &quote1.price.1 / &quote2.price.1);
                     let combined_quote = CexQuote {
                         exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
@@ -254,28 +254,51 @@ impl CexPriceMap {
             // Only log if the CEX quote is significantly higher than the DEX swap rate
             if smaller * Rational::from(3) < larger {
                 error!(
-                        "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
-                         - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
-                         - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
-                         - Intermediary Prices:\n\
-                           * First Leg Price: {:.4}\n\
-                           * Second Leg Price: {:.4}\n\
-                         - Token Contracts:\n\
-                           * Token In: https://etherscan.io/address/{}\n\
-                           * Intermediary: https://etherscan.io/address/{}\n\
-                           * Token Out: https://etherscan.io/address/{}",
-                        dex_swap.token_in_symbol(),
-                        dex_swap.token_out_symbol(),
-                        exchange,
-                        dex_swap_rate.to_float(),
-                        combined_quote.price.1.clone().to_float(),
-                        quote1.price.1.clone().to_float(),
-                        quote2.price.1.clone().to_float(),
-                        dex_swap.token_in.address,
-                        intermediary,
-                        dex_swap.token_out.address
-                    );
+                    "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
+                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
+                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
+                     - Intermediary Prices:\n\
+                       * First Leg Price: {:.4}\n\
+                       * Second Leg Price: {:.4}\n\
+                     - Token Contracts:\n\
+                       * Token In: https://etherscan.io/address/{}\n\
+                       * Intermediary: https://etherscan.io/address/{}\n\
+                       * Token Out: https://etherscan.io/address/{}",
+                    dex_swap.token_out_symbol(),
+                    dex_swap.token_in_symbol(),
+                    exchange,
+                    dex_swap_rate.clone().to_float(),
+                    combined_quote.price.1.clone().to_float(),
+                    quote1.price.1.clone().to_float(),
+                    quote2.price.1.clone().to_float(),
+                    dex_swap.token_out.address,
+                    intermediary,
+                    dex_swap.token_in.address,
+                );
                 return None;
+            } else {
+                info!(
+                    "\n\x1b[1;31mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
+                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
+                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
+                     - Intermediary Prices:\n\
+                       * First Leg Price: {:.4}\n\
+                       * Second Leg Price: {:.4}\n\
+                     - Token Contracts:\n\
+                       * Token In: https://etherscan.io/address/{}\n\
+                       * Intermediary: https://etherscan.io/address/{}\n\
+                       * Token Out: https://etherscan.io/address/{}",
+                    dex_swap.token_out_symbol(),
+                    dex_swap.token_in_symbol(),
+                    exchange,
+                    dex_swap_rate.clone().to_float(),
+                    combined_quote.price.1.clone().to_float(),
+                    quote1.price.1.clone().to_float(),
+                    quote2.price.1.clone().to_float(),
+                    dex_swap.token_out.address,
+                    intermediary,
+                    dex_swap.token_in.address,
+                );
             }
         }
 
@@ -283,7 +306,26 @@ impl CexPriceMap {
             .into_iter()
             .map(|(_, _, quote, _)| quote)
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
-            .map(|best_quote| best_quote)
+            .map(|best_quote| {
+                info!(
+                    "\n\x1b[1;31mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
+                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
+                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
+                     - Intermediary Prices:\n\
+                     - Token Contracts:\n\
+                       * Token In: https://etherscan.io/address/{}\n\
+                       * Token Out: https://etherscan.io/address/{}",
+                    dex_swap.token_out_symbol(),
+                    dex_swap.token_in_symbol(),
+                    exchange,
+                    dex_swap_rate.to_float(),
+                    best_quote.price.1.clone().to_float(),
+                    dex_swap.token_out.address,
+                    dex_swap.token_in.address,
+                );
+                best_quote
+            }
+            )
     }
 
     /// Retrieves a CEX quote for a given token pair directly or via an
