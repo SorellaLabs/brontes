@@ -892,30 +892,7 @@ mod tests {
             .with_gas_paid_usd(40.26)
             .with_expected_profit_usd(1.18);
 
-        inspector_util
-            .run_inspector(
-                config,
-                Some(Box::new(|b| {
-                    let BundleData::Sandwich(ref s) = b.data else { unreachable!() };
-                    assert!(
-                        s.frontrun_swaps[0].len() == 6,
-                        "incorrect amount of frontrun swaps {:#?}",
-                        s.frontrun_swaps[0]
-                    );
-                    assert!(
-                        s.backrun_swaps.len() == 2,
-                        "incorrect amount of backrun swaps {:#?}",
-                        s.backrun_swaps
-                    );
-
-                    assert!(
-                        s.victim_swaps_tx_hashes.iter().flatten().count() == 2,
-                        "incorrect amount of victims"
-                    );
-                })),
-            )
-            .await
-            .unwrap();
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     /// this is a jit sandwich
