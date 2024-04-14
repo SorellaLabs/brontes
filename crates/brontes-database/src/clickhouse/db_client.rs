@@ -843,4 +843,35 @@ mod tests {
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
             .await;
     }
+
+    #[brontes_macros::test]
+    async fn test_db_trades() {
+        dotenv::dotenv().ok();
+
+        let db_client = Clickhouse {
+            client:              ClickhouseClient::<BrontesClickhouseTables>::default(),
+            cex_download_config: Default::default(),
+        };
+
+        let cex_trade_map = db
+            .get_cex_trades(CexRangeOrArbitrary::Arbitrary(vec![18700684]))
+            .await
+            .unwrap();
+
+        let trades = cex_trade_map
+            .get(CexExchange::Okex)
+            .unwrap()
+            .get(
+                Pair(
+                    hex!(dac17f958d2ee523a2206206994597c13d831ec7),
+                    hex!(2260fac5e5542a773aa44fbcfedf7c193bc2c599),
+                )
+                .ordered(),
+            )
+            .unwrap();
+
+        for t in trades {
+            println!("{:?}", t);
+        }
+    }
 }
