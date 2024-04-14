@@ -48,7 +48,6 @@ searchers_contracts = [
     "0xaf0b0000f0210d0f421f0009c72406703b50506b",
     "0x0000006daea1723962647b7e189d311d757fb793",
     "0x280027dd00ee0050d3f9d168efd6b40090009246",
-    "0x53FacEe52e897740B140F5304E9Cd9DC6238d735"
 ]
 ultrasound_relay_collateral_address = "0x0affb0a96fbefaa97dce488dfd97512346cf3ab8"
 
