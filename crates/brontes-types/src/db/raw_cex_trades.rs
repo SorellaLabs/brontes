@@ -109,9 +109,9 @@ impl CexTradesConverter {
                             }
 
                             let pair = if &trade.side == "buy" {
-                                symbol.address_pair
-                            } else {
                                 symbol.address_pair.flip()
+                            } else {
+                                symbol.address_pair
                             };
 
                             exchange_symbol_map
