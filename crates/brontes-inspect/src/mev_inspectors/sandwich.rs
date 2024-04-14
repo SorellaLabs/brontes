@@ -461,7 +461,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_sets.push(group_set);
             }
         });
-        tracing::info!(?results);
 
         if results.is_empty() {
             results.push(PossibleSandwich {
@@ -472,7 +471,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 possible_backrun,
             });
         }
-        tracing::info!(?results);
 
         results
     }
