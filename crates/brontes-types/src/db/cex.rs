@@ -306,26 +306,7 @@ impl CexPriceMap {
             .into_iter()
             .map(|(_, _, quote, _)| quote)
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
-            .map(|best_quote| {
-                info!(
-                    "\n\x1b[1;32mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
-                     - \x1b[1;32mDEX Swap Rate:\x1b[0m {:.6}\n\
-                     - \x1b[1;32mCEX Combined Quote:\x1b[0m {:.6}\n\
-                     - Intermediary Prices:\n\
-                     - Token Contracts:\n\
-                       * Token In: https://etherscan.io/address/{}\n\
-                       * Token Out: https://etherscan.io/address/{}",
-                    dex_swap.token_out_symbol(),
-                    dex_swap.token_in_symbol(),
-                    exchange,
-                    dex_swap_rate.to_float(),
-                    best_quote.price.1.clone().to_float(),
-                    dex_swap.token_out.address,
-                    dex_swap.token_in.address,
-                );
-                best_quote
-            }
-            )
+            .map(|best_quote| best_quote)
     }
 
     /// Retrieves a CEX quote for a given token pair directly or via an
