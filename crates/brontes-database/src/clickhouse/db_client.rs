@@ -552,7 +552,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
-        db::{dex::DexPrices, searcher::SearcherEoaContract},
+        db::{cex::CexExchange, dex::DexPrices, searcher::SearcherEoaContract},
         init_threadpools,
         mev::{
             AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
@@ -844,7 +844,7 @@ mod tests {
             .await;
     }
 
-    #[cfg(feature = "cex-dex-markout")]
+    //#[cfg(feature = "cex-dex-markout")]
     #[brontes_macros::test]
     async fn test_db_trades() {
         dotenv::dotenv().ok();
@@ -854,25 +854,48 @@ mod tests {
             cex_download_config: Default::default(),
         };
 
-        let cex_trade_map = db
-            .get_cex_trades(CexRangeOrArbitrary::Arbitrary(vec![18700684]))
+        let db_cex_trades = db_client
+            .get_cex_trades(CexRangeOrArbitrary::Arbitrary(&[18700684]))
             .await
             .unwrap();
 
+        let cex_trade_map = &db_cex_trades.first().unwrap().value;
+
+        let pair = Pair(
+            hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
+            hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+        );
+
+        println!("ORDERED PAIR: {:?}", pair.ordered());
+
+        cex_trade_map.get_vwam_via_intermediary_spread(
+            &[CexExchange::Okex],
+            &pair,
+            &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
+            None,
+        );
+
         let trades = cex_trade_map
-            .get(CexExchange::Okex)
+            .0
+            .get(&CexExchange::Okex)
             .unwrap()
-            .get(
-                Pair(
-                    hex!(dac17f958d2ee523a2206206994597c13d831ec7),
-                    hex!(2260fac5e5542a773aa44fbcfedf7c193bc2c599),
-                )
-                .ordered(),
-            )
+            .get(&pair.ordered())
             .unwrap();
 
         for t in trades {
-            println!("{:?}", t);
+            println!("ORDERED: {:?}", t);
+        }
+
+        let trades = cex_trade_map
+            .0
+            .get(&CexExchange::Okex)
+            .unwrap()
+            .get(&pair)
+            .unwrap();
+
+        println!();
+        for t in trades {
+            println!("UNORDERED: {:?}", t);
         }
     }
 }
