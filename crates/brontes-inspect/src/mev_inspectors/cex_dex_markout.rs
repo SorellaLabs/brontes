@@ -175,18 +175,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 (&swap.token_out.inner.symbol, &swap.token_out.address),
             );
             return None
-        } else {
-            tracing::warn!("Filtered out possible CEX-DEX due to significant price delta.");
-            tracing::warn!(
-                "Price delta between CEX '{}' with price '{}' and DEX '{}' with price '{}' for \
-                 token in '{:?}' and token out '{:?}'",
-                maker_price.exchanges[0].0,
-                maker_price.clone().price.to_float(),
-                swap.protocol,
-                swap.swap_rate().to_float(),
-                (&swap.token_in.inner.symbol, &swap.token_in.address),
-                (&swap.token_out.inner.symbol, &swap.token_out.address),
-            );
         }
 
         // A positive delta indicates potential profit from buying on DEX
