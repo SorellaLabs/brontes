@@ -27,7 +27,7 @@ const BASE_EXECUTION_QUALITY: usize = 45;
 /// as part of execution
 const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(10, 100);
 
-/// the calcuated price based off of trades with the estimated exchanges with
+/// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
 #[derive(Debug, Clone)]
 pub struct ExchangePrice {
