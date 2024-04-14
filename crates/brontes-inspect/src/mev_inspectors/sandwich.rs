@@ -458,7 +458,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         .copied()
                         .unwrap_or(possible_backrun),
                 });
-                last_partition = i;
+                last_partition = i + 1;
             } else {
                 victim_sets.push(group_set);
             }
