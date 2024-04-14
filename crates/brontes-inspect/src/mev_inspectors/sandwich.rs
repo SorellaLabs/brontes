@@ -446,19 +446,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         victims.into_iter().enumerate().for_each(|(i, group_set)| {
             if group_set.is_empty() {
-                last_partition = i;
+                last_partition = i + 1;
                 results.push(PossibleSandwich {
                     eoa,
                     mev_executor_contract,
                     victims: victim_sets.drain(..).collect(),
                     possible_frontruns: possible_frontruns[0..=i].to_vec(),
-                    possible_backrun: {
-                        if possible_frontruns.len() + 1 <= i {
-                            possible_backrun
-                        } else {
-                            possible_frontruns[i + 1]
-                        }
-                    },
+                    possible_backrun: possible_frontruns
+                        .get(i + 1)
+                        .copied()
+                        .unwrap_or(possible_backrun),
                 });
             } else {
                 victim_sets.push(group_set);
