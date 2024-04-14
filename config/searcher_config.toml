@@ -63,12 +63,6 @@ fund = "Wintermute"
 mev_types = ["CexDex"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
-
-[searcher_contracts."0x53FacEe52e897740B140F5304E9Cd9DC6238d735"]
-fund = "Wintermute"
-mev_types = ["AtomicArb"]
-builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
-
 [searcher_contracts."0x51c72848c68a965f66fa7a88855f9f7784502a7f"]
 fund = "Wintermute"
 mev_types = ["CexDex"]
@@ -200,3 +194,13 @@ mev_types = ["CexDex"]
 mev_types = ["AtomicArb"]
 sibling_searchers = ["0x00000000032962B51589768828ad878876299E14"]
 
+
+[searcher_contracts."0x53FacEe52e897740B140F5304E9Cd9DC6238d735"]
+fund = "NC"
+mev_types = ["AtomicArb"]
+sibling_searchers = ["0xA0d5a274F95DEcB536BbBAA922D6D0Fb692a627D", "0x3FAcE0004bC1003B9d0672e7B23134Cb80115fb6"]
+
+
+[searcher_contracts."0x3FAcE0004bC1003B9d0672e7B23134Cb80115fb6"]
+fund = "NC"
+sibling_searchers = ["0x3FAcE0004bC1003B9d0672e7B23134Cb80115fb6", "0xA0d5a274F95DEcB536BbBAA922D6D0Fb692a627D"]

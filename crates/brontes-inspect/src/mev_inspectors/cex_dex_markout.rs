@@ -157,6 +157,26 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         taker_price: ExchangePrice,
         metadata: &Metadata,
     ) -> Option<SwapLeg> {
+        // If the price difference between the DEX and CEX is greater than 10x then this
+        // is likely a false positive resulting from incorrect price data
+        let smaller = swap.swap_rate().min(maker_price.price.clone());
+        let larger = swap.swap_rate().max(maker_price.price.clone());
+
+        if smaller * Rational::from(3) < larger {
+            tracing::error!(
+                "Filtered out possible CEX-DEX due to significant price delta.\n Price delta \
+                 between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in \
+                 '{:?}' and token out '{:?}'",
+                maker_price.exchanges[0].0,
+                maker_price.price.to_float(),
+                swap.protocol,
+                swap.swap_rate().to_float(),
+                (&swap.token_in.inner.symbol, &swap.token_in.address),
+                (&swap.token_out.inner.symbol, &swap.token_out.address),
+            );
+            return None
+        }
+
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let rate = swap.swap_rate();
