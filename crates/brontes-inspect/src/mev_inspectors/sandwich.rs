@@ -453,7 +453,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     victims: victim_sets.drain(..).collect(),
                     possible_frontruns: possible_frontruns[0..=i].to_vec(),
                     possible_backrun: {
-                        if possible_frontruns.len() <= i {
+                        if possible_frontruns.len() + 1 <= i {
                             possible_backrun
                         } else {
                             possible_frontruns[i + 1]
