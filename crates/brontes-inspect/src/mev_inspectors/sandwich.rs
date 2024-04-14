@@ -451,12 +451,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     eoa,
                     mev_executor_contract,
                     victims: victim_sets.drain(..).collect(),
-                    possible_frontruns: possible_frontruns[0..i].to_vec(),
+                    possible_frontruns: possible_frontruns[0..=i].to_vec(),
                     possible_backrun: {
                         if possible_frontruns.len() <= i {
                             possible_backrun
                         } else {
-                            possible_frontruns[i]
+                            possible_frontruns[i + 1]
                         }
                     },
                 });
