@@ -475,6 +475,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 possible_frontruns,
                 possible_backrun,
             });
+        } else if !victim_sets.is_empty() {
+            // add remainder
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns: possible_frontruns[last_partition..].to_vec(),
+                possible_backrun,
+            });
         }
 
         results
