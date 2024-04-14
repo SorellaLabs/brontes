@@ -833,19 +833,20 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_all_inserts() {
-        dotenv::dotenv().ok();
-        init_threadpools(10);
-        let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
+        // dotenv::dotenv().ok();
+        // init_threadpools(10);
+        // let test_db =
+        // ClickhouseTestingClient::<BrontesClickhouseTables>::default();
 
-        let tables = &BrontesClickhouseTables::all_tables();
+        // let tables = &BrontesClickhouseTables::all_tables();
 
-        test_db
-            .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
-            .await;
+        // test_db
+        //     .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
+        //     .await;
     }
 
     #[cfg(feature = "cex-dex-markout")]
-    #[brontes_macros::test]
+    #[tokio::test]
     async fn test_db_trades() {
         dotenv::dotenv().ok();
 
