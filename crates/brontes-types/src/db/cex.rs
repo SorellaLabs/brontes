@@ -230,10 +230,8 @@ impl CexPriceMap {
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
-                    let combined_price = (
-                        quote1.price.0.clone() * quote2.price.0.clone(),
-                        quote1.price.1.clone() * quote2.price.1.clone(),
-                    );
+                    let combined_price =
+                        (&quote1.price.0 * &quote2.price.0, &quote1.price.1 * &quote2.price.1);
                     let combined_quote = CexQuote {
                         exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
@@ -241,46 +239,42 @@ impl CexPriceMap {
                         token0:    pair.0,
                     };
 
-                    Some((quote1, quote2, combined_quote))
+                    // Here, we pass the intermediary along with the quotes
+                    Some((quote1, quote2, combined_quote, intermediary))
                 } else {
                     None
                 }
             })
             .collect::<Vec<_>>();
 
-        for (quote1, quote2, combined_quote) in &combined_quotes {
+        for (quote1, quote2, combined_quote, intermediary) in &combined_quotes {
             let smaller = dex_swap_rate.clone().min(combined_quote.price.1.clone());
             let larger = dex_swap_rate.clone().max(combined_quote.price.1.clone());
 
             // Only log if the CEX quote is significantly higher than the DEX swap rate
-            if smaller * Rational::from(3) < larger {
+            if smaller * &Rational::from(3) < larger {
                 error!(
-                    "Significant price difference detected:\n- DEX Swap Rate: {}\n- CEX Combined \
-                     Quote: {}\n- Intermediate Quote1 ({}-{}): {}\n- Intermediate Quote2 ({}-{}): \
-                     {}\n- Exchange: {}\n- Pair: {}-{}",
+                    "\x1b[1;31mSignificant price difference detected for {} - {}:\x1b[0m\n- \
+                     \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n- \x1b[1;34mCEX Combined \
+                     Quote:\x1b[0m {:.4}\n- Intermediary Prices:\n* Intermediary 1 ({}) \n Price: \
+                     {:.4}\n* Intermediary 2 \n Price: {:.4}",
+                    dex_swap.token_in_symbol(),
+                    dex_swap.token_out_symbol(),
                     dex_swap_rate.clone().to_float(),
                     combined_quote.price.1.clone().to_float(),
-                    dex_swap.token_in_symbol(),
-                    quote2.token0,
-                    quote1,
-                    quote2.token0,
-                    dex_swap.token_out_symbol(),
-                    quote2,
-                    exchange,
-                    dex_swap.token_in_symbol(),
-                    dex_swap.token_out_symbol()
+                    intermediary,
+                    quote1.price.1.clone().to_float(),
+                    quote2.price.1.clone().to_float()
                 );
+                return None;
             }
         }
 
         combined_quotes
             .into_iter()
-            .map(|(_, _, quote)| quote)
+            .map(|(_, _, quote, _)| quote)
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
-            .map(|best_quote| {
-                error!("Selected best quote: {}", best_quote);
-                best_quote
-            })
+            .map(|best_quote| best_quote)
     }
 
     /// Retrieves a CEX quote for a given token pair directly or via an
