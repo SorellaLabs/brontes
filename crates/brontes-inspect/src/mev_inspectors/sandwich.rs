@@ -452,13 +452,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     eoa,
                     mev_executor_contract,
                     victims: victim_sets.drain(..).collect(),
-                    possible_frontruns: possible_frontruns[last_partition..=i].to_vec(),
+                    possible_frontruns: possible_frontruns[last_partition..i].to_vec(),
                     possible_backrun: possible_frontruns
-                        .get(i + 1)
+                        .get(i)
                         .copied()
                         .unwrap_or(possible_backrun),
                 });
-                last_partition = i + 1;
+                last_partition = i;
             } else {
                 victim_sets.push(group_set);
             }
