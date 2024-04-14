@@ -433,11 +433,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
-        if **ps.mev_executor_contract
-            == alloy_primitives::hex!("6b75d8af000000e20b7a7ddf000ba900b4009a80")
-        {
-            tracing::info!(?ps);
-        }
+        let jared = **ps.mev_executor_contract
+            == alloy_primitives::hex!("6b75d8af000000e20b7a7ddf000ba900b4009a80");
         let PossibleSandwich {
             eoa,
             possible_frontruns,
@@ -466,6 +463,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_sets.push(group_set);
             }
         });
+        if jared {
+            tracing::info!("{:#?}", results);
+        }
 
         if results.is_empty() {
             results.push(PossibleSandwich {
