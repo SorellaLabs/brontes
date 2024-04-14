@@ -7,10 +7,10 @@ use brontes::{
 use clap::Parser;
 use eyre::eyre;
 use tracing::{error, info};
+use tracing_subscriber::filter::Directive;
 
 fn main() -> eyre::Result<()> {
     dotenv::dotenv().expect("Failed to load .env file");
-    init_tracing();
     fdlimit::raise_fd_limit().unwrap();
 
     match run() {
@@ -37,6 +37,8 @@ fn run() -> eyre::Result<()> {
         .brontes_db_path
         .unwrap_or(env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env"));
 
+    init_tracing(opt.verbosity.directive());
+
     match opt.command {
         Commands::Run(command) => {
             runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
@@ -50,10 +52,8 @@ fn run() -> eyre::Result<()> {
     }
 }
 
-fn init_tracing() {
-    let default_level = "info";
-
-    let layers = vec![brontes_tracing::stdout(default_level)];
+fn init_tracing(verbosity: Directive) {
+    let layers = vec![brontes_tracing::stdout(verbosity)];
 
     brontes_tracing::init(layers);
 }
