@@ -12,7 +12,13 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-use std::{default::Default, ops::MulAssign, str::FromStr};
+use std::{
+    default::Default,
+    fmt,
+    fmt::{Display, Formatter},
+    ops::MulAssign,
+    str::FromStr,
+};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -175,15 +181,24 @@ impl CexPriceMap {
     ) -> Option<CexQuote> {
         let intermediaries = exchange.most_common_quote_assets();
 
+        println!(
+            "Calculating quote for pair {}-{} through intermediaries on {}",
+            pair.0, pair.1, exchange
+        );
+
         intermediaries
             .iter()
             .filter_map(|&intermediary| {
                 let pair1 = Pair(pair.0, intermediary);
                 let pair2 = Pair(intermediary, pair.1);
 
+                println!("Evaluating via intermediary: {}", intermediary);
+
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
+                    println!("Intermediate quote1 ({}-{}): {}", pair.0, intermediary, quote1);
+                    println!("Intermediate quote2 ({}-{}): {}", intermediary, pair.1, quote2);
                     let combined_price =
                         (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
                     let combined_quote = CexQuote {
@@ -193,12 +208,18 @@ impl CexPriceMap {
                         token0:    pair.0,
                     };
 
+                    println!("Combined quote: {}", combined_quote);
+
                     Some(combined_quote)
                 } else {
                     None
                 }
             })
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
+            .map(|best_quote| {
+                println!("Selected best quote: {}", best_quote);
+                best_quote
+            })
     }
 
     /// Retrieves a CEX quote for a given token pair directly or via an
@@ -332,6 +353,21 @@ pub struct CexQuote {
     /// propagated by the proposer)
     pub price:     (Rational, Rational),
     pub token0:    Address,
+}
+
+impl Display for CexQuote {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Exchange: {}\nTimestamp: {}\nBest Ask Price: {:.2}\nBest Bid Price: {:.2}\nToken \
+             Address: {}",
+            self.exchange,
+            self.timestamp,
+            self.price.0.clone().to_float(),
+            self.price.1.clone().to_float(),
+            self.token0
+        )
+    }
 }
 
 pub struct ExchangeData {
