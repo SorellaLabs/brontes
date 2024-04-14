@@ -70,14 +70,6 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-                    tracing::debug!(
-                        ?_e,
-                        ?mev_executor_contract,
-                        ?possible_frontruns,
-                        ?possible_backrun,
-                        ?victims
-                    );
-
                     if victims.iter().flatten().count() == 0 {
                         return None
                     };
@@ -427,14 +419,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
-        tracing::debug!("{:#?}{:#?}", header, sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
-        let jared = **ps.mev_executor_contract
-            == alloy_primitives::hex!("6b75d8af000000e20b7a7ddf000ba900b4009a80");
         let PossibleSandwich {
             eoa,
             possible_frontruns,
@@ -463,9 +452,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 victim_sets.push(group_set);
             }
         });
-        if jared {
-            tracing::info!("{:#?}", results);
-        }
 
         if results.is_empty() {
             results.push(PossibleSandwich {
