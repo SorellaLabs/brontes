@@ -313,8 +313,6 @@ impl CexTradeMap {
                 .collect::<FastHashMap<_, _>>()
         });
 
-        //  println!("PAIR HERE: {:?}", pair);
-
         // Filter Exchange Trades Based On Volume
         // - This filters trades used to calculate the VWAM by excluding trades that
         //   have significantly more volume than the needed inventory offset
@@ -333,13 +331,6 @@ impl CexTradeMap {
                         .filter(|f| f.amount.le(&max_vol_per_trade))
                         .collect_vec()
                 });
-
-                // if let Some(res) = result.as_ref() {
-                //     for r in res {
-                //         println!("VWAM: {:?}", r);
-                //     }
-                //     println!();
-                // }
 
                 Some((*exchange, result?))
             })
