@@ -163,11 +163,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let larger = swap.swap_rate().max(maker_price.price.clone());
 
         if smaller * Rational::from(3) < larger {
-            println!();
+            tracing::error!("Filtered out possible CEX-DEX due to significant price delta.");
             tracing::error!(
-                "Filtered out possible CEX-DEX due to significant price delta.\n Price delta \
-                 between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in \
-                 '{:?}' and token out '{:?}'",
+                "Price delta between CEX '{}' with price '{}' and DEX '{}' with price '{}' for \
+                 token in '{:?}' and token out '{:?}'",
                 maker_price.exchanges[0].0,
                 maker_price.clone().price.to_float(),
                 swap.protocol,
@@ -177,11 +176,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             );
             return None
         } else {
-            println!();
+            tracing::warn!("Filtered out possible CEX-DEX due to significant price delta.");
             tracing::warn!(
-                "Filtered out possible CEX-DEX due to significant price delta.\n Price delta \
-                 between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in \
-                 '{:?}' and token out '{:?}'",
+                "Price delta between CEX '{}' with price '{}' and DEX '{}' with price '{}' for \
+                 token in '{:?}' and token out '{:?}'",
                 maker_price.exchanges[0].0,
                 maker_price.clone().price.to_float(),
                 swap.protocol,
