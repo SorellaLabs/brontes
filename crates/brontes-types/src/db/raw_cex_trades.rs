@@ -63,11 +63,14 @@ impl CexTradesConverter {
 
         self.trades
             .into_par_iter()
-            .filter_map(|q| {
+            .filter_map(|t| {
+                if t.symbol == "BTC-USDT" {
+                    println!("TRADE: {:?}", t);
+                }
                 self.block_times
                     .par_iter()
-                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
-                    .map(|block_time| (block_time.block_number, q))
+                    .find_any(|b| t.timestamp >= b.start_timestamp && t.timestamp < b.end_timestamp)
+                    .map(|block_time| (block_time.block_number, t))
             })
             .collect::<Vec<_>>()
             .into_iter()
@@ -129,3 +132,10 @@ impl CexTradesConverter {
             .collect()
     }
 }
+
+/*
+
+ Price delta between CEX 'Okex' with price '0.00002568333603681798' and DEX 'UniswapV3' with price '38936.70962745134' for token in '("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)' and token out '("WBTC", 0x2260fac5e5542a773aa44fbcfedf7c1Processing blocks:
+
+
+*/
