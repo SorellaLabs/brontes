@@ -252,11 +252,11 @@ impl CexPriceMap {
             let larger = dex_swap_rate.clone().max(combined_quote.price.1.clone());
 
             // Only log if the CEX quote is significantly higher than the DEX swap rate
-            if smaller * Rational::from(3) < larger {
+            if smaller * Rational::from(2) < larger {
                 error!(
                     "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
-                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
-                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
+                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
                      - Intermediary Prices:\n\
                        * First Leg Price: {:.7}\n\
                        * Second Leg Price: {:.7}\n\
@@ -279,11 +279,11 @@ impl CexPriceMap {
             } else {
                 info!(
                     "\n\x1b[1;31mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
-                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
-                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
+                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
                      - Intermediary Prices:\n\
-                       * First Leg Price: {:.4}\n\
-                       * Second Leg Price: {:.4}\n\
+                       * First Leg Price: {:.6}\n\
+                       * Second Leg Price: {:.6}\n\
                      - Token Contracts:\n\
                        * Token In: https://etherscan.io/address/{}\n\
                        * Intermediary: https://etherscan.io/address/{}\n\
@@ -309,8 +309,8 @@ impl CexPriceMap {
             .map(|best_quote| {
                 info!(
                     "\n\x1b[1;32mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
-                     - \x1b[1;32mDEX Swap Rate:\x1b[0m {:.4}\n\
-                     - \x1b[1;32mCEX Combined Quote:\x1b[0m {:.4}\n\
+                     - \x1b[1;32mDEX Swap Rate:\x1b[0m {:.6}\n\
+                     - \x1b[1;32mCEX Combined Quote:\x1b[0m {:.6}\n\
                      - Intermediary Prices:\n\
                      - Token Contracts:\n\
                        * Token In: https://etherscan.io/address/{}\n\
