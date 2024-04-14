@@ -721,7 +721,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         );
 
         // Combine and deduplicate results
-        Itertools::dedup(result_senders.into_iter().chain(result_contracts)).collect()
+        Itertools::unique(result_senders.into_iter().chain(result_contracts)).collect()
     }
 }
 
