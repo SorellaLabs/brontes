@@ -308,9 +308,9 @@ impl CexPriceMap {
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
             .map(|best_quote| {
                 info!(
-                    "\n\x1b[1;31mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
-                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
-                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
+                    "\n\x1b[1;32mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
+                     - \x1b[1;32mDEX Swap Rate:\x1b[0m {:.4}\n\
+                     - \x1b[1;32mCEX Combined Quote:\x1b[0m {:.4}\n\
                      - Intermediary Prices:\n\
                      - Token Contracts:\n\
                        * Token In: https://etherscan.io/address/{}\n\
