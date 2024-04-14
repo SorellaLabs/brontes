@@ -168,7 +168,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                  between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in \
                  '{:?}' and token out '{:?}'",
                 maker_price.exchanges[0].0,
-                maker_price.price.to_float(),
+                (&maker_price.price).to_float(),
                 swap.protocol,
                 swap.swap_rate().to_float(),
                 (&swap.token_in.inner.symbol, &swap.token_in.address),
@@ -181,7 +181,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                  between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in \
                  '{:?}' and token out '{:?}'",
                 maker_price.exchanges[0].0,
-                maker_price.price.to_float(),
+                (&maker_price.price).to_float(),
                 swap.protocol,
                 swap.swap_rate().to_float(),
                 (&swap.token_in.inner.symbol, &swap.token_in.address),
