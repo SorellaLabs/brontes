@@ -64,12 +64,6 @@ impl CexTradesConverter {
         self.trades
             .into_par_iter()
             .filter_map(|t| {
-                if t.symbol == "BTC-USDT" && t.exchange == CexExchange::Okex
-                //&& (t.timestamp >= (1701543815 - 6) * 1000000)
-                //&& (t.timestamp < (1701543815 + 6) * 1000000)
-                {
-                    println!("TRADE: {:?}", t);
-                }
                 self.block_times
                     .par_iter()
                     .find_any(|b| t.timestamp >= b.start_timestamp && t.timestamp < b.end_timestamp)
@@ -115,9 +109,9 @@ impl CexTradesConverter {
                             }
 
                             let pair = if &trade.side == "buy" {
-                                symbol.address_pair
-                            } else {
                                 symbol.address_pair.flip()
+                            } else {
+                                symbol.address_pair
                             };
 
                             exchange_symbol_map

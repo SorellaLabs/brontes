@@ -145,3 +145,24 @@ pub struct ExtraProcessing {
     // decimals that are missing that we want to fill
     pub tokens_decimal_fill: Vec<Address>,
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use std::collections::HashSet;
+
+//     use reth_primitives::hex;
+
+//     use crate::{pair::Pair, FastHashSet};
+
+//     #[test]
+//     fn test_pair_hash() {
+//         let pair = Pair(
+//             hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
+//             hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+//         );
+
+//         let hashset = FastHashSet::from_iter(vec![pair]);
+
+//         println!("{:?}", hashset.get(&pair));
+//     }
+// }
