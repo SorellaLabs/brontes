@@ -844,6 +844,7 @@ mod tests {
             .await;
     }
 
+    #[cfg(feature = "cex-dex-markout")]
     #[brontes_macros::test]
     async fn test_db_trades() {
         dotenv::dotenv().ok();
