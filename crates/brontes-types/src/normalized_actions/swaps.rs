@@ -78,6 +78,14 @@ impl NormalizedSwap {
     pub fn to_action(&self) -> Actions {
         Actions::Swap(self.clone())
     }
+
+    pub fn token_in_symbol(&self) -> &str {
+        self.token_in.symbol.as_str()
+    }
+
+    pub fn token_out_symbol(&self) -> &str {
+        self.token_out.symbol.as_str()
+    }
 }
 
 impl Display for NormalizedSwap {

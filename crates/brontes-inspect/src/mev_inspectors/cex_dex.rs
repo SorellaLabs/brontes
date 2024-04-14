@@ -249,7 +249,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .get_quote_direct_or_via_intermediary(
                 &Pair(swap.token_in.address, self.utils.quote),
                 &exchange_cex_price.0,
-                swap.swap_rate(),
+                swap.clone(),
             )?
             .price
             .0;
@@ -306,7 +306,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     .or_else(|| {
                         metadata
                             .cex_quotes
-                            .get_quote_via_intermediary(&pair, &exchange, swap.swap_rate())
+                            .get_quote_via_intermediary(&pair, &exchange, swap.clone())
                             .map(|cex_quote| (exchange, cex_quote.price.0, false))
                     })
                     .or_else(|| {
