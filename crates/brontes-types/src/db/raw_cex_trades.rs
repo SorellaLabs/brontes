@@ -64,7 +64,11 @@ impl CexTradesConverter {
         self.trades
             .into_par_iter()
             .filter_map(|t| {
-                if t.symbol == "BTC-USDT" {
+                if t.symbol == "BTC-USDT"
+                    && t.exchange == CexExchange::Okex
+                    && (t.timestamp >= (1701543815 - 6) * 1000000)
+                    && (t.timestamp < (1701543815 + 6) * 1000000)
+                {
                     println!("TRADE: {:?}", t);
                 }
                 self.block_times
