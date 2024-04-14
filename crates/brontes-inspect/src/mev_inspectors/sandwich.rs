@@ -61,6 +61,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
         Self::get_possible_sandwich(tree.clone())
             .into_iter()
+            .flat_map(Self::partition_into_gaps)
             .filter_map(
                 |PossibleSandwich {
                      eoa: _e,
@@ -69,7 +70,13 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                      mev_executor_contract,
                      victims,
                  }| {
-                    tracing::debug!(?_e, ?mev_executor_contract, ?possible_frontruns, ?possible_backrun, ?victims);
+                    tracing::debug!(
+                        ?_e,
+                        ?mev_executor_contract,
+                        ?possible_frontruns,
+                        ?possible_backrun,
+                        ?victims
+                    );
 
                     if victims.iter().flatten().count() == 0 {
                         return None
@@ -256,13 +263,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut victim_info: Vec<Vec<TxInfo>>,
         mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Bundle> {
-        // tracing::debug!(
-        //     "front: {:#?}\nvictim: {:#?} \nbackrun: {:#?}",
-        //     possible_front_runs_info,
-        //     victim_info,
-        //     backrun_info
-        // );
-
         let back_run_actions = searcher_actions.pop()?;
 
         //TODO: Check later if this method correctly identifies an incorrect middle
@@ -430,6 +430,52 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!("{:#?}{:#?}", header, sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
+    }
+
+    fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
+        let PossibleSandwich {
+            eoa,
+            possible_frontruns,
+            possible_backrun,
+            mev_executor_contract,
+            victims,
+        } = ps;
+        let mut results = vec![];
+        let mut victim_sets = vec![];
+        let mut last_partition = 0;
+
+        victims.into_iter().enumerate().for_each(|(i, group_set)| {
+            if group_set.is_empty() {
+                last_partition = i;
+                results.push(PossibleSandwich {
+                    eoa,
+                    mev_executor_contract,
+                    victims: victim_sets.drain(..).collect(),
+                    possible_frontruns: possible_frontruns[0..i].to_vec(),
+                    possible_backrun: {
+                        if possible_frontruns.len() <= i {
+                            possible_backrun
+                        } else {
+                            possible_frontruns[i]
+                        }
+                    },
+                });
+            } else {
+                victim_sets.push(group_set);
+            }
+        });
+
+        if results.is_empty() {
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns,
+                possible_backrun,
+            });
+        }
+
+        results
     }
 
     fn has_pool_overlap(
@@ -733,6 +779,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
             }
         }
     }
+
     possible_sandwiches.values().cloned().collect()
 }
 
