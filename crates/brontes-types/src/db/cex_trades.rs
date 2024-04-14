@@ -1,4 +1,4 @@
-use std::{cmp::max, fmt::Display, marker::PhantomData};
+use std::{cmp::max, f64::consts::E, fmt::Display, marker::PhantomData};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -793,4 +793,17 @@ impl<'ptr> CexTradePtr<'ptr> {
 struct MakerTakerWithVolumeFilled {
     volume_looked_at: Rational,
     prices:           MakerTaker,
+}
+
+#[allow(dead_code)]
+fn time_weight(t: i64, block_time: u64, lambda_pre: f64, lambda_post: f64) -> f64 {
+    let time_difference = (t - block_time as i64).abs() as f64;
+
+    if t < block_time as i64 {
+        let exponent = lambda_pre * time_difference;
+        E.powf(-exponent)
+    } else {
+        let exponent = lambda_post * time_difference;
+        E.powf(-exponent)
+    }
 }

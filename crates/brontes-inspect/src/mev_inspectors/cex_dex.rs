@@ -230,9 +230,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                  between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in \
                  '{:?}' and token out '{:?}'",
                 exchange_cex_price.0,
-                exchange_cex_price.1,
+                exchange_cex_price.1.to_float(),
                 swap.protocol,
-                swap.swap_rate(),
+                swap.swap_rate().to_float(),
                 (&swap.token_in.inner.symbol, &swap.token_in.address),
                 (&swap.token_out.inner.symbol, &swap.token_out.address),
             );
