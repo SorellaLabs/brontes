@@ -120,7 +120,7 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
-                if quote.token0 == pair.0 {
+                if &pair.ordered() == pair {
                     quote.clone()
                 } else {
                     let mut reciprocal_quote = quote.clone();
