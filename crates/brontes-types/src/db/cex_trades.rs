@@ -1,4 +1,4 @@
-use std::{cmp::max, fmt::Display, marker::PhantomData};
+use std::{cmp::max, f64::consts::E, fmt::Display, marker::PhantomData};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -22,12 +22,12 @@ use crate::{
 };
 
 /// TODO: lets prob not set this to 100%
-const BASE_EXECUTION_QUALITY: usize = 80;
+const BASE_EXECUTION_QUALITY: usize = 45;
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
 const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(10, 100);
 
-/// the calcuated price based off of trades with the estimated exchanges with
+/// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
 #[derive(Debug, Clone)]
 pub struct ExchangePrice {
@@ -793,4 +793,17 @@ impl<'ptr> CexTradePtr<'ptr> {
 struct MakerTakerWithVolumeFilled {
     volume_looked_at: Rational,
     prices:           MakerTaker,
+}
+
+#[allow(dead_code)]
+fn time_weight(t: i64, block_time: u64, lambda_pre: f64, lambda_post: f64) -> f64 {
+    let time_difference = (t - block_time as i64).abs() as f64;
+
+    if t < block_time as i64 {
+        let exponent = lambda_pre * time_difference;
+        E.powf(-exponent)
+    } else {
+        let exponent = lambda_post * time_difference;
+        E.powf(-exponent)
+    }
 }
