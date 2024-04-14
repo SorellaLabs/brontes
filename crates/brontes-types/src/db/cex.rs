@@ -231,7 +231,7 @@ impl CexPriceMap {
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
                     let combined_price =
-                        (&quote1.price.0 / &quote2.price.0, &quote1.price.1 / &quote2.price.1);
+                        (&quote2.price.0 / &quote1.price.0, &quote2.price.1 / &quote1.price.1);
                     let combined_quote = CexQuote {
                         exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
@@ -258,8 +258,8 @@ impl CexPriceMap {
                      - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.4}\n\
                      - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.4}\n\
                      - Intermediary Prices:\n\
-                       * First Leg Price: {:.4}\n\
-                       * Second Leg Price: {:.4}\n\
+                       * First Leg Price: {:.7}\n\
+                       * Second Leg Price: {:.7}\n\
                      - Token Contracts:\n\
                        * Token In: https://etherscan.io/address/{}\n\
                        * Intermediary: https://etherscan.io/address/{}\n\
