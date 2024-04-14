@@ -32,6 +32,7 @@ use malachite::{
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
+use tracing::{error, info};
 
 use super::raw_cex_quotes::RawCexQuotes;
 use crate::{
@@ -174,17 +175,13 @@ impl CexPriceMap {
     /// This method is used when a direct quote for the pair is not available.
     /// It attempts to construct a quote for `pair` by finding a path
     /// through a common intermediary asset as provided by the `exchange`.
-    pub fn get_quote_via_intermediary(
+    pub fn aget_quote_via_intermediary(
         &self,
         pair: &Pair,
         exchange: &CexExchange,
+        _dex_swap_rate: Rational,
     ) -> Option<CexQuote> {
         let intermediaries = exchange.most_common_quote_assets();
-
-        println!(
-            "Calculating quote for pair {}-{} through intermediaries on {}",
-            pair.0, pair.1, exchange
-        );
 
         intermediaries
             .iter()
@@ -192,13 +189,11 @@ impl CexPriceMap {
                 let pair1 = Pair(pair.0, intermediary);
                 let pair2 = Pair(intermediary, pair.1);
 
-                println!("Evaluating via intermediary: {}", intermediary);
+                //println!("Evaluating via intermediary: {}", intermediary);
 
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
-                    println!("Intermediate quote1 ({}-{}): {}", pair.0, intermediary, quote1);
-                    println!("Intermediate quote2 ({}-{}): {}", intermediary, pair.1, quote2);
                     let combined_price =
                         (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
                     let combined_quote = CexQuote {
@@ -208,16 +203,76 @@ impl CexPriceMap {
                         token0:    pair.0,
                     };
 
-                    println!("Combined quote: {}", combined_quote);
-
                     Some(combined_quote)
                 } else {
                     None
                 }
             })
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
+    }
+
+    pub fn get_quote_via_intermediary(
+        &self,
+        pair: &Pair,
+        exchange: &CexExchange,
+        dex_swap_rate: Rational,
+    ) -> Option<CexQuote> {
+        let intermediaries = exchange.most_common_quote_assets();
+
+        let combined_quotes = intermediaries
+            .iter()
+            .filter_map(|&intermediary| {
+                let pair1 = Pair(pair.0, intermediary);
+                let pair2 = Pair(intermediary, pair.1);
+
+                if let (Some(quote1), Some(quote2)) =
+                    (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
+                {
+                    info!(
+                        "Intermediate quotes: \n - Quote1 ({}-{}): {}\n - Quote2 ({}-{}): {}",
+                        pair.0, intermediary, quote1, intermediary, pair.1, quote2,
+                    );
+                    let combined_price =
+                        (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
+                    let combined_quote = CexQuote {
+                        exchange:  *exchange,
+                        timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
+                        price:     combined_price,
+                        token0:    pair.0,
+                    };
+
+                    info!("Combined quote: {}", combined_quote);
+
+                    Some(combined_quote)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        for quote in combined_quotes.iter() {
+            let smaller = dex_swap_rate.clone().min(quote.price.1.clone());
+            let larger = dex_swap_rate.clone().max(quote.price.1.clone());
+
+            // Check if the CEX quote is significantly higher than the DEX swap rate
+            if smaller * Rational::from(3) < larger {
+                error!(
+                    "Significant price difference detected.\nDEX Swap Rate: {}\nCEX Combined \
+                     Quote: {}\nPair: {}-{}\nExchange: {}",
+                    dex_swap_rate.clone().to_float(),
+                    quote.price.1.clone().to_float(),
+                    pair.0,
+                    pair.1,
+                    exchange
+                );
+            }
+        }
+
+        combined_quotes
+            .into_iter()
+            .max_by(|a, b| a.price.0.cmp(&b.price.0))
             .map(|best_quote| {
-                println!("Selected best quote: {}", best_quote);
+                info!("Selected best quote: {}", best_quote);
                 best_quote
             })
     }
@@ -228,9 +283,10 @@ impl CexPriceMap {
         &self,
         pair: &Pair,
         exchange: &CexExchange,
+        swap_rate: Rational,
     ) -> Option<CexQuote> {
         self.get_quote(pair, exchange)
-            .or_else(|| self.get_quote_via_intermediary(pair, exchange))
+            .or_else(|| self.get_quote_via_intermediary(pair, exchange, swap_rate))
     }
 }
 
