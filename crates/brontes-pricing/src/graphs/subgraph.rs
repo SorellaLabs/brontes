@@ -451,8 +451,8 @@ impl PairSubGraph {
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN
-                    // && self.must_go_through != pair
-                    // && self.must_go_through != pair.flip()
+                        && self.must_go_through != pair
+                        && self.must_go_through != pair.flip()
                     {
                         Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
                     } else {
@@ -778,7 +778,7 @@ impl PairSubGraph {
         }
 
         if !has_gone_through_pool {
-            tracing::debug!(?self.complete_pair, "has gone through pool was never triggered");
+            tracing::debug!(?self.complete_pair,goes_through=?self.must_go_through,pool=?must_go_through_pool, "has gone through pool was never triggered");
         }
 
         node_price.remove(&goal)

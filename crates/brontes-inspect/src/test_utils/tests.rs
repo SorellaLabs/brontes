@@ -379,9 +379,10 @@ impl InspectorTestUtils {
         let bundle = results.remove(0);
         assert!(
             bundle.header.mev_type == config.expected_mev_type,
-            "got wrong composed type {} != {}",
+            "got wrong composed type {} != {}\n\n\n {:#?}",
             bundle.header.mev_type,
-            config.expected_mev_type
+            config.expected_mev_type,
+            bundle
         );
 
         if let Some(specific_state_tests) = specific_state_tests {
