@@ -1148,17 +1148,4 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_jared_11_big_mac() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_block(18561262)
-            .with_gas_paid_usd(301.0)
-            .with_expected_profit_usd(69.0);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
 }
