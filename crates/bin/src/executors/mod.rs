@@ -97,8 +97,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
     }
 
-    // ./target/release/brontes run --start-block 18500000 --end-block 18500100
-    // --brontes-db-path /home/data/brontes-joe-db --init-crit-tables -vvv
+    /*
+    ./target/release/brontes run --start-block 18500000 --end-block 18500100 --brontes-db-path /home/data/brontes-joe-db --init-crit-tables -vvv
+    */
 
     //TODO: We currently don't have the ability to stream the query results from
     // clickhouse because the client is shit, so we have to break up the downloads
