@@ -440,7 +440,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 results.push(PossibleSandwich {
                     eoa,
                     mev_executor_contract,
-                    victims: victim_sets.drain(..).collect(),
+                    victims: std::mem::take(&mut victim_sets),
                     possible_frontruns: possible_frontruns[last_partition..i].to_vec(),
                     possible_backrun: possible_frontruns
                         .get(i)
