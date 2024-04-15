@@ -293,6 +293,12 @@ impl Actions {
         }
     }
 
+    pub const fn is_nested_action(&self) -> bool {
+        matches!(self, Actions::FlashLoan(_))
+            || matches!(self, Actions::Batch(_))
+            || matches!(self, Actions::Aggregator(_))
+    }
+
     pub const fn is_swap(&self) -> bool {
         matches!(self, Actions::Swap(_)) || matches!(self, Actions::SwapWithFee(_))
     }
