@@ -139,7 +139,7 @@ impl CexPriceMap {
                 //     quote.clone()
                 // }
 
-                if quote.token0 == pair.0 {
+                if quote.token0 == pair.1 {
                     quote.clone()
                 } else {
                     let mut reciprocal_quote = quote.clone();
