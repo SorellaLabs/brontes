@@ -683,7 +683,7 @@ impl PairSubGraph {
         scores.insert(start, zero_score.clone());
         visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
 
-        let mut has_gone_through_pool = must_go_through_pool.is_none();
+        let mut has_gone_through_pool = true; // must_go_through_pool.is_none();
 
         while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
             if visited.is_visited(&node) {
