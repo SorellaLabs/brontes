@@ -106,6 +106,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let possible_arb_type = self.is_possible_arb(&swaps)?;
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
+        tracing::debug!(?transfers);
         let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
