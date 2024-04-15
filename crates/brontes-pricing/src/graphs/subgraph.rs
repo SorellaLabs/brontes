@@ -451,8 +451,8 @@ impl PairSubGraph {
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
                     if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN
-                    // && self.must_go_through != pair
-                    // && self.must_go_through != pair.flip()
+                        && self.must_go_through != pair
+                        && self.must_go_through != pair.flip()
                     {
                         Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
                     } else {
@@ -729,7 +729,7 @@ impl PairSubGraph {
                     {
                         continue
                     } else {
-                        tracing::debug!(?self.complete_pair,goes_through=?self.must_go_through,pool=?must_go_through_pool, "found goes through pool");
+                        tracing::debug!(?self.complete_pair,,goes_through=?self.must_go_through,pool=?must_go_through_pool, "found goes through pool");
                     }
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
