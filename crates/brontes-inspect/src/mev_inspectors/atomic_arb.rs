@@ -124,7 +124,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             (
                 Some(self.utils.get_available_usd_deltas(
                     info.tx_index,
-                    PriceAt::Before,
+                    PriceAt::Average,
                     &mev_addresses,
                     &account_deltas,
                     metadata.clone(),
@@ -179,7 +179,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             vec![info.tx_hash],
             &info,
             profit.to_float(),
-            PriceAt::Before,
+            PriceAt::Average,
             &[info.gas_details],
             metadata.clone(),
             MevType::AtomicArb,
