@@ -142,20 +142,35 @@ impl CexPriceMap {
         }
 
         let ordered_pair = pair.ordered();
-        let sum_price = exchanges
+        let (sum_price, acc_price, sum_amt) = exchanges
             .iter()
             .filter_map(|exchange| self.get_quote(&ordered_pair, exchange))
-            .fold((Rational::default(), Rational::default(), 0), |acc, quote| {
-                (acc.0 + quote.price.0, acc.1 + quote.price.1, acc.2 + 1)
-            });
+            .fold(
+                (
+                    (Rational::default(), Rational::default()),
+                    0,
+                    (Rational::default(), Rational::default()),
+                ),
+                |acc, quote| {
+                    (
+                        (acc.0 .0 + &quote.price.0, acc.0 .1 + &quote.price.1),
+                        acc.1 + 1,
+                        (
+                            acc.2 .0 + (quote.price.0 * quote.amount.0),
+                            acc.2 .1 + (quote.price.1 * quote.amount.1),
+                        ),
+                    )
+                },
+            );
 
-        if sum_price.2 > 0 {
-            let count_rational = Rational::from(sum_price.2);
+        if acc_price > 0 {
+            let count_rational = Rational::from(acc_price);
             Some(CexQuote {
                 exchange:  CexExchange::default(),
                 timestamp: 0,
                 price:     (sum_price.0 / &count_rational, sum_price.1 / count_rational),
                 token0:    pair.0,
+                amount:    sum_amt,
             })
         } else {
             None
@@ -178,19 +193,25 @@ impl CexPriceMap {
         intermediaries
             .iter()
             .filter_map(|&intermediary| {
-                let pair1 = Pair(pair.0, intermediary);
-                let pair2 = Pair(intermediary, pair.1);
+                let pair1 = Pair(intermediary, pair.1);
+                let pair2 = Pair(pair.0, intermediary);
 
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
                     let combined_price =
-                        (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
+                        (&quote1.price.0 * &quote2.price.0, &quote1.price.1 * &quote2.price.1);
+
+                    let combined_amt = (
+                        (quote1.price.0 * quote1.amount.0) + (quote2.price.0 * quote2.amount.0),
+                        (quote1.price.1 * quote1.amount.1) + (quote2.price.1 * quote2.amount.1),
+                    );
                     let combined_quote = CexQuote {
                         exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
                         price:     combined_price,
-                        token0:    pair.0,
+                        token0:    pair.1,
+                        amount:    combined_amt,
                     };
 
                     Some(combined_quote)
@@ -213,7 +234,8 @@ impl CexPriceMap {
     }
 }
 
-type CexPriceMapDeser = Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)>;
+type CexPriceMapDeser =
+    Vec<(String, Vec<((String, String), (u64, (f64, f64), (f64, f64), String))>)>;
 
 impl Serialize for CexPriceMap {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -231,6 +253,7 @@ impl Serialize for CexPriceMap {
                         (
                             b.timestamp,
                             (b.price.0.clone().to_float(), b.price.1.clone().to_float()),
+                            (b.amount.0.clone().to_float(), b.amount.1.clone().to_float()),
                             format!("{:?}", b.token0),
                         ),
                     )
@@ -260,7 +283,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
             meta.into_iter().for_each(
                 |(
                     (base_token_addr, quote_token_addr),
-                    (timestamp, (price0, price1), token0_addr),
+                    (timestamp, (price0, price1), (amt0, amt1), token0_addr),
                 )| {
                     exchange_map.insert(
                         Pair(
@@ -276,6 +299,10 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
                                 Rational::try_from_float_simplest(price1).unwrap(),
                             ),
                             token0: Address::from_str(&token0_addr).unwrap(),
+                            amount: (
+                                Rational::try_from_float_simplest(amt0).unwrap(),
+                                Rational::try_from_float_simplest(amt1).unwrap(),
+                            ),
                         },
                     );
                 },
@@ -331,6 +358,9 @@ pub struct CexQuote {
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
     /// propagated by the proposer)
     pub price:     (Rational, Rational),
+    /// Best Ask & Bid amount at p2p timestamp (which is when the block is first
+    /// propagated by the proposer)
+    pub amount:    (Rational, Rational),
     pub token0:    Address,
 }
 
@@ -391,19 +421,24 @@ impl MulAssign for CexQuote {
 impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         let (pair, quote) = value;
-        let price = if pair == pair.ordered() {
-            (
-                Rational::try_from_float_simplest(quote.ask_price).unwrap(),
-                Rational::try_from_float_simplest(quote.bid_price).unwrap(),
-            )
-        } else {
-            (
-                Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-                Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
-            )
-        };
 
-        CexQuote { exchange: quote.exchange, timestamp: quote.timestamp, price, token0: pair.0 }
+        let price = (
+            Rational::try_from_float_simplest(quote.ask_price).unwrap(),
+            Rational::try_from_float_simplest(quote.bid_price).unwrap(),
+        );
+
+        let amount = (
+            Rational::try_from_float_simplest(quote.ask_amount).unwrap(),
+            Rational::try_from_float_simplest(quote.bid_amount).unwrap(),
+        );
+
+        CexQuote {
+            exchange: quote.exchange,
+            timestamp: quote.timestamp,
+            price,
+            token0: pair.0,
+            amount,
+        }
     }
 }
 
