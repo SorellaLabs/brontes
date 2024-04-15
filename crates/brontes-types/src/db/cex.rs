@@ -120,7 +120,7 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
-                if quote.token0 == pair.0 && pair != &pair.ordered() {
+                if quote.token0 == pair.0 {
                     if (quote.token0
                         == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
                         && quote.exchange == CexExchange::Binance
@@ -420,17 +420,19 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
         //     println!("QUOTE: {:?}", quote);
         // }
 
-        let price = if pair == pair.ordered() {
-            (
+        let price = 
+        //if pair == pair.ordered() {
+        (
                 Rational::try_from_float_simplest(quote.ask_price).unwrap(),
                 Rational::try_from_float_simplest(quote.bid_price).unwrap(),
             )
-        } else {
-            (
-                Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-                Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
-            )
-        };
+        // } else {
+        //     (
+        //         Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
+        //         Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
+        //     )
+        // };
+        ;
 
         CexQuote { exchange: quote.exchange, timestamp: quote.timestamp, price, token0: pair.0 }
     }
