@@ -294,6 +294,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: &Metadata,
     ) -> Option<Vec<(CexExchange, Rational, bool)>> {
         let pair = Pair(swap.token_out.address, swap.token_in.address);
+        if pair.0 == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+        // && pair.1
+        // == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+        {
+            println!("PAIR: {:?}", pair)
+        }
+        // && pair.1
+        //     == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+
         let quotes = self
             .cex_exchanges
             .iter()
