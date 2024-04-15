@@ -412,7 +412,7 @@ mod tests {
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
             .with_expected_profit_usd(4.08)
-            .with_gas_paid_usd(156.39);
+            .with_gas_paid_usd(155.64);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
