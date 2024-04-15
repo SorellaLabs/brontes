@@ -106,7 +106,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let possible_arb_type = self.is_possible_arb(&swaps)?;
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
-        tracing::debug!(?transfers);
         let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
@@ -125,7 +124,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             (
                 Some(self.utils.get_available_usd_deltas(
                     info.tx_index,
-                    PriceAt::Average,
+                    PriceAt::Before,
                     &mev_addresses,
                     &account_deltas,
                     metadata.clone(),
@@ -180,7 +179,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             vec![info.tx_hash],
             &info,
             profit.to_float(),
-            PriceAt::Average,
+            PriceAt::Before,
             &[info.gas_details],
             metadata.clone(),
             MevType::AtomicArb,
