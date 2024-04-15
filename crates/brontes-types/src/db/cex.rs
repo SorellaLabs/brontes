@@ -121,8 +121,16 @@ impl CexPriceMap {
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
                 if quote.token0 == pair.0 {
+                    if quote.symbol == "BADGERBTC" && quote.exchange == CexExchange::Binance {
+                        println!("= PAIR: {:?}", pair);
+                        println!("= QUOTE: {:?}", quote);
+                    }
                     quote.clone()
                 } else {
+                    if quote.symbol == "BADGERBTC" && quote.exchange == CexExchange::Binance {
+                        println!("!= PAIR: {:?}", pair);
+                        println!("!= QUOTE: {:?}", quote);
+                    }
                     let mut reciprocal_quote = quote.clone();
                     reciprocal_quote.inverse_price();
                     reciprocal_quote
@@ -392,10 +400,10 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         let (pair, quote) = value;
 
-        if quote.symbol == "BADGERBTC" && quote.exchange == CexExchange::Binance {
-            println!("PAIR: {:?}", pair);
-            println!("QUOTE: {:?}", quote);
-        }
+        // if quote.symbol == "BADGERBTC" && quote.exchange == CexExchange::Binance {
+        //     println!("PAIR: {:?}", pair);
+        //     println!("QUOTE: {:?}", quote);
+        // }
 
         let price = if pair == pair.ordered() {
             (
