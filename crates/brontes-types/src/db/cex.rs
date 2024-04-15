@@ -129,8 +129,8 @@ impl CexPriceMap {
                         && pair.1
                             == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
                     {
-                        println!("= PAIR: {:?}", pair);
-                        println!("= QUOTE: {:?}", quote);
+                        tracing::warn!("= PAIR: {:?}", pair);
+                        tracing::warn!("= QUOTE: {:?}", quote);
                     }
                     quote.clone()
                 } else {
@@ -142,8 +142,8 @@ impl CexPriceMap {
                         && pair.1
                             == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
                     {
-                        println!("!= PAIR: {:?}", pair);
-                        println!("!= QUOTE: {:?}", quote);
+                        tracing::warn!("!= PAIR: {:?}", pair);
+                        tracing::warn!("!= QUOTE: {:?}", quote);
                     }
                     let mut reciprocal_quote = quote.clone();
                     reciprocal_quote.inverse_price();
