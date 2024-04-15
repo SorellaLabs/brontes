@@ -287,6 +287,7 @@ fn is_stable_pair(token_in: &str, token_out: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
+    use brontes_types::constants::USDT_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS, WETH_ADDRESS},
@@ -515,7 +516,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn assert_no_simple_tri_swap() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
