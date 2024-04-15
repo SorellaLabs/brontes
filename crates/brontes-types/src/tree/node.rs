@@ -235,19 +235,25 @@ impl Node {
     }
 
     /// The address here is the from address for the trace
-    pub fn insert<V: NormalizedAction>(&mut self, n: Node, data: &mut NodeData<V>) {
+    pub fn insert<V: NormalizedAction>(
+        &mut self,
+        n: Node,
+        data: Vec<V>,
+        data_store: &mut NodeData<V>,
+    ) {
         let trace_addr = n.trace_address.clone();
-        self.get_all_inner_nodes(n, data, trace_addr);
+        self.get_all_inner_nodes(n, data, data_store, trace_addr);
     }
 
     pub fn get_all_inner_nodes<V: NormalizedAction>(
         &mut self,
-        n: Node,
-        data: &mut NodeData<V>,
+        mut n: Node,
+        data: Vec<V>,
+        data_store: &mut NodeData<V>,
         mut trace_addr: Vec<usize>,
     ) {
         // check if this node is a revert. If it is, we don't insert this node.
-        let revert = data
+        let revert = data_store
             .get_ref(self.data)
             .unwrap()
             .iter()
@@ -259,12 +265,12 @@ impl Node {
 
         let log = trace_addr.clone();
         if trace_addr.len() == 1 {
-            let idx = data.add(data);
+            let idx = data_store.add(data);
             n.data = idx;
 
             self.inner.push(n);
         } else if let Some(inner) = self.inner.get_mut(trace_addr.remove(0)) {
-            inner.get_all_inner_nodes(n, data, trace_addr)
+            inner.get_all_inner_nodes(n, data, data_store, trace_addr)
         } else {
             error!("ERROR: {:?}\n {:?}", self.inner, log);
         }
