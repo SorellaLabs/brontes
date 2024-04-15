@@ -147,9 +147,10 @@ pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Action
                         if this.to == t.to
                             && this.from == t.from
                             && this.amount == t.amount
-                            && this.token ==  t.token
+                            && this.token == t.token
                             && this.trace_index != t.trace_index
                         {
+                            tracing::debug!(?t, ?this, "setting amount to zero");
                             t.amount = Rational::ZERO;
                         }
                     }
