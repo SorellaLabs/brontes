@@ -468,4 +468,19 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn assert_no_mev_0x() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "bd3cccec96a23f62af9f99f185929022a048705b4e5f20c025bd5f023d10b7da"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
 }
