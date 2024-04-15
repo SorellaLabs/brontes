@@ -311,16 +311,16 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 metadata
                     .cex_quotes
                     .get_quote(&pair, &exchange)
-                    .map(|cex_quote| (exchange, cex_quote.price.0, true))
+                    .map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, true))
                     .or_else(|| {
                         println!("PAIR TO INTER: {:?}", pair);
                         let quo = metadata
                             .cex_quotes
                             .get_quote_via_intermediary(&pair, &exchange);
 
-                        println!("QUOTES: {:?}", quo);
+                        println!("QUOTES INTER: {:?}", quo);
 
-                        quo.map(|cex_quote| (exchange, cex_quote.price.0, false))
+                        quo.map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, false))
                     })
                     .or_else(|| {
                         debug!(
@@ -334,7 +334,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         println!();
         for q in &quotes {
-            println!("QUOTES: {:?}", q);
+            println!("QUOTES AFTER: {:?}", q);
         }
 
         if quotes.is_empty() {
