@@ -341,7 +341,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             None
         } else {
             debug!("CEX quotes found for pair: {}, {} at exchanges: {:?}", pair.0, pair.1, quotes);
-            Some(quotes)
+            Some((quotes.0, quotes.2, quotes.1))
         }
     }
 
