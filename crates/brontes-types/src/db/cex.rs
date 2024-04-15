@@ -264,9 +264,9 @@ impl CexPriceMap {
                        * First Leg Price: {:.7}\n\
                        * Second Leg Price: {:.7}\n\
                      - Token Contracts:\n\
-                       * Token In: https://etherscan.io/address/{}\n\
+                       * Token Out: https://etherscan.io/address/{}\n\
                        * Intermediary: https://etherscan.io/address/{}\n\
-                       * Token Out: https://etherscan.io/address/{}",
+                       * Token In: https://etherscan.io/address/{}",
                     dex_swap.token_out_symbol(),
                     dex_swap.token_in_symbol(),
                     exchange,
