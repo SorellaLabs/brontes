@@ -225,16 +225,17 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
         if smaller * Rational::from(3) < larger {
+            tracing::error!("Filtered out possible CEX-DEX due to significant price delta.");
             tracing::error!(
-                "Filtered out possible CEX-DEX due to significant price delta.\n Price delta \
-                 between CEX '{}' with price '{}' and DEX '{}' with price '{}' for token in \
-                 '{:?}' and token out '{:?}'",
+                "Price delta between CEX '{}' with price '{}' and DEX '{}' with price '{}' for \
+                 token in '{:?}' and token out '{:?}' - is direct: {}",
                 exchange_cex_price.0,
                 exchange_cex_price.1.to_float(),
                 swap.protocol,
                 swap.swap_rate().to_float(),
                 (&swap.token_in.inner.symbol, &swap.token_in.address),
                 (&swap.token_out.inner.symbol, &swap.token_out.address),
+                exchange_cex_price.2
             );
             return None
         }
@@ -294,6 +295,16 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         metadata: &Metadata,
     ) -> Option<Vec<(CexExchange, Rational, bool)>> {
         let pair = Pair(swap.token_out.address, swap.token_in.address);
+        // if pair.0 ==
+        // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+        // && pair.1
+        // == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+        // {
+        //     println!("PAIR: {:?}", pair)
+        // }
+        // && pair.1
+        //     == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+
         let quotes = self
             .cex_exchanges
             .iter()
@@ -301,12 +312,16 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 metadata
                     .cex_quotes
                     .get_quote(&pair, &exchange)
-                    .map(|cex_quote| (exchange, cex_quote.price.0, true))
+                    .map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, true))
                     .or_else(|| {
-                        metadata
+                        // println!("PAIR TO INTER: {:?}", pair);
+                        let quo = metadata
                             .cex_quotes
-                            .get_quote_via_intermediary(&pair, &exchange)
-                            .map(|cex_quote| (exchange, cex_quote.price.0, false))
+                            .get_quote_via_intermediary(&pair, &exchange);
+
+                        // println!("QUOTES INTER: {:?}", quo);
+
+                        quo.map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, false))
                     })
                     .or_else(|| {
                         debug!(
@@ -318,11 +333,21 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
+        // println!();
+        // for q in &quotes {
+        //     println!("QUOTES AFTER: {:?}", q);
+        // }
+
         if quotes.is_empty() {
             None
         } else {
             debug!("CEX quotes found for pair: {}, {} at exchanges: {:?}", pair.0, pair.1, quotes);
-            Some(quotes)
+            Some(
+                quotes
+                    .into_iter()
+                    .map(|quote| (quote.0, quote.2, quote.3))
+                    .collect::<Vec<_>>(),
+            )
         }
     }
 
@@ -341,6 +366,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     /// # Returns
     /// A `PossibleCexDex` instance representing the finalized arbitrage
     /// opportunity after accounting for gas costs.
+
+    // usdc / btc * btc/link
 
     fn gas_accounting(
         &self,
