@@ -778,7 +778,7 @@ impl PairSubGraph {
         }
 
         if !has_gone_through_pool {
-            tracing::debug!(?self.complete_pair,goes_through=?self.must_go_through, "has gone through pool was never triggered");
+            tracing::debug!(?self.complete_pair,goes_through=?self.must_go_through,pool=?must_go_through_pool, "has gone through pool was never triggered");
         }
 
         node_price.remove(&goal)
