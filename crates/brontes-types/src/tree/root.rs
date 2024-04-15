@@ -186,7 +186,7 @@ impl<V: NormalizedAction> Root<V> {
         self.position
     }
 
-    pub fn insert(&mut self, mut node: Node, data: Vec<V>) {
+    pub fn insert(&mut self, node: Node, data: Vec<V>) {
         self.head.insert(node, data, &mut self.data_store);
     }
 
