@@ -122,14 +122,15 @@ impl CexPriceMap {
             .map(|quote| {
                 let s = if quote.token0 != pair.0 && pair == &pair.ordered() { "!=" } else { "=" };
 
-                if (quote.token0
-                    == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
-                    && quote.exchange == CexExchange::Binance
-                    && pair.1 == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
-                {
-                    tracing::warn!("{s} PAIR: {:?}", pair);
-                    tracing::warn!("{s} QUOTE: {:?}", quote);
-                }
+                // if (quote.token0
+                //     == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
+                //     && quote.exchange == CexExchange::Binance
+                //     && pair.1 ==
+                // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+                // {
+                //     tracing::warn!("{s} PAIR: {:?}", pair);
+                //     tracing::warn!("{s} QUOTE: {:?}", quote);
+                // }
 
                 // if quote.token0 != pair.0 || (pair == &pair.ordered() && pair.0 ==
                 // quote.token0) {     let mut reciprocal_quote = quote.clone();
@@ -226,8 +227,8 @@ impl CexPriceMap {
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
-                    println!("PAIR 1: {:?} -- PAIR 2: {:?}", pair1, pair2);
-                    println!("QUOTE 1: {:?} -- QUOTE 2: {:?}", quote1, quote2);
+                    // println!("PAIR 1: {:?} -- PAIR 2: {:?}", pair1, pair2);
+                    // println!("QUOTE 1: {:?} -- QUOTE 2: {:?}", quote1, quote2);
                     let combined_price =
                         (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
                     let combined_quote = CexQuote {
