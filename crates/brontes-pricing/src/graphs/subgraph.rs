@@ -729,7 +729,7 @@ impl PairSubGraph {
                     {
                         continue
                     } else {
-                        tracing::debug!(?self.complete_pair,"found goes through pool");
+                        tracing::debug!(?self.complete_pair,goes_through=?self.must_go_through,pool=?must_go_through_pool, "found goes through pool");
                     }
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
