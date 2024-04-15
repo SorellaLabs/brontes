@@ -313,12 +313,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     .get_quote(&pair, &exchange)
                     .map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, true))
                     .or_else(|| {
-                        println!("PAIR TO INTER: {:?}", pair);
+                        // println!("PAIR TO INTER: {:?}", pair);
                         let quo = metadata
                             .cex_quotes
                             .get_quote_via_intermediary(&pair, &exchange);
 
-                        println!("QUOTES INTER: {:?}", quo);
+                        // println!("QUOTES INTER: {:?}", quo);
 
                         quo.map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, false))
                     })
