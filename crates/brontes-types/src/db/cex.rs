@@ -199,6 +199,9 @@ impl CexPriceMap {
                 let pair1 = Pair(intermediary, pair.1);
                 let pair2 = Pair(pair.0, intermediary);
 
+                // let pair1 = Pair(pair.1, intermediary);
+                // let pair2 = Pair(intermediary, pair.0);
+
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
@@ -208,7 +211,7 @@ impl CexPriceMap {
                         exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
                         price:     combined_price,
-                        token0:    pair.0,
+                        token0:    pair.1,
                     };
 
                     Some(combined_quote)
