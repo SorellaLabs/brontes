@@ -517,17 +517,10 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         let (pair, quote) = value;
 
-        let price = if pair == pair.ordered() {
-            (
-                Rational::try_from_float_simplest(quote.ask_price).unwrap(),
-                Rational::try_from_float_simplest(quote.bid_price).unwrap(),
-            )
-        } else {
-            (
-                Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-                Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
-            )
-        };
+        let price = (
+            Rational::try_from_float_simplest(quote.ask_price).unwrap(),
+            Rational::try_from_float_simplest(quote.bid_price).unwrap(),
+        );
 
         if pair.0 == WBTC_ADDRESS
             && pair.1 == Address::from_str("0x3472A5A71965499acd81997a54BBA8D852C6E53d").unwrap()
@@ -896,7 +889,7 @@ mod tests {
     fn test_order_badger_wbtc() {
         let pair = Pair(
             WBTC_ADDRESS,
-            Address::from_str("0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599").unwrap(),
+            Address::from_str("0x3472a5a71965499acd81997a54bba8d852c6e53d").unwrap(),
         );
 
         assert_eq!(pair.ordered(), pair.flip());
