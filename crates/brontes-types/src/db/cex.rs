@@ -131,15 +131,37 @@ impl CexPriceMap {
                     tracing::warn!("{s} QUOTE: {:?}", quote);
                 }
 
-                if quote.token0 != pair.0 || (pair == &pair.ordered() && pair.0 == quote.token0) {
+                // if quote.token0 != pair.0 || (pair == &pair.ordered() && pair.0 ==
+                // quote.token0) {     let mut reciprocal_quote = quote.clone();
+                //     reciprocal_quote.inverse_price();
+                //     reciprocal_quote
+                // } else {
+                //     quote.clone()
+                // }
+
+                if quote.token0 == pair.1 {
+                    quote.clone()
+                } else {
                     let mut reciprocal_quote = quote.clone();
                     reciprocal_quote.inverse_price();
                     reciprocal_quote
-                } else {
-                    quote.clone()
                 }
             })
     }
+
+    /*
+
+    PAIR 1: Pair(0x2260fac5e5542a773aa44fbcfedf7c193bc2c599, 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48) --
+    PAIR 2: Pair(0x514910771af9ca656af840dff83e8264ecf986ca, 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599)
+
+    QUOTE 1: CexQuote { exchange: Binance, timestamp: 1701544144949000, price: (100/3925077, 50/1961277), token0: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 } --
+    QUOTE 2: CexQuote { exchange: Binance, timestamp: 1701544144949000, price: (2500000/1027, 5000000/2053), token0: 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599 }
+
+
+    '0.06201851801055929' and DEX 'UniswapV3' with price '16.07903515449851'
+    for token in '("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)' and token out '("LINK", 0x514910771af9ca656af840dff83e8264ecf986ca)'
+
+             */
 
     pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
         self.get_quote(pair, &CexExchange::Binance)
@@ -419,17 +441,17 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
         //     println!("QUOTE: {:?}", quote);
         // }
 
-        let price = if pair == pair.ordered() {
-            (
-                Rational::try_from_float_simplest(quote.ask_price).unwrap(),
-                Rational::try_from_float_simplest(quote.bid_price).unwrap(),
-            )
-        } else {
-            (
-                Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-                Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
-            )
-        };
+        // let price = if pair == pair.ordered() {
+        //     (
+        //         Rational::try_from_float_simplest(quote.ask_price).unwrap(),
+        //         Rational::try_from_float_simplest(quote.bid_price).unwrap(),
+        //     )
+        // } else {
+        //     (
+        //         Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
+        //         Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
+        //     )
+        // };
 
         // if pair.0 ==
         // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")     ||
