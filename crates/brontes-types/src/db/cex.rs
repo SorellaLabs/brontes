@@ -522,17 +522,17 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
             Rational::try_from_float_simplest(quote.bid_price).unwrap(),
         );
 
-        if pair.0 == WBTC_ADDRESS
-            && pair.1 == Address::from_str("0x3472A5A71965499acd81997a54BBA8D852C6E53d").unwrap()
+        /*if pair.0 == Address::from_str("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").unwrap()
+            && pair.1 == USDT_ADDRESS
         {
             info!(
-                "WBTC pair: {:?}\n ask_price: {} \nbid_price: {}\n token0: {}",
+                "APE-USDT: {:?}\n ask_price: {} \nbid_price: {}\n token0: {}",
                 pair,
                 price.0.clone().to_float(),
                 price.1.clone().to_float(),
                 pair.0
             );
-        }
+        }*/
 
         CexQuote { exchange: quote.exchange, timestamp: quote.timestamp, price, token0: pair.1 }
     }
