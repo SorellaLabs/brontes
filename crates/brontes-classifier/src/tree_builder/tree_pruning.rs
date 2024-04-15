@@ -121,6 +121,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
 }
 
 pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Actions>) {
+    tracing::debug!("remove double transfer counts");
     tree.modify_node_if_contains_childs(
         TreeSearchBuilder::default().with_action(Actions::is_transfer),
         |node, data| {
