@@ -145,7 +145,7 @@ pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Action
                     let f = i_data.get_mut(0).unwrap();
                     if let Actions::Transfer(t) = f {
                         if this.to == t.to && this.from == t.from && this.amount == t.amount {
-                            t.amount == Rational::ZERO;
+                            t.amount = Rational::ZERO;
                         }
                     }
                 }
