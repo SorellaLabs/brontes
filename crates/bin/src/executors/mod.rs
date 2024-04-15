@@ -395,36 +395,35 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         start_block: Option<u64>,
         end_block: Option<u64>,
     ) -> Option<ProgressBar> {
-        // self.cli_only
-        //     .then(|| {
-        //         let start = start_block?;
-        //         let end = end_block?;
-        //         // Assuming `had_end_block` and `end_block` should be defined or
-        // passed         // elsewhere
-        //         let progress_bar = ProgressBar::with_draw_target(
-        //             Some(end - start),
-        //             ProgressDrawTarget::stderr_with_hz(100),
-        //         );
-        //         let style = ProgressStyle::default_bar()
-        //             .template(
-        //                 "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}]
-        // {pos}/{len} blocks \                  ({percent}%) | ETA: {eta}",
-        //             )
-        //             .expect("Invalid progress bar template")
-        //             .progress_chars("█>-")
-        //             .with_key("eta", |state: &ProgressState, f: &mut dyn
-        // std::fmt::Write| {                 write!(f, "{:.1}s",
-        // state.eta().as_secs_f64()).unwrap()             })
-        //             .with_key("percent", |state: &ProgressState, f: &mut dyn
-        // std::fmt::Write| {                 write!(f, "{:.1}",
-        // state.fraction() * 100.0).unwrap()             });
-        //         progress_bar.set_style(style);
-        //         progress_bar.set_message("Processing blocks:");
+        self.cli_only
+            .then(|| {
+                let start = start_block?;
+                let end = end_block?;
+                // Assuming `had_end_block` and `end_block` should be defined or passed
+                // elsewhere
+                let progress_bar = ProgressBar::with_draw_target(
+                    Some(end - start),
+                    ProgressDrawTarget::stderr_with_hz(100),
+                );
+                let style = ProgressStyle::default_bar()
+                    .template(
+                        "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
+                         ({percent}%) | ETA: {eta}",
+                    )
+                    .expect("Invalid progress bar template")
+                    .progress_chars("█>-")
+                    .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                        write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+                    })
+                    .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                        write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                    });
+                progress_bar.set_style(style);
+                progress_bar.set_message("Processing blocks:");
 
-        //         Some(progress_bar)
-        //     })
-        //     .flatten()
-        None
+                Some(progress_bar)
+            })
+            .flatten()
     }
 }
 

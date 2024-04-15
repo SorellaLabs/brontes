@@ -120,26 +120,6 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
-                let s = if quote.token0 != pair.0 && pair == &pair.ordered() { "!=" } else { "=" };
-
-                // if (quote.token0
-                //     == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
-                //     && quote.exchange == CexExchange::Binance
-                //     && pair.1 ==
-                // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
-                // {
-                //     tracing::warn!("{s} PAIR: {:?}", pair);
-                //     tracing::warn!("{s} QUOTE: {:?}", quote);
-                // }
-
-                // if quote.token0 != pair.0 || (pair == &pair.ordered() && pair.0 ==
-                // quote.token0) {     let mut reciprocal_quote = quote.clone();
-                //     reciprocal_quote.inverse_price();
-                //     reciprocal_quote
-                // } else {
-                //     quote.clone()
-                // }
-
                 if quote.token0 == pair.1 {
                     quote.clone()
                 } else {
@@ -149,20 +129,6 @@ impl CexPriceMap {
                 }
             })
     }
-
-    /*
-
-    PAIR 1: Pair(0x2260fac5e5542a773aa44fbcfedf7c193bc2c599, 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48) --
-    PAIR 2: Pair(0x514910771af9ca656af840dff83e8264ecf986ca, 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599)
-
-    QUOTE 1: CexQuote { exchange: Binance, timestamp: 1701544144949000, price: (100/3925077, 50/1961277), token0: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 } --
-    QUOTE 2: CexQuote { exchange: Binance, timestamp: 1701544144949000, price: (2500000/1027, 5000000/2053), token0: 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599 }
-
-
-    '0.06201851801055929' and DEX 'UniswapV3' with price '16.07903515449851'
-    for token in '("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)' and token out '("LINK", 0x514910771af9ca656af840dff83e8264ecf986ca)'
-
-             */
 
     pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
         self.get_quote(pair, &CexExchange::Binance)
@@ -176,29 +142,40 @@ impl CexPriceMap {
         }
 
         let ordered_pair = pair.ordered();
-        let sum_price = exchanges
+        let (sum_price, acc_price, sum_amt) = exchanges
             .iter()
             .filter_map(|exchange| self.get_quote(&ordered_pair, exchange))
-            .fold((Rational::default(), Rational::default(), 0), |acc, quote| {
-                (acc.0 + quote.price.0, acc.1 + quote.price.1, acc.2 + 1)
-            });
+            .fold(
+                (
+                    (Rational::default(), Rational::default()),
+                    0,
+                    (Rational::default(), Rational::default()),
+                ),
+                |acc, quote| {
+                    (
+                        (acc.0 .0 + &quote.price.0, acc.0 .1 + &quote.price.1),
+                        acc.1 + 1,
+                        (
+                            acc.2 .0 + (quote.price.0 * quote.amount.0),
+                            acc.2 .1 + (quote.price.1 * quote.amount.1),
+                        ),
+                    )
+                },
+            );
 
-        if sum_price.2 > 0 {
-            let count_rational = Rational::from(sum_price.2);
+        if acc_price > 0 {
+            let count_rational = Rational::from(acc_price);
             Some(CexQuote {
                 exchange:  CexExchange::default(),
                 timestamp: 0,
                 price:     (sum_price.0 / &count_rational, sum_price.1 / count_rational),
                 token0:    pair.0,
+                amount:    sum_amt,
             })
         } else {
             None
         }
     }
-
-    // usdc/btc * btc/link = usdc/link
-
-    // if token0 != pair.0 &&
 
     /// Retrieves a CEX quote for a given token pair using an intermediary
     /// asset.
@@ -219,23 +196,22 @@ impl CexPriceMap {
                 let pair1 = Pair(intermediary, pair.1);
                 let pair2 = Pair(pair.0, intermediary);
 
-                //  1/ i * i / 2
-
-                // let pair1 = Pair(pair.1, intermediary);
-                // let pair2 = Pair(intermediary, pair.0);
-
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
-                    // println!("PAIR 1: {:?} -- PAIR 2: {:?}", pair1, pair2);
-                    // println!("QUOTE 1: {:?} -- QUOTE 2: {:?}", quote1, quote2);
                     let combined_price =
-                        (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
+                        (&quote1.price.0 * &quote2.price.0, &quote1.price.1 * &quote2.price.1);
+
+                    let combined_amt = (
+                        (quote1.price.0 * quote1.amount.0) + (quote2.price.0 * quote2.amount.0),
+                        (quote1.price.1 * quote1.amount.1) + (quote2.price.1 * quote2.amount.1),
+                    );
                     let combined_quote = CexQuote {
                         exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
                         price:     combined_price,
                         token0:    pair.1,
+                        amount:    combined_amt,
                     };
 
                     Some(combined_quote)
@@ -258,7 +234,8 @@ impl CexPriceMap {
     }
 }
 
-type CexPriceMapDeser = Vec<(String, Vec<((String, String), (u64, (f64, f64), String))>)>;
+type CexPriceMapDeser =
+    Vec<(String, Vec<((String, String), (u64, (f64, f64), (f64, f64), String))>)>;
 
 impl Serialize for CexPriceMap {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -276,6 +253,7 @@ impl Serialize for CexPriceMap {
                         (
                             b.timestamp,
                             (b.price.0.clone().to_float(), b.price.1.clone().to_float()),
+                            (b.amount.0.clone().to_float(), b.amount.1.clone().to_float()),
                             format!("{:?}", b.token0),
                         ),
                     )
@@ -305,7 +283,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
             meta.into_iter().for_each(
                 |(
                     (base_token_addr, quote_token_addr),
-                    (timestamp, (price0, price1), token0_addr),
+                    (timestamp, (price0, price1), (amt0, amt1), token0_addr),
                 )| {
                     exchange_map.insert(
                         Pair(
@@ -321,6 +299,10 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
                                 Rational::try_from_float_simplest(price1).unwrap(),
                             ),
                             token0: Address::from_str(&token0_addr).unwrap(),
+                            amount: (
+                                Rational::try_from_float_simplest(amt0).unwrap(),
+                                Rational::try_from_float_simplest(amt1).unwrap(),
+                            ),
                         },
                     );
                 },
@@ -376,6 +358,9 @@ pub struct CexQuote {
     /// Best Ask & Bid price at p2p timestamp (which is when the block is first
     /// propagated by the proposer)
     pub price:     (Rational, Rational),
+    /// Best Ask & Bid amount at p2p timestamp (which is when the block is first
+    /// propagated by the proposer)
+    pub amount:    (Rational, Rational),
     pub token0:    Address,
 }
 
@@ -437,47 +422,23 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         let (pair, quote) = value;
 
-        // if quote.symbol == "BADGERBTC" && quote.exchange == CexExchange::Binance {
-        //     println!("PAIR: {:?}", pair);
-        //     println!("QUOTE: {:?}", quote);
-        // }
-
-        // let price = if pair == pair.ordered() {
-        //     (
-        //         Rational::try_from_float_simplest(quote.ask_price).unwrap(),
-        //         Rational::try_from_float_simplest(quote.bid_price).unwrap(),
-        //     )
-        // } else {
-        //     (
-        //         Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-        //         Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
-        //     )
-        // };
-
-        // let price = if pair == pair.ordered() {
-        //     (
-        //         Rational::try_from_float_simplest(quote.ask_price).unwrap(),
-        //         Rational::try_from_float_simplest(quote.bid_price).unwrap(),
-        //     )
-        // } else {
-        //     (
-        //         Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-        //         Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
-        //     )
-        // };
-
         let price = (
-            Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-            Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
+            Rational::try_from_float_simplest(quote.ask_price).unwrap(),
+            Rational::try_from_float_simplest(quote.bid_price).unwrap(),
         );
-        // if pair.0 ==
-        // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")     ||
-        // pair.1 == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
-        // {
-        //     tracing::error!("PAIR: {:?} -- PRICE: {:?}", pair, price);
-        // }
 
-        CexQuote { exchange: quote.exchange, timestamp: quote.timestamp, price, token0: pair.0 }
+        let amount = (
+            Rational::try_from_float_simplest(quote.ask_amount).unwrap(),
+            Rational::try_from_float_simplest(quote.bid_amount).unwrap(),
+        );
+
+        CexQuote {
+            exchange: quote.exchange,
+            timestamp: quote.timestamp,
+            price,
+            token0: pair.0,
+            amount,
+        }
     }
 }
 
