@@ -436,7 +436,7 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
             exchange: quote.exchange,
             timestamp: quote.timestamp,
             price,
-            token0: pair.0,
+            token0: pair.1,
             amount,
         }
     }
