@@ -268,7 +268,7 @@ impl ClickhouseHandle for Clickhouse {
                 max(eth_prices.price.0, eth_prices.price.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes.value, None, None))
+            .into_metadata(cex_quotes.value, None, None, None))
         }
 
         #[cfg(feature = "cex-dex-markout")]
