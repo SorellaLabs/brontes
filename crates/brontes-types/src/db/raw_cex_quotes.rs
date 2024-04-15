@@ -130,28 +130,10 @@ impl CexQuotesConverter {
 
 /*
 
-Price delta between CEX 'Okex' with price '0.00002568333603681798' and DEX 'UniswapV3' with price '38936.70962745134' for token in '("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)' and token out '("WBTC", 0x2260fac5e5542a773aa44fbcfedf7c1Processing blocks:
 
-cargo test --package brontes-inspect --lib --features cex-dex-markout,local-reth,local-clickhouse -- mev_inspectors::cex_dex_markout::tests --nocapture
-
+cargo test --package brontes-inspect --lib --features cex-dex-markout,local-reth,local-clickhouse -- mev_inspectors::cex_dex::tests --nocapture
 
 
-
-Price delta between CEX 'Okex' with price '0.000025682512777050106' and DEX 'UniswapV3' with price '38929.74478611938' for
-
-
-
-
-IN MAP: (0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48, 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599) -> inverse price
-
-
-token in '("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)'
-token out '("WBTC", 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599)'
--> check token0
-
-token in '("WBTC", 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599)'
-token out '("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)'
--> check token0
 
 
 
