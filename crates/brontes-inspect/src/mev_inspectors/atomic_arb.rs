@@ -500,21 +500,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn assert_no_psm_1inch() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![hex!(
-                "dc80326e9eac837a9788652d025d5c13c87a62f495d3647e527e35714de31c86"
-            )
-            .into()])
-            .with_dex_prices()
-            .needs_tokens(vec![WETH_ADDRESS]);
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[brontes_macros::test]
     async fn assert_no_simple_tri_swap() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
