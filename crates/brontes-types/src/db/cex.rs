@@ -196,8 +196,8 @@ impl CexPriceMap {
         intermediaries
             .iter()
             .filter_map(|&intermediary| {
-                let pair1 = Pair(pair.0, intermediary);
-                let pair2 = Pair(intermediary, pair.1);
+                let pair1 = Pair(intermediary, pair.1);
+                let pair2 = Pair(pair.0, intermediary);
 
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
