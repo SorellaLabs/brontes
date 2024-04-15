@@ -391,6 +391,12 @@ impl MulAssign for CexQuote {
 impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         let (pair, quote) = value;
+
+        if quote.symbol == "BADGERBTC" && quote.exchange = CexExchange::Binance {
+            println!("PAIR: {:?}", pair);
+            println!("QUOTE: {:?}", quote);
+        }
+
         let price = if pair == pair.ordered() {
             (
                 Rational::try_from_float_simplest(quote.ask_price).unwrap(),
