@@ -131,10 +131,7 @@ impl CexPriceMap {
                     tracing::warn!("{s} QUOTE: {:?}", quote);
                 }
 
-                if quote.token0 != pair.0
-                    || (pair.clone().flip() == pair.ordered()
-                        && pair.clone().flip().0 == quote.token0)
-                {
+                if quote.token0 != pair.0 || (pair == &pair.ordered() && pair.0 == quote.token0) {
                     let mut reciprocal_quote = quote.clone();
                     reciprocal_quote.inverse_price();
                     reciprocal_quote
