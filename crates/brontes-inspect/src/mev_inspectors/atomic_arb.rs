@@ -39,7 +39,6 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Actions>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
-        tracing::info!("{:#?}", tree);
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Actions::is_swap,
