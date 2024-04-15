@@ -118,7 +118,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             #[cfg(feature = "cex-dex-markout")]
             let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
             #[cfg(not(feature = "cex-dex-markout"))]
-            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None);
+            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
             metadata
         })
     }

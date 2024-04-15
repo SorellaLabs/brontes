@@ -656,7 +656,7 @@ impl CexExchange {
             CexExchange::Binance => {
                 vec![
                     USDT_ADDRESS,
-                    WBTC_ADDRESS,
+                    //WBTC_ADDRESS,
                     BUSD_ADDRESS,
                     USDC_ADDRESS,
                     BNB_ADDRESS,
@@ -667,30 +667,55 @@ impl CexExchange {
             }
             CexExchange::Bitmex => vec![USDT_ADDRESS, USDC_ADDRESS, WETH_ADDRESS],
             CexExchange::Bitstamp => {
-                vec![WBTC_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, PAX_DOLLAR_ADDRESS]
+                vec![
+                    //WBTC_ADDRESS,
+                    USDC_ADDRESS,
+                    USDT_ADDRESS,
+                    PAX_DOLLAR_ADDRESS,
+                ]
             }
             CexExchange::BybitSpot => {
-                vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS, DAI_ADDRESS, WETH_ADDRESS]
+                vec![
+                    USDT_ADDRESS,
+                    USDC_ADDRESS,
+                    //WBTC_ADDRESS,
+                    DAI_ADDRESS,
+                    WETH_ADDRESS,
+                ]
             }
             CexExchange::Coinbase => {
                 vec![
                     USDC_ADDRESS,
                     USDT_ADDRESS,
-                    WBTC_ADDRESS,
+                    //WBTC_ADDRESS,
                     DAI_ADDRESS,
                     WETH_ADDRESS,
                     DAI_ADDRESS,
                 ]
             }
-            CexExchange::Deribit => vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS],
-            CexExchange::GateIo => vec![USDT_ADDRESS, WETH_ADDRESS, WBTC_ADDRESS, USDC_ADDRESS],
+            CexExchange::Deribit => vec![
+                USDT_ADDRESS,
+                USDC_ADDRESS,
+                //WBTC_ADDRESS
+            ],
+            CexExchange::GateIo => vec![
+                USDT_ADDRESS,
+                WETH_ADDRESS, //WBTC_ADDRESS,
+                USDC_ADDRESS,
+            ],
             CexExchange::Gemini => {
-                vec![WBTC_ADDRESS, WETH_ADDRESS, GUSD_ADDRESS, DAI_ADDRESS, USDT_ADDRESS]
+                vec![
+                    //WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    GUSD_ADDRESS,
+                    DAI_ADDRESS,
+                    USDT_ADDRESS,
+                ]
             }
             CexExchange::Huobi => {
                 vec![
                     USDT_ADDRESS,
-                    WBTC_ADDRESS,
+                    //WBTC_ADDRESS,
                     WETH_ADDRESS,
                     HT_ADDRESS,
                     HUSD_ADDRESS,
@@ -702,15 +727,20 @@ impl CexExchange {
                 ]
             }
             CexExchange::Kraken => {
-                vec![WBTC_ADDRESS, WETH_ADDRESS, USDT_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
+                vec![
+                    //WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    USDT_ADDRESS,
+                    USDC_ADDRESS,
+                    DAI_ADDRESS,
+                ]
             }
             CexExchange::Kucoin => {
                 vec![
                     USDT_ADDRESS,
-                    WBTC_ADDRESS,
+                    //WBTC_ADDRESS,
                     WETH_ADDRESS,
                     USDC_ADDRESS,
-                    KCS_ADDRESS,
                     TUSD_ADDRESS,
                     DAI_ADDRESS,
                 ]
@@ -719,14 +749,20 @@ impl CexExchange {
                 vec![
                     USDT_ADDRESS,
                     USDC_ADDRESS,
-                    WBTC_ADDRESS,
+                    //WBTC_ADDRESS,
                     WETH_ADDRESS,
                     DAI_ADDRESS,
                     EURT_ADDRESS,
                 ]
             }
             CexExchange::Upbit => {
-                vec![WETH_ADDRESS, WBTC_ADDRESS, LINK_ADDRESS, EURT_ADDRESS, UNI_TOKEN]
+                vec![
+                    WETH_ADDRESS,
+                    //WBTC_ADDRESS,
+                    LINK_ADDRESS,
+                    EURT_ADDRESS,
+                    UNI_TOKEN,
+                ]
             }
 
             _ => vec![],
@@ -794,5 +830,54 @@ impl CexExchange {
             }
             CexExchange::Unknown => unreachable!("Unknown cex exchange"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cex_quote() {
+        let pair = Pair(
+            DAI_ADDRESS,
+            Address::from_str("0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2").unwrap(),
+        );
+
+        assert_eq!(pair.ordered(), pair);
+    }
+
+    #[test]
+    fn test_order() {
+        let pair = Pair(LINK_ADDRESS, WBTC_ADDRESS);
+
+        assert_eq!(pair.ordered(), pair.flip());
+    }
+
+    #[test]
+    fn test_order_req() {
+        let pair = Pair(
+            Address::from_str("0x8f8221aFbB33998d8584A2B05749bA73c37a938a").unwrap(),
+            WBTC_ADDRESS,
+        );
+
+        assert_eq!(pair.ordered(), pair.flip());
+    }
+
+    #[test]
+    fn test_order_wbtc_usdc() {
+        let pair = Pair(WBTC_ADDRESS, USDC_ADDRESS);
+
+        assert_eq!(pair.ordered(), pair);
+    }
+
+    #[test]
+    fn test_order_agix_wbtc() {
+        let pair = Pair(
+            USDC_ADDRESS,
+            Address::from_str("0x5B7533812759B45C2B44C19e320ba2cD2681b542").unwrap(),
+        );
+
+        assert_eq!(pair.ordered(), pair.flip());
     }
 }
