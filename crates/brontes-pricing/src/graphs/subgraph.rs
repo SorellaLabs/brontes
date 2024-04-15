@@ -727,10 +727,9 @@ impl PairSubGraph {
                     if ensure_only_gt_pool
                         && must_go_through_pool.as_ref().unwrap() != &info.pool_addr
                     {
-
                         continue
                     } else {
-                        tracing::debug!("found goes through pool");
+                        tracing::debug!(?self.complete_pair,"found goes through pool");
                     }
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
