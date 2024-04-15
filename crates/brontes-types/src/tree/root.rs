@@ -190,7 +190,7 @@ impl<V: NormalizedAction> Root<V> {
         let idx = self.data_store.add(data);
         node.data = idx;
 
-        self.head.insert(node)
+        self.head.insert(node, &self.data_store);
     }
 
     pub fn collect_spans(&self, call: &TreeSearchBuilder<V>) -> Vec<Vec<V>> {
