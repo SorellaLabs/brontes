@@ -41,12 +41,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     ) -> Self::Result {
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
-                Actions::is_flash_loan,
                 Actions::is_swap,
                 Actions::is_transfer,
                 Actions::is_eth_transfer,
-                Actions::is_batch,
-                Actions::is_aggregator,
+                Actions::is_nested_action,
             ]))
             .t_map(|(k, v)| {
                 (
