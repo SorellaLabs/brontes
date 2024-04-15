@@ -295,7 +295,7 @@ impl CexTradeMap {
         calculate_multi_cross_pair(pair0_vwams, pair1_vwams, volume)
     }
 
-    fn get_vwam_via_intermediary_spread(
+    pub fn get_vwam_via_intermediary_spread(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
@@ -325,15 +325,14 @@ impl CexTradeMap {
             .iter()
             .filter(|(e, _)| exchanges.contains(e))
             .filter_map(|(exchange, trades)| {
-                Some((
-                    *exchange,
-                    trades.get(pair).map(|trades| {
-                        trades
-                            .iter()
-                            .filter(|f| f.amount.le(&max_vol_per_trade))
-                            .collect_vec()
-                    })?,
-                ))
+                let result = trades.get(pair).map(|trades| {
+                    trades
+                        .iter()
+                        .filter(|f| f.amount.le(&max_vol_per_trade))
+                        .collect_vec()
+                });
+
+                Some((*exchange, result?))
             })
             .collect::<Vec<_>>();
 
@@ -790,7 +789,7 @@ impl<'ptr> CexTradePtr<'ptr> {
 }
 
 #[derive(Debug)]
-struct MakerTakerWithVolumeFilled {
+pub struct MakerTakerWithVolumeFilled {
     volume_looked_at: Rational,
     prices:           MakerTaker,
 }

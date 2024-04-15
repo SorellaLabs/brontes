@@ -63,11 +63,11 @@ impl CexTradesConverter {
 
         self.trades
             .into_par_iter()
-            .filter_map(|q| {
+            .filter_map(|t| {
                 self.block_times
                     .par_iter()
-                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
-                    .map(|block_time| (block_time.block_number, q))
+                    .find_any(|b| t.timestamp >= b.start_timestamp && t.timestamp < b.end_timestamp)
+                    .map(|block_time| (block_time.block_number, t))
             })
             .collect::<Vec<_>>()
             .into_iter()
@@ -109,9 +109,9 @@ impl CexTradesConverter {
                             }
 
                             let pair = if &trade.side == "buy" {
-                                symbol.address_pair
-                            } else {
                                 symbol.address_pair.flip()
+                            } else {
+                                symbol.address_pair
                             };
 
                             exchange_symbol_map
