@@ -125,7 +125,7 @@ impl CexPriceMap {
                         == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
                         && quote.exchange == CexExchange::Binance
                         && pair.1
-                            == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+                            == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
                     {
                         tracing::warn!("= PAIR: {:?}", pair);
                         tracing::warn!("= QUOTE: {:?}", quote);
@@ -136,7 +136,7 @@ impl CexPriceMap {
                         == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
                         && quote.exchange == CexExchange::Binance
                         && pair.1
-                            == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+                            == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
                     {
                         tracing::warn!("!= PAIR: {:?}", pair);
                         tracing::warn!("!= QUOTE: {:?}", quote);

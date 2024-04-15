@@ -366,6 +366,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     /// A `PossibleCexDex` instance representing the finalized arbitrage
     /// opportunity after accounting for gas costs.
 
+    // usdc / btc * btc/link
+
     fn gas_accounting(
         &self,
         swaps_with_profit_by_exchange: Vec<PossibleCexDexLeg>,
