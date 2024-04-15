@@ -100,6 +100,7 @@ pub struct DexQuotes(pub Vec<Option<FastHashMap<Pair, DexPrices>>>);
 impl DexQuotes {
     /// checks for price at the given tx index. if it isn't found, will look for
     /// the price at all previous indexes in the block
+    #[cfg(test)]
     pub fn price_at_or_before(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
         if pair.0 == ETH_ADDRESS {
             pair.0 = WETH_ADDRESS;
@@ -128,7 +129,34 @@ impl DexQuotes {
             tx -= 1;
         }
 
-        debug!(?pair, before=?s_idx, "no price for pair");
+        debug!(?pair, at_or_before=?s_idx, "no price for pair");
+
+        None
+    }
+
+    #[cfg(not(test))]
+    pub fn price_at_or_before(&self, mut pair: Pair, tx: usize) -> Option<DexPrices> {
+        if pair.0 == ETH_ADDRESS {
+            pair.0 = WETH_ADDRESS;
+        }
+        if pair.1 == ETH_ADDRESS {
+            pair.1 = WETH_ADDRESS;
+        }
+        let s_idx = tx;
+
+        if pair.0 == pair.1 {
+            return Some(DexPrices {
+                pre_state:    Rational::ONE,
+                post_state:   Rational::ONE,
+                goes_through: Pair::default(),
+            })
+        }
+
+        if let Some(price) = self.get_price(pair, tx) {
+            return Some(price.clone())
+        }
+
+        debug!(?pair, at=?s_idx, "no price for pair");
 
         None
     }
