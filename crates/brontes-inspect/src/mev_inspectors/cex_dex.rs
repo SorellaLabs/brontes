@@ -332,10 +332,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
-        println!();
-        for q in &quotes {
-            println!("QUOTES AFTER: {:?}", q);
-        }
+        // println!();
+        // for q in &quotes {
+        //     println!("QUOTES AFTER: {:?}", q);
+        // }
 
         if quotes.is_empty() {
             None
