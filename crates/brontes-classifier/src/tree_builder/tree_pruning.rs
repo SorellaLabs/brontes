@@ -143,16 +143,17 @@ pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Action
 
             inner_transfers.into_iter().for_each(|i_transfer| {
                 if let Some(i_data) = data.get_mut(i_transfer.data) {
-                    let f = i_data.get_mut(0).unwrap();
-                    if let Actions::Transfer(t) = f {
-                        if this.to == t.to
-                            && this.from == t.from
-                            && this.amount == t.amount
-                            && this.token == t.token
-                            && this.trace_index != t.trace_index
-                        {
-                            tracing::info!(?t, ?this, "setting amount to zero");
-                            t.amount = Rational::ZERO;
+                    for f in i_data {
+                        if let Actions::Transfer(t) = f {
+                            if this.to == t.to
+                                && this.from == t.from
+                                && this.amount == t.amount
+                                && this.token == t.token
+                                && this.trace_index != t.trace_index
+                            {
+                                tracing::info!(?t, ?this, "setting amount to zero");
+                                t.amount = Rational::ZERO;
+                            }
                         }
                     }
                 }
