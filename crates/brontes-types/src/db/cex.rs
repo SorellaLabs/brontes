@@ -205,7 +205,7 @@ impl CexPriceMap {
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
-                    println!("PAIR 1: -- PAIR 2: {:?}", pair1, pair2);
+                    println!("PAIR 1: {:?} -- PAIR 2: {:?}", pair1, pair2);
                     println!("QUOTE 1: {:?} -- QUOTE 2: {:?}", quote1, quote2);
                     let combined_price =
                         (quote1.price.0 * quote2.price.0, quote1.price.1 * quote2.price.1);
