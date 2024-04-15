@@ -516,6 +516,7 @@ impl MulAssign for CexQuote {
 impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
         let (pair, quote) = value;
+
         let price = if pair == pair.ordered() {
             (
                 Rational::try_from_float_simplest(quote.ask_price).unwrap(),
@@ -527,6 +528,17 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
                 Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
             )
         };
+
+        if pair.0 == WBTC_ADDRESS
+            || pair.0 == Address::from_str("0x3472A5A71965499acd81997a54BBA8D852C6E53d").unwrap()
+            || pair.1 == WBTC_ADDRESS
+            || pair.1 == Address::from_str("0x3472A5A71965499acd81997a54BBA8D852C6E53d").unwrap()
+        {
+            info!(
+                "WBTC pair: {:?}\n ask_price: {} \nbid_price: {}\n token0: {}",
+                pair, quote.ask_price, quote.bid_price, pair.0
+            );
+        }
 
         CexQuote { exchange: quote.exchange, timestamp: quote.timestamp, price, token0: pair.0 }
     }
@@ -874,6 +886,26 @@ mod tests {
         let pair = Pair(
             USDC_ADDRESS,
             Address::from_str("0x5B7533812759B45C2B44C19e320ba2cD2681b542").unwrap(),
+        );
+
+        assert_eq!(pair.ordered(), pair.flip());
+    }
+
+    #[test]
+    fn test_order_badger_wbtc() {
+        let pair = Pair(
+            WBTC_ADDRESS,
+            Address::from_str("0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599").unwrap(),
+        );
+
+        assert_eq!(pair.ordered(), pair.flip());
+    }
+
+    #[test]
+    fn test_order_looks_usdc() {
+        let pair = Pair(
+            Address::from_str("0xf4d2888d29D722226FafA5d9B24F9164c092421E").unwrap(),
+            USDT_ADDRESS,
         );
 
         assert_eq!(pair.ordered(), pair.flip());

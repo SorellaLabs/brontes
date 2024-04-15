@@ -224,7 +224,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let smaller = swap.swap_rate().min(exchange_cex_price.1.clone());
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
-        if smaller * Rational::from(3) < larger {
+        if smaller * Rational::from(2) < larger {
             tracing::error!(
                 "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
                  - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
