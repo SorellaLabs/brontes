@@ -344,7 +344,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             Some(
                 quotes
                     .into_iter()
-                    .map(|quote| (quote.0, quote.2, quote.1))
+                    .map(|quote| (quote.0, quote.2, quote.3))
                     .collect::<Vec<_>>(),
             )
         }
