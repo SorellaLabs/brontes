@@ -6,8 +6,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedFlashLoan,
-        NormalizedSwap, NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedEthTransfer,
+        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
     },
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
@@ -46,6 +46,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 Actions::is_transfer,
                 Actions::is_eth_transfer,
                 Actions::is_batch,
+                Actions::is_aggregator,
             ]))
             .t_map(|(k, v)| {
                 (
@@ -69,6 +70,12 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                                 .map(Into::into)
                                 .collect::<Vec<_>>()
                         })
+                        .flatten_specified(
+                            Actions::try_aggregator_ref,
+                            |actions: NormalizedAggregator| {
+                                actions.child_actions.into_iter().collect::<Vec<_>>()
+                            },
+                        )
                         .collect::<Vec<_>>(),
                 )
             })
