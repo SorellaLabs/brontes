@@ -122,8 +122,9 @@ impl CexPriceMap {
             .map(|quote| {
                 if quote.token0 == pair.0 || quote.token0 == pair.ordered().0 {
                     if (quote.token0
-                        == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
-                        || reth_primitives::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))
+                        == reth_primitives::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+                        || quote.token0
+                            == reth_primitives::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))
                         && quote.exchange == CexExchange::Binance
                     {
                         println!("= PAIR: {:?}", pair);
@@ -133,7 +134,8 @@ impl CexPriceMap {
                 } else {
                     if (quote.token0
                         == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
-                        || reth_primitives::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))
+                        || quote.token0
+                            == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
                         && quote.exchange == CexExchange::Binance
                     {
                         println!("!= PAIR: {:?}", pair);
