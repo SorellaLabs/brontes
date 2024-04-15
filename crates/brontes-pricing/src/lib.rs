@@ -68,8 +68,8 @@ use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
 /// max movement of price in the block before its considered invalid.
-/// currently 20%
-const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(6, 10);
+/// currently 30%
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(3, 10);
 
 /// # Brontes Batch Pricer
 ///
