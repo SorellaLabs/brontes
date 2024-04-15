@@ -213,7 +213,7 @@ impl CexPriceMap {
                         exchange:  *exchange,
                         timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
                         price:     combined_price,
-                        token0:    pair.0,
+                        token0:    pair.1,
                     };
 
                     Some(combined_quote)
