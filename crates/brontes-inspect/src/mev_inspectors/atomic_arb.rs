@@ -512,4 +512,19 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn assert_no_simple_tri_swap() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "ce1f462d3243bbeff016b4c6eabdfc7c6642b02b64de3de50a1a5d19cebcde1a"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
 }
