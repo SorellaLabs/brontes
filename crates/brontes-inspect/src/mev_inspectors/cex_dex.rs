@@ -318,7 +318,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                             .cex_quotes
                             .get_quote_via_intermediary(&pair, &exchange);
 
-                        if let Some(q) = quo {
+                        if let Some(q) = quo.as_ref() {
                             println!("QUOTES: {:?}", q);
                         }
 
