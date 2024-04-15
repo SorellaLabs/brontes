@@ -120,7 +120,7 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
-                if quote.token0 == pair.0 || quote.token0 == pair.ordered().0 {
+                if quote.token0 == pair.0 {
                     if (quote.token0
                         == reth_primitives::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
                         || quote.token0
