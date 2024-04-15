@@ -121,26 +121,26 @@ impl CexPriceMap {
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
                 if quote.token0 == pair.0 {
-                    // if (quote.token0
-                    //     == reth_primitives::hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))
-                    //     && quote.exchange == CexExchange::Binance
-                    // // && pair.1
-                    // //     == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
-                    // {
-                    //     tracing::warn!("= PAIR: {:?}", pair);
-                    //     tracing::warn!("= QUOTE: {:?}", quote);
-                    // }
+                    if (quote.token0
+                        == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
+                        && quote.exchange == CexExchange::Binance
+                        && pair.1
+                            == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+                    {
+                        tracing::warn!("= PAIR: {:?}", pair);
+                        tracing::warn!("= QUOTE: {:?}", quote);
+                    }
                     quote.clone()
                 } else {
-                    // if (quote.token0
-                    //     == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
-                    //     && quote.exchange == CexExchange::Binance
-                    // // && pair.1
-                    // //     == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
-                    // {
-                    //     tracing::warn!("!= PAIR: {:?}", pair);
-                    //     tracing::warn!("!= QUOTE: {:?}", quote);
-                    // }
+                    if (quote.token0
+                        == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
+                        && quote.exchange == CexExchange::Binance
+                        && pair.1
+                            == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+                    {
+                        tracing::warn!("!= PAIR: {:?}", pair);
+                        tracing::warn!("!= QUOTE: {:?}", quote);
+                    }
                     let mut reciprocal_quote = quote.clone();
                     reciprocal_quote.inverse_price();
                     reciprocal_quote
