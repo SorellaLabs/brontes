@@ -132,7 +132,7 @@ impl CexPriceMap {
                 }
 
                 if quote.token0 != pair.0
-                    || (pair.clone().flip().0 == pair.ordered()
+                    || (pair.clone().flip() == pair.ordered()
                         && pair.clone().flip().1 == quote.token0)
                 {
                     let mut reciprocal_quote = quote.clone();
@@ -435,7 +435,8 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
         };
 
         // if pair.0 ==
-        // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")     || pair.1 == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
+        // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")     ||
+        // pair.1 == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
         // {
         //     tracing::error!("PAIR: {:?} -- PRICE: {:?}", pair, price);
         // }
