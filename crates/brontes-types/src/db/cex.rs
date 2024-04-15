@@ -120,30 +120,23 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
-                if quote.token0 == pair.0 {
-                    if (quote.token0
-                        == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
-                        && quote.exchange == CexExchange::Binance
-                        && pair.1
-                            == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
-                    {
-                        tracing::warn!("= PAIR: {:?}", pair);
-                        tracing::warn!("= QUOTE: {:?}", quote);
-                    }
-                    quote.clone()
-                } else {
-                    if (quote.token0
-                        == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
-                        && quote.exchange == CexExchange::Binance
-                        && pair.1
-                            == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
-                    {
-                        tracing::warn!("!= PAIR: {:?}", pair);
-                        tracing::warn!("!= QUOTE: {:?}", quote);
-                    }
+                let s = if quote.token0 != pair.0 && pair == &pair.ordered() { "!=" } else { "=" };
+
+                if (quote.token0
+                    == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
+                    && quote.exchange == CexExchange::Binance
+                    && pair.1 == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+                {
+                    tracing::warn!("{s} PAIR: {:?}", pair);
+                    tracing::warn!("{s} QUOTE: {:?}", quote);
+                }
+
+                if quote.token0 != pair.0 && pair == &pair.ordered() {
                     let mut reciprocal_quote = quote.clone();
                     reciprocal_quote.inverse_price();
                     reciprocal_quote
+                } else {
+                    quote.clone()
                 }
             })
     }
@@ -180,6 +173,10 @@ impl CexPriceMap {
         }
     }
 
+    // usdc/btc * btc/link = usdc/link
+
+    // if token0 != pair.0 &&
+
     /// Retrieves a CEX quote for a given token pair using an intermediary
     /// asset.
     ///
@@ -198,6 +195,8 @@ impl CexPriceMap {
             .filter_map(|&intermediary| {
                 let pair1 = Pair(intermediary, pair.1);
                 let pair2 = Pair(pair.0, intermediary);
+
+                //  1/ i * i/2
 
                 // let pair1 = Pair(pair.1, intermediary);
                 // let pair2 = Pair(intermediary, pair.0);
@@ -420,19 +419,17 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
         //     println!("QUOTE: {:?}", quote);
         // }
 
-        let price = 
-        //if pair == pair.ordered() {
-        (
+        let price = if pair == pair.ordered() {
+            (
                 Rational::try_from_float_simplest(quote.ask_price).unwrap(),
                 Rational::try_from_float_simplest(quote.bid_price).unwrap(),
             )
-        // } else {
-        //     (
-        //         Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
-        //         Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
-        //     )
-        // };
-        ;
+        } else {
+            (
+                Rational::try_from_float_simplest(1.0 / quote.ask_price).unwrap(),
+                Rational::try_from_float_simplest(1.0 / quote.bid_price).unwrap(),
+            )
+        };
 
         CexQuote { exchange: quote.exchange, timestamp: quote.timestamp, price, token0: pair.0 }
     }
