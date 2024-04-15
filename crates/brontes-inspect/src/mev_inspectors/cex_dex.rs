@@ -314,10 +314,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     .map(|cex_quote| (exchange, cex_quote.price.0, true))
                     .or_else(|| {
                         // println!("PAIR TO INTER: {:?}", pair);
-                        metadata
+                        let quo = metadata
                             .cex_quotes
-                            .get_quote_via_intermediary(&pair, &exchange)
-                            .map(|cex_quote| (exchange, cex_quote.price.0, false))
+                            .get_quote_via_intermediary(&pair, &exchange);
+
+                        if let Some(q) = quo {
+                            println!("QUOTES: {:?}", q);
+                        }
+
+                        quo.map(|cex_quote| (exchange, cex_quote.price.0, false))
                     })
                     .or_else(|| {
                         debug!(
@@ -329,9 +334,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
-        for q in &quotes {
-            println!("QUOTES: {:?}", q);
-        }
+        // for q in &quotes {
+        //     println!("QUOTES: {:?}", q);
+        // }
 
         if quotes.is_empty() {
             None
