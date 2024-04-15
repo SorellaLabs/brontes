@@ -159,7 +159,7 @@ token out '("USDC", 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48)'
 
 
 
-IN MAP: (0x2260fac5e5542a773aa44fbcfedf7c193bc2c599, 0x3472a5a71965499acd81997a54bba8d852c6e53d) -> price
+IN MAP: (0x3472a5a71965499acd81997a54bba8d852c6e53d, 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599) -> inverse price
 
 
 token in '("BADGER", 0x3472a5a71965499acd81997a54bba8d852c6e53d)'
@@ -171,6 +171,11 @@ token out '("WBTC", 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599)'
 
 
 
+IN MAP: (0x2260fac5e5542a773aa44fbcfedf7c193bc2c599, 0x40b86991c6218b36c1d19d4a2e9eb0ce3606eb48) -> price
+
+token in '("BADGER", 0x40b86991c6218b36c1d19d4a2e9eb0ce3606eb48)'
+token out '("WBTC", 0x2260fac5e5542a773aa44fbcfedf7c193bc2c599)'
+-> check token0
 
 
 
