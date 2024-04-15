@@ -6,8 +6,8 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedFlashLoan,
-        NormalizedSwap, NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedEthTransfer,
+        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
     },
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
@@ -41,11 +41,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     ) -> Self::Result {
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
-                Actions::is_flash_loan,
                 Actions::is_swap,
                 Actions::is_transfer,
                 Actions::is_eth_transfer,
-                Actions::is_batch,
+                Actions::is_nested_action,
             ]))
             .t_map(|(k, v)| {
                 (
@@ -69,6 +68,12 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                                 .map(Into::into)
                                 .collect::<Vec<_>>()
                         })
+                        .flatten_specified(
+                            Actions::try_aggregator_ref,
+                            |actions: NormalizedAggregator| {
+                                actions.child_actions.into_iter().collect::<Vec<_>>()
+                            },
+                        )
                         .collect::<Vec<_>>(),
                 )
             })
@@ -282,6 +287,7 @@ fn is_stable_pair(token_in: &str, token_out: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::hex;
+    use brontes_types::constants::USDT_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig, USDC_ADDRESS, WETH_ADDRESS},
@@ -373,5 +379,153 @@ mod tests {
             .with_gas_paid_usd(46.59);
 
         inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_seawise_resolver() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "2fcc0f54986d594aa7b89ecb475a9b8a62ad9620ab93b7463209b2e7fb58bc1c"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![
+                WETH_ADDRESS,
+                hex!("88e08adb69f2618adf1a3ff6cc43c671612d1ca4").into(),
+            ])
+            .with_expected_profit_usd(243.98)
+            .with_gas_paid_usd(41.01);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_reverting_contract() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "3cfca5f7d00b7f204f6e1bd51e6113094c9fe8abebafd4354e423aca57d93a9b"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(4.08)
+            .with_gas_paid_usd(155.64);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_more_seawise() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "e6b38e0eccb86732ea111c793de03fccb1868c3d081e217b5fdccc93ba7f426a"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(2.93)
+            .with_gas_paid_usd(22.4);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_more_reverting() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "1256d56742b69cb0a9ba4db53099b1ffa3af4d68fdc7c8da0d2436afcae215d8"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(3.87)
+            .with_gas_paid_usd(30.7);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_more_seawise_weirdness() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "739a2b975e3983e0f4c63a99ebd14a8dcd00d51c2eafc2a6ee13e507dcfa1523"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(28.06)
+            .with_gas_paid_usd(75.75);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn assert_no_mev_0x() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "bd3cccec96a23f62af9f99f185929022a048705b4e5f20c025bd5f023d10b7da"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn assert_no_mev_1inch() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "cb70044718a016a75c811209552b7af57f64b27e6a502221f96e991968accef4"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn assert_no_psm_1inch() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "dc80326e9eac837a9788652d025d5c13c87a62f495d3647e527e35714de31c86"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn assert_no_simple_tri_swap() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "ce1f462d3243bbeff016b4c6eabdfc7c6642b02b64de3de50a1a5d19cebcde1a"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }

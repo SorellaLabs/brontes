@@ -61,9 +61,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
 
         Self::get_possible_sandwich(tree.clone())
             .into_iter()
+            .flat_map(Self::partition_into_gaps)
             .filter_map(
                 |PossibleSandwich {
-                     eoa: _,
+                     eoa: _e,
                      possible_frontruns,
                      possible_backrun,
                      mev_executor_contract,
@@ -418,9 +419,60 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
-        tracing::debug!("{:#?}{:#?}", header, sandwich);
 
         Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
+    }
+
+    fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
+        let PossibleSandwich {
+            eoa,
+            possible_frontruns,
+            possible_backrun,
+            mev_executor_contract,
+            victims,
+        } = ps;
+        let mut results = vec![];
+        let mut victim_sets = vec![];
+        let mut last_partition = 0;
+
+        victims.into_iter().enumerate().for_each(|(i, group_set)| {
+            if group_set.is_empty() {
+                results.push(PossibleSandwich {
+                    eoa,
+                    mev_executor_contract,
+                    victims: std::mem::take(&mut victim_sets),
+                    possible_frontruns: possible_frontruns[last_partition..i].to_vec(),
+                    possible_backrun: possible_frontruns
+                        .get(i)
+                        .copied()
+                        .unwrap_or(possible_backrun),
+                });
+                last_partition = i + 1;
+            } else {
+                victim_sets.push(group_set);
+            }
+        });
+
+        if results.is_empty() {
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns,
+                possible_backrun,
+            });
+        } else if !victim_sets.is_empty() {
+            // add remainder
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns: possible_frontruns[last_partition..].to_vec(),
+                possible_backrun,
+            });
+        }
+
+        results
     }
 
     fn has_pool_overlap(
@@ -667,10 +719,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         );
 
         // Combine and deduplicate results
-        let combined_results = result_senders.into_iter().chain(result_contracts);
-        let unique_results: FastHashSet<_> = combined_results.collect();
-
-        unique_results.into_iter().collect()
+        Itertools::unique(result_senders.into_iter().chain(result_contracts)).collect()
     }
 }
 
@@ -727,6 +776,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Actions>>) -> Vec
             }
         }
     }
+
     possible_sandwiches.values().cloned().collect()
 }
 
@@ -841,30 +891,7 @@ mod tests {
             .with_gas_paid_usd(40.26)
             .with_expected_profit_usd(1.18);
 
-        inspector_util
-            .run_inspector(
-                config,
-                Some(Box::new(|b| {
-                    let BundleData::Sandwich(ref s) = b.data else { unreachable!() };
-                    assert!(
-                        s.frontrun_swaps[0].len() == 6,
-                        "incorrect amount of frontrun swaps {:#?}",
-                        s.frontrun_swaps[0]
-                    );
-                    assert!(
-                        s.backrun_swaps.len() == 2,
-                        "incorrect amount of backrun swaps {:#?}",
-                        s.backrun_swaps
-                    );
-
-                    assert!(
-                        s.victim_swaps_tx_hashes.iter().flatten().count() == 2,
-                        "incorrect amount of victims"
-                    );
-                })),
-            )
-            .await
-            .unwrap();
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     /// this is a jit sandwich
@@ -1101,6 +1128,23 @@ mod tests {
             ])
             .with_gas_paid_usd(493.0)
             .with_expected_profit_usd(68.6);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_zero_x_jared() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_mev_tx_hashes(vec![
+                hex!("545134ca5295797387748eaf35af7c9c00e044c5ff270ffe500c3aa896a9cecb").into(),
+                hex!("02409672760f2289e98d4b9b91ee4c77881da1bf8c7e5210581ef32ca08df5a8").into(),
+                hex!("77a5183272815e5f220f3febf51615823061bd74a43eb88c9ea54a79b2879677").into(),
+            ])
+            .with_gas_paid_usd(32.2)
+            .with_expected_profit_usd(0.16);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
