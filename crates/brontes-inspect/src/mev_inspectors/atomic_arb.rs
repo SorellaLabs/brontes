@@ -103,6 +103,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
     ) -> Option<Bundle> {
         let (swaps, transfers, eth_transfers) = data;
+        tracing::debug!("{:#?}", transfers);
         let possible_arb_type = self.is_possible_arb(&swaps)?;
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
