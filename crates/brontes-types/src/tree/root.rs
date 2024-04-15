@@ -186,11 +186,8 @@ impl<V: NormalizedAction> Root<V> {
         self.position
     }
 
-    pub fn insert(&mut self, mut node: Node, data: Vec<V>) {
-        let idx = self.data_store.add(data);
-        node.data = idx;
-
-        self.head.insert(node)
+    pub fn insert(&mut self, node: Node, data: Vec<V>) {
+        self.head.insert(node, data, &mut self.data_store);
     }
 
     pub fn collect_spans(&self, call: &TreeSearchBuilder<V>) -> Vec<Vec<V>> {

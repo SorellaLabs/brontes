@@ -438,7 +438,7 @@ impl BrontesTracingInspector {
                         prev_trace.msg_sender
                     } else {
                         tracing::error!(
-                            target: "brontes",
+                            target: "brontes::tracing",
                             ?block_number,
                             ?tx_hash,
                             "couldn't find head of delegate call for block"
