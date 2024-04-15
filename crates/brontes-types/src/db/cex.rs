@@ -120,9 +120,7 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
-                if (quote.token0 == pair.0 && pair != &pair.ordered())
-                    || (quote.token0 == pair.1 && pair == &pair.ordered())
-                {
+                if quote.token0 == pair.0 && pair != &pair.ordered() {
                     if (quote.token0
                         == reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))
                         && quote.exchange == CexExchange::Binance
