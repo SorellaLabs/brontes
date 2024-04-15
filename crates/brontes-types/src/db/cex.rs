@@ -121,13 +121,17 @@ impl CexPriceMap {
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quote| {
                 if quote.token0 == pair.0 {
-                    if quote.symbol == "BADGERBTC" && quote.exchange == CexExchange::Binance {
+                    if quote.token0 == hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+                        && quote.exchange == CexExchange::Binance
+                    {
                         println!("= PAIR: {:?}", pair);
                         println!("= QUOTE: {:?}", quote);
                     }
                     quote.clone()
                 } else {
-                    if quote.symbol == "BADGERBTC" && quote.exchange == CexExchange::Binance {
+                    if quote.token0 == hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+                        && quote.exchange == CexExchange::Binance
+                    {
                         println!("!= PAIR: {:?}", pair);
                         println!("!= QUOTE: {:?}", quote);
                     }
