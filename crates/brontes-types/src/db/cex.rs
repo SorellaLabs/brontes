@@ -530,13 +530,14 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
         };
 
         if pair.0 == WBTC_ADDRESS
-            || pair.0 == Address::from_str("0x3472A5A71965499acd81997a54BBA8D852C6E53d").unwrap()
-            || pair.1 == WBTC_ADDRESS
-            || pair.1 == Address::from_str("0x3472A5A71965499acd81997a54BBA8D852C6E53d").unwrap()
+            && pair.1 == Address::from_str("0x3472A5A71965499acd81997a54BBA8D852C6E53d").unwrap()
         {
             info!(
                 "WBTC pair: {:?}\n ask_price: {} \nbid_price: {}\n token0: {}",
-                pair, quote.ask_price, quote.bid_price, pair.0
+                pair,
+                price.0.clone().to_float(),
+                price.1.clone().to_float(),
+                pair.0
             );
         }
 
