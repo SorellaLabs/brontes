@@ -228,13 +228,14 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             tracing::error!("Filtered out possible CEX-DEX due to significant price delta.");
             tracing::error!(
                 "Price delta between CEX '{}' with price '{}' and DEX '{}' with price '{}' for \
-                 token in '{:?}' and token out '{:?}'",
+                 token in '{:?}' and token out '{:?}' - is direct: {}",
                 exchange_cex_price.0,
                 exchange_cex_price.1.to_float(),
                 swap.protocol,
                 swap.swap_rate().to_float(),
                 (&swap.token_in.inner.symbol, &swap.token_in.address),
                 (&swap.token_out.inner.symbol, &swap.token_out.address),
+                exchange_cex_price.2
             );
             return None
         }

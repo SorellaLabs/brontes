@@ -219,7 +219,7 @@ impl CexPriceMap {
                 let pair1 = Pair(intermediary, pair.1);
                 let pair2 = Pair(pair.0, intermediary);
 
-                //  1/ i * i/2
+                //  1/ i * i / 2
 
                 // let pair1 = Pair(pair.1, intermediary);
                 // let pair2 = Pair(intermediary, pair.0);
