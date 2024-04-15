@@ -119,3 +119,37 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     //     },
     // );
 }
+
+pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Actions>) {
+    tree.modify_node_if_contains_childs(
+        TreeSearchBuilder::default().with_action(Actions::is_transfer),
+        |node, data| {
+            let mut inner_transfers = Vec::new();
+            node.collect(
+                &mut inner_transfers,
+                &TreeSearchBuilder::default().with_action(Actions::is_transfer),
+                &|node| node.node.clone(),
+                data,
+            );
+
+            let this = data
+                .get_ref(node.data)
+                .unwrap()
+                .first()
+                .unwrap()
+                .clone()
+                .force_transfer();
+
+            inner_transfers.into_iter().for_each(|i_transfer| {
+                if let Some(i_data) = data.get_mut(i_transfer.data) {
+                    let f = i_data.get(0).unwrap();
+                    if let Actions::Transfer(t) = f {
+                        if this.to == t.to && this.from == t.from && this.amount == t.amount {
+                            i_data.remove(0);
+                        }
+                    }
+                }
+            });
+        },
+    );
+}
