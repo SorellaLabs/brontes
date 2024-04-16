@@ -98,8 +98,8 @@ impl DexPrices {
 pub struct DexQuotes(pub Vec<Option<FastHashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {
-    /// checks for price at the given tx index. if it isn't found, will look for
-    /// the price at all previous indexes in the block
+    /// This is done as the require tokens for our testing sets
+    /// the index to zero
     #[cfg(test)]
     pub fn price_at_or_before(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
         if pair.0 == ETH_ADDRESS {
@@ -134,6 +134,8 @@ impl DexQuotes {
         None
     }
 
+    /// checks for price at the given tx index. if it isn't found, will look for
+    /// the price at all previous indexes in the block
     #[cfg(not(test))]
     pub fn price_at_or_before(&self, mut pair: Pair, tx: usize) -> Option<DexPrices> {
         if pair.0 == ETH_ADDRESS {
