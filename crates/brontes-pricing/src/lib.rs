@@ -222,10 +222,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let pair0 = Pair(pair.0, self.quote_asset);
             let pair1 = Pair(pair.1, self.quote_asset);
 
-            if **pair.0 == alloy_primitives::hex!("a40a8f5c22e9637c0631fb48e77223d7a563c48e") {
+            if **pair.0 == alloy_primitives::hex!("17EF75AA22dD5f6C2763b8304Ab24f40eE54D48a") {
                 tracing::info!(?msg);
             }
-            if **pair.1 == alloy_primitives::hex!("a40a8f5c22e9637c0631fb48e77223d7a563c48e") {
+            if **pair.1 == alloy_primitives::hex!("17EF75AA22dD5f6C2763b8304Ab24f40eE54D48a") {
                 tracing::info!(?msg);
             }
 
