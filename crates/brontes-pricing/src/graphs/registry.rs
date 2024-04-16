@@ -55,11 +55,11 @@ impl SubGraphRegistry {
 
     pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
         self.sub_graphs
-            .get(pair)
+            .get(&pair.ordered())
             .and_then(|graph| {
-                graph
-                    .iter()
-                    .find_map(|(pair, s)| (pair == goes_through).then(|| s.extends_to()))
+                graph.iter().find_map(|(pair, s)| {
+                    (pair.ordered() == goes_through.ordered()).then(|| s.extends_to())
+                })
             })
             .flatten()
     }
@@ -83,7 +83,7 @@ impl SubGraphRegistry {
     pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
         if let Some(goes_through) = goes_through {
             self.sub_graphs
-                .get(pair)
+                .get(&pair.ordered())
                 .filter(|g| {
                     g.iter()
                         .any(|(gt, _)| gt == goes_through || goes_through.is_zero())
@@ -102,14 +102,6 @@ impl SubGraphRegistry {
             v.retain(|(gt, _)| gt != goes_through);
             !v.is_empty()
         });
-    }
-
-    // if we have more than 4 extensions, this is enough of a market outlook
-    pub fn current_pairs(&self, pair: &Pair) -> usize {
-        self.sub_graphs
-            .get(pair)
-            .map(|f| f.len())
-            .unwrap_or_default()
     }
 
     pub fn add_verified_subgraph(
@@ -139,7 +131,11 @@ impl SubGraphRegistry {
 
     fn remove_all_extensions_of(&mut self, pair: Pair) {
         self.sub_graphs.retain(|_, inner| {
-            inner.retain(|(_, g)| g.extends_to().map(|ex| ex != pair).unwrap_or(true));
+            inner.retain(|(_, g)| {
+                g.extends_to()
+                    .map(|ex| ex.ordered() != pair.ordered())
+                    .unwrap_or(true)
+            });
             !inner.is_empty()
         })
     }
@@ -153,20 +149,18 @@ impl SubGraphRegistry {
         state: &FastHashMap<Address, T>,
     ) -> Option<bool> {
         let mut requery = false;
-        self.sub_graphs
-            .get_mut(&pair.ordered())?
-            .retain_mut(|(gt, graph)| {
-                if goes_through == gt {
-                    let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
-                    // shit is disjoint
-                    if res.should_abandon {
-                        requery = true;
-                        tracing::info!(?pair, ?goes_through, "removing subgraph");
-                        return false
-                    }
+        self.sub_graphs.get_mut(&pair)?.retain_mut(|(gt, graph)| {
+            if goes_through == gt {
+                let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
+                // shit is disjoint
+                if res.should_abandon {
+                    requery = true;
+                    tracing::info!(?pair, ?goes_through, "removing subgraph");
+                    return false
                 }
-                true
-            });
+            }
+            true
+        });
 
         Some(requery)
     }
