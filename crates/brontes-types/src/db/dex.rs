@@ -119,6 +119,7 @@ impl DexQuotes {
                 pre_state:    Rational::ONE,
                 post_state:   Rational::ONE,
                 goes_through: Pair::default(),
+                is_transfer:  false,
             })
         }
 
@@ -155,6 +156,7 @@ impl DexQuotes {
                 pre_state:    Rational::ONE,
                 post_state:   Rational::ONE,
                 goes_through: Pair::default(),
+                is_transfer:  false,
             })
         }
 
