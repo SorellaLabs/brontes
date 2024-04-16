@@ -354,6 +354,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let tx_idx = msg.tx_idx;
         let block = msg.block;
         let pool = msg.get_pool_address_for_pricing();
+        let is_transfer = msg.is_transfer();
 
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
             info!(?addr, "failed to get pair for pool");
@@ -386,10 +387,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
             if !bad {
                 let price0 = DexPrices {
-                    post_state:   price0.clone(),
-                    pre_state:    price0,
+                    post_state: price0.clone(),
+                    pre_state: price0,
                     goes_through: pool_pair,
-                    is_transfer:  msg.is_transfer(),
+                    is_transfer,
                 };
                 self.store_dex_price(block, tx_idx, pair0, price0);
             }
@@ -415,10 +416,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
             if !bad {
                 let price1 = DexPrices {
-                    post_state:   price1.clone(),
-                    pre_state:    price1,
+                    post_state: price1.clone(),
+                    pre_state: price1,
                     goes_through: flipped_pool,
-                    is_transfer:  msg.is_transfer(),
+                    is_transfer,
                 };
                 self.store_dex_price(block, tx_idx, pair1, price1);
             }
@@ -429,6 +430,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let tx_idx = msg.tx_idx;
         let block = msg.block;
         let pool = msg.get_pool_address_for_pricing();
+        let is_transfer = msg.is_transfer();
         let Some(pool_pair) = msg.get_pair(self.quote_asset) else {
             error!(?addr, "failed to get pair for pool");
             self.graph_manager.update_state(addr, msg);
@@ -472,10 +474,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     tx_idx,
                     pair0,
                     DexPrices {
-                        pre_state:    price0_pre,
-                        post_state:   price0_post,
+                        pre_state: price0_pre,
+                        post_state: price0_post,
                         goes_through: pool_pair,
-                        is_transfer:  msg.is_transfer(),
+                        is_transfer,
                     },
                 );
             }
@@ -504,10 +506,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     tx_idx,
                     pair1,
                     DexPrices {
-                        pre_state:    price1_pre,
-                        post_state:   price1_post,
+                        pre_state: price1_pre,
+                        post_state: price1_post,
                         goes_through: flipped_pool,
-                        is_transfer:  msg.is_transfer(),
+                        is_transfer,
                     },
                 );
             }
