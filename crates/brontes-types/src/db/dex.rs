@@ -136,7 +136,7 @@ impl DexQuotes {
 
     /// checks for price at the given tx index. if it isn't found, will look for
     /// the price at all previous indexes in the block
-    #[cfg(not(test))]
+    #[cfg(all(not(test), not(feature = "tests")))]
     pub fn price_at(&self, mut pair: Pair, tx: usize) -> Option<DexPrices> {
         if pair.0 == ETH_ADDRESS {
             pair.0 = WETH_ADDRESS;
