@@ -26,12 +26,14 @@ use malachite::{
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
+use tracing::error;
 
 use super::raw_cex_quotes::RawCexQuotes;
 use crate::{
     constants::*,
     db::redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
     implement_table_value_codecs_with_zc,
+    normalized_actions::NormalizedSwap,
     pair::{Pair, PairRedefined},
     utils::ToFloatNearest,
     FastHashMap,
@@ -187,6 +189,7 @@ impl CexPriceMap {
         &self,
         pair: &Pair,
         exchange: &CexExchange,
+        dex_swap: &NormalizedSwap,
     ) -> Option<CexQuote> {
         let intermediaries = exchange.most_common_quote_assets();
 
@@ -214,12 +217,40 @@ impl CexPriceMap {
                         amount:    combined_amt,
                     };
 
-                    Some(combined_quote)
+                    let smaller = dex_swap.swap_rate().min(combined_quote.price.1.clone());
+                    let larger = dex_swap.swap_rate().max(combined_quote.price.1.clone());
+
+                    if smaller * Rational::from(2) < larger {
+                        error!(
+                            "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
+                             - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                             - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
+                             - Intermediary Prices:\n\
+                               * First Leg Price: {:.7}\n\
+                               * Second Leg Price: {:.7}\n\
+                             - Token Contracts:\n\
+                               * Token Out: https://etherscan.io/address/{}\n\
+                               * Intermediary: https://etherscan.io/address/{}\n\
+                               * Token In: https://etherscan.io/address/{}",
+                            dex_swap.token_out_symbol(),
+                            dex_swap.token_in_symbol(),
+                            exchange,
+                            dex_swap_rate.clone().to_float(),
+                            combined_quote.price.1.clone().to_float(),
+                            quote1.price.1.clone().to_float(),
+                            quote2.price.1.clone().to_float(),
+                            dex_swap.token_out.address,
+                            intermediary,
+                            dex_swap.token_in.address,
+                        );
+                        return None;
+
+                    } else {
+                        return Some(combined_quote);
+                    }
                 } else {
                     None
-                }
-            })
-            .max_by(|a, b| a.price.0.cmp(&b.price.0))
+                }}).max_by(|a, b| a.price.0.cmp(&b.price.0))
     }
 
     /// Retrieves a CEX quote for a given token pair directly or via an
@@ -228,9 +259,10 @@ impl CexPriceMap {
         &self,
         pair: &Pair,
         exchange: &CexExchange,
+        dex_swap: &NormalizedSwap,
     ) -> Option<CexQuote> {
         self.get_quote(pair, exchange)
-            .or_else(|| self.get_quote_via_intermediary(pair, exchange))
+            .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap))
     }
 }
 
