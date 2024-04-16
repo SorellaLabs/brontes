@@ -48,8 +48,8 @@ struct BfsArgs {
     pub removal_state: FastHashMap<Pair, FastHashSet<BadEdge>>,
 }
 
-const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
-const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 5_000;
+const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 20_000;
+const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 10_000;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
@@ -352,7 +352,7 @@ impl PairSubGraph {
         state: FastHashMap<Address, T>,
         _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
-        let result = self.run_bfs_with_liquidity_params(start, start_price, &state);
+        let result = self.run_bfs_with_liquidity_params(start, start_price, &state, true);
 
         // grab all edges below rundown threshold and remove. if disjoint, then
         // we abandon pricing for the given pair
@@ -388,7 +388,7 @@ impl PairSubGraph {
         _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
         tracing::debug!(?self.pair, "verification starting");
-        let result = self.run_bfs_with_liquidity_params(start, start_price, &state);
+        let result = self.run_bfs_with_liquidity_params(start, start_price, &state, false);
 
         tracing::debug!(?self.pair, "completed bfs with liq");
 
@@ -417,6 +417,7 @@ impl PairSubGraph {
         start: Address,
         start_price: Rational,
         state: &FastHashMap<Address, T>,
+        ignore_goes_through: bool,
     ) -> BfsArgs {
         self.bfs_with_price(
             start,
@@ -448,12 +449,14 @@ impl PairSubGraph {
                     let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                     let liq0 = prev_price.clone().reciprocal() * &t0;
 
+                    let goes_through_arg = if ignore_goes_through {
+                        true
+                    } else {
+                        self.must_go_through != pair && self.must_go_through != pair.flip()
+                    };
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
-                    if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN
-                        && self.must_go_through != pair
-                        && self.must_go_through != pair.flip()
-                    {
+                    if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN && goes_through_arg {
                         Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
                     } else {
                         let t0xt1 = &t0 * &t1;
