@@ -53,6 +53,17 @@ impl SubGraphRegistry {
         Self { sub_graphs }
     }
 
+    pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
+        self.sub_graphs
+            .get(pair)
+            .and_then(|graph| {
+                graph
+                    .iter()
+                    .find_map(|(pair, s)| (pair == goes_through).then(|| s..extends_to()))
+            })
+            .flatten()
+    }
+
     pub fn all_pairs_with_quote(&self, addr: Address) -> Vec<Pair> {
         self.sub_graphs
             .keys()

@@ -257,7 +257,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     // also remove the given subgraph from the registry
     pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
         let (start_price, start_addr) = self
-            .subgraph_verifier
+            .sub_graph_registry
             .get_subgraph_extends(&pair, &goes_through)
             .map(|jump_pair| {
                 tracing::debug!(?jump_pair);
