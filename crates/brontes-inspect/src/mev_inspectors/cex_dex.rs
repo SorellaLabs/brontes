@@ -57,7 +57,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::debug;
+use tracing::{debug, error};
 
 pub const FILTER_THRESHOLD: u64 = 20;
 
@@ -84,6 +84,10 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
         }
     }
 }
+
+// TODO: Instead of doing instantaneous highest quote on single exchange
+//TODO: Take all quotes 0 +.5 block time and weight by exchange + by best bid &
+// ask amount
 
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     type Result = Vec<Bundle>;
@@ -225,7 +229,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
         if smaller * Rational::from(2) < larger {
-            tracing::error!(
+            error!(
                 "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
                  - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
                  - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
@@ -253,7 +257,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .get_quote_direct_or_via_intermediary(
                 &Pair(swap.token_in.address, self.utils.quote),
                 &exchange_cex_price.0,
-                swap.clone(),
+                &swap,
             )?
             .price
             .0;
@@ -297,17 +301,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         swap: &NormalizedSwap,
         metadata: &Metadata,
-    ) -> Option<Vec<(CexExchange, Rational, bool)>> {
+    ) -> Option<(CexExchange, Rational)> {
         let pair = Pair(swap.token_out.address, swap.token_in.address);
-        // if pair.0 ==
-        // reth_primitives::hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599")
-        // && pair.1
-        // == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
-        // {
-        //     println!("PAIR: {:?}", pair)
-        // }
-        // && pair.1
-        //     == reth_primitives::hex!("3472a5a71965499acd81997a54bba8d852c6e53d")
 
         let quotes = self
             .cex_exchanges
@@ -316,13 +311,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 metadata
                     .cex_quotes
                     .get_quote(&pair, &exchange)
-                    .map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, true))
+                    .map(|cex_quote| (exchange, pair, cex_quote.price.0, true))
                     .or_else(|| {
-                        // println!("PAIR TO INTER: {:?}", pair);
-                        let quo = metadata
+                        metadata
                             .cex_quotes
-                            .get_quote_via_intermediary(&pair, &exchange, swap.clone())
-                            .map(|cex_quote| (exchange, cex_quote.price.0, false))
+                            .get_quote_via_intermediary(&pair, &exchange, &swap)
+                            .map(|cex_quote| (exchange, pair, cex_quote.price.0, false))
                     })
                     .or_else(|| {
                         debug!(
@@ -333,11 +327,6 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     })
             })
             .collect::<Vec<_>>();
-
-        // println!();
-        // for q in &quotes {
-        //     println!("QUOTES AFTER: {:?}", q);
-        // }
 
         if quotes.is_empty() {
             None
@@ -425,9 +414,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         possible_cex_dex: &PossibleCexDex,
         info: &TxInfo,
-        metadata: Arc<Metadata>,
     ) -> Option<BundleData> {
-        if self.is_triangular_arb(possible_cex_dex, info, metadata) {
+        if self.is_triangular_arb(possible_cex_dex) {
             return None
         }
 
@@ -453,12 +441,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     }
 
     /// Filters out triangular arbitrage
-    pub fn is_triangular_arb(
-        &self,
-        possible_cex_dex: &PossibleCexDex,
-        _tx_info: &TxInfo,
-        _metadata: Arc<Metadata>,
-    ) -> bool {
+    pub fn is_triangular_arb(&self, possible_cex_dex: &PossibleCexDex) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if possible_cex_dex.swaps.len() < 2 {
             return false
@@ -501,22 +484,12 @@ impl PossibleCexDex {
 #[derive(Debug)]
 pub struct PossibleCexDexLeg {
     pub swap:          NormalizedSwap,
-    pub possible_legs: Vec<ExchangeLeg>,
+    pub possible_legs: ExchangeLeg,
 }
 
-/// Filters the most profitable exchange to execute the arbitrage on from a set
-/// of potential exchanges for a given swap.
-impl PossibleCexDexLeg {
-    pub fn filter_most_profitable_leg(&self) -> Option<ExchangeLeg> {
-        self.possible_legs
-            .iter()
-            .max_by_key(|leg| &leg.pnl.taker_profit)
-            .cloned()
-    }
-}
 #[derive(Clone, Debug)]
 pub struct ExchangeLeg {
-    pub exchange:  CexExchange,
+    pub exchange:  Vec<CexExchange>,
     pub cex_price: Rational,
     pub pnl:       StatArbPnl,
     pub is_direct: bool,

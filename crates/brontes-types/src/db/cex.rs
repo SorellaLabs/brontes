@@ -25,7 +25,9 @@ use clickhouse::Row;
 use derive_more::Display;
 use malachite::{
     num::{
-        arithmetic::traits::ReciprocalAssign, basic::traits::One, conversion::traits::FromSciString,
+        arithmetic::traits::{Reciprocal, ReciprocalAssign},
+        basic::traits::{One, Zero},
+        conversion::traits::FromSciString,
     },
     Rational,
 };
@@ -61,7 +63,7 @@ use crate::{
 /// interpret the price in the correct direction & reciprocate the price (which
 /// is a rational) if need be.
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
-pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, CexQuote>>);
+pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>);
 
 #[derive(
     Debug, PartialEq, Clone, serde::Serialize, rSerialize, rDeserialize, Archive, Redefined,
@@ -72,11 +74,11 @@ pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, CexQuote>>
     from_source = "CexPriceMapRedefined::new(src.0)"
 )]
 pub struct CexPriceMapRedefined {
-    pub map: Vec<(CexExchange, FastHashMap<PairRedefined, CexQuoteRedefined>)>,
+    pub map: Vec<(CexExchange, FastHashMap<PairRedefined, Vec<CexQuoteRedefined>>)>,
 }
 
 impl CexPriceMapRedefined {
-    fn new(map: FastHashMap<CexExchange, FastHashMap<Pair, CexQuote>>) -> Self {
+    fn new(map: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>) -> Self {
         Self {
             map: map
                 .into_iter()
@@ -127,13 +129,42 @@ impl CexPriceMap {
         self.0
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
-            .map(|quote| {
-                if quote.token0 == pair.0 {
-                    quote.clone()
-                } else {
-                    let mut reciprocal_quote = quote.clone();
-                    reciprocal_quote.inverse_price();
-                    reciprocal_quote
+            .map(|quotes| {
+                let flip = quotes[0].token0 != pair.0;
+
+                let mut cumulative_bbo = (Rational::ZERO, Rational::ZERO);
+                let mut volume_price = (Rational::ZERO, Rational::ZERO);
+
+                for quote in quotes {
+                    if flip {
+                        let true_quote = quote.inverse_price();
+                        cumulative_bbo.0 += &true_quote.price.0;
+                        cumulative_bbo.1 += &true_quote.price.1;
+
+                        volume_price.0 += &true_quote.price.0 * &true_quote.amount.0;
+                        volume_price.1 += &true_quote.price.1 * &true_quote.amount.1;
+                    } else {
+                        cumulative_bbo.0 += &quote.price.0;
+                        cumulative_bbo.1 += &quote.price.1;
+
+                        volume_price.0 += &quote.price.0 * &quote.amount.0;
+                        volume_price.1 += &quote.price.1 * &quote.amount.1;
+                    }
+                }
+
+                let volume_weighted_ask = volume_price.0 / &cumulative_bbo.0;
+                let volume_weighted_bid = volume_price.1 / &cumulative_bbo.1;
+                let avg_amount = (
+                    &cumulative_bbo.0 / Rational::from(quotes.len()),
+                    &cumulative_bbo.1 / Rational::from(quotes.len()),
+                );
+
+                CexQuote {
+                    exchange:  *exchange,
+                    timestamp: quotes[0].timestamp,
+                    price:     (volume_weighted_ask, volume_weighted_bid),
+                    token0:    pair.0,
+                    amount:    (avg_amount.0, avg_amount.1),
                 }
             })
     }
@@ -212,10 +243,12 @@ impl CexPriceMap {
                         (&quote1.price.0 * &quote2.price.0, &quote1.price.1 * &quote2.price.1);
 
                     let normalized_bbo_amount = (
-                            (quote1.price.0 * quote1.amount.0) + (quote2.price.0 * quote2.amount.0),
-                            (quote1.price.1 * quote1.amount.1) + (quote2.price.1 * quote2.amount.1),
+                            (&quote1.price.0 * &quote1.amount.0) +
+                            (&quote2.price.0 * &quote2.amount.0),
+                            (&quote1.price.1 * &quote1.amount.1) +
+                            (&quote2.price.1 * &quote2.amount.1),
                         );
-                    
+
                     let combined_quote = CexQuote {
                             exchange:  *exchange,
                             timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
@@ -223,11 +256,10 @@ impl CexPriceMap {
                             token0:    pair.1,
                             amount:    normalized_bbo_amount,
                         };
-    
 
                     let smaller = dex_swap.swap_rate().min(combined_quote.price.1.clone());
                     let larger = dex_swap.swap_rate().max(combined_quote.price.1.clone());
-    
+
                     if smaller * Rational::from(2) < larger {
                         error!(
                             "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
@@ -243,7 +275,7 @@ impl CexPriceMap {
                             dex_swap.token_out_symbol(),
                             dex_swap.token_in_symbol(),
                             exchange,
-                            dex_swap_rate.clone().to_float(),
+                            dex_swap.swap_rate().to_float(),
                             combined_quote.price.1.clone().to_float(),
                             quote1.price.1.clone().to_float(),
                             quote2.price.1.clone().to_float(),
@@ -252,116 +284,13 @@ impl CexPriceMap {
                             dex_swap.token_in.address,
                         );
                         return None;
-    
+
                         } else {
                             return Some(combined_quote);
                         }
                     } else {
                         None
                     }})
-            .max_by(|a, b| a.price.0.cmp(&b.price.0))
-    }
-
-    pub fn gset_quote_via_intermediary(
-        &self,
-        pair: &Pair,
-        exchange: &CexExchange,
-    ) -> Option<CexQuote> {
-        let dex_swap_rate = dex_swap.swap_rate();
-        let intermediaries = exchange.most_common_quote_assets();
-
-        let combined_quotes = intermediaries
-            .iter()
-            .filter_map(|&intermediary| {
-                if pair.0 == intermediary || pair.1 == intermediary {
-                    return None;
-                }
-                let pair1 = Pair(pair.0, intermediary);
-                let pair2 = Pair(intermediary, pair.1);
-
-                if let (Some(quote1), Some(quote2)) =
-                    (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
-                {
-                    let combined_price =
-                        (&quote1.price.0 * &quote2.price.0, &quote1.price.1 * &quote2.price.1);
-
-                    let normalized_bbo_amount = (
-                        (quote1.price.0 * quote1.amount.0) + (quote2.price.0 * quote2.amount.0),
-                        (quote1.price.1 * quote1.amount.1) + (quote2.price.1 * quote2.amount.1),
-                    );
-                    let combined_quote = CexQuote {
-                        exchange:  *exchange,
-                        timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
-                        price:     combined_price,
-                        token0:    pair.0,
-                        amount:    normalized_bbo_amount,
-                    };
-
-                    // Here, we pass the intermediary along with the quotes
-                    Some((quote1, quote2, combined_quote, intermediary))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        for (quote1, quote2, combined_quote, intermediary) in &combined_quotes {
-            let smaller = dex_swap_rate.clone().min(combined_quote.price.1.clone());
-            let larger = dex_swap_rate.clone().max(combined_quote.price.1.clone());
-
-            // Only log if the CEX quote is significantly higher than the DEX swap rate
-            if smaller * Rational::from(2) < larger {
-                error!(
-                    "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
-                     - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-                     - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
-                     - Intermediary Prices:\n\
-                       * First Leg Price: {:.7}\n\
-                       * Second Leg Price: {:.7}\n\
-                     - Token Contracts:\n\
-                       * Token Out: https://etherscan.io/address/{}\n\
-                       * Intermediary: https://etherscan.io/address/{}\n\
-                       * Token In: https://etherscan.io/address/{}",
-                    dex_swap.token_out_symbol(),
-                    dex_swap.token_in_symbol(),
-                    exchange,
-                    dex_swap_rate.clone().to_float(),
-                    combined_quote.price.1.clone().to_float(),
-                    quote1.price.1.clone().to_float(),
-                    quote2.price.1.clone().to_float(),
-                    dex_swap.token_out.address,
-                    intermediary,
-                    dex_swap.token_in.address,
-                );
-                return None;
-            } /*else {
-              info!(
-                  "\n\x1b[1;32mSuccessfully calculated price via intermediary for {} - {} on {}:\x1b[0m\n\
-                   - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-                   - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
-                   - Intermediary Prices:\n\
-                     * First Leg Price: {:.6}\n\
-                     * Second Leg Price: {:.6}\n\
-                   - Token Contracts:\n\
-                     * Token In: https://etherscan.io/address/{}\n\
-                     * Intermediary: https://etherscan.io/address/{}\n\
-                     * Token Out: https://etherscan.io/address/{}",
-                  dex_swap.token_out_symbol(),
-                  dex_swap.token_in_symbol(),
-                  exchange,
-                  dex_swap_rate.clone().to_float(),
-                  combined_quote.price.1.clone().to_float(),
-                  quote1.price.1.clone().to_float(),
-                  quote2.price.1.clone().to_float(),
-                  dex_swap.token_out.address,
-                  intermediary,
-                  dex_swap.token_in.address,
-              );*/
-        }
-
-        combined_quotes
-            .into_iter()
-            .map(|(_, _, quote, _)| quote)
             .max_by(|a, b| a.price.0.cmp(&b.price.0))
     }
 
@@ -375,6 +304,15 @@ impl CexPriceMap {
     ) -> Option<CexQuote> {
         self.get_quote(pair, exchange)
             .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap))
+    }
+
+    pub fn get_volume_weighted_quote(
+        &self,
+        pair: &Pair,
+        exchanges: &[CexExchange],
+        dex_swap: &NormalizedSwap,
+    ) -> Option<CexQuote> {
+        unimplemented!()
     }
 }
 
@@ -543,12 +481,27 @@ pub enum TradeSide {
 }
 
 impl CexQuote {
-    fn inverse_price(&mut self) {
+    fn inverse_price_assign(&mut self) {
         self.price.0.reciprocal_assign();
         self.price.1.reciprocal_assign();
+
+        self.amount.0 *= &self.price.0;
+        self.amount.1 *= &self.price.0;
     }
-}
-impl CexQuote {
+
+    fn inverse_price(&self) -> Self {
+        Self {
+            exchange:  self.exchange,
+            timestamp: self.timestamp,
+            price:     (self.price.1.clone().reciprocal(), self.price.0.clone().reciprocal()),
+            token0:    self.token0,
+            amount:    (
+                &self.amount.1 * self.price.1.clone().reciprocal(),
+                &self.amount.0 * self.price.0.clone().reciprocal(),
+            ),
+        }
+    }
+
     pub fn avg(&self) -> Rational {
         (&self.price.0 + &self.price.1) / Rational::from(2)
     }

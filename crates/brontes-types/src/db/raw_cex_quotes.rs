@@ -110,11 +110,13 @@ impl CexQuotesConverter {
                         let symbol_price_map = exchange_symbol_map
                             .into_par_iter()
                             .map(|(pair, quotes)| {
-                                let best_quote =
-                                    quotes.into_par_iter().max_by_key(|q| q.timestamp).unwrap();
-                                let pair_quote = (*pair, best_quote);
-
-                                (pair.ordered(), pair_quote.into())
+                                (
+                                    pair.ordered(),
+                                    quotes
+                                        .into_iter()
+                                        .map(|quote| (*pair, quote).into())
+                                        .collect_vec(),
+                                )
                             })
                             .collect::<FastHashMap<_, _>>();
 
