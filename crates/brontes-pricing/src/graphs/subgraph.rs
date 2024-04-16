@@ -25,7 +25,7 @@ use petgraph::{
 };
 use tracing::error;
 
-use crate::{types::ProtocolState, AllPairGraph, Pair};
+use crate::{types::ProtocolState, Pair};
 
 pub struct VerificationOutcome {
     pub should_requery: bool,
@@ -48,8 +48,8 @@ struct BfsArgs {
     pub removal_state: FastHashMap<Pair, FastHashSet<BadEdge>>,
 }
 
-const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
-const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 7_000;
+const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 20_000;
+const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 12_500;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
