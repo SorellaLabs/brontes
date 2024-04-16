@@ -74,7 +74,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     mev_details: Vec<Bundle>,
 ) {
     debug!(
-        target: "brontes",
+        target: "brontes::results",
         "block details\n {}",
         block_details.to_string()
     );
