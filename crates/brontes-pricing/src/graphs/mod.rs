@@ -260,6 +260,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .subgraph_verifier
             .get_subgraph_extends(&pair, &goes_through)
             .map(|jump_pair| {
+                tracing::debug!(?jump_pair);
                 (
                     self.sub_graph_registry
                         .get_price_all(jump_pair.flip(), self.graph_state.finalized_state())
