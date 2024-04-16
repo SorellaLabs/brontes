@@ -213,7 +213,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     .add_pool(pair, pool_addr, protocol, block);
             });
 
-        tracing::debug!(block=%self.current_block,"pruning low liq subgraphs");
+        tracing::info!(block=%self.current_block,"pruning low liq subgraphs");
 
         updates.iter().for_each(|msg| {
             let Some(pair) = msg.get_pair(self.quote_asset) else { return };
