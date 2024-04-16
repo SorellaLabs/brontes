@@ -241,7 +241,7 @@ impl SubgraphVerifier {
         state_tracker: &mut StateTracker,
     ) -> Vec<VerificationResults> {
         let pairs = self.get_subgraphs(pair);
-        let res = self.verify_par(pairs, all_graph, state_tracker);
+        let res = self.verify_par(pairs, state_tracker);
 
         res.into_iter()
             .map(|(pair, block, result, subgraph)| {
@@ -386,7 +386,6 @@ impl SubgraphVerifier {
     fn verify_par(
         &self,
         pairs: Vec<(Pair, u64, bool, Subgraph, Rational, Address)>,
-        all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<(Pair, u64, VerificationOutcome, Subgraph)> {
         pairs
@@ -396,11 +395,9 @@ impl SubgraphVerifier {
                 let result = if rundown {
                     subgraph
                         .subgraph
-                        .rundown_subgraph_check(quote, price, edge_state, all_graph)
+                        .rundown_subgraph_check(quote, price, &edge_state)
                 } else {
-                    subgraph
-                        .subgraph
-                        .verify_subgraph(quote, price, edge_state, all_graph)
+                    subgraph.subgraph.verify_subgraph(quote, price, edge_state)
                 };
 
                 (pair, block, result, subgraph)

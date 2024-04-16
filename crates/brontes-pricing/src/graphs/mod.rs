@@ -18,6 +18,7 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 
+use self::subgraph::VerificationOutcome;
 pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
     subgraph_verifier::*,
@@ -250,6 +251,32 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn remove_state(&mut self, address: &Address) {
         self.graph_state.remove_state(address)
+    }
+
+    // returns true if the subgraph should be requeried. This will
+    // also remove the given subgraph from the registry
+    pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
+        let (start_price, start_addr) = self
+            .subgraph_verifier
+            .get_subgraph_extends(&pair, &goes_through)
+            .map(|jump_pair| {
+                (
+                    self.sub_graph_registry
+                        .get_price_all(jump_pair.flip(), self.graph_state.finalized_state())
+                        .unwrap_or(Rational::ONE),
+                    jump_pair.0,
+                )
+            })
+            .unwrap_or_else(|| (Rational::ONE, quote));
+        let state = self.graph_state.finalized_state();
+
+        let _ = self.sub_graph_registry.verify_current_subgraphs(
+            pair,
+            goes_through,
+            start_addr,
+            start_price,
+            state,
+        );
     }
 
     pub fn add_frayed_end_extension(

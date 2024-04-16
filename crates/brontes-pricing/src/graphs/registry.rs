@@ -10,6 +10,7 @@ use malachite::{
 };
 
 use super::{subgraph::PairSubGraph, PoolState};
+use crate::types::ProtocolState;
 
 /// Manages subgraphs in the BrontesBatchPricer module, crucial for DEX pricing.
 ///
@@ -130,6 +131,32 @@ impl SubGraphRegistry {
             inner.retain(|(_, g)| g.extends_to().map(|ex| ex != pair).unwrap_or(true));
             !inner.is_empty()
         })
+    }
+
+    pub fn verify_current_subgraphs<T: ProtocolState>(
+        &mut self,
+        pair: Pair,
+        goes_through: &Pair,
+        start: Address,
+        start_price: Rational,
+        state: &FastHashMap<Address, T>,
+    ) -> Option<bool> {
+        let mut requery = false;
+        self.sub_graphs
+            .get_mut(&pair.ordered())?
+            .retain_mut(|(gt, graph)| {
+                if goes_through == gt {
+                    let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
+                    // shit is disjoint
+                    if res.should_abandon {
+                        requery = true;
+                        return false
+                    }
+                }
+                true
+            });
+
+        Some(requery)
     }
 
     pub fn get_price(

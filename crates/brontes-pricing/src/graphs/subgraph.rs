@@ -349,8 +349,7 @@ impl PairSubGraph {
         &mut self,
         start: Address,
         start_price: Rational,
-        state: FastHashMap<Address, T>,
-        _all_pair_graph: &AllPairGraph,
+        state: &FastHashMap<Address, T>,
     ) -> VerificationOutcome {
         let result = self.run_bfs_with_liquidity_params(start, start_price, &state, true);
 
@@ -385,7 +384,6 @@ impl PairSubGraph {
         start: Address,
         start_price: Rational,
         state: FastHashMap<Address, T>,
-        _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
         tracing::debug!(?self.pair, "verification starting");
         let result = self.run_bfs_with_liquidity_params(start, start_price, &state, false);
