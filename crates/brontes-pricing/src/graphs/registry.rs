@@ -141,7 +141,6 @@ impl SubGraphRegistry {
         start_price: Rational,
         state: &FastHashMap<Address, T>,
     ) -> Option<bool> {
-        let mut requery = false;
         self.sub_graphs
             .get_mut(&pair.ordered())?
             .retain_mut(|(gt, graph)| {
@@ -150,6 +149,7 @@ impl SubGraphRegistry {
                     // shit is disjoint
                     if res.should_abandon {
                         requery = true;
+                        tracing::info!(?pair, ?goes_through, "removing subgraph");
                         return false
                     }
                 }
