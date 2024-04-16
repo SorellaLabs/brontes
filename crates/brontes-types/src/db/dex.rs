@@ -100,7 +100,7 @@ pub struct DexQuotes(pub Vec<Option<FastHashMap<Pair, DexPrices>>>);
 impl DexQuotes {
     /// This is done as the require tokens for our testing sets
     /// the index to zero
-    #[cfg(test)]
+    #[cfg(any(test, feature = "tests"))]
     pub fn price_at(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
         if pair.0 == ETH_ADDRESS {
             pair.0 = WETH_ADDRESS;
