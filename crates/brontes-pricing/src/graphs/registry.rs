@@ -158,7 +158,6 @@ impl SubGraphRegistry {
                     tracing::info!(?pair, ?goes_through, "removing subgraph");
                     return false
                 }
-                tracing::info!(?pair, ?goes_through, "keeping subgraph");
             }
             true
         });
