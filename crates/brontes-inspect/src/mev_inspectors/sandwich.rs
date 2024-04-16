@@ -240,6 +240,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                     )
                 },
             )
+            .flatten()
             .collect::<Vec<_>>()
     }
 }
@@ -249,57 +250,111 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         &self,
         tree: Arc<BlockTree<Actions>>,
         metadata: Arc<Metadata>,
-        mut possible_front_runs_info: Vec<TxInfo>,
+        possible_front_runs_info: Vec<TxInfo>,
         backrun_info: TxInfo,
         mut searcher_actions: Vec<Vec<Actions>>,
-        mut victim_info: Vec<Vec<TxInfo>>,
-        mut victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
-    ) -> Option<Bundle> {
+        victim_info: Vec<Vec<TxInfo>>,
+        victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
+    ) -> Option<Vec<Bundle>> {
         let back_run_actions = searcher_actions.pop()?;
 
-        //TODO: Check later if this method correctly identifies an incorrect middle
-        // front run that is unrelated
         if !Self::has_pool_overlap(
             &searcher_actions,
             &back_run_actions,
             &victim_actions,
             &victim_info,
         ) {
-            // if we don't satisfy a sandwich but we have more than 1 possible front run
-            // tx remaining, lets remove the false positive backrun tx and try again
+            let mut res = vec![];
+            // try different permeations
+
+            // remove from end.
             if possible_front_runs_info.len() > 1 {
                 // remove dropped sandwiches
-                victim_info.pop()?;
-                victim_actions.pop()?;
-                let back_run_info = possible_front_runs_info.pop()?;
-
-                if victim_actions
-                    .iter()
-                    .flatten()
-                    .filter_map(
-                        |(s, t)| {
-                            if s.is_empty() && t.is_empty() {
-                                None
-                            } else {
-                                Some(true)
-                            }
-                        },
-                    )
-                    .count()
-                    == 0
-                {
+                if victim_info.len() == 0 || victim_actions.len() == 0 {
                     return None
                 }
 
-                return self.calculate_sandwich(
-                    tree.clone(),
-                    metadata.clone(),
-                    possible_front_runs_info,
-                    back_run_info,
-                    searcher_actions,
-                    victim_info,
-                    victim_actions,
-                )
+                let back_shrink =
+                    {
+                        let mut victim_info = victim_info.clone();
+                        let mut victim_actions = victim_actions.clone();
+                        let mut possible_front_runs_info = possible_front_runs_info.clone();
+                        victim_info.pop()?;
+                        victim_actions.pop()?;
+                        let back_run_info = possible_front_runs_info.pop()?;
+
+                        if victim_actions
+                            .iter()
+                            .flatten()
+                            .filter_map(|(s, t)| {
+                                if s.is_empty() && t.is_empty() {
+                                    None
+                                } else {
+                                    Some(true)
+                                }
+                            })
+                            .count()
+                            == 0
+                        {
+                            return None
+                        }
+
+                        self.calculate_sandwich(
+                            tree.clone(),
+                            metadata.clone(),
+                            possible_front_runs_info,
+                            back_run_info,
+                            searcher_actions.clone(),
+                            victim_info,
+                            victim_actions,
+                        )
+                    };
+                let front_shrink =
+                    {
+                        let mut victim_info = victim_info.clone();
+                        let mut victim_actions = victim_actions.clone();
+                        let mut possible_front_runs_info = possible_front_runs_info.clone();
+                        let mut searcher_actions = searcher_actions.clone();
+                        searcher_actions.push(back_run_actions);
+
+                        victim_info.remove(0);
+                        victim_actions.remove(0);
+                        possible_front_runs_info.remove(0);
+                        searcher_actions.remove(0);
+
+                        if victim_actions
+                            .iter()
+                            .flatten()
+                            .filter_map(|(s, t)| {
+                                if s.is_empty() && t.is_empty() {
+                                    None
+                                } else {
+                                    Some(true)
+                                }
+                            })
+                            .count()
+                            == 0
+                        {
+                            return None
+                        }
+
+                        self.calculate_sandwich(
+                            tree.clone(),
+                            metadata.clone(),
+                            possible_front_runs_info,
+                            backrun_info,
+                            searcher_actions,
+                            victim_info,
+                            victim_actions,
+                        )
+                    };
+                if let Some(front) = front_shrink {
+                    res.extend(front);
+                }
+                if let Some(back) = back_shrink {
+                    res.extend(back);
+                }
+                return Some(res)
             }
 
             return None
@@ -420,7 +475,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_gas_details: backrun_info.gas_details,
         };
 
-        Some(Bundle { header, data: BundleData::Sandwich(sandwich) })
+        Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
