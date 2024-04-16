@@ -150,7 +150,7 @@ impl SubGraphRegistry {
     ) -> Option<bool> {
         let mut requery = false;
         self.sub_graphs.get_mut(&pair)?.retain_mut(|(gt, graph)| {
-            if goes_through == gt {
+            if goes_through.ordered() == gt.ordered() {
                 let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
                 // shit is disjoint
                 if res.should_abandon {
@@ -158,6 +158,7 @@ impl SubGraphRegistry {
                     tracing::info!(?pair, ?goes_through, "removing subgraph");
                     return false
                 }
+                tracing::info!(?pair, ?goes_through, "keeping subgraph");
             }
             true
         });
