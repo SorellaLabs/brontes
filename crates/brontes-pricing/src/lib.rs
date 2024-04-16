@@ -222,6 +222,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let pair0 = Pair(pair.0, self.quote_asset);
             let pair1 = Pair(pair.1, self.quote_asset);
 
+            if **pair.0 == alloy_primitives::hex!("a40a8f5c22e9637c0631fb48e77223d7a563c48e") {
+                tracing::info!(?msg);
+            }
+            if **pair.1 == alloy_primitives::hex!("a40a8f5c22e9637c0631fb48e77223d7a563c48e") {
+                tracing::info!(?msg);
+            }
+
             let gt = Some(pair).filter(|_| !is_transfer).unwrap_or_default();
             self.graph_manager
                 .prune_low_liq_subgraphs(pair0, &gt, self.quote_asset);
