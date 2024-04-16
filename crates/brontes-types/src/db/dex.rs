@@ -48,6 +48,10 @@ pub struct DexPrices {
     pub post_state:   Rational,
     /// tells us what variant of pricing for this pool we are looking at
     pub goes_through: Pair,
+    /// lets us know if this price was generated from a transfer. This allows
+    /// us to choose a swap that will have a correct goes through for the given
+    /// tx over a transfer which will be less accurate on price
+    pub is_transfer:  bool,
 }
 
 impl Display for DexPrices {

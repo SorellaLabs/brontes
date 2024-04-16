@@ -315,7 +315,15 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 let tx = q.0.get_mut(tx_idx as usize).unwrap();
 
                 if let Some(tx) = tx.as_mut() {
-                    tx.insert(pool_pair, prices);
+                    let is_transfer = prices.is_transfer;
+                    let res = tx.insert(pool_pair, prices);
+                    if is_transfer {
+                        if let Some(r) = res {
+                            if !r.is_transfer {
+                                tx.insert(pool_pair, r);
+                            }
+                        }
+                    }
                 } else {
                     let mut tx_pairs = FastHashMap::default();
                     tx_pairs.insert(pool_pair, prices);
@@ -381,6 +389,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     post_state:   price0.clone(),
                     pre_state:    price0,
                     goes_through: pool_pair,
+                    is_transfer:  msg.is_transfer(),
                 };
                 self.store_dex_price(block, tx_idx, pair0, price0);
             }
@@ -409,6 +418,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     post_state:   price1.clone(),
                     pre_state:    price1,
                     goes_through: flipped_pool,
+                    is_transfer:  msg.is_transfer(),
                 };
                 self.store_dex_price(block, tx_idx, pair1, price1);
             }
@@ -465,6 +475,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         pre_state:    price0_pre,
                         post_state:   price0_post,
                         goes_through: pool_pair,
+                        is_transfer:  msg.is_transfer(),
                     },
                 );
             }
@@ -496,6 +507,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         pre_state:    price1_pre,
                         post_state:   price1_post,
                         goes_through: flipped_pool,
+                        is_transfer:  msg.is_transfer(),
                     },
                 );
             }
