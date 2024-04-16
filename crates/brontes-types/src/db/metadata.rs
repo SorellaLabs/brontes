@@ -6,11 +6,9 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use serde_with::serde_as;
 
+use super::{builder::BuilderInfo, cex::CexPriceMap, cex_trades::CexTradeMap, dex::DexQuotes};
 #[cfg(feature = "cex-dex-markout")]
-use super::cex::CexExchange;
-#[cfg(feature = "cex-dex-markout")]
-use super::cex_trades::CexTradeMap;
-use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
+use crate::db::cex::CexExchange;
 use crate::{
     constants::WETH_ADDRESS,
     db::redefined_types::primitives::*,
@@ -59,7 +57,6 @@ pub struct Metadata {
     pub cex_quotes:     CexPriceMap,
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
-    #[cfg(feature = "cex-dex-markout")]
     pub cex_trades:     Option<CexTradeMap>,
 }
 
@@ -201,15 +198,8 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
-        #[cfg(feature = "cex-dex-markout")] cex_trades: Option<CexTradeMap>,
+        cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
-        Metadata {
-            block_metadata: self,
-            cex_quotes,
-            dex_quotes,
-            builder_info,
-            #[cfg(feature = "cex-dex-markout")]
-            cex_trades,
-        }
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades }
     }
 }

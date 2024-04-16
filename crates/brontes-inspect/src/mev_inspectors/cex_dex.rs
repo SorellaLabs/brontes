@@ -224,20 +224,23 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let smaller = swap.swap_rate().min(exchange_cex_price.1.clone());
         let larger = swap.swap_rate().max(exchange_cex_price.1.clone());
 
-        if smaller * Rational::from(3) < larger {
-            tracing::error!("Filtered out possible CEX-DEX due to significant price delta.");
+        if smaller * Rational::from(2) < larger {
             tracing::error!(
-                "Price delta between CEX '{}' with price '{}' and DEX '{}' with price '{}' for \
-                 token in '{:?}' and token out '{:?}' - is direct: {}",
+                "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
+                 - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
+                 - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
+                 - Token Contracts:\n\
+                   * Token In: https://etherscan.io/address/{}\n\
+                   * Token Out: https://etherscan.io/address/{}",
+                swap.token_in_symbol(),
+                swap.token_out_symbol(),
                 exchange_cex_price.0,
-                exchange_cex_price.1.to_float(),
-                swap.protocol,
                 swap.swap_rate().to_float(),
-                (&swap.token_in.inner.symbol, &swap.token_in.address),
-                (&swap.token_out.inner.symbol, &swap.token_out.address),
-                exchange_cex_price.2
+                exchange_cex_price.1.to_float(),
+                swap.token_in.address,
+                swap.token_out.address
             );
-            return None
+            return None;
         }
 
         // A positive delta indicates potential profit from buying on DEX
@@ -250,6 +253,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .get_quote_direct_or_via_intermediary(
                 &Pair(swap.token_in.address, self.utils.quote),
                 &exchange_cex_price.0,
+                swap.clone(),
             )?
             .price
             .0;
@@ -317,11 +321,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                         // println!("PAIR TO INTER: {:?}", pair);
                         let quo = metadata
                             .cex_quotes
-                            .get_quote_via_intermediary(&pair, &exchange);
-
-                        // println!("QUOTES INTER: {:?}", quo);
-
-                        quo.map(|cex_quote| (exchange, pair.clone(), cex_quote.price.0, false))
+                            .get_quote_via_intermediary(&pair, &exchange, swap.clone())
+                            .map(|cex_quote| (exchange, cex_quote.price.0, false))
                     })
                     .or_else(|| {
                         debug!(

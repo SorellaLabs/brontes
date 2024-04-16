@@ -357,6 +357,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
             None,
             #[cfg(feature = "cex-dex-markout")]
             trades,
+            #[cfg(not(feature = "cex-dex-markout"))]
+            None,
         ))
     }
 
@@ -389,6 +391,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 None,
                 #[cfg(feature = "cex-dex-markout")]
                 trades,
+                #[cfg(not(feature = "cex-dex-markout"))]
+                None,
             )
         })
     }
