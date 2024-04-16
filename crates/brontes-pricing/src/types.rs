@@ -8,8 +8,8 @@ use brontes_types::{
 use malachite::Rational;
 
 use crate::{
-    errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, Protocol,
-    UpdatableProtocol,
+    errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, LoadState,
+    Protocol, UpdatableProtocol,
 };
 
 pub trait ProtocolState: Debug {
@@ -167,6 +167,17 @@ impl PoolUpdate {
 
     pub fn is_transfer(&self) -> bool {
         self.action.is_transfer()
+    }
+
+    pub fn is_supported_protocol(&self) -> bool {
+        if let Actions::Swap(s) = &self.action {
+            return s.protocol.has_state_updater()
+        }
+        else if let Actions::SwapWithFee(s) = &self.action {
+            return s.protocol.has_state_updater()
+        }
+
+        return true
     }
 
     // we currently only use this in order to fetch the pair for when its new or to
