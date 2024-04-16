@@ -474,6 +474,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
+        tracing::debug!(?header, ?sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
