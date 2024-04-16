@@ -62,7 +62,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     metadata
                         .dex_quotes
                         .as_ref()?
-                        .price_at_or_before(pair, tx_position as usize)
+                        .price_at(pair, tx_position as usize)
                         .map(|price| price.get_price(at))?
                         .clone()
                 };
@@ -98,7 +98,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     .dex_quotes
                     .as_ref()
                     .and_then(|dq| {
-                        dq.price_at_or_before(pair, tx_index as usize)
+                        dq.price_at(pair, tx_index as usize)
                             .map(|price| price.get_price(at))
                     })
                     .unwrap_or_default();
@@ -163,7 +163,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             metadata
                 .dex_quotes
                 .as_ref()?
-                .price_at_or_before(pair, tx_index)?
+                .price_at(pair, tx_index)?
                 .get_price(at),
         )
     }
