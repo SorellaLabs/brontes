@@ -757,7 +757,8 @@ impl PairSubGraph {
                 let new_price = &price * local_weighted_price;
                 let token_1_priced = token_1_am * new_price.clone().reciprocal();
                 let tvl = token_0_priced + token_1_priced;
-                let next_score = &node_score + tvl.reciprocal();
+                let next_score = &node_score
+                    + std::cmp::max(Rational::ZERO, Rational::from(100_000_000_000u64) - tvl);
 
                 match scores.entry(next) {
                     Occupied(ent) => {
