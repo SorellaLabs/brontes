@@ -100,7 +100,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
 ) {
     for mev in mev_details {
         debug!(
-            target: "brontes",
+            target: "brontes::results",
             "mev details\n {}",
             mev.to_string()
         );
