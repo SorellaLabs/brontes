@@ -526,7 +526,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 possible_backrun,
             });
         }
-        tracing::debug!("{:#?}", results);
 
         results
     }
