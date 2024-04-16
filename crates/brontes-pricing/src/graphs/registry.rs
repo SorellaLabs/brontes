@@ -59,7 +59,7 @@ impl SubGraphRegistry {
             .and_then(|graph| {
                 graph
                     .iter()
-                    .find_map(|(pair, s)| (pair == goes_through).then(|| s..extends_to()))
+                    .find_map(|(pair, s)| (pair == goes_through).then(|| s.extends_to()))
             })
             .flatten()
     }
