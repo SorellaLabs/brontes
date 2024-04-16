@@ -26,11 +26,11 @@ use brontes_types::{
     BlockTree, Protocol,
 };
 use db_interfaces::{
-    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,
 };
-use futures::future::join_all;
 use serde::Deserialize;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[cfg(not(feature = "cex-dex-markout"))]
 use super::RAW_CEX_QUOTES;
@@ -49,16 +49,30 @@ use crate::{
     CompressedTable,
 };
 
-#[derive(Default)]
 pub struct Clickhouse {
     client:              ClickhouseClient<BrontesClickhouseTables>,
     cex_download_config: CexDownloadConfig,
+    buffered_insert_tx:  UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>,
 }
 
 impl Clickhouse {
-    pub fn new(config: ClickhouseConfig, cex_download_config: CexDownloadConfig) -> Self {
+    pub fn default_new(
+        buffered_insert_tx: UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>,
+    ) -> Self {
+        Self {
+            client: ClickhouseClient::new(Default::default()),
+            cex_download_config: Default::default(),
+            buffered_insert_tx,
+        }
+    }
+
+    pub fn new(
+        config: ClickhouseConfig,
+        cex_download_config: CexDownloadConfig,
+        buffered_insert_tx: UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>,
+    ) -> Self {
         let client = ClickhouseClient::new(config);
-        Self { client, cex_download_config }
+        Self { client, cex_download_config, buffered_insert_tx }
     }
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
@@ -80,9 +94,7 @@ impl Clickhouse {
     ) -> eyre::Result<()> {
         let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
 
-        self.client
-            .insert_one::<ClickhouseSearcherInfo>(&joined)
-            .await?;
+        self.buffered_insert_tx.send(vec![joined.into()])?;
 
         Ok(())
     }
@@ -94,9 +106,7 @@ impl Clickhouse {
     ) -> eyre::Result<()> {
         let joined = JoinedSearcherInfo::new_eoa(searcher_contract, searcher_info);
 
-        self.client
-            .insert_one::<ClickhouseSearcherInfo>(&joined)
-            .await?;
+        self.buffered_insert_tx.send(vec![joined.into()])?;
 
         Ok(())
     }
@@ -108,9 +118,7 @@ impl Clickhouse {
     ) -> eyre::Result<()> {
         let info = BuilderInfoWithAddress::new_with_address(builder_eoa, builder_info);
 
-        self.client
-            .insert_one::<ClickhouseBuilderInfo>(&info)
-            .await?;
+        self.buffered_insert_tx.send(vec![info.into()])?;
 
         Ok(())
     }
@@ -121,45 +129,32 @@ impl Clickhouse {
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseMevBlocks>(&block)
-            .await?;
+        self.buffered_insert_tx.send(vec![block.into()])?;
 
         let (bundle_headers, bundle_data): (Vec<_>, Vec<_>) = mev
             .into_iter()
             .map(|bundle| (bundle.header, bundle.data))
             .unzip();
 
-        self.client
-            .insert_many::<ClickhouseBundleHeader>(&bundle_headers)
-            .await?;
+        self.buffered_insert_tx
+            .send(bundle_headers.into_iter().map(Into::into).collect())?;
 
-        join_all(bundle_data.into_iter().map(|data| async move {
-            match data {
-                BundleData::Sandwich(s) => {
-                    self.client.insert_one::<ClickhouseSandwiches>(&s).await?
-                }
-                BundleData::AtomicArb(a) => {
-                    self.client.insert_one::<ClickhouseAtomicArbs>(&a).await?
-                }
-                BundleData::JitSandwich(j) => {
-                    self.client.insert_one::<ClickhouseJitSandwich>(&j).await?
-                }
-                BundleData::Jit(j) => self.client.insert_one::<ClickhouseJit>(&j).await?,
-                BundleData::CexDex(c) => self.client.insert_one::<ClickhouseCexDex>(&c).await?,
-                BundleData::Liquidation(l) => {
-                    self.client.insert_one::<ClickhouseLiquidations>(&l).await?
-                }
-                BundleData::Unknown(u) => {
-                    self.client.insert_one::<ClickhouseSearcherTx>(&u).await?
-                }
-            };
+        bundle_data
+            .into_iter()
+            .map(|data| {
+                match data {
+                    BundleData::Sandwich(s) => self.buffered_insert_tx.send(vec![s.into()])?,
+                    BundleData::AtomicArb(s) => self.buffered_insert_tx.send(vec![s.into()])?,
+                    BundleData::JitSandwich(s) => self.buffered_insert_tx.send(vec![s.into()])?,
+                    BundleData::Jit(s) => self.buffered_insert_tx.send(vec![s.into()])?,
+                    BundleData::CexDex(s) => self.buffered_insert_tx.send(vec![s.into()])?,
+                    BundleData::Liquidation(s) => self.buffered_insert_tx.send(vec![s.into()])?,
+                    BundleData::Unknown(s) => self.buffered_insert_tx.send(vec![s.into()])?,
+                };
 
-            Ok(())
-        }))
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, ClickhouseError>>()?;
+                Ok(())
+            })
+            .collect::<eyre::Result<_>>()?;
 
         Ok(())
     }
@@ -172,9 +167,8 @@ impl Clickhouse {
         if let Some(q) = quotes {
             let quotes_with_block = DexQuotesWithBlockNumber::new_with_block(block_num, q);
 
-            self.client
-                .insert_many::<ClickhouseDexPriceMapping>(&quotes_with_block)
-                .await?;
+            self.buffered_insert_tx
+                .send(quotes_with_block.into_iter().map(Into::into).collect())?;
         }
 
         Ok(())
@@ -187,7 +181,8 @@ impl Clickhouse {
             .map(|root| (root, tree.header.number).into())
             .collect::<Vec<_>>();
 
-        self.client.insert_many::<ClickhouseTree>(&roots).await?;
+        self.buffered_insert_tx
+            .send(roots.into_iter().map(Into::into).collect())?;
 
         Ok(())
     }
@@ -198,12 +193,9 @@ impl Clickhouse {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhouseTokenInfo>(&TokenInfoWithAddress {
-                address,
-                inner: TokenInfo { symbol, decimals },
-            })
-            .await?;
+        let data = TokenInfoWithAddress { address, inner: TokenInfo { symbol, decimals } };
+
+        self.buffered_insert_tx.send(vec![data.into()])?;
 
         Ok(())
     }
@@ -216,23 +208,17 @@ impl Clickhouse {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        self.client
-            .insert_one::<ClickhousePools>(&ProtocolInfoClickhouse::new(
-                block,
-                address,
-                tokens,
-                curve_lp_token,
-                classifier_name,
-            ))
-            .await?;
+        let data =
+            ProtocolInfoClickhouse::new(block, address, tokens, curve_lp_token, classifier_name);
+
+        self.buffered_insert_tx.send(vec![data.into()])?;
 
         Ok(())
     }
 
     pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        self.client
-            .insert_many::<ClickhouseTxTraces>(&traces)
-            .await?;
+        self.buffered_insert_tx
+            .send(traces.into_iter().map(Into::into).collect())?;
 
         Ok(())
     }
@@ -849,9 +835,12 @@ mod tests {
     async fn test_db_trades() {
         dotenv::dotenv().ok();
 
+        let (tx, _) = tokio::sync::mpsc::unbounded_channel();
+
         let db_client = Clickhouse {
             client:              ClickhouseClient::<BrontesClickhouseTables>::default(),
             cex_download_config: Default::default(),
+            buffered_insert_tx:  tx,
         };
 
         let db_cex_trades = db_client
@@ -903,9 +892,12 @@ mod tests {
     async fn test_db_quotes() {
         dotenv::dotenv().ok();
 
+        let (tx, _) = tokio::sync::mpsc::unbounded_channel();
+
         let db_client = Clickhouse {
             client:              ClickhouseClient::<BrontesClickhouseTables>::default(),
             cex_download_config: Default::default(),
+            buffered_insert_tx:  tx,
         };
 
         let db_cex_trades = db_client

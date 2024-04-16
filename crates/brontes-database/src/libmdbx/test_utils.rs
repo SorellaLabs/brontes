@@ -17,7 +17,8 @@ use crate::{
 };
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse() -> Clickhouse {
-    Clickhouse::default()
+    let (tx, _) = tokio::sync::mpsc::unbounded_channel();
+    Clickhouse::default_new(tx)
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
