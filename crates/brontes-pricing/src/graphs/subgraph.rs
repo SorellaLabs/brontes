@@ -757,8 +757,7 @@ impl PairSubGraph {
                 let new_price = &price * local_weighted_price;
                 let token_1_priced = token_1_am * new_price.clone().reciprocal();
                 let tvl = token_0_priced + token_1_priced;
-                let next_score = &node_score
-                    + std::cmp::max(Rational::ZERO, Rational::from(100_000_000_000u64) - tvl);
+                let next_score = &node_score + std::cmp::max(Rational::ZERO, MAX_TVL_WEIGHT - tvl);
 
                 match scores.entry(next) {
                     Occupied(ent) => {
@@ -785,6 +784,8 @@ impl PairSubGraph {
         node_price.remove(&goal)
     }
 }
+
+const MAX_TVL_WEIGHT: Rational = Rational::const_from_unsigned(100_000_000_000u64);
 
 fn add_edge(
     graph: &mut DiGraph<(), Vec<SubGraphEdge>, u16>,
