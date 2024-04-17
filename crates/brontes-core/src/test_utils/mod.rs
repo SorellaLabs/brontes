@@ -451,8 +451,7 @@ pub async fn init_trace_parser(
 
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse() -> Clickhouse {
-    let (tx, _) = tokio::sync::mpsc::unbounded_channel();
-    Clickhouse::default_new(tx)
+    Clickhouse::default()
 }
 
 #[cfg(not(feature = "local-clickhouse"))]

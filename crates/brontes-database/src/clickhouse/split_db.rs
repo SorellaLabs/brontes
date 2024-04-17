@@ -8,7 +8,6 @@ use db_interfaces::{clickhouse::client::ClickhouseClient, Database};
 use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use super::{dbms::BrontesClickhouseTableDataTypes, BrontesClickhouseTables};
 use crate::clickhouse::dbms::*;
 
 pub struct ClickhouseBuffered {
