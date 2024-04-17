@@ -1049,7 +1049,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
-        if self.completed_block > self.current_block {
+        if self.completed_block > self.current_block
+            && !self.lazy_loader.can_progress(&self.completed_block)
+        {
             return None
         }
 
