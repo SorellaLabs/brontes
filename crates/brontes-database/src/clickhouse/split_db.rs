@@ -35,19 +35,13 @@ impl ClickhouseBuffered {
     fn handle_incoming(&mut self, value: Vec<BrontesClickhouseTableDataTypes>) {
         let enum_kind = value.first().as_ref().unwrap().get_db_enum();
 
-        let entry = self
-            .value_map
-            .entry(enum_kind.clone())
-            .or_insert(Vec::new());
+        let entry = self.value_map.entry(enum_kind.clone()).or_default();
         entry.extend(value);
 
         if entry.len() >= self.buffer_size {
             let client = self.client.clone();
-            self.futs.push(Box::pin(Self::insert(
-                client,
-                entry.drain(..).collect::<Vec<_>>(),
-                enum_kind,
-            )));
+            self.futs
+                .push(Box::pin(Self::insert(client, std::mem::take(entry), enum_kind)));
         }
     }
 
