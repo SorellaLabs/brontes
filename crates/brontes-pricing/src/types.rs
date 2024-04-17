@@ -176,7 +176,7 @@ impl PoolUpdate {
             return s.protocol.has_state_updater()
         }
 
-        return true
+        true
     }
 
     // we currently only use this in order to fetch the pair for when its new or to

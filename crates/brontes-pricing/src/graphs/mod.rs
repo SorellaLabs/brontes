@@ -18,7 +18,6 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 
-use self::subgraph::VerificationOutcome;
 pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
     subgraph_verifier::*,
@@ -258,7 +257,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
         let (start_price, start_addr) = self
             .sub_graph_registry
-            .get_subgraph_extends(&pair, &goes_through)
+            .get_subgraph_extends(&pair, goes_through)
             .map(|jump_pair| {
                 tracing::debug!(?jump_pair);
                 (

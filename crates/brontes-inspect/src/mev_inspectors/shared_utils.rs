@@ -10,7 +10,6 @@ use brontes_types::{
         dex::{BlockPrice, PriceAt},
         metadata::Metadata,
     },
-    filter_map,
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
     normalized_actions::{Actions, NormalizedAggregator, NormalizedBatch, NormalizedFlashLoan},
     pair::Pair,

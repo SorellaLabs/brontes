@@ -407,7 +407,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         if possible_front_runs_info.len() > 1 {
             // remove dropped sandwiches
-            if victim_info.len() == 0 || victim_actions.len() == 0 {
+            if victim_info.is_empty() || victim_actions.is_empty() {
                 return None
             }
 
@@ -498,7 +498,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             return Some(res)
         }
 
-        return None
+        None
     }
 
     fn has_pool_overlap(
@@ -610,7 +610,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     fn check_for_overlap(
-        victim_actions: &Vec<&(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>,
+        victim_actions: &[&(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)],
         tokens: &FastHashSet<(Address, Address, bool)>,
         pools: &FastHashSet<Address>,
         is_frontrun: bool,

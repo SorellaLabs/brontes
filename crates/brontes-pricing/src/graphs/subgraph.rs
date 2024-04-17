@@ -351,7 +351,7 @@ impl PairSubGraph {
         start_price: Rational,
         state: &FastHashMap<Address, T>,
     ) -> VerificationOutcome {
-        let result = self.run_bfs_with_liquidity_params(start, start_price, &state, true);
+        let result = self.run_bfs_with_liquidity_params(start, start_price, state, true);
 
         // grab all edges below rundown threshold and remove. if disjoint, then
         // we abandon pricing for the given pair
@@ -369,7 +369,7 @@ impl PairSubGraph {
 
         self.prune_subgraph_rundown(edges);
 
-        let disjoint = self.dijkstra_path(&state, None).is_none();
+        let disjoint = self.dijkstra_path(state, None).is_none();
 
         VerificationOutcome {
             should_requery: false,
