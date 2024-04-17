@@ -57,9 +57,9 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair.ordered())
             .and_then(|graph| {
-                graph.iter().find_map(|(pair, s)| {
-                    (pair.ordered() == goes_through.ordered()).then(|| s.extends_to())
-                })
+                graph
+                    .iter()
+                    .find_map(|(inner_gt, s)| (inner_gt == goes_through).then(|| s.extends_to()))
             })
             .flatten()
     }
@@ -149,17 +149,19 @@ impl SubGraphRegistry {
         state: &FastHashMap<Address, T>,
     ) -> Option<bool> {
         let mut requery = false;
-        self.sub_graphs.get_mut(&pair)?.retain_mut(|(gt, graph)| {
-            if goes_through.ordered() == gt.ordered() {
-                let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
-                // shit is disjoint
-                if res.should_abandon {
-                    requery = true;
-                    return false
+        self.sub_graphs
+            .get_mut(&pair.ordered())?
+            .retain_mut(|(gt, graph)| {
+                if goes_through == gt {
+                    let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
+                    // shit is disjoint
+                    if res.should_abandon {
+                        requery = true;
+                        return false
+                    }
                 }
-            }
-            true
-        });
+                true
+            });
 
         Some(requery)
     }
