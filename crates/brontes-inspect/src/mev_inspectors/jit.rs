@@ -58,18 +58,27 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let searcher_actions = [frontrun_tx, backrun_tx]
                         .iter()
                         .map(|tx| {
-                            tree.clone()
-                                .collect(
-                                    tx,
-                                    TreeSearchBuilder::default().with_actions([
-                                        Actions::is_mint,
-                                        Actions::is_burn,
-                                        Actions::is_collect,
-                                    ]),
+                            self.utils
+                                .flatten_nested_actions(
+                                    tree.clone().collect(
+                                        tx,
+                                        TreeSearchBuilder::default().with_actions([
+                                            Actions::is_mint,
+                                            Actions::is_burn,
+                                            Actions::is_collect,
+                                            Actions::is_nested_action,
+                                        ]),
+                                    ),
+                                    &|actions| {
+                                        actions.is_mint()
+                                            || actions.is_burn()
+                                            || actions.is_collect()
+                                    },
                                 )
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<Vec<Actions>>>();
+
                     tracing::trace!(?frontrun_tx, ?backrun_tx, "checking if jit");
 
                     if searcher_actions.is_empty() {
@@ -95,12 +104,18 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     let victim_actions = victims
                         .iter()
                         .map(|victim| {
-                            tree.clone()
-                                .collect(
-                                    victim,
-                                    TreeSearchBuilder::default().with_action(Actions::is_swap),
+                            self.utils
+                                .flatten_nested_actions(
+                                    tree.clone().collect(
+                                        victim,
+                                        TreeSearchBuilder::default().with_actions([
+                                            Actions::is_swap,
+                                            Actions::is_nested_action,
+                                        ]),
+                                    ),
+                                    &|actions| actions.is_swap(),
                                 )
-                                .collect_vec()
+                                .collect::<Vec<_>>()
                         })
                         .collect_vec();
 

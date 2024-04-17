@@ -50,7 +50,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 (
                     k,
                     self.utils
-                        .flatten_nested_actions(v.into_iter())
+                        .flatten_nested_actions_default(v.into_iter())
                         .collect::<Vec<_>>(),
                 )
             })

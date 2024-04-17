@@ -82,7 +82,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 tree.clone()
                                     .collect_txes(&victim, search_args.clone())
                                     .t_map(|actions| {
-                                        self.utils.flatten_nested_actions(actions.into_iter())
+                                        self.utils
+                                            .flatten_nested_actions_default(actions.into_iter())
                                     }),
                                 victim,
                             )
@@ -157,7 +158,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         )
                         .map(|actions| {
                             self.utils
-                                .flatten_nested_actions(actions.into_iter())
+                                .flatten_nested_actions_default(actions.into_iter())
                                 .collect_vec()
                         })
                         .collect::<Vec<_>>();
