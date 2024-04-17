@@ -213,8 +213,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             )
         }
 
+        // if we reach this part of the code, we have found a sandwich and
+        // are now going to collect the details for the given sandwich
         let victim_swaps = victim_actions.into_iter().flatten().collect::<Vec<_>>();
-
         let back_run_swaps = back_run_actions
             .clone()
             .into_iter()
