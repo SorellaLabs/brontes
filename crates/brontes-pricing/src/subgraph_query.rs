@@ -95,8 +95,8 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     pair,
                     ignore_state,
                     100,
-                    Some(5),
-                    Duration::from_millis(69),
+                    Some(8),
+                    Duration::from_millis(120),
                     default_extends_pair.is_some(),
                     None,
                 );
