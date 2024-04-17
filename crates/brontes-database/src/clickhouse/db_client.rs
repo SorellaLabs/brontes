@@ -148,7 +148,7 @@ impl Clickhouse {
                 };
 
                 Ok(())
-            });
+            })?;
         }
 
         Ok(())
