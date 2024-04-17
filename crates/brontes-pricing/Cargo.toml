@@ -75,7 +75,9 @@ criterion = { version = "0.5", features = [
 ], optional = true }
 
 [dev-dependencies]
-pricing-test-utils = { path = "./pricing-test-utils", features = ["tests"] }
+pricing-test-utils = { path = "./pricing-test-utils", features = [
+  "tests",
+], optional = true }
 brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
@@ -91,7 +93,7 @@ eyre.workspace = true
 
 [features]
 default = []
-tests = ["criterion"]
+tests = ["criterion", "pricing-test-utils"]
 uni-v3-ticks = []
 local-reth = [
   "reth-tracing-ext/local-reth",
