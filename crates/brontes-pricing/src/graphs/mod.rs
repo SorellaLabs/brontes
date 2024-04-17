@@ -17,6 +17,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
+use tracing::info_span;
 
 pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
@@ -255,31 +256,35 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     // returns true if the subgraph should be requeried. This will
     // also remove the given subgraph from the registry
     pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
-        let state = self.graph_state.finalized_state();
-        let (start_price, start_addr) = self
-            .sub_graph_registry
-            .get_subgraph_extends(&pair, goes_through)
-            .map(|jump_pair| {
-                tracing::info!(?jump_pair);
-                (
-                    self.sub_graph_registry
-                        .get_price_all(jump_pair.flip(), state)
-                        .unwrap_or(Rational::ONE),
-                    jump_pair.0,
-                )
-            })
-            .unwrap_or_else(|| {
-                tracing::info!(?pair, ?goes_through, "default");
-                (Rational::ONE, quote)
-            });
+        let span = info_span!("verified subgraph pruning");
+        span.in_scope(|| {
+            self.sub_graph_registry.check_for_dups();
+            let state = self.graph_state.finalized_state();
+            let (start_price, start_addr) = self
+                .sub_graph_registry
+                .get_subgraph_extends(&pair, goes_through)
+                .map(|jump_pair| {
+                    tracing::info!(?jump_pair);
+                    (
+                        self.sub_graph_registry
+                            .get_price_all(jump_pair.flip(), state)
+                            .unwrap_or(Rational::ONE),
+                        jump_pair.0,
+                    )
+                })
+                .unwrap_or_else(|| {
+                    tracing::info!(?pair, ?goes_through, "default");
+                    (Rational::ONE, quote)
+                });
 
-        let _ = self.sub_graph_registry.verify_current_subgraphs(
-            pair,
-            goes_through,
-            start_addr,
-            start_price,
-            state,
-        );
+            let _ = self.sub_graph_registry.verify_current_subgraphs(
+                pair,
+                goes_through,
+                start_addr,
+                start_price,
+                state,
+            );
+        });
     }
 
     pub fn add_frayed_end_extension(

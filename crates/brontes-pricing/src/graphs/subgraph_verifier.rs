@@ -3,6 +3,7 @@ use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use tracing::info_span;
 
 use super::{
     state_tracker::StateTracker,
@@ -240,69 +241,72 @@ impl SubgraphVerifier {
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<VerificationResults> {
-        let pairs = self.get_subgraphs(pair);
-        let res = self.verify_par(pairs, state_tracker);
+        let span = info_span!("Subgraph Verifier");
+        span.in_scope(|| {
+            let pairs = self.get_subgraphs(pair);
+            let res = self.verify_par(pairs, state_tracker);
 
-        res.into_iter()
-            .map(|(pair, block, result, subgraph)| {
-                let goes_through = subgraph.subgraph.must_go_through();
-                self.store_edges_with_liq(pair, goes_through, &result.removals, all_graph);
-
-                // state that we want to be ignored on the next graph search.
-                let v = self.subgraph_verification_state.entry(pair).or_default();
-
-                let default = Default::default();
-                let state = if let Some(state) = &v.iter().find(|(p, _)| *p == goes_through) {
-                    &state.1
-                } else {
-                    v.push((goes_through, Default::default()));
-                    &default
-                };
-
-                let ignores = state.get_nodes_to_ignore();
-
-                //  all results that should be pruned from our main graph.
-                let removals = result
-                    .removals
-                    .clone()
-                    .into_iter()
-                    .filter(|(k, _)| !(ignores.contains(k)))
-                    .collect::<FastHashMap<_, _>>();
-
-                if result.should_abandon {
-                    tracing::debug!(?pair, "aborting");
-                    return VerificationResults::Abort(
-                        subgraph.subgraph.complete_pair(),
-                        subgraph.subgraph.must_go_through(),
-                        block,
-                    )
-                }
-
-                if result.should_requery {
+            res.into_iter()
+                .map(|(pair, block, result, subgraph)| {
                     let goes_through = subgraph.subgraph.must_go_through();
-                    let full_pair = subgraph.subgraph.complete_pair();
+                    self.store_edges_with_liq(pair, goes_through, &result.removals, all_graph);
 
-                    self.pending_subgraphs
-                        .entry(pair)
-                        .or_default()
-                        .push((goes_through, subgraph));
-                    // anything that was fully remove gets cached
-                    tracing::debug!(?pair, "requerying");
+                    // state that we want to be ignored on the next graph search.
+                    let v = self.subgraph_verification_state.entry(pair).or_default();
 
-                    return VerificationResults::Failed(VerificationFailed {
-                        pair,
-                        full_pair,
-                        goes_through,
-                        block,
-                        prune_state: removals,
-                        ignore_state: ignores,
-                        frayed_ends: result.frayed_ends,
-                    })
-                }
+                    let default = Default::default();
+                    let state = if let Some(state) = &v.iter().find(|(p, _)| *p == goes_through) {
+                        &state.1
+                    } else {
+                        v.push((goes_through, Default::default()));
+                        &default
+                    };
 
-                self.passed_verification(pair, block, subgraph, removals, state_tracker)
-            })
-            .collect_vec()
+                    let ignores = state.get_nodes_to_ignore();
+
+                    //  all results that should be pruned from our main graph.
+                    let removals = result
+                        .removals
+                        .clone()
+                        .into_iter()
+                        .filter(|(k, _)| !(ignores.contains(k)))
+                        .collect::<FastHashMap<_, _>>();
+
+                    if result.should_abandon {
+                        tracing::debug!(?pair, "aborting");
+                        return VerificationResults::Abort(
+                            subgraph.subgraph.complete_pair(),
+                            subgraph.subgraph.must_go_through(),
+                            block,
+                        )
+                    }
+
+                    if result.should_requery {
+                        let goes_through = subgraph.subgraph.must_go_through();
+                        let full_pair = subgraph.subgraph.complete_pair();
+
+                        self.pending_subgraphs
+                            .entry(pair)
+                            .or_default()
+                            .push((goes_through, subgraph));
+                        // anything that was fully remove gets cached
+                        tracing::debug!(?pair, "requerying");
+
+                        return VerificationResults::Failed(VerificationFailed {
+                            pair,
+                            full_pair,
+                            goes_through,
+                            block,
+                            prune_state: removals,
+                            ignore_state: ignores,
+                            frayed_ends: result.frayed_ends,
+                        })
+                    }
+
+                    self.passed_verification(pair, block, subgraph, removals, state_tracker)
+                })
+                .collect_vec()
+        })
     }
 
     fn get_subgraphs(
