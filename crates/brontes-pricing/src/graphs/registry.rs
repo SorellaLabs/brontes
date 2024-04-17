@@ -193,7 +193,7 @@ impl SubGraphRegistry {
         if let Some(next) = next {
             let next_price = self.get_price_all(next, edge_state);
             if next_price.is_none() {
-                self.remove_all_extensions_of(next);
+                // self.remove_all_extensions_of(next);
                 return None
             }
 
@@ -220,9 +220,8 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .and_then(|g| {
-                g.iter().find_map(|(gt, graph)| {
-                    (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
-                })
+                g.iter()
+                    .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph))
             })
             .map(|graph| {
                 Some((
@@ -236,6 +235,7 @@ impl SubGraphRegistry {
             // we take the average price on non-extended graphs and return the price
             // that way
             .or_else(|| {
+                tracing::debug!(?unordered_pair, ?goes_through, "trying price all");
                 Some(
                     self.get_price_all(unordered_pair, edge_state)
                         .map(|price| (None, unordered_pair, price)),
