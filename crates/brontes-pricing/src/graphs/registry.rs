@@ -65,6 +65,7 @@ impl SubGraphRegistry {
                     tracing::warn!(
                         ?pair,
                         ?extends,
+                        amount=?am,
                         "has more than one entry in the subgraph registry"
                     );
                 }
