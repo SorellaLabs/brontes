@@ -505,6 +505,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 tracing::debug!(?tx_idx, ?block, ?pair0, "failed pairs no inserts");
             }
+        } else {
+            tracing::debug!(?tx_idx, ?block, ?pair0, "fetching price failed");
         }
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
@@ -539,6 +541,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 tracing::debug!(?tx_idx, ?block, ?pair1, "failed pairs no inserts");
             }
+        } else {
+            tracing::debug!(?tx_idx, ?block, ?pair0, "fetching price failed");
         }
     }
 
