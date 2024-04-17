@@ -18,7 +18,6 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
-use reth_rpc_types::Bundle;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
