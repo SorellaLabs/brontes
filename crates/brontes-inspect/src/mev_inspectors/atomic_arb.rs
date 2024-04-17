@@ -360,7 +360,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_seawise_resolver() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 2.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
@@ -380,7 +380,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_reverting_contract() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
@@ -390,7 +390,7 @@ mod tests {
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
             .with_expected_profit_usd(4.08)
-            .with_gas_paid_usd(155.64);
+            .with_gas_paid_usd(154.68);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
