@@ -84,11 +84,13 @@ impl SubgraphVerifier {
     }
 
     pub fn is_done_block(&self, block: u64) -> bool {
-        self.pending_subgraphs
+        let cnt = self
+            .pending_subgraphs
             .values()
             .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
-            .count()
-            == 0
+            .count();
+        tracing::debug!(?cnt ?block);
+        cnt == 0
     }
 
     pub fn all_pairs(&self) -> Vec<Pair> {
