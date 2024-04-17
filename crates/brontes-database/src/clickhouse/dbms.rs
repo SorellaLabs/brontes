@@ -158,3 +158,55 @@ remote_clickhouse_table!(
     TransactionRoot,
     "crates/brontes-database/src/clickhouse/tables/"
 );
+
+macro_rules! db_types {
+    ($(($db_type:ident, $db_table:ident)),*) => {
+        #[derive(Debug, Clone, serde::Serialize)]
+        #[serde(untagged)]
+        pub enum BrontesClickhouseTableDataTypes {
+            $(
+                $db_type($db_type),
+            )*
+        }
+
+        paste::paste! {
+            impl BrontesClickhouseTableDataTypes {
+                pub fn get_db_enum(&self) -> BrontesClickhouseTables {
+                    match self {
+                        $(
+                            BrontesClickhouseTableDataTypes::$db_type(_) => BrontesClickhouseTables::[<Clickhouse $db_table>],
+                        )*
+                    }
+                }
+            }
+        }
+
+        $(
+            impl From<$db_type> for BrontesClickhouseTableDataTypes {
+                fn from(value: $db_type) -> BrontesClickhouseTableDataTypes {
+                    BrontesClickhouseTableDataTypes::$db_type(value)
+                }
+            }
+
+        )*
+    };
+}
+
+db_types!(
+    (TxTrace, TxTraces),
+    (DexQuotesWithBlockNumber, DexPriceMapping),
+    (MevBlock, MevBlocks),
+    (BundleHeader, BundleHeader),
+    (SearcherTx, SearcherTx),
+    (JoinedSearcherInfo, SearcherInfo),
+    (CexDex, CexDex),
+    (Liquidation, Liquidations),
+    (JitLiquiditySandwich, JitSandwich),
+    (JitLiquidity, Jit),
+    (Sandwich, Sandwiches),
+    (AtomicArb, AtomicArbs),
+    (TokenInfoWithAddress, TokenInfo),
+    (ProtocolInfoClickhouse, Pools),
+    (BuilderInfoWithAddress, BuilderInfo),
+    (TransactionRoot, Tree)
+);
