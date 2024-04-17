@@ -7,7 +7,7 @@ use std::{
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, MevType, Sandwich},
+    mev::{Bundle, BundleData, MevType, Sandwich, VictimLossAmount},
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedSwap, NormalizedTransfer,
     },
@@ -18,6 +18,7 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
+use reth_rpc_types::Bundle;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
@@ -334,6 +335,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!(?header, ?sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
+    }
+
+    fn generate_victim_loss_amounts() -> Vec<VictimLossAmount> {
+        vec![]
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {

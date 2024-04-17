@@ -57,7 +57,7 @@ impl SubGraphRegistry {
         self.sub_graphs
             .iter()
             .flat_map(|(a, v)| v.into_iter().zip(vec![a].into_iter().cycle()))
-            .map(|(inner, out)| (*out, inner.0))
+            .map(|(inner, out)| (out.ordered(), inner.0))
             .counts()
             .iter()
             .for_each(|((pair, extends), am)| {
