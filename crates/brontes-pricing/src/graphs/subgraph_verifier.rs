@@ -60,7 +60,7 @@ impl SubgraphVerifier {
 
     pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
         self.pending_subgraphs
-            .get(pair)
+            .get(&pair.ordered())
             .and_then(|graph| {
                 graph
                     .iter()
@@ -72,11 +72,11 @@ impl SubgraphVerifier {
     pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
         if let Some(goes_through) = goes_through {
             self.pending_subgraphs
-                .get(pair)
+                .get(&pair.ordered())
                 .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
                 .unwrap_or(false)
         } else {
-            self.pending_subgraphs.contains_key(pair)
+            self.pending_subgraphs.contains_key(&pair.ordered())
         }
     }
 
@@ -93,14 +93,14 @@ impl SubgraphVerifier {
 
     pub fn is_verifying(&self, pair: &Pair, goes_through: &Pair) -> bool {
         self.pending_subgraphs
-            .get(pair)
+            .get(&pair.ordered())
             .and_then(|a| a.iter().find(|(p, _)| p == goes_through))
             .is_some()
     }
 
     pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: &Pair) {
         self.subgraph_verification_state.retain(|k, v| {
-            if *k != pair {
+            if *k != pair.ordered() {
                 return true
             }
 
@@ -109,7 +109,7 @@ impl SubgraphVerifier {
         });
 
         self.pending_subgraphs.retain(|k, v| {
-            if *k != pair {
+            if *k != pair.ordered() {
                 return true
             }
             v.retain(|(k, _)| k != goes_through);
@@ -128,29 +128,32 @@ impl SubgraphVerifier {
         path: Vec<SubGraphEdge>,
         state_tracker: &StateTracker,
     ) -> Vec<PoolPairInfoDirection> {
-        let query_state = state_tracker.missing_state(block, &path);
-
-        let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
         // if we find a subgraph that is the same, we return.
         if self
             .pending_subgraphs
-            .get(&pair)
+            .get(&pair.ordered())
             .and_then(|v| v.iter().find(|(p, _)| *p == goes_through))
             .is_some()
         {
             return vec![]
         };
 
-        self.pending_subgraphs.entry(pair).or_default().push((
-            goes_through,
-            Subgraph {
-                subgraph,
-                frayed_end_extensions: FastHashMap::default(),
-                id: 0,
-                in_rundown: false,
-                iters: 0,
-            },
-        ));
+        let query_state = state_tracker.missing_state(block, &path);
+        let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
+
+        self.pending_subgraphs
+            .entry(pair.ordered())
+            .or_default()
+            .push((
+                goes_through,
+                Subgraph {
+                    subgraph,
+                    frayed_end_extensions: FastHashMap::default(),
+                    id: 0,
+                    in_rundown: false,
+                    iters: 0,
+                },
+            ));
 
         query_state
     }
@@ -161,7 +164,7 @@ impl SubgraphVerifier {
         goes_through: &Pair,
     ) -> Option<Vec<Pair>> {
         self.pending_subgraphs
-            .get_mut(&pair)?
+            .get_mut(&pair.ordered())?
             .iter_mut()
             .find(|(p, _)| p == goes_through)?
             .1
@@ -169,7 +172,7 @@ impl SubgraphVerifier {
 
         let state = &self
             .subgraph_verification_state
-            .get_mut(&pair)?
+            .get_mut(&pair.ordered())?
             .iter_mut()
             .find(|(p, _)| p == goes_through)?
             .1;
@@ -201,7 +204,10 @@ impl SubgraphVerifier {
             .flatten()
             .for_each(|edge| {
                 // cache all edges that have been completey removed
-                let entry = self.subgraph_verification_state.entry(pair).or_default();
+                let entry = self
+                    .subgraph_verification_state
+                    .entry(pair.ordered())
+                    .or_default();
 
                 if let Some(state) = entry.iter_mut().find(|(p, _)| *p == goes_through) {
                     state.1.add_edge_with_liq(edge.pair.0, edge.clone());
@@ -226,7 +232,7 @@ impl SubgraphVerifier {
         Some((
             state_tracker.missing_state(block, &frayed_end_extensions),
             self.pending_subgraphs
-                .get_mut(&pair)?
+                .get_mut(&pair.ordered())?
                 .iter_mut()
                 .find(|(p, _)| p == goes_through)?
                 .1
@@ -319,20 +325,22 @@ impl SubgraphVerifier {
                     pair,
                     block,
                     frayed,
-                    self.pending_subgraphs.get_mut(&pair).and_then(|inner| {
-                        let mut idx = None;
-                        for (i, (pair, _)) in inner.iter().enumerate() {
-                            if pair == &goes_through {
-                                idx = Some(i);
-                                break
+                    self.pending_subgraphs
+                        .get_mut(&pair.ordered())
+                        .and_then(|inner| {
+                            let mut idx = None;
+                            for (i, (pair, _)) in inner.iter().enumerate() {
+                                if pair == &goes_through {
+                                    idx = Some(i);
+                                    break
+                                }
                             }
-                        }
 
-                        if let Some(idx) = idx {
-                            return Some(inner.remove(idx))
-                        }
-                        None
-                    }),
+                            if let Some(idx) = idx {
+                                return Some(inner.remove(idx))
+                            }
+                            None
+                        }),
                     price,
                     quote,
                 )
@@ -350,7 +358,7 @@ impl SubgraphVerifier {
                     if subgraph.in_rundown {
                         let state = &self
                             .subgraph_verification_state
-                            .get(&pair)
+                            .get(&pair.ordered())
                             .unwrap()
                             .iter()
                             .find(|(p, _)| *p == goes_through)
@@ -420,7 +428,7 @@ impl SubgraphVerifier {
         let goes_through = subgraph.subgraph.must_go_through();
 
         self.subgraph_verification_state.retain(|k, v| {
-            if *k != pair {
+            if *k != pair.ordered() {
                 return true
             }
 
