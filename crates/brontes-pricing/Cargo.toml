@@ -75,7 +75,7 @@ criterion = { version = "0.5", features = [
 ], optional = true }
 
 [dev-dependencies]
-pricing-test-utils = { path = "./pricing-test-utils", features = ["tests"] }
+pricing-test-utils = { path = "./pricing-test-utils" }
 brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
