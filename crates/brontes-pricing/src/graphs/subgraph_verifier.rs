@@ -89,7 +89,7 @@ impl SubgraphVerifier {
             .values()
             .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
             .count();
-        tracing::debug!(?cnt ?block);
+        tracing::debug!(?cnt, ?block);
         cnt == 0
     }
 
