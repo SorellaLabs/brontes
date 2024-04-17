@@ -256,8 +256,9 @@ impl SubGraphRegistry {
         self.sub_graphs.get(&pair).and_then(|f| {
             let mut cnt = Rational::ZERO;
             let mut acc = Rational::ZERO;
-            for (_, graph) in f {
+            for (p, graph) in f {
                 if graph.extends_to().is_some() {
+                    tracing::debug!(extends=?p,"price all etends_to is some");
                     continue
                 };
                 let Some(next) = graph.fetch_price(edge_state, None) else {
