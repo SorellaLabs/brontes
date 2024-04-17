@@ -200,7 +200,7 @@ impl SubGraphRegistry {
         if let Some(next) = next {
             let next_price = self.get_price_all(next, edge_state);
             if next_price.is_none() {
-                // self.remove_all_extensions_of(next);
+                self.remove_all_extensions_of(next);
                 return None
             }
 
