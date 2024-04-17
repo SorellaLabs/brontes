@@ -507,6 +507,19 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             }
         } else {
             tracing::debug!(?tx_idx, ?block, ?pair0, "fetching price failed");
+            if self
+                .graph_manager
+                .subgraph_verifier
+                .is_verifying(&pair0, &pool_pair)
+            {
+                tracing::debug!(
+                    ?tx_idx,
+                    ?block,
+                    ?pair0,
+                    ?pool_pair,
+                    "pair is currently being verified"
+                );
+            }
         }
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
@@ -542,7 +555,20 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 tracing::debug!(?tx_idx, ?block, ?pair1, "failed pairs no inserts");
             }
         } else {
-            tracing::debug!(?tx_idx, ?block, ?pair0, "fetching price failed");
+            tracing::debug!(?tx_idx, ?block, ?pair1, "fetching price failed");
+            if self
+                .graph_manager
+                .subgraph_verifier
+                .is_verifying(&pair1, &flipped_pool)
+            {
+                tracing::debug!(
+                    ?tx_idx,
+                    ?block,
+                    ?pair1,
+                    ?flipped_pool,
+                    "pair is currently being verified"
+                );
+            }
         }
     }
 
@@ -1049,9 +1075,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     }
 
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
-        if self.completed_block > self.current_block
-            && !self.lazy_loader.can_progress(&self.completed_block)
-        {
+        if self.completed_block > self.current_block {
             return None
         }
 

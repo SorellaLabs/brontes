@@ -78,7 +78,7 @@ impl SubgraphVerifier {
 
     pub fn current_pairs(&self, pair: &Pair) -> usize {
         self.pending_subgraphs
-            .get(pair)
+            .get(&pair.ordered())
             .map(|f| f.len())
             .unwrap_or_default()
     }

@@ -56,7 +56,7 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
     /// deals with the verification process of our subgraphs
-    subgraph_verifier:  SubgraphVerifier,
+    pub(crate) subgraph_verifier:  SubgraphVerifier,
     /// tracks all state needed for our subgraphs
     graph_state:        StateTracker,
     #[allow(dead_code)] // we don't db on tests which causes dead code
