@@ -136,22 +136,19 @@ impl Clickhouse {
 
             tx.send(bundle_headers.into_iter().map(Into::into).collect())?;
 
-            bundle_data
-                .into_iter()
-                .map(|data| {
-                    match data {
-                        BundleData::Sandwich(s) => tx.send(vec![s.into()])?,
-                        BundleData::AtomicArb(s) => tx.send(vec![s.into()])?,
-                        BundleData::JitSandwich(s) => tx.send(vec![s.into()])?,
-                        BundleData::Jit(s) => tx.send(vec![s.into()])?,
-                        BundleData::CexDex(s) => tx.send(vec![s.into()])?,
-                        BundleData::Liquidation(s) => tx.send(vec![s.into()])?,
-                        BundleData::Unknown(s) => tx.send(vec![s.into()])?,
-                    };
+            bundle_data.into_iter().try_for_each(|data| {
+                match data {
+                    BundleData::Sandwich(s) => tx.send(vec![s.into()])?,
+                    BundleData::AtomicArb(s) => tx.send(vec![s.into()])?,
+                    BundleData::JitSandwich(s) => tx.send(vec![s.into()])?,
+                    BundleData::Jit(s) => tx.send(vec![s.into()])?,
+                    BundleData::CexDex(s) => tx.send(vec![s.into()])?,
+                    BundleData::Liquidation(s) => tx.send(vec![s.into()])?,
+                    BundleData::Unknown(s) => tx.send(vec![s.into()])?,
+                };
 
-                    Ok(())
-                })
-                .collect::<eyre::Result<_>>()?;
+                Ok(())
+            });
         }
 
         Ok(())
