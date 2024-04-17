@@ -60,12 +60,12 @@ rkyv.workspace = true
 dashmap = "5.5.3"
 
 criterion = { version = "0.5", features = ["async", "async_tokio"] }
-brontes-pricing = { workspace = true }
-brontes-core = { workspace = true }
-brontes-database = { workspace = true }
-brontes-classifier = { workspace = true }
-brontes-types = { workspace = true }
-reth-tracing-ext = { workspace = true }
+brontes-pricing = { workspace = true, features = ["tests"] }
+brontes-core = { workspace = true, features = ["tests"] }
+brontes-database = { workspace = true, features = ["tests"] }
+brontes-classifier = { workspace = true, features = ["tests"] }
+brontes-types = { workspace = true, features = ["tests"] }
+reth-tracing-ext = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
@@ -75,14 +75,6 @@ eyre.workspace = true
 [features]
 default = []
 uni-v3-ticks = []
-tests = [
-  "reth-tracing-ext/tests",
-  "brontes-types/tests",
-  "brontes-core/tests",
-  "brontes-classifier/tests",
-  "brontes-database/tests",
-  "brontes-pricing/tests",
-]
 local-reth = [
   "reth-tracing-ext/local-reth",
   "brontes-types/local-reth",
