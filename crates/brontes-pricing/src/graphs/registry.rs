@@ -220,6 +220,7 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .and_then(|g| {
+                tracing::debug!(?unordered_pair, "has subgraph");
                 g.iter()
                     .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph))
             })
