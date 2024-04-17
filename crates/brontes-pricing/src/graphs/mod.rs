@@ -52,16 +52,16 @@ use crate::{types::PoolState, Protocol};
 /// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
 ///   state for the generated subgraphs.
 pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
-    all_pair_graph:     AllPairGraph,
+    all_pair_graph: AllPairGraph,
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
     /// deals with the verification process of our subgraphs
-    pub(crate) subgraph_verifier:  SubgraphVerifier,
+    pub(crate) subgraph_verifier: SubgraphVerifier,
     /// tracks all state needed for our subgraphs
-    graph_state:        StateTracker,
+    graph_state: StateTracker,
     #[allow(dead_code)] // we don't db on tests which causes dead code
     /// allows us to save a load subgraphs.
-    db:                 &'static DB,
+    db: &'static DB,
 }
 
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {

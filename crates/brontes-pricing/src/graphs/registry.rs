@@ -227,7 +227,6 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .and_then(|g| {
-                tracing::debug!(?unordered_pair, "has subgraph");
                 g.iter()
                     .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph))
             })
@@ -243,7 +242,6 @@ impl SubGraphRegistry {
             // we take the average price on non-extended graphs and return the price
             // that way
             .or_else(|| {
-                tracing::debug!(?unordered_pair, ?goes_through, "trying price all");
                 Some(
                     self.get_price_all(unordered_pair, edge_state)
                         .map(|price| (None, unordered_pair, price)),
@@ -263,9 +261,8 @@ impl SubGraphRegistry {
         self.sub_graphs.get(&pair).and_then(|f| {
             let mut cnt = Rational::ZERO;
             let mut acc = Rational::ZERO;
-            for (p, graph) in f {
+            for (_, graph) in f {
                 if graph.extends_to().is_some() {
-                    tracing::debug!(extends=?p,"price all etends_to is some");
                     continue
                 };
                 let Some(next) = graph.fetch_price(edge_state, None) else {

@@ -506,7 +506,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 tracing::debug!(?tx_idx, ?block, ?pair0, "failed pairs no inserts");
             }
         } else {
-            tracing::debug!(?tx_idx, ?block, ?pair0, "fetching price failed");
             if self
                 .graph_manager
                 .subgraph_verifier
@@ -555,7 +554,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 tracing::debug!(?tx_idx, ?block, ?pair1, "failed pairs no inserts");
             }
         } else {
-            tracing::debug!(?tx_idx, ?block, ?pair1, "fetching price failed");
             if self
                 .graph_manager
                 .subgraph_verifier
