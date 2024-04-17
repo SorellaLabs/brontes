@@ -3,7 +3,7 @@ use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tracing::info_span;
+use tracing::{error_span, info_span};
 
 use super::{
     state_tracker::StateTracker,
@@ -241,7 +241,7 @@ impl SubgraphVerifier {
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<VerificationResults> {
-        let span = info_span!("Subgraph Verifier");
+        let span = error_span!("Subgraph Verifier");
         span.in_scope(|| {
             let pairs = self.get_subgraphs(pair);
             let res = self.verify_par(pairs, state_tracker);

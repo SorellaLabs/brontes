@@ -17,7 +17,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
-use tracing::info_span;
+use tracing::{error_span, info_span};
 
 pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
@@ -256,7 +256,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     // returns true if the subgraph should be requeried. This will
     // also remove the given subgraph from the registry
     pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
-        let span = info_span!("verified subgraph pruning");
+        let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
             self.sub_graph_registry.check_for_dups();
             let state = self.graph_state.finalized_state();
