@@ -84,12 +84,11 @@ impl SubgraphVerifier {
     }
 
     pub fn is_done_block(&self, block: u64) -> bool {
-        let cnt = self.pending_subgraphs
+        self.pending_subgraphs
             .values()
             .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
-            .count();
-        tracing::debug!(?block, ?cnt);
-            cnt == 0
+            .count()
+            == 0
     }
 
     pub fn all_pairs(&self) -> Vec<Pair> {
@@ -264,7 +263,10 @@ impl SubgraphVerifier {
                     self.store_edges_with_liq(pair, goes_through, &result.removals, all_graph);
 
                     // state that we want to be ignored on the next graph search.
-                    let v = self.subgraph_verification_state.entry(pair.ordered()).or_default();
+                    let v = self
+                        .subgraph_verification_state
+                        .entry(pair.ordered())
+                        .or_default();
 
                     let default = Default::default();
                     let state = if let Some(state) = &v.iter().find(|(p, _)| *p == goes_through) {
@@ -333,6 +335,10 @@ impl SubgraphVerifier {
                     frayed,
                     self.pending_subgraphs
                         .get_mut(&pair.ordered())
+                        .or_else(|| {
+                            tracing::debug!(?pair, ?goes_through, "not found in pending subgraphs");
+                            None
+                        })
                         .and_then(|inner| {
                             let mut idx = None;
                             for (i, (pair, _)) in inner.iter().enumerate() {
