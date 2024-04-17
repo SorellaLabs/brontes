@@ -255,20 +255,20 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     // returns true if the subgraph should be requeried. This will
     // also remove the given subgraph from the registry
     pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
+        let state = self.graph_state.finalized_state();
         let (start_price, start_addr) = self
             .sub_graph_registry
             .get_subgraph_extends(&pair, goes_through)
             .map(|jump_pair| {
-                tracing::debug!(?jump_pair);
+                tracing::info!(?jump_pair);
                 (
                     self.sub_graph_registry
-                        .get_price_all(jump_pair.flip(), self.graph_state.finalized_state())
+                        .get_price_all(jump_pair.flip(), state)
                         .unwrap_or(Rational::ONE),
                     jump_pair.0,
                 )
             })
             .unwrap_or_else(|| (Rational::ONE, quote));
-        let state = self.graph_state.finalized_state();
 
         let _ = self.sub_graph_registry.verify_current_subgraphs(
             pair,
