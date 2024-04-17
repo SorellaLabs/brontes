@@ -775,7 +775,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn rundown(&mut self, pair: Pair, complete_pair: Pair, goes_through: Pair, block: u64) {
         let Some(ignores) = self
             .graph_manager
-            .verify_subgraph_on_new_path_failure(pair, &goes_through)
+            .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
         else {
                 tracing::info!("verify subgraph on new path failure failed");
             return;
@@ -903,9 +903,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         frayed_ext: bool,
     ) -> Option<(Option<u64>, bool, bool)> {
         let (needed_state, id, force_rundown) = if frayed_ext {
-            let (need, id, force_rundown) =
-                self.graph_manager
-                    .add_frayed_end_extension(pair, &goes_through, block, edges)?;
+            let (need, id, force_rundown) = self.graph_manager.add_frayed_end_extension(
+                complete_pair,
+                &goes_through,
+                block,
+                edges,
+            )?;
             (need, Some(id), force_rundown)
         } else {
             (
@@ -938,7 +941,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
             if !is_lazy_loading {
                 self.lazy_loader.lazy_load_exchange(
-                    pair,
+                    complete_pair,
                     Pair(pool_info.token_0, pool_info.token_1),
                     goes_through,
                     complete_pair,
@@ -953,7 +956,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     block,
                     id,
                     pool_info.pool_addr,
-                    pair,
+                    complete_pair,
                     goes_through,
                 );
                 triggered = true;
