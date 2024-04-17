@@ -216,6 +216,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             )
         }
 
+        let victim_loss_amounts = self.generate_victim_loss_amount(
+            metadata.clone(),
+            &searcher_actions,
+            &back_run_actions,
+            &victim_actions,
+            &victim_info,
+        );
+
         // if we reach this part of the code, we have found a sandwich and
         // are now going to collect the details for the given sandwich
         let victim_swaps = victim_actions.into_iter().flatten().collect::<Vec<_>>();
@@ -334,6 +342,18 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!(?header, ?sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
+    }
+
+    /// Calculates the amount of
+    fn generate_victim_loss_amount(
+        &self,
+        metadata: Arc<Metadata>,
+        front_run_swaps: &[Vec<Actions>],
+        back_run_swaps: &[Actions],
+        victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
+        victim_info: &[Vec<TxInfo>],
+    ) -> Vec<Vec<Vec<VictimLossAmount>>> {
+        vec![]
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {

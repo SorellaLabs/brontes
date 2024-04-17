@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 
 use super::{
@@ -26,7 +24,7 @@ pub struct RawCexTrades {
 
 pub struct CexTradesConverter {
     pub block_times: Vec<CexBlockTimes>,
-    pub symbols:     HashMap<(CexExchange, String), CexSymbols>,
+    pub symbols:     FastHashMap<(CexExchange, String), CexSymbols>,
     pub trades:      Vec<RawCexTrades>,
 }
 
@@ -40,7 +38,7 @@ impl CexTradesConverter {
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
-            .collect::<HashMap<_, _>>();
+            .collect::<FastHashMap<_, _>>();
 
         let trades = trades
             .into_iter()
@@ -59,18 +57,16 @@ impl CexTradesConverter {
     }
 
     pub fn convert_to_trades(self) -> Vec<(u64, CexTradeMap)> {
-        let mut block_num_map = HashMap::new();
+        let mut block_num_map = FastHashMap::default();
 
         self.trades
-            .into_par_iter()
+            .into_iter()
             .filter_map(|t| {
                 self.block_times
-                    .par_iter()
-                    .find_any(|b| t.timestamp >= b.start_timestamp && t.timestamp < b.end_timestamp)
+                    .iter()
+                    .find(|b| t.timestamp >= b.start_timestamp && t.timestamp < b.end_timestamp)
                     .map(|block_time| (block_time.block_number, t))
             })
-            .collect::<Vec<_>>()
-            .into_iter()
             .for_each(|(block_num, trade)| {
                 block_num_map
                     .entry(block_num)
@@ -81,7 +77,7 @@ impl CexTradesConverter {
         block_num_map
             .into_par_iter()
             .map(|(block_num, trades)| {
-                let mut exchange_map = HashMap::new();
+                let mut exchange_map = FastHashMap::default();
 
                 trades.into_iter().for_each(|trade| {
                     exchange_map
@@ -91,7 +87,7 @@ impl CexTradesConverter {
                 });
 
                 let cex_price_map = exchange_map
-                    .into_par_iter()
+                    .into_iter()
                     .map(|(exch, trades)| {
                         let mut exchange_symbol_map = FastHashMap::default();
 

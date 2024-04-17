@@ -89,12 +89,14 @@ pub struct Sandwich {
     pub backrun_gas_details:      GasDetails,
 }
 
+/// calcuation for the loss per user
 #[derive(Debug, Deserialize, PartialEq, Clone, Default)]
 pub struct VictimLossAmount {
     pub tx_hash:           B256,
     pub vicitim_eoa:       Address,
     pub token:             TokenInfoWithAddress,
     pub token_amount_lost: Rational,
+    /// is zero if we don't have a price for the given token
     pub amount_lost_usd:   Rational,
 }
 

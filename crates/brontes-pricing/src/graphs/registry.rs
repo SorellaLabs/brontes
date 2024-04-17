@@ -58,7 +58,7 @@ impl SubGraphRegistry {
     pub fn check_for_dups(&self) {
         self.sub_graphs
             .iter()
-            .flat_map(|(a, v)| v.into_iter().zip(vec![a].into_iter().cycle()))
+            .flat_map(|(a, v)| v.iter().zip(vec![a].into_iter().cycle()))
             .map(|(inner, out)| (out.ordered(), inner.0))
             .counts()
             .iter()
