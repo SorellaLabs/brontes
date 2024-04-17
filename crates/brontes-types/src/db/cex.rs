@@ -17,12 +17,13 @@ use std::{
     fmt,
     fmt::{Display, Formatter},
     ops::MulAssign,
-    str::FromStr,
+    //str::FromStr,
 };
 
 use alloy_primitives::Address;
 use clickhouse::Row;
 use derive_more::Display;
+use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::{Reciprocal, ReciprocalAssign},
@@ -138,14 +139,14 @@ impl CexPriceMap {
                 for quote in quotes {
                     if flip {
                         let true_quote = quote.inverse_price();
-                        cumulative_bbo.0 += &true_quote.price.0;
-                        cumulative_bbo.1 += &true_quote.price.1;
+                        cumulative_bbo.0 += &true_quote.amount.0;
+                        cumulative_bbo.1 += &true_quote.amount.1;
 
                         volume_price.0 += &true_quote.price.0 * &true_quote.amount.0;
                         volume_price.1 += &true_quote.price.1 * &true_quote.amount.1;
                     } else {
-                        cumulative_bbo.0 += &quote.price.0;
-                        cumulative_bbo.1 += &quote.price.1;
+                        cumulative_bbo.0 += &quote.amount.0;
+                        cumulative_bbo.1 += &quote.amount.1;
 
                         volume_price.0 += &quote.price.0 * &quote.amount.0;
                         volume_price.1 += &quote.price.1 * &quote.amount.1;
@@ -154,17 +155,15 @@ impl CexPriceMap {
 
                 let volume_weighted_ask = volume_price.0 / &cumulative_bbo.0;
                 let volume_weighted_bid = volume_price.1 / &cumulative_bbo.1;
-                let avg_amount = (
-                    &cumulative_bbo.0 / Rational::from(quotes.len()),
-                    &cumulative_bbo.1 / Rational::from(quotes.len()),
-                );
 
                 CexQuote {
                     exchange:  *exchange,
                     timestamp: quotes[0].timestamp,
                     price:     (volume_weighted_ask, volume_weighted_bid),
                     token0:    pair.0,
-                    amount:    (avg_amount.0, avg_amount.1),
+                    // This is the sum of bid and ask amounts for each quote in this time
+                    // window, exchange & pair. This does not represent the total amount available
+                    amount:    (cumulative_bbo.0, cumulative_bbo.1),
                 }
             })
     }
@@ -291,7 +290,7 @@ impl CexPriceMap {
                     } else {
                         None
                     }})
-            .max_by(|a, b| a.price.0.cmp(&b.price.0))
+            .max_by(|a, b| a.amount.0.cmp(&b.amount.0))
     }
 
     /// Retrieves a CEX quote for a given token pair directly or via an
@@ -311,8 +310,68 @@ impl CexPriceMap {
         pair: &Pair,
         exchanges: &[CexExchange],
         dex_swap: &NormalizedSwap,
-    ) -> Option<CexQuote> {
-        unimplemented!()
+    ) -> Option<(CexQuote, usize)> {
+        let quotes = exchanges
+            .iter()
+            .filter_map(|exchange| self.get_quote(pair, exchange))
+            .collect_vec();
+
+        let mut cumulative_bbo = (Rational::ZERO, Rational::ZERO);
+        let mut volume_price = (Rational::ZERO, Rational::ZERO);
+
+        let mut avg_timestamp = 0;
+
+        for quote in &quotes {
+            cumulative_bbo.0 += &quote.amount.0;
+            cumulative_bbo.1 += &quote.amount.1;
+
+            volume_price.0 += &quote.price.0 * &quote.amount.0;
+            volume_price.1 += &quote.price.1 * &quote.amount.1;
+
+            avg_timestamp += quote.timestamp;
+        }
+
+        let volume_weighted_ask = volume_price.0 / &cumulative_bbo.0;
+        let volume_weighted_bid = volume_price.1 / &cumulative_bbo.1;
+
+        let avg_timestamp = avg_timestamp / quotes.len() as u64;
+        let avg_amount = (
+            &cumulative_bbo.0 / Rational::from(quotes.len()),
+            &cumulative_bbo.1 / Rational::from(quotes.len()),
+        );
+
+        let smaller = dex_swap.swap_rate().min(volume_weighted_ask.clone());
+        let larger = dex_swap.swap_rate().max(volume_weighted_ask.clone());
+
+        if smaller * Rational::from(2) < larger {
+            error!(
+                "\n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on {}:\x1b[0m\n\
+                    - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                    - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\
+                    - Token Contracts:\n\
+                    * Token Out: https://etherscan.io/address/{}\n\
+                    * Token In: https://etherscan.io/address/{}",
+                dex_swap.token_out_symbol(),
+                dex_swap.token_in_symbol(),
+                CexExchange::VWAP,
+                dex_swap.swap_rate().to_float(),
+                volume_weighted_ask.clone().to_float(),
+                dex_swap.token_out.address,
+                dex_swap.token_in.address,
+            );
+            return None;
+        } else {
+            Some((
+                CexQuote {
+                    exchange:  CexExchange::VWAP,
+                    timestamp: avg_timestamp,
+                    price:     (volume_weighted_ask, volume_weighted_bid),
+                    token0:    pair.0,
+                    amount:    avg_amount,
+                },
+                quotes.len(),
+            ))
+        }
     }
 }
 
@@ -324,6 +383,7 @@ impl Serialize for CexPriceMap {
     where
         S: serde::Serializer,
     {
+        /*
         let mut seq = serializer.serialize_seq(None)?;
         for (ex, v) in &self.0 {
             let inner_vec = v
@@ -345,6 +405,8 @@ impl Serialize for CexPriceMap {
         }
 
         seq.end()
+        */
+        todo!()
     }
 }
 //TODO: Joe remove the extra string for token_0 it should just be
@@ -354,6 +416,7 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
     where
         D: serde::Deserializer<'de>,
     {
+        /*
         let map: CexPriceMapDeser = serde::Deserialize::deserialize(deserializer)?;
 
         let mut cex_price_map = FastHashMap::default();
@@ -392,9 +455,10 @@ impl<'de> serde::Deserialize<'de> for CexPriceMap {
         });
 
         Ok(CexPriceMap(cex_price_map))
+        */
+        Ok(Self::default())
     }
 }
-
 /// Represents a price quote from a centralized exchange (CEX).
 ///
 /// `CexQuote` captures the price data for a specific token pair at a given
@@ -585,6 +649,7 @@ pub enum CexExchange {
     Bitstamp,
     Gemini,
     Average,
+    VWAP,
     #[default]
     Unknown,
 }
@@ -617,6 +682,7 @@ impl CexExchange {
             CexExchange::Gemini => "exchange = 'gemini'",
             CexExchange::Unknown => "exchange = ''",
             CexExchange::Average => "exchange = ''",
+            CexExchange::VWAP => "exchange = ''",
         }
     }
 }
@@ -849,6 +915,7 @@ impl CexExchange {
                 unreachable!("Cannot get fees for cross exchange average quote")
             }
             CexExchange::Unknown => unreachable!("Unknown cex exchange"),
+            CexExchange::VWAP => unreachable!("Cannot get fees for VWAP"),
         }
     }
 }
