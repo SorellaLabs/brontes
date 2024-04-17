@@ -163,9 +163,13 @@ impl SubGraphRegistry {
         state: &FastHashMap<Address, T>,
     ) -> Option<bool> {
         let mut requery = false;
-        self.sub_graphs
-            .get_mut(&pair.ordered())?
-            .retain_mut(|(gt, graph)| {
+        self.sub_graphs.retain(|g_pair, sub| {
+            // wrong pair, then retain
+            if *g_pair != pair.ordered() {
+                return true
+            }
+
+            sub.retain_mut(|(gt, graph)| {
                 if goes_through == gt {
                     let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
                     // shit is disjoint
@@ -176,6 +180,9 @@ impl SubGraphRegistry {
                 }
                 true
             });
+
+            !sub.is_empty()
+        });
 
         Some(requery)
     }
