@@ -102,7 +102,7 @@ impl SubGraphRegistry {
     pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
         if let Some(goes_through) = goes_through {
             self.sub_graphs
-                .get(&pair.ordered())
+                .get(&pair)
                 .filter(|g| {
                     g.iter()
                         .any(|(gt, _)| gt == goes_through || goes_through.is_zero())
