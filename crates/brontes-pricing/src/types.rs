@@ -64,6 +64,10 @@ impl PoolState {
     }
 
     pub fn increment_state(&mut self, state: PoolUpdate) {
+        if !state.is_supported_protocol() {
+            tracing::error!(state_transition=?state, "tried to apply a invalid state transition");
+            return
+        }
         self.last_update = state.block;
         self.variant.increment_state(state.logs);
     }
