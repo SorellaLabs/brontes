@@ -26,7 +26,6 @@ pub fn graph_search_par<DB: DBWriter + LibmdbxReader>(
 
             let pair0 = Pair(pair.0, quote);
             let pair1 = Pair(pair.1, quote);
-
             let pair = Some(pair).filter(|_| !is_transfer);
 
             let (state, path) = on_new_pool_pair(
