@@ -17,7 +17,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
-use tracing::{error_span, info_span};
+use tracing::error_span;
 
 pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,

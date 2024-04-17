@@ -336,10 +336,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
 
-    fn generate_victim_loss_amounts() -> Vec<VictimLossAmount> {
-        vec![]
-    }
-
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
         let PossibleSandwich {
             eoa,
