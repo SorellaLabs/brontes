@@ -7,6 +7,10 @@ pub mod dbms;
 pub mod errors;
 #[cfg(feature = "local-clickhouse")]
 pub use db_client::*;
+#[cfg(feature = "local-clickhouse")]
+pub mod split_db;
+#[cfg(feature = "local-clickhouse")]
+pub use split_db::*;
 #[cfg(not(feature = "local-clickhouse"))]
 pub mod http_client;
 #[cfg(not(feature = "local-clickhouse"))]
