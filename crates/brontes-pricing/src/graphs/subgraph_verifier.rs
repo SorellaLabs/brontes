@@ -3,7 +3,7 @@ use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tracing::{error_span, info_span};
+use tracing::error_span;
 
 use super::{
     state_tracker::StateTracker,
@@ -131,7 +131,7 @@ impl SubgraphVerifier {
         // if we find a subgraph that is the same, we return.
         if self
             .pending_subgraphs
-            .get(&pair.ordered())
+            .get(&complete_pair.ordered())
             .and_then(|v| v.iter().find(|(p, _)| *p == goes_through))
             .is_some()
         {
@@ -142,7 +142,7 @@ impl SubgraphVerifier {
         let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
 
         self.pending_subgraphs
-            .entry(pair.ordered())
+            .entry(complete_pair.ordered())
             .or_default()
             .push((
                 goes_through,
