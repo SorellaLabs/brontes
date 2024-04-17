@@ -21,6 +21,8 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
+type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
+
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
 }
@@ -561,7 +563,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     // either through a pool or overlapping tokens. However, we also ensure that
     // there exists at-least one sandwich
     fn is_victim(
-        grouped_victims: HashMap<Address, Vec<&(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
+        grouped_victims: GroupedVictims<'_>,
         front_run_pools: FastHashSet<Address>,
         front_run_tokens: FastHashSet<(Address, Address, bool)>,
         back_run_pools: FastHashSet<Address>,
