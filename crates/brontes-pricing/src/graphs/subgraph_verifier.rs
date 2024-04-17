@@ -88,8 +88,12 @@ impl SubgraphVerifier {
             .pending_subgraphs
             .values()
             .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
+            .map(|v| {
+                tracing::debug!(pair=?v.1.subgraph.complete_pair(), "pending");
+                0
+            })
             .count();
-        tracing::debug!(?cnt, ?block);
+        // tracing::debug!(?cnt, ?block);
         cnt == 0
     }
 
