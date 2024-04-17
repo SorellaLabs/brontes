@@ -268,7 +268,10 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                     jump_pair.0,
                 )
             })
-            .unwrap_or_else(|| (Rational::ONE, quote));
+            .unwrap_or_else(|| {
+                tracing::info!(?pair, ?goes_through, "default");
+                (Rational::ONE, quote)
+            });
 
         let _ = self.sub_graph_registry.verify_current_subgraphs(
             pair,

@@ -5,7 +5,7 @@ use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
 use malachite::Rational;
 use redefined::Redefined;
-use reth_primitives::B256;
+use reth_primitives::{Address, B256};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -92,6 +92,7 @@ pub struct Sandwich {
 #[derive(Debug, Deserialize, PartialEq, Clone, Default)]
 pub struct VictimLossAmount {
     pub tx_hash:           B256,
+    pub vicitim_eoa:       Address,
     pub token:             TokenInfoWithAddress,
     pub token_amount_lost: Rational,
     pub amount_lost_usd:   Rational,
