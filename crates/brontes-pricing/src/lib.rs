@@ -756,7 +756,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 if force_rundown {
                     self.rundown(pair, full_pair, goes_through, block);
                 } else if !need_state {
-                    recusing.push((block, id, pair, vec![goes_through]))
+                    recusing.push((block, id, full_pair, vec![goes_through]))
                 }
             },
         );
@@ -871,7 +871,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if !need_state {
                 execute_on!(
                     target = pricing,
-                    self.try_verify_subgraph(vec![(block, id, pair, vec![goes_through])])
+                    self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])])
                 );
             }
         }
