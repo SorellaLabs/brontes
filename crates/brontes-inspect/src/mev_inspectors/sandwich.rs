@@ -551,7 +551,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             // ensure the intersection of frontrun and backrun pools exists
             if front_run_pools.intersection(&back_run_pools).count() == 0 {
-                tracing::debug!("no pool intersection for frontrun / backrun");
+                tracing::trace!("no pool intersection for frontrun / backrun");
             }
 
             // we group all victims by eoa, such that instead of a tx needing to be a

@@ -93,7 +93,6 @@ default = []
 cex-dex-markout = []
 test_pricing = []
 
-
 local-clickhouse = [
   "brontes-database/local-clickhouse",
   "brontes-classifier/local-clickhouse",
