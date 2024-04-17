@@ -53,6 +53,24 @@ impl SubGraphRegistry {
         Self { sub_graphs }
     }
 
+    pub fn check_for_dups(&self) {
+        self.sub_graphs
+            .iter()
+            .flat_map(|(a, v)| v.into_iter().zip(vec![a].into_iter().cycle()))
+            .map(|(inner, out)| (*out, inner.0))
+            .counts()
+            .iter()
+            .for_each(|((pair, extends), am)| {
+                if *am != 1 {
+                    tracing::warn!(
+                        ?pair,
+                        ?extends,
+                        "has more than one entry in the subgraph registry"
+                    );
+                }
+            });
+    }
+
     pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
         self.sub_graphs
             .get(&pair.ordered())
