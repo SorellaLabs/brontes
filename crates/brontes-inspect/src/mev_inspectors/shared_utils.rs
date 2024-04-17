@@ -11,9 +11,10 @@ use brontes_types::{
         metadata::Metadata,
     },
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
+    normalized_actions::{Actions, NormalizedAggregator, NormalizedBatch, NormalizedFlashLoan},
     pair::Pair,
     utils::ToFloatNearest,
-    FastHashMap, FastHashSet, GasDetails, TxInfo,
+    ActionIter, FastHashMap, FastHashSet, GasDetails, TxInfo,
 };
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -74,6 +75,28 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
 
         Some(usd_deltas)
+    }
+
+    pub fn flatten_nested_actions(
+        &self,
+        iter: impl Iterator<Item = Actions>,
+    ) -> impl Iterator<Item = Actions> {
+        iter.flatten_specified(Actions::try_aggregator_ref, |actions: NormalizedAggregator| {
+            actions
+                .child_actions
+                .into_iter()
+                .filter(|f| f.is_swap() || f.is_transfer() || f.is_eth_transfer())
+                .collect::<Vec<_>>()
+        })
+        .flatten_specified(Actions::try_flash_loan_ref, |action: NormalizedFlashLoan| {
+            action
+                .fetch_underlying_actions()
+                .filter(|f| f.is_swap() || f.is_transfer() || f.is_eth_transfer())
+                .collect::<Vec<_>>()
+        })
+        .flatten_specified(Actions::try_batch_ref, |action: NormalizedBatch| {
+            action.fetch_underlying_actions().collect::<Vec<_>>()
+        })
     }
 
     /// defaults to zero for price if doesn't exist

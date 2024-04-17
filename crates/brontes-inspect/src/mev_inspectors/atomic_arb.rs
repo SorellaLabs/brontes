@@ -6,11 +6,11 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedEthTransfer,
-        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedSwap,
+        NormalizedTransfer,
     },
     tree::BlockTree,
-    ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
@@ -49,31 +49,8 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
             .t_map(|(k, v)| {
                 (
                     k,
-                    v.into_iter()
-                        .flatten_specified(
-                            Actions::try_flash_loan_ref,
-                            |actions: NormalizedFlashLoan| {
-                                actions
-                                    .child_actions
-                                    .into_iter()
-                                    .chain(actions.repayments.into_iter().map(Actions::from))
-                                    .collect::<Vec<_>>()
-                            },
-                        )
-                        .flatten_specified(Actions::try_batch_ref, |batch| {
-                            batch
-                                .user_swaps
-                                .into_iter()
-                                .chain(batch.solver_swaps.unwrap_or_default())
-                                .map(Into::into)
-                                .collect::<Vec<_>>()
-                        })
-                        .flatten_specified(
-                            Actions::try_aggregator_ref,
-                            |actions: NormalizedAggregator| {
-                                actions.child_actions.into_iter().collect::<Vec<_>>()
-                            },
-                        )
+                    self.utils
+                        .flatten_nested_actions(v.into_iter())
                         .collect::<Vec<_>>(),
                 )
             })

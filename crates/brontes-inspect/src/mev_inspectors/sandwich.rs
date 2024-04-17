@@ -1,12 +1,15 @@
-use std::{collections::hash_map::Entry, hash::Hash, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    hash::Hash,
+    sync::Arc,
+};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedBatch,
-        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedSwap, NormalizedTransfer,
     },
     tree::{collect_address_set_for_accounting, BlockTree, GasDetails},
     ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
@@ -54,9 +57,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_swap,
             Actions::is_transfer,
             Actions::is_eth_transfer,
-            Actions::is_aggregator,
-            Actions::is_batch,
-            Actions::is_flash_loan,
+            Actions::is_nested_action,
         ]);
 
         Self::get_possible_sandwich(tree.clone())
@@ -80,43 +81,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                             (
                                 tree.clone()
                                     .collect_txes(&victim, search_args.clone())
-                                    .t_map(|a| {
-                                        a.into_iter()
-                                            .flatten_specified(
-                                                Actions::try_aggregator_ref,
-                                                |actions: NormalizedAggregator| {
-                                                    actions
-                                                        .child_actions
-                                                        .into_iter()
-                                                        .filter(|f| {
-                                                            f.is_swap()
-                                                                || f.is_transfer()
-                                                                || f.is_eth_transfer()
-                                                        })
-                                                        .collect::<Vec<_>>()
-                                                },
-                                            )
-                                            .flatten_specified(
-                                                Actions::try_flash_loan_ref,
-                                                |action: NormalizedFlashLoan| {
-                                                    action
-                                                        .fetch_underlying_actions()
-                                                        .filter(|f| {
-                                                            f.is_swap()
-                                                                || f.is_transfer()
-                                                                || f.is_eth_transfer()
-                                                        })
-                                                        .collect::<Vec<_>>()
-                                                },
-                                            )
-                                            .flatten_specified(
-                                                Actions::try_batch_ref,
-                                                |action: NormalizedBatch| {
-                                                    action
-                                                        .fetch_underlying_actions()
-                                                        .collect::<Vec<_>>()
-                                                },
-                                            )
+                                    .t_map(|actions| {
+                                        self.utils.flatten_nested_actions(actions.into_iter())
                                     }),
                                 victim,
                             )
@@ -190,41 +156,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                             search_args.clone(),
                         )
                         .map(|actions| {
-                            actions
-                                .into_iter()
-                                .flatten_specified(
-                                    Actions::try_aggregator_ref,
-                                    |actions: NormalizedAggregator| {
-                                        actions
-                                            .child_actions
-                                            .into_iter()
-                                            .filter(|f| {
-                                                f.is_swap()
-                                                    || f.is_transfer()
-                                                    || f.is_eth_transfer()
-                                            })
-                                            .collect::<Vec<_>>()
-                                    },
-                                )
-                                .flatten_specified(
-                                    Actions::try_flash_loan_ref,
-                                    |action: NormalizedFlashLoan| {
-                                        action
-                                            .fetch_underlying_actions()
-                                            .filter(|f| {
-                                                f.is_swap()
-                                                    || f.is_transfer()
-                                                    || f.is_eth_transfer()
-                                            })
-                                            .collect::<Vec<_>>()
-                                    },
-                                )
-                                .flatten_specified(
-                                    Actions::try_batch_ref,
-                                    |action: NormalizedBatch| {
-                                        action.fetch_underlying_actions().collect::<Vec<_>>()
-                                    },
-                                )
+                            self.utils
+                                .flatten_nested_actions(actions.into_iter())
                                 .collect_vec()
                         })
                         .collect::<Vec<_>>();
@@ -264,100 +197,20 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &victim_actions,
             &victim_info,
         ) {
-            let mut res = vec![];
-            // try different permeations
-
-            // remove from end.
-            if possible_front_runs_info.len() > 1 {
-                // remove dropped sandwiches
-                if victim_info.len() == 0 || victim_actions.len() == 0 {
-                    return None
-                }
-
-                let back_shrink =
-                    {
-                        let mut victim_info = victim_info.clone();
-                        let mut victim_actions = victim_actions.clone();
-                        let mut possible_front_runs_info = possible_front_runs_info.clone();
-                        victim_info.pop()?;
-                        victim_actions.pop()?;
-                        let back_run_info = possible_front_runs_info.pop()?;
-
-                        if victim_actions
-                            .iter()
-                            .flatten()
-                            .filter_map(|(s, t)| {
-                                if s.is_empty() && t.is_empty() {
-                                    None
-                                } else {
-                                    Some(true)
-                                }
-                            })
-                            .count()
-                            == 0
-                        {
-                            return None
-                        }
-
-                        self.calculate_sandwich(
-                            tree.clone(),
-                            metadata.clone(),
-                            possible_front_runs_info,
-                            back_run_info,
-                            searcher_actions.clone(),
-                            victim_info,
-                            victim_actions,
-                        )
-                    };
-                let front_shrink =
-                    {
-                        let mut victim_info = victim_info.clone();
-                        let mut victim_actions = victim_actions.clone();
-                        let mut possible_front_runs_info = possible_front_runs_info.clone();
-                        let mut searcher_actions = searcher_actions.clone();
-                        searcher_actions.push(back_run_actions);
-
-                        victim_info.remove(0);
-                        victim_actions.remove(0);
-                        possible_front_runs_info.remove(0);
-                        searcher_actions.remove(0);
-
-                        if victim_actions
-                            .iter()
-                            .flatten()
-                            .filter_map(|(s, t)| {
-                                if s.is_empty() && t.is_empty() {
-                                    None
-                                } else {
-                                    Some(true)
-                                }
-                            })
-                            .count()
-                            == 0
-                        {
-                            return None
-                        }
-
-                        self.calculate_sandwich(
-                            tree.clone(),
-                            metadata.clone(),
-                            possible_front_runs_info,
-                            backrun_info,
-                            searcher_actions,
-                            victim_info,
-                            victim_actions,
-                        )
-                    };
-                if let Some(front) = front_shrink {
-                    res.extend(front);
-                }
-                if let Some(back) = back_shrink {
-                    res.extend(back);
-                }
-                return Some(res)
-            }
-
-            return None
+            // if the current set of front-run victim back-runs is not classified
+            // as a sandwich, we will recursively remove orders in both directions
+            // to cover the full order-set to ensure that we don't miss any
+            // opportunities
+            return self.recursive_possible_sandwiches(
+                tree.clone(),
+                metadata.clone(),
+                &possible_front_runs_info,
+                backrun_info,
+                &back_run_actions,
+                &searcher_actions,
+                &victim_info,
+                &victim_actions,
+            )
         }
 
         let victim_swaps = victim_actions.into_iter().flatten().collect::<Vec<_>>();
@@ -531,6 +384,121 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         results
     }
 
+    /// for the given set of possible sandwich data.
+    /// will call the main function recursively with two different revisions.
+    /// 1) front shrink.
+    /// 2) back shrink,
+    ///This is done as it recuserses as this will generate
+    /// all possible sets of sandwiches that can occur.
+    fn recursive_possible_sandwiches(
+        &self,
+        tree: Arc<BlockTree<Actions>>,
+        metadata: Arc<Metadata>,
+        possible_front_runs_info: &[TxInfo],
+        backrun_info: TxInfo,
+        back_run_actions: &[Actions],
+        searcher_actions: &[Vec<Actions>],
+        victim_info: &[Vec<TxInfo>],
+        victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
+    ) -> Option<Vec<Bundle>> {
+        let mut res = vec![];
+
+        if possible_front_runs_info.len() > 1 {
+            // remove dropped sandwiches
+            if victim_info.len() == 0 || victim_actions.len() == 0 {
+                return None
+            }
+
+            let back_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut possible_front_runs_info = possible_front_runs_info.to_vec();
+                victim_info.pop()?;
+                victim_actions.pop()?;
+                let back_run_info = possible_front_runs_info.pop()?;
+
+                if victim_actions
+                    .iter()
+                    .flatten()
+                    .filter_map(
+                        |(s, t)| {
+                            if s.is_empty() && t.is_empty() {
+                                None
+                            } else {
+                                Some(true)
+                            }
+                        },
+                    )
+                    .count()
+                    == 0
+                {
+                    return None
+                }
+
+                self.calculate_sandwich(
+                    tree.clone(),
+                    metadata.clone(),
+                    possible_front_runs_info,
+                    back_run_info,
+                    searcher_actions.to_vec(),
+                    victim_info,
+                    victim_actions,
+                )
+            };
+
+            let front_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut possible_front_runs_info = possible_front_runs_info.to_vec();
+                let mut searcher_actions = searcher_actions.to_vec();
+                // ensure we don't loose the last tx
+                searcher_actions.push(back_run_actions.to_vec());
+
+                victim_info.remove(0);
+                victim_actions.remove(0);
+                possible_front_runs_info.remove(0);
+                searcher_actions.remove(0);
+
+                if victim_actions
+                    .iter()
+                    .flatten()
+                    .filter_map(
+                        |(s, t)| {
+                            if s.is_empty() && t.is_empty() {
+                                None
+                            } else {
+                                Some(true)
+                            }
+                        },
+                    )
+                    .count()
+                    == 0
+                {
+                    return None
+                }
+
+                self.calculate_sandwich(
+                    tree.clone(),
+                    metadata.clone(),
+                    possible_front_runs_info,
+                    backrun_info,
+                    searcher_actions,
+                    victim_info,
+                    victim_actions,
+                )
+            };
+            if let Some(front) = front_shrink {
+                res.extend(front);
+            }
+            if let Some(back) = back_shrink {
+                res.extend(back);
+            }
+            return Some(res)
+        }
+
+        return None
+    }
+
     fn has_pool_overlap(
         front_run_swaps: &[Vec<Actions>],
         back_run_swaps: &[Actions],
@@ -542,7 +510,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             victim_actions.iter().zip(victim_info).enumerate()
         {
             let chunk_front_run_swaps = &front_run_swaps[0..=i];
-
             let chunk_back_run_swaps = if f_swap_len > i + 1 {
                 let mut res = vec![];
                 res.extend(front_run_swaps[i + 1..].iter().flatten().cloned());
@@ -552,104 +519,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 back_run_swaps.to_vec()
             };
 
-            let front_run: Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)> =
-                chunk_front_run_swaps
-                    .iter()
-                    .map(|action| {
-                        action
-                            .clone()
-                            .into_iter()
-                            .split_actions((Actions::try_swaps_merged, Actions::try_transfer))
-                    })
-                    .collect_vec();
+            let (front_run_pools, front_run_tokens) =
+                Self::collect_frontrun_data(chunk_front_run_swaps);
 
-            // collect all addresses that have exactly two transfers two and from.
-            // this should cover all pools that we didn't have classified
-
-            let (front_pools, front_tokens): (Vec<_>, Vec<_>) = front_run
-                .into_iter()
-                .map(|(swaps, transfers)| {
-                    let front_run_pools = itertools::Itertools::into_group_map(
-                        transfers
-                            .clone()
-                            .into_iter()
-                            .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
-                    )
-                    .into_iter()
-                    .filter(|(_, v)| {
-                        if v.len() != 2 {
-                            return false
-                        }
-                        let first = v.first().unwrap();
-                        let second = v.get(1).unwrap();
-                        first.token.address != second.token.address
-                    })
-                    .map(|(k, _)| k)
-                    .chain(swaps.iter().map(|s| s.pool))
-                    .collect::<Vec<_>>();
-
-                    let front_run_tokens = swaps
-                        .iter()
-                        .flat_map(|s| {
-                            [
-                                (s.token_in.address, s.pool, true),
-                                (s.token_out.address, s.pool, false),
-                            ]
-                        })
-                        .chain(transfers.into_iter().flat_map(|t| {
-                            [(t.token.address, t.to, true), (t.token.address, t.from, false)]
-                        }))
-                        .collect::<Vec<_>>();
-                    (front_run_pools, front_run_tokens)
-                })
-                .unzip();
-
-            let front_run_pools = front_pools
-                .into_iter()
-                .flatten()
-                .collect::<FastHashSet<_>>();
-
-            let front_run_tokens = front_tokens
-                .into_iter()
-                .flatten()
-                .collect::<FastHashSet<_>>();
-
-            let (back_swap, back_transfer): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) =
-                chunk_back_run_swaps
-                    .into_iter()
-                    .split_actions((Actions::try_swaps_merged, Actions::try_transfer));
-
-            let back_run_pools = itertools::Itertools::into_group_map(
-                back_transfer
-                    .clone()
-                    .into_iter()
-                    .flat_map(|t| [(t.from, t.clone()), (t.to, t)]),
-            )
-            .into_iter()
-            .filter(|(_, v)| {
-                if v.len() != 2 {
-                    return false
-                }
-                let first = v.first().unwrap();
-                let second = v.get(1).unwrap();
-                first.token.address != second.token.address
-            })
-            .map(|(k, _)| k)
-            .chain(back_swap.iter().map(|s| s.pool))
-            .collect::<FastHashSet<_>>();
-
-            let back_run_tokens = back_swap
-                .iter()
-                .flat_map(|s| {
-                    [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
-                })
-                .chain(back_transfer.into_iter().flat_map(|t| {
-                    [(t.token.address, t.to, true), (t.token.address, t.from, false)]
-                }))
-                .collect::<FastHashSet<_>>();
+            let (back_run_pools, back_run_tokens) =
+                Self::collect_backrun_data(chunk_back_run_swaps);
 
             // ensure the intersection of frontrun and backrun pools exists
-
             if front_run_pools.intersection(&back_run_pools).count() == 0 {
                 tracing::debug!("no pool intersection for frontrun / backrun");
             }
@@ -664,89 +540,190 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .zip(chunk_victim_actions)
                     .map(|(info, actions)| (info.eoa, actions)),
             );
-            let amount = grouped_victims.len();
 
-            if amount == 0 {
-                tracing::debug!(" no grouped victims");
-                return false
-            }
-
-            let mut has_sandwich = false;
-
-            // for each victim eoa, ensure they are a victim of a frontrun and a backrun
-            // either through a pool or overlapping tokens. However, we also ensure that
-            // there exisits at-least one sandwhich..
-            let was_victims: usize = grouped_victims
-                .into_values()
-                .map(|v| {
-                    let front_run = v
-                        .iter()
-                        .cloned()
-                        .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
-                        .any(|(swaps, transfers)| {
-                            swaps.iter().any(|s| front_run_pools.contains(&s.pool))
-                                || transfers.iter().any(|t| {
-                                    // victim has a transfer from the pool that was a token in for
-                                    // the sandwich
-                                    front_run_tokens.contains(&(t.token.address, t.to, true))
-                            // victim has a transfer to the pool that was a token out for the
-                            // sandwich 
-                                || front_run_tokens.contains(&(t.token.address, t.from, false))
-                                })
-                        });
-                    let backrun = v
-                        .iter()
-                        .cloned()
-                        .filter(|(a, b)| !(a.is_empty() && b.is_empty()))
-                        .any(|(swaps, transfers)| {
-                            swaps.iter().any(|s| back_run_pools.contains(&s.pool))
-                                || transfers.iter().any(|t| {
-                                    // victim has a transfer from the pool that was a token in
-                                    // for the sandwich
-                                    back_run_tokens.contains(&(t.token.address, t.from, true))
-                            // victim has a transfer to the pool that was a token out for the
-                            // sandwich 
-                                || back_run_tokens.contains(&(t.token.address, t.to, false))
-                                })
-                        });
-
-                    let generated_pool_overlap = itertools::Itertools::into_group_map(
-                        v.into_iter()
-                            .flat_map(|(_, t)| t)
-                            .flat_map(|t| [(t.to, t.clone()), (t.from, t.clone())]),
-                    )
-                    .into_iter()
-                    .filter(|(_, v)| {
-                        if v.len() != 2 {
-                            return false
-                        }
-                        let first = v.first().unwrap();
-                        let second = v.get(1).unwrap();
-                        first.token.address != second.token.address
-                    })
-                    .map(|(k, _)| k)
-                    .any(|pool| {
-                        let fp = front_run_pools.contains(&pool);
-                        let bp = back_run_pools.contains(&pool);
-                        has_sandwich |= fp && bp;
-
-                        fp || bp
-                    });
-                    has_sandwich |= front_run && backrun;
-
-                    front_run || backrun || generated_pool_overlap
-                })
-                .map(|was_victim| was_victim as usize)
-                .sum();
-
-            // if we had more than 50% victims, then we say this was valid. This
-            // wiggle room is to deal with unknowns
-            if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
+            if !Self::is_victim(
+                grouped_victims,
+                front_run_pools,
+                front_run_tokens,
+                back_run_pools,
+                back_run_tokens,
+            ) {
                 return false
             }
         }
 
         true
+    }
+
+    // for each victim eoa, ensure they are a victim of a frontrun and a backrun
+    // either through a pool or overlapping tokens. However, we also ensure that
+    // there exists at-least one sandwich
+    fn is_victim(
+        grouped_victims: HashMap<Address, Vec<&(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
+        front_run_pools: FastHashSet<Address>,
+        front_run_tokens: FastHashSet<(Address, Address, bool)>,
+        back_run_pools: FastHashSet<Address>,
+        back_run_tokens: FastHashSet<(Address, Address, bool)>,
+    ) -> bool {
+        let amount = grouped_victims.len();
+        if amount == 0 {
+            tracing::debug!(" no grouped victims");
+            return false
+        }
+        let mut has_sandwich = false;
+
+        let was_victims: usize = grouped_victims
+            .into_values()
+            .map(|v| {
+                let front_run =
+                    Self::check_for_overlap(&v, &front_run_tokens, &front_run_pools, true);
+                let back_run =
+                    Self::check_for_overlap(&v, &back_run_tokens, &back_run_pools, false);
+
+                let generated_pool_overlap = Self::generate_possible_pools_from_transfers(
+                    v.into_iter().flat_map(|(_, t)| t),
+                )
+                .any(|pool| {
+                    let fp = front_run_pools.contains(&pool);
+                    let bp = back_run_pools.contains(&pool);
+
+                    has_sandwich |= fp && bp;
+
+                    fp || bp
+                });
+                has_sandwich |= front_run && back_run;
+
+                front_run || back_run || generated_pool_overlap
+            })
+            .map(|was_victim| was_victim as usize)
+            .sum();
+
+        // if we had more than 50% victims, then we say this was valid. This
+        // wiggle room is to deal with unknowns
+        if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
+            return false
+        }
+
+        true
+    }
+
+    fn check_for_overlap(
+        victim_actions: &Vec<&(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>,
+        tokens: &FastHashSet<(Address, Address, bool)>,
+        pools: &FastHashSet<Address>,
+        is_frontrun: bool,
+    ) -> bool {
+        victim_actions
+            .iter()
+            .cloned()
+            .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
+            .any(|(swaps, transfers)| {
+                swaps.iter().any(|s| pools.contains(&s.pool))
+                    || transfers.iter().any(|t| {
+                        // victim has a transfer from the pool that was a token in for
+                        // the sandwich
+                        tokens.contains(&(t.token.address, t.to, is_frontrun))
+                            // victim has a transfer to the pool that was a token out for the
+                            // sandwich 
+                                || tokens.contains(&(t.token.address, t.from, !is_frontrun))
+                    })
+            })
+    }
+
+    // collect all addresses that have exactly two transfers two and from.
+    // this should cover all pools that we didn't have classified
+    fn collect_frontrun_data(
+        front_run: &[Vec<Actions>],
+    ) -> (FastHashSet<Address>, FastHashSet<(Address, Address, bool)>) {
+        let front_run: Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)> = front_run
+            .iter()
+            .map(|action| {
+                action
+                    .clone()
+                    .into_iter()
+                    .split_actions((Actions::try_swaps_merged, Actions::try_transfer))
+            })
+            .collect_vec();
+
+        let (front_pools, front_tokens): (Vec<_>, Vec<_>) = front_run
+            .into_iter()
+            .map(|(swaps, transfers)| {
+                let front_run_pools =
+                    Self::generate_possible_pools_from_transfers(transfers.iter())
+                        .chain(swaps.iter().map(|s| s.pool))
+                        .collect::<Vec<_>>();
+
+                let front_run_tokens = Self::generate_tokens(swaps.iter(), transfers.iter());
+
+                (front_run_pools, front_run_tokens)
+            })
+            .unzip();
+
+        let front_run_pools = front_pools
+            .into_iter()
+            .flatten()
+            .collect::<FastHashSet<_>>();
+
+        let front_run_tokens = front_tokens
+            .into_iter()
+            .flatten()
+            .collect::<FastHashSet<_>>();
+
+        (front_run_pools, front_run_tokens)
+    }
+
+    // collect all addresses that have exactly two transfers two and from.
+    // this should cover all pools that we didn't have classified
+    fn collect_backrun_data(
+        details: Vec<Actions>,
+    ) -> (FastHashSet<Address>, FastHashSet<(Address, Address, bool)>) {
+        let (back_swap, back_transfer): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = details
+            .into_iter()
+            .split_actions((Actions::try_swaps_merged, Actions::try_transfer));
+
+        let back_run_pools = Self::generate_possible_pools_from_transfers(back_transfer.iter())
+            .chain(back_swap.iter().map(|s| s.pool))
+            .collect::<FastHashSet<_>>();
+
+        let back_run_tokens = Self::generate_tokens(back_swap.iter(), back_transfer.iter());
+
+        (back_run_pools, back_run_tokens)
+    }
+
+    fn generate_tokens<'a>(
+        swaps: impl Iterator<Item = &'a NormalizedSwap>,
+        transfers: impl Iterator<Item = &'a NormalizedTransfer>,
+    ) -> FastHashSet<(Address, Address, bool)> {
+        swaps
+            .flat_map(|s| {
+                [(s.token_in.address, s.pool, true), (s.token_out.address, s.pool, false)]
+            })
+            .chain(
+                transfers.flat_map(|t| {
+                    [(t.token.address, t.to, true), (t.token.address, t.from, false)]
+                }),
+            )
+            .collect::<FastHashSet<_>>()
+    }
+
+    fn generate_possible_pools_from_transfers<'a>(
+        transfers: impl Iterator<Item = &'a NormalizedTransfer>,
+    ) -> impl Iterator<Item = Address> {
+        itertools::Itertools::into_group_map(
+            transfers.flat_map(|t| [(t.to, t.clone()), (t.from, t.clone())]),
+        )
+        .into_iter()
+        .filter(|(_, v)| {
+            if v.len() != 2 {
+                return false
+            }
+            let first = v.first().unwrap();
+            let second = v.get(1).unwrap();
+            // ensure different tokens and that the transfers go the opposite direction of
+            // the shared address
+            first.token.address != second.token.address && first.to != second.to
+        })
+        .map(|(k, _)| k)
     }
 
     /// Aggregates potential sandwich attacks from both duplicate senders and

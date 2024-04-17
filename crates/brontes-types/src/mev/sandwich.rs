@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
+use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -11,7 +12,9 @@ use serde_with::serde_as;
 
 use super::{Mev, MevType};
 use crate::{
-    db::redefined_types::primitives::*, normalized_actions::*, ClickhouseVecGasDetails, Protocol,
+    db::{redefined_types::primitives::*, token_info::TokenInfoWithAddress},
+    normalized_actions::*,
+    ClickhouseVecGasDetails, Protocol,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -84,6 +87,14 @@ pub struct Sandwich {
     /// Gas details for each backrunning transaction.
     #[redefined(same_fields)]
     pub backrun_gas_details:      GasDetails,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Clone, Default)]
+pub struct VictimLossAmount {
+    pub tx_hash:           B256,
+    pub token:             TokenInfoWithAddress,
+    pub token_amount_lost: Rational,
+    pub amount_lost_usd:   Rational,
 }
 
 impl Mev for Sandwich {

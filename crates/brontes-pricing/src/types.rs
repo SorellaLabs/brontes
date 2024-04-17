@@ -172,8 +172,7 @@ impl PoolUpdate {
     pub fn is_supported_protocol(&self) -> bool {
         if let Actions::Swap(s) = &self.action {
             return s.protocol.has_state_updater()
-        }
-        else if let Actions::SwapWithFee(s) = &self.action {
+        } else if let Actions::SwapWithFee(s) = &self.action {
             return s.protocol.has_state_updater()
         }
 
