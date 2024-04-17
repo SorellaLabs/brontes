@@ -21,10 +21,6 @@ pub fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
         .filter_map(|msg| {
-            if !msg.is_supported_protocol() {
-                return None
-            }
-
             let pair = msg.get_pair(quote)?;
             let is_transfer = msg.is_transfer();
 

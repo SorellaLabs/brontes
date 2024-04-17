@@ -17,7 +17,7 @@ pub struct Verbosity {
     verbosity: u8,
 
     /// Silence all log output.
-    #[clap(long, alias = "silent", short = 'q', global = true, help_heading = "Display")]
+    #[clap(long, alias = "silent", global = true, help_heading = "Display")]
     quiet: bool,
 }
 
