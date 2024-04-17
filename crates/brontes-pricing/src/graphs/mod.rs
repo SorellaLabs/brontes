@@ -345,4 +345,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.sub_graph_registry
             .audit_subgraphs(self.graph_state.finalized_state())
     }
+
+    pub fn verification_done_for_block(&self, block: u64) -> bool {
+        self.subgraph_verifier.is_done_block(block)
+    }
 }

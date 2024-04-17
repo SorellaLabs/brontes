@@ -83,6 +83,14 @@ impl SubgraphVerifier {
             .unwrap_or_default()
     }
 
+    pub fn is_done_block(&self, block: u64) -> bool {
+        self.pending_subgraphs
+            .values()
+            .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
+            .count()
+            == 0
+    }
+
     pub fn all_pairs(&self) -> Vec<Pair> {
         self.pending_subgraphs.keys().copied().collect_vec()
     }
@@ -144,6 +152,7 @@ impl SubgraphVerifier {
                 goes_through,
                 Subgraph {
                     subgraph,
+                    block,
                     frayed_end_extensions: FastHashMap::default(),
                     id: 0,
                     in_rundown: false,
@@ -455,6 +464,7 @@ pub struct Subgraph {
     pub id:                    u64,
     pub in_rundown:            bool,
     pub iters:                 usize,
+    pub block:                 u64,
 }
 impl Subgraph {
     pub fn add_extension(&mut self, edges: Vec<SubGraphEdge>) -> u64 {

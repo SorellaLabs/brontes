@@ -962,6 +962,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     fn can_progress(&self) -> bool {
         self.lazy_loader.can_progress(&self.completed_block)
+            && self
+                .graph_manager
+                .verification_done_for_block(self.completed_block)
             && self.completed_block < self.current_block
     }
 
@@ -1198,6 +1201,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                     Poll::Ready(None) | Poll::Pending => {
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
+                            && self
+                                .graph_manager
+                                .verification_done_for_block(self.completed_block)
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
