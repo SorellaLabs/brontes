@@ -858,7 +858,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 debug!(?pair, ?goes_through, ?block, "Failed to find connection for graph");
             }
-
+            self.try_verify_subgraph(vec![(block, None, complete_pair, vec![goes_through])]);
             return
         } else {
             let Some((id, need_state, _)) =
@@ -869,10 +869,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             };
 
             if !need_state {
-                execute_on!(
-                    target = pricing,
-                    self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])])
-                );
+                self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])])
             }
         }
         tracing::debug!(?pair, ?block, "finished rundown");
