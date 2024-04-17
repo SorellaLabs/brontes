@@ -147,7 +147,7 @@ impl Clickhouse {
                     BundleData::Unknown(s) => tx.send(vec![s.into()])?,
                 };
 
-                Ok::<eyre::Result<()>>(())
+                Ok(()) as eyre::Result<()>
             })?;
         }
 
