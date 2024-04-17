@@ -34,6 +34,7 @@ use malachite::{
 };
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
+#[allow(unused_imports)]
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
 use tracing::error;
 
@@ -122,9 +123,13 @@ impl CexPriceMap {
     ///   are identical.
     /// - If `token0` in the quote differs from `pair.0` parameter, the quote's
     ///   price is reciprocated to match the requested pair ordering.
-    pub fn get_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<CexQuote> {
+    pub fn get_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
+            return Some(FeeAdjustedQuote {
+                price_maker: (Rational::ONE, Rational::ONE),
+                price_taker: (Rational::ONE, Rational::ONE),
+                ..Default::default()
+            })
         }
 
         self.0
@@ -156,22 +161,36 @@ impl CexPriceMap {
                 let volume_weighted_ask = volume_price.0 / &cumulative_bbo.0;
                 let volume_weighted_bid = volume_price.1 / &cumulative_bbo.1;
 
-                CexQuote {
-                    exchange:  *exchange,
-                    timestamp: quotes[0].timestamp,
-                    price:     (volume_weighted_ask, volume_weighted_bid),
-                    token0:    pair.0,
+                let fees = exchange.fees();
+
+                let fee_adjusted_maker = (
+                    &volume_weighted_ask * (Rational::from(1) - &fees.0),
+                    &volume_weighted_bid * (Rational::from(1) - &fees.0),
+                );
+
+                let fee_adjusted_taker = (
+                    volume_weighted_ask * (Rational::from(1) - &fees.1),
+                    volume_weighted_bid * (Rational::from(1) - &fees.1),
+                );
+
+                FeeAdjustedQuote {
+                    exchange:    *exchange,
+                    timestamp:   quotes[0].timestamp,
+                    price_maker: (fee_adjusted_maker.0, fee_adjusted_maker.1),
+                    price_taker: (fee_adjusted_taker.0, fee_adjusted_taker.1),
+                    token0:      pair.0,
                     // This is the sum of bid and ask amounts for each quote in this time
                     // window, exchange & pair. This does not represent the total amount available
-                    amount:    (cumulative_bbo.0, cumulative_bbo.1),
+                    amount:      (cumulative_bbo.0, cumulative_bbo.1),
                 }
             })
     }
 
-    pub fn get_binance_quote(&self, pair: &Pair) -> Option<CexQuote> {
+    pub fn get_binance_quote(&self, pair: &Pair) -> Option<FeeAdjustedQuote> {
         self.get_quote(pair, &CexExchange::Binance)
     }
 
+    /*
     /// Computes an average quote for a given token pair across multiple
     /// exchanges.
     pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
@@ -213,7 +232,7 @@ impl CexPriceMap {
         } else {
             None
         }
-    }
+    }*/
 
     /// Retrieves a CEX quote for a given token pair using an intermediary
     /// asset.
@@ -226,7 +245,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         dex_swap: &NormalizedSwap,
-    ) -> Option<CexQuote> {
+    ) -> Option<FeeAdjustedQuote> {
         let intermediaries = exchange.most_common_quote_assets();
 
         intermediaries
@@ -238,58 +257,55 @@ impl CexPriceMap {
                 if let (Some(quote1), Some(quote2)) =
                     (self.get_quote(&pair1, exchange), self.get_quote(&pair2, exchange))
                 {
-                    let combined_price =
-                        (&quote1.price.0 * &quote2.price.0, &quote1.price.1 * &quote2.price.1);
+                    let combined_price_maker = (
+                        &quote1.price_maker.0 * &quote2.price_maker.0,
+                        &quote1.price_maker.1 * &quote2.price_maker.1,
+                    );
+
+                    let combined_price_taker = (
+                        &quote1.price_taker.0 * &quote2.price_taker.0,
+                        &quote1.price_taker.1 * &quote2.price_taker.1,
+                    );
 
                     let normalized_bbo_amount = (
-                            (&quote1.price.0 * &quote1.amount.0) +
-                            (&quote2.price.0 * &quote2.amount.0),
-                            (&quote1.price.1 * &quote1.amount.1) +
-                            (&quote2.price.1 * &quote2.amount.1),
-                        );
+                        (&quote1.price_maker.0 * &quote1.amount.0)
+                            + (&quote2.price_maker.0 * &quote2.amount.0),
+                        (&quote1.price_maker.1 * &quote1.amount.1)
+                            + (&quote2.price_maker.1 * &quote2.amount.1),
+                    );
 
-                    let combined_quote = CexQuote {
-                            exchange:  *exchange,
-                            timestamp: std::cmp::max(quote1.timestamp, quote2.timestamp),
-                            price:     combined_price,
-                            token0:    pair.1,
-                            amount:    normalized_bbo_amount,
-                        };
+                    let combined_quote = FeeAdjustedQuote {
+                        exchange:    *exchange,
+                        timestamp:   std::cmp::max(quote1.timestamp, quote2.timestamp),
+                        price_maker: combined_price_maker,
+                        price_taker: combined_price_taker,
+                        token0:      pair.1,
+                        amount:      normalized_bbo_amount,
+                    };
 
-                    let smaller = dex_swap.swap_rate().min(combined_quote.price.1.clone());
-                    let larger = dex_swap.swap_rate().max(combined_quote.price.1.clone());
+                    let smaller = dex_swap
+                        .swap_rate()
+                        .min(combined_quote.price_maker.1.clone());
+                    let larger = dex_swap
+                        .swap_rate()
+                        .max(combined_quote.price_maker.1.clone());
 
                     if smaller * Rational::from(2) < larger {
-                        error!(
-                            "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
-                                - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-                                - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
-                                - Intermediary Prices:\n\
-                                * First Leg Price: {:.7}\n\
-                                * Second Leg Price: {:.7}\n\
-                                - Token Contracts:\n\
-                                * Token Out: https://etherscan.io/address/{}\n\
-                                * Intermediary: https://etherscan.io/address/{}\n\
-                                * Token In: https://etherscan.io/address/{}",
-                            dex_swap.token_out_symbol(),
-                            dex_swap.token_in_symbol(),
-                            exchange,
-                            dex_swap.swap_rate().to_float(),
-                            combined_quote.price.1.clone().to_float(),
-                            quote1.price.1.clone().to_float(),
-                            quote2.price.1.clone().to_float(),
-                            dex_swap.token_out.address,
-                            intermediary,
-                            dex_swap.token_in.address,
+                        log_significant_price_difference(
+                            &dex_swap,
+                            &exchange,
+                            &combined_quote,
+                            &quote1,
+                            &quote2,
+                            &intermediary.to_string(),
                         );
                         return None;
-
-                        } else {
-                            return Some(combined_quote);
-                        }
                     } else {
-                        None
-                    }})
+                        return Some(combined_quote);
+                    }
+                }
+                None
+            })
             .max_by(|a, b| a.amount.0.cmp(&b.amount.0))
     }
 
@@ -300,7 +316,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         dex_swap: &NormalizedSwap,
-    ) -> Option<CexQuote> {
+    ) -> Option<FeeAdjustedQuote> {
         self.get_quote(pair, exchange)
             .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap))
     }
@@ -310,14 +326,15 @@ impl CexPriceMap {
         pair: &Pair,
         exchanges: &[CexExchange],
         dex_swap: &NormalizedSwap,
-    ) -> Option<(CexQuote, usize)> {
+    ) -> Option<(FeeAdjustedQuote, usize)> {
         let quotes = exchanges
             .iter()
             .filter_map(|exchange| self.get_quote(pair, exchange))
             .collect_vec();
 
         let mut cumulative_bbo = (Rational::ZERO, Rational::ZERO);
-        let mut volume_price = (Rational::ZERO, Rational::ZERO);
+        let mut vw_price_maker = (Rational::ZERO, Rational::ZERO);
+        let mut vw_price_taker = (Rational::ZERO, Rational::ZERO);
 
         let mut avg_timestamp = 0;
 
@@ -325,14 +342,20 @@ impl CexPriceMap {
             cumulative_bbo.0 += &quote.amount.0;
             cumulative_bbo.1 += &quote.amount.1;
 
-            volume_price.0 += &quote.price.0 * &quote.amount.0;
-            volume_price.1 += &quote.price.1 * &quote.amount.1;
+            vw_price_maker.0 += &quote.price_maker.0 * &quote.amount.0;
+            vw_price_maker.1 += &quote.price_maker.1 * &quote.amount.1;
+
+            vw_price_taker.0 += &quote.price_taker.0 * &quote.amount.0;
+            vw_price_taker.1 += &quote.price_taker.1 * &quote.amount.1;
 
             avg_timestamp += quote.timestamp;
         }
 
-        let volume_weighted_ask = volume_price.0 / &cumulative_bbo.0;
-        let volume_weighted_bid = volume_price.1 / &cumulative_bbo.1;
+        let volume_weighted_ask_maker = vw_price_maker.0 / &cumulative_bbo.0;
+        let volume_weighted_bid_maker = vw_price_maker.1 / &cumulative_bbo.1;
+
+        let volume_weighted_ask_taker = vw_price_taker.0 / &cumulative_bbo.0;
+        let volume_weighted_bid_taker = vw_price_taker.1 / &cumulative_bbo.1;
 
         let avg_timestamp = avg_timestamp / quotes.len() as u64;
         let avg_amount = (
@@ -340,34 +363,26 @@ impl CexPriceMap {
             &cumulative_bbo.1 / Rational::from(quotes.len()),
         );
 
-        let smaller = dex_swap.swap_rate().min(volume_weighted_ask.clone());
-        let larger = dex_swap.swap_rate().max(volume_weighted_ask.clone());
+        let smaller = dex_swap.swap_rate().min(volume_weighted_ask_maker.clone());
+        let larger = dex_swap.swap_rate().max(volume_weighted_ask_maker.clone());
 
         if smaller * Rational::from(2) < larger {
-            error!(
-                "\n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on {}:\x1b[0m\n\
-                    - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-                    - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\
-                    - Token Contracts:\n\
-                    * Token Out: https://etherscan.io/address/{}\n\
-                    * Token In: https://etherscan.io/address/{}",
-                dex_swap.token_out_symbol(),
-                dex_swap.token_in_symbol(),
-                CexExchange::VWAP,
-                dex_swap.swap_rate().to_float(),
-                volume_weighted_ask.clone().to_float(),
-                dex_swap.token_out.address,
-                dex_swap.token_in.address,
+            log_significant_cross_exchange_vmap_difference(
+                &dex_swap,
+                volume_weighted_ask_maker,
+                &dex_swap.token_out.address,
+                &dex_swap.token_in.address,
             );
             return None;
         } else {
             Some((
-                CexQuote {
-                    exchange:  CexExchange::VWAP,
-                    timestamp: avg_timestamp,
-                    price:     (volume_weighted_ask, volume_weighted_bid),
-                    token0:    pair.0,
-                    amount:    avg_amount,
+                FeeAdjustedQuote {
+                    exchange:    CexExchange::VWAP,
+                    timestamp:   avg_timestamp,
+                    price_maker: (volume_weighted_ask_maker, volume_weighted_bid_maker),
+                    price_taker: (volume_weighted_ask_taker, volume_weighted_bid_taker),
+                    token0:      pair.0,
+                    amount:      avg_amount,
                 },
                 quotes.len(),
             ))
@@ -375,9 +390,65 @@ impl CexPriceMap {
     }
 }
 
+fn log_significant_price_difference(
+    dex_swap: &NormalizedSwap,
+    exchange: &CexExchange,
+    combined_quote: &FeeAdjustedQuote,
+    quote1: &FeeAdjustedQuote,
+    quote2: &FeeAdjustedQuote,
+    intermediary: &str,
+) {
+    error!(
+        "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
+        - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+        - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
+        - Intermediary Prices:\n\
+        * First Leg Price: {:.7}\n\
+        * Second Leg Price: {:.7}\n\
+        - Token Contracts:\n\
+        * Token Out: https://etherscan.io/address/{}\n\
+        * Intermediary: https://etherscan.io/address/{}\n\
+        * Token In: https://etherscan.io/address/{}",
+        dex_swap.token_out_symbol(),
+        dex_swap.token_in_symbol(),
+        exchange,
+        dex_swap.swap_rate().to_float(),
+        combined_quote.price_maker.1.clone().to_float(),
+        quote1.price_maker.1.clone().to_float(),
+        quote2.price_maker.1.clone().to_float(),
+        dex_swap.token_out.address,
+        intermediary,
+        dex_swap.token_in.address,
+    );
+}
+
+fn log_significant_cross_exchange_vmap_difference(
+    dex_swap: &NormalizedSwap,
+    vmap_quote: Rational,
+    token_out_address: &Address,
+    token_in_address: &Address,
+) {
+    error!(
+        "\n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on VWAP:\x1b[0m\n\
+        - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+        - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\
+        - Token Contracts:\n\
+        * Token Out: https://etherscan.io/address/{}\n\
+        * Token In: https://etherscan.io/address/{}",
+        dex_swap.token_out_symbol(),
+        dex_swap.token_in_symbol(),
+        dex_swap.swap_rate().to_float(),
+        vmap_quote.to_float(),
+        token_out_address,
+        token_in_address,
+    );
+}
+
+#[allow(dead_code)]
 type CexPriceMapDeser =
     Vec<(String, Vec<((String, String), (u64, (f64, f64), (f64, f64), String))>)>;
 
+#[allow(dead_code)]
 impl Serialize for CexPriceMap {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -409,8 +480,8 @@ impl Serialize for CexPriceMap {
         todo!()
     }
 }
-//TODO: Joe remove the extra string for token_0 it should just be
-// base_token_addr
+
+#[allow(dead_code)]
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -501,11 +572,9 @@ pub struct CexQuote {
     #[redefined(same_fields)]
     pub exchange:  CexExchange,
     pub timestamp: u64,
-    /// Best Ask & Bid price at p2p timestamp (which is when the block is first
-    /// propagated by the proposer)
+    /// Best Ask & Bid price
     pub price:     (Rational, Rational),
-    /// Best Ask & Bid amount at p2p timestamp (which is when the block is first
-    /// propagated by the proposer)
+    /// Bid & Ask amount
     pub amount:    (Rational, Rational),
     pub token0:    Address,
 }
@@ -514,7 +583,7 @@ impl Display for CexQuote {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Exchange: {}\nTimestamp: {}\nBest Ask Price: {:.2}\nBest Bid Price: {:.2}\nToken \
+            "Exchange: {}\nTimestamp: {}\nBest Ask Price: {:.2}\nBest Bid Price: {:.2}\nToken 0 \
              Address: {}",
             self.exchange,
             self.timestamp,
@@ -522,6 +591,47 @@ impl Display for CexQuote {
             self.price.1.clone().to_float(),
             self.token0
         )
+    }
+}
+
+#[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize, Redefined)]
+#[redefined_attr(derive(
+    Debug,
+    PartialEq,
+    Clone,
+    Hash,
+    Serialize,
+    rSerialize,
+    rDeserialize,
+    Archive
+))]
+pub struct FeeAdjustedQuote {
+    #[redefined(same_fields)]
+    pub exchange:    CexExchange,
+    pub timestamp:   u64,
+    /// Best fee adjusted Ask & Bid price (maker)
+    pub price_maker: (Rational, Rational),
+    /// Best fee adjusted Ask & Bid price (taker)
+    pub price_taker: (Rational, Rational),
+    /// Bid & Ask amount
+    pub amount:      (Rational, Rational),
+    pub token0:      Address,
+}
+
+impl PartialEq for FeeAdjustedQuote {
+    fn eq(&self, other: &Self) -> bool {
+        self.timestamp == other.timestamp
+            && (self.price_maker.0) == (other.price_maker.0)
+            && (self.price_maker.1) == (other.price_maker.1)
+    }
+}
+
+impl MulAssign for FeeAdjustedQuote {
+    fn mul_assign(&mut self, rhs: Self) {
+        self.price_maker.0 *= rhs.price_maker.0;
+        self.price_maker.1 *= rhs.price_maker.1;
+        self.price_taker.0 *= rhs.price_taker.0;
+        self.price_taker.1 *= rhs.price_taker.1;
     }
 }
 
@@ -545,6 +655,7 @@ pub enum TradeSide {
 }
 
 impl CexQuote {
+    #[allow(dead_code)]
     fn inverse_price_assign(&mut self) {
         self.price.0.reciprocal_assign();
         self.price.1.reciprocal_assign();
@@ -742,7 +853,7 @@ impl CexExchange {
             CexExchange::Binance => {
                 vec![
                     USDT_ADDRESS,
-                    //WBTC_ADDRESS,
+                    WBTC_ADDRESS,
                     BUSD_ADDRESS,
                     USDC_ADDRESS,
                     BNB_ADDRESS,
@@ -753,55 +864,30 @@ impl CexExchange {
             }
             CexExchange::Bitmex => vec![USDT_ADDRESS, USDC_ADDRESS, WETH_ADDRESS],
             CexExchange::Bitstamp => {
-                vec![
-                    //WBTC_ADDRESS,
-                    USDC_ADDRESS,
-                    USDT_ADDRESS,
-                    PAX_DOLLAR_ADDRESS,
-                ]
+                vec![WBTC_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, PAX_DOLLAR_ADDRESS]
             }
             CexExchange::BybitSpot => {
-                vec![
-                    USDT_ADDRESS,
-                    USDC_ADDRESS,
-                    //WBTC_ADDRESS,
-                    DAI_ADDRESS,
-                    WETH_ADDRESS,
-                ]
+                vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS, DAI_ADDRESS, WETH_ADDRESS]
             }
             CexExchange::Coinbase => {
                 vec![
                     USDC_ADDRESS,
                     USDT_ADDRESS,
-                    //WBTC_ADDRESS,
+                    WBTC_ADDRESS,
                     DAI_ADDRESS,
                     WETH_ADDRESS,
                     DAI_ADDRESS,
                 ]
             }
-            CexExchange::Deribit => vec![
-                USDT_ADDRESS,
-                USDC_ADDRESS,
-                //WBTC_ADDRESS
-            ],
-            CexExchange::GateIo => vec![
-                USDT_ADDRESS,
-                WETH_ADDRESS, //WBTC_ADDRESS,
-                USDC_ADDRESS,
-            ],
+            CexExchange::Deribit => vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS],
+            CexExchange::GateIo => vec![USDT_ADDRESS, WETH_ADDRESS, WBTC_ADDRESS, USDC_ADDRESS],
             CexExchange::Gemini => {
-                vec![
-                    //WBTC_ADDRESS,
-                    WETH_ADDRESS,
-                    GUSD_ADDRESS,
-                    DAI_ADDRESS,
-                    USDT_ADDRESS,
-                ]
+                vec![WBTC_ADDRESS, WETH_ADDRESS, GUSD_ADDRESS, DAI_ADDRESS, USDT_ADDRESS]
             }
             CexExchange::Huobi => {
                 vec![
                     USDT_ADDRESS,
-                    //WBTC_ADDRESS,
+                    WBTC_ADDRESS,
                     WETH_ADDRESS,
                     HT_ADDRESS,
                     HUSD_ADDRESS,
@@ -813,18 +899,12 @@ impl CexExchange {
                 ]
             }
             CexExchange::Kraken => {
-                vec![
-                    //WBTC_ADDRESS,
-                    WETH_ADDRESS,
-                    USDT_ADDRESS,
-                    USDC_ADDRESS,
-                    DAI_ADDRESS,
-                ]
+                vec![WBTC_ADDRESS, WETH_ADDRESS, USDT_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
             }
             CexExchange::Kucoin => {
                 vec![
                     USDT_ADDRESS,
-                    //WBTC_ADDRESS,
+                    WBTC_ADDRESS,
                     WETH_ADDRESS,
                     USDC_ADDRESS,
                     TUSD_ADDRESS,
@@ -835,20 +915,14 @@ impl CexExchange {
                 vec![
                     USDT_ADDRESS,
                     USDC_ADDRESS,
-                    //WBTC_ADDRESS,
+                    WBTC_ADDRESS,
                     WETH_ADDRESS,
                     DAI_ADDRESS,
                     EURT_ADDRESS,
                 ]
             }
             CexExchange::Upbit => {
-                vec![
-                    WETH_ADDRESS,
-                    //WBTC_ADDRESS,
-                    LINK_ADDRESS,
-                    EURT_ADDRESS,
-                    UNI_TOKEN,
-                ]
+                vec![WETH_ADDRESS, WBTC_ADDRESS, LINK_ADDRESS, EURT_ADDRESS, UNI_TOKEN]
             }
 
             _ => vec![],
@@ -922,6 +996,8 @@ impl CexExchange {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     #[test]

@@ -148,8 +148,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     metadata.clone(),
                 )?;
 
-                let cex_dex =
-                    self.filter_possible_cex_dex(&possible_cex_dex, &tx_info, metadata.clone())?;
+                let cex_dex = self.filter_possible_cex_dex(&possible_cex_dex, &tx_info)?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -297,6 +296,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     /// quotes are marked as `false`, indicating two trades are required to
     /// complete the swap on the CEX. This distinction is needed so we can
     /// account for CEX trading fees.
+    //TODO: Ok so we will do: VWAP cross exchange + VMAP per exchange
+    //TODO: For cross exchange VWAP, include interemdiaries only if less than 2
+    // direct TODO: For filtering, if stable coin trade, check if profitable
+    // over VWAP cross exchange or profitable over more than 3 exchanges else filter
+    // out
     fn cex_quotes_for_swap(
         &self,
         swap: &NormalizedSwap,
