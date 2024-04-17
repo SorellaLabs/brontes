@@ -502,6 +502,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         is_transfer,
                     },
                 );
+            } else {
+                tracing::debug!(?tx_idx, ?block, ?pair0, "failed pairs no inserts");
             }
         }
 
@@ -534,6 +536,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         is_transfer,
                     },
                 );
+            } else {
+                tracing::debug!(?tx_idx, ?block, ?pair1, "failed pairs no inserts");
             }
         }
     }
