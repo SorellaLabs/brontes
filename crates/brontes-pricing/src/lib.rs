@@ -221,6 +221,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let pair1 = Pair(pair.1, self.quote_asset);
 
             let gt = Some(pair).filter(|_| !is_transfer).unwrap_or_default();
+
             self.graph_manager
                 .prune_low_liq_subgraphs(pair0, &gt, self.quote_asset);
             self.graph_manager
@@ -256,7 +257,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 }
 
                 if self.graph_manager.has_subgraph_goes_through(
-                    pair,
+                    complete_pair,
                     (!must_include.is_zero()).then_some(must_include),
                 ) {
                     tracing::debug!(?pair, "already have pairs");
@@ -317,6 +318,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// For a given block number and tx idx, finds the path to the following
     /// tokens and inserts the data into dex_quotes.
     fn store_dex_price(&mut self, block: u64, tx_idx: u64, pool_pair: Pair, prices: DexPrices) {
+        tracing::debug!(?block,?tx_idx, ?pool_pair, %prices, "storing price");
         // insert the pool keys into the price map
         match self.dex_quotes.entry(block) {
             Entry::Occupied(mut quotes) => {

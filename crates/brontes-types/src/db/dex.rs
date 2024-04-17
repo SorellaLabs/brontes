@@ -60,6 +60,7 @@ impl Display for DexPrices {
         opt.set_scale(9);
         writeln!(f, "pre state price: {}", self.pre_state.to_sci_with_options(opt))?;
         writeln!(f, "post state price: {}", self.post_state.to_sci_with_options(opt))?;
+        writeln!(f, "goes through: {:?}", self.goes_through)?;
         Ok(())
     }
 }
