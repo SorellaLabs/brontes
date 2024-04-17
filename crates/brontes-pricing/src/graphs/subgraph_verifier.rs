@@ -69,15 +69,11 @@ impl SubgraphVerifier {
             .flatten()
     }
 
-    pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
-        if let Some(goes_through) = goes_through {
-            self.pending_subgraphs
-                .get(&pair.ordered())
-                .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
-                .unwrap_or(false)
-        } else {
-            self.pending_subgraphs.contains_key(&pair.ordered())
-        }
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
+        self.pending_subgraphs
+            .get(&pair.ordered())
+            .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
+            .unwrap_or(false)
     }
 
     pub fn current_pairs(&self, pair: &Pair) -> usize {

@@ -101,18 +101,11 @@ impl SubGraphRegistry {
             .copied()
     }
 
-    pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
-        if let Some(goes_through) = goes_through {
-            self.sub_graphs
-                .get(&pair.ordered())
-                .filter(|g| {
-                    g.iter()
-                        .any(|(gt, _)| gt == goes_through || goes_through.is_zero())
-                })
-                .is_some()
-        } else {
-            self.sub_graphs.contains_key(pair)
-        }
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
+        self.sub_graphs
+            .get(&pair.ordered())
+            .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
+            .is_some()
     }
 
     pub fn remove_subgraph(&mut self, pair: &Pair, goes_through: &Pair) {

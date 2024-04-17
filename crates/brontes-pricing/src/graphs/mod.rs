@@ -240,13 +240,9 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             || self.subgraph_verifier.is_verifying(&pair, &goes_through)
     }
 
-    fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
-        self.sub_graph_registry.has_go_through(pair, goes_through)
-            || self.subgraph_verifier.has_go_through(pair, goes_through)
-    }
-
-    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Option<Pair>) -> bool {
-        self.has_go_through(&pair, &goes_through)
+    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Pair) -> bool {
+        self.sub_graph_registry.has_go_through(&pair, &goes_through)
+            || self.subgraph_verifier.has_go_through(&pair, &goes_through)
     }
 
     pub fn remove_state(&mut self, address: &Address) {
