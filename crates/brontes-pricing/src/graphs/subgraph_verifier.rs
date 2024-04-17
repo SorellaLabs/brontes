@@ -297,7 +297,7 @@ impl SubgraphVerifier {
                         let full_pair = subgraph.subgraph.complete_pair();
 
                         self.pending_subgraphs
-                            .entry(pair)
+                            .entry(full_pair.ordered())
                             .or_default()
                             .push((goes_through, subgraph));
                         // anything that was fully remove gets cached

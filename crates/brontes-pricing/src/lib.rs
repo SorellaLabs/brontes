@@ -749,6 +749,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     edges,
                     frayed_ext,
                 ) else {
+                tracing::info!("requery bad state add subgraph failed");
                     return;
                 };
 
@@ -776,6 +777,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .graph_manager
             .verify_subgraph_on_new_path_failure(pair, &goes_through)
         else {
+                tracing::info!("verify subgraph on new path failure failed");
             return;
         };
 
@@ -862,6 +864,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let Some((id, need_state, _)) =
                 self.add_subgraph(pair, complete_pair, goes_through, extend, block, edges, true)
             else {
+                tracing::info!("rundown add frayed ext failed");
                 return;
             };
 
