@@ -27,7 +27,7 @@ use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::{Reciprocal, ReciprocalAssign},
-        basic::traits::{One, Zero},
+        basic::traits::{One, Two, Zero},
         conversion::traits::FromSciString,
     },
     Rational,
@@ -158,19 +158,19 @@ impl CexPriceMap {
                     }
                 }
 
-                let volume_weighted_ask = volume_price.0 / &cumulative_bbo.0;
-                let volume_weighted_bid = volume_price.1 / &cumulative_bbo.1;
+                let volume_weighted_bid = volume_price.0 / &cumulative_bbo.0;
+                let volume_weighted_ask = volume_price.1 / &cumulative_bbo.1;
 
                 let fees = exchange.fees();
 
                 let fee_adjusted_maker = (
-                    &volume_weighted_ask * (Rational::from(1) - &fees.0),
                     &volume_weighted_bid * (Rational::from(1) - &fees.0),
+                    &volume_weighted_ask * (Rational::from(1) - &fees.0),
                 );
 
                 let fee_adjusted_taker = (
-                    volume_weighted_ask * (Rational::from(1) - &fees.1),
                     volume_weighted_bid * (Rational::from(1) - &fees.1),
+                    volume_weighted_ask * (Rational::from(1) - &fees.1),
                 );
 
                 FeeAdjustedQuote {
@@ -323,22 +323,16 @@ impl CexPriceMap {
 
     pub fn get_volume_weighted_quote(
         &self,
-        pair: &Pair,
-        exchanges: &[CexExchange],
+        exchange_quotes: &[FeeAdjustedQuote],
         dex_swap: &NormalizedSwap,
-    ) -> Option<(FeeAdjustedQuote, usize)> {
-        let quotes = exchanges
-            .iter()
-            .filter_map(|exchange| self.get_quote(pair, exchange))
-            .collect_vec();
-
+    ) -> Option<FeeAdjustedQuote> {
         let mut cumulative_bbo = (Rational::ZERO, Rational::ZERO);
         let mut vw_price_maker = (Rational::ZERO, Rational::ZERO);
         let mut vw_price_taker = (Rational::ZERO, Rational::ZERO);
 
         let mut avg_timestamp = 0;
 
-        for quote in &quotes {
+        for quote in exchange_quotes {
             cumulative_bbo.0 += &quote.amount.0;
             cumulative_bbo.1 += &quote.amount.1;
 
@@ -351,16 +345,16 @@ impl CexPriceMap {
             avg_timestamp += quote.timestamp;
         }
 
-        let volume_weighted_ask_maker = vw_price_maker.0 / &cumulative_bbo.0;
-        let volume_weighted_bid_maker = vw_price_maker.1 / &cumulative_bbo.1;
+        let volume_weighted_bid_maker = vw_price_maker.0 / &cumulative_bbo.0;
+        let volume_weighted_ask_maker = vw_price_maker.1 / &cumulative_bbo.1;
 
-        let volume_weighted_ask_taker = vw_price_taker.0 / &cumulative_bbo.0;
-        let volume_weighted_bid_taker = vw_price_taker.1 / &cumulative_bbo.1;
+        let volume_weighted_bid_taker = vw_price_taker.0 / &cumulative_bbo.0;
+        let volume_weighted_ask_taker = vw_price_taker.1 / &cumulative_bbo.1;
 
-        let avg_timestamp = avg_timestamp / quotes.len() as u64;
+        let avg_timestamp = avg_timestamp / exchange_quotes.len() as u64;
         let avg_amount = (
-            &cumulative_bbo.0 / Rational::from(quotes.len()),
-            &cumulative_bbo.1 / Rational::from(quotes.len()),
+            &cumulative_bbo.0 / Rational::from(exchange_quotes.len()),
+            &cumulative_bbo.1 / Rational::from(exchange_quotes.len()),
         );
 
         let smaller = dex_swap.swap_rate().min(volume_weighted_ask_maker.clone());
@@ -375,17 +369,14 @@ impl CexPriceMap {
             );
             return None;
         } else {
-            Some((
-                FeeAdjustedQuote {
-                    exchange:    CexExchange::VWAP,
-                    timestamp:   avg_timestamp,
-                    price_maker: (volume_weighted_ask_maker, volume_weighted_bid_maker),
-                    price_taker: (volume_weighted_ask_taker, volume_weighted_bid_taker),
-                    token0:      pair.0,
-                    amount:      avg_amount,
-                },
-                quotes.len(),
-            ))
+            Some(FeeAdjustedQuote {
+                exchange:    CexExchange::VWAP,
+                timestamp:   avg_timestamp,
+                price_maker: (volume_weighted_bid_maker, volume_weighted_ask_maker),
+                price_taker: (volume_weighted_bid_taker, volume_weighted_ask_taker),
+                token0:      exchange_quotes[0].token0,
+                amount:      avg_amount,
+            })
         }
     }
 }
@@ -572,7 +563,7 @@ pub struct CexQuote {
     #[redefined(same_fields)]
     pub exchange:  CexExchange,
     pub timestamp: u64,
-    /// Best Ask & Bid price
+    /// Best Bid & Ask price
     pub price:     (Rational, Rational),
     /// Bid & Ask amount
     pub amount:    (Rational, Rational),
@@ -609,13 +600,26 @@ pub struct FeeAdjustedQuote {
     #[redefined(same_fields)]
     pub exchange:    CexExchange,
     pub timestamp:   u64,
-    /// Best fee adjusted Ask & Bid price (maker)
+    /// Best fee adjusted Bid & Ask price (maker)
     pub price_maker: (Rational, Rational),
-    /// Best fee adjusted Ask & Bid price (taker)
+    /// Best fee adjusted Bid & Ask price (taker)
     pub price_taker: (Rational, Rational),
     /// Bid & Ask amount
     pub amount:      (Rational, Rational),
     pub token0:      Address,
+}
+
+impl FeeAdjustedQuote {
+    pub fn maker_taker_mid(&self) -> (Rational, Rational) {
+        (
+            (&self.price_maker.0 + &self.price_maker.1) / Rational::TWO,
+            (&self.price_taker.0 + &self.price_taker.1) / Rational::TWO,
+        )
+    }
+
+    pub fn maker_taker_ask(self) -> (Rational, Rational) {
+        (self.price_maker.1, self.price_taker.1)
+    }
 }
 
 impl PartialEq for FeeAdjustedQuote {
@@ -710,13 +714,13 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
         let (pair, quote) = value;
 
         let price = (
-            Rational::try_from_float_simplest(quote.ask_price).unwrap(),
             Rational::try_from_float_simplest(quote.bid_price).unwrap(),
+            Rational::try_from_float_simplest(quote.ask_price).unwrap(),
         );
 
         let amount = (
-            Rational::try_from_float_simplest(quote.ask_amount).unwrap(),
             Rational::try_from_float_simplest(quote.bid_amount).unwrap(),
+            Rational::try_from_float_simplest(quote.ask_amount).unwrap(),
         );
 
         CexQuote {

@@ -661,14 +661,16 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     // Cex-dex specific details
     writeln!(f, "\n{}", "Cex-Dex Details:\n".bold().bright_yellow().underline())?;
+    /*
     writeln!(f, "  - {}:", "PnL".bright_blue())?;
     writeln!(
         f,
         "    - Maker: {}\n    - Taker: {}",
-        cex_dex_data.pnl.maker_profit.clone().to_float(),
+        cex_dex_data.pnl.clone().to_float(),
         cex_dex_data.pnl.taker_profit.clone().to_float()
-    )?;
+    )?;*/
 
+    /*
     writeln!(f, "  - {}", "Swaps:".bright_blue())?;
     for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
@@ -696,7 +698,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
         } else {
             writeln!(f, "   No arbitrage details found for this swap.")?;
         }
-    }
+    }*/
 
     bundle
         .header

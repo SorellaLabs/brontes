@@ -32,8 +32,13 @@ use crate::{
 pub struct CexDex {
     pub tx_hash:          B256,
     pub swaps:            Vec<NormalizedSwap>,
-    pub stat_arb_details: Vec<StatArbDetails>,
-    pub pnl:              StatArbPnl,
+    // Represents the arb details, using the cross exchange VMAP quote
+    pub global_vmap:      Vec<ArbDetails>,
+    // Arb details taking the most optimistic route across all exchanges
+    pub max_optimistic:   Vec<ArbDetails>,
+    // Arb details using quotes from each exchange for each leg
+    pub per_exchange_pnl: Vec<Vec<ArbDetails>>,
+    pub pnl:              ArbPnl,
     #[redefined(same_fields)]
     pub gas_details:      GasDetails,
 }
@@ -69,6 +74,8 @@ impl Serialize for CexDex {
     where
         S: Serializer,
     {
+        todo!();
+        /*
         let mut ser_struct = serializer.serialize_struct("CexDex", 34)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
@@ -126,7 +133,7 @@ impl Serialize for CexDex {
 
         ser_struct.serialize_field("gas_details", &(gas_details))?;
 
-        ser_struct.end()
+        ser_struct.end()  */
     }
 }
 
@@ -155,7 +162,7 @@ impl DbRow for CexDex {
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct StatArbDetails {
+pub struct ArbDetails {
     #[redefined(same_fields)]
     pub cex_exchange: CexExchange,
     pub cex_price:    Rational,
@@ -163,10 +170,10 @@ pub struct StatArbDetails {
     pub dex_exchange: Protocol,
     pub dex_price:    Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
-    pub pnl_pre_gas:  StatArbPnl,
+    pub pnl_pre_gas:  ArbPnl,
 }
 
-impl fmt::Display for StatArbDetails {
+impl fmt::Display for ArbDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Arb Leg Details:")?;
         writeln!(
@@ -183,18 +190,20 @@ impl fmt::Display for StatArbDetails {
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct StatArbPnl {
-    pub maker_profit: Rational,
-    pub taker_profit: Rational,
+pub struct ArbPnl {
+    pub maker_taker_mid: (Rational, Rational),
+    pub maker_taker_ask: (Rational, Rational),
 }
 
-impl fmt::Display for StatArbPnl {
+impl fmt::Display for ArbPnl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "\n - Maker: {}\n - Taker: {}",
-            self.maker_profit.clone().to_float(),
-            self.taker_profit.clone().to_float()
+            "\n - Maker Mid: {}\n - Taker Mid: {}\n - Maker Ask: {}\n - Taker Ask: {}",
+            self.maker_taker_mid.0.clone().to_float(),
+            self.maker_taker_mid.1.clone().to_float(),
+            self.maker_taker_ask.0.clone().to_float(),
+            self.maker_taker_ask.1.clone().to_float()
         )?;
 
         Ok(())
