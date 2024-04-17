@@ -258,13 +258,11 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
-            self.sub_graph_registry.check_for_dups();
             let state = self.graph_state.finalized_state();
             let (start_price, start_addr) = self
                 .sub_graph_registry
                 .get_subgraph_extends(&pair, goes_through)
                 .map(|jump_pair| {
-                    tracing::info!(?jump_pair);
                     (
                         self.sub_graph_registry
                             .get_price_all(jump_pair.flip(), state)
@@ -272,10 +270,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                         jump_pair.0,
                     )
                 })
-                .unwrap_or_else(|| {
-                    tracing::info!(?pair, ?goes_through, "default");
-                    (Rational::ONE, quote)
-                });
+                .unwrap_or_else(|| (Rational::ONE, quote));
 
             let _ = self.sub_graph_registry.verify_current_subgraphs(
                 pair,

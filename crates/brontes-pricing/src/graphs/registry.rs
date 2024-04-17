@@ -53,6 +53,8 @@ impl SubGraphRegistry {
         Self { sub_graphs }
     }
 
+    // useful for debugging
+    #[allow(unused)]
     pub fn check_for_dups(&self) {
         self.sub_graphs
             .iter()
