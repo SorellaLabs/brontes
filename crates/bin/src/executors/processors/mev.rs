@@ -74,7 +74,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     mev_details: Vec<Bundle>,
 ) {
     debug!(
-        target: "brontes",
+        target: "brontes::results",
         "block details\n {}",
         block_details.to_string()
     );
@@ -100,7 +100,7 @@ async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
 ) {
     for mev in mev_details {
         debug!(
-            target: "brontes",
+            target: "brontes::results",
             "mev details\n {}",
             mev.to_string()
         );
