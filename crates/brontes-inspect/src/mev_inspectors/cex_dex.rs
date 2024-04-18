@@ -219,7 +219,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             dex_swaps,
             global_vmam_cex_dex: global_vwam_cex_dex,
             per_exchange_pnl,
-            max_optimistic: None,
+            max_profit: None,
         };
 
         cex_dex.construct_max_profit_route();
@@ -378,6 +378,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         cex_dex.adjust_for_gas_cost(&gas_cost);
 
         cex_dex.per_exchange_pnl.retain(|entry| entry.is_some());
+
+        // Sort by highest profit
+        cex_dex
+            .per_exchange_pnl
+            .sort_by_key(|entry| -entry.as_ref().unwrap().aggregate_pnl.maker_taker_mid.1);
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -395,8 +400,16 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
     ) -> Option<BundleData> {
-        let has_positive_pnl = possible_cex_dex.global_vmam_cex_dex.maker_profit > Rational::ZERO
-            || possible_cex_dex.pnl.taker_profit > Rational::ZERO;
+        let sanity_check_arb = possible_cex_dex.arb_sanity_check();
+
+        //TODO: Could add stable sanity check if necessary
+        let has_outlier_pnl = sanity_check_arb.profitable_exchanges.len() < 2
+            && sanity_check_arb.profitable_exchanges[0].1.maker_taker_ask.1 > Rational::from(10000)
+            && sanity_check_arb.profitable_exchanges[0].0
+                == (CexExchange::Kucoin || CexExchange::Okex);
+
+        let has_positive_exchange_pnl = !sanity_check_arb.profitable_exchanges.is_empty();
+        let has_positive_cross_exchange_pnl = 
 
         if has_positive_pnl
             || (!info.is_classified
@@ -409,6 +422,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                     || info.is_cex_dex_call))
             || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
             || info.is_labelled_searcher_of_type(MevType::CexDex)
+            || sanity_check_arb.global_profitability
+                && sanity_check_arb.profitable_exchanges.len() > 3
         {
             possible_cex_dex.into_bundle(info)
         } else {
@@ -477,9 +492,8 @@ impl PossibleCexDex {
         self.aggregate_pnl = ArbPnl { maker_taker_mid, maker_taker_ask };
     }
 
-    pub fn create_cex_dex_route(&self, normalized_swaps: &[NormalizedSwap]) -> CexDexRoute {
-        let arb_legs = self
-            .arb_legs
+    pub fn generate_arb_details(&self, normalized_swaps: &[NormalizedSwap]) -> Vec<ArbDetails> {
+        self.arb_legs
             .iter()
             .enumerate()
             .filter_map(|(index, arb_leg)| {
@@ -496,9 +510,7 @@ impl PossibleCexDex {
                     })
                 })
             })
-            .collect::<Vec<_>>();
-
-        CexDexRoute { arb_legs, pnl: self.aggregate_pnl.clone() }
+            .collect::<Vec<_>>()
     }
 }
 
@@ -506,11 +518,10 @@ pub struct CexDexProcessing {
     pub dex_swaps:           Vec<NormalizedSwap>,
     pub global_vmam_cex_dex: Option<PossibleCexDex>,
     pub per_exchange_pnl:    Vec<Option<PossibleCexDex>>,
-    pub max_optimistic:      Option<PossibleCexDex>,
+    pub max_profit:          Option<PossibleCexDex>,
 }
 
 impl CexDexProcessing {
-    //TODO: Clean up logic
     pub fn construct_max_profit_route(&mut self) -> Option<()> {
         if self.per_exchange_pnl.iter().all(Option::is_none) {
             return None;
@@ -558,7 +569,7 @@ impl CexDexProcessing {
             .reduce(|acc, x| acc + x)
             .unwrap_or_default();
 
-        self.max_optimistic = Some(PossibleCexDex { arb_legs: best_pnls, aggregate_pnl });
+        self.max_profit = Some(PossibleCexDex { arb_legs: best_pnls, aggregate_pnl });
 
         incomplete_routes.iter().rev().for_each(|i| {
             self.per_exchange_pnl.remove(*i);
@@ -574,7 +585,7 @@ impl CexDexProcessing {
             }
         });
 
-        self.max_optimistic
+        self.max_profit
             .as_mut()
             .map(|arb| arb.adjust_for_gas_cost(gas_cost));
 
@@ -585,21 +596,66 @@ impl CexDexProcessing {
 
     pub fn into_bundle(self, tx_info: &TxInfo) -> Option<BundleData> {
         Some(BundleData::CexDex(CexDex {
-            tx_hash:          tx_info.tx_hash,
-            swaps:            self.dex_swaps,
-            global_vmap:      self
-                .global_vmam_cex_dex
-                .create_cex_dex_route(&self.dex_swaps)?,
-            max_optimistic:   self.max_optimistic.create_cex_dex_route(&self.dex_swaps)?,
-            per_exchange_pnl: self
+            tx_hash:             tx_info.tx_hash,
+            swaps:               self.dex_swaps,
+            global_vmap_details: self
+                .global_vmam_cex_dex?
+                .generate_arb_details(&self.dex_swaps),
+            global_vmap_pnl:     self.global_vmam_cex_dex?.aggregate_pnl,
+
+            optimal_route_details: self.max_profit?.generate_arb_details(&self.dex_swaps),
+            optimal_route_pnl:     self.max_profit?.aggregate_pnl,
+            per_exchange_details:  self
                 .per_exchange_pnl
                 .iter()
-                .filter_map(|p| p.as_ref().map(|p| p.create_cex_dex_route(&self.dex_swaps)))
+                .filter_map(|p| p.as_ref().map(|p| p.generate_arb_details(&self.dex_swaps)))
                 .collect(),
-            pnl:              self.max_optimistic?.aggregate_pnl,
-            gas_details:      tx_info.gas_details.clone(),
+
+            per_exchange_pnl: self
+                .per_exchange_pnl
+                .into_iter()
+                .map(|p| p.unwrap())
+                .map(|p| {
+                    let leg = p.arb_legs.first().unwrap();
+                    (leg, p.aggregate_pnl)
+                })
+                .map(|(leg, pnl)| (leg.unwrap().cex_quote.exchange, pnl))
+                .collect(),
+
+            gas_details: tx_info.gas_details.clone(),
         }))
     }
+
+    fn arb_sanity_check(&self) -> ArbSanityCheck {
+        let profitable_exchanges: Vec<(CexExchange, ArbPnl)> = self
+            .per_exchange_pnl
+            .iter()
+            .filter_map(|p| p.as_ref()) // Get references to the existing PnL data
+            .filter(|p| {
+                p.aggregate_pnl.maker_taker_mid.1 > Rational::ZERO
+                    || p.aggregate_pnl.maker_taker_ask.1 > Rational::ZERO
+            })
+            .map(|p| (p.arb_legs[0].unwrap().cex_quote.exchange, p.aggregate_pnl))
+            .collect();
+
+        let profitable_cross_exchange = self.max_profit.unwrap().aggregate_pnl.maker_taker_mid.0
+            > Rational::ZERO
+            || self.max_profit.unwrap().aggregate_pnl.maker_taker_ask.0 > Rational::ZERO;
+
+        let global_profitability = self.global_vmam_cex_dex.as_ref().map_or(false, |global| {
+            global.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO
+                || global.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO
+        });
+
+        ArbSanityCheck { profitable_exchanges, profitable_cross_exchange, global_profitability }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ArbSanityCheck {
+    pub profitable_exchanges: Vec<(CexExchange, ArbPnl)>,
+    pub profitable_cross_exchange: bool,
+    pub global_profitability: bool,
 }
 
 #[derive(Debug)]
