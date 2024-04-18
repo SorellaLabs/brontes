@@ -769,6 +769,8 @@ pub enum CexExchange {
     Unknown,
 }
 
+self_convert_redefined!(CexExchange);
+
 impl<'de> serde::Deserialize<'de> for CexExchange {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -801,8 +803,6 @@ impl CexExchange {
         }
     }
 }
-
-self_convert_redefined!(CexExchange);
 
 impl From<&str> for CexExchange {
     fn from(value: &str) -> Self {

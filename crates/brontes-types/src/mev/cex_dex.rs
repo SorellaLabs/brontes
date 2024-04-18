@@ -45,7 +45,8 @@ pub struct CexDex {
     pub optimal_route_pnl:     ArbPnl,
     // Arb details using quotes from each exchange for each leg
     pub per_exchange_details:  Vec<Vec<ArbDetails>>,
-    pub per_exchange_pnl:      Vec<ArbPnl>,
+    #[redefined(field((CexExchange, same)))]
+    pub per_exchange_pnl:      Vec<(CexExchange, ArbPnl)>,
     #[redefined(same_fields)]
     pub gas_details:           GasDetails,
 }
