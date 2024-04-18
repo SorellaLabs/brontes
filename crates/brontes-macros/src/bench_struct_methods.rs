@@ -1,4 +1,3 @@
-
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
@@ -14,17 +13,17 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
                 let Expr::Field(ref a) = name_val.value else { return None };
                 match &a.member {
                     syn::Member::Named(n) => return Some(n.to_owned()),
-                    _ => return None
+                    _ => return None,
                 }
-
             } else {
                 None
             }
         })
         .ok()
-        .flatten() else {
-         return Err(syn::Error::new(attr.span(),"invalid ptr to function call struct"))
-        };
+        .flatten()
+    else {
+        return Err(syn::Error::new(attr.span(), "invalid ptr to function call struct"))
+    };
 
     let attrs = item.attrs;
     let vis = item.vis;

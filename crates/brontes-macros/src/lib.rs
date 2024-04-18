@@ -1,7 +1,7 @@
 mod action_classifier;
+mod bench_struct_methods;
 mod discovery_classifier;
 mod libmdbx_test;
-mod bench_struct_methods;
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, ItemFn};

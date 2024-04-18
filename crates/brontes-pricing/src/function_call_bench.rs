@@ -22,10 +22,14 @@ impl Drop for FunctionCallBench {
             let top_q = &calls[(call_amount as f64 * 0.75) as usize].as_millis();
 
             tracing::info!(target: "brontes::call_details",
-                "\n------------ {function_name} call benches \
-                 -----------\ntotal_calls={call_amount}\ntotal_time={total_time_ms}ms\\
-                 naverage_call_duration={average_duration_ms}ms\n25th_pct_time={bottom_q}ms\\
-                 n75th_pct_time={top_q}ms"
+                r#"
+                ------------ {function_name} call benches-----------
+                total_calls={call_amount}
+                total_time={total_time_ms}ms
+                average_call_duration={average_duration_ms}ms
+                25th_pct_time={bottom_q}ms
+                75th_pct_time={top_q}ms
+                "#
             )
         }
     }
