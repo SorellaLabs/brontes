@@ -1169,7 +1169,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .for_each(|map| map.retain(|k, v| !removals.contains(&(*k, v.goes_through))));
 
         removals.into_iter().for_each(|pair| {
-            tracing::debug!(pair=?pair.0, goes_through=?pair.1, "drastic price change detected. removing pair");
+            tracing::debug!(target: "brontes::missing_pricing",pair=?pair.0, goes_through=?pair.1, "drastic price change detected. removing pair");
             self.graph_manager.remove_subgraph(pair.0, pair.1);
         })
     }
