@@ -519,7 +519,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .subgraph_verifier
                 .is_verifying(&pair0, &pool_pair)
             {
-                tracing::debug!(
+                tracing::error!(
                     ?tx_idx,
                     ?block,
                     ?pair0,
@@ -567,7 +567,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .subgraph_verifier
                 .is_verifying(&pair1, &flipped_pool)
             {
-                tracing::debug!(
+                tracing::error!(
                     ?tx_idx,
                     ?block,
                     ?pair1,
@@ -697,7 +697,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     })
                 }
                 VerificationResults::Abort(pair, goes_through, block) => {
-                    tracing::debug!(?pair, ?goes_through, "aborted verification process");
+                    tracing::debug!(target: "brontes::missing_pricing", ?pair, ?goes_through, ?block, "aborted verification process");
                     self.failed_pairs
                         .entry(block)
                         .or_default()
