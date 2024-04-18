@@ -754,6 +754,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 };
 
                 if force_rundown {
+                    tracing::debug!("force rundown requery bad state par");
                     self.rundown(pair, full_pair, goes_through, block);
                 } else if !need_state {
                     recusing.push((block, id, full_pair, vec![goes_through]))
