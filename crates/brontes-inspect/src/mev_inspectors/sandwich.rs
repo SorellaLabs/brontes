@@ -44,6 +44,9 @@ pub struct PossibleSandwich {
     victims:               Vec<Vec<B256>>,
 }
 
+// Add support for this, where there is a frontrun & then backrun & in between
+// there is an unrelated tx that is not frontrun but is backrun. See the rari
+// trade here. https://libmev.com/blocks/18215838
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
@@ -189,6 +192,23 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_info: Vec<Vec<TxInfo>>,
         victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Vec<Bundle>> {
+        // if all of the sandwichers have the same eoa or are all verified contracts.
+        // then we can continue. otherwise false positive
+        if !(possible_front_runs_info
+            .iter()
+            .chain(vec![&backrun_info])
+            .all(|f| f.mev_contract.is_some())
+            || possible_front_runs_info
+                .iter()
+                .chain(vec![&backrun_info])
+                .map(|f| f.eoa)
+                .unique()
+                .count()
+                == 1)
+        {
+            return None
+        }
+
         let back_run_actions = searcher_actions.pop()?;
 
         if !Self::has_pool_overlap(
@@ -587,14 +607,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .any(|pool| {
                     let fp = front_run_pools.contains(&pool);
                     let bp = back_run_pools.contains(&pool);
+
                     has_sandwich |= fp && bp;
 
                     fp || bp
                 });
-
                 has_sandwich |= front_run && back_run;
 
-                (front_run || back_run) && generated_pool_overlap
+                front_run || back_run || generated_pool_overlap
             })
             .map(|was_victim| was_victim as usize)
             .sum();
