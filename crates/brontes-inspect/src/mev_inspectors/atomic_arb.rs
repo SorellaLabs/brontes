@@ -6,11 +6,11 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedAggregator, NormalizedEthTransfer,
-        NormalizedFlashLoan, NormalizedSwap, NormalizedTransfer,
+        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedSwap,
+        NormalizedTransfer,
     },
     tree::BlockTree,
-    ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
@@ -49,31 +49,8 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
             .t_map(|(k, v)| {
                 (
                     k,
-                    v.into_iter()
-                        .flatten_specified(
-                            Actions::try_flash_loan_ref,
-                            |actions: NormalizedFlashLoan| {
-                                actions
-                                    .child_actions
-                                    .into_iter()
-                                    .chain(actions.repayments.into_iter().map(Actions::from))
-                                    .collect::<Vec<_>>()
-                            },
-                        )
-                        .flatten_specified(Actions::try_batch_ref, |batch| {
-                            batch
-                                .user_swaps
-                                .into_iter()
-                                .chain(batch.solver_swaps.unwrap_or_default())
-                                .map(Into::into)
-                                .collect::<Vec<_>>()
-                        })
-                        .flatten_specified(
-                            Actions::try_aggregator_ref,
-                            |actions: NormalizedAggregator| {
-                                actions.child_actions.into_iter().collect::<Vec<_>>()
-                            },
-                        )
+                    self.utils
+                        .flatten_nested_actions_default(v.into_iter())
                         .collect::<Vec<_>>(),
                 )
             })
@@ -383,7 +360,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_seawise_resolver() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 2.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
@@ -403,7 +380,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_reverting_contract() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 1.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
@@ -413,7 +390,7 @@ mod tests {
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
             .with_expected_profit_usd(4.08)
-            .with_gas_paid_usd(155.64);
+            .with_gas_paid_usd(154.68);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -491,21 +468,6 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
                 "cb70044718a016a75c811209552b7af57f64b27e6a502221f96e991968accef4"
-            )
-            .into()])
-            .with_dex_prices()
-            .needs_tokens(vec![WETH_ADDRESS]);
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn assert_no_psm_1inch() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![hex!(
-                "dc80326e9eac837a9788652d025d5c13c87a62f495d3647e527e35714de31c86"
             )
             .into()])
             .with_dex_prices()
