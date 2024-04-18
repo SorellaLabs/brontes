@@ -395,7 +395,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
                 // we reciprocal amount out because we won't have pricing for quote <> token out
                 // but we will have flipped
-                let dex_pricing_rate = am_out_price.get_price(PriceAt::Average).reciprocal()
+                let dex_pricing_rate = am_out_price.get_price(PriceAt::Average)
                     * am_in_price.get_price(PriceAt::Average);
 
                 let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
