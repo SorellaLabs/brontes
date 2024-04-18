@@ -914,8 +914,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .collect::<Vec<_>>()
         });
 
-        new_subgraphs.into_iter().for_each(
-            |(pair, complete_pair, goes_through, extend, block, edges, frayed_ext)| {
+        let verify = new_subgraphs
+            .into_iter()
+            .filter_map(|(pair, complete_pair, goes_through, extend, block, edges, frayed_ext)| {
                 let (id, need_state, ..) = self
                     .add_subgraph(
                         pair,
@@ -929,11 +930,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     .unwrap();
 
                 if !need_state {
-                    self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])]);
+                    return Some((block, id, complete_pair, vec![goes_through]))
                 }
-                return
-            },
-        );
+                return None
+            })
+            .collect_vec();
+
+        execute_on!(target = pricing, self.try_verify_subgraph(verify));
     }
 
     /// rundown occurs when we have hit a attempt limit for trying to find high
