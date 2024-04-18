@@ -44,9 +44,6 @@ pub struct PossibleSandwich {
     victims:               Vec<Vec<B256>>,
 }
 
-// Add support for this, where there is a frontrun & then backrun & in between
-// there is an unrelated tx that is not frontrun but is backrun. See the rari
-// trade here. https://libmev.com/blocks/18215838
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
@@ -335,7 +332,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
-
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
         let PossibleSandwich {
