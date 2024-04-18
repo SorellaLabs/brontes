@@ -336,6 +336,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
 
+
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
         let PossibleSandwich {
             eoa,
@@ -623,7 +624,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
             .any(|(swaps, transfers)| {
                 swaps.iter().any(|s| pools.contains(&s.pool))
-                    && transfers.iter().any(|t| {
+                    || transfers.iter().any(|t| {
                         // victim has a transfer from the pool that was a token in for
                         // the sandwich
                         tokens.contains(&(t.token.address, t.to, is_frontrun))
