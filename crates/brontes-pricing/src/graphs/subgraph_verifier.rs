@@ -180,7 +180,7 @@ impl SubgraphVerifier {
         query_state
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), level = "trace")]
     pub fn verify_subgraph_on_new_path_failure(
         &mut self,
         pair: Pair,
@@ -276,13 +276,17 @@ impl SubgraphVerifier {
             self.pending_subgraphs
                 .get_mut(&pair.ordered())
                 .or_else(|| {
-                    tracing::info!(?pair, ?goes_through, "frayed ext no pair in pending_subgraphs");
+                    tracing::trace!(
+                        ?pair,
+                        ?goes_through,
+                        "frayed ext no pair in pending_subgraphs"
+                    );
                     None
                 })?
                 .iter_mut()
                 .find(|(p, _)| p == goes_through)
                 .or_else(|| {
-                    tracing::info!(
+                    tracing::trace!(
                         ?pair,
                         ?goes_through,
                         "frayed ext no goes through in pending_subgraphs"
@@ -336,7 +340,7 @@ impl SubgraphVerifier {
                         .collect::<FastHashMap<_, _>>();
 
                     if result.should_abandon {
-                        tracing::debug!(?pair, "aborting");
+                        tracing::trace!(?pair, "aborting");
                         return VerificationResults::Abort(
                             subgraph.subgraph.complete_pair(),
                             subgraph.subgraph.must_go_through(),
@@ -353,7 +357,7 @@ impl SubgraphVerifier {
                             .or_default()
                             .push((goes_through, subgraph));
                         // anything that was fully remove gets cached
-                        tracing::debug!(?pair, "requerying");
+                        tracing::trace!(?pair, "requerying");
 
                         return VerificationResults::Failed(VerificationFailed {
                             pair,
@@ -408,7 +412,6 @@ impl SubgraphVerifier {
             })
             .filter_map(|(pair, block, frayed, subgraph, price, quote)| {
                 let (_, mut subgraph) = subgraph?;
-                let goes_through = subgraph.subgraph.must_go_through();
 
                 if let Some(frayed) = frayed {
                     let extensions = subgraph
@@ -416,37 +419,6 @@ impl SubgraphVerifier {
                         .remove(&frayed)
                         .unwrap_or_default();
 
-                    // if subgraph.in_rundown {
-                    //     let state = &self
-                    //         .subgraph_verification_state
-                    //         .get(&pair.ordered())
-                    //         .unwrap()
-                    //         .iter()
-                    //         .find(|(p, _)| *p == goes_through)
-                    //         .unwrap()
-                    //         .1;
-                    //
-                    //     let ignored = state.get_nodes_to_ignore();
-                    //
-                    //     let ex = extensions
-                    //         .iter()
-                    //         .map(|e| (e.pool_addr, Pair(e.token_0, e.token_1)))
-                    //         .collect::<FastHashSet<_>>();
-                    //
-                    //     let extends_to = subgraph.subgraph.extends_to();
-                    //
-                    //     tracing::debug!(
-                    //         ?pair,
-                    //         ?extends_to,
-                    //         extensions = ex.len(),
-                    //         "connected with \n {:#?}\n extensions: {:#?}",
-                    //         ex.iter()
-                    //             .filter(|(_, i)| ignored.contains(i))
-                    //             .map(|(_, i)| state.highest_liq_for_pair(*i))
-                    //             .collect_vec(),
-                    //         ex,
-                    //     );
-                    // }
                     subgraph.subgraph.extend_subgraph(extensions);
                 }
                 subgraph.iters += 1;
