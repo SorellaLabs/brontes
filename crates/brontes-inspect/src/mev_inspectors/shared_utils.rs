@@ -11,9 +11,10 @@ use brontes_types::{
         metadata::Metadata,
     },
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
+    normalized_actions::{Actions, NormalizedAggregator, NormalizedBatch, NormalizedFlashLoan},
     pair::Pair,
     utils::ToFloatNearest,
-    FastHashMap, FastHashSet, GasDetails, TxInfo,
+    ActionIter, FastHashMap, FastHashSet, GasDetails, TxInfo,
 };
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -62,7 +63,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     metadata
                         .dex_quotes
                         .as_ref()?
-                        .price_at_or_before(pair, tx_position as usize)
+                        .price_at(pair, tx_position as usize)
                         .map(|price| price.get_price(at))?
                         .clone()
                 };
@@ -74,6 +75,46 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
 
         Some(usd_deltas)
+    }
+
+    // will flatten nested and filter out actions that aren't swap, transfer or
+    // eth_transfer
+    pub fn flatten_nested_actions_default<'a>(
+        &self,
+        iter: impl Iterator<Item = Actions> + 'a,
+    ) -> impl Iterator<Item = Actions> + 'a {
+        self.flatten_nested_actions(iter, &|action| {
+            action.is_swap() || action.is_transfer() || action.is_eth_transfer()
+        })
+    }
+
+    pub fn flatten_nested_actions<'a, F>(
+        &self,
+        iter: impl Iterator<Item = Actions> + 'a,
+        filter_actions: &'a F,
+    ) -> impl Iterator<Item = Actions> + 'a
+    where
+        F: for<'b> Fn(&'b Actions) -> bool + 'a,
+    {
+        iter.flatten_specified(Actions::try_aggregator_ref, move |actions: NormalizedAggregator| {
+            actions
+                .child_actions
+                .into_iter()
+                .filter(&filter_actions)
+                .collect::<Vec<_>>()
+        })
+        .flatten_specified(Actions::try_flash_loan_ref, move |action: NormalizedFlashLoan| {
+            action
+                .fetch_underlying_actions()
+                .filter(&filter_actions)
+                .collect::<Vec<_>>()
+        })
+        .flatten_specified(Actions::try_batch_ref, move |action: NormalizedBatch| {
+            action
+                .fetch_underlying_actions()
+                .filter(&filter_actions)
+                .collect::<Vec<_>>()
+        })
     }
 
     /// defaults to zero for price if doesn't exist
@@ -98,7 +139,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     .dex_quotes
                     .as_ref()
                     .and_then(|dq| {
-                        dq.price_at_or_before(pair, tx_index as usize)
+                        dq.price_at(pair, tx_index as usize)
                             .map(|price| price.get_price(at))
                     })
                     .unwrap_or_default();
@@ -163,7 +204,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             metadata
                 .dex_quotes
                 .as_ref()?
-                .price_at_or_before(pair, tx_index)?
+                .price_at(pair, tx_index)?
                 .get_price(at),
         )
     }

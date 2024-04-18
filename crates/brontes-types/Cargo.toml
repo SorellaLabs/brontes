@@ -65,7 +65,7 @@ pin-project = "1.1.4"
 clap.workspace = true
 
 # stats
-statrs = "0.16" 
+statrs = "0.16"
 
 # errors
 eyre.workspace = true
@@ -80,7 +80,7 @@ dotenv.workspace = true
 tokio.workspace = true
 serial_test.workspace = true
 brontes-macros.workspace = true
-brontes-types = { workspace = true, features = ["tests"] }
+brontes-types = { workspace = true, features = ["tests", "test_pricing"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
@@ -88,9 +88,10 @@ reth-tracing-ext.workspace = true
 
 
 [features]
-default = []
 tests = []
+default = []
 cex-dex-markout = []
+test_pricing = []
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",

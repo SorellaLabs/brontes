@@ -26,8 +26,7 @@ pub fn graph_search_par<DB: DBWriter + LibmdbxReader>(
 
             let pair0 = Pair(pair.0, quote);
             let pair1 = Pair(pair.1, quote);
-
-            let pair = Some(pair).filter(|_| !is_transfer);
+            let pair = Some(pair).filter(|_| !is_transfer).unwrap_or_default();
 
             let (state, path) = on_new_pool_pair(
                 graph,
@@ -92,7 +91,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     ignore_state,
                     100,
                     Some(5),
-                    Duration::from_millis(69),
+                    Duration::from_millis(120),
                     default_extends_pair.is_some(),
                     None,
                 );
@@ -122,7 +121,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                                 ignore_state.clone(),
                                 0,
                                 None,
-                                Duration::from_millis(325),
+                                Duration::from_millis(150),
                                 default_extends_pair.is_some(),
                                 None,
                             )
@@ -144,7 +143,7 @@ type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<NewGraphDetails>);
 fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     msg: PoolUpdate,
-    main_pair: Option<Pair>,
+    main_pair: Pair,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
 ) -> NewPoolPair {
@@ -167,8 +166,7 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 
     // add second direction
     if let Some(pair1) = pair1 {
-        if let Some(path) = queue_loading_returns(graph, block, main_pair.map(|f| f.flip()), pair1)
-        {
+        if let Some(path) = queue_loading_returns(graph, block, main_pair.flip(), pair1) {
             path_pending.push(path);
         }
     }
@@ -179,7 +177,7 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     block: u64,
-    must_include: Option<Pair>,
+    must_include: Pair,
     pair: Pair,
 ) -> Option<NewGraphDetails> {
     if pair.0 == pair.1 {
@@ -188,22 +186,21 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
 
     // if we can extend another graph and we don't have a direct pair with a quote
     // asset, then we will extend.
-    let (mut n_pair, default_extend_to) = must_include
-        .and_then(|must_include| {
-            if must_include.is_zero() {
-                return None
-            }
-
+    let (mut n_pair, default_extend_to) = {
+        if must_include.is_zero() {
+            (pair, None)
+        } else {
             graph
                 .has_extension(&must_include, pair.1)
                 .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
-        })
-        .unwrap_or((pair, None));
+                .unwrap_or((pair, None))
+        }
+    };
 
     Some({
         let (subgraph, actual_extends) = graph.create_subgraph(
             block,
-            must_include,
+            Some(must_include).filter(|m| !m.is_zero()),
             n_pair,
             FastHashSet::default(),
             100,
@@ -223,7 +220,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
         NewGraphDetails {
             complete_pair: pair,
             pair: n_pair,
-            must_include: must_include.unwrap_or_default(),
+            must_include,
             block,
             edges: subgraph,
             extends_pair: extend_to,

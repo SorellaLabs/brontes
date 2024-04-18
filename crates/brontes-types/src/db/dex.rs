@@ -48,6 +48,10 @@ pub struct DexPrices {
     pub post_state:   Rational,
     /// tells us what variant of pricing for this pool we are looking at
     pub goes_through: Pair,
+    /// lets us know if this price was generated from a transfer. This allows
+    /// us to choose a swap that will have a correct goes through for the given
+    /// tx over a transfer which will be less accurate on price
+    pub is_transfer:  bool,
 }
 
 impl Display for DexPrices {
@@ -56,6 +60,7 @@ impl Display for DexPrices {
         opt.set_scale(9);
         writeln!(f, "pre state price: {}", self.pre_state.to_sci_with_options(opt))?;
         writeln!(f, "post state price: {}", self.post_state.to_sci_with_options(opt))?;
+        writeln!(f, "goes through: {:?}", self.goes_through)?;
         Ok(())
     }
 }
@@ -98,9 +103,10 @@ impl DexPrices {
 pub struct DexQuotes(pub Vec<Option<FastHashMap<Pair, DexPrices>>>);
 
 impl DexQuotes {
-    /// checks for price at the given tx index. if it isn't found, will look for
-    /// the price at all previous indexes in the block
-    pub fn price_at_or_before(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
+    /// This is done as the require tokens for our testing sets
+    /// the index to zero
+    #[cfg(feature = "test_pricing")]
+    pub fn price_at(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
         if pair.0 == ETH_ADDRESS {
             pair.0 = WETH_ADDRESS;
         }
@@ -114,6 +120,7 @@ impl DexQuotes {
                 pre_state:    Rational::ONE,
                 post_state:   Rational::ONE,
                 goes_through: Pair::default(),
+                is_transfer:  false,
             })
         }
 
@@ -128,7 +135,37 @@ impl DexQuotes {
             tx -= 1;
         }
 
-        debug!(?pair, before=?s_idx, "no price for pair");
+        debug!(?pair, at_or_before=?s_idx, "no price for pair");
+
+        None
+    }
+
+    /// checks for price at the given tx index. if it isn't found, will look for
+    /// the price at all previous indexes in the block
+    #[cfg(not(feature = "test_pricing"))]
+    pub fn price_at(&self, mut pair: Pair, tx: usize) -> Option<DexPrices> {
+        if pair.0 == ETH_ADDRESS {
+            pair.0 = WETH_ADDRESS;
+        }
+        if pair.1 == ETH_ADDRESS {
+            pair.1 = WETH_ADDRESS;
+        }
+        let s_idx = tx;
+
+        if pair.0 == pair.1 {
+            return Some(DexPrices {
+                pre_state:    Rational::ONE,
+                post_state:   Rational::ONE,
+                goes_through: Pair::default(),
+                is_transfer:  false,
+            })
+        }
+
+        if let Some(price) = self.get_price(pair, tx) {
+            return Some(price.clone())
+        }
+
+        debug!(?pair, at=?s_idx, "no price for pair");
 
         None
     }
