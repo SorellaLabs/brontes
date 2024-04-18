@@ -11,17 +11,25 @@ use brontes_types::{
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedSwap, NormalizedTransfer,
     },
+    pair::Pair,
     tree::{collect_address_set_for_accounting, BlockTree, GasDetails},
     ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
     TreeIter, TreeSearchBuilder, TxInfo, UnzipPadded,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::{arithmetic::traits::Abs, basic::traits::Zero},
+    Rational,
+};
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
+
+/// the price difference was more than 50% between dex pricing and effecive
+/// price
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(5, 10);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -251,6 +259,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
+        // ensure valid pricing
+        for (swaps, info) in front_run_swaps.iter().zip(&possible_front_runs_info) {
+            if !self.valid_pricing(metadata.clone(), swaps, info.tx_index as usize) {
+                return None
+            }
+        }
+        if !self.valid_pricing(metadata.clone(), &back_run_swaps, backrun_info.tx_index as usize) {
+            return None
+        }
+
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
             .into_iter()
@@ -296,6 +314,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &mev_addresses,
             &searcher_deltas,
             metadata.clone(),
+            true,
         ) {
             (Some(rev), true)
         } else {
@@ -351,6 +370,43 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!(?header, ?sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
+    }
+
+    fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
+        swaps
+            .iter()
+            .filter_map(|swap| {
+                let effective_price = swap.swap_rate();
+
+                let am_in_price = metadata
+                    .dex_quotes
+                    .as_ref()?
+                    .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
+
+                let am_out_price = metadata
+                    .dex_quotes
+                    .as_ref()?
+                    .price_at(Pair(self.utils.quote, swap.token_out.address), idx)?;
+
+                let dex_pricing_rate = am_out_price.get_price(PriceAt::Average)
+                    / am_in_price.get_price(PriceAt::Average);
+
+                let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
+
+                if pct > MAX_PRICE_DIFF {
+                    tracing::warn!(
+                        ?effective_price,
+                        ?dex_pricing_rate,
+                        ?swap,
+                        "to big of a delta for pricing on sandwiches"
+                    );
+                }
+
+                Some(pct)
+            })
+            .max()
+            .filter(|delta| delta.le(&MAX_PRICE_DIFF))
+            .is_some()
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {

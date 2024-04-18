@@ -108,6 +108,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             &mev_addresses,
             &account_deltas,
             metadata.clone(),
+            false,
         ) {
             (Some(rev), true)
         } else {

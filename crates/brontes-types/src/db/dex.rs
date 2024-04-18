@@ -170,6 +170,40 @@ impl DexQuotes {
         None
     }
 
+    pub fn price_at_or_before(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
+        if pair.0 == ETH_ADDRESS {
+            pair.0 = WETH_ADDRESS;
+        }
+        if pair.1 == ETH_ADDRESS {
+            pair.1 = WETH_ADDRESS;
+        }
+        let s_idx = tx;
+
+        if pair.0 == pair.1 {
+            return Some(DexPrices {
+                pre_state:    Rational::ONE,
+                post_state:   Rational::ONE,
+                goes_through: Pair::default(),
+                is_transfer:  false,
+            })
+        }
+
+        loop {
+            if let Some(price) = self.get_price(pair, tx) {
+                return Some(price.clone())
+            }
+            if tx == 0 {
+                break
+            }
+
+            tx -= 1;
+        }
+
+        debug!(?pair, at_or_before=?s_idx, "no price for pair");
+
+        None
+    }
+
     pub fn price_for_block(&self, mut pair: Pair, price_at: BlockPrice) -> Option<Rational> {
         if pair.0 == ETH_ADDRESS {
             pair.0 = WETH_ADDRESS;
