@@ -233,6 +233,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .filter_map(|swap| {
                 let effective_price = swap.swap_rate();
                 // amount_in / amount_out
+
                 let am_in_price = metadata
                     .dex_quotes
                     .as_ref()?
@@ -244,7 +245,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     .price_at(Pair(self.utils.quote, swap.token_out.address), idx)?;
 
                 let dex_pricing_rate = am_out_price.get_price(PriceAt::Average)
-                    * am_in_price.get_price(PriceAt::Average);
+                    / am_in_price.get_price(PriceAt::Average);
 
                 let pct = (&effective_price - &dex_pricing_rate).abs() / &dex_pricing_rate;
                 if pct > MAX_PRICE_DIFF {
