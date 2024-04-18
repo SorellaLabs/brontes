@@ -62,7 +62,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_nested_action,
         ]);
 
-        :get_possible_sandwich(tree.clone())
+        Self::get_possible_sandwich(tree.clone())
             .into_iter()
             .flat_map(Self::partition_into_gaps)
             .filter_map(
