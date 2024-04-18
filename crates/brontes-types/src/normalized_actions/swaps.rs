@@ -243,6 +243,9 @@ impl TryFrom<ArbDetails> for ClickhouseArbDetails {
     type Error = eyre::Report;
 
     fn try_from(value: ArbDetails) -> eyre::Result<Self> {
+        todo!();
+        /*
+
         Ok(Self {
             cex_exchange:  value.cex_exchange.to_string(),
             cex_price:     rational_to_u256_fraction(&value.cex_price)?,
@@ -252,7 +255,7 @@ impl TryFrom<ArbDetails> for ClickhouseArbDetails {
             pnl_taker_mid: rational_to_u256_fraction(&value.pnl_pre_gas.maker_taker_mid.1)?,
             pnl_maker_ask: rational_to_u256_fraction(&value.pnl_pre_gas.maker_taker_ask.0)?,
             pnl_taker_ask: rational_to_u256_fraction(&value.pnl_pre_gas.maker_taker_ask.1)?,
-        })
+        })*/
     }
 }
 

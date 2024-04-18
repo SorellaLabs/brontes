@@ -49,19 +49,18 @@ use brontes_types::{
         cex::{CexExchange, FeeAdjustedQuote},
         dex::PriceAt,
     },
-    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, CexDexRoute, MevType},
+    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
     normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::izip;
-use malachite::{
-    num::basic::traits::{Two, Zero},
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 use tracing::{debug, error};
+
+use super::atomic_arb::is_stable_pair;
 
 pub const FILTER_THRESHOLD: u64 = 20;
 
@@ -138,7 +137,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                         return None
                     }
                 }
-
+                let deltas = swaps.clone().into_iter().account_for_actions();
                 let dex_swaps = swaps
                     .into_iter()
                     .collect_action_vec(Actions::try_swaps_merged);
@@ -147,25 +146,19 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     return None
                 }
 
-                let deltas = swaps.clone().into_iter().account_for_actions();
-
                 let mut possible_cex_dex: CexDexProcessing =
                     self.detect_cex_dex(dex_swaps, &metadata)?;
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
-                //let cex_dex = self.filter_possible_cex_dex(&possible_cex_dex, &tx_info)?;
+                let (profit_usd, cex_dex) =
+                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info)?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
                     vec![tx_info.tx_hash],
                     &tx_info,
-                    possible_cex_dex
-                        .aggregate_pnl
-                        .maker_taker_mid
-                        .1
-                        .clone()
-                        .to_float(),
+                    profit_usd,
                     PriceAt::After,
                     &[tx_info.gas_details],
                     metadata.clone(),
@@ -187,7 +180,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ) -> Option<CexDexProcessing> {
         let mut quotes = Vec::new();
 
-        self.cex_exchanges.iter().map(|exchange| {
+        self.cex_exchanges.iter().for_each(|exchange| {
             quotes.push(self.cex_quotes_for_swap(&dex_swaps, metadata, exchange));
         });
 
@@ -379,10 +372,14 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
         cex_dex.per_exchange_pnl.retain(|entry| entry.is_some());
 
-        // Sort by highest profit
-        cex_dex
-            .per_exchange_pnl
-            .sort_by_key(|entry| -entry.as_ref().unwrap().aggregate_pnl.maker_taker_mid.1);
+        cex_dex.per_exchange_pnl.sort_by(|a, b| {
+            b.as_ref()
+                .unwrap()
+                .aggregate_pnl
+                .maker_taker_mid
+                .1
+                .cmp(&a.as_ref().unwrap().aggregate_pnl.maker_taker_mid.1)
+        });
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -399,19 +396,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
-    ) -> Option<BundleData> {
+    ) -> Option<(f64, BundleData)> {
         let sanity_check_arb = possible_cex_dex.arb_sanity_check();
 
-        //TODO: Could add stable sanity check if necessary
         let has_outlier_pnl = sanity_check_arb.profitable_exchanges.len() < 2
+            && !sanity_check_arb.profitable_exchanges.is_empty()
             && sanity_check_arb.profitable_exchanges[0].1.maker_taker_ask.1 > Rational::from(10000)
-            && sanity_check_arb.profitable_exchanges[0].0
-                == (CexExchange::Kucoin || CexExchange::Okex);
+            && (sanity_check_arb.profitable_exchanges[0].0 == CexExchange::Kucoin
+                || sanity_check_arb.profitable_exchanges[0].0 == CexExchange::Okex);
 
         let has_positive_exchange_pnl = !sanity_check_arb.profitable_exchanges.is_empty();
-        let has_positive_cross_exchange_pnl = 
 
-        if has_positive_pnl
+        if has_positive_exchange_pnl && !has_outlier_pnl
             || (!info.is_classified
                 && (info.gas_details.coinbase_transfer.is_some()
                     && info.is_private
@@ -420,7 +416,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                         FILTER_THRESHOLD,
                     )
                     || info.is_cex_dex_call))
+            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 5)
+                && sanity_check_arb.profitable_cross_exchange
+                && !sanity_check_arb.is_stable_swaps
             || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
+                && has_outlier_pnl
+                && !sanity_check_arb.is_stable_swaps
             || info.is_labelled_searcher_of_type(MevType::CexDex)
             || sanity_check_arb.global_profitability
                 && sanity_check_arb.profitable_exchanges.len() > 3
@@ -452,7 +453,7 @@ pub struct PossibleCexDex {
 }
 
 impl PossibleCexDex {
-    pub fn from_exchange_legs(exchange_legs: Vec<Option<ExchangeLeg>>) -> Option<Self> {
+    pub fn from_exchange_legs(mut exchange_legs: Vec<Option<ExchangeLeg>>) -> Option<Self> {
         if exchange_legs.iter().all(Option::is_none) {
             return None
         }
@@ -461,12 +462,12 @@ impl PossibleCexDex {
         let mut total_ask_maker = Rational::ZERO;
         let mut total_ask_taker = Rational::ZERO;
 
-        for leg in exchange_legs {
+        for leg in exchange_legs.iter_mut() {
             if let Some(leg) = leg {
-                total_mid_maker += leg.pnl.maker_taker_mid.0;
-                total_mid_taker += leg.pnl.maker_taker_mid.1;
-                total_ask_maker += leg.pnl.maker_taker_ask.0;
-                total_ask_taker += leg.pnl.maker_taker_ask.1;
+                total_mid_maker += &leg.pnl.maker_taker_mid.0;
+                total_mid_taker += &leg.pnl.maker_taker_mid.1;
+                total_ask_maker += &leg.pnl.maker_taker_ask.0;
+                total_ask_taker += &leg.pnl.maker_taker_ask.1;
             }
         }
 
@@ -500,12 +501,13 @@ impl PossibleCexDex {
                 arb_leg.as_ref().and_then(|leg| {
                     normalized_swaps.get(index).map(|swap| ArbDetails {
                         cex_exchange:   leg.cex_quote.exchange.clone(),
-                        best_bid_maker: leg.cex_quote.price_maker.0,
-                        best_ask_maker: leg.cex_quote.price_maker.1,
-                        best_bid_taker: leg.cex_quote.price_taker.0,
-                        best_ask_taker: leg.cex_quote.price_taker.1,
+                        best_bid_maker: leg.cex_quote.price_maker.0.clone(),
+                        best_ask_maker: leg.cex_quote.price_maker.1.clone(),
+                        best_bid_taker: leg.cex_quote.price_taker.0.clone(),
+                        best_ask_taker: leg.cex_quote.price_taker.1.clone(),
                         dex_exchange:   swap.protocol.clone(),
                         dex_price:      swap.swap_rate(),
+                        dex_amount:     swap.amount_out.clone(),
                         pnl_pre_gas:    leg.pnl.clone(),
                     })
                 })
@@ -556,11 +558,10 @@ impl CexDexProcessing {
             .map(|arb_legs| {
                 arb_legs
                     .into_iter()
-                    .max_by_key(|arb_leg| *arb_leg.pnl)
-                    .map(|arb_leg| Some(arb_leg.clone()))
-                    .unwrap_or(None)
+                    .max_by_key(|arb_leg| arb_leg.pnl.clone())
+                    .map(|arb_leg| arb_leg.clone())
             })
-            .unzip();
+            .collect();
 
         let aggregate_pnl = best_pnls
             .iter()
@@ -594,36 +595,48 @@ impl CexDexProcessing {
             .map(|arb| arb.adjust_for_gas_cost(gas_cost));
     }
 
-    pub fn into_bundle(self, tx_info: &TxInfo) -> Option<BundleData> {
-        Some(BundleData::CexDex(CexDex {
-            tx_hash:             tx_info.tx_hash,
-            swaps:               self.dex_swaps,
-            global_vmap_details: self
-                .global_vmam_cex_dex?
-                .generate_arb_details(&self.dex_swaps),
-            global_vmap_pnl:     self.global_vmam_cex_dex?.aggregate_pnl,
+    pub fn into_bundle(self, tx_info: &TxInfo) -> Option<(f64, BundleData)> {
+        Some((
+            self.max_profit
+                .as_ref()?
+                .aggregate_pnl
+                .maker_taker_mid
+                .0
+                .clone()
+                .to_float(),
+            BundleData::CexDex(CexDex {
+                tx_hash:             tx_info.tx_hash,
+                global_vmap_pnl:     self.global_vmam_cex_dex.as_ref()?.aggregate_pnl.clone(),
+                global_vmap_details: self
+                    .global_vmam_cex_dex?
+                    .generate_arb_details(&self.dex_swaps),
 
-            optimal_route_details: self.max_profit?.generate_arb_details(&self.dex_swaps),
-            optimal_route_pnl:     self.max_profit?.aggregate_pnl,
-            per_exchange_details:  self
-                .per_exchange_pnl
-                .iter()
-                .filter_map(|p| p.as_ref().map(|p| p.generate_arb_details(&self.dex_swaps)))
-                .collect(),
+                optimal_route_details: self
+                    .max_profit
+                    .as_ref()?
+                    .generate_arb_details(&self.dex_swaps),
+                optimal_route_pnl:     self.max_profit.as_ref().unwrap().aggregate_pnl.clone(),
+                per_exchange_pnl:      self
+                    .per_exchange_pnl
+                    .iter()
+                    .map(|p| p.as_ref().unwrap())
+                    .map(|p| {
+                        let leg = p.arb_legs.first().unwrap();
+                        (leg.clone(), p.aggregate_pnl.clone())
+                    })
+                    .map(|(leg, pnl)| (leg.unwrap().cex_quote.exchange, pnl))
+                    .collect(),
 
-            per_exchange_pnl: self
-                .per_exchange_pnl
-                .into_iter()
-                .map(|p| p.unwrap())
-                .map(|p| {
-                    let leg = p.arb_legs.first().unwrap();
-                    (leg, p.aggregate_pnl)
-                })
-                .map(|(leg, pnl)| (leg.unwrap().cex_quote.exchange, pnl))
-                .collect(),
+                per_exchange_details: self
+                    .per_exchange_pnl
+                    .iter()
+                    .filter_map(|p| p.as_ref().map(|p| p.generate_arb_details(&self.dex_swaps)))
+                    .collect(),
 
-            gas_details: tx_info.gas_details.clone(),
-        }))
+                gas_details: tx_info.gas_details.clone(),
+                swaps:       self.dex_swaps,
+            }),
+        ))
     }
 
     fn arb_sanity_check(&self) -> ArbSanityCheck {
@@ -635,27 +648,54 @@ impl CexDexProcessing {
                 p.aggregate_pnl.maker_taker_mid.1 > Rational::ZERO
                     || p.aggregate_pnl.maker_taker_ask.1 > Rational::ZERO
             })
-            .map(|p| (p.arb_legs[0].unwrap().cex_quote.exchange, p.aggregate_pnl))
+            .map(|p| (p.arb_legs[0].as_ref().unwrap().cex_quote.exchange, p.aggregate_pnl.clone()))
             .collect();
 
-        let profitable_cross_exchange = self.max_profit.unwrap().aggregate_pnl.maker_taker_mid.0
+        let profitable_cross_exchange = self
+            .max_profit
+            .as_ref()
+            .unwrap()
+            .aggregate_pnl
+            .maker_taker_mid
+            .0
             > Rational::ZERO
-            || self.max_profit.unwrap().aggregate_pnl.maker_taker_ask.0 > Rational::ZERO;
+            || self
+                .max_profit
+                .as_ref()
+                .unwrap()
+                .aggregate_pnl
+                .maker_taker_ask
+                .0
+                > Rational::ZERO;
 
         let global_profitability = self.global_vmam_cex_dex.as_ref().map_or(false, |global| {
             global.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO
                 || global.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO
         });
 
-        ArbSanityCheck { profitable_exchanges, profitable_cross_exchange, global_profitability }
+        let is_stable_swaps = self.is_stable_swaps();
+
+        ArbSanityCheck {
+            profitable_exchanges,
+            profitable_cross_exchange,
+            global_profitability,
+            is_stable_swaps,
+        }
+    }
+
+    fn is_stable_swaps(&self) -> bool {
+        self.dex_swaps
+            .iter()
+            .all(|swap| is_stable_pair(&swap.token_in_symbol(), &swap.token_out_symbol()))
     }
 }
 
 #[derive(Debug, Default)]
 pub struct ArbSanityCheck {
-    pub profitable_exchanges: Vec<(CexExchange, ArbPnl)>,
+    pub profitable_exchanges:      Vec<(CexExchange, ArbPnl)>,
     pub profitable_cross_exchange: bool,
-    pub global_profitability: bool,
+    pub global_profitability:      bool,
+    pub is_stable_swaps:           bool,
 }
 
 #[derive(Debug)]

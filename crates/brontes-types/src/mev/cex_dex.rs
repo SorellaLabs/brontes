@@ -180,6 +180,7 @@ pub struct ArbDetails {
     #[redefined(same_fields)]
     pub dex_exchange:   Protocol,
     pub dex_price:      Rational,
+    pub dex_amount:     Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
     pub pnl_pre_gas:    ArbPnl,
 }
@@ -189,12 +190,25 @@ impl fmt::Display for ArbDetails {
         writeln!(f, "Arb Leg Details:")?;
         writeln!(
             f,
-            "   - Price on {:#?}: {}",
+            "   - Price on CEX ({:?}): Best Bid: {}, Best Ask: {}",
             self.cex_exchange,
-            self.cex_price.clone().to_float()
+            self.best_bid_maker.to_string(),
+            self.best_ask_maker.to_string()
         )?;
-        writeln!(f, "   - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;
-        write!(f, "   - Pnl pre-gas: {}", self.pnl_pre_gas)
+        writeln!(f, "   - Price on DEX {}: {}", self.dex_exchange, self.dex_price.to_string())?;
+        writeln!(f, "   - Amount: {}", self.dex_amount.to_string())?;
+        writeln!(
+            f,
+            "   - PnL pre-gas (Mid Prices): Maker Mid: {}, Taker Mid: {}",
+            self.pnl_pre_gas.maker_taker_mid.0.to_string(),
+            self.pnl_pre_gas.maker_taker_mid.1.to_string()
+        )?;
+        write!(
+            f,
+            "   - PnL pre-gas (Ask Prices): Maker Ask: {}, Taker Ask: {}",
+            self.pnl_pre_gas.maker_taker_ask.0.to_string(),
+            self.pnl_pre_gas.maker_taker_ask.1.to_string()
+        )
     }
 }
 
