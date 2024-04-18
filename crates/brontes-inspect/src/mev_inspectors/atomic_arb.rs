@@ -250,7 +250,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 let am_out_price = metadata
                     .dex_quotes
                     .as_ref()?
-                    .price_at(Pair(self.utils.quote, swap.token_out.address), idx)?;
+                    .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
 
                 // we reciprocal amount out because we won't have pricing for quote <> token out
                 // but we will have flipped
