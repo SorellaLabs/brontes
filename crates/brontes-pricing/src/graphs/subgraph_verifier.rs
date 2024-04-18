@@ -92,6 +92,14 @@ impl SubgraphVerifier {
             })
     }
 
+    pub fn get_rem_for_block(&self, block: u64) -> Vec<(Pair, Pair, Pair)> {
+        self.pending_subgraphs
+            .values()
+            .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
+            .map(|(gt, sub)| (sub.subgraph.pair, sub.subgraph.complete_pair(), *gt))
+            .collect()
+    }
+
     pub fn is_done_block(&self, block: u64) -> bool {
         self.pending_subgraphs
             .values()

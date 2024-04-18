@@ -23,6 +23,7 @@
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
+use rayon::iter::IntoParallelIterator;
 mod graphs;
 pub mod protocols;
 mod subgraph_query;
@@ -637,7 +638,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>) {
-        self.graph_manager.subgraph_verifier.print_rem(self.completed_block);
+        self.graph_manager
+            .subgraph_verifier
+            .print_rem(self.completed_block);
+
         let requery = self
             .graph_manager
             .verify_subgraph(pairs, self.quote_asset)
@@ -972,6 +976,25 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         Some((id, triggered, force_rundown))
     }
 
+    /// if the state loader isn't loading anything and we still have pending
+    /// pairs,
+    fn try_flush_out_pending_verification(&mut self) {
+        if !self.lazy_loader.can_progress(&self.completed_block) {
+            return
+        }
+
+        let rem_block = self
+            .graph_manager
+            .subgraph_verifier
+            .get_rem_for_block(self.completed_block);
+
+        rem_block
+            .into_iter()
+            .for_each(|(pair, complete_pair, goes_through)| {
+                self.rundown(pair, complete_pair, goes_through, self.completed_block);
+            });
+    }
+
     fn can_progress(&self) -> bool {
         self.lazy_loader.can_progress(&self.completed_block)
             && self
@@ -1142,6 +1165,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if !pairs.is_empty() {
             execute_on!(target = pricing, self.try_verify_subgraph(pairs));
         }
+
+        self.try_flush_out_pending_verification();
 
         // check if we can progress to the next block.
         self.try_resolve_block()
