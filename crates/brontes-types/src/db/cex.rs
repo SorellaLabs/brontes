@@ -323,7 +323,7 @@ impl CexPriceMap {
 
     pub fn get_volume_weighted_quote(
         &self,
-        exchange_quotes: &[FeeAdjustedQuote],
+        exchange_quotes: &[&FeeAdjustedQuote],
         dex_swap: &NormalizedSwap,
     ) -> Option<FeeAdjustedQuote> {
         let mut cumulative_bbo = (Rational::ZERO, Rational::ZERO);

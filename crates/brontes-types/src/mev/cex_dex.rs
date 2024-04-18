@@ -1,4 +1,9 @@
-use std::{fmt, fmt::Debug};
+use std::{
+    cmp::Ordering,
+    fmt,
+    fmt::Debug,
+    ops::{Add, AddAssign},
+};
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
@@ -188,11 +193,49 @@ impl fmt::Display for ArbDetails {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined, Eq)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ArbPnl {
     pub maker_taker_mid: (Rational, Rational),
     pub maker_taker_ask: (Rational, Rational),
+}
+
+impl PartialOrd for ArbPnl {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.maker_taker_mid.0.partial_cmp(&other.maker_taker_mid.0)
+    }
+}
+
+impl Add for ArbPnl {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        ArbPnl {
+            maker_taker_mid: (
+                self.maker_taker_mid.0 + other.maker_taker_mid.0,
+                self.maker_taker_mid.1 + other.maker_taker_mid.1,
+            ),
+            maker_taker_ask: (
+                self.maker_taker_ask.0 + other.maker_taker_ask.0,
+                self.maker_taker_ask.1 + other.maker_taker_ask.1,
+            ),
+        }
+    }
+}
+
+impl AddAssign for ArbPnl {
+    fn add_assign(&mut self, other: Self) {
+        self.maker_taker_mid.0 += other.maker_taker_mid.0;
+        self.maker_taker_mid.1 += other.maker_taker_mid.1;
+        self.maker_taker_ask.0 += other.maker_taker_ask.0;
+        self.maker_taker_ask.1 += other.maker_taker_ask.1;
+    }
+}
+
+impl Ord for ArbPnl {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.maker_taker_mid.0.cmp(&other.maker_taker_mid.0)
+    }
 }
 
 impl fmt::Display for ArbPnl {
