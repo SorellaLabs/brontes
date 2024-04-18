@@ -370,6 +370,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
+        if swaps.len() == 0 {
+            return true
+        }
+
         swaps
             .iter()
             .filter_map(|swap| {

@@ -88,12 +88,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
     ) -> Option<Bundle> {
         let (swaps, transfers, eth_transfers) = data;
+        let possible_arb_type = self.is_possible_arb(&swaps)?;
 
         if !self.valid_pricing(metadata.clone(), &swaps, info.tx_index as usize) {
             return None
         }
 
-        let possible_arb_type = self.is_possible_arb(&swaps)?;
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
         let account_deltas = transfers
@@ -260,8 +260,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         ?swap,
                         "to big of a delta for pricing on atomic arbs"
                     );
-                } else {
-                    tracing::info!(?effective_price, ?dex_pricing_rate, "valid price");
                 }
 
                 Some(pct)
