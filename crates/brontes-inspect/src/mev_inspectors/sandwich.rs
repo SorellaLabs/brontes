@@ -1,4 +1,5 @@
 use std::{
+    cmp::max,
     collections::{hash_map::Entry, HashMap},
     hash::Hash,
     sync::Arc,
@@ -399,7 +400,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     * am_in_price.get_price(PriceAt::Average))
                 .reciprocal();
 
-                let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
+                let pct =
+                    max(&effective_price - &dex_pricing_rate, Rational::ZERO) / &effective_price;
 
                 if pct > MAX_PRICE_DIFF {
                     tracing::warn!(

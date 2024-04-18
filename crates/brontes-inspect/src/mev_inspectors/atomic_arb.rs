@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{cmp::max, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -15,10 +15,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{
-        arithmetic::traits::{Abs, Reciprocal},
-        basic::traits::Zero,
-    },
+    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
 use reth_primitives::Address;
@@ -258,7 +255,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     * am_in_price.get_price(PriceAt::Average))
                 .reciprocal();
 
-                let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
+                let pct =
+                    max(&effective_price - &dex_pricing_rate, Rational::ZERO) / &effective_price;
 
                 if pct > MAX_PRICE_DIFF {
                     tracing::warn!(
