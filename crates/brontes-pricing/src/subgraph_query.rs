@@ -81,19 +81,16 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
         .map(|RequeryPairs { pair, goes_through, full_pair, block, ignore_state, frayed_ends }| {
             let default_extends_pair = graph.has_extension(&goes_through, full_pair.1);
 
+            // if we have no direct extensions we are looking for, we will search the l
             if frayed_ends.is_empty() {
-                let search_pair =
-                    if default_extends_pair.is_none() { full_pair } else { goes_through };
-
                 let (edges, extends_pair) = graph.create_subgraph(
                     block,
-                    // if not zero, then we have a go, through
                     (!goes_through.is_zero()).then_some(goes_through),
-                    search_pair,
+                    pair,
                     ignore_state,
                     100,
                     None,
-                    Duration::from_millis(120),
+                    Duration::from_millis(50),
                     default_extends_pair.is_some(),
                     None,
                 );
