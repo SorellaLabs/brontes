@@ -859,7 +859,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 debug!(?pair, ?goes_through, ?block, "Failed to find connection for graph");
             }
-            self.try_verify_subgraph(vec![(block, None, complete_pair, vec![goes_through])]);
+            let (id, ..) = self
+                .add_subgraph(pair, complete_pair, goes_through, extend, block, vec![], true)
+                .unwrap();
+            self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])]);
             return
         } else {
             let Some((id, need_state, _)) =
