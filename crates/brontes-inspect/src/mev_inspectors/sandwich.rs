@@ -7,7 +7,7 @@ use std::{
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, MevType, Sandwich, VictimLossAmount},
+    mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedSwap, NormalizedTransfer,
     },
@@ -62,7 +62,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_nested_action,
         ]);
 
-        let ps = Self::get_possible_sandwich(tree.clone())
+         Self::get_possible_sandwich(tree.clone())
             .into_iter()
             .flat_map(Self::partition_into_gaps)
             .filter_map(
@@ -177,10 +177,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                 },
             )
             .flatten()
-            .collect::<Vec<_>>();
-
-         self.ensure_no_overlap(ps)
-
+            .collect::<Vec<_>>()
     }
 }
 
@@ -338,12 +335,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
-
-    fn ensure_no_overlap(&self, bundles: Vec<Bundle>) -> Vec<BundleData> {
-        todo!()
-    }
-
-
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
         let PossibleSandwich {
