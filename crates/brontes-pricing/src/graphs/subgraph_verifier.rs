@@ -3,7 +3,7 @@ use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tracing::error_span;
+use tracing::{error_span, instrument};
 
 use super::{
     state_tracker::StateTracker,
@@ -180,23 +180,40 @@ impl SubgraphVerifier {
         query_state
     }
 
+    #[instrument(skip(self))]
     pub fn verify_subgraph_on_new_path_failure(
         &mut self,
         pair: Pair,
         goes_through: &Pair,
     ) -> Option<Vec<Pair>> {
         self.pending_subgraphs
-            .get_mut(&pair.ordered())?
+            .get_mut(&pair.ordered())
+            .or_else(|| {
+                tracing::debug!(?pair, "missing pending subgraph");
+                None
+            })?
             .iter_mut()
-            .find(|(p, _)| p == goes_through)?
+            .find(|(p, _)| p == goes_through)
+            .or_else(|| {
+                tracing::debug!(?goes_through, "missing pending subgraph");
+                None
+            })?
             .1
             .in_rundown = true;
 
         let state = &self
             .subgraph_verification_state
-            .get_mut(&pair.ordered())?
+            .get_mut(&pair.ordered())
+            .or_else(|| {
+                tracing::debug!(?pair, "missing state");
+                None
+            })?
             .iter_mut()
-            .find(|(p, _)| p == goes_through)?
+            .find(|(p, _)| p == goes_through)
+            .or_else(|| {
+                tracing::debug!(?goes_through, "missing state");
+                None
+            })?
             .1;
 
         Some(state.sorted_ignore_nodes_by_liquidity())
