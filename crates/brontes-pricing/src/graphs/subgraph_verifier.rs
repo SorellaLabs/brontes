@@ -256,13 +256,17 @@ impl SubgraphVerifier {
             self.pending_subgraphs
                 .get_mut(&pair.ordered())
                 .or_else(|| {
-                    tracing::info!("frayed ext no pair in pending_subgraphs");
+                    tracing::info!(?pair, ?goes_through, "frayed ext no pair in pending_subgraphs");
                     None
                 })?
                 .iter_mut()
                 .find(|(p, _)| p == goes_through)
                 .or_else(|| {
-                    tracing::info!("frayed ext no goes through in pending_subgraphs");
+                    tracing::info!(
+                        ?pair,
+                        ?goes_through,
+                        "frayed ext no goes through in pending_subgraphs"
+                    );
                     None
                 })?
                 .1
