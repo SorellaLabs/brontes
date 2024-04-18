@@ -23,6 +23,7 @@
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 mod function_call_bench;
 mod graphs;
 pub mod protocols;
@@ -740,24 +741,26 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let mut recusing = Vec::new();
 
-        new_state.into_iter().for_each(
-            |StateQueryRes { pair, block, edges, extends_pair, goes_through, full_pair }| {
-                let edges = edges.into_iter().flatten().unique().collect_vec();
-                tracing::debug!(?pair, ?goes_through, ?extends_pair, ?full_pair);
-                // add regularly
-                if edges.is_empty() {
-                    tracing::debug!(
-                        ?pair,
-                        ?goes_through,
-                        ?extends_pair,
-                        ?full_pair,
-                        "no edges found"
-                    );
-                    self.rundown(pair, full_pair, goes_through, block);
-                    return
-                }
+        let rundown = new_state
+            .into_iter()
+            .filter_map(
+                |StateQueryRes { pair, block, edges, extends_pair, goes_through, full_pair }| {
+                    let edges = edges.into_iter().flatten().unique().collect_vec();
+                    tracing::debug!(?pair, ?goes_through, ?extends_pair, ?full_pair);
+                    // add regularly
+                    if edges.is_empty() {
+                        tracing::debug!(
+                            ?pair,
+                            ?goes_through,
+                            ?extends_pair,
+                            ?full_pair,
+                            "no edges found"
+                        );
 
-                let Some((id, need_state, force_rundown)) = self.add_subgraph(
+                        return Some((pair, full_pair, goes_through, block))
+                    }
+
+                    let Some((id, need_state, force_rundown)) = self.add_subgraph(
                     pair,
                     full_pair,
                     goes_through,
@@ -767,23 +770,170 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     frayed_ext,
                 ) else {
                     tracing::debug!("requery bad state add subgraph failed");
-                    return;
+                    return None;
                 };
 
-                if force_rundown {
-                    tracing::debug!("force rundown requery bad state par");
-                    self.rundown(pair, full_pair, goes_through, block);
-                } else if !need_state {
-                    recusing.push((block, id, full_pair, vec![goes_through]))
-                }
-            },
-        );
+                    if force_rundown {
+                        tracing::debug!("force rundown requery bad state par");
+                        return Some((pair, full_pair, goes_through, block))
+                    } else if !need_state {
+                        recusing.push((block, id, full_pair, vec![goes_through]))
+                    }
+                    None
+                },
+            )
+            .collect_vec();
 
         if !recusing.is_empty() {
             tracing::debug!("requery bad state");
             execute_on!(target = pricing, self.try_verify_subgraph(recusing));
         }
+
+        self.par_rundown(rundown);
+
         tracing::debug!("finished requerying bad state");
+    }
+
+    #[brontes_macros::bench_time(ptr=self.bench)]
+    fn par_rundown(&mut self, stuff: Vec<(Pair, Pair, Pair, u64)>) {
+        let new_subgraphs = execute_on!(target = pricing, {
+            stuff
+                .into_iter()
+                .map(|(pair, complete_pair, goes_through, block)| {
+                    let ignores = self
+                        .graph_manager
+                        .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
+                        .unwrap_or_default();
+
+                    if ignores.is_empty() {
+                        tracing::debug!(
+                            ?pair,
+                            ?block,
+                            "rundown for subgraph has no edges we are supposed to ignore"
+                        );
+                    }
+
+                    // take all combinations of our ignore nodes
+                    if ignores.len() > 1 {
+                        ignores
+                            .iter()
+                            .copied()
+                            .combinations(ignores.len() - 1)
+                            .map(|ignores| RequeryPairs {
+                                pair,
+                                goes_through,
+                                full_pair: complete_pair,
+                                block,
+                                ignore_state: ignores.into_iter().collect::<FastHashSet<_>>(),
+                                frayed_ends: vec![],
+                            })
+                            .collect_vec()
+                    } else {
+                        vec![RequeryPairs {
+                            goes_through,
+                            pair,
+                            block,
+                            full_pair: complete_pair,
+                            ignore_state: FastHashSet::default(),
+                            frayed_ends: vec![],
+                        }]
+                    }
+                })
+                .collect_vec()
+                .into_par_iter()
+                .flat_map(|queries| {
+                    let shit = queries.first().unwrap();
+                    let goes_through = shit.goes_through;
+                    let pair = shit.pair;
+                    let full_pair = shit.full_pair;
+                    let block = shit.block;
+                    let (edges, mut extend): (Vec<_>, Vec<_>) =
+                        par_state_query(&self.graph_manager, queries)
+                            .into_iter()
+                            .map(|e| (e.edges, e.extends_pair))
+                            .unzip();
+
+                    let edges = edges.into_iter().flatten().flatten().unique().collect_vec();
+
+                    // if we dont have any edges, lets run with no ignores.
+                    let (edges, extend) = if edges.is_empty() {
+                        let query = vec![RequeryPairs {
+                            goes_through,
+                            pair,
+                            block,
+                            full_pair,
+                            ignore_state: FastHashSet::default(),
+                            frayed_ends: vec![],
+                        }];
+
+                        let (edges, mut extend): (Vec<_>, Vec<_>) =
+                            par_state_query(&self.graph_manager, query)
+                                .into_iter()
+                                .map(|e| (e.edges, e.extends_pair))
+                                .unzip();
+
+                        (
+                            edges.into_iter().flatten().flatten().unique().collect_vec(),
+                            extend.pop().flatten(),
+                        )
+                    } else {
+                        (edges, extend.pop().flatten())
+                    };
+
+                    // add calls and try_verify calls
+                    let mut add_calls = Vec::new();
+
+                    if edges.is_empty() {
+                        if goes_through == Pair::default() {
+                            debug!(?pair, ?block, "Failed to find connection for graph");
+                        } else {
+                            debug!(
+                                ?pair,
+                                ?goes_through,
+                                ?block,
+                                "Failed to find connection for graph"
+                            );
+                        }
+
+                        add_calls.push((
+                            pair,
+                            full_pair,
+                            goes_through,
+                            extend,
+                            block,
+                            vec![],
+                            true,
+                        ));
+                    } else {
+                        add_calls.push((pair, full_pair, goes_through, extend, block, edges, true));
+                    }
+                    tracing::debug!(?pair, ?block, "finished rundown");
+
+                    add_calls
+                })
+                .collect::<Vec<_>>()
+        });
+
+        new_subgraphs.into_iter().for_each(
+            |(pair, complete_pair, goes_through, extend, block, edges, frayed_ext)| {
+                let (id, need_state, ..) = self
+                    .add_subgraph(
+                        pair,
+                        complete_pair,
+                        goes_through,
+                        extend,
+                        block,
+                        edges,
+                        frayed_ext,
+                    )
+                    .unwrap();
+
+                if !need_state {
+                    self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])]);
+                }
+                return
+            },
+        );
     }
 
     /// rundown occurs when we have hit a attempt limit for trying to find high
@@ -1000,11 +1150,15 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .subgraph_verifier
             .get_rem_for_block(self.completed_block);
 
-        rem_block
-            .into_iter()
-            .for_each(|(pair, complete_pair, goes_through)| {
-                self.rundown(pair, complete_pair, goes_through, self.completed_block);
-            });
+        self.par_rundown(
+            rem_block
+                .into_iter()
+                .zip(vec![self.completed_block].into_iter().cycle())
+                .map(|((pair, complete_pair, goes_through), block)| {
+                    (pair, complete_pair, goes_through, block)
+                })
+                .collect_vec(),
+        );
     }
 
     fn can_progress(&self) -> bool {
