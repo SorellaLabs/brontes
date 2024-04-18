@@ -21,7 +21,7 @@ use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
-/// the price difference was more than 50% between dex pricing and effecive
+/// the price difference was more than 50% between dex pricing and effective
 /// price
 const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(5, 10);
 

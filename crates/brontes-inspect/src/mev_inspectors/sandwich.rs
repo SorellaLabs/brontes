@@ -27,9 +27,9 @@ use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
 
-/// the price difference was more than 50% between dex pricing and effecive
+/// the price difference was more than 70% between dex pricing and effective
 /// price
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(5, 10);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(7, 10);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -52,9 +52,6 @@ pub struct PossibleSandwich {
     victims:               Vec<Vec<B256>>,
 }
 
-// Add support for this, where there is a frontrun & then backrun & in between
-// there is an unrelated tx that is not frontrun but is backrun. See the rari
-// trade here. https://libmev.com/blocks/18215838
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
