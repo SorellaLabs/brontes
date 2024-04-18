@@ -71,7 +71,7 @@ pub struct StateQueryRes {
     pub full_pair:    Pair,
 }
 
-// already generated
+// already generated subgraph but need to fill in gaps
 pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     pairs: Vec<RequeryPairs>,
@@ -79,26 +79,32 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
     pairs
         .into_par_iter()
         .map(|RequeryPairs { pair, goes_through, full_pair, block, ignore_state, frayed_ends }| {
-            // default extends,
-            let default_extends_pair = graph.has_extension(&goes_through, pair.1);
+            let default_extends_pair = graph.has_extension(&goes_through, full_pair.1);
 
             if frayed_ends.is_empty() {
+                let search_pair =
+                    if default_extends_pair.is_none() { full_pair } else { goes_through };
+
                 let (edges, extends_pair) = graph.create_subgraph(
                     block,
                     // if not zero, then we have a go, through
                     (!goes_through.is_zero()).then_some(goes_through),
-                    pair,
+                    search_pair,
                     ignore_state,
                     100,
-                    Some(5),
+                    None,
                     Duration::from_millis(120),
                     default_extends_pair.is_some(),
                     None,
                 );
 
+                let pair = extends_pair
+                    .map(|ext| Pair(full_pair.0, ext.0))
+                    .unwrap_or(pair);
+
                 return StateQueryRes {
-                    extends_pair,
                     pair,
+                    extends_pair,
                     block,
                     goes_through,
                     full_pair,
@@ -121,7 +127,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                                 ignore_state.clone(),
                                 0,
                                 None,
-                                Duration::from_millis(150),
+                                Duration::from_millis(50),
                                 default_extends_pair.is_some(),
                                 None,
                             )
