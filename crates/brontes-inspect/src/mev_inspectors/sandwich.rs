@@ -62,7 +62,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_nested_action,
         ]);
 
-         Self::get_possible_sandwich(tree.clone())
+        :get_possible_sandwich(tree.clone())
             .into_iter()
             .flat_map(Self::partition_into_gaps)
             .filter_map(
@@ -591,14 +591,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .any(|pool| {
                     let fp = front_run_pools.contains(&pool);
                     let bp = back_run_pools.contains(&pool);
-
-                    has_sandwich |= fp && bp;
-
                     fp || bp
                 });
+
                 has_sandwich |= front_run && back_run;
 
-                front_run || back_run || generated_pool_overlap
+                (front_run || back_run) && generated_pool_overlap
             })
             .map(|was_victim| was_victim as usize)
             .sum();
