@@ -13,7 +13,9 @@ impl FunctionCallBench {
 
 impl Drop for FunctionCallBench {
     fn drop(&mut self) {
-        for (function_name, calls) in &self.0 {
+        for (function_name, calls) in &mut self.0 {
+            calls.sort_unstable();
+
             let call_amount = calls.len();
             let total_time_ms: u128 = calls.iter().map(|call| call.as_millis()).sum();
 

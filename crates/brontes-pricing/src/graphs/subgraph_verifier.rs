@@ -561,6 +561,7 @@ impl SubgraphVerificationState {
             .collect_vec()
     }
 
+    #[allow(unused)]
     fn highest_liq_for_pair(&self, pair: Pair) -> (Address, f64) {
         self.edges
             .0
