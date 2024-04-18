@@ -23,6 +23,7 @@
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
+mod function_call_bench;
 mod graphs;
 pub mod protocols;
 mod subgraph_query;
@@ -49,6 +50,7 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, FastHashSet,
 };
+use function_call_bench::FunctionCallBench;
 use futures::{Stream, StreamExt};
 pub use graphs::{
     AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,
@@ -123,6 +125,7 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     overlap_update:  Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
     skip_pricing:    VecDeque<u64>,
+    bench:           FunctionCallBench,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
@@ -149,6 +152,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             completed_block: current_block,
             overlap_update: None,
             skip_pricing: VecDeque::new(),
+            bench: FunctionCallBench::default(),
         }
     }
 
@@ -190,6 +194,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// Essentially, it ensures the graph manager remains synchronized with the
     /// latest block data, maintaining the integrity and accuracy of
     /// the decentralized exchange pricing mechanism.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
             return
@@ -283,6 +288,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         );
     }
 
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
@@ -308,6 +314,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         });
     }
 
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn get_dex_price(
         &mut self,
         pool_pair: Pair,
@@ -323,6 +330,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     /// For a given block number and tx idx, finds the path to the following
     /// tokens and inserts the data into dex_quotes.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn store_dex_price(&mut self, block: u64, tx_idx: u64, pool_pair: Pair, prices: DexPrices) {
         tracing::debug!(?block,?tx_idx, ?pool_pair, %prices, "storing price");
         // insert the pool keys into the price map
@@ -372,6 +380,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     /// Similar to update known state but doesn't apply the state transfer given
     /// the pool is from end of block.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn init_new_pool_override(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
@@ -448,6 +457,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         };
     }
 
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn update_known_state(&mut self, addr: Address, msg: PoolUpdate) {
         let tx_idx = msg.tx_idx;
         let block = msg.block;
@@ -584,6 +594,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// pairs. In case of a load error, it handles the error by calling
     /// `on_state_load_error`.
 
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn on_pool_resolve(&mut self, state: LazyResult) {
         let LazyResult { block, state, load_result } = state;
 
@@ -636,6 +647,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the failed pair for requery. After processing the verification
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>) {
         self.graph_manager
             .subgraph_verifier
@@ -713,6 +725,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>, frayed_ext: bool) {
         if pairs.is_empty() {
             return
@@ -778,6 +791,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// of the low liquidity nodes and generate all unique paths through each
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn rundown(&mut self, pair: Pair, complete_pair: Pair, goes_through: Pair, block: u64) {
         let ignores = self
             .graph_manager
@@ -898,6 +912,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// The function returns a boolean indicating whether any lazy loading was
     /// triggered during its execution. This function ensures that all necessary
     /// pool states are loaded and ready for accurate subgraph verification.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn add_subgraph(
         &mut self,
         pair: Pair,
@@ -974,6 +989,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     /// if the state loader isn't loading anything and we still have pending
     /// pairs,
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn try_flush_out_pending_verification(&mut self) {
         if !self.lazy_loader.can_progress(&self.completed_block) {
             return
@@ -1060,6 +1076,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// should be corrected before the end of the block. We use this knowledge
     /// to see if the price had a massive valid change or is just being
     /// manipulated for mev.
+    #[brontes_macros::bench_time(ptr=self.bench)]
     fn handle_drastic_price_changes(&mut self, prices: &mut DexQuotes) {
         let mut first = FastHashMap::default();
         let mut last = FastHashMap::default();

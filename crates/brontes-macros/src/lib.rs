@@ -1,6 +1,7 @@
 mod action_classifier;
 mod discovery_classifier;
 mod libmdbx_test;
+mod bench_struct_methods;
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, ItemFn};
@@ -198,6 +199,14 @@ pub fn discovery_dispatch(input: TokenStream) -> TokenStream {
 pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemFn);
     libmdbx_test::parse(item, attr.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_attribute]
+pub fn bench_time(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(item as ItemFn);
+    bench_struct_methods::parse(item, attr.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
