@@ -62,7 +62,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_nested_action,
         ]);
 
-        Self::get_possible_sandwich(tree.clone())
+        let ps = Self::get_possible_sandwich(tree.clone())
             .into_iter()
             .flat_map(Self::partition_into_gaps)
             .filter_map(
@@ -177,7 +177,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                 },
             )
             .flatten()
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+
+         self.ensure_no_overlap(ps)
+
     }
 }
 
@@ -335,6 +338,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
+
+    fn ensure_no_overlap(&self, bundles: Vec<Bundle>) -> Vec<BundleData> {
+        todo!()
+    }
+
+
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
         let PossibleSandwich {
@@ -623,7 +632,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
             .any(|(swaps, transfers)| {
                 swaps.iter().any(|s| pools.contains(&s.pool))
-                    || transfers.iter().any(|t| {
+                    && transfers.iter().any(|t| {
                         // victim has a transfer from the pool that was a token in for
                         // the sandwich
                         tokens.contains(&(t.token.address, t.to, is_frontrun))
