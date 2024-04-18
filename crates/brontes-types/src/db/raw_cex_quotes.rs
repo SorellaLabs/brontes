@@ -1,6 +1,5 @@
 use clickhouse::Row;
 use itertools::Itertools;
-use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 
 use super::{

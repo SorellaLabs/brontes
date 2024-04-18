@@ -1,7 +1,6 @@
 use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 
 use super::{
@@ -75,7 +74,7 @@ impl CexTradesConverter {
             });
 
         block_num_map
-            .into_par_iter()
+            .into_iter()
             .map(|(block_num, trades)| {
                 let mut exchange_map = FastHashMap::default();
 
