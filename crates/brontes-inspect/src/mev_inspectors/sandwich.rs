@@ -1,5 +1,4 @@
 use std::{
-    cmp::max,
     collections::{hash_map::Entry, HashMap},
     hash::Hash,
     sync::Arc,
@@ -31,9 +30,9 @@ use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
 
-/// the price difference was more than 70% between dex pricing and effective
+/// the price difference was more than 100% between dex pricing and effective
 /// price
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(7, 10);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigned(1);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -400,8 +399,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     * am_in_price.get_price(PriceAt::Average))
                 .reciprocal();
 
-                let pct =
-                    max(&effective_price - &dex_pricing_rate, Rational::ZERO) / &effective_price;
+                let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
 
                 if pct > MAX_PRICE_DIFF {
                     tracing::warn!(

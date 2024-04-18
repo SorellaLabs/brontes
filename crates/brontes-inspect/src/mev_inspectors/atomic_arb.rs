@@ -1,4 +1,4 @@
-use std::{cmp::max, sync::Arc};
+use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -15,16 +15,19 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
+    num::{
+        arithmetic::traits::{Abs, Reciprocal},
+        basic::traits::Zero,
+    },
     Rational,
 };
 use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
-/// the price difference was more than 50% between dex pricing and effective
+/// the price difference was more than 100% between dex pricing and effective
 /// price
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(5, 10);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigned(1);
 
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -255,8 +258,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     * am_in_price.get_price(PriceAt::Average))
                 .reciprocal();
 
-                let pct =
-                    max(&effective_price - &dex_pricing_rate, Rational::ZERO) / &effective_price;
+                let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
 
                 if pct > MAX_PRICE_DIFF {
                     tracing::warn!(
