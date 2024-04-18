@@ -23,7 +23,6 @@
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
-use rayon::iter::IntoParallelIterator;
 mod graphs;
 pub mod protocols;
 mod subgraph_query;
@@ -784,7 +783,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .graph_manager
             .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
         else {
-            // tracing::debug!(?pair, ?complete_pair, ?goes_through, "verify subgraph on new path failure failed");
             return;
         };
 

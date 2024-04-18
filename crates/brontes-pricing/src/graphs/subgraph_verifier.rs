@@ -201,13 +201,16 @@ impl SubgraphVerifier {
             .1
             .in_rundown = true;
 
-        let state = &self
+        let state = self
             .subgraph_verification_state
             .get_mut(&pair.ordered())
             .or_else(|| {
                 tracing::debug!(?pair, "missing state");
                 None
-            })?
+            })?;
+        tracing::debug!(?state);
+
+        let state = &state
             .iter_mut()
             .find(|(p, _)| p == goes_through)
             .or_else(|| {
