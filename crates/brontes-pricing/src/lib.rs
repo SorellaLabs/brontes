@@ -922,7 +922,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let verify = new_subgraphs
             .into_iter()
             .filter_map(|(pair, complete_pair, goes_through, extend, block, edges, frayed_ext)| {
-                let (id, need_state, ..) = self
+                let Some((id, need_state, ..)) = self
                     .add_subgraph(
                         pair,
                         complete_pair,
@@ -931,8 +931,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         block,
                         edges,
                         frayed_ext,
-                    )
-                    .unwrap();
+                    ) else {
+                        return None
+                    };
 
                 if !need_state {
                     return Some((block, id, complete_pair, vec![goes_through]))
