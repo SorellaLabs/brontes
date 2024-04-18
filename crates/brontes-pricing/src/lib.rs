@@ -779,12 +779,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
     fn rundown(&mut self, pair: Pair, complete_pair: Pair, goes_through: Pair, block: u64) {
-        let Some(ignores) = self
+        let ignores = self
             .graph_manager
             .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
-        else {
-            return;
-        };
+            .unwrap_or_default();
 
         if ignores.is_empty() {
             tracing::debug!(
