@@ -15,7 +15,10 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{arithmetic::traits::Abs, basic::traits::Zero},
+    num::{
+        arithmetic::traits::{Abs, Reciprocal},
+        basic::traits::Zero,
+    },
     Rational,
 };
 use reth_primitives::Address;
@@ -249,7 +252,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     .as_ref()?
                     .price_at(Pair(self.utils.quote, swap.token_out.address), idx)?;
 
-                let dex_pricing_rate = am_out_price.get_price(PriceAt::Average)
+                // we reciprocal amount out because we won't have pricing for quote <> token out
+                // but we will have flipped
+                let dex_pricing_rate = am_out_price.get_price(PriceAt::Average).reciprocal()
                     / am_in_price.get_price(PriceAt::Average);
 
                 let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
@@ -270,6 +275,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         if pcts.is_empty() {
             return true
         }
+
         pcts.into_iter()
             .max()
             .filter(|delta| delta.le(&MAX_PRICE_DIFF))

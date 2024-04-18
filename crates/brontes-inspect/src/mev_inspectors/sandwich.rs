@@ -18,7 +18,10 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{arithmetic::traits::Abs, basic::traits::Zero},
+    num::{
+        arithmetic::traits::{Abs, Reciprocal},
+        basic::traits::Zero,
+    },
     Rational,
 };
 use reth_primitives::{Address, B256};
@@ -262,6 +265,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 return None
             }
         }
+
         if !self.valid_pricing(metadata.clone(), &back_run_swaps, backrun_info.tx_index as usize) {
             return None
         }
@@ -387,9 +391,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 let am_out_price = metadata
                     .dex_quotes
                     .as_ref()?
-                    .price_at(Pair(self.utils.quote, swap.token_out.address), idx)?;
+                    .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
 
-                let dex_pricing_rate = am_out_price.get_price(PriceAt::Average)
+                // we reciprocal amount out because we won't have pricing for quote <> token out
+                // but we will have flipped
+                let dex_pricing_rate = am_out_price.get_price(PriceAt::Average).reciprocal()
                     / am_in_price.get_price(PriceAt::Average);
 
                 let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
