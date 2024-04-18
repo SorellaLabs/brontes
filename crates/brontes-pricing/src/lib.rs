@@ -817,10 +817,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                     // take all combinations of our ignore nodes
                     if ignores.len() > 1 {
-                        ignores
-                            .iter()
-                            .copied()
-                            .combinations(ignores.len() - 1)
+                        (0..ignores.len())
+                            .flat_map(|c| ignores.iter().copied().combinations(c).collect_vec())
                             .map(|ignores| RequeryPairs {
                                 pair,
                                 goes_through,
@@ -858,29 +856,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     let edges = edges.into_iter().flatten().flatten().unique().collect_vec();
 
                     // if we dont have any edges, lets run with no ignores.
-                    let (edges, extend) = if edges.is_empty() {
-                        let query = vec![RequeryPairs {
-                            goes_through,
-                            pair,
-                            block,
-                            full_pair,
-                            ignore_state: FastHashSet::default(),
-                            frayed_ends: vec![],
-                        }];
-
-                        let (edges, mut extend): (Vec<_>, Vec<_>) =
-                            par_state_query(&self.graph_manager, query)
-                                .into_iter()
-                                .map(|e| (e.edges, e.extends_pair))
-                                .unzip();
-
-                        (
-                            edges.into_iter().flatten().flatten().unique().collect_vec(),
-                            extend.pop().flatten(),
-                        )
-                    } else {
-                        (edges, extend.pop().flatten())
-                    };
+                    let (edges, extend) = (edges, extend.pop().flatten());
 
                     // add calls and try_verify calls
                     let mut add_calls = Vec::new();
