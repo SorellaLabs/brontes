@@ -754,7 +754,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     edges,
                     frayed_ext,
                 ) else {
-                tracing::info!("requery bad state add subgraph failed");
+                    tracing::debug!("requery bad state add subgraph failed");
                     return;
                 };
 
@@ -768,7 +768,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         );
 
         if !recusing.is_empty() {
-            tracing::info!("requery bad state");
+            tracing::debug!("requery bad state");
             execute_on!(target = pricing, self.try_verify_subgraph(recusing));
         }
         tracing::debug!("finished requerying bad state");
@@ -784,7 +784,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .graph_manager
             .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
         else {
-                tracing::info!("verify subgraph on new path failure failed");
+            tracing::debug!(?pair, ?complete_pair, ?goes_through, "verify subgraph on new path failure failed");
             return;
         };
 
@@ -877,7 +877,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let Some((id, need_state, _)) =
                 self.add_subgraph(pair, complete_pair, goes_through, extend, block, edges, true)
             else {
-                tracing::info!("rundown add frayed ext failed");
+                tracing::debug!("rundown add frayed ext failed");
                 return;
             };
 
