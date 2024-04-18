@@ -374,7 +374,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             return true
         }
 
-        swaps
+        let pcts = swaps
             .iter()
             .filter_map(|swap| {
                 let effective_price = swap.swap_rate();
@@ -399,12 +399,19 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         ?effective_price,
                         ?dex_pricing_rate,
                         ?swap,
-                        "to big of a delta for pricing on sandwiches"
+                        "to big of a delta for pricing on sandwich"
                     );
                 }
 
                 Some(pct)
             })
+            .collect_vec();
+
+        if pcts.is_empty() {
+            return true
+        }
+
+        pcts.into_iter()
             .max()
             .filter(|delta| delta.le(&MAX_PRICE_DIFF))
             .is_some()
