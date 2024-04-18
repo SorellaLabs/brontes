@@ -58,10 +58,7 @@ pub use graphs::{
     VerificationResults,
 };
 use itertools::Itertools;
-use malachite::{
-    num::{arithmetic::traits::Abs, basic::traits::One},
-    Rational,
-};
+use malachite::{num::basic::traits::One, Rational};
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
@@ -71,8 +68,8 @@ use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
 /// max movement of price in the block before its considered invalid.
-/// currently 70%
-const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(7, 10);
+/// currently 45%
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(45, 100);
 
 /// # Brontes Batch Pricer
 ///
@@ -1152,7 +1149,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .into_iter()
             .filter_map(|(key, price)| Some((key, price, last.remove(&key)?)))
             .filter_map(|(key, first_price, last_price)| {
-                let block_movement = (last_price - &first_price).abs() / first_price;
+                let block_movement = if last_price > first_price {
+                    (&last_price - &first_price) / last_price
+                } else {
+                    (&first_price - &last_price) / first_price
+                };
                 if block_movement > MAX_BLOCK_MOVEMENT {
                     Some(key)
                 } else {
