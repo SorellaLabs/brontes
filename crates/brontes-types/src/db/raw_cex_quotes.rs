@@ -36,7 +36,7 @@ impl CexQuotesConverter {
         block_times: Vec<BlockTimes>,
         symbols: Vec<CexSymbols>,
         quotes: Vec<RawCexQuotes>,
-        time_window: (u64, u64),
+        time_window: (f64, f64),
     ) -> Self {
         let symbols = symbols
             .into_iter()

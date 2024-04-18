@@ -703,15 +703,15 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(f, "  - Swaps and Corresponding ArbDetails:")?;
     for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
         writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
-        writeln!(f, "      Global VMAP ArbDetails:");
+        writeln!(f, "      Global VMAP ArbDetails:")?;
         for detail in &cex_dex_data.global_vmap_details {
             writeln!(f, "        - {}", detail)?;
         }
-        writeln!(f, "      Optimal Route ArbDetails:");
+        writeln!(f, "      Optimal Route ArbDetails:")?;
         for detail in &cex_dex_data.optimal_route_details {
             writeln!(f, "        - {}", detail)?;
         }
-        writeln!(f, "      Per Exchange ArbDetails:");
+        writeln!(f, "      Per Exchange ArbDetails:")?;
         for (exchange, details) in cex_dex_data.per_exchange_details.iter().enumerate() {
             writeln!(f, "        Exchange {}:", exchange)?;
             for detail in details {
