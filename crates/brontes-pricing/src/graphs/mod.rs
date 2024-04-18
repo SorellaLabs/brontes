@@ -17,6 +17,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
+use tracing::error_span;
 
 pub use self::{
     registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
@@ -51,16 +52,16 @@ use crate::{types::PoolState, Protocol};
 /// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
 ///   state for the generated subgraphs.
 pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
-    all_pair_graph:     AllPairGraph,
+    all_pair_graph: AllPairGraph,
     /// registry of all finalized subgraphs
     sub_graph_registry: SubGraphRegistry,
     /// deals with the verification process of our subgraphs
-    subgraph_verifier:  SubgraphVerifier,
+    pub(crate) subgraph_verifier: SubgraphVerifier,
     /// tracks all state needed for our subgraphs
-    graph_state:        StateTracker,
+    graph_state: StateTracker,
     #[allow(dead_code)] // we don't db on tests which causes dead code
     /// allows us to save a load subgraphs.
-    db:                 &'static DB,
+    db: &'static DB,
 }
 
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
@@ -239,17 +240,42 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             || self.subgraph_verifier.is_verifying(&pair, &goes_through)
     }
 
-    fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
-        self.sub_graph_registry.has_go_through(pair, goes_through)
-            || self.subgraph_verifier.has_go_through(pair, goes_through)
-    }
-
-    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Option<Pair>) -> bool {
-        self.has_go_through(&pair, &goes_through)
+    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Pair) -> bool {
+        self.sub_graph_registry.has_go_through(&pair, &goes_through)
+            || self.subgraph_verifier.has_go_through(&pair, &goes_through)
     }
 
     pub fn remove_state(&mut self, address: &Address) {
         self.graph_state.remove_state(address)
+    }
+
+    // returns true if the subgraph should be requeried. This will
+    // also remove the given subgraph from the registry
+    pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
+        let span = error_span!("verified subgraph pruning");
+        span.in_scope(|| {
+            let state = self.graph_state.finalized_state();
+            let (start_price, start_addr) = self
+                .sub_graph_registry
+                .get_subgraph_extends(&pair, goes_through)
+                .map(|jump_pair| {
+                    (
+                        self.sub_graph_registry
+                            .get_price_all(jump_pair.flip(), state)
+                            .unwrap_or(Rational::ONE),
+                        jump_pair.0,
+                    )
+                })
+                .unwrap_or_else(|| (Rational::ONE, quote));
+
+            let _ = self.sub_graph_registry.verify_current_subgraphs(
+                pair,
+                goes_through,
+                start_addr,
+                start_price,
+                state,
+            );
+        });
     }
 
     pub fn add_frayed_end_extension(
@@ -318,5 +344,9 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn audit_subgraphs(&mut self) {
         self.sub_graph_registry
             .audit_subgraphs(self.graph_state.finalized_state())
+    }
+
+    pub fn verification_done_for_block(&self, block: u64) -> bool {
+        self.subgraph_verifier.is_done_block(block)
     }
 }

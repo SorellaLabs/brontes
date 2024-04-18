@@ -76,6 +76,7 @@ pub mod dex_quote {
                             Natural::from_owned_limbs_asc(post_den),
                         ),
                         goes_through: Pair::default(),
+                        is_transfer:  false,
                     },
                 )
             })
