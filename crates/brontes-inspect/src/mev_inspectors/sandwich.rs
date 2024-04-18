@@ -587,6 +587,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .any(|pool| {
                     let fp = front_run_pools.contains(&pool);
                     let bp = back_run_pools.contains(&pool);
+                    has_sandwich |= fp && bp;
+
                     fp || bp
                 });
 
