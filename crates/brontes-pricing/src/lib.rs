@@ -761,17 +761,17 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     }
 
                     let Some((id, need_state, force_rundown)) = self.add_subgraph(
-                    pair,
-                    full_pair,
-                    goes_through,
-                    extends_pair,
-                    block,
-                    edges,
-                    frayed_ext,
-                ) else {
-                    tracing::debug!("requery bad state add subgraph failed");
-                    return None;
-                };
+                        pair,
+                        full_pair,
+                        goes_through,
+                        extends_pair,
+                        block,
+                        edges,
+                        frayed_ext,
+                    ) else {
+                        tracing::debug!("requery bad state add subgraph failed");
+                        return None;
+                    };
 
                     if force_rundown {
                         tracing::debug!("force rundown requery bad state par");
@@ -922,18 +922,17 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let verify = new_subgraphs
             .into_iter()
             .filter_map(|(pair, complete_pair, goes_through, extend, block, edges, frayed_ext)| {
-                let Some((id, need_state, ..)) = self
-                    .add_subgraph(
-                        pair,
-                        complete_pair,
-                        goes_through,
-                        extend,
-                        block,
-                        edges,
-                        frayed_ext,
-                    ) else {
-                        return None
-                    };
+                let Some((id, need_state, ..)) = self.add_subgraph(
+                    pair,
+                    complete_pair,
+                    goes_through,
+                    extend,
+                    block,
+                    edges,
+                    frayed_ext,
+                ) else {
+                    return None
+                };
 
                 if !need_state {
                     return Some((block, id, complete_pair, vec![goes_through]))

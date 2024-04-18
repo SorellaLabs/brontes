@@ -135,7 +135,7 @@ impl DexQuotes {
             tx -= 1;
         }
 
-        debug!(?pair, at_or_before=?s_idx, "no price for pair");
+        debug!(target: "brontes::missing_pricing",?pair, at_or_before=?s_idx, "no price for pair");
 
         None
     }
@@ -165,7 +165,7 @@ impl DexQuotes {
             return Some(price.clone())
         }
 
-        debug!(?pair, at=?s_idx, "no price for pair");
+        debug!(target: "brontes::missing_pricing",?pair, at=?s_idx, "no price for pair");
 
         None
     }
@@ -199,7 +199,7 @@ impl DexQuotes {
             tx -= 1;
         }
 
-        debug!(?pair, at_or_before=?s_idx, "no price for pair");
+        debug!(target: "brontes::missing_pricing",?pair, at_or_before=?s_idx, "no price for pair");
 
         None
     }
