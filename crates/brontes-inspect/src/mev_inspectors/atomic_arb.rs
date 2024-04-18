@@ -229,6 +229,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     }
 
     fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
+        if swaps.len() == 0 {
+            return true
+        }
+
         swaps
             .iter()
             .filter_map(|swap| {
@@ -256,6 +260,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         ?swap,
                         "to big of a delta for pricing on atomic arbs"
                     );
+                } else {
+                    tracing::info!(?effective_price, ?dex_pricing_rate, "valid price");
                 }
 
                 Some(pct)
