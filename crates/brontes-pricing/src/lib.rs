@@ -784,7 +784,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .graph_manager
             .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
         else {
-            tracing::debug!(?pair, ?complete_pair, ?goes_through, "verify subgraph on new path failure failed");
+            // tracing::debug!(?pair, ?complete_pair, ?goes_through, "verify subgraph on new path failure failed");
             return;
         };
 
