@@ -637,6 +637,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>) {
+        self.graph_manager
+            .subgraph_verifier
+            .print_rem(self.completed_block);
+
         let requery = self
             .graph_manager
             .verify_subgraph(pairs, self.quote_asset)
@@ -859,10 +863,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 debug!(?pair, ?goes_through, ?block, "Failed to find connection for graph");
             }
-            let (id, ..) = self
+            let (id, need_state, ..) = self
                 .add_subgraph(pair, complete_pair, goes_through, extend, block, vec![], true)
                 .unwrap();
-            self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])]);
+
+            if !need_state {
+                self.try_verify_subgraph(vec![(block, id, complete_pair, vec![goes_through])]);
+            }
             return
         } else {
             let Some((id, need_state, _)) =
