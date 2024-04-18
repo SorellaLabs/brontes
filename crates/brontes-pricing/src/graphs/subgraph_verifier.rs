@@ -254,9 +254,17 @@ impl SubgraphVerifier {
         Some((
             state_tracker.missing_state(block, &frayed_end_extensions),
             self.pending_subgraphs
-                .get_mut(&pair.ordered())?
+                .get_mut(&pair.ordered())
+                .or_else(|| {
+                    tracing::info!("frayed ext no pair in pending_subgraphs");
+                    None
+                })?
                 .iter_mut()
-                .find(|(p, _)| p == goes_through)?
+                .find(|(p, _)| p == goes_through)
+                .or_else(|| {
+                    tracing::info!("frayed ext no goes through in pending_subgraphs");
+                    None
+                })?
                 .1
                 .add_extension(frayed_end_extensions),
             true,
